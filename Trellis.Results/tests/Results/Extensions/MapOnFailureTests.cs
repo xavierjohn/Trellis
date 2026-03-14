@@ -5,6 +5,28 @@ namespace Trellis.Results.Tests.Results.Extensions;
 public class MapOnFailureTests : TestBase
 {
     [Fact]
+    public void MapOnFailure_WithNullMap_ThrowsArgumentNullException()
+    {
+        var original = Result.Failure<int>(Error1);
+
+        var act = () => original.MapOnFailure((Func<Error, Error>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "map");
+    }
+
+    [Fact]
+    public async Task MapOnFailureAsync_TaskResult_WithNullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<int>> original = null!;
+
+        Func<Task<Result<int>>> act = () => original.MapOnFailureAsync(e => e);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
+    [Fact]
     public void MapOnFailure_transforms_failure_error()
     {
         var original = Result.Failure<int>(Error1);

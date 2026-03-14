@@ -12,6 +12,18 @@ public class ParallelAsyncTests : TestBase
     #region 2-Tuple ParallelAsync Tests
 
     [Fact]
+    public void ParallelAsync_2Tuple_NullFactory_ThrowsArgumentNullException()
+    {
+        Func<Task<Result<int>>> taskFactory1 = null!;
+        Func<Task<Result<int>>> taskFactory2 = () => CreateDelayedSuccessTask(2, 20);
+
+        var act = () => Result.ParallelAsync(taskFactory1, taskFactory2);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "taskFactory1");
+    }
+
+    [Fact]
     public async Task ParallelAsync_2Tuple_AllSuccess_ReturnsCombinedTuple()
     {
         // Act

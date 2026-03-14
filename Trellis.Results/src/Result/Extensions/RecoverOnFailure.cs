@@ -26,6 +26,8 @@ public static class RecoverOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static Result<T> RecoverOnFailure<T>(this Result<T> result, Func<Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -48,6 +50,8 @@ public static class RecoverOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static Result<T> RecoverOnFailure<T>(this Result<T> result, Func<Error, Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -71,6 +75,9 @@ public static class RecoverOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static Result<T> RecoverOnFailure<T>(this Result<T> result, Func<Error, bool> predicate, Func<Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -100,6 +107,9 @@ public static class RecoverOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static Result<T> RecoverOnFailure<T>(this Result<T> result, Func<Error, bool> predicate, Func<Error, Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -151,6 +161,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(func);
     }
@@ -165,6 +178,8 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Result<T> result, Func<Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -187,6 +202,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.RecoverOnFailureAsync(funcAsync).ConfigureAwait(false);
     }
@@ -201,6 +219,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(func);
     }
@@ -215,6 +236,8 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Result<T> result, Func<Error, Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -237,6 +260,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
 
         return await result.RecoverOnFailureAsync(funcAsync).ConfigureAwait(false);
@@ -253,6 +279,10 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, bool> predicate, Func<Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(predicate, func);
     }
@@ -268,6 +298,10 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, bool> predicate, Func<Error, Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(predicate, func);
     }
@@ -283,6 +317,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Result<T> result, Func<Error, bool> predicate, Func<Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -312,6 +349,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Result<T> result, Func<Error, bool> predicate, Func<Error, Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
         {
@@ -341,6 +381,10 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, bool> predicate, Func<Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.RecoverOnFailureAsync(predicate, funcAsync).ConfigureAwait(false);
     }
@@ -356,6 +400,10 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, bool> predicate, Func<Error, Task<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.RecoverOnFailureAsync(predicate, funcAsync).ConfigureAwait(false);
     }
@@ -372,6 +420,8 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(func);
     }
@@ -386,6 +436,8 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<ValueTask<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
@@ -409,6 +461,8 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(func);
     }
@@ -423,6 +477,8 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, ValueTask<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
@@ -447,6 +503,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, bool> predicate, Func<Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(predicate, func);
     }
@@ -462,6 +521,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, bool> predicate, Func<Error, Result<T>> func)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.RecoverOnFailure(predicate, func);
     }
@@ -477,6 +539,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, bool> predicate, Func<ValueTask<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)
@@ -507,6 +572,9 @@ public static class RecoverOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> RecoverOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, bool> predicate, Func<Error, ValueTask<Result<T>>> funcAsync)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(RecoverOnFailureExtensions.RecoverOnFailure));
         if (result.IsSuccess)

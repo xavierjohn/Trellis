@@ -63,6 +63,9 @@ public readonly partial struct Result
         Func<Task<Result<T<#= j #>>>> taskFactory<#= j #><#= j < i ? "," : ")" #>
 <# } #>
     {
+    <# for(var j = 1; j <= i; j++) { #>
+        ArgumentNullException.ThrowIfNull(taskFactory<#= j #>);
+    <# } #>
 <# for(var j = 1; j <= i; j++) { #>
         var task<#= j #> = taskFactory<#= j #>();
 <# } #>

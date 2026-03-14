@@ -267,6 +267,19 @@ public class MatchTupleTracingTests : TestBase
     #region Async Match Tracing Tests
 
     [Fact]
+    public async Task MatchAsync_2Tuple_SyncHandlers_NullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<(int, string)>> resultTask = null!;
+
+        Func<Task<string>> act = () => resultTask.MatchAsync(
+            onSuccess: (num, str) => $"{num}-{str}",
+            onFailure: _ => "Error");
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
+    [Fact]
     public async Task MatchAsync_2Tuple_SyncHandlers_Success_CreatesActivityWithOkStatus()
     {
         // Arrange
@@ -348,6 +361,19 @@ public class MatchTupleTracingTests : TestBase
     #endregion
 
     #region Async Switch Tracing Tests
+
+    [Fact]
+    public async Task SwitchAsync_2Tuple_NullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<(int, string)>> resultTask = null!;
+
+        Func<Task> act = () => resultTask.SwitchAsync(
+            onSuccess: (num, str) => Task.CompletedTask,
+            onFailure: _ => Task.CompletedTask);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
 
     [Fact]
     public async Task SwitchAsync_2Tuple_Success_CreatesActivity()

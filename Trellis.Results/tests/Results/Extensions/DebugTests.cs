@@ -129,6 +129,17 @@ public class DebugTests : TestBase
         returned.Should().Be(result);
     }
 
+    [Fact]
+    public void DebugOnSuccess_with_null_action_throws_argument_null_exception()
+    {
+        var result = Result.Success(T.Value1);
+
+        var act = () => result.DebugOnSuccess((Action<T>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "action");
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -262,6 +273,17 @@ public class DebugTests : TestBase
         actionExecuted.Should().BeFalse();
 #endif
         returned.Should().Be(result);
+    }
+
+    [Fact]
+    public async Task DebugOnSuccessAsync_with_null_result_task_throws_argument_null_exception()
+    {
+        Task<Result<T>> resultTask = null!;
+
+        Func<Task<Result<T>>> act = () => resultTask.DebugOnSuccessAsync(_ => { });
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
     }
 
     [Theory]

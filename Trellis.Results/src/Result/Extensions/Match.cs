@@ -20,6 +20,9 @@ public static class MatchExtensions
     /// <returns>The output from either the success or failure function.</returns>
     public static TOut Match<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -42,6 +45,9 @@ public static class MatchExtensions
     /// <param name="onFailure">Action to execute on failure.</param>
     public static void Switch<TIn>(this Result<TIn> result, Action<TIn> onSuccess, Action<Error> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -73,6 +79,10 @@ public static class MatchExtensionsAsync
     /// <returns>The output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return result.Match(onSuccess, onFailure);
     }
@@ -89,6 +99,9 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Result<TIn> result, Func<TIn, CancellationToken, Task<TOut>> onSuccess, Func<Error, CancellationToken, Task<TOut>> onFailure, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -113,6 +126,9 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Result<TIn> result, Func<TIn, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -138,6 +154,10 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, CancellationToken, Task<TOut>> onSuccess, Func<Error, CancellationToken, Task<TOut>> onFailure, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure, cancellationToken).ConfigureAwait(false);
     }
@@ -153,6 +173,10 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure).ConfigureAwait(false);
     }
@@ -168,6 +192,10 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation.</returns>
     public static async Task SwitchAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, CancellationToken, Task> onSuccess, Func<Error, CancellationToken, Task> onFailure, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)
@@ -192,6 +220,10 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation.</returns>
     public static async Task SwitchAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Task> onSuccess, Func<Error, Task> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)
@@ -213,6 +245,9 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask<TOut> MatchAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return result.Match(onSuccess, onFailure);
     }
@@ -222,6 +257,9 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask<TOut> MatchAsync<TIn, TOut>(this Result<TIn> result, Func<TIn, ValueTask<TOut>> onSuccess, Func<Error, ValueTask<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -240,6 +278,9 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask<TOut> MatchAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, Func<TIn, ValueTask<TOut>> onSuccess, Func<Error, ValueTask<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure).ConfigureAwait(false);
     }
@@ -249,6 +290,9 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask SwitchAsync<TIn>(this ValueTask<Result<TIn>> resultTask, Func<TIn, ValueTask> onSuccess, Func<Error, ValueTask> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)

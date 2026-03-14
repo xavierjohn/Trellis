@@ -5,6 +5,30 @@ using Trellis.Testing;
 
 public class WhenTests : TestBase
 {
+    [Fact]
+    public void When_WithNullPredicate_ThrowsArgumentNullException()
+    {
+        var result = Result.Success(42);
+
+        var act = () => result.When((Func<int, bool>)null!, x => Result.Success(x));
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "predicate");
+    }
+
+    [Fact]
+    public async Task WhenAsync_WithTaskResult_NullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<int>> resultTask = null!;
+
+        Func<Task<Result<int>>> act = () => resultTask.WhenAsync(
+            x => x > 0,
+            x => Task.FromResult(Result.Success(x)));
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
     #region When with Predicate
 
     [Fact]

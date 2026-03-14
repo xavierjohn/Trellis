@@ -25,6 +25,17 @@ public class TapOnFailureTupleTests : TestBase
     #region 2-Tuple TapOnFailure Tests (Comprehensive Coverage)
 
     [Fact]
+    public void TapOnFailure_2Tuple_WithNullAction_ThrowsArgumentNullException()
+    {
+        var result = Result.Failure<(int, string)>(Error.Validation("Validation failed"));
+
+        var act = () => result.TapOnFailure((Action)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "action");
+    }
+
+    [Fact]
     public void TapOnFailure_2Tuple_WithAction_Failure_ExecutesAction()
     {
         // Arrange
@@ -144,6 +155,17 @@ public class TapOnFailureTupleTests : TestBase
     #endregion
 
     #region 2-Tuple Async Tests
+
+    [Fact]
+    public async Task TapOnFailureAsync_2Tuple_TaskResult_WithNullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<(int, string)>> result = null!;
+
+        Func<Task<Result<(int, string)>>> act = () => result.TapOnFailureAsync(() => { });
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
 
     [Fact]
     public async Task TapOnFailureAsync_2Tuple_TaskResult_WithAction_Failure_ExecutesAction()

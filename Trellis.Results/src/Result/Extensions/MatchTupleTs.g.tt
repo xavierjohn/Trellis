@@ -104,6 +104,9 @@ public static class MatchTupleExtensions
         Func<<#= funcParams #>, TOut> onSuccess,
         Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -155,6 +158,9 @@ public static class MatchTupleExtensions
         Action<<#= funcParams #>> onSuccess,
         Action<Error> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -220,6 +226,10 @@ public static class MatchTupleExtensionsAsync
         Func<<#= funcParams #>, TOut> onSuccess,
         Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return result.Match(onSuccess, onFailure);
     }
@@ -248,6 +258,9 @@ public static class MatchTupleExtensionsAsync
         Func<<#= funcParams #>, Task<TOut>> onSuccess,
         Func<Error, Task<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
         {
@@ -284,6 +297,10 @@ public static class MatchTupleExtensionsAsync
         Func<<#= funcParams #>, Task<TOut>> onSuccess,
         Func<Error, Task<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure).ConfigureAwait(false);
     }
@@ -314,6 +331,10 @@ public static class MatchTupleExtensionsAsync
         Func<<#= funcParams #>, Task> onSuccess,
         Func<Error, Task> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)

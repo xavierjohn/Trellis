@@ -54,6 +54,8 @@ public static class MapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static Result<T> MapOnFailure<T>(this Result<T> result, Func<Error, Error> map)
     {
+        ArgumentNullException.ThrowIfNull(map);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess) return result;
         activity?.SetStatus(ActivityStatusCode.Error);
@@ -70,6 +72,9 @@ public static class MapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> MapOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Error> map)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(map);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.MapOnFailure(map);
     }
@@ -84,6 +89,8 @@ public static class MapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> MapOnFailureAsync<T>(this Result<T> result, Func<Error, Task<Error>> mapAsync)
     {
+        ArgumentNullException.ThrowIfNull(mapAsync);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess) return result;
         activity?.SetStatus(ActivityStatusCode.Error);
@@ -101,6 +108,9 @@ public static class MapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<T>> MapOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Error>> mapAsync)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(mapAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.MapOnFailureAsync(mapAsync).ConfigureAwait(false);
     }
@@ -115,6 +125,8 @@ public static class MapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> MapOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, Error> map)
     {
+        ArgumentNullException.ThrowIfNull(map);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return result.MapOnFailure(map);
     }
@@ -129,6 +141,8 @@ public static class MapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> MapOnFailureAsync<T>(this Result<T> result, Func<Error, ValueTask<Error>> mapAsync)
     {
+        ArgumentNullException.ThrowIfNull(mapAsync);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess) return result;
         activity?.SetStatus(ActivityStatusCode.Error);
@@ -146,6 +160,8 @@ public static class MapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<T>> MapOnFailureAsync<T>(this ValueTask<Result<T>> resultTask, Func<Error, ValueTask<Error>> mapAsync)
     {
+        ArgumentNullException.ThrowIfNull(mapAsync);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.MapOnFailureAsync(mapAsync).ConfigureAwait(false);
     }

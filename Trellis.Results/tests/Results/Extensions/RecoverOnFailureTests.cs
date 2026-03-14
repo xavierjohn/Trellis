@@ -4,6 +4,28 @@ public class RecoverOnFailureTests
 {
     bool _recoveryFunctionCalled;
 
+    [Fact]
+    public void RecoverOnFailure_WithNullFunc_ThrowsArgumentNullException()
+    {
+        var input = Result.Failure<string>(Error.Unexpected("Error"));
+
+        var act = () => input.RecoverOnFailure((Func<Result<string>>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "func");
+    }
+
+    [Fact]
+    public async Task RecoverOnFailureAsync_TaskResult_WithNullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<string>> input = null!;
+
+        Func<Task<Result<string>>> act = () => input.RecoverOnFailureAsync(GetSuccessResult);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
     #region RecoverOnFailure_Sync
     /// <summary>
     /// Given a successful result
