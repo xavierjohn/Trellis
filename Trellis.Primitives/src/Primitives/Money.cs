@@ -46,9 +46,7 @@ public class Money : ValueObject
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Money) + '.' + nameof(TryCreate));
 
-        var field = !string.IsNullOrEmpty(fieldName)
-            ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-            : "amount";
+        var field = fieldName.NormalizeFieldName("amount");
 
         if (amount < 0)
             return Result.Failure<Money>(Error.Validation("Amount cannot be negative.", field));

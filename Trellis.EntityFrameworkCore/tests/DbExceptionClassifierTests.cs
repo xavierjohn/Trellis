@@ -265,7 +265,9 @@ public class DbExceptionClassifierTests
     [Fact]
     public void ExtractConstraintDetail_WithInnerException_ReturnsMessage()
     {
-        // Arrange
+        // Arrange — ExtractConstraintDetail is a diagnostic utility for logging;
+        // callers (e.g. SaveChangesResultAsync) are responsible for not surfacing
+        // this raw message in user-facing Error.Detail.
         var inner = new InvalidOperationException("UNIQUE constraint failed: Customers.Email");
         var ex = CreateDbUpdateException(inner);
 

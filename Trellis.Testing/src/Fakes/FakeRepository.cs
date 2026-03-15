@@ -62,7 +62,7 @@ public class FakeRepository<TAggregate, TId>
         _store[id] = aggregate;
         _publishedEvents.AddRange(aggregate.UncommittedEvents());
         aggregate.AcceptChanges();
-        return Task.FromResult(Result.Success(new Unit()));
+        return Task.FromResult(Result.Success());
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public class FakeRepository<TAggregate, TId>
     public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken ct = default)
     {
         if (_store.Remove(id))
-            return Task.FromResult(Result.Success(new Unit()));
+            return Task.FromResult(Result.Success());
 
         return Task.FromResult(Result.Failure<Unit>(
             Error.NotFound($"{typeof(TAggregate).Name} with ID {id} not found")));

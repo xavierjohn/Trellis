@@ -160,6 +160,10 @@
 /// </example>
 public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueObject>
 {
+    // NOTE: Not volatile/locked intentionally. Value objects are immutable and DDD aggregates are
+    // single-threaded consistency boundaries. The worst-case race is two threads computing the same
+    // hash simultaneously and writing the same value — harmless on 64-bit CLR where int? writes are
+    // atomic. Add Interlocked/volatile if value objects are ever used as keys in concurrent collections.
     private int? _cachedHashCode;
 
     /// <summary>
