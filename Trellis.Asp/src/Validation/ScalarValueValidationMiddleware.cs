@@ -40,7 +40,8 @@ public sealed partial class ScalarValueValidationMiddleware
     private readonly RequestDelegate _next;
 
     // Regex to parse: Failed to bind parameter "TypeName paramName" from "value".
-    [GeneratedRegex("""^Failed to bind parameter "(\w+)\s+(\w+)" from "([^"]*)".$""", RegexOptions.Compiled)]
+    // The type name may include namespaces or nested type separators (e.g., Namespace.Type or Outer+Inner).
+    [GeneratedRegex("""^Failed to bind parameter "(.+?)\s+([^"\s]+)" from "(.*)".$""", RegexOptions.Compiled)]
     private static partial Regex ParameterBindingFailedRegex();
 
     /// <summary>
@@ -62,7 +63,7 @@ public sealed partial class ScalarValueValidationMiddleware
             {
                 await _next(context).ConfigureAwait(false);
             }
-            catch (BadHttpRequestException ex) when (ex.Message.StartsWith("Failed to bind parameter", StringComparison.Ordinal))
+            catch (BadHttpRequestException ex) when (IsParameterBindingFailureMessage(ex.Message))
             {
                 // Parse the exception message to extract parameter info
                 var (parameterName, typeName, invalidValue) = ParseBindingFailureMessage(ex.Message);
@@ -83,13 +84,19 @@ public sealed partial class ScalarValueValidationMiddleware
                     throw;
                 }
             }
-            catch (BadHttpRequestException ex) when (ex.Message.StartsWith("Failed to read parameter", StringComparison.Ordinal))
+            catch (BadHttpRequestException ex) when (IsParameterReadFailureMessage(ex.Message))
             {
                 // Handle JSON body deserialization failures (e.g., missing required properties)
                 await WriteJsonDeserializationErrorAsync(context, ex).ConfigureAwait(false);
             }
         }
     }
+
+    private static bool IsParameterBindingFailureMessage(string message) =>
+        message.Contains("Failed to bind parameter", StringComparison.Ordinal);
+
+    private static bool IsParameterReadFailureMessage(string message) =>
+        message.Contains("Failed to read parameter", StringComparison.Ordinal);
 
     [UnconditionalSuppressMessage("AOT", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]

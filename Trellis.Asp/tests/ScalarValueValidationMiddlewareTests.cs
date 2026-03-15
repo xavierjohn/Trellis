@@ -357,6 +357,54 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_BindingFailure_ForScalarValueWithQualifiedTypeName_Returns400WithRichErrors()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "Trellis.Asp.Tests.OrderCode code" from "INVALID".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("code")[0].GetString()
+            .Should().Contain("ORD-", "qualified type names should still resolve the real scalar parameter");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_BindingFailure_ForScalarValueWithNestedTypeName_Returns400WithRichErrors()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "ScalarValueValidationMiddlewareTests+OrderCode code" from "INVALID".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("code")[0].GetString()
+            .Should().Contain("ORD-", "nested type names should still resolve the real scalar parameter");
+    }
+
+    [Fact]
     public async Task InvokeAsync_BindingFailure_ForNonScalarValue_Rethrows()
     {
         // Arrange
