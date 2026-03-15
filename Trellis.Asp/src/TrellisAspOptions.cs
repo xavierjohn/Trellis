@@ -49,7 +49,12 @@ using Trellis;
 /// </example>
 public sealed class TrellisAspOptions
 {
-    internal static TrellisAspOptions Default { get; set; } = new();
+    private static readonly TrellisAspOptions _defaultOptions = new();
+    private static readonly AsyncLocal<TrellisAspOptions?> _current = new();
+
+    internal static TrellisAspOptions Default => _current.Value ?? _defaultOptions;
+
+    internal static void SetCurrent(TrellisAspOptions options) => _current.Value = options;
 
     private readonly Dictionary<Type, int> _errorMappings = new()
     {
