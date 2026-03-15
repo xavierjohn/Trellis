@@ -113,6 +113,14 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
         };
 
     private static bool IsAccessOnParameter(MemberAccessExpressionSyntax memberAccess, string parameterName) =>
-        memberAccess.Expression is IdentifierNameSyntax identifier &&
-        identifier.Identifier.Text == parameterName;
+        DependsOnParameter(memberAccess.Expression, parameterName);
+
+    private static bool DependsOnParameter(ExpressionSyntax expression, string parameterName) =>
+        expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text == parameterName,
+            MemberAccessExpressionSyntax nestedMemberAccess => DependsOnParameter(nestedMemberAccess.Expression, parameterName),
+            ParenthesizedExpressionSyntax parenthesized => DependsOnParameter(parenthesized.Expression, parameterName),
+            _ => false
+        };
 }

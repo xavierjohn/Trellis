@@ -227,7 +227,7 @@ public class HasIndexMaybePropertyAnalyzerTests
     #region Nested navigation property access does not produce warning
 
     [Fact]
-    public async Task HasIndex_NestedNavigation_MaybeProperty_NoDiagnostic()
+    public async Task HasIndex_NestedNavigation_MaybeProperty_ProducesWarning()
     {
         const string source = """
             using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -253,7 +253,11 @@ public class HasIndexMaybePropertyAnalyzerTests
             }
             """;
 
-        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<HasIndexMaybePropertyAnalyzer>(source);
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
+                .WithLocation(25, 42)
+                .WithArguments("SubmittedAt", "_submittedAt"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
         await test.RunAsync();
