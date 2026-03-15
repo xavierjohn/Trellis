@@ -484,6 +484,67 @@ public class MaybeQueryableExtensionsTests : IDisposable
         loaded!.Phone.HasNoValue.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedBackingField_ForValueTypeInner()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("Golf");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var order = CreateOrder(customer.Id);
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var submittedAt = new DateTime(2026, 4, 15, 9, 30, 0, DateTimeKind.Utc);
+
+        // Act
+        await _context.Orders
+            .Where(o => o.Id == order.Id)
+            .ExecuteUpdateAsync(
+                setters => setters.SetMaybeValue(o => o.SubmittedAt, submittedAt),
+                ct);
+
+        _context.ChangeTracker.Clear();
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.SubmittedAt.HasValue.Should().BeTrue();
+        loaded.SubmittedAt.Value.Should().Be(submittedAt);
+    }
+
+    [Fact]
+    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedBackingField_ForEnumInner()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("Hotel");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var order = CreateOrder(customer.Id, TestOrderStatus.Confirmed);
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        await _context.Orders
+            .Where(o => o.Id == order.Id)
+            .ExecuteUpdateAsync(
+                setters => setters.SetMaybeNone(o => o.OptionalStatus),
+                ct);
+
+        _context.ChangeTracker.Clear();
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.OptionalStatus.HasNoValue.Should().BeTrue();
+    }
+
     #endregion
 
     #region Helpers

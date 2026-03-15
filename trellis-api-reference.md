@@ -429,7 +429,7 @@ Result<T> When<T>(this Result<T>, Func<T, bool> predicate, Func<T, Result<T>> ac
 Result<T> When<T>(this Result<T>, bool condition, Func<T, Result<T>> action)
 Result<T> Unless<T>(this Result<T>, Func<T, bool> predicate, Func<T, Result<T>> action)
 Result<T> Unless<T>(this Result<T>, bool condition, Func<T, Result<T>> action)
-// + async variants
+// + async variants, including Task<Result<T>> and ValueTask<Result<T>> boolean-condition overloads
 ```
 
 ### Traverse — Apply to Collection

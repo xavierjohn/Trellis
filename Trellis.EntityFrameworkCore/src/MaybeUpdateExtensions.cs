@@ -64,10 +64,30 @@ public static class MaybeUpdateExtensions
     {
         var descriptor = MaybePropertyResolver.Resolve(propertySelector);
         var propertyLambda = MaybePropertyResolver.BuildBackingFieldLambda(propertySelector);
-        var valueLambda = BuildValueLambda<TEntity, TInner>(propertySelector.Parameters[0], descriptor, value, clearValue);
-        var method = SetPropertyMethodCache<TEntity>.Definition.MakeGenericMethod(descriptor.StoreType);
+        var propertyType = descriptor.StoreType;
 
-        method.Invoke(updateSettersBuilder, [propertyLambda, valueLambda]);
+        if (!clearValue && typeof(TInner).IsValueType)
+        {
+            var constantValue = CreateStoreValue<TInner>(propertyType, value!);
+            var method = SetPropertyMethodCache<TEntity>.ConstantValueDefinition.MakeGenericMethod(propertyType);
+
+            method.Invoke(updateSettersBuilder, [propertyLambda, constantValue]);
+            return;
+        }
+
+        var valueLambda = BuildValueLambda<TEntity, TInner>(propertySelector.Parameters[0], descriptor, value, clearValue);
+        var expressionMethod = SetPropertyMethodCache<TEntity>.ExpressionValueDefinition.MakeGenericMethod(propertyType);
+
+        expressionMethod.Invoke(updateSettersBuilder, [propertyLambda, valueLambda]);
+    }
+
+    private static object? CreateStoreValue<TInner>(Type storeType, TInner value)
+        where TInner : notnull
+    {
+        if (!storeType.IsValueType || Nullable.GetUnderlyingType(storeType) is null)
+            return value;
+
+        return Activator.CreateInstance(storeType, value);
     }
 
     private static LambdaExpression BuildValueLambda<TEntity, TInner>(
@@ -90,7 +110,7 @@ public static class MaybeUpdateExtensions
 
     private static class SetPropertyMethodCache<TEntity> where TEntity : class
     {
-        internal static readonly MethodInfo Definition = typeof(UpdateSettersBuilder<TEntity>)
+        internal static readonly MethodInfo ExpressionValueDefinition = typeof(UpdateSettersBuilder<TEntity>)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .Single(method =>
                 method.Name == nameof(UpdateSettersBuilder<TEntity>.SetProperty)
@@ -98,5 +118,13 @@ public static class MaybeUpdateExtensions
                 && method.GetParameters().Length == 2
                 && method.GetParameters()[1].ParameterType.IsGenericType
                 && method.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>));
+
+        internal static readonly MethodInfo ConstantValueDefinition = typeof(UpdateSettersBuilder<TEntity>)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Single(method =>
+                method.Name == nameof(UpdateSettersBuilder<TEntity>.SetProperty)
+                && method.IsGenericMethodDefinition
+                && method.GetParameters().Length == 2
+                && !method.GetParameters()[1].ParameterType.IsGenericType);
     }
 }

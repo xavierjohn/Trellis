@@ -289,6 +289,50 @@ public class WhenTests : TestBase
             .Which.Should().Be(7);
     }
 
+    [Fact]
+    public async Task WhenAsync_WithValueTaskResult_ConditionTrue_ExecutesOperation()
+    {
+        // Arrange
+        ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Success(7));
+        var operationExecuted = false;
+
+        // Act
+        var actual = await resultTask.WhenAsync(
+            condition: true,
+            operation: x =>
+            {
+                operationExecuted = true;
+                return ValueTask.FromResult(Result.Success(x * 3));
+            });
+
+        // Assert
+        operationExecuted.Should().BeTrue();
+        actual.Should().BeSuccess()
+            .Which.Should().Be(21);
+    }
+
+    [Fact]
+    public async Task WhenAsync_WithValueTaskResult_ConditionFalse_SkipsOperation()
+    {
+        // Arrange
+        ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Success(7));
+        var operationExecuted = false;
+
+        // Act
+        var actual = await resultTask.WhenAsync(
+            condition: false,
+            operation: x =>
+            {
+                operationExecuted = true;
+                return ValueTask.FromResult(Result.Success(x * 3));
+            });
+
+        // Assert
+        operationExecuted.Should().BeFalse();
+        actual.Should().BeSuccess()
+            .Which.Should().Be(7);
+    }
+
     #endregion
 
     #region UnlessAsync with ValueTask<Result<T>> input
@@ -326,6 +370,50 @@ public class WhenTests : TestBase
         var actual = await resultTask.UnlessAsync(
             x => x < 10,
             x =>
+            {
+                operationExecuted = true;
+                return ValueTask.FromResult(Result.Success(x + 1));
+            });
+
+        // Assert
+        operationExecuted.Should().BeFalse();
+        actual.Should().BeSuccess()
+            .Which.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task UnlessAsync_WithValueTaskResult_ConditionFalse_ExecutesOperation()
+    {
+        // Arrange
+        ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Success(5));
+        var operationExecuted = false;
+
+        // Act
+        var actual = await resultTask.UnlessAsync(
+            condition: false,
+            operation: x =>
+            {
+                operationExecuted = true;
+                return ValueTask.FromResult(Result.Success(x + 1));
+            });
+
+        // Assert
+        operationExecuted.Should().BeTrue();
+        actual.Should().BeSuccess()
+            .Which.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task UnlessAsync_WithValueTaskResult_ConditionTrue_SkipsOperation()
+    {
+        // Arrange
+        ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Success(5));
+        var operationExecuted = false;
+
+        // Act
+        var actual = await resultTask.UnlessAsync(
+            condition: true,
+            operation: x =>
             {
                 operationExecuted = true;
                 return ValueTask.FromResult(Result.Success(x + 1));
