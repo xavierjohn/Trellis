@@ -15,8 +15,7 @@ public class NullableExtensionTests
         var result = date.ToResult(Error.Validation("Date not set."));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(date.Value);
+        result.Should().BeSuccess().Which.Should().Be(date.Value);
     }
 
     [Fact]
@@ -29,8 +28,7 @@ public class NullableExtensionTests
         var result = date.ToResult(Error.Validation("Date not set."));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Validation("Date not set."));
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date not set."));
 
     }
 
@@ -44,8 +42,7 @@ public class NullableExtensionTests
         var result = myClass.ToResult(Error.Validation("MyClass is not set."));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(myClass);
+        result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
     }
 
     [Fact]
@@ -58,8 +55,7 @@ public class NullableExtensionTests
         var result = myClass.ToResult(Error.Validation("MyClass is not set."));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Validation("MyClass is not set."));
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("MyClass is not set."));
     }
 
     // async class
@@ -74,8 +70,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(my);
+        result.Should().BeSuccess().Which.Should().BeSameAs(my);
     }
 
     [Fact]
@@ -89,8 +84,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Validation("MyClass is not set."));
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("MyClass is not set."));
     }
 
     [Fact]
@@ -105,8 +99,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(my);
+        result.Should().BeSuccess().Which.Should().BeSameAs(my);
     }
 
     [Fact]
@@ -120,8 +113,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Validation("MyClass is not set."));
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("MyClass is not set."));
     }
 
     // async struct
@@ -136,8 +128,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(my);
+        result.Should().BeSuccess().Which.Should().Be(my);
     }
 
     [Fact]
@@ -151,8 +142,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Validation("Date is not set."));
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date is not set."));
     }
 
     [Fact]
@@ -167,8 +157,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(my);
+        result.Should().BeSuccess().Which.Should().Be(my);
     }
 
     [Fact]
@@ -182,8 +171,7 @@ public class NullableExtensionTests
         var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Validation("Date is not set."));
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date is not set."));
     }
 
     #region ToResult with Error Factory
