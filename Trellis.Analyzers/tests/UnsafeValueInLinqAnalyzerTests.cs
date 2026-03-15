@@ -152,4 +152,31 @@ public class UnsafeValueInLinqAnalyzerTests
 
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task Select_ResultValueOnInvocation_WithoutWhere_ReportsDiagnostic()
+    {
+        const string source = """
+            using System.Linq;
+            using System.Collections.Generic;
+
+            public class TestClass
+            {
+                public void TestMethod(List<string> values)
+                {
+                    var lengths = values.Select(v => GetResult(v).Value);
+                }
+
+                private Result<int> GetResult(string value) => Result.Success(value.Length);
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeValueInLinq)
+                .WithArguments("Result.Value", "IsSuccess")
+                .WithLocation(14, 55));
+
+        await test.RunAsync();
+    }
 }
