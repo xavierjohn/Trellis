@@ -5,7 +5,7 @@ using Trellis.Testing;
 
 /// <summary>
 /// Functional tests for ParallelAsync operations.
-/// Tests static Result.ParallelAsync methods for guaranteed parallel execution with factory functions.
+/// Tests static Result.ParallelAsync methods for eager task creation with factory functions.
 /// </summary>
 public class ParallelAsyncTests : TestBase
 {
@@ -64,6 +64,62 @@ public class ParallelAsyncTests : TestBase
         // Assert
         result.Should().BeSuccess();
         result.Value.Should().Be(("text", 42));
+    }
+
+    [Fact]
+    public void ParallelAsync_2Tuple_OneFactoryThrows_SurfacesTheThrownException()
+    {
+        // Arrange
+        var secondFactoryInvoked = false;
+
+        // Act
+        Action act = () => Result.ParallelAsync<int, int>(
+            () => throw new InvalidOperationException("factory blew up"),
+            () =>
+            {
+                secondFactoryInvoked = true;
+                return CreateDelayedSuccessTask(2, 10);
+            });
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("factory blew up");
+        secondFactoryInvoked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ParallelAsync_2Tuple_WithResultTry_ConvertsSynchronousExceptionToUnexpectedFailure()
+    {
+        // Act
+        var result = await Result.ParallelAsync(
+            () => Task.FromResult(Result.Try<int>(() => throw new InvalidOperationException("sync boom"))),
+            () => Task.FromResult(Result.Try(() => 2))
+        ).WhenAllAsync();
+
+        // Assert
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType<UnexpectedError>()
+            .Which.Detail.Should().Be("sync boom");
+    }
+
+    [Fact]
+    public async Task ParallelAsync_2Tuple_WithResultTry_BothSynchronousExceptions_AggregatesFailures()
+    {
+        // Act
+        var result = await Result.ParallelAsync(
+            () => Task.FromResult(Result.Try<int>(() => throw new InvalidOperationException("first sync boom"))),
+            () => Task.FromResult(Result.Try<int>(() => throw new InvalidOperationException("second sync boom")))
+        ).WhenAllAsync();
+
+        // Assert
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType<AggregateError>();
+        var aggregateError = (AggregateError)result.Error;
+        aggregateError.Errors.Should().HaveCount(2);
+        aggregateError.Errors[0].Should().BeOfType<UnexpectedError>()
+            .Which.Detail.Should().Be("first sync boom");
+        aggregateError.Errors[1].Should().BeOfType<UnexpectedError>()
+            .Which.Detail.Should().Be("second sync boom");
     }
 
     #endregion
