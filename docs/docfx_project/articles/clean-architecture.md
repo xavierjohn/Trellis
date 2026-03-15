@@ -634,7 +634,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email)
             .HasConversion(
                 email => email.Value,
-                value => EmailAddress.TryCreate(value).Value)
+                value => EmailAddress.Create(value))
             .HasMaxLength(256)
             .IsRequired();
 
@@ -829,9 +829,9 @@ public class UserTests
     public void Create_ValidData_ReturnsSuccess()
     {
         // Arrange
-        var email = EmailAddress.TryCreate("john@example.com").Value;
-        var firstName = FirstName.TryCreate("John").Value;
-        var lastName = LastName.TryCreate("Doe").Value;
+        var email = EmailAddress.Create("john@example.com");
+        var firstName = FirstName.Create("John");
+        var lastName = LastName.Create("Doe");
 
         // Act
         var result = User.Create(email, firstName, lastName);
@@ -885,9 +885,9 @@ public class RegisterUserCommandHandlerTests
         var repository = new InMemoryUserRepository();
         var handler = new RegisterUserCommandHandler(repository, new EmailServiceFake());
         var command = new RegisterUserCommand(
-            EmailAddress.TryCreate("john@example.com").Value,
-            FirstName.TryCreate("John").Value,
-            LastName.TryCreate("Doe").Value);
+            EmailAddress.Create("john@example.com"),
+            FirstName.Create("John"),
+            LastName.Create("Doe"));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -905,14 +905,14 @@ public class RegisterUserCommandHandlerTests
     {
         // Arrange
         var repository = new InMemoryUserRepository();
-        var existingEmail = EmailAddress.TryCreate("john@example.com").Value;
+        var existingEmail = EmailAddress.Create("john@example.com");
         await repository.SaveAsync(CreateExistingUser(existingEmail));
         
         var handler = new RegisterUserCommandHandler(repository, new EmailServiceFake());
         var command = new RegisterUserCommand(
             existingEmail,
-            FirstName.TryCreate("Jane").Value,
-            LastName.TryCreate("Smith").Value);
+            FirstName.Create("Jane"),
+            LastName.Create("Smith"));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);

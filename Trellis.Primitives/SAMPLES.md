@@ -598,7 +598,7 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
     {
     }
 
-    public static explicit operator TrackingId(string trackingId) => TryCreate(trackingId).Value;
+    public static explicit operator TrackingId(string trackingId) => Create(trackingId);
 
     public static TrackingId Parse(string s, IFormatProvider? provider)
     {
@@ -689,7 +689,7 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
     {
     }
 
-    public static explicit operator EmployeeId(Guid employeeId) => TryCreate(employeeId).Value;
+    public static explicit operator EmployeeId(Guid employeeId) => Create(employeeId);
 
     public static EmployeeId Parse(string s, IFormatProvider? provider)
     {
@@ -938,7 +938,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email)
             .HasConversion(
                 email => email.Value,
-                str => EmailAddress.TryCreate(str).Value)
+                str => EmailAddress.Create(str))
             .HasMaxLength(100)
             .IsRequired();
     }

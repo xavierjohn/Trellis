@@ -1754,7 +1754,10 @@ public void CreateOrder_ValidInput_ReturnsSuccess()
 [Fact]
 public void CreateOrder_EmptySubmit_ReturnsFailure()
 {
-    var order = Order.TryCreate(CustomerId.NewUniqueV4()).Value;
+    var orderResult = Order.TryCreate(CustomerId.NewUniqueV4());
+    orderResult.Should().BeSuccess();
+
+    var order = orderResult.Value;
     var result = order.Submit();
 
     result.Should().BeFailure()

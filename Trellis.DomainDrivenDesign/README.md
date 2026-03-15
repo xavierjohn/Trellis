@@ -143,7 +143,7 @@ public class Order : Aggregate<OrderId>
     {
         CustomerId = customerId;
         Status = OrderStatus.Draft;
-        Total = Money.TryCreate(0).Value;
+        Total = Money.Create(0m, "USD");
         DomainEvents.Add(new OrderCreated(id, customerId, DateTime.UtcNow));
     }
     
@@ -173,7 +173,7 @@ public class Order : Aggregate<OrderId>
     private void RecalculateTotal()
     {
         var total = Lines.Sum(l => l.Price.Amount * l.Quantity);
-        Total = Money.TryCreate(total).Value;
+        Total = Money.Create(total, Lines.FirstOrDefault()?.Price.Currency ?? "USD");
     }
 }
 ```
