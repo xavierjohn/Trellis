@@ -217,6 +217,7 @@ public static class AnalyzerTestHelper
                 public static Task<Result<TResult>> BindAsync<T, TResult>(this Result<T> result, Func<T, Task<Result<TResult>>> func) => Task.FromResult<Result<TResult>>(default);
                 public static Result<T> Tap<T>(this Result<T> result, Action<T> action) => result;
                 public static Task<Result<T>> TapAsync<T>(this Result<T> result, Func<T, Task> func) => Task.FromResult(result);
+                public static Result<T> TapOnFailure<T>(this Result<T> result, Action<Error> action) => result;
                 public static Result<T> Ensure<T>(this Result<T> result, Func<T, bool> predicate, Error error) => result;
                 public static Task<Result<T>> EnsureAsync<T>(this Result<T> result, Func<T, Task<bool>> predicate, Error error) => Task.FromResult(result);
                 public static TResult Match<T, TResult>(this Result<T> result, Func<T, TResult> onSuccess, Func<Error, TResult> onFailure) => default!;

@@ -457,6 +457,23 @@ public class UnsafeValueAccessAnalyzerTests
     }
 
     [Fact]
+    public async Task ErrorAccessInTapOnFailureCallback_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Result<int> TestMethod(Result<int> result)
+                {
+                    return result.TapOnFailure(error => Console.WriteLine(result.Error.Message));
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task TryGetValuePattern_NoDiagnostic()
     {
         const string source = """

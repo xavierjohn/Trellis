@@ -367,6 +367,10 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             "Bind" or "BindAsync" or "Map" or "MapAsync" or "Tap" or "TapAsync" or "Ensure" or "EnsureAsync" =>
                 accessKind is GuardedAccessKind.ResultValue or GuardedAccessKind.MaybeValue,
 
+            "TapOnFailure" or "TapOnFailureAsync" or "DebugOnFailure" or "DebugOnFailureAsync" or
+            "MapOnFailure" or "MapOnFailureAsync" or "RecoverOnFailure" or "RecoverOnFailureAsync" =>
+                accessKind == GuardedAccessKind.ResultError,
+
             "Match" or "MatchAsync" or "Switch" or "SwitchAsync" =>
                 accessKind switch
                 {
