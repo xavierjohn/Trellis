@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Results.Tests.Results.Extensions;
 
+using Trellis.Testing;
+
 public class EnsureTests
 {
     [Fact]
@@ -31,7 +33,7 @@ public class EnsureTests
 
         var result = sut.Ensure(() => true, Error.Unexpected("can't be this error"));
 
-        result.Should().Be(sut);
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some error"));
     }
 
     [Fact]
@@ -41,9 +43,7 @@ public class EnsureTests
 
         var result = sut.Ensure(() => false, Error.Unexpected("predicate failed"));
 
-        result.Should().NotBe(sut);
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Unexpected("predicate failed"));
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("predicate failed"));
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class EnsureTests
 
         var result = sut.Ensure(() => true, Error.Unexpected("can't be this error"));
 
-        result.Should().Be(sut);
+        result.Should().BeSuccess().Which.Should().Be("Hello");
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(() => Task.FromResult(true), Error.Unexpected("can't be this error"));
 
-        result.Should().Be(sut);
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some error"));
     }
 
     [Fact]
@@ -73,9 +73,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(() => Task.FromResult(false), Error.Unexpected("predicate problems"));
 
-        result.Should().NotBe(sut);
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Unexpected("predicate problems"));
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("predicate problems"));
     }
 
     [Fact]
@@ -85,7 +83,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(() => Task.FromResult(true), Error.Unexpected("can't be this error"));
 
-        result.Should().Be(sut);
+        result.Should().BeSuccess().Which.Should().Be("Hello");
     }
 
     [Fact]
@@ -106,7 +104,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(value => !value.HasValue,
             value => Task.FromResult((Error)Error.Unexpected($"should be null but found {value}")));
-        result.Should().Be(await sut);
+        result.Should().BeSuccess().Which.Should().Be(default(int?));
     }
 
     [Fact]
@@ -116,7 +114,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(() => true, Error.Unexpected("can't be this error"));
 
-        result.Should().Be(await sut);
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some error"));
     }
 
     [Fact]
@@ -126,7 +124,7 @@ public class EnsureTests
 
         var result = sut.Ensure(time => true, Error.Unexpected("test error"));
 
-        result.Should().Be(sut);
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some error"));
     }
 
     [Fact]
@@ -136,9 +134,7 @@ public class EnsureTests
 
         var result = sut.Ensure(i => false, Error.Unexpected("test error"));
 
-        result.Should().NotBe(sut);
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Unexpected("test error"));
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("test error"));
     }
 
     [Fact]
@@ -148,7 +144,7 @@ public class EnsureTests
 
         var result = sut.Ensure(d => true, Error.Unexpected("test error"));
 
-        result.Should().Be(sut);
+        result.Should().BeSuccess().Which.Should().Be(.03m);
     }
 
     [Fact]
@@ -159,7 +155,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(d => Task.FromResult(true), Error.Unexpected("test ensure error"));
 
-        result.Should().Be(sut);
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("test error"));
     }
 
     [Fact]
@@ -170,9 +166,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(i => Task.FromResult(false), Error.Unexpected("test ensure error"));
 
-        result.Should().NotBe(sut);
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Unexpected("test ensure error"));
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("test ensure error"));
     }
 
     [Fact]
@@ -183,7 +177,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(d => Task.FromResult(true), Error.Unexpected("test error"));
 
-        result.Should().Be(sut);
+        result.Should().BeSuccess().Which.Should().Be(.33m);
     }
 
     [Fact]
@@ -194,7 +188,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(t => Task.FromResult(true), Error.Unexpected("test ensure error"));
 
-        result.Should().Be(await sut);
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some result error"));
     }
 
     [Fact]
@@ -205,9 +199,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(l => Task.FromResult(false), Error.Unexpected("test ensure error"));
 
-        result.Should().NotBe(sut);
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Unexpected("test ensure error"));
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("test ensure error"));
     }
 
     [Fact]
@@ -218,7 +210,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(d => Task.FromResult(true), Error.Unexpected("test error"));
 
-        result.Should().Be(await sut);
+        result.Should().BeSuccess().Which.Should().Be(.33);
     }
 
     [Fact]
@@ -229,7 +221,7 @@ public class EnsureTests
 
         var result = await sut.EnsureAsync(t => true, Error.Unexpected("test ensure error"));
 
-        result.Should().Be(await sut);
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some result error"));
     }
 
     [Fact]
@@ -239,8 +231,8 @@ public class EnsureTests
 
         var result = initialResult.Ensure(() => Result.Success<string>("Success message"));
 
-        result.IsSuccess.Should().BeTrue("Initial result and predicate succeeded");
-        result.Value.Should().Be("Initial message");
+        result.Should().BeSuccess("Initial result and predicate succeeded")
+            .Which.Should().Be("Initial message");
     }
 
     [Fact]
@@ -250,8 +242,8 @@ public class EnsureTests
 
         var result = initialResult.Ensure(() => Result.Failure<string>(Error.Unexpected("Error message")));
 
-        result.IsSuccess.Should().BeFalse("Predicate is failure result");
-        result.Error.Should().Be(Error.Unexpected("Error message"));
+        result.Should().BeFailure("Predicate is failure result")
+            .Which.Should().Be(Error.Unexpected("Error message"));
     }
 
     [Fact]
@@ -261,8 +253,8 @@ public class EnsureTests
 
         var result = initialResult.Ensure(() => Result.Success<string>("Success message"));
 
-        result.IsSuccess.Should().BeFalse("Initial result is failure result");
-        result.Error.Should().Be(Error.Unexpected("Initial Error message"));
+        result.Should().BeFailure("Initial result is failure result")
+            .Which.Should().Be(Error.Unexpected("Initial Error message"));
     }
 
     [Fact]
@@ -272,8 +264,8 @@ public class EnsureTests
 
         var result = initialResult.Ensure(() => Result.Failure<string>(Error.Unexpected("Error message")));
 
-        result.IsSuccess.Should().BeFalse("Initial result is failure result");
-        result.Error.Should().Be(Error.Unexpected("Initial Error message"));
+        result.Should().BeFailure("Initial result is failure result")
+            .Which.Should().Be(Error.Unexpected("Initial Error message"));
     }
 
     [Fact]
@@ -283,8 +275,8 @@ public class EnsureTests
 
         var result = initialResult.Ensure(_ => Result.Failure<string>(Error.Unexpected("Error Message")));
 
-        result.IsSuccess.Should().BeFalse("Predicate is failure result");
-        result.Error.Should().Be(Error.Unexpected("Error Message"));
+        result.Should().BeFailure("Predicate is failure result")
+            .Which.Should().Be(Error.Unexpected("Error Message"));
     }
 
     [Fact]
@@ -294,9 +286,8 @@ public class EnsureTests
 
         var result = initialResult.Ensure(_ => Result.Success<string>("Success Message"));
 
-        result.IsSuccess.Should().BeTrue("Initial result and predicate succeeded");
-        ;
-        result.Value.Should().Be("Initial Success message");
+        result.Should().BeSuccess("Initial result and predicate succeeded")
+            .Which.Should().Be("Initial Success message");
     }
 
     [Theory]
@@ -306,7 +297,6 @@ public class EnsureTests
     {
         var result = str.EnsureNotNullOrWhiteSpace(Error.Unexpected("test error"));
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Unexpected("test error"));
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("test error"));
     }
 }
