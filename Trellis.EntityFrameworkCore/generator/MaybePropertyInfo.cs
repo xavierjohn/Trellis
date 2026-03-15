@@ -46,6 +46,9 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
     /// <summary>The nesting chain of parent types if the type is nested (e.g., ["OuterClass"]).</summary>
     public readonly string[] NestingParents;
 
+    /// <summary>The namespace- and nesting-qualified type path used for grouping and hint names.</summary>
+    public readonly string TypePath;
+
     public MaybePropertyInfo(
         string @namespace,
         string typeName,
@@ -58,7 +61,8 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         string innerTypeName,
         string innerTypeShortName,
         bool innerTypeIsValueType,
-        string[] nestingParents)
+        string[] nestingParents,
+        string typePath)
     {
         Namespace = @namespace;
         TypeName = typeName;
@@ -72,6 +76,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         InnerTypeShortName = innerTypeShortName;
         InnerTypeIsValueType = innerTypeIsValueType;
         NestingParents = nestingParents;
+        TypePath = typePath;
     }
 
     public bool Equals(MaybePropertyInfo? other)
@@ -90,6 +95,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
             && InnerTypeName == other.InnerTypeName
             && InnerTypeShortName == other.InnerTypeShortName
             && InnerTypeIsValueType == other.InnerTypeIsValueType
+            && TypePath == other.TypePath
             && NestingParents.SequenceEqual(other.NestingParents);
     }
 
@@ -104,6 +110,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypeName);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(PropertyName);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(InnerTypeName);
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             hash = (hash * 31) + InnerTypeIsValueType.GetHashCode();
             return hash;
         }

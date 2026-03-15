@@ -30,7 +30,7 @@ public class MaybePartialPropertyGeneratorTests
             }
             """;
 
-        var (generatedSources, diagnostics) = RunGenerator(source, cancellationToken);
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
 
         // The generated code must compile — CS9250 would mean init/set mismatch
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
@@ -61,7 +61,7 @@ public class MaybePartialPropertyGeneratorTests
             }
             """;
 
-        var (generatedSources, diagnostics) = RunGenerator(source, cancellationToken);
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
 
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
             .Should().BeEmpty("the generated code with set accessor should compile");
@@ -70,7 +70,48 @@ public class MaybePartialPropertyGeneratorTests
             "the generator should emit 'set' accessor when the property declaration uses 'set'");
     }
 
-    private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics) RunGenerator(
+    /// <summary>
+    /// Verifies nested containing types with the same simple name do not collide into one generated file.
+    /// </summary>
+    [Fact]
+    public void Nested_SameNamed_Containing_Types_Should_Not_Collide()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Sales
+            {
+                public partial class Customer
+                {
+                    public partial Maybe<string> NickName { get; set; }
+                }
+            }
+
+            public partial class Support
+            {
+                public partial class Customer
+                {
+                    public partial Maybe<string> AlternateName { get; set; }
+                }
+            }
+            """;
+
+        var (generatedSources, diagnostics, hintNames) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the generator should emit separate nested partial implementations for each containing type path");
+
+        hintNames.Should().Contain("TestNamespace.Sales.Customer.Maybe.g.cs");
+        hintNames.Should().Contain("TestNamespace.Support.Customer.Maybe.g.cs");
+        hintNames.Should().OnlyHaveUniqueItems();
+        generatedSources.Should().HaveCount(2);
+    }
+
+    private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics, List<string> HintNames) RunGenerator(
         string source, CancellationToken cancellationToken)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
@@ -100,7 +141,12 @@ public class MaybePartialPropertyGeneratorTests
             .Select(s => s.SourceText.ToString())
             .ToList();
 
-        return (sources, allDiagnostics);
+        var hintNames = driver.GetRunResult().Results
+            .SelectMany(r => r.GeneratedSources)
+            .Select(s => s.HintName)
+            .ToList();
+
+        return (sources, allDiagnostics, hintNames);
     }
 
     private static MetadataReference[] GetMetadataReferences()
