@@ -297,12 +297,13 @@ Base class for creating custom value objects that wrap a single primitive value.
 
 ### OpenTelemetry Tracing
 
-Built-in distributed tracing support for Railway-Oriented Programming operations.
+Built-in distributed tracing support for Railway-Oriented Programming operations, with primitive value object tracing generally being the lower-noise default and full ROP tracing better suited to break-glass debugging.
 
 **Type:** `Trellis.ResultsTraceProviderBuilderExtensions`
 
 **Features:**
 - Automatic span creation for `Bind`, `Map`, `Tap`, `Ensure` operations
+- Primitive value object tracing for parse/validate/create boundaries
 - Error tracking and status codes
 - Trace correlation across async operations
 - Integration with Jaeger, Zipkin, Application Insights

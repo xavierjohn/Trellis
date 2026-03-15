@@ -518,13 +518,17 @@ Result<T> DebugOnFailure<T>(this Result<T>, Action<Error>)
 
 ROP operations automatically create `Activity` spans when instrumentation is enabled. Each `Bind`, `Map`, `Tap`, `Ensure`, `RecoverOnFailure`, and `Combine` call starts a child activity with success/error status.
 
+Use `AddResultsInstrumentation()` when you need deep pipeline forensics. It traces every `Result<T>` step and can be noisy in normal production monitoring.
+For lower-noise day-to-day diagnostics, `AddPrimitiveValueObjectInstrumentation()` is often the better default because it emits spans at value creation and validation boundaries.
+
 ### Registration
 
 ```csharp
 services.AddOpenTelemetry()
     .WithTracing(builder => builder
-        .AddResultsInstrumentation()                    // ROP operations (Bind, Map, Tap, Ensure, etc.)
-        .AddPrimitiveValueObjectInstrumentation());     // Value object creation (EmailAddress.TryCreate, etc.)
+    .AddPrimitiveValueObjectInstrumentation());     // Recommended default diagnostic signal
+
+// AddResultsInstrumentation() is available when you need to trace the full ROP pipeline.
 ```
 
 ### Extension Methods

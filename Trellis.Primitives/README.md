@@ -427,7 +427,7 @@ Primitive value objects wrap single primitive types (`string`, `Guid`, etc.) to 
 - Validation with descriptive error messages
 - Property name inference for error messages (class name converted to camelCase)
 - JSON serialization via `ParsableJsonConverter<T>`
-- OpenTelemetry activity tracing support
+- OpenTelemetry activity tracing support, typically a better day-to-day diagnostic signal than full ROP tracing because it emits spans at value creation and validation boundaries
 
 ## Best Practices
 

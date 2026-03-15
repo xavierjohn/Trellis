@@ -669,7 +669,7 @@ Debugging ROP chains can be tricky — when a chain fails, it's not always obvio
 - **Break up chains** — Assign intermediate results to named variables for breakpoints
 - **Descriptive errors** — Include IDs and context: `Error.NotFound($"User {userId} not found")`
 - **Debug extensions** — Use `.Debug("label")` in development (excluded from RELEASE builds)
-- **OpenTelemetry** — Built-in activity tracing for distributed debugging
+- **OpenTelemetry** — Built-in activity tracing for deep pipeline forensics; useful as a break-glass option, but often too noisy for routine production tracing
 
 **[Full Debugging Guide](DEBUGGING.md)** — Comprehensive strategies, code samples, and checklist.
 
