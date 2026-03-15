@@ -143,4 +143,36 @@ public class UseCreateInsteadOfTryCreateValueCodeFixProviderTests
 
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task TryCreateValue_WithNoCompatibleCreateOverload_NoCodeFixOffered()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    var money = Money.TryCreate(100m, "amount").Value;
+                }
+            }
+
+            public class Money : IScalarValue<Money, decimal>
+            {
+                decimal IScalarValue<Money, decimal>.Value => 0m;
+
+                public static Result<Money> TryCreate(decimal value, string? fieldName = null) => default;
+
+                public static Money Create(decimal value) => default;
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<TryCreateValueAccessAnalyzer, UseCreateInsteadOfTryCreateValueCodeFixProvider>(
+            source,
+            source,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseCreateInsteadOfTryCreateValue)
+                .WithArguments("Money")
+                .WithLocation(11, 57));
+
+        await test.RunAsync();
+    }
 }
