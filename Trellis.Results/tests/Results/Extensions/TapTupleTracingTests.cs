@@ -279,13 +279,8 @@ public class TapTupleTracingTests : TestBase
         result.Should().BeSuccess();
 
         // Should have 2 Combines + 1 Tap
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
-
-        // Verify Tap has Ok status
-        var activities = activityTest.CapturedActivities;
-        activities.Should().Contain(a =>
-            a.DisplayName == "Tap" &&
-            a.Status == ActivityStatusCode.Ok);
+        activityTest.AssertActivityCaptured("Combine", 2);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -348,7 +343,9 @@ public class TapTupleTracingTests : TestBase
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Should have activities for all operations
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
+        activityTest.AssertActivityCaptured("Tap", 2);
+        activityTest.AssertActivityCapturedWithStatus("Bind", ActivityStatusCode.Ok);
     }
 
     #endregion

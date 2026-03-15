@@ -146,7 +146,7 @@ public static partial class CombineExtensionsAsync
     /// </summary>
     public static async ValueTask<Result<(T1, T2)>> CombineAsync<T1, T2>(this ValueTask<Result<T1>> vt1, ValueTask<Result<T2>> vt2)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await vt1.ConfigureAwait(false);
         var t2 = await vt2.ConfigureAwait(false);
@@ -161,7 +161,7 @@ public static partial class CombineExtensionsAsync
     /// </summary>
     public static async ValueTask<Result<T1>> CombineAsync<T1>(this ValueTask<Result<T1>> vt1, Result<Unit> t2)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await vt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);

@@ -331,6 +331,51 @@ public class CombineTracingTests : TestBase
         activityTest.AssertActivityCapturedWithStatus("Bind", ActivityStatusCode.Ok);
     }
 
+    [Fact]
+    public async Task CombineAsync_ValueTaskResult_Success_CreatesActivity()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = await ValueTask.FromResult(Result.Success("First"))
+            .CombineAsync(ValueTask.FromResult(Result.Success("Second")));
+
+        // Assert
+        result.Should().BeSuccess();
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public async Task CombineAsync_ValueTaskResult_Failure_CreatesActivity()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = await ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad first")))
+            .CombineAsync(ValueTask.FromResult(Result.Success("Second")));
+
+        // Assert
+        result.Should().BeFailure();
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task CombineAsync_ValueTaskWithUnit_Success_CreatesActivity()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = await ValueTask.FromResult(Result.Success("First"))
+            .CombineAsync(Result.Success());
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be("First");
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
+    }
+
     #endregion
 
     #region Real-World Scenario Tests

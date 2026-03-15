@@ -302,7 +302,7 @@ public class TapOnFailureTupleTracingTests : TestBase
         result.Should().BeFailure();
 
         // Should have Combine + TapOnFailure activities
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Error);
         // TapOnFailure should have Error status
         activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Error);
     }
