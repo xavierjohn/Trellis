@@ -13,6 +13,13 @@ using Microsoft.CodeAnalysis.Diagnostics;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
 {
+    private enum GuardedAccessKind
+    {
+        ResultValue,
+        ResultError,
+        MaybeValue,
+    }
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [
             DiagnosticDescriptors.UnsafeResultValueAccess,
@@ -83,20 +90,20 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         IsGuardedByCheck(memberAccess, semanticModel, "IsFailure", false) ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
         IsInsideNegatedTryBlock(memberAccess, semanticModel, "TryGetError") ||
-        IsInsideMatchOrSwitch(memberAccess, semanticModel);
+        IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.ResultValue);
 
     private static bool IsGuardedByFailureCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
         IsGuardedByCheck(memberAccess, semanticModel, "IsFailure", true) ||
         IsGuardedByCheck(memberAccess, semanticModel, "IsSuccess", false) ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetError") ||
         IsInsideNegatedTryBlock(memberAccess, semanticModel, "TryGetValue") ||
-        IsInsideMatchOrSwitch(memberAccess, semanticModel);
+        IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.ResultError);
 
     private static bool IsGuardedByHasValueCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
         IsGuardedByCheck(memberAccess, semanticModel, "HasValue", true) ||
         IsGuardedByCheck(memberAccess, semanticModel, "HasNoValue", false) ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
-        IsInsideMatchOrSwitch(memberAccess, semanticModel);
+        IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.MaybeValue);
 
     private static bool IsGuardedByCheck(
         MemberAccessExpressionSyntax memberAccess,
@@ -318,42 +325,66 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool IsInsideMatchOrSwitch(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel)
+    private static bool IsInsideTrackSafeLambda(
+        MemberAccessExpressionSyntax memberAccess,
+        SemanticModel semanticModel,
+        GuardedAccessKind accessKind)
     {
-        // Look for usage inside Match, MatchError, Switch, or SwitchError lambda
-        var current = memberAccess.Parent;
-        while (current != null)
-        {
-            if (current is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax methodAccess } invocation)
-            {
-                var methodName = methodAccess.Name.Identifier.Text;
-                if (methodName is "Match" or "MatchAsync" or "MatchError" or "MatchErrorAsync" or
-                    "Switch" or "SwitchAsync" or "SwitchError" or "SwitchErrorAsync")
-                {
-                    if (IsTrellisExtensionMethod(invocation, semanticModel))
-                        return true;
-                }
-            }
+        if (memberAccess.FirstAncestorOrSelf<LambdaExpressionSyntax>() is not { Parent: ArgumentSyntax argument } ||
+            argument.Parent?.Parent is not InvocationExpressionSyntax invocation ||
+            invocation.Expression is not MemberAccessExpressionSyntax methodAccess ||
+            !IsTrellisExtensionMethod(invocation, semanticModel) ||
+            !AreSameVariable(methodAccess.Expression, memberAccess.Expression, semanticModel))
+            return false;
 
-            // Also allow inside lambdas passed to Bind, Map, Tap, etc.
-            // since these are within the success track
-            if (current is LambdaExpressionSyntax { Parent: ArgumentSyntax { Parent.Parent: InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax parentMethodAccess } parentInvocation } })
-            {
-                var parentMethodName = parentMethodAccess.Name.Identifier.Text;
-                // These methods are only called on success, so accessing .Value is safe
-                if (parentMethodName is "Bind" or "BindAsync" or "Map" or "MapAsync" or
-                    "Tap" or "TapAsync" or "Ensure" or "EnsureAsync")
-                {
-                    if (IsTrellisExtensionMethod(parentInvocation, semanticModel))
-                        return true;
-                }
-            }
+        if (semanticModel.GetSymbolInfo(invocation).Symbol is not IMethodSymbol methodSymbol)
+            return false;
 
-            current = current.Parent;
-        }
+        var parameter = GetArgumentParameter(methodSymbol, argument);
+        if (parameter == null)
+            return false;
 
-        return false;
+        return IsSafeLambdaParameter(methodSymbol.Name, parameter.Name, accessKind);
     }
+
+    private static IParameterSymbol? GetArgumentParameter(IMethodSymbol methodSymbol, ArgumentSyntax argument)
+    {
+        if (argument.NameColon is { } nameColon)
+            return methodSymbol.Parameters.FirstOrDefault(parameter => parameter.Name == nameColon.Name.Identifier.Text);
+
+        if (argument.Parent is not BaseArgumentListSyntax argumentList)
+            return null;
+
+        var argumentIndex = argumentList.Arguments.IndexOf(argument);
+        return argumentIndex >= 0 && argumentIndex < methodSymbol.Parameters.Length
+            ? methodSymbol.Parameters[argumentIndex]
+            : null;
+    }
+
+    private static bool IsSafeLambdaParameter(string methodName, string parameterName, GuardedAccessKind accessKind) =>
+        methodName switch
+        {
+            "Bind" or "BindAsync" or "Map" or "MapAsync" or "Tap" or "TapAsync" or "Ensure" or "EnsureAsync" =>
+                accessKind is GuardedAccessKind.ResultValue or GuardedAccessKind.MaybeValue,
+
+            "Match" or "MatchAsync" or "Switch" or "SwitchAsync" =>
+                accessKind switch
+                {
+                    GuardedAccessKind.ResultValue or GuardedAccessKind.MaybeValue => parameterName is "onSuccess" or "onSome",
+                    GuardedAccessKind.ResultError => parameterName == "onFailure",
+                    _ => false,
+                },
+
+            "MatchError" or "MatchErrorAsync" or "SwitchError" or "SwitchErrorAsync" =>
+                accessKind switch
+                {
+                    GuardedAccessKind.ResultValue or GuardedAccessKind.MaybeValue => parameterName == "onSuccess",
+                    GuardedAccessKind.ResultError => parameterName != "onSuccess",
+                    _ => false,
+                },
+
+            _ => false,
+        };
 
     private static bool IsTrellisExtensionMethod(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
     {

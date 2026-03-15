@@ -306,6 +306,48 @@ public class UnsafeValueAccessAnalyzerTests
     }
 
     [Fact]
+    public async Task ValueAccessToDifferentResultInBindLambda_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod(Result<int> result, Result<int> other)
+                {
+                    result.Bind(x => Result.Success(other.Value + x));
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultValueAccess)
+                .WithLocation(11, 47));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ErrorAccessInBindLambda_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Result<string> TestMethod(Result<int> result)
+                {
+                    return result.Bind(x => Result.Success(result.Error.Message));
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultErrorAccess)
+                .WithLocation(11, 55));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task ValueAccessInMatchCallback_NoDiagnostic()
     {
         const string source = """
@@ -321,6 +363,96 @@ public class UnsafeValueAccessAnalyzerTests
             """;
 
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ValueAccessInMatchFailureCallback_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Result<int> result)
+                {
+                    return result.Match(
+                        onSuccess: value => value * 2,
+                        onFailure: error => result.Value);
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultValueAccess)
+                .WithLocation(13, 40));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ErrorAccessInMatchSuccessCallback_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public string TestMethod(Result<int> result)
+                {
+                    return result.Match(
+                        onSuccess: value => result.Error.Message,
+                        onFailure: error => error.Message);
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultErrorAccess)
+                .WithLocation(12, 40));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ValueAccessInMatchErrorSuccessCallback_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Result<int> result)
+                {
+                    return result.MatchError(
+                        onSuccess: value => result.Value,
+                        onValidation: error => 0,
+                        onOther: error => 0);
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ValueAccessInMatchErrorFailureCallback_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Result<int> result)
+                {
+                    return result.MatchError(
+                        onSuccess: value => value,
+                        onValidation: error => result.Value,
+                        onOther: error => 0);
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultValueAccess)
+                .WithLocation(13, 43));
+
         await test.RunAsync();
     }
 

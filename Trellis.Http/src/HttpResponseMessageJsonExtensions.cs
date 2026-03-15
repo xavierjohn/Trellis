@@ -341,6 +341,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the deserialized value.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(
         this HttpResponseMessage response,
         JsonTypeInfo<TValue> jsonTypeInfo,
@@ -357,6 +361,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the deserialized value.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(
         this Task<HttpResponseMessage> responseTask,
         JsonTypeInfo<TValue> jsonTypeInfo,
@@ -375,6 +383,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the deserialized value.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the wrapped response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(
         this Result<HttpResponseMessage> response,
         JsonTypeInfo<TValue> jsonTypeInfo,
@@ -390,6 +402,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the deserialized value.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the wrapped response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(
         this Task<Result<HttpResponseMessage>> responseTask,
         JsonTypeInfo<TValue> jsonTypeInfo,
@@ -408,6 +424,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing <see cref="Maybe{TValue}"/>.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(
         this HttpResponseMessage response,
         JsonTypeInfo<TValue> jsonTypeInfo,
@@ -431,6 +451,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing <see cref="Maybe{TValue}"/>.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(
         this Task<HttpResponseMessage> responseTask,
         JsonTypeInfo<TValue> jsonTypeInfo,
@@ -449,6 +473,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing <see cref="Maybe{TValue}"/>.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the wrapped response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(
         this Result<HttpResponseMessage> response,
         JsonTypeInfo<TValue> jsonTypeInfo,
@@ -464,6 +492,10 @@ public static partial class HttpResponseExtensions
     /// <param name="jsonTypeInfo">The JSON type information for deserialization.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing <see cref="Maybe{TValue}"/>.</returns>
+    /// <exception cref="System.Text.Json.JsonException">
+    /// Thrown when the wrapped response has a successful status code but the content is not valid JSON for <typeparamref name="TValue"/>.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
     public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(
         this Task<Result<HttpResponseMessage>> responseTask,
         JsonTypeInfo<TValue> jsonTypeInfo,
