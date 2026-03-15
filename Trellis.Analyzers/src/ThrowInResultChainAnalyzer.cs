@@ -14,7 +14,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 public sealed class ThrowInResultChainAnalyzer : DiagnosticAnalyzer
 {
     private static readonly ImmutableHashSet<string> ResultChainMethods =
-        ["Bind", "BindAsync", "Map", "MapAsync", "Tap", "TapAsync", "Ensure", "EnsureAsync", "TapOnFailure", "TapOnFailureAsync"];
+        ["Bind", "BindAsync", "Map", "MapAsync", "Tap", "TapAsync", "Ensure", "EnsureAsync"];
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [DiagnosticDescriptors.ThrowInResultChain];
