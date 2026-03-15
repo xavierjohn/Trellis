@@ -79,7 +79,7 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
                     continue;
 
                 var propertyName = propertySymbol.Name;
-                var backingFieldName = "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
+                var backingFieldName = "_" + ToCamelCase(propertyName);
 
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.HasIndexMaybeProperty,
@@ -123,4 +123,27 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
             ParenthesizedExpressionSyntax parenthesized => DependsOnParameter(parenthesized.Expression, parameterName),
             _ => false
         };
+
+    private static string ToCamelCase(string propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName))
+            return propertyName;
+
+        var chars = propertyName.ToCharArray();
+        chars[0] = char.ToLowerInvariant(chars[0]);
+
+        for (var i = 1; i < chars.Length; i++)
+        {
+            if (!char.IsUpper(chars[i]))
+                break;
+
+            var hasNext = i + 1 < chars.Length;
+            if (hasNext && !char.IsUpper(chars[i + 1]))
+                break;
+
+            chars[i] = char.ToLowerInvariant(chars[i]);
+        }
+
+        return new string(chars);
+    }
 }

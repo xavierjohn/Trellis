@@ -151,6 +151,37 @@ public class HasIndexMaybePropertyAnalyzerTests
         await test.RunAsync();
     }
 
+    [Fact]
+    public async Task HasIndex_SingleProperty_WithAcronymPrefixedMaybeProperty_ProducesWarningWithCamelCaseBackingField()
+    {
+        const string source = """
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+            public class Order
+            {
+                public int Id { get; set; }
+                public Maybe<string> XMLData { get; set; }
+            }
+
+            public class TestConfig
+            {
+                public void Configure(EntityTypeBuilder<Order> builder)
+                {
+                    builder.HasIndex(e => e.XMLData);
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
+                .WithLocation(19, 33)
+                .WithArguments("XMLData", "_xmlData"));
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
     #endregion
 
     #region HasIndex with multiple Maybe<T> properties produces multiple warnings
