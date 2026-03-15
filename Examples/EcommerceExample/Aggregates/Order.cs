@@ -56,6 +56,15 @@ public class Order : Aggregate<OrderId>
         return new Order(customerId);
     }
 
+    public static Order Create(CustomerId customerId)
+    {
+        var result = TryCreate(customerId);
+        if (result.IsFailure)
+            throw new InvalidOperationException($"Failed to create Order: {result.Error.Detail}");
+
+        return result.Value;
+    }
+
     /// <summary>
     /// Adds a product to the order with Railway Oriented Programming pattern.
     /// </summary>
