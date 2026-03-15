@@ -294,6 +294,45 @@ public class HasIndexMaybePropertyAnalyzerTests
         await test.RunAsync();
     }
 
+    [Fact]
+    public async Task HasIndex_InvocationRootedInParameter_MaybeProperty_ProducesWarning()
+    {
+        const string source = """
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+            public class Customer
+            {
+                public int Id { get; set; }
+                public Maybe<DateTime> SubmittedAt { get; set; }
+            }
+
+            public class Order
+            {
+                public int Id { get; set; }
+                public Customer Customer { get; set; } = null!;
+            }
+
+            public class TestConfig
+            {
+                public void Configure(EntityTypeBuilder<Order> builder)
+                {
+                    builder.HasIndex(e => GetCustomer(e).SubmittedAt);
+                }
+
+                private static Customer GetCustomer(Order order) => order.Customer;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
+                .WithLocation(25, 46)
+                .WithArguments("SubmittedAt", "_submittedAt"));
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
     #endregion
 
     #region Member access on captured variable does not produce warning

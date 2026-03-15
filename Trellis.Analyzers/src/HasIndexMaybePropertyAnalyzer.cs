@@ -120,7 +120,15 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
         {
             IdentifierNameSyntax identifier => identifier.Identifier.Text == parameterName,
             MemberAccessExpressionSyntax nestedMemberAccess => DependsOnParameter(nestedMemberAccess.Expression, parameterName),
+            InvocationExpressionSyntax invocation =>
+                DependsOnParameter(invocation.Expression, parameterName) ||
+                invocation.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
+            ElementAccessExpressionSyntax elementAccess =>
+                DependsOnParameter(elementAccess.Expression, parameterName) ||
+                elementAccess.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
+            CastExpressionSyntax cast => DependsOnParameter(cast.Expression, parameterName),
             ParenthesizedExpressionSyntax parenthesized => DependsOnParameter(parenthesized.Expression, parameterName),
+            ConditionalAccessExpressionSyntax conditionalAccess => DependsOnParameter(conditionalAccess.Expression, parameterName),
             _ => false
         };
 
