@@ -461,11 +461,34 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("missing required properties");
+            .Should().Contain("invalid JSON");
     }
 
     [Fact]
-    public async Task InvokeAsync_ReadParameterFailure_NoInnerException_UsesExceptionMessage()
+    public async Task InvokeAsync_ReadParameterFailure_DoesNotLeakJsonExceptionInternals()
+    {
+        var innerException = new JsonException(
+            "The JSON value could not be converted to System.Int32. Path: $.age | LineNumber: 0 | BytePositionInLine: 14");
+        var context = CreateHttpContextWithServices();
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException(
+                """Failed to read parameter "CreateOrderRequest order" from the request body as JSON.""",
+                400,
+                innerException));
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        var errorMessage = problem.GetProperty("errors").GetProperty("$")[0].GetString()!;
+        errorMessage.Should().NotContain("System.Int32",
+            "internal type names from JsonException should not be exposed to clients");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ReadParameterFailure_NoInnerException_UsesGenericMessage()
     {
         // Arrange
         var context = CreateHttpContextWithServices();
@@ -483,7 +506,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("Failed to read parameter");
+            .Should().Contain("invalid JSON");
     }
 
     [Fact]

@@ -141,11 +141,9 @@ public sealed partial class ScalarValueValidationMiddleware
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
-        // Extract meaningful error from the inner JsonException
-        var errorMessage = ex.InnerException?.Message ?? ex.Message;
         var errors = new Dictionary<string, string[]>
         {
-            ["$"] = [errorMessage]
+            ["$"] = ["The request body contains invalid JSON."]
         };
 
         var result = Results.ValidationProblem(errors);

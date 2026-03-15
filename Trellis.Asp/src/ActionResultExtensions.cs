@@ -238,7 +238,8 @@ public static class ActionResultExtensions
         if (error is ValidationError validation)
             return ValidationErrors<TValue>(string.IsNullOrEmpty(error.Detail) ? null : error.Detail, validation, error.Instance, controllerBase, statusCode);
 
-        return (ActionResult<TValue>)controllerBase.Problem(error.Detail, error.Instance, statusCode);
+        var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
+        return (ActionResult<TValue>)controllerBase.Problem(detail, error.Instance, statusCode);
     }
 
     /// <summary>

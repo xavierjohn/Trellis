@@ -24,8 +24,27 @@ public class ExceptionBehaviorTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().Contain("Something went wrong");
+        result.Error.Detail.Should().NotContain("Something went wrong");
         result.Error.Detail.Should().Contain("TestCommand");
+    }
+
+    [Fact]
+    public async Task Handle_HandlerThrows_DoesNotLeakExceptionMessage()
+    {
+        var logEntries = new List<(LogLevel Level, string Message, Exception? Ex)>();
+        var logger = new FakeLogger<ExceptionBehavior<TestCommand, Result<string>>>(logEntries);
+        var behavior = new ExceptionBehavior<TestCommand, Result<string>>(logger);
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.Throwing<TestCommand, Result<string>>(
+            new InvalidOperationException("Connection string: Server=prod-db;Password=s3cret"));
+
+        var result = await behavior.Handle(command, next, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Detail.Should().NotContain("s3cret",
+            "exception messages may contain credentials and must not be exposed in error details");
+        result.Error.Detail.Should().NotContain("Connection string",
+            "internal infrastructure details must not be exposed in error details");
     }
 
     #endregion

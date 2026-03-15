@@ -54,6 +54,8 @@ public abstract class Specification<T>
     /// or translated by a LINQ provider for server-side filtering.</returns>
     public abstract Expression<Func<T, bool>> ToExpression();
 
+    private Func<T, bool>? _compiledPredicate;
+
     /// <summary>
     /// Evaluates this specification against an in-memory instance.
     /// </summary>
@@ -61,8 +63,8 @@ public abstract class Specification<T>
     /// <returns><c>true</c> if the entity satisfies this specification; otherwise, <c>false</c>.</returns>
     public bool IsSatisfiedBy(T entity)
     {
-        var predicate = ToExpression().Compile();
-        return predicate(entity);
+        _compiledPredicate ??= ToExpression().Compile();
+        return _compiledPredicate(entity);
     }
 
     /// <summary>Combines this specification with another using logical AND.</summary>

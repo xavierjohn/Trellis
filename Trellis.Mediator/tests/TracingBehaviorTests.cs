@@ -118,4 +118,24 @@ public class TracingBehaviorTests : IDisposable
     }
 
     #endregion
+
+    #region Handler throws — Activity status Error
+
+    [Fact]
+    public async Task Handle_HandlerThrows_SetsActivityStatusError()
+    {
+        var behavior = new TracingBehavior<TestCommand, Result<string>>();
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.Throwing<TestCommand, Result<string>>(
+            new InvalidOperationException("Something broke"));
+
+        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _activities.Should().ContainSingle();
+        _activities[0].Status.Should().Be(ActivityStatusCode.Error,
+            "unhandled exceptions should set activity status to Error");
+    }
+
+    #endregion
 }

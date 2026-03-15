@@ -158,7 +158,7 @@ public class ActionResultTaskTests
         var error = Error.Unexpected("What happened?", "Micheal");
         var expected = new ProblemDetails
         {
-            Detail = "What happened?",
+            Detail = "An internal error occurred.",
             Status = StatusCodes.Status500InternalServerError,
             Instance = "Micheal"
         };

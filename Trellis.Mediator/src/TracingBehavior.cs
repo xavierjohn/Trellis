@@ -26,7 +26,17 @@ public sealed class TracingBehavior<TMessage, TResponse>
 
         using var activity = ActivitySource.StartActivity(messageName);
 
-        var response = await next(message, cancellationToken).ConfigureAwait(false);
+        TResponse response;
+        try
+        {
+            response = await next(message, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetTag("error.type", ex.GetType().Name);
+            throw;
+        }
 
         if (activity is not null)
         {

@@ -137,4 +137,33 @@ public class SpecificationTests
     }
 
     #endregion
+
+    #region IsSatisfiedBy caching
+
+    [Fact]
+    public void IsSatisfiedBy_CalledMultipleTimes_DoesNotRecompileExpression()
+    {
+        var spec = new CompileCountingSpec(50m);
+        var product = new Product("Widget", 100m, "Electronics");
+
+        spec.IsSatisfiedBy(product);
+        spec.IsSatisfiedBy(product);
+        spec.IsSatisfiedBy(product);
+
+        spec.CompileCount.Should().Be(1,
+            "IsSatisfiedBy should cache the compiled predicate instead of recompiling on each call");
+    }
+
+    #endregion
+}
+
+file class CompileCountingSpec(decimal threshold) : Specification<Product>
+{
+    public int CompileCount { get; private set; }
+
+    public override Expression<Func<Product, bool>> ToExpression()
+    {
+        CompileCount++;
+        return p => p.Price > threshold;
+    }
 }
