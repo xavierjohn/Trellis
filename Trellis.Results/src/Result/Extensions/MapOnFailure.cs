@@ -56,10 +56,16 @@ public static class MapOnFailureExtensions
     {
         ArgumentNullException.ThrowIfNull(map);
 
-        using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess) return result;
-        activity?.SetStatus(ActivityStatusCode.Error);
-        return Result.Failure<T>(map(result.Error));
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapOnFailure));
+        if (result.IsSuccess)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var mapped = Result.Failure<T>(map(result.Error));
+        mapped.LogActivityStatus();
+        return mapped;
     }
 
     /// <summary>
@@ -91,11 +97,17 @@ public static class MapOnFailureExtensions
     {
         ArgumentNullException.ThrowIfNull(mapAsync);
 
-        using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess) return result;
-        activity?.SetStatus(ActivityStatusCode.Error);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapOnFailure));
+        if (result.IsSuccess)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
         Error newError = await mapAsync(result.Error).ConfigureAwait(false);
-        return Result.Failure<T>(newError);
+        var mapped = Result.Failure<T>(newError);
+        mapped.LogActivityStatus();
+        return mapped;
     }
 
     /// <summary>
@@ -143,11 +155,17 @@ public static class MapOnFailureExtensions
     {
         ArgumentNullException.ThrowIfNull(mapAsync);
 
-        using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess) return result;
-        activity?.SetStatus(ActivityStatusCode.Error);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapOnFailure));
+        if (result.IsSuccess)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
         Error newError = await mapAsync(result.Error).ConfigureAwait(false);
-        return Result.Failure<T>(newError);
+        var mapped = Result.Failure<T>(newError);
+        mapped.LogActivityStatus();
+        return mapped;
     }
 
     /// <summary>

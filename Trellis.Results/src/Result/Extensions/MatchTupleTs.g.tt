@@ -107,7 +107,7 @@ public static class MatchTupleExtensions
         ArgumentNullException.ThrowIfNull(onSuccess);
         ArgumentNullException.ThrowIfNull(onFailure);
 
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(MatchTupleExtensions.Match));
         if (result.IsSuccess)
         {
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -161,7 +161,7 @@ public static class MatchTupleExtensions
         ArgumentNullException.ThrowIfNull(onSuccess);
         ArgumentNullException.ThrowIfNull(onFailure);
 
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(MatchTupleExtensions.Switch));
         if (result.IsSuccess)
         {
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -261,7 +261,7 @@ public static class MatchTupleExtensionsAsync
         ArgumentNullException.ThrowIfNull(onSuccess);
         ArgumentNullException.ThrowIfNull(onFailure);
 
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(MatchTupleExtensions.Match));
         if (result.IsSuccess)
         {
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -335,7 +335,7 @@ public static class MatchTupleExtensionsAsync
         ArgumentNullException.ThrowIfNull(onSuccess);
         ArgumentNullException.ThrowIfNull(onFailure);
 
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(MatchTupleExtensions.Switch));
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)
         {

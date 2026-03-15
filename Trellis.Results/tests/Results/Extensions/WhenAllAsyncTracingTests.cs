@@ -198,6 +198,22 @@ public class WhenAllAsyncTracingTests : TestBase
         activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
     }
 
+    [Fact]
+    public async Task WhenAllAsync_2Tuple_FaultedTask_LogsErrorStatus()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+        var task1 = Task.FromException<Result<int>>(new InvalidOperationException("boom"));
+        var task2 = Task.FromResult(Result.Success(2));
+
+        // Act
+        var act = () => (task1, task2).WhenAllAsync();
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
+    }
+
     #endregion
 
     #region Chaining Tests

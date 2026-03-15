@@ -1,4 +1,6 @@
-﻿using Trellis.Testing;
+﻿using System.Diagnostics;
+using Trellis.Results.Tests.Helpers;
+using Trellis.Testing;
 
 namespace Trellis.Results.Tests.Results.Extensions;
 
@@ -246,6 +248,31 @@ public class MapOnFailureTests : TestBase
         // Assert
         transformed.Should().BeFailure();
         transformed.Error.Should().BeOfType<ServiceUnavailableError>();
+    }
+
+    [Fact]
+    public void MapOnFailure_Success_LogsOkStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+
+        var result = Result.Success(42)
+            .MapOnFailure(error => Error.Unexpected($"Wrapped: {error.Detail}"));
+
+        result.Should().BeSuccess()
+            .Which.Should().Be(42);
+        activityTest.AssertActivityCapturedWithStatus("MapOnFailure", ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public async Task MapOnFailureAsync_Result_WithAsyncFunc_Failure_LogsErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+
+        var result = await Result.Failure<int>(Error.Validation("Bad input"))
+            .MapOnFailureAsync(error => Task.FromResult<Error>(Error.Conflict($"Wrapped: {error.Detail}")));
+
+        result.Should().BeFailureOfType<ConflictError>();
+        activityTest.AssertActivityCapturedWithStatus("MapOnFailure", ActivityStatusCode.Error);
     }
 
     #endregion

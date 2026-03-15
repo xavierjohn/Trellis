@@ -93,7 +93,7 @@ public static partial class CombineExtensions
     public static Result<(<# WriteTs(i - 1); #>)> Combine<<# WriteTs(i - 1); #>>(
       this Result<(<# WriteTs(i - 1); #>)> t1, Result<Unit> tc)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
@@ -133,7 +133,7 @@ public static partial class CombineExtensions
     public static Result<(<# WriteTs(i); #>)> Combine<<# WriteTs(i); #>>(
       this Result<(<# WriteTs(i - 1); #>)> t1, Result<<# Write("T" + i); #>> tc)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
@@ -165,7 +165,7 @@ public static partial class CombineExtensionsAsync
     public static async Task<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
       this Task<Result<(<# WriteTs(i - 1); #>)>> tt1, Result<Unit> tc)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await tt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
@@ -180,7 +180,7 @@ public static partial class CombineExtensionsAsync
     public static async Task<Result<(<# WriteTs(i); #>)>> CombineAsync<<# WriteTs(i); #>>(
       this Task<Result<(<# WriteTs(i - 1); #>)>> tt1, Result<<# Write("T" + i); #>> tc)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await tt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
@@ -199,7 +199,7 @@ public static partial class CombineExtensionsAsync
     public static async ValueTask<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
       this ValueTask<Result<(<# WriteTs(i - 1); #>)>> vt1, Result<Unit> tc)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await vt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
@@ -214,7 +214,7 @@ public static partial class CombineExtensionsAsync
     public static async ValueTask<Result<(<# WriteTs(i); #>)>> CombineAsync<<# WriteTs(i); #>>(
       this ValueTask<Result<(<# WriteTs(i - 1); #>)>> vt1, Result<<# Write("T" + i); #>> tc)
     {
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await vt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);

@@ -43,9 +43,7 @@ public class TapOnFailureTupleTracingTests : TestBase
 
         // Assert
         actual.Should().BeSuccess();
-        // Note: TapOnFailure creates an activity but doesn't set status on success
-        // The activity exists but shouldn't have Error status
-        activityTest.ActivityCount.Should().BeGreaterOrEqualTo(0);
+        activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -137,9 +135,7 @@ public class TapOnFailureTupleTracingTests : TestBase
         await result.TapOnFailureAsync(() => { });
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Error);
     }
 
     [Fact]
@@ -153,9 +149,7 @@ public class TapOnFailureTupleTracingTests : TestBase
         await result.TapOnFailureAsync(() => Task.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Error);
     }
 
     [Fact]
@@ -169,9 +163,7 @@ public class TapOnFailureTupleTracingTests : TestBase
         await result.TapOnFailureAsync(error => Task.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Error);
     }
 
     [Fact]
@@ -185,9 +177,7 @@ public class TapOnFailureTupleTracingTests : TestBase
         await result.TapOnFailureAsync(() => ValueTask.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Error);
     }
 
     #endregion

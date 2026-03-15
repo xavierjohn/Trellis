@@ -294,10 +294,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         output.Should().Be("42-hello");
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -323,10 +320,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         output.Should().Be("42-hello");
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -352,10 +346,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         output.Should().Be("Not found");
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
     }
 
     #endregion
@@ -395,10 +386,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         executed.Should().BeTrue();
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -421,10 +409,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         errorLogged.Should().BeTrue();
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Error);
     }
 
     #endregion

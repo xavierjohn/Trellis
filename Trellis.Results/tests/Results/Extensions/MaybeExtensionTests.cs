@@ -178,7 +178,7 @@ public class MaybeExtensionTests
     public async Task Convert_valuetask_nullable_struct_to_result_fail()
     {
         // Arrange
-        Maybe<MyClass> my = default;
+        Maybe<DateTime> my = default;
         var myClassTask = ValueTask.FromResult(my);
 
         // Act

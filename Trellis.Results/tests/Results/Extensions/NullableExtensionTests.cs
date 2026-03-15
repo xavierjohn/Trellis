@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Results.Tests;
 
 using System;
+using Trellis.Testing;
 
 public class NullableExtensionTests
 {
@@ -174,7 +175,7 @@ public class NullableExtensionTests
     public async Task Convert_valuetask_nullable_struct_to_result_fail()
     {
         // Arrange
-        MyClass? my = null;
+        DateTime? my = null;
         var myClassTask = ValueTask.FromResult(my);
 
         // Act
@@ -184,6 +185,170 @@ public class NullableExtensionTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(Error.Validation("Date is not set."));
     }
+
+    #region ToResult with Error Factory
+
+    [Fact]
+    public void ToResult_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    {
+        // Arrange
+        DateTime? date = DateTime.Now;
+        var factoryInvoked = false;
+
+        // Act
+        var result = date.ToResult(() =>
+        {
+            factoryInvoked = true;
+            return Error.Validation("Date not set.");
+        });
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be(date.Value);
+        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+    }
+
+    [Fact]
+    public void ToResult_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
+    {
+        // Arrange
+        DateTime? date = default;
+        var factoryInvoked = false;
+
+        // Act
+        var result = date.ToResult(() =>
+        {
+            factoryInvoked = true;
+            return Error.Validation("Date not set.");
+        });
+
+        // Assert
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date not set."));
+        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+    }
+
+    [Fact]
+    public void ToResult_WithErrorFactory_Class_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    {
+        // Arrange
+        MyClass? myClass = new();
+        var factoryInvoked = false;
+
+        // Act
+        var result = myClass.ToResult(() =>
+        {
+            factoryInvoked = true;
+            return Error.NotFound("MyClass not found");
+        });
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
+        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+    }
+
+    [Fact]
+    public void ToResult_WithErrorFactory_Class_HasNoValue_ReturnsFailureAndInvokesFactory()
+    {
+        // Arrange
+        MyClass? myClass = default;
+        var factoryInvoked = false;
+
+        // Act
+        var result = myClass.ToResult(() =>
+        {
+            factoryInvoked = true;
+            return Error.NotFound("MyClass not found");
+        });
+
+        // Assert
+        result.Should().BeFailureOfType<NotFoundError>().Which.Detail.Should().Be("MyClass not found");
+        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+    }
+
+    #endregion
+
+    #region ToResultAsync with Error Factory
+
+    [Fact]
+    public async Task ToResultAsync_Task_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    {
+        // Arrange
+        MyClass? myClass = new();
+        var nullableTask = Task.FromResult((MyClass?)myClass);
+        var factoryInvoked = false;
+
+        // Act
+        var result = await nullableTask.ToResultAsync(() =>
+        {
+            factoryInvoked = true;
+            return Error.Validation("MyClass is not set.");
+        });
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
+        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+    }
+
+    [Fact]
+    public async Task ToResultAsync_Task_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
+    {
+        // Arrange
+        DateTime? date = default;
+        var nullableTask = Task.FromResult(date);
+        var factoryInvoked = false;
+
+        // Act
+        var result = await nullableTask.ToResultAsync(() =>
+        {
+            factoryInvoked = true;
+            return Error.Validation("Date is not set.");
+        });
+
+        // Assert
+        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date is not set."));
+        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+    }
+
+    [Fact]
+    public async Task ToResultAsync_ValueTask_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    {
+        // Arrange
+        DateTime? date = DateTime.Now;
+        var nullableTask = ValueTask.FromResult(date);
+        var factoryInvoked = false;
+
+        // Act
+        var result = await nullableTask.ToResultAsync(() =>
+        {
+            factoryInvoked = true;
+            return Error.Validation("Date is not set.");
+        });
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be(date.Value);
+        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+    }
+
+    [Fact]
+    public async Task ToResultAsync_ValueTask_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
+    {
+        // Arrange
+        MyClass? myClass = default;
+        var nullableTask = ValueTask.FromResult((MyClass?)myClass);
+        var factoryInvoked = false;
+
+        // Act
+        var result = await nullableTask.ToResultAsync(() =>
+        {
+            factoryInvoked = true;
+            return Error.Conflict("MyClass already exists.");
+        });
+
+        // Assert
+        result.Should().BeFailureOfType<ConflictError>();
+        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+    }
+
+    #endregion
 }
 
 internal class MyClass

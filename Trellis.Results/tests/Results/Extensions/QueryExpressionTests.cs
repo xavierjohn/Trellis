@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Trellis;
+using Trellis.Testing;
 using Xunit;
 
 namespace Trellis.Results.Tests.Results.Extensions.Linq;
@@ -15,8 +16,7 @@ public class QueryExpressionTests : TestBase
             from c in Result.Success(5)
             select a + b + c;
 
-        query.IsSuccess.Should().BeTrue();
-        query.Value.Should().Be(10);
+        query.Should().BeSuccess().Which.Should().Be(10);
     }
 
     [Fact]
@@ -27,8 +27,7 @@ public class QueryExpressionTests : TestBase
             from b in Result.Success(3)
             select a + b;
 
-        query.IsFailure.Should().BeTrue();
-        query.Error.Should().Be(Error1);
+        query.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -39,8 +38,7 @@ public class QueryExpressionTests : TestBase
             where a % 2 == 1   // false
             select a;
 
-        query.IsFailure.Should().BeTrue();
-        query.Error.Detail.Should().Be("Result filtered out by predicate.");
+        query.Should().HaveErrorDetail("Result filtered out by predicate.");
     }
 
     [Fact]
@@ -51,7 +49,6 @@ public class QueryExpressionTests : TestBase
             where a > 3
             select a * 2;
 
-        query.IsSuccess.Should().BeTrue();
-        query.Value.Should().Be(18);
+        query.Should().BeSuccess().Which.Should().Be(18);
     }
 }

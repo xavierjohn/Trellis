@@ -27,4 +27,97 @@ public class MatchTests : TestBase
         await act.Should().ThrowAsync<ArgumentNullException>()
             .Where(exception => exception.ParamName == "resultTask");
     }
+
+    [Fact]
+    public void Match_Success_InvokesSuccessHandler()
+    {
+        var result = Result.Success(42);
+
+        var output = result.Match(
+            onSuccess: value => $"success:{value}",
+            onFailure: error => $"failure:{error.Code}");
+
+        output.Should().Be("success:42");
+    }
+
+    [Fact]
+    public void Match_Failure_InvokesFailureHandler()
+    {
+        var result = Result.Failure<int>(Error1);
+
+        var output = result.Match(
+            onSuccess: value => $"success:{value}",
+            onFailure: error => $"failure:{error.Code}");
+
+        output.Should().Be($"failure:{Error1.Code}");
+    }
+
+    [Fact]
+    public void Switch_Success_InvokesOnlySuccessHandler()
+    {
+        var result = Result.Success(42);
+        var successValue = 0;
+        Error? failureError = null;
+
+        result.Switch(
+            onSuccess: value => successValue = value,
+            onFailure: error => failureError = error);
+
+        successValue.Should().Be(42);
+        ReferenceEquals(failureError, null).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Switch_Failure_InvokesOnlyFailureHandler()
+    {
+        var result = Result.Failure<int>(Error1);
+        var successCalled = false;
+        Error? failureError = null;
+
+        result.Switch(
+            onSuccess: _ => successCalled = true,
+            onFailure: error => failureError = error);
+
+        successCalled.Should().BeFalse();
+        ReferenceEquals(failureError, null).Should().BeFalse();
+        ReferenceEquals(failureError, Error1).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MatchAsync_Result_WithCancellationToken_InvokesSuccessHandlerWithToken()
+    {
+        var result = Result.Success(42);
+        using var cts = new CancellationTokenSource();
+
+        var output = await result.MatchAsync(
+            onSuccess: (value, ct) => Task.FromResult(ct == cts.Token ? $"success:{value}" : "wrong-token"),
+            onFailure: (error, ct) => Task.FromResult($"failure:{error.Code}"),
+            cancellationToken: cts.Token);
+
+        output.Should().Be("success:42");
+    }
+
+    [Fact]
+    public async Task SwitchAsync_TaskResult_Failure_InvokesFailureHandler()
+    {
+        var resultTask = Task.FromResult(Result.Failure<int>(Error1));
+        var successCalled = false;
+        Error? failureError = null;
+
+        await resultTask.SwitchAsync(
+            onSuccess: value =>
+            {
+                successCalled = true;
+                return Task.CompletedTask;
+            },
+            onFailure: error =>
+            {
+                failureError = error;
+                return Task.CompletedTask;
+            });
+
+        successCalled.Should().BeFalse();
+        ReferenceEquals(failureError, null).Should().BeFalse();
+        ReferenceEquals(failureError, Error1).Should().BeTrue();
+    }
 }

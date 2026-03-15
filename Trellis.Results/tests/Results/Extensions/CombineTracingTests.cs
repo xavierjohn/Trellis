@@ -296,12 +296,7 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-
-        // Wait a bit for async activity to be captured
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-
-        // Should have captured the Combine activity
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -316,12 +311,7 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeFailure();
-
-        // Wait a bit for async activity to be captured
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-
-        // Should have captured the Combine activity
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Error);
     }
 
     [Fact]
@@ -337,12 +327,8 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-
-        // Wait a bit for async activities to be captured
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-
-        // Should have captured both Combine and Bind activities
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
+        activityTest.AssertActivityCapturedWithStatus("Bind", ActivityStatusCode.Ok);
     }
 
     #endregion

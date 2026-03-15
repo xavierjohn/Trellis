@@ -47,6 +47,23 @@ public static class NullableExtensions
     }
 
     /// <summary>
+    /// Converts a nullable value type to a Result using a function to create the error.
+    /// </summary>
+    /// <typeparam name="T">The underlying value type.</typeparam>
+    /// <param name="nullable">The nullable value to convert.</param>
+    /// <param name="errorFactory">A function that produces the error if the value is null.</param>
+    /// <returns>A success Result containing the value if not null; otherwise a failure Result with an error from the factory.</returns>
+    public static Result<T> ToResult<T>(this T? nullable, Func<Error> errorFactory)
+        where T : struct
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity();
+        if (!nullable.HasValue)
+            return Result.Failure<T>(errorFactory());
+
+        return Result.Success<T>(nullable.Value);
+    }
+
+    /// <summary>
     /// Converts a nullable reference type to a Result.
     /// </summary>
     /// <typeparam name="T">The reference type.</typeparam>
@@ -59,6 +76,23 @@ public static class NullableExtensions
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (obj == null)
             return Result.Failure<T>(error);
+
+        return Result.Success<T>(obj);
+    }
+
+    /// <summary>
+    /// Converts a nullable reference type to a Result using a function to create the error.
+    /// </summary>
+    /// <typeparam name="T">The reference type.</typeparam>
+    /// <param name="obj">The potentially null object to convert.</param>
+    /// <param name="errorFactory">A function that produces the error if the object is null.</param>
+    /// <returns>A success Result containing the object if not null; otherwise a failure Result with an error from the factory.</returns>
+    public static Result<T> ToResult<T>(this T? obj, Func<Error> errorFactory)
+        where T : class
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity();
+        if (obj == null)
+            return Result.Failure<T>(errorFactory());
 
         return Result.Success<T>(obj);
     }
@@ -89,6 +123,20 @@ public static class NullableExtensionsAsync
     }
 
     /// <summary>
+    /// Converts a task returning a nullable value type to a Result asynchronously using a function to create the error.
+    /// </summary>
+    /// <typeparam name="T">The underlying value type.</typeparam>
+    /// <param name="nullableTask">The task returning a nullable value.</param>
+    /// <param name="errorFactory">A function that produces the error if the value is null.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result is a success Result if the value is not null; otherwise a failure Result with an error from the factory.</returns>
+    public static async Task<Result<T>> ToResultAsync<T>(this Task<T?> nullableTask, Func<Error> errorFactory)
+        where T : struct
+    {
+        var nullable = await nullableTask.ConfigureAwait(false);
+        return nullable.ToResult(errorFactory);
+    }
+
+    /// <summary>
     /// Converts a task returning a nullable reference type to a Result asynchronously.
     /// </summary>
     /// <typeparam name="T">The reference type.</typeparam>
@@ -100,6 +148,20 @@ public static class NullableExtensionsAsync
     {
         var nullable = await nullableTask.ConfigureAwait(false);
         return nullable.ToResult(error);
+    }
+
+    /// <summary>
+    /// Converts a task returning a nullable reference type to a Result asynchronously using a function to create the error.
+    /// </summary>
+    /// <typeparam name="T">The reference type.</typeparam>
+    /// <param name="nullableTask">The task returning a potentially null object.</param>
+    /// <param name="errorFactory">A function that produces the error if the object is null.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result is a success Result if the object is not null; otherwise a failure Result with an error from the factory.</returns>
+    public static async Task<Result<T>> ToResultAsync<T>(this Task<T?> nullableTask, Func<Error> errorFactory)
+        where T : class
+    {
+        var nullable = await nullableTask.ConfigureAwait(false);
+        return nullable.ToResult(errorFactory);
     }
 
     /// <summary>
@@ -117,6 +179,20 @@ public static class NullableExtensionsAsync
     }
 
     /// <summary>
+    /// Converts a ValueTask returning a nullable value type to a Result asynchronously using a function to create the error.
+    /// </summary>
+    /// <typeparam name="T">The underlying value type.</typeparam>
+    /// <param name="nullableTask">The ValueTask returning a nullable value.</param>
+    /// <param name="errorFactory">A function that produces the error if the value is null.</param>
+    /// <returns>A ValueTask that represents the asynchronous operation. The task result is a success Result if the value is not null; otherwise a failure Result with an error from the factory.</returns>
+    public static async ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> nullableTask, Func<Error> errorFactory)
+        where T : struct
+    {
+        var nullable = await nullableTask.ConfigureAwait(false);
+        return nullable.ToResult(errorFactory);
+    }
+
+    /// <summary>
     /// Converts a ValueTask returning a nullable reference type to a Result asynchronously.
     /// </summary>
     /// <typeparam name="T">The reference type.</typeparam>
@@ -128,5 +204,19 @@ public static class NullableExtensionsAsync
     {
         var nullable = await nullableTask.ConfigureAwait(false);
         return nullable.ToResult(error);
+    }
+
+    /// <summary>
+    /// Converts a ValueTask returning a nullable reference type to a Result asynchronously using a function to create the error.
+    /// </summary>
+    /// <typeparam name="T">The reference type.</typeparam>
+    /// <param name="nullableTask">The ValueTask returning a potentially null object.</param>
+    /// <param name="errorFactory">A function that produces the error if the object is null.</param>
+    /// <returns>A ValueTask that represents the asynchronous operation. The task result is a success Result if the object is not null; otherwise a failure Result with an error from the factory.</returns>
+    public static async ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> nullableTask, Func<Error> errorFactory)
+        where T : class
+    {
+        var nullable = await nullableTask.ConfigureAwait(false);
+        return nullable.ToResult(errorFactory);
     }
 }

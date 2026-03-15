@@ -75,6 +75,21 @@ public class WhenAllAsyncTupleTests : TestBase
         result.Error.Should().BeOfType<ValidationError>();
     }
 
+    [Fact]
+    public async Task WhenAllAsync_Tuple2_FaultedTask_SurfacesException()
+    {
+        // Arrange
+        var task1 = Task.FromException<Result<int>>(new InvalidOperationException("boom"));
+        var task2 = Task.FromResult(Result.Success("two"));
+
+        // Act
+        var act = () => (task1, task2).WhenAllAsync();
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("boom");
+    }
+
     #endregion
 
     #region WhenAllAsync - 3-Tuple

@@ -168,7 +168,23 @@ T? AsNullable<T>(this Maybe<T> maybe) where T : struct
 Result<T> ToResult<T>(this Maybe<T>, Error) where T : notnull
 Result<T> ToResult<T>(this Maybe<T>, Func<Error>) where T : notnull
 Task<Result<T>> ToResultAsync<T>(this Task<Maybe<T>>, Error)
+Task<Result<T>> ToResultAsync<T>(this Task<Maybe<T>>, Func<Error>)
 ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<Maybe<T>>, Error)
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<Maybe<T>>, Func<Error>)
+
+// ToResult (from nullable)
+Result<T> ToResult<T>(this T? value, Error) where T : struct
+Result<T> ToResult<T>(this T? value, Func<Error>) where T : struct
+Result<T> ToResult<T>(this T? value, Error) where T : class
+Result<T> ToResult<T>(this T? value, Func<Error>) where T : class
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Error) where T : struct
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Func<Error>) where T : struct
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Error) where T : class
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Func<Error>) where T : class
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Error) where T : struct
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>) where T : struct
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Error) where T : class
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>) where T : class
 ```
 
 ---

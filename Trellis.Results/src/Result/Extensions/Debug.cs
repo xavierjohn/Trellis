@@ -178,6 +178,9 @@ public static class ResultDebugExtensions
                 var stackTrace = new StackTrace(true);
                 var frames = stackTrace.GetFrames();
 
+                if (frames is null)
+                    return result;
+
                 // Capture up to 10 stack frames
                 for (int i = 0; i < Math.Min(frames.Length, 10); i++)
                 {

@@ -98,9 +98,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => { });
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -114,9 +112,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => Task.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -130,9 +126,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => Task.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Error);
     }
 
     [Fact]
@@ -146,9 +140,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => ValueTask.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     #endregion
