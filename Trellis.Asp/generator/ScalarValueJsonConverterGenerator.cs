@@ -126,11 +126,19 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         // Look for class declarations with base types that might be value objects
         if (node is ClassDeclarationSyntax c && c.BaseList is not null)
         {
-            // Check if any base type contains "ScalarValueObject" or implements IScalarValue
+            // Check if any base type text matches known value object base types or interface.
+            // The semantic transform (GetValueObjectInfo) walks the full type hierarchy,
+            // but this syntax predicate must let candidates through first.
             foreach (var baseType in c.BaseList.Types)
             {
                 var typeName = baseType.Type.ToString();
-                if (typeName.Contains(ScalarValueInterfaceName))
+                if (typeName.Contains(ScalarValueInterfaceName)
+                    || typeName.Contains("RequiredString")
+                    || typeName.Contains("RequiredGuid")
+                    || typeName.Contains("RequiredInt")
+                    || typeName.Contains("RequiredDecimal")
+                    || typeName.Contains("RequiredEnum")
+                    || typeName.Contains("ScalarValueObject"))
                 {
                     return true;
                 }
