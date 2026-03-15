@@ -154,7 +154,7 @@ public class UseFunctionalValueOrDefaultCodeFixProviderTests
             {
                 public void TestMethod(Result<string> result)
                 {
-                    var value = result.Match(value => value, error => null);
+                    var value = result.Match(value => value, _ => null);
                 }
             }
             """;
@@ -250,7 +250,7 @@ public class UseFunctionalValueOrDefaultCodeFixProviderTests
             {
                 public void TestMethod(Result<int> result)
                 {
-                    var value = result.Match(value => value, error => 42);
+                    var value = result.Match(value => value, _ => 42);
                 }
             }
             """;
@@ -294,6 +294,40 @@ public class UseFunctionalValueOrDefaultCodeFixProviderTests
             fixedSource,
             codeActionIndex: 0,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseFunctionalValueOrDefault).WithLocation(12, 25));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task TernaryWithOuterErrorVariable_ReplacedWithMatch_WithoutShadowing()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public object TestMethod(Result<int> result)
+                {
+                    object error = "outer error";
+                    return result.IsSuccess ? result.Value : error;
+                }
+            }
+            """;
+
+        const string fixedSource = """
+            public class TestClass
+            {
+                public object TestMethod(Result<int> result)
+                {
+                    object error = "outer error";
+                    return result.Match(value => value, _ => error);
+                }
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<TernaryValueOrDefaultAnalyzer, UseFunctionalValueOrDefaultCodeFixProvider>(
+            source,
+            fixedSource,
+            codeActionIndex: 0,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseFunctionalValueOrDefault).WithLocation(12, 20));
 
         await test.RunAsync();
     }

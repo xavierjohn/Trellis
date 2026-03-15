@@ -147,13 +147,13 @@ public sealed class UseFunctionalValueOrDefaultCodeFixProvider : CodeFixProvider
 
         var resultExpression = conditionMemberAccess.Expression;
 
-        // Build Match() call: result.Match(value => value, error => defaultValue)
+        // Build Match() call: result.Match(value => value, _ => defaultValue)
         var successLambda = SyntaxFactory.SimpleLambdaExpression(
             SyntaxFactory.Parameter(SyntaxFactory.Identifier("value")),
             SyntaxFactory.IdentifierName("value"));
 
         var failureLambda = SyntaxFactory.SimpleLambdaExpression(
-            SyntaxFactory.Parameter(SyntaxFactory.Identifier("error")),
+            SyntaxFactory.Parameter(SyntaxFactory.Identifier("_")),
             ternary.WhenFalse);
 
         var matchInvocation = SyntaxFactory.InvocationExpression(
