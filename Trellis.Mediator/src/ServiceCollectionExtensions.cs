@@ -56,11 +56,11 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)
     {
-        services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>));
-        services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>));
-        services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-        services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
-        services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         return services;
     }
