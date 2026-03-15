@@ -343,7 +343,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is less than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator <(ValueObject? left, ValueObject? right)
-        => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : left.CompareTo(right) < 0;
+        => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : !ReferenceEquals(right, null) && left.CompareTo(right) < 0;
 
     /// <summary>
     /// Determines whether the first value object is less than or equal to the second.
@@ -352,7 +352,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is less than or equal to <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator <=(ValueObject? left, ValueObject? right)
-        => ReferenceEquals(left, null) || left.CompareTo(right) <= 0;
+        => ReferenceEquals(left, null) || (!ReferenceEquals(right, null) && left.CompareTo(right) <= 0);
 
     /// <summary>
     /// Determines whether the first value object is greater than the second.
@@ -361,7 +361,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is greater than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator >(ValueObject? left, ValueObject? right)
-        => !ReferenceEquals(left, null) && left.CompareTo(right) > 0;
+        => !ReferenceEquals(left, null) && (ReferenceEquals(right, null) || left.CompareTo(right) > 0);
 
     /// <summary>
     /// Determines whether the first value object is greater than or equal to the second.
@@ -370,5 +370,5 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is greater than or equal to <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator >=(ValueObject? left, ValueObject? right)
-        => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.CompareTo(right) >= 0;
+        => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : (ReferenceEquals(right, null) || left.CompareTo(right) >= 0);
 }

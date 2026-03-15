@@ -564,4 +564,16 @@ public class MoneyTests
     }
 
     #endregion
+
+    #region FieldName Edge Cases
+
+    [Fact]
+    public void TryCreate_with_empty_string_fieldName_should_not_throw()
+    {
+        var act = () => Money.TryCreate(-1m, "USD", fieldName: "");
+
+        act.Should().NotThrow();
+    }
+
+    #endregion
 }

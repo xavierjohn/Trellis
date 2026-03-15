@@ -162,12 +162,15 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 
         // Get setter accessibility
         var setterAccessibility = "";
+        var isInitOnly = false;
         if (prop.AccessorList != null)
         {
             foreach (var accessor in prop.AccessorList.Accessors)
             {
-                if (accessor.IsKind(SyntaxKind.SetAccessorDeclaration))
+                if (accessor.IsKind(SyntaxKind.SetAccessorDeclaration) ||
+                    accessor.IsKind(SyntaxKind.InitAccessorDeclaration))
                 {
+                    isInitOnly = accessor.IsKind(SyntaxKind.InitAccessorDeclaration);
                     if (accessor.Modifiers.Count > 0)
                         setterAccessibility = accessor.Modifiers.ToString();
                     break;
@@ -197,6 +200,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
             propertyName: symbol.Name,
             propertyAccessibility: AccessibilityToString(symbol.DeclaredAccessibility),
             setterAccessibility: setterAccessibility,
+            isInitOnly: isInitOnly,
             innerTypeName: innerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             innerTypeShortName: innerType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
             innerTypeIsValueType: innerType.IsValueType,
@@ -366,7 +370,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                     sb.Append(' ');
                 }
 
-                sb.Append("set => ");
+                sb.Append(prop.IsInitOnly ? "init => " : "set => ");
                 sb.Append(backingFieldName);
                 sb.Append(" = value.HasValue ? value.Value : null;");
                 sb.AppendLine();

@@ -123,4 +123,23 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<AsyncLambdaWithSyncMethodAnalyzer>(source);
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task Lambda_Returning_TaskCompletionSource_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    var result = GetResult().Map(x => new TaskCompletionSource<int>());
+                }
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<AsyncLambdaWithSyncMethodAnalyzer>(source);
+        await test.RunAsync();
+    }
 }

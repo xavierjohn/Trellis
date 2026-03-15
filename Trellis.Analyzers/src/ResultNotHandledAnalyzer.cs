@@ -37,7 +37,16 @@ public sealed class ResultNotHandledAnalyzer : DiagnosticAnalyzer
         else if (expression is AwaitExpressionSyntax awaitExpression &&
                  awaitExpression.Expression is InvocationExpressionSyntax awaitedInvocation)
         {
-            AnalyzeInvocation(context, awaitedInvocation);
+            // Unwrap ConfigureAwait: await x.ConfigureAwait(false) → x
+            var targetInvocation = awaitedInvocation;
+            if (awaitedInvocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                memberAccess.Name.Identifier.Text == "ConfigureAwait" &&
+                memberAccess.Expression is InvocationExpressionSyntax innerInvocation)
+            {
+                targetInvocation = innerInvocation;
+            }
+
+            AnalyzeInvocation(context, targetInvocation);
         }
     }
 

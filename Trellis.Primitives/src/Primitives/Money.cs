@@ -46,7 +46,7 @@ public class Money : ValueObject
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Money) + '.' + nameof(TryCreate));
 
-        var field = fieldName is not null
+        var field = !string.IsNullOrEmpty(fieldName)
             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
             : "amount";
 

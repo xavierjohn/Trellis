@@ -224,6 +224,16 @@ public class RequiredStringTests
             .WithMessage("Tracking Id cannot be empty.");
     }
 
+    [Fact]
+    public void TryCreate_with_whitespace_padding_should_trim()
+    {
+        var result = TrackingId.TryCreate("  ABC123  ");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be("ABC123",
+            "RequiredString should trim leading and trailing whitespace per its XML documentation");
+    }
+
     public static TheoryData<string?> GetBadString() =>
       new TheoryData<string?>
       {

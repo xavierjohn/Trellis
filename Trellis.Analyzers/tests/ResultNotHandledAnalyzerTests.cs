@@ -128,4 +128,28 @@ public class ResultNotHandledAnalyzerTests
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ResultNotHandledAnalyzer>(source);
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task UnhandledAsyncResult_WithConfigureAwait_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public async Task TestMethod()
+                {
+                    await GetResultAsync().ConfigureAwait(false);
+                }
+
+                private Task<Result<int>> GetResultAsync() => Task.FromResult<Result<int>>(42);
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
+                .WithLocation(11, 15)
+                .WithArguments("GetResultAsync"));
+
+        await test.RunAsync();
+    }
 }

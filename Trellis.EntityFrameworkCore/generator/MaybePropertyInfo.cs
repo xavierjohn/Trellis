@@ -31,6 +31,9 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
     /// <summary>The accessibility of the setter, if different from the property (e.g., "private").</summary>
     public readonly string SetterAccessibility;
 
+    /// <summary>Whether the property uses an init-only accessor instead of a set accessor.</summary>
+    public readonly bool IsInitOnly;
+
     /// <summary>The fully-qualified inner type name (e.g., "PhoneNumber" or "System.DateTime").</summary>
     public readonly string InnerTypeName;
 
@@ -51,6 +54,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         string propertyName,
         string propertyAccessibility,
         string setterAccessibility,
+        bool isInitOnly,
         string innerTypeName,
         string innerTypeShortName,
         bool innerTypeIsValueType,
@@ -63,6 +67,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         PropertyName = propertyName;
         PropertyAccessibility = propertyAccessibility;
         SetterAccessibility = setterAccessibility;
+        IsInitOnly = isInitOnly;
         InnerTypeName = innerTypeName;
         InnerTypeShortName = innerTypeShortName;
         InnerTypeIsValueType = innerTypeIsValueType;
@@ -81,6 +86,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
             && PropertyName == other.PropertyName
             && PropertyAccessibility == other.PropertyAccessibility
             && SetterAccessibility == other.SetterAccessibility
+            && IsInitOnly == other.IsInitOnly
             && InnerTypeName == other.InnerTypeName
             && InnerTypeShortName == other.InnerTypeShortName
             && InnerTypeIsValueType == other.InnerTypeIsValueType

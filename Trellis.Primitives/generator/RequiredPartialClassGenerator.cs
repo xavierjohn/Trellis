@@ -511,7 +511,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 : ""{g.ClassName.ToCamelCase()}"";
             return value
                 .EnsureNotNullOrWhiteSpace(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field)){lengthEnsures}
-                .Map(str => new {g.ClassName}(str));
+                .Map(str => new {g.ClassName}(str.Trim()));
         }}
 
         /// <summary>
