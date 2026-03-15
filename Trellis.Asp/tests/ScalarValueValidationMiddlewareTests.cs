@@ -546,10 +546,10 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_BindingFailure_ScalarValueWithoutStringTryCreate_ReturnsFallbackError()
+    public async Task InvokeAsync_BindingFailure_ScalarValueWithoutStringTryCreate_ReturnsRichValidationError()
     {
-        // Arrange - IntOnlyScalarValue has no TryCreate(string, string), so GetValidationErrors returns null
-        // and the middleware falls back to CreateFallbackErrors
+        // Arrange - IntOnlyScalarValue has no TryCreate(string, string), but the raw value is parseable as int
+        // so the middleware should surface the value object's own validation error.
         var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
@@ -557,7 +557,7 @@ public class ScalarValueValidationMiddlewareTests
         var context = CreateContextWithEndpointMetadata(paramInfo, "val");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
-            throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "abc".""", 400));
+            throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "0".""", 400));
 
         // Act
         await middleware.InvokeAsync(context);
@@ -567,7 +567,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("val")[0].GetString()
-            .Should().Contain("not a valid IntOnlyScalarValue", "should use the fallback error message");
+            .Should().Be("Must be positive.");
     }
 
     [Fact]
