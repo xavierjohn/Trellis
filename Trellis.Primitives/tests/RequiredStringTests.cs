@@ -106,7 +106,7 @@ public class RequiredStringTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Attempted to access the Value for a failed result. A failed result has no Value.");
+            .WithMessage("Failed to create TrackingId:*Tracking Id cannot be empty*");
     }
 
     [Fact]

@@ -125,7 +125,7 @@ public class RequiredDecimalTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Attempted to access the Value for a failed result. A failed result has no Value.");
+            .WithMessage("Failed to create UnitPrice:*Unit Price cannot be zero*");
     }
 
     [Fact]

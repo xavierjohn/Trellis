@@ -137,5 +137,21 @@ public class TracingBehaviorTests : IDisposable
             "unhandled exceptions should set activity status to Error");
     }
 
+    [Fact]
+    public async Task Handle_HandlerThrows_PreservesExceptionMessageInActivityStatus()
+    {
+        var behavior = new TracingBehavior<TestCommand, Result<string>>();
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.Throwing<TestCommand, Result<string>>(
+            new InvalidOperationException("Connection string: Server=prod-db;Password=s3cret"));
+
+        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _activities.Should().ContainSingle();
+        _activities[0].Status.Should().Be(ActivityStatusCode.Error);
+        _activities[0].StatusDescription.Should().Be("Connection string: Server=prod-db;Password=s3cret");
+    }
+
     #endregion
 }

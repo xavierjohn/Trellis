@@ -126,7 +126,7 @@ public class RequiredIntTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Attempted to access the Value for a failed result. A failed result has no Value.");
+            .WithMessage("Failed to create TicketNumber:*Ticket Number cannot be zero*");
     }
 
     [Fact]

@@ -111,7 +111,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 ///     private CustomerId(Guid value) : base(value) { }
 ///
 ///     public static explicit operator CustomerId(Guid customerId)
-///         =&gt; TryCreate(customerId).Value;
+///         =&gt; Create(customerId);
 ///
 ///     public static CustomerId NewUniqueV4() =&gt; new(Guid.NewGuid());
 ///     public static CustomerId NewUniqueV7() =&gt; new(Guid.CreateVersion7());
@@ -335,7 +335,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
         }}
 
-        public static explicit operator {g.ClassName}({classType} {camelArg}) => TryCreate({camelArg}).Value;
+        public static explicit operator {g.ClassName}({classType} {camelArg}) => Create({camelArg});
 
         public static {g.ClassName} Parse(string s, IFormatProvider? provider)
         {{

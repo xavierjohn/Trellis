@@ -265,6 +265,20 @@ public class SourceGeneratedCreateMethodTests
             .WithMessage("Failed to create TrackingId:*Tracking Id cannot be empty*");
     }
 
+    [Fact]
+    public void RequiredString_ExplicitCast_WithEmptyString_ThrowsCreateStyleInvalidOperationException()
+    {
+        // Arrange
+        TrackingId trackingId;
+
+        // Act
+        Action act = () => trackingId = (TrackingId)string.Empty;
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Failed to create TrackingId:*Tracking Id cannot be empty*");
+    }
+
     #endregion
 
     #region Integration Tests - TRLS007 Compatibility
