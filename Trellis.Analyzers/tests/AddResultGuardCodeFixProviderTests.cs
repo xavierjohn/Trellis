@@ -163,6 +163,51 @@ public class AddResultGuardCodeFixProviderTests
     }
 
     [Fact]
+    public async Task ResultValue_InNestedReturnBlock_DoesNotAddDefaultReturnInsideInnerBlock()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Result<int> result, bool condition)
+                {
+                    if (condition)
+                    {
+                        return result.Value;
+                    }
+
+                    return 42;
+                }
+            }
+            """;
+
+        const string fixedSource = """
+            public class TestClass
+            {
+                public int TestMethod(Result<int> result, bool condition)
+                {
+                    if (condition)
+                    {
+                        if (result.IsSuccess)
+                        {
+                            return result.Value;
+                        }
+                    }
+
+                    return 42;
+                }
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<UnsafeValueAccessAnalyzer, AddResultGuardCodeFixProvider>(
+            source,
+            fixedSource,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultValueAccess)
+                .WithLocation(13, 31));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task ResultValue_InMethodArgument_WrapsStatement()
     {
         const string source = """
