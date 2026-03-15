@@ -115,6 +115,84 @@ public class MaybePropertyTests : IDisposable
 
     #endregion
 
+    #region Maybe<T> with value type (DateTime inner)
+
+    [Fact]
+    public async Task MaybeValueType_WithValue_RoundTripPreservesValue()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = TestCustomerId.NewUniqueV4();
+        _context.Customers.Add(new TestCustomer
+        {
+            Id = customerId,
+            Name = TestCustomerName.Create("ValueTypeCustomer"),
+            Email = EmailAddress.Create("valuetype@example.com"),
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync(ct);
+
+        var submittedAt = new DateTime(2026, 3, 8, 12, 0, 0, DateTimeKind.Utc);
+        var order = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customerId,
+            Amount = 99.95m,
+            Status = TestOrderStatus.Confirmed,
+            SubmittedAt = Maybe.From(submittedAt)
+        };
+
+        // Act
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.SubmittedAt.HasValue.Should().BeTrue();
+        loaded.SubmittedAt.Value.Should().Be(submittedAt);
+    }
+
+    [Fact]
+    public async Task MaybeValueType_WithNone_RoundTripPreservesNone()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = TestCustomerId.NewUniqueV4();
+        _context.Customers.Add(new TestCustomer
+        {
+            Id = customerId,
+            Name = TestCustomerName.Create("ValueTypeNoneCustomer"),
+            Email = EmailAddress.Create("valuetypenone@example.com"),
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync(ct);
+
+        var order = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customerId,
+            Amount = 50m,
+            Status = TestOrderStatus.Draft
+            // SubmittedAt is default (Maybe.None<DateTime>())
+        };
+
+        // Act
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.SubmittedAt.HasNoValue.Should().BeTrue();
+    }
+
+    #endregion
+
     #region Maybe<T> with RequiredEnum (enum inner type)
 
     [Fact]
