@@ -53,7 +53,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Ok);
-        actual.IsSuccess.Should().BeTrue();
+        actual.Should().BeSuccess();
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Ok);
-        actual.IsSuccess.Should().BeTrue();
+        actual.Should().BeSuccess();
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Ok);
-        actual.IsSuccess.Should().BeTrue();
+        actual.Should().BeSuccess();
     }
 
     #endregion
@@ -101,7 +101,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
-        actual.IsFailure.Should().BeTrue();
+        actual.Should().BeFailure();
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
-        actual.IsFailure.Should().BeTrue();
+        actual.Should().BeFailure();
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
-        actual.IsFailure.Should().BeTrue();
+        actual.Should().BeFailure();
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
-        actual.IsFailure.Should().BeTrue();
+        actual.Should().BeFailure();
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
-        actual.IsFailure.Should().BeTrue();
+        actual.Should().BeFailure();
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Error);
-        actual.IsFailure.Should().BeTrue();
+        actual.Should().BeFailure();
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class EnsureTracingTests
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Error);
-        actual.IsFailure.Should().BeTrue();
+        actual.Should().BeFailure();
     }
 
     #endregion
@@ -213,8 +213,7 @@ public class EnsureTracingTests
             .Bind(x => Result.Success(x * 2));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(84);
+        result.Should().BeSuccess().Which.Should().Be(84);
 
         // Verify that each Ensure operation created its own activity with OK status
         var ensureActivities = activityTest.AssertActivityCaptured("Ensure", 2).ToArray();
