@@ -187,7 +187,7 @@ where T : IComparable
     /// var customerId = CustomerId.NewUnique();
     /// Guid guid = customerId; // Implicit conversion
     /// 
-    /// var temperature = Temperature.TryCreate(98.6m).Value;
+    /// var temperature = Temperature.Create(98.6m);
     /// decimal value = temperature; // Implicit conversion
     /// </code>
     /// </example>

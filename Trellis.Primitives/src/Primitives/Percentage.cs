@@ -55,7 +55,7 @@ using Trellis;
 /// <example>
 /// Using helper methods:
 /// <code>
-/// var percentage = Percentage.TryCreate(20m).Value;
+/// var percentage = Percentage.Create(20m);
 /// var amount = 100m;
 /// 
 /// // Convert to fraction (0.2)

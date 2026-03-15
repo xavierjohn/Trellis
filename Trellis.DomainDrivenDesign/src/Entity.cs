@@ -75,8 +75,8 @@
 /// }
 /// 
 /// // Usage - identity-based equality
-/// var customer1 = Customer.TryCreate("John", email).Value;
-/// var customer2 = Customer.TryCreate("John", email).Value;
+/// var customer1 = Customer.Create("John", email);
+/// var customer2 = Customer.Create("John", email);
 /// 
 /// // Different instances with same data but different IDs
 /// customer1 != customer2; // true - different identities

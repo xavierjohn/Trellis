@@ -43,10 +43,12 @@ internal class ScalarValueInfo
     /// <summary>
     /// Gets the fully qualified name of the value object type.
     /// </summary>
-    /// <value>
-    /// The full type name including namespace (e.g., "MyApp.Domain.ValueObjects.CustomerId").
-    /// </value>
-    public string FullTypeName => string.IsNullOrEmpty(Namespace) ? TypeName : $"{Namespace}.{TypeName}";
+    public readonly string FullTypeName;
+
+    /// <summary>
+    /// Gets a unique identifier-safe name for generated converter types.
+    /// </summary>
+    public readonly string GeneratedTypeName;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ScalarValueInfo"/> class.
@@ -54,11 +56,15 @@ internal class ScalarValueInfo
     /// <param name="namespace">The namespace of the value object type.</param>
     /// <param name="typeName">The name of the value object type.</param>
     /// <param name="primitiveType">The primitive type that the value object wraps.</param>
-    public ScalarValueInfo(string @namespace, string typeName, string primitiveType)
+    /// <param name="fullTypeName">The fully qualified type name, including containing types when nested.</param>
+    /// <param name="generatedTypeName">A unique identifier-safe type name used for generated converter types.</param>
+    public ScalarValueInfo(string @namespace, string typeName, string primitiveType, string fullTypeName, string generatedTypeName)
     {
         Namespace = @namespace;
         TypeName = typeName;
         PrimitiveType = primitiveType;
+        FullTypeName = fullTypeName;
+        GeneratedTypeName = generatedTypeName;
     }
 
     /// <summary>

@@ -89,6 +89,19 @@ public sealed class EmptyErrorMessageAnalyzer : DiagnosticAnalyzer
             return string.IsNullOrWhiteSpace(value);
         }
 
+        // Check for interpolated strings with only literal text segments, e.g. $"" or $"   ".
+        if (expression is InterpolatedStringExpressionSyntax interpolatedString)
+        {
+            if (interpolatedString.Contents.Any(static content => content is InterpolationSyntax))
+                return false;
+
+            var value = string.Concat(interpolatedString.Contents
+                .OfType<InterpolatedStringTextSyntax>()
+                .Select(static content => content.TextToken.ValueText));
+
+            return string.IsNullOrWhiteSpace(value);
+        }
+
         // Check for string.Empty
         if (expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "Empty" } memberAccess)
         {

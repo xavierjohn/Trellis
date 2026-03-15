@@ -64,6 +64,11 @@ public sealed class TernaryValueOrDefaultAnalyzer : DiagnosticAnalyzer
     /// </summary>
     private static bool AreEquivalentExpressions(ExpressionSyntax expr1, ExpressionSyntax expr2, SemanticModel semanticModel)
     {
+        // Repeated invocations may have side effects or return different results.
+        // The analyzer should only suggest GetValueOrDefault()/Match() for stable expressions.
+        if (expr1 is InvocationExpressionSyntax || expr2 is InvocationExpressionSyntax)
+            return false;
+
         var symbol1 = semanticModel.GetSymbolInfo(expr1).Symbol;
         var symbol2 = semanticModel.GetSymbolInfo(expr2).Symbol;
 

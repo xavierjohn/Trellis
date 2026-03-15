@@ -156,4 +156,48 @@ public class CombineLimitAnalyzerTests
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<CombineLimitAnalyzer>(source);
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task Combine_10ElementsAcrossIntermediateVariable_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    Result<int> r1 = default;
+                    Result<int> r2 = default;
+                    Result<int> r3 = default;
+                    Result<int> r4 = default;
+                    Result<int> r5 = default;
+                    Result<int> r6 = default;
+                    Result<int> r7 = default;
+                    Result<int> r8 = default;
+                    Result<int> r9 = default;
+                    Result<int> r10 = default;
+
+                    var temp = r1
+                        .Combine(r2)
+                        .Combine(r3)
+                        .Combine(r4)
+                        .Combine(r5);
+
+                    var result = temp
+                        .Combine(r6)
+                        .Combine(r7)
+                        .Combine(r8)
+                        .Combine(r9)
+                        .{|#0:Combine|}(r10);
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<CombineLimitAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CombineChainTooLong)
+                .WithLocation(0)
+                .WithArguments(10));
+
+        await test.RunAsync();
+    }
 }

@@ -111,6 +111,25 @@ public class TernaryValueOrDefaultAnalyzerTests
     }
 
     [Fact]
+    public async Task TernaryWithRepeatedMethodCall_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    var value = GetResult().IsSuccess ? GetResult().Value : 0;
+                }
+
+                private Result<int> GetResult() => Result.Success(42);
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<TernaryValueOrDefaultAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task TernaryWithoutResultType_NoDiagnostic()
     {
         const string source = """
