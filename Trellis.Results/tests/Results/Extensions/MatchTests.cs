@@ -1,5 +1,7 @@
 namespace Trellis.Results.Tests.Results.Extensions;
 
+using System.Diagnostics;
+using Trellis.Results.Tests.Helpers;
 using Trellis.Testing;
 
 public class MatchTests : TestBase
@@ -95,6 +97,23 @@ public class MatchTests : TestBase
             cancellationToken: cts.Token);
 
         output.Should().Be("success:42");
+    }
+
+    [Fact]
+    public async Task MatchAsync_Result_WhenSuccessHandlerFaults_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var result = Result.Success(42);
+
+        Func<Task> act = async () => await result.MatchAsync(
+            onSuccess: _ => Task.FromException<string>(new InvalidOperationException("boom")),
+            onFailure: _ => Task.FromResult("error"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        activityTest.AssertActivityCaptured(1);
+        activityTest.CapturedActivities.Should().ContainSingle();
+        activityTest.CapturedActivities[0].Status.Should().Be(ActivityStatusCode.Error);
     }
 
     [Fact]

@@ -53,6 +53,20 @@ public class SpecificationTests
         result.Should().BeFalse();
     }
 
+    [Fact]
+    public void IsSatisfiedBy_WhenExpressionSnapshotsCurrentState_UsesLatestExpression()
+    {
+        var spec = new SnapshottingPriceAboveSpec(50m);
+        var product = new Product("Widget", 60m, "Electronics");
+
+        spec.IsSatisfiedBy(product).Should().BeTrue();
+
+        spec.Threshold = 70m;
+
+        spec.IsSatisfiedBy(product).Should().BeFalse(
+            "IsSatisfiedBy should evaluate the current ToExpression semantics on each call");
+    }
+
     #endregion
 
     #region ToExpression
@@ -137,33 +151,15 @@ public class SpecificationTests
     }
 
     #endregion
-
-    #region IsSatisfiedBy caching
-
-    [Fact]
-    public void IsSatisfiedBy_CalledMultipleTimes_DoesNotRecompileExpression()
-    {
-        var spec = new CompileCountingSpec(50m);
-        var product = new Product("Widget", 100m, "Electronics");
-
-        spec.IsSatisfiedBy(product);
-        spec.IsSatisfiedBy(product);
-        spec.IsSatisfiedBy(product);
-
-        spec.CompileCount.Should().Be(1,
-            "IsSatisfiedBy should cache the compiled predicate instead of recompiling on each call");
-    }
-
-    #endregion
 }
 
-file class CompileCountingSpec(decimal threshold) : Specification<Product>
+file class SnapshottingPriceAboveSpec(decimal threshold) : Specification<Product>
 {
-    public int CompileCount { get; private set; }
+    public decimal Threshold { get; set; } = threshold;
 
     public override Expression<Func<Product, bool>> ToExpression()
     {
-        CompileCount++;
-        return p => p.Price > threshold;
+        var currentThreshold = Threshold;
+        return p => p.Price > currentThreshold;
     }
 }
