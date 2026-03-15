@@ -89,7 +89,7 @@ public sealed class EntraActorOptions
 
             var hasMfa = claimList
                 .Any(c => string.Equals(c.Type, "amr", StringComparison.OrdinalIgnoreCase)
-                       && string.Equals(c.Value, "mfa", StringComparison.Ordinal));
+                       && string.Equals(c.Value, "mfa", StringComparison.OrdinalIgnoreCase));
             attributes[ActorAttributes.MfaAuthenticated] = hasMfa ? "true" : "false";
 
             return attributes;

@@ -165,6 +165,26 @@ public class ResourceAuthorizationBehaviorTests
         loader.LastCancellationToken.Should().Be(cts.Token);
     }
 
+    [Fact]
+    public async Task Handle_MissingResourceLoader_ThrowsInvalidOperationExceptionWithBehaviorContext()
+    {
+        var actorProvider = FakeActorProvider.NoPermissions("owner-1");
+        var services = new ServiceCollection();
+        var serviceProvider = services.BuildServiceProvider();
+        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            actorProvider,
+            serviceProvider);
+        var command = new ResourceOwnerCommand("res-1");
+        var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("should not reach"));
+
+        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result`1>*")
+            .WithMessage("*IResourceLoader<ResourceOwnerCommand, TestResource>*");
+    }
+
     #endregion
 
     #region Helpers

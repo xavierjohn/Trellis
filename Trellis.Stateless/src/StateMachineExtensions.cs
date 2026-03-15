@@ -14,6 +14,11 @@ using Trellis;
 /// Invalid transitions return a <see cref="DomainError"/> describing the violation.
 /// </para>
 /// <para>
+/// These extensions do not change the concurrency model of <see cref="StateMachine{TState, TTrigger}"/>.
+/// Stateless state machines are not thread-safe, so concurrent calls to <see cref="FireResult{TState, TTrigger}(StateMachine{TState, TTrigger}, TTrigger)"/>
+/// on the same machine instance must still be externally synchronized.
+/// </para>
+/// <para>
 /// Usage with Railway Oriented Programming:
 /// <code>
 /// var machine = new StateMachine&lt;OrderState, OrderTrigger&gt;(OrderState.New);
@@ -40,6 +45,8 @@ public static class StateMachineExtensions
     /// <remarks>
     /// This method uses <see cref="StateMachine{TState, TTrigger}.CanFire(TTrigger)"/> to validate
     /// the transition before firing. No try/catch is used internally.
+    /// The underlying <see cref="StateMachine{TState, TTrigger}"/> remains not thread-safe,
+    /// so callers must not invoke this method concurrently on the same machine instance without synchronization.
     /// </remarks>
     /// <example>
     /// <code>

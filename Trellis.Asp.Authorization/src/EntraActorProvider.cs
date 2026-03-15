@@ -45,10 +45,32 @@ public sealed class EntraActorProvider(
                 $"Claim '{config.IdClaimType}' not found in the authenticated user's claims. " +
                 "Verify the token configuration or set EntraActorOptions.IdClaimType.");
 
-        var permissions = config.MapPermissions(claims);
-        var forbiddenPermissions = config.MapForbiddenPermissions(claims);
-        var attributes = config.MapAttributes(claims, httpContext);
+        var permissions = InvokeMapping(
+            "MapPermissions",
+            () => config.MapPermissions(claims));
+
+        var forbiddenPermissions = InvokeMapping(
+            "MapForbiddenPermissions",
+            () => config.MapForbiddenPermissions(claims));
+
+        var attributes = InvokeMapping(
+            "MapAttributes",
+            () => config.MapAttributes(claims, httpContext));
 
         return new Actor(id, permissions, forbiddenPermissions, attributes);
+    }
+
+    private static T InvokeMapping<T>(string mappingName, Func<T> mapping)
+    {
+        try
+        {
+            return mapping();
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException(
+                $"EntraActorOptions.{mappingName} threw an exception while mapping the authenticated user's claims.",
+                exception);
+        }
     }
 }
