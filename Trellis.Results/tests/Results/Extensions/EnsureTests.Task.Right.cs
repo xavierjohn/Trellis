@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Results.Tests.Functional.Results.Extensions;
 
 using Trellis;
+using Trellis.Testing;
 
 public class EnsureTests_Task_Right
 {
@@ -11,8 +12,8 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Success("Success message")));
 
-        result.IsSuccess.Should().BeTrue("Initial result and predicate succeeded");
-        result.Value.Should().Be("Initial message");
+        result.Should().BeSuccess("Initial result and predicate succeeded")
+            .Which.Should().Be("Initial message");
     }
 
     [Fact]
@@ -22,8 +23,8 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Failure<string>(Error.Unauthorized("Error message"))));
 
-        result.IsSuccess.Should().BeFalse("Predicate is failure result");
-        result.Error.Should().Be(Error.Unauthorized("Error message"));
+        result.Should().BeFailure("Predicate is failure result")
+            .Which.Should().Be(Error.Unauthorized("Error message"));
     }
 
     [Fact]
@@ -33,8 +34,8 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Success("Success message")));
 
-        result.IsSuccess.Should().BeFalse("Initial result is failure result");
-        result.Error.Should().Be(Error.Conflict("Initial Error message"));
+        result.Should().BeFailure("Initial result is failure result")
+            .Which.Should().Be(Error.Conflict("Initial Error message"));
     }
 
     [Fact]
@@ -44,8 +45,8 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Failure<string>(Error.Unauthorized("Error message"))));
 
-        result.IsSuccess.Should().BeFalse("Initial result is failure result");
-        result.Error.Should().Be(Error.NotFound("Initial Error message"));
+        result.Should().BeFailure("Initial result is failure result")
+            .Which.Should().Be(Error.NotFound("Initial Error message"));
     }
 
     [Fact]
@@ -55,8 +56,8 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Failure<string>(Error.Conflict("Error Message"))));
 
-        result.IsSuccess.Should().BeFalse("Predicate is failure result");
-        result.Error.Should().Be(Error.Conflict("Error Message"));
+        result.Should().BeFailure("Predicate is failure result")
+            .Which.Should().Be(Error.Conflict("Error Message"));
     }
 
     [Fact]
@@ -66,8 +67,8 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Success("Success Message")));
 
-        result.IsSuccess.Should().BeTrue("Initial result and predicate succeeded"); ;
-        result.Value.Should().Be("Initial Success message");
+        result.Should().BeSuccess("Initial result and predicate succeeded")
+            .Which.Should().Be("Initial Success message");
     }
 
     [Fact]
@@ -77,8 +78,8 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Success("Success Message")));
 
-        result.IsSuccess.Should().BeFalse("Initial result is failure result"); ;
-        result.Error.Should().Be(Error.Unexpected("Initial Error message"));
+        result.Should().BeFailure("Initial result is failure result")
+            .Which.Should().Be(Error.Unexpected("Initial Error message"));
     }
 
     [Fact]
@@ -88,7 +89,7 @@ public class EnsureTests_Task_Right
 
         var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Failure<string>(Error.Unexpected("Success Message"))));
 
-        result.IsSuccess.Should().BeFalse("Initial result and predicate is failure result"); ;
-        result.Error.Should().Be(Error.Unexpected("Initial Error message"));
+        result.Should().BeFailure("Initial result and predicate is failure result")
+            .Which.Should().Be(Error.Unexpected("Initial Error message"));
     }
 }
