@@ -365,4 +365,33 @@ public class HttpResultsTests
     }
 
     #endregion
+
+    #region AddTrellisAsp integration
+
+    [Fact]
+    public void ToHttpResult_without_explicit_options_uses_AddTrellisAsp_configuration()
+    {
+        var original = TrellisAspOptions.Default;
+        try
+        {
+            var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+            services.AddTrellisAsp(options =>
+                options.MapError<DomainError>(StatusCodes.Status400BadRequest));
+
+            var result = Result.Failure<string>(Error.Domain("Business rule"));
+
+            var response = result.ToHttpResult();
+
+            response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+            response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
+                .ProblemDetails.Status.Should().Be(StatusCodes.Status400BadRequest,
+                    "AddTrellisAsp configured DomainError → 400, but ToHttpResult ignores it without explicit options");
+        }
+        finally
+        {
+            TrellisAspOptions.Default = original;
+        }
+    }
+
+    #endregion
 }
