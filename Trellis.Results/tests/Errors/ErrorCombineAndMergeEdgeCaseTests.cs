@@ -395,6 +395,28 @@ public class ErrorCombineAndMergeEdgeCaseTests
     }
 
     [Fact]
+    public void AggregateError_SourceListMutation_DoesNotAffectErrors()
+    {
+        // Arrange
+        var sourceErrors = new List<Error>
+        {
+            Error.NotFound("Not found"),
+            Error.Unauthorized("Unauthorized")
+        };
+
+        var aggregateError = new AggregateError(sourceErrors);
+
+        // Act
+        sourceErrors.Clear();
+        sourceErrors.Add(Error.Conflict("Conflict"));
+
+        // Assert
+        aggregateError.Errors.Should().HaveCount(2);
+        aggregateError.Errors.Should().ContainSingle(error => error is NotFoundError);
+        aggregateError.Errors.Should().ContainSingle(error => error is UnauthorizedError);
+    }
+
+    [Fact]
     public void Combine_WithAggregateError_ShouldFlattenErrors()
     {
         // Arrange
