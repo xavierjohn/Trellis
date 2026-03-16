@@ -3,6 +3,7 @@
 using System;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Trellis;
 
@@ -350,8 +351,22 @@ public static partial class HttpResponseExtensions
         JsonTypeInfo<TValue> jsonTypeInfo,
         CancellationToken cancellationToken)
         where TValue : notnull
-        => await response.ReadResultMaybeFromJsonAsync(jsonTypeInfo, cancellationToken)
-            .BindAsync(maybe => maybe.HasValue ? Result.Success(maybe.Value) : Result.Failure<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."))).ConfigureAwait(false);
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(jsonTypeInfo);
+
+        if (response.IsSuccessStatusCode == false)
+            return Result.Failure<TValue>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
+
+        if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
+            return Result.Failure<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."));
+
+        var value = await response.Content.ReadFromJsonAsync(jsonTypeInfo, cancellationToken).ConfigureAwait(false);
+
+        return value is null
+            ? Result.Failure<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."))
+            : Result.Success(value);
+    }
 
     /// <summary>
     /// Reads the HTTP response content as JSON and deserializes it to the specified type asynchronously.
@@ -443,8 +458,14 @@ public static partial class HttpResponseExtensions
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
             return Result.Success(Maybe.None<TValue>());
 
-        var value = await response
-            .Content.ReadFromJsonAsync(jsonTypeInfo, cancellationToken).ConfigureAwait(false);
+        if (response.Content is null)
+            return Result.Success(Maybe.None<TValue>());
+
+        var contentBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        if (contentBytes.Length == 0)
+            return Result.Success(Maybe.None<TValue>());
+
+        var value = JsonSerializer.Deserialize(contentBytes, jsonTypeInfo);
 
         return Result.Success(value is null ? Maybe.None<TValue>() : Maybe.From(value));
     }

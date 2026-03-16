@@ -100,5 +100,24 @@ public class AuthorizationBehaviorTests
         tracker.WasInvoked.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Handle_ActorProviderReturnsNull_ThrowsArgumentNullException()
+    {
+        var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(new NullActorProvider());
+        var command = new AdminCommand("data");
+        var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
+            Result.Success("should not reach"));
+
+        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+        tracker.WasInvoked.Should().BeFalse();
+    }
+
     #endregion
+
+    private sealed class NullActorProvider : IActorProvider
+    {
+        public Actor GetCurrentActor() => null!;
+    }
 }

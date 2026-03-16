@@ -69,7 +69,7 @@ public class ReadResultMaybeFromJsonTests
     }
 
     [Fact]
-    public async Task Successful_response_with_null_content_Throws_JsonException()
+    public async Task Successful_response_with_null_content_Returns_none()
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK)
@@ -78,10 +78,11 @@ public class ReadResultMaybeFromJsonTests
         };
 
         // Act
-        Func<Task> act = async () => await httpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+        var result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<JsonException>();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
     }
 
     [Fact]
@@ -212,6 +213,25 @@ public class ReadResultMaybeFromJsonTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(statusCode)
+        {
+            Content = new EmptyUnknownLengthContent()
+        };
+
+        // Act
+        Result<Maybe<camelcasePerson>> result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Successful_response_with_empty_content_and_no_length_header_Returns_none()
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK)
         {
             Content = new EmptyUnknownLengthContent()
         };

@@ -31,6 +31,7 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         var actor = _actorProvider.GetCurrentActor();
+        ArgumentNullException.ThrowIfNull(actor);
 
         if (!actor.HasAllPermissions(message.RequiredPermissions))
         {
