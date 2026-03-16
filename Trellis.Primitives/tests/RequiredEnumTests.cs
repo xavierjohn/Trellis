@@ -32,6 +32,16 @@ public partial class TestPaymentMethod : RequiredEnum<TestPaymentMethod>
     public decimal CalculateFee(decimal amount) => amount * Fee;
 }
 
+/// <summary>
+/// Test enum used to verify GetAll does not expose mutable shared cache state.
+/// </summary>
+public partial class TestImmutableEnumMembers : RequiredEnum<TestImmutableEnumMembers>
+{
+    public static readonly TestImmutableEnumMembers One = new();
+    public static readonly TestImmutableEnumMembers Two = new();
+    public static readonly TestImmutableEnumMembers Three = new();
+}
+
 public class RequiredEnumTests
 {
     #region TryCreate Tests
@@ -289,6 +299,21 @@ public class RequiredEnumTests
         all.Should().Contain(TestOrderState.Shipped);
         all.Should().Contain(TestOrderState.Delivered);
         all.Should().Contain(TestOrderState.Cancelled);
+    }
+
+    [Fact]
+    public void GetAll_ReturnedCollection_CannotMutateCachedMembers()
+    {
+        // Arrange
+        var all = TestImmutableEnumMembers.GetAll();
+
+        // Act
+        var act = () => ((ICollection<TestImmutableEnumMembers>)all).Clear();
+
+        // Assert
+        act.Should().Throw<NotSupportedException>();
+        TestImmutableEnumMembers.GetAll().Should().Equal(
+            [TestImmutableEnumMembers.One, TestImmutableEnumMembers.Two, TestImmutableEnumMembers.Three]);
     }
 
     [Fact]

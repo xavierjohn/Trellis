@@ -1,6 +1,7 @@
 ﻿namespace Trellis;
 
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
@@ -135,7 +136,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>
 #pragma warning restore CA1711
 {
-    private static readonly ConcurrentDictionary<Type, (List<TSelf> Members, Dictionary<string, TSelf> ByName)> s_cache = new();
+    private static readonly ConcurrentDictionary<Type, (ReadOnlyCollection<TSelf> Members, Dictionary<string, TSelf> ByName)> s_cache = new();
 
     /// <summary>
     /// Gets the name of this enum value object member.
@@ -243,12 +244,12 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// <summary>Determines whether two instances are not equal.</summary>
     public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) => !(left == right);
 
-    private static (List<TSelf> Members, Dictionary<string, TSelf> ByName) GetCache() =>
+    private static (ReadOnlyCollection<TSelf> Members, Dictionary<string, TSelf> ByName) GetCache() =>
         s_cache.GetOrAdd(typeof(TSelf), _ =>
         {
             var members = DiscoverMembers().ToList();
             var byName = members.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
-            return (members, byName);
+            return (members.AsReadOnly(), byName);
         });
 
     private static IEnumerable<TSelf> DiscoverMembers()
