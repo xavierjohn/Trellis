@@ -112,6 +112,13 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             value == TimeOnly.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new TimeOnlyVO(value);
     }
 
+    public class TimeSpanVO : ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
+    {
+        private TimeSpanVO(TimeSpan value) : base(value) { }
+        public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
+            value < TimeSpan.Zero ? Error.Validation("Negative", fieldName ?? "field") : new TimeSpanVO(value);
+    }
+
     public class ShortVO : ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
     {
         private ShortVO(short value) : base(value) { }
@@ -124,6 +131,34 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private ByteVO(byte value) : base(value) { }
         public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
             new ByteVO(value);
+    }
+
+    public class SByteVO : ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
+    {
+        private SByteVO(sbyte value) : base(value) { }
+        public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
+            value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new SByteVO(value);
+    }
+
+    public class UShortVO : ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
+    {
+        private UShortVO(ushort value) : base(value) { }
+        public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
+            new UShortVO(value);
+    }
+
+    public class UIntVO : ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
+    {
+        private UIntVO(uint value) : base(value) { }
+        public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
+            new UIntVO(value);
+    }
+
+    public class ULongVO : ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
+    {
+        private ULongVO(ulong value) : base(value) { }
+        public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>
+            new ULongVO(value);
     }
 
     #endregion
@@ -504,6 +539,32 @@ public class ValidatingJsonConverterPrimitiveTypesTests
 
     #endregion
 
+    #region TimeSpan Tests
+
+    [Fact]
+    public void Write_TimeSpan_WritesRoundTripFormat()
+    {
+        var converter = new ValidatingJsonConverter<TimeSpanVO, TimeSpan>();
+        var value = TimeSpan.FromHours(1) + TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(3);
+        var vo = TimeSpanVO.TryCreate(value, null).Value;
+
+        var json = Serialize(vo, converter);
+
+        json.Should().Be("\"01:02:03\"");
+    }
+
+    [Fact]
+    public void RoundTrip_TimeSpan_PreservesValue()
+    {
+        var value = TimeSpan.FromDays(1) + TimeSpan.FromMilliseconds(456);
+        var vo = TimeSpanVO.TryCreate(value, null).Value;
+        var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<TimeSpanVO, TimeSpan>());
+
+        roundTripped!.Value.Should().Be(value);
+    }
+
+    #endregion
+
     #region Short Tests
 
     [Fact]
@@ -548,6 +609,102 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ByteVO, byte>());
 
         roundTripped!.Value.Should().Be((byte)201);
+    }
+
+    #endregion
+
+    #region SByte Tests
+
+    [Fact]
+    public void Write_SByte_WritesNumber()
+    {
+        var converter = new ValidatingJsonConverter<SByteVO, sbyte>();
+        var vo = SByteVO.TryCreate(100, null).Value;
+
+        var json = Serialize(vo, converter);
+
+        json.Should().Be("100");
+    }
+
+    [Fact]
+    public void RoundTrip_SByte_PreservesValue()
+    {
+        var vo = SByteVO.TryCreate(101, null).Value;
+        var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<SByteVO, sbyte>());
+
+        roundTripped!.Value.Should().Be((sbyte)101);
+    }
+
+    #endregion
+
+    #region UShort Tests
+
+    [Fact]
+    public void Write_UShort_WritesNumber()
+    {
+        var converter = new ValidatingJsonConverter<UShortVO, ushort>();
+        var vo = UShortVO.TryCreate(65000, null).Value;
+
+        var json = Serialize(vo, converter);
+
+        json.Should().Be("65000");
+    }
+
+    [Fact]
+    public void RoundTrip_UShort_PreservesValue()
+    {
+        var vo = UShortVO.TryCreate(65001, null).Value;
+        var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<UShortVO, ushort>());
+
+        roundTripped!.Value.Should().Be((ushort)65001);
+    }
+
+    #endregion
+
+    #region UInt Tests
+
+    [Fact]
+    public void Write_UInt_WritesNumber()
+    {
+        var converter = new ValidatingJsonConverter<UIntVO, uint>();
+        var vo = UIntVO.TryCreate(4000000000u, null).Value;
+
+        var json = Serialize(vo, converter);
+
+        json.Should().Be("4000000000");
+    }
+
+    [Fact]
+    public void RoundTrip_UInt_PreservesValue()
+    {
+        var vo = UIntVO.TryCreate(4000000001u, null).Value;
+        var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<UIntVO, uint>());
+
+        roundTripped!.Value.Should().Be(4000000001u);
+    }
+
+    #endregion
+
+    #region ULong Tests
+
+    [Fact]
+    public void Write_ULong_WritesNumber()
+    {
+        var converter = new ValidatingJsonConverter<ULongVO, ulong>();
+        var vo = ULongVO.TryCreate(18446744073709551614ul, null).Value;
+
+        var json = Serialize(vo, converter);
+
+        json.Should().Be("18446744073709551614");
+    }
+
+    [Fact]
+    public void RoundTrip_ULong_PreservesValue()
+    {
+        var vo = ULongVO.TryCreate(18446744073709551615ul, null).Value;
+        var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ULongVO, ulong>());
+
+        roundTripped!.Value.Should().Be(18446744073709551615ul);
     }
 
     #endregion

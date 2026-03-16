@@ -137,6 +137,36 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             new ByteVO(value);
     }
 
+    public sealed class SByteVO : ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
+    {
+        private SByteVO(sbyte value) : base(value) { }
+        public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
+            value < 0
+                ? Error.Validation("Must be non-negative", fieldName ?? "value")
+                : new SByteVO(value);
+    }
+
+    public sealed class UShortVO : ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
+    {
+        private UShortVO(ushort value) : base(value) { }
+        public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
+            new UShortVO(value);
+    }
+
+    public sealed class UIntVO : ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
+    {
+        private UIntVO(uint value) : base(value) { }
+        public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
+            new UIntVO(value);
+    }
+
+    public sealed class ULongVO : ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
+    {
+        private ULongVO(ulong value) : base(value) { }
+        public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>
+            new ULongVO(value);
+    }
+
     public sealed class FloatVO : ScalarValueObject<FloatVO, float>, IScalarValue<FloatVO, float>
     {
         private FloatVO(float value) : base(value) { }
@@ -601,6 +631,118 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         var binder = new ScalarValueModelBinder<ByteVO, byte>();
         var context = CreateBindingContext<ByteVO>("level", "256");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeFalse();
+        context.ModelState.IsValid.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region SByte Tests
+
+    [Fact]
+    public async Task BindModelAsync_SByte_ValidValue_BindsSuccessfully()
+    {
+        var binder = new ScalarValueModelBinder<SByteVO, sbyte>();
+        var context = CreateBindingContext<SByteVO>("delta", "100");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeTrue();
+        ((SByteVO)context.Result.Model!).Value.Should().Be((sbyte)100);
+    }
+
+    [Fact]
+    public async Task BindModelAsync_SByte_Overflow_ReturnsError()
+    {
+        var binder = new ScalarValueModelBinder<SByteVO, sbyte>();
+        var context = CreateBindingContext<SByteVO>("delta", "128");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeFalse();
+        context.ModelState.IsValid.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region UShort Tests
+
+    [Fact]
+    public async Task BindModelAsync_UShort_ValidValue_BindsSuccessfully()
+    {
+        var binder = new ScalarValueModelBinder<UShortVO, ushort>();
+        var context = CreateBindingContext<UShortVO>("count", "65535");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeTrue();
+        ((UShortVO)context.Result.Model!).Value.Should().Be(ushort.MaxValue);
+    }
+
+    [Fact]
+    public async Task BindModelAsync_UShort_Overflow_ReturnsError()
+    {
+        var binder = new ScalarValueModelBinder<UShortVO, ushort>();
+        var context = CreateBindingContext<UShortVO>("count", "65536");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeFalse();
+        context.ModelState.IsValid.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region UInt Tests
+
+    [Fact]
+    public async Task BindModelAsync_UInt_ValidValue_BindsSuccessfully()
+    {
+        var binder = new ScalarValueModelBinder<UIntVO, uint>();
+        var context = CreateBindingContext<UIntVO>("count", "4000000000");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeTrue();
+        ((UIntVO)context.Result.Model!).Value.Should().Be(4000000000u);
+    }
+
+    [Fact]
+    public async Task BindModelAsync_UInt_Overflow_ReturnsError()
+    {
+        var binder = new ScalarValueModelBinder<UIntVO, uint>();
+        var context = CreateBindingContext<UIntVO>("count", "4294967296");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeFalse();
+        context.ModelState.IsValid.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region ULong Tests
+
+    [Fact]
+    public async Task BindModelAsync_ULong_ValidValue_BindsSuccessfully()
+    {
+        var binder = new ScalarValueModelBinder<ULongVO, ulong>();
+        var context = CreateBindingContext<ULongVO>("count", "18446744073709551615");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeTrue();
+        ((ULongVO)context.Result.Model!).Value.Should().Be(ulong.MaxValue);
+    }
+
+    [Fact]
+    public async Task BindModelAsync_ULong_InvalidFormat_ReturnsError()
+    {
+        var binder = new ScalarValueModelBinder<ULongVO, ulong>();
+        var context = CreateBindingContext<ULongVO>("count", "not-a-number");
 
         await binder.BindModelAsync(context);
 
