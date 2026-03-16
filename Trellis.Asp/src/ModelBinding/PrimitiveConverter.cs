@@ -29,6 +29,17 @@ internal static class PrimitiveConverter
             if (underlyingType == typeof(string))
                 return (TPrimitive)(object)value;
 
+            if (underlyingType.IsEnum)
+            {
+                if (Enum.TryParse(underlyingType, value, ignoreCase: true, out var enumValue)
+                    && enumValue is not null
+                    && (Enum.IsDefined(underlyingType, enumValue)
+                        || underlyingType.IsDefined(typeof(FlagsAttribute), inherit: false)))
+                    return (TPrimitive)enumValue;
+
+                return Error.Validation($"'{value}' is not a valid {underlyingType.Name}.");
+            }
+
             if (underlyingType == typeof(Guid))
                 return Guid.TryParse(value, out var guid)
                     ? (TPrimitive)(object)guid

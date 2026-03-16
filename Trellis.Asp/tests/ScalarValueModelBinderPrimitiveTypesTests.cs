@@ -137,6 +137,22 @@ public class ScalarValueModelBinderPrimitiveTypesTests
                 : new FloatVO(value);
     }
 
+    public enum ProcessingMode
+    {
+        Unknown = 0,
+        Fast = 1,
+        Safe = 2,
+    }
+
+    public sealed class ProcessingModeVO : ScalarValueObject<ProcessingModeVO, ProcessingMode>, IScalarValue<ProcessingModeVO, ProcessingMode>
+    {
+        private ProcessingModeVO(ProcessingMode value) : base(value) { }
+        public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
+            value == ProcessingMode.Unknown
+                ? Error.Validation("Mode is required", fieldName ?? "value")
+                : new ProcessingModeVO(value);
+    }
+
     #endregion
 
     #region String Tests
@@ -581,6 +597,18 @@ public class ScalarValueModelBinderPrimitiveTypesTests
 
         context.Result.IsModelSet.Should().BeFalse();
         context.ModelState.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BindModelAsync_Enum_ValidName_BindsSuccessfully()
+    {
+        var binder = new ScalarValueModelBinder<ProcessingModeVO, ProcessingMode>();
+        var context = CreateBindingContext<ProcessingModeVO>("mode", "Safe");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeTrue();
+        ((ProcessingModeVO)context.Result.Model!).Value.Should().Be(ProcessingMode.Safe);
     }
 
     #endregion
