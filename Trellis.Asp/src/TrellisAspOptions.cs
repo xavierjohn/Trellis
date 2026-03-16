@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Asp;
 
+using System.Threading;
 using Microsoft.AspNetCore.Http;
 using Trellis;
 
@@ -50,11 +51,13 @@ using Trellis;
 public sealed class TrellisAspOptions
 {
     private static readonly TrellisAspOptions _defaultOptions = new();
-    private static readonly AsyncLocal<TrellisAspOptions?> _current = new();
+    private static TrellisAspOptions? _current;
 
-    internal static TrellisAspOptions Default => _current.Value ?? _defaultOptions;
+    internal static TrellisAspOptions Default => Volatile.Read(ref _current) ?? _defaultOptions;
 
-    internal static void SetCurrent(TrellisAspOptions options) => _current.Value = options;
+    internal static void SetCurrent(TrellisAspOptions options) => Volatile.Write(ref _current, options);
+
+    internal static void ResetCurrent() => Volatile.Write(ref _current, null);
 
     private readonly Dictionary<Type, int> _errorMappings = new()
     {
