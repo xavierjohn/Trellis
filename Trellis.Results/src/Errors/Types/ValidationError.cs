@@ -291,12 +291,18 @@ public sealed class ValidationError : Error, IEquatable<ValidationError>
     /// </example>
     public IDictionary<string, string[]> ToDictionary()
     {
-        var result = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var fieldError in FieldErrors)
         {
-            result[fieldError.FieldName] = [.. fieldError.Details];
+            if (!result.TryGetValue(fieldError.FieldName, out var details))
+            {
+                details = [];
+                result[fieldError.FieldName] = details;
+            }
+
+            details.AddRange(fieldError.Details);
         }
 
-        return result;
+        return result.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray(), StringComparer.Ordinal);
     }
 }
