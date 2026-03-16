@@ -53,6 +53,23 @@ public class ValidatingJsonConverterEdgeCasesTests
         }
     }
 
+    public enum ProcessingMode
+    {
+        Unknown = 0,
+        Fast = 1,
+        Safe = 2,
+    }
+
+    public sealed class ProcessingModeVO : ScalarValueObject<ProcessingModeVO, ProcessingMode>, IScalarValue<ProcessingModeVO, ProcessingMode>
+    {
+        private ProcessingModeVO(ProcessingMode value) : base(value) { }
+
+        public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
+            value == ProcessingMode.Unknown
+                ? Error.Validation("Processing mode is required.", fieldName ?? "processingMode")
+                : new ProcessingModeVO(value);
+    }
+
     #endregion
 
     #region Null Handling Tests
@@ -225,6 +242,29 @@ public class ValidatingJsonConverterEdgeCasesTests
     #region Non-ValidationError Handling Tests
 
     [Fact]
+    public void Read_EnumStringValue_BindsSuccessfully()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "\"Safe\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Value.Should().Be(ProcessingMode.Safe);
+            ValidationErrorsContext.HasErrors.Should().BeFalse();
+        }
+    }
+
+    [Fact]
     public void Read_NonValidationError_CollectsAsSimpleError()
     {
         // Arrange - Create a value object that returns non-ValidationError
@@ -302,6 +342,31 @@ public class ValidatingJsonConverterEdgeCasesTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void Read_InvalidPrimitiveToken_CollectsValidationError()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<Age, int>();
+        var json = "\"abc\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "Age";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(Age), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            var error = ValidationErrorsContext.GetValidationError();
+            error.Should().NotBeNull();
+            error!.FieldErrors.Should().ContainSingle()
+                .Which.FieldName.Should().Be("Age");
         }
     }
 

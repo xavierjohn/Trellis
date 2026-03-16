@@ -38,21 +38,21 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     {
         if (reader.TokenType == JsonTokenType.Null)
         {
-            var fieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
-            return OnNullToken(fieldName);
+            var nullFieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
+            return OnNullToken(nullFieldName);
         }
 
-        var primitiveValue = JsonSerializer.Deserialize<TPrimitive>(ref reader, options);
+        var fieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
+        if (!TryReadPrimitiveValue(ref reader, options, fieldName, out var primitiveValue))
+            return OnValidationFailure();
 
         if (primitiveValue is null)
         {
-            var fieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
             ValidationErrorsContext.AddError(fieldName, $"Cannot deserialize null to {typeof(TValue).Name}");
             return OnValidationFailure();
         }
 
-        var propertyName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
-        var result = TValue.TryCreate(primitiveValue, propertyName);
+        var result = TValue.TryCreate(primitiveValue, fieldName);
 
         if (result.IsSuccess)
             return WrapSuccess(result.Value);
@@ -61,12 +61,76 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             ValidationErrorsContext.AddError(validationError);
         else
             ValidationErrorsContext.AddError(
-                propertyName,
+                fieldName,
                 string.IsNullOrWhiteSpace(result.Error.Detail)
                     ? $"{typeof(TValue).Name} is invalid."
                     : result.Error.Detail);
 
         return OnValidationFailure();
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JSON deserialization of primitive types is compatible with AOT")]
+    private static bool TryReadPrimitiveValue(
+        ref Utf8JsonReader reader,
+        JsonSerializerOptions options,
+        string fieldName,
+        out TPrimitive? primitiveValue)
+    {
+        if (typeof(TPrimitive).IsEnum && reader.TokenType == JsonTokenType.String)
+        {
+            var rawValue = reader.GetString();
+            if (TryParseEnumValue(rawValue, out primitiveValue))
+                return true;
+
+            ValidationErrorsContext.AddError(fieldName, $"'{rawValue}' is not a valid {typeof(TPrimitive).Name}.");
+            return false;
+        }
+
+        try
+        {
+            primitiveValue = JsonSerializer.Deserialize<TPrimitive>(ref reader, options);
+        }
+        catch (JsonException)
+        {
+            primitiveValue = default;
+            ValidationErrorsContext.AddError(fieldName, $"{typeof(TValue).Name} is invalid.");
+            return false;
+        }
+
+        if (typeof(TPrimitive).IsEnum && primitiveValue is not null && !IsValidEnumValue(primitiveValue))
+        {
+            ValidationErrorsContext.AddError(fieldName, $"'{primitiveValue}' is not a valid {typeof(TPrimitive).Name}.");
+            primitiveValue = default;
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryParseEnumValue(string? rawValue, out TPrimitive? primitiveValue)
+    {
+        primitiveValue = default;
+        if (string.IsNullOrWhiteSpace(rawValue))
+            return false;
+
+        if (!Enum.TryParse(typeof(TPrimitive), rawValue, ignoreCase: true, out var enumValue))
+            return false;
+
+        if (!IsValidEnumValue(enumValue))
+            return false;
+
+        primitiveValue = (TPrimitive)enumValue;
+        return true;
+    }
+
+    private static bool IsValidEnumValue(object enumValue)
+    {
+        if (!typeof(TPrimitive).IsEnum)
+            return true;
+
+        return typeof(TPrimitive).IsDefined(typeof(FlagsAttribute), inherit: false)
+            || Enum.IsDefined(typeof(TPrimitive), enumValue);
     }
 
     /// <summary>

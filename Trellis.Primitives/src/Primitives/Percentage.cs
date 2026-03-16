@@ -132,7 +132,16 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// Success with the Percentage; otherwise Failure with a ValidationError.
     /// </returns>
     public static Result<Percentage> FromFraction(decimal fraction, string? fieldName = null)
-        => TryCreate(fraction * 100m, fieldName);
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(FromFraction));
+
+        var field = fieldName.NormalizeFieldName("fraction");
+
+        if (fraction is < 0m or > 1m)
+            return Result.Failure<Percentage>(Error.Validation("Fraction must be between 0 and 1.", field));
+
+        return TryCreate(fraction * 100m, fieldName);
+    }
 
     /// <summary>
     /// Returns the percentage as a fraction (0.0 to 1.0).

@@ -185,6 +185,24 @@ public class ResourceAuthorizationBehaviorTests
             .WithMessage("*IResourceLoader<ResourceOwnerCommand, TestResource>*");
     }
 
+    [Fact]
+    public async Task Handle_ActorProviderReturnsNull_ThrowsArgumentNullException()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
+            new FakeResourceLoader<ResourceOwnerCommand>(new TestResource("res-1", "owner-1")));
+        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            new NullActorProvider(),
+            services.BuildServiceProvider());
+        var command = new ResourceOwnerCommand("res-1");
+        var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("should not reach"));
+
+        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
     #endregion
 
     #region Helpers
@@ -241,6 +259,11 @@ public class ResourceAuthorizationBehaviorTests
             AuthorizeWasCalled = true;
             return Result.Success();
         }
+    }
+
+    private sealed class NullActorProvider : IActorProvider
+    {
+        public Actor GetCurrentActor() => null!;
     }
 
     private sealed class FakeResourceLoader<TMessage> : IResourceLoader<TMessage, TestResource>

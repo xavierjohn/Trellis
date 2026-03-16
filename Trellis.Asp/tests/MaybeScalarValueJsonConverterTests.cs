@@ -75,6 +75,50 @@ public class MaybeScalarValueJsonConverterTests
         }
     }
 
+    public enum ProcessingMode
+    {
+        Unknown = 0,
+        Fast = 1,
+        Safe = 2,
+    }
+
+    public sealed class ProcessingModeVO : ScalarValueObject<ProcessingModeVO, ProcessingMode>, IScalarValue<ProcessingModeVO, ProcessingMode>
+    {
+        private ProcessingModeVO(ProcessingMode value) : base(value) { }
+
+        public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
+            value == ProcessingMode.Unknown
+                ? Error.Validation("Processing mode is required.", fieldName ?? "processingMode")
+                : new ProcessingModeVO(value);
+    }
+
+    #endregion
+
+    #region Read - Enum Value Object
+
+    [Fact]
+    public void Read_EnumString_ReturnsMaybeWithValue()
+    {
+        // Arrange
+        var converter = new MaybeScalarValueJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "\"Safe\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(Maybe<ProcessingModeVO>), new JsonSerializerOptions());
+
+            // Assert
+            result.HasValue.Should().BeTrue();
+            result.Value.Value.Should().Be(ProcessingMode.Safe);
+            ValidationErrorsContext.HasErrors.Should().BeFalse();
+        }
+    }
+
     #endregion
 
     #region Read — String Value Object
