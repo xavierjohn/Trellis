@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
+using System.IO;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -204,6 +205,27 @@ public class ReadResultMaybeFromJsonTests
         result.Value.HasNoValue.Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.NoContent)]
+    [InlineData(HttpStatusCode.ResetContent)]
+    public async Task NoContent_status_with_empty_content_and_no_length_header_Returns_none(HttpStatusCode statusCode)
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(statusCode)
+        {
+            Content = new EmptyUnknownLengthContent()
+        };
+
+        // Act
+        Result<Maybe<camelcasePerson>> result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
     [Fact]
     public async Task Successful_response_with_failure_handler_Does_not_invoke_callback()
     {
@@ -225,6 +247,17 @@ public class ReadResultMaybeFromJsonTests
         maybePerson.HasValue.Should().BeTrue();
         maybePerson.Value.firstName.Should().Be("Chris");
         maybePerson.Value.age.Should().Be(18);
+    }
+
+    private sealed class EmptyUnknownLengthContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => Task.CompletedTask;
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
     }
 
     [Fact]

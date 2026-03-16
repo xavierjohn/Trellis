@@ -335,7 +335,6 @@ public class ReadResultFromJsonTests
     [InlineData(HttpStatusCode.OK)]
     [InlineData(HttpStatusCode.Created)]
     [InlineData(HttpStatusCode.Accepted)]
-    [InlineData(HttpStatusCode.NoContent)]
     public async Task Should_handle_various_success_status_codes(HttpStatusCode statusCode)
     {
         // Arrange
@@ -353,6 +352,27 @@ public class ReadResultFromJsonTests
         result.IsSuccess.Should().BeTrue();
         result.Value.firstName.Should().Be("Xavier");
         result.Value.age.Should().Be(50);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NoContent)]
+    [InlineData(HttpStatusCode.ResetContent)]
+    public async Task Should_treat_no_content_status_codes_as_missing_value(HttpStatusCode statusCode)
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(statusCode)
+        {
+            Content = JsonContent.Create(new camelcasePerson() { firstName = "Xavier", age = 50 }, SourceGenerationContext.Default.camelcasePerson)
+        };
+
+        // Act
+        var result = await httpResponseMessage.ReadResultFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Detail.Should().Be("HTTP response was null for value camelcasePerson.");
     }
 
     #endregion
