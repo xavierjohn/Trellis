@@ -112,6 +112,20 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             value == TimeOnly.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new TimeOnlyVO(value);
     }
 
+    public class ShortVO : ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
+    {
+        private ShortVO(short value) : base(value) { }
+        public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
+            value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new ShortVO(value);
+    }
+
+    public class ByteVO : ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
+    {
+        private ByteVO(byte value) : base(value) { }
+        public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
+            new ByteVO(value);
+    }
+
     #endregion
 
     #region String Tests
@@ -486,6 +500,54 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         var vo = TimeOnlyVO.TryCreate(time, null).Value;
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<TimeOnlyVO, TimeOnly>());
         roundTripped!.Value.Should().Be(time);
+    }
+
+    #endregion
+
+    #region Short Tests
+
+    [Fact]
+    public void Write_Short_WritesNumber()
+    {
+        var converter = new ValidatingJsonConverter<ShortVO, short>();
+        var vo = ShortVO.TryCreate(123, null).Value;
+
+        var json = Serialize(vo, converter);
+
+        json.Should().Be("123");
+    }
+
+    [Fact]
+    public void RoundTrip_Short_PreservesValue()
+    {
+        var vo = ShortVO.TryCreate(321, null).Value;
+        var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ShortVO, short>());
+
+        roundTripped!.Value.Should().Be((short)321);
+    }
+
+    #endregion
+
+    #region Byte Tests
+
+    [Fact]
+    public void Write_Byte_WritesNumber()
+    {
+        var converter = new ValidatingJsonConverter<ByteVO, byte>();
+        var vo = ByteVO.TryCreate(200, null).Value;
+
+        var json = Serialize(vo, converter);
+
+        json.Should().Be("200");
+    }
+
+    [Fact]
+    public void RoundTrip_Byte_PreservesValue()
+    {
+        var vo = ByteVO.TryCreate(201, null).Value;
+        var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ByteVO, byte>());
+
+        roundTripped!.Value.Should().Be((byte)201);
     }
 
     #endregion
