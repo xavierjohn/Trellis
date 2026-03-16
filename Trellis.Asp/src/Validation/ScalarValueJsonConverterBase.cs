@@ -71,8 +71,6 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     protected static string GetDefaultFieldName()
     {
         var name = typeof(TValue).Name;
-        return name.Length > 0 && char.IsUpper(name[0])
-            ? char.ToLowerInvariant(name[0]) + name.Substring(1)
-            : name;
+        return JsonNamingPolicy.CamelCase.ConvertName(name);
     }
 }

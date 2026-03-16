@@ -39,6 +39,20 @@ public class ValidatingJsonConverterEdgeCasesTests
         }
     }
 
+    public class URL : ScalarValueObject<URL, string>, IScalarValue<URL, string>
+    {
+        private URL(string value) : base(value) { }
+
+        public static Result<URL> TryCreate(string? value, string? fieldName = null)
+        {
+            var field = fieldName ?? "url";
+            if (string.IsNullOrWhiteSpace(value))
+                return Error.Validation("URL is required.", field);
+
+            return new URL(value);
+        }
+    }
+
     #endregion
 
     #region Null Handling Tests
@@ -157,6 +171,29 @@ public class ValidatingJsonConverterEdgeCasesTests
             // Assert
             var error = ValidationErrorsContext.GetValidationError();
             error!.FieldErrors[0].FieldName.Should().Be("email");
+        }
+    }
+
+    [Fact]
+    public void Read_AcronymTypeName_UsesCamelCaseDefaultFieldName()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<URL, string>();
+        var json = "\"\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            // Act
+            var result = converter.Read(ref reader, typeof(URL), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            var error = ValidationErrorsContext.GetValidationError();
+            error.Should().NotBeNull();
+            error!.FieldErrors.Should().ContainSingle()
+                .Which.FieldName.Should().Be("url");
         }
     }
 
