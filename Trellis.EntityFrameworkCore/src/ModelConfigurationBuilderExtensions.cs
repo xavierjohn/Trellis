@@ -44,7 +44,7 @@ public static class ModelConfigurationBuilderExtensions
 
         foreach (var assembly in allAssemblies)
         {
-            foreach (var type in assembly.GetExportedTypes())
+            foreach (var type in GetLoadableTypes(assembly))
             {
                 if (type.IsAbstract)
                     continue;
@@ -71,5 +71,17 @@ public static class ModelConfigurationBuilderExtensions
         configurationBuilder.Conventions.Add(static _ => new MaybeConvention());
 
         return configurationBuilder;
+    }
+
+    private static Type[] GetLoadableTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(type => type is not null).ToArray()!;
+        }
     }
 }
