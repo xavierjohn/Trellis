@@ -31,6 +31,19 @@ public class PropertyNameAwareConverterTests
         }
     }
 
+    public class DomainOnlyEmail : ScalarValueObject<DomainOnlyEmail, string>, IScalarValue<DomainOnlyEmail, string>
+    {
+        private DomainOnlyEmail(string value) : base(value) { }
+
+        public static Result<DomainOnlyEmail> TryCreate(string? value, string? fieldName = null)
+        {
+            if (value == "ok@example.com")
+                return new DomainOnlyEmail(value);
+
+            return Error.Domain(null!, code: "email.domain.invalid", instance: null);
+        }
+    }
+
     public class TestDto
     {
         public Email? Email { get; set; }
@@ -302,6 +315,32 @@ public class PropertyNameAwareConverterTests
             var error = ValidationErrorsContext.GetValidationError();
             error!.FieldErrors.Should().ContainSingle()
                 .Which.FieldName.Should().Be(specialName);
+        }
+    }
+
+    [Fact]
+    public void Read_NonValidationErrorWithoutDetail_UsesFallbackMessage()
+    {
+        // Arrange
+        var innerConverter = new ValidatingJsonConverter<DomainOnlyEmail, string>();
+        var wrapper = new PropertyNameAwareConverter<DomainOnlyEmail>(innerConverter, "Email");
+
+        var json = "\"invalid@example.com\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            // Act
+            var result = wrapper.Read(ref reader, typeof(DomainOnlyEmail), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            var error = ValidationErrorsContext.GetValidationError();
+            error.Should().NotBeNull();
+            error!.FieldErrors.Should().ContainSingle();
+            error.FieldErrors[0].FieldName.Should().Be("Email");
+            error.FieldErrors[0].Details.Should().Equal(["DomainOnlyEmail is invalid."]);
         }
     }
 

@@ -60,7 +60,11 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
         if (result.Error is ValidationError validationError)
             ValidationErrorsContext.AddError(validationError);
         else
-            ValidationErrorsContext.AddError(propertyName, result.Error.Detail);
+            ValidationErrorsContext.AddError(
+                propertyName,
+                string.IsNullOrWhiteSpace(result.Error.Detail)
+                    ? $"{typeof(TValue).Name} is invalid."
+                    : result.Error.Detail);
 
         return OnValidationFailure();
     }
