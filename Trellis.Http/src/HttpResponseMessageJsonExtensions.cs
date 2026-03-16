@@ -434,6 +434,9 @@ public static partial class HttpResponseExtensions
         CancellationToken cancellationToken)
         where TValue : notnull
     {
+        ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(jsonTypeInfo);
+
         if (response.IsSuccessStatusCode == false)
             return Result.Failure<Maybe<TValue>>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
 

@@ -83,6 +83,19 @@ public class ReadResultMaybeFromJsonTests
         await act.Should().ThrowAsync<JsonException>();
     }
 
+    [Fact]
+    public async Task Null_response_Throws_ArgumentNullException()
+    {
+        HttpResponseMessage httpResponseMessage = null!;
+
+        Func<Task> act = async () => await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "response");
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
