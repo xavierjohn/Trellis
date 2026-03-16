@@ -105,6 +105,8 @@ public class PhoneNumberTests
     [InlineData("+14155551234", "1")]
     [InlineData("+442071234567", "44")]
     [InlineData("+33123456789", "33")]
+    [InlineData("+212612345678", "212")]
+    [InlineData("+80012345678", "800")]
     public void GetCountryCode_returns_correct_code(string phone, string expectedCountryCode)
     {
         // Arrange
