@@ -247,7 +247,7 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     /// </para>
     /// </remarks>
     public IReadOnlyList<IDomainEvent> UncommittedEvents()
-        => DomainEvents.AsReadOnly();
+        => Array.AsReadOnly([.. DomainEvents]);
 
     /// <summary>
     /// Marks all changes as committed and clears the list of uncommitted domain events.
