@@ -21,8 +21,8 @@ public static class CombineErrorExtensions
     /// <exception cref="ArgumentNullException"></exception>
     public static Error Combine(this Error? thisError, Error otherError)
     {
-        if (thisError is null) return otherError;
         ArgumentNullException.ThrowIfNull(otherError);
+        if (thisError is null) return otherError;
         if (thisError is ValidationError thisValidation && otherError is ValidationError otherValidation)
             return thisValidation.Merge(otherValidation);
 

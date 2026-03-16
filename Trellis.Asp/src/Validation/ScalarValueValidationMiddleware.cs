@@ -123,7 +123,13 @@ public sealed partial class ScalarValueValidationMiddleware
         // Handle nullable types (e.g., OrderState?)
         var underlyingType = Nullable.GetUnderlyingType(parameterType) ?? parameterType;
 
-        return ScalarValueTypeHelper.IsScalarValue(underlyingType) ? underlyingType : null;
+        if (ScalarValueTypeHelper.IsScalarValue(underlyingType))
+            return underlyingType;
+
+        var maybeInnerType = ScalarValueTypeHelper.GetMaybeInnerType(underlyingType);
+        return maybeInnerType is not null && ScalarValueTypeHelper.IsScalarValue(maybeInnerType)
+            ? maybeInnerType
+            : null;
     }
 
     private static async Task WriteValidationProblemAsync(

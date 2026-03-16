@@ -317,6 +317,7 @@ public class ScalarValueValidationMiddlewareTests
 
     // Helper method signatures used to obtain ParameterInfo via reflection
     private static void ScalarValueParam(OrderCode code) { }
+    private static void MaybeScalarValueParam(Maybe<OrderCode> code) { }
     private static void NonScalarValueParam(int id) { }
     private static void IntOnlyScalarValueParam(IntOnlyScalarValue val) { }
 
@@ -402,6 +403,30 @@ public class ScalarValueValidationMiddlewareTests
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("code")[0].GetString()
             .Should().Contain("ORD-", "nested type names should still resolve the real scalar parameter");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_BindingFailure_ForMaybeScalarValue_Returns400WithRichErrors()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(MaybeScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "Maybe<OrderCode> code" from "INVALID".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("code")[0].GetString()
+            .Should().Contain("ORD-", "Maybe<T> scalar parameters should surface the wrapped scalar validation error");
     }
 
     [Fact]

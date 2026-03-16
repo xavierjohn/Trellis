@@ -395,6 +395,19 @@ public class ErrorCombineAndMergeEdgeCaseTests
     }
 
     [Fact]
+    public void Combine_WithNullCurrentAndNullOther_ThrowsArgumentNullException()
+    {
+        // Arrange
+        Error? error = null;
+
+        // Act
+        Action act = () => error.Combine(null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
     public void AggregateError_SourceListMutation_DoesNotAffectErrors()
     {
         // Arrange

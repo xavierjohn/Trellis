@@ -11,6 +11,40 @@ using Trellis.Testing;
 /// </summary>
 public class TupleTracingTests : TestBase
 {
+    #region 2-Tuple Map Tracing Tests
+
+    [Fact]
+    public void Map_2Tuple_Success_CreatesActivityWithOkStatus()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = Result.Success((T.Value1, K.Value1))
+            .Map((t, k) => $"{t}-{k}");
+
+        // Assert
+        result.Should().BeSuccess();
+        activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public void Map_2Tuple_Failure_CreatesActivityWithErrorStatus()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = Result.Failure<(T, K)>(Error1)
+            .Map((t, k) => $"{t}-{k}");
+
+        // Assert
+        result.Should().BeFailure();
+        activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Error);
+    }
+
+    #endregion
+
     #region 2-Tuple Bind Tracing Tests
 
     [Fact]
