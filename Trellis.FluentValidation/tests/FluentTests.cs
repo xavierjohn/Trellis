@@ -137,6 +137,27 @@ public class FluentTests
     }
 
     [Fact]
+    public void Validate_root_level_failure_uses_caller_parameter_name()
+    {
+        // Arrange
+        var alias = "taken";
+        InlineValidator<string> validator = new()
+        {
+            v => v.RuleFor(x => x)
+                .Must(_ => false)
+                .WithMessage("Alias is already taken.")
+        };
+
+        // Act
+        var result = validator.ValidateToResult(alias);
+
+        // Assert
+        result.Should().BeFailureOfType<ValidationError>()
+            .Which.Should()
+            .HaveFieldErrorWithDetail("alias", "Alias is already taken.");
+    }
+
+    [Fact]
     public void ValidateToResult_WithNullValidator_ThrowsArgumentNullException()
     {
         IValidator<string> validator = null!;
@@ -218,6 +239,27 @@ public class FluentTests
         result.Should().BeFailureOfType<ValidationError>()
             .Which.Should()
             .HaveFieldErrorWithDetail("CustomParam", "Custom error message");
+    }
+
+    [Fact]
+    public async Task ValidateToResultAsync_RootLevelFailure_uses_caller_parameter_name()
+    {
+        // Arrange
+        var requestValue = "taken";
+        var validator = new InlineValidator<string>
+        {
+            v => v.RuleFor(x => x)
+                .MustAsync((_, _) => Task.FromResult(false))
+                .WithMessage("Value is already taken.")
+        };
+
+        // Act
+        var result = await validator.ValidateToResultAsync(requestValue, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().BeFailureOfType<ValidationError>()
+            .Which.Should()
+            .HaveFieldErrorWithDetail("requestValue", "Value is already taken.");
     }
 
     [Fact]
