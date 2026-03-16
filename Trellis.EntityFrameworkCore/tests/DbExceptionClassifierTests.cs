@@ -24,6 +24,20 @@ public class DbExceptionClassifierTests
         result.Should().BeTrue();
     }
 
+    [Fact]
+    public void IsDuplicateKey_SqlitePrimaryKeyConstraint_ReturnsTrue()
+    {
+        // Arrange
+        var inner = new InvalidOperationException("SQLite Error 19: 'PRIMARY KEY constraint failed: Customers.Id'.");
+        var ex = CreateDbUpdateException(inner, "SqliteException");
+
+        // Act
+        var result = DbExceptionClassifier.IsDuplicateKey(ex);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
     #endregion
 
     #region IsDuplicateKey — message-based fallback for "duplicate key"

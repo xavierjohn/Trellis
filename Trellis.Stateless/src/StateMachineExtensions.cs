@@ -74,7 +74,7 @@ public static class StateMachineExtensions
             stateMachine.Fire(trigger);
             return stateMachine.State;
         }
-        catch (InvalidOperationException exception) when (IsInvalidTransition(exception))
+        catch (InvalidOperationException exception) when (IsStatelessInvalidTransition(exception))
         {
             return Error.Domain(
                 exception.Message,
@@ -83,7 +83,11 @@ public static class StateMachineExtensions
         }
     }
 
-    private static bool IsInvalidTransition(InvalidOperationException exception) =>
-        exception.Message.StartsWith("No valid leaving transitions are permitted from state '", StringComparison.Ordinal)
-        || exception.Message.Contains(" is valid for transition from state '", StringComparison.Ordinal);
+    private static bool IsStatelessInvalidTransition(InvalidOperationException exception) =>
+        string.Equals(exception.Source, typeof(StateMachine<,>).Assembly.GetName().Name, StringComparison.Ordinal)
+        && IsInvalidTransitionMessage(exception.Message);
+
+    private static bool IsInvalidTransitionMessage(string message) =>
+        message.StartsWith("No valid leaving transitions are permitted from state '", StringComparison.Ordinal)
+        || message.Contains(" is valid for transition from state '", StringComparison.Ordinal);
 }

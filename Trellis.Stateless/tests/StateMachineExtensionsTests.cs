@@ -245,6 +245,23 @@ public class StateMachineExtensionsTests
         exception.Message.Should().Be("boom");
     }
 
+    [Fact]
+    public void FireResult_EntryActionThrowsMatchingInvalidTransitionMessage_StillPropagatesException()
+    {
+        // Arrange
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.Configure(State.Running)
+            .OnEntry(() => throw new InvalidOperationException(
+                "No valid leaving transitions are permitted from state 'Idle' for trigger 'Start'."));
+
+        // Act
+        var exception = Assert.Throws<InvalidOperationException>(() => machine.FireResult(Trigger.Start));
+
+        // Assert
+        exception.Message.Should().Be("No valid leaving transitions are permitted from state 'Idle' for trigger 'Start'.");
+    }
+
     #endregion
 
     #region String state machine
