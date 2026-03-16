@@ -440,6 +440,10 @@ public static partial class HttpResponseExtensions
         if (response.IsSuccessStatusCode == false)
             return Result.Failure<Maybe<TValue>>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
 
+        if (response.StatusCode == HttpStatusCode.NoContent
+            && (response.Content is null || response.Content.Headers.ContentLength == 0))
+            return Result.Success(Maybe.None<TValue>());
+
         var value = await response
             .Content.ReadFromJsonAsync(jsonTypeInfo, cancellationToken).ConfigureAwait(false);
 
