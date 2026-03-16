@@ -46,6 +46,18 @@ public class MoneyTests
     }
 
     [Fact]
+    public void Cannot_create_Money_with_invalid_currency_uses_custom_field_name()
+    {
+        // Act
+        var result = Money.TryCreate(100.00m, "INVALID", "unitPrice");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("unitPrice");
+    }
+
+    [Fact]
     public void Create_returns_Money_for_valid_input()
     {
         // Act

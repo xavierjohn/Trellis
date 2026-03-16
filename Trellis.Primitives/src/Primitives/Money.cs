@@ -51,7 +51,7 @@ public class Money : ValueObject
         if (amount < 0)
             return Result.Failure<Money>(Error.Validation("Amount cannot be negative.", field));
 
-        return CurrencyCode.TryCreate(currencyCode)
+        return CurrencyCode.TryCreate(currencyCode, fieldName.NormalizeFieldName("currencyCode"))
             .Map(currency => new Money(Math.Round(amount, GetDecimalPlaces(currency), MidpointRounding.AwayFromZero), currency));
     }
 
