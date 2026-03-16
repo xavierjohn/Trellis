@@ -18,7 +18,7 @@ public class FakeRepository<TAggregate, TId>
     /// <summary>
     /// Gets the list of domain events published by saved aggregates.
     /// </summary>
-    public IReadOnlyList<IDomainEvent> PublishedEvents => _publishedEvents.AsReadOnly();
+    public IReadOnlyList<IDomainEvent> PublishedEvents => Array.AsReadOnly([.. _publishedEvents]);
 
     /// <summary>
     /// Gets an aggregate by its ID.
