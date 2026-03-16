@@ -275,6 +275,23 @@ public class FakeRepositoryTests
         all.Select(a => a.Name).Should().Contain(["Test1", "Test2", "Test3"]);
     }
 
+    [Fact]
+    public async Task GetAll_ReturnsSnapshot_NotLiveView()
+    {
+        // Arrange
+        var repository = new FakeRepository<TestAggregate, string>();
+        await repository.SaveAsync(TestAggregate.Create("1", "Test1"), TestContext.Current.CancellationToken);
+        await repository.SaveAsync(TestAggregate.Create("2", "Test2"), TestContext.Current.CancellationToken);
+
+        // Act
+        var all = repository.GetAll().ToList();
+        repository.Clear();
+
+        // Assert
+        all.Should().HaveCount(2);
+        repository.GetAll().Should().BeEmpty();
+    }
+
     #endregion
 
     #region Exists Tests

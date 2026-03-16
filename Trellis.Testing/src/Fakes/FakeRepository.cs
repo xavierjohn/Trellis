@@ -107,7 +107,7 @@ public class FakeRepository<TAggregate, TId>
     /// Gets all stored aggregates.
     /// </summary>
     /// <returns>All aggregates in the repository.</returns>
-    public IEnumerable<TAggregate> GetAll() => _store.Values;
+    public IEnumerable<TAggregate> GetAll() => [.. _store.Values];
 
     /// <summary>
     /// Gets the count of stored aggregates.
