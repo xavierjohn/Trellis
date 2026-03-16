@@ -136,6 +136,17 @@ public class FluentTests
             .HaveFieldErrorWithDetail("Alias", "Hello There");
     }
 
+    [Fact]
+    public void ValidateToResult_WithNullValidator_ThrowsArgumentNullException()
+    {
+        IValidator<string> validator = null!;
+
+        var act = () => validator.ValidateToResult("value");
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "validator");
+    }
+
     #region ValidateToResultAsync Tests
 
     [Fact]

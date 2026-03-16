@@ -178,6 +178,8 @@ public static class FluentValidationResultExtensions
     /// </example>
     public static Result<T> ToResult<T>(this ValidationResult validationResult, T value)
     {
+        ArgumentNullException.ThrowIfNull(validationResult);
+
         if (validationResult.IsValid)
             return Result.Success(value);
 
@@ -277,6 +279,8 @@ public static class FluentValidationResultExtensions
         [CallerArgumentExpression(nameof(value))] string paramName = "value",
         string? message = null)
     {
+        ArgumentNullException.ThrowIfNull(validator);
+
         ValidationResult result = value is null
         ? new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")])
         : validator.Validate(value);
@@ -386,6 +390,8 @@ public static class FluentValidationResultExtensions
         string? message = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(validator);
+
         ValidationResult result = value is null
             ? new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")])
             : await validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false);
