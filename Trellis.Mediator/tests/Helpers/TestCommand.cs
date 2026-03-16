@@ -96,3 +96,22 @@ internal sealed record FullAuthResourceCommand(string ResourceId)
             ? Result.Success()
             : Result.Failure(Error.Forbidden("Cannot modify another user's resource."));
 }
+
+/// <summary>
+/// Command combining static authorization, resource authorization, and validation.
+/// </summary>
+internal sealed record ValidatedFullAuthResourceCommand(string ResourceId, string Payload)
+    : ICommand<Result<string>>, IAuthorize, IAuthorizeResource<TestResource>, IValidate
+{
+    public IReadOnlyList<string> RequiredPermissions => ["Resources.Write"];
+
+    public IResult Authorize(Actor actor, TestResource resource) =>
+        actor.Id == resource.OwnerId || actor.HasPermission("Resources.WriteAny")
+            ? Result.Success()
+            : Result.Failure(Error.Forbidden("Cannot modify another user's resource."));
+
+    public IResult Validate() =>
+        string.IsNullOrWhiteSpace(Payload)
+            ? Result.Failure<string>(Error.Validation("Payload is required.", "Payload"))
+            : Result.Success();
+}

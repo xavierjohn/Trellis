@@ -102,9 +102,11 @@ public static class ServiceCollectionExtensions
         where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage
         where TResponse : IResult, IFailureFactory<TResponse>
     {
-        services.AddScoped<
-            IPipelineBehavior<TMessage, TResponse>,
-            ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>();
+        InsertResourceAuthorizationBehavior(
+            services,
+            ServiceDescriptor.Scoped<
+                IPipelineBehavior<TMessage, TResponse>,
+                ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>());
 
         return services;
     }
@@ -197,10 +199,26 @@ public static class ServiceCollectionExtensions
             // as IPipelineBehavior<TMessage, TResponse>
             var closedBehavior = behaviorDef.MakeGenericType(type, tResource, tResponse);
             var closedPipeline = pipelineDef.MakeGenericType(type, tResponse);
-            services.AddScoped(closedPipeline, closedBehavior);
+            InsertResourceAuthorizationBehavior(
+                services,
+                ServiceDescriptor.Scoped(closedPipeline, closedBehavior));
         }
 
         return services;
+    }
+
+    private static void InsertResourceAuthorizationBehavior(
+        IServiceCollection services,
+        ServiceDescriptor descriptor)
+    {
+        var validationIndex = FindValidationBehaviorIndex(services);
+        if (validationIndex >= 0)
+        {
+            services.Insert(validationIndex, descriptor);
+            return;
+        }
+
+        services.Add(descriptor);
     }
 
     /// <summary>
@@ -250,5 +268,18 @@ public static class ServiceCollectionExtensions
         {
             return ex.Types.Where(t => t is not null).ToArray()!;
         }
+    }
+
+    private static int FindValidationBehaviorIndex(IServiceCollection services)
+    {
+        for (int i = 0; i < services.Count; i++)
+        {
+            var descriptor = services[i];
+            if (descriptor.ServiceType == typeof(IPipelineBehavior<,>)
+                && descriptor.ImplementationType == typeof(ValidationBehavior<,>))
+                return i;
+        }
+
+        return -1;
     }
 }
