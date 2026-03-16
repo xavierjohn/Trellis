@@ -186,6 +186,25 @@ public class ReadResultMaybeFromJsonTests
     }
 
     [Fact]
+    public async Task ResetContent_response_without_body_Returns_none()
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.ResetContent)
+        {
+            Content = null
+        };
+
+        // Act
+        Result<Maybe<camelcasePerson>> result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Successful_response_with_failure_handler_Does_not_invoke_callback()
     {
         // Arrange
