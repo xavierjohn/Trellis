@@ -46,6 +46,17 @@ public class EntraActorProviderTests
     }
 
     [Fact]
+    public void GetCurrentActor_DefaultMapping_SetsIdFromShortOidClaim()
+    {
+        var user = AuthenticatedUser(
+            new Claim("oid", "user-oid-short-123"));
+
+        var actor = CreateProvider(user).GetCurrentActor();
+
+        actor.Id.Should().Be("user-oid-short-123");
+    }
+
+    [Fact]
     public void GetCurrentActor_DefaultMapping_MapsRolesClaimsToPermissions()
     {
         var user = AuthenticatedUser(
