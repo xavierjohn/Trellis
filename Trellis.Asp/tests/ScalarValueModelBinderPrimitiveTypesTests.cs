@@ -103,6 +103,15 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             new TimeOnlyVO(value);
     }
 
+    public sealed class TimeSpanVO : ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
+    {
+        private TimeSpanVO(TimeSpan value) : base(value) { }
+        public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
+            value < TimeSpan.Zero
+                ? Error.Validation("Must be non-negative", fieldName ?? "value")
+                : new TimeSpanVO(value);
+    }
+
     public sealed class DateTimeOffsetVO : ScalarValueObject<DateTimeOffsetVO, DateTimeOffset>, IScalarValue<DateTimeOffsetVO, DateTimeOffset>
     {
         private DateTimeOffsetVO(DateTimeOffset value) : base(value) { }
@@ -478,6 +487,34 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         var binder = new ScalarValueModelBinder<TimeOnlyVO, TimeOnly>();
         var context = CreateBindingContext<TimeOnlyVO>("startTime", "25:00:00");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeFalse();
+        context.ModelState.IsValid.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region TimeSpan Tests
+
+    [Fact]
+    public async Task BindModelAsync_TimeSpan_ValidValue_BindsSuccessfully()
+    {
+        var binder = new ScalarValueModelBinder<TimeSpanVO, TimeSpan>();
+        var context = CreateBindingContext<TimeSpanVO>("duration", "01:30:00");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeTrue();
+        ((TimeSpanVO)context.Result.Model!).Value.Should().Be(TimeSpan.FromMinutes(90));
+    }
+
+    [Fact]
+    public async Task BindModelAsync_TimeSpan_InvalidFormat_ReturnsError()
+    {
+        var binder = new ScalarValueModelBinder<TimeSpanVO, TimeSpan>();
+        var context = CreateBindingContext<TimeSpanVO>("duration", "not-a-timespan");
 
         await binder.BindModelAsync(context);
 
