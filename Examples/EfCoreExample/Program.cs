@@ -218,14 +218,14 @@ Order.TryCreate(customer.Id)
         Console.WriteLine($"      CanModify: {order.State.CanModify}");
         Console.WriteLine($"      CanCancel: {order.State.CanCancel}");
         Console.WriteLine($"      IsTerminal: {order.State.IsTerminal}");
-        Console.WriteLine($"      Allowed transitions: {string.Join(", ", order.State.AllowedTransitions.Select(s => s.Name))}");
+        Console.WriteLine($"      Allowed transitions: {string.Join(", ", order.State.AllowedTransitions)}");
     })
     .Bind(order => order.Confirm())
     .Tap(order =>
     {
         Console.WriteLine($"    ✓ Order confirmed -> '{order.State}'");
         Console.WriteLine($"      CanModify: {order.State.CanModify}");
-        Console.WriteLine($"      Allowed transitions: {string.Join(", ", order.State.AllowedTransitions.Select(s => s.Name))}");
+        Console.WriteLine($"      Allowed transitions: {string.Join(", ", order.State.AllowedTransitions)}");
     })
     .Bind(order => order.Ship())
     .Tap(order =>

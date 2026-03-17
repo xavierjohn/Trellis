@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 /// <summary>
 /// Value converter for <see cref="RequiredEnum{TSelf}"/> value objects.
-/// Stores the enum as its <c>Name</c> (string) in the database
+/// Stores the enum as its <c>Value</c> (string) in the database
 /// and reconstructs it using <c>TryFromName</c>.
 /// </summary>
 /// <typeparam name="TModel">The concrete RequiredEnum type (e.g., <c>OrderStatus</c>).</typeparam>
@@ -25,10 +25,10 @@ public class TrellisEnumConverter<TModel> : ValueConverter<TModel, string>
     private static Expression<Func<TModel, string>> BuildToProviderExpression()
     {
         var param = Expression.Parameter(typeof(TModel), "v");
-        var nameProp = typeof(TModel).GetProperty("Name")
+        var valueProp = typeof(TModel).GetProperty("Value")
             ?? throw new InvalidOperationException(
-                $"{typeof(TModel).Name} must have a Name property.");
-        var body = Expression.Property(param, nameProp);
+                $"{typeof(TModel).Name} must have a Value property.");
+        var body = Expression.Property(param, valueProp);
         return Expression.Lambda<Func<TModel, string>>(body, param);
     }
 

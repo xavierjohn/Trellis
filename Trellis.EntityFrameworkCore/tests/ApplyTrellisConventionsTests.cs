@@ -122,7 +122,7 @@ public class ApplyTrellisConventionsTests : IDisposable
         // Assert
         loaded.Should().NotBeNull();
         loaded!.Status.Should().Be(TestOrderStatus.Confirmed);
-        loaded.Status.Name.Should().Be("Confirmed");
+        loaded.Status.Value.Should().Be("Confirmed");
     }
 
     #endregion

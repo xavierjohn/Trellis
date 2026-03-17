@@ -266,12 +266,6 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     {g.Accessibility.ToCamelCase()} partial class {g.ClassName} : IScalarValue<{g.ClassName}, string>, IParsable<{g.ClassName}>
     {{
         /// <summary>
-        /// Gets the name of this enum member for IScalarValue interface.
-        /// This explicitly implements the interface to avoid conflict with RequiredEnum.Value (int).
-        /// </summary>
-        string IScalarValue<{g.ClassName}, string>.Value => Name;
-
-        /// <summary>
         /// Creates a validated instance from a string by looking up the enum member by name.
         /// Required by IScalarValue interface for model binding and JSON deserialization.
         /// </summary>

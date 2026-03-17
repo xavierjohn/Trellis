@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 /// <summary>
 /// JSON converter for <see cref="RequiredEnum{TSelf}"/> types.
-/// Serializes to the string Name and deserializes from string name.
+/// Serializes to the string value and deserializes from string value.
 /// </summary>
 /// <typeparam name="TRequiredEnum">The enum value object type to convert.</typeparam>
 /// <example>
@@ -43,7 +43,7 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
         if (value is null)
             writer.WriteNullValue();
         else
-            writer.WriteStringValue(value.Name);
+            writer.WriteStringValue(value.Value);
     }
 
     private static TRequiredEnum ReadFromString(ref Utf8JsonReader reader)

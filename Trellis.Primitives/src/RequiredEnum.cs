@@ -24,8 +24,8 @@ using System.Reflection;
 /// Each enum value object member is defined as a static readonly field:
 /// <list type="bullet">
 /// <item>Members are discovered via reflection and cached for performance</item>
-/// <item>The <see cref="Name"/> property is auto-derived from the field name (infrastructure concern)</item>
-/// <item>The <see cref="Value"/> property is auto-generated for persistence (infrastructure concern)</item>
+/// <item>The <see cref="Value"/> property is auto-derived from the field name and is the semantic string value</item>
+/// <item>The <see cref="Ordinal"/> property is auto-generated for persistence when an integer representation is needed</item>
 /// </list>
 /// </para>
 /// <para>
@@ -71,8 +71,8 @@ using System.Reflection;
 /// // - public static bool TryParse(string? s, IFormatProvider? provider, out OrderState result)
 /// // - [JsonConverter(typeof(RequiredEnumJsonConverter<OrderState>))] attribute
 /// 
-/// // Usage - Name is auto-derived from field name
-/// var state = OrderState.Draft;           // Name = "Draft"
+/// // Usage - Value is auto-derived from field name
+/// var state = OrderState.Draft;           // Value = "Draft"
 /// var all = OrderState.GetAll();
 /// var result = OrderState.TryCreate("Draft");  // Result<OrderState>
 /// ]]></code>
@@ -122,7 +122,6 @@ using System.Reflection;
 /// The source generator adds:
 /// <list type="bullet">
 /// <item><c>IScalarValue&lt;TSelf, string&gt;</c> interface declaration</item>
-/// <item>Explicit implementation of <c>string IScalarValue&lt;TSelf, string&gt;.Value =&gt; Name;</c></item>
 /// <item><c>TryCreate(string)</c> and <c>TryCreate(string?, string?)</c> methods (required by IScalarValue)</item>
 /// <item><c>IParsable&lt;TSelf&gt;</c> implementation</item>
 /// <item><c>[JsonConverter]</c> attribute</item>
@@ -139,48 +138,47 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     private static readonly ConcurrentDictionary<Type, (ReadOnlyCollection<TSelf> Members, Dictionary<string, TSelf> ByName)> s_cache = new();
 
     /// <summary>
-    /// Gets the name of this enum value object member.
+    /// Gets the string value of this enum value object member.
     /// Auto-derived from the field name during discovery.
-    /// This is an infrastructure concern for serialization and display.
-    /// </summary>
-    /// <remarks>
-    /// Name is lazily initialized on first access to avoid chicken-and-egg issues
-    /// with static field initialization order.
-    /// </remarks>
-    public string Name => _name ?? InitializeName();
-
-    private string? _name;
-
-    private string InitializeName()
-    {
-        _ = GetCache(); // Populates _name
-        return _name!;
-    }
-
-    /// <summary>
-    /// Gets the auto-generated integer value for persistence.
-    /// This is an infrastructure concern - values are assigned based on declaration order (0, 1, 2, ...).
     /// </summary>
     /// <remarks>
     /// Value is lazily initialized on first access to avoid chicken-and-egg issues
     /// with static field initialization order.
     /// </remarks>
-    public int Value => _value ?? InitializeValue();
+    public string Value => _value ?? InitializeValue();
 
-    private int? _value;
+    private string? _value;
 
-    private int InitializeValue()
+    private string InitializeValue()
     {
         _ = GetCache(); // Populates _value
-        return _value!.Value;
+        return _value!;
     }
 
     /// <summary>
-    /// Initializes a new instance. The Name is auto-derived from the field name.
+    /// Gets the auto-generated integer ordinal for persistence.
+    /// This is an infrastructure concern - values are assigned based on declaration order (0, 1, 2, ...).
+    /// </summary>
+    /// <remarks>
+    /// Ordinal is lazily initialized on first access to avoid chicken-and-egg issues
+    /// with static field initialization order.
+    /// </remarks>
+    public int Ordinal => _ordinal ?? InitializeOrdinal();
+
+    private int? _ordinal;
+
+    private int InitializeOrdinal()
+    {
+        _ = GetCache(); // Populates _ordinal
+        return _ordinal!.Value;
+    }
+
+    /// <summary>
+    /// Initializes a new instance. The value is auto-derived from the field name.
     /// </summary>
     protected RequiredEnum()
     {
-        // Name and Value are set during discovery via reflection
+        // Value and Ordinal are set during discovery via reflection
     }
 
     /// <summary>
@@ -220,10 +218,10 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     public bool IsNot(params TSelf[] values) => !Is(values);
 
     /// <inheritdoc />
-    public override string ToString() => Name;
+    public override string ToString() => Value;
 
     /// <inheritdoc />
-    public override int GetHashCode() => Name.GetHashCode(StringComparison.OrdinalIgnoreCase);
+    public override int GetHashCode() => Value.GetHashCode(StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public override bool Equals(object? obj) => obj is RequiredEnum<TSelf> other && Equals(other);
@@ -234,7 +232,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
 
-        return string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(Value, other.Value, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Determines whether two instances are equal.</summary>
@@ -248,7 +246,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         s_cache.GetOrAdd(typeof(TSelf), _ =>
         {
             var members = DiscoverMembers().ToList();
-            var byName = members.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
+            var byName = members.ToDictionary(m => m.Value, StringComparer.OrdinalIgnoreCase);
             return (members.AsReadOnly(), byName);
         });
 
@@ -261,9 +259,9 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         {
             if (field.FieldType == typeof(TSelf) && field.IsInitOnly && field.GetValue(null) is TSelf member)
             {
-                // Auto-derive Name from field name and assign Value
-                member._name = field.Name;
-                member._value = index++;
+                // Auto-derive Value from field name and assign Ordinal
+                member._value = field.Name;
+                member._ordinal = index++;
                 yield return member;
             }
         }

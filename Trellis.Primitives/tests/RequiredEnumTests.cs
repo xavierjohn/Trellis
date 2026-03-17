@@ -241,12 +241,8 @@ public class RequiredEnumTests
     #region IScalarValue Interface Tests
 
     [Fact]
-    public void ImplementsIScalarValue()
-    {
-        // Assert - verify via explicit interface access
-        IScalarValue<TestOrderState, string> scalarValue = TestOrderState.Draft;
-        scalarValue.Value.Should().Be("Draft");
-    }
+    public void ImplementsIScalarValue() =>
+        ((IScalarValue<TestOrderState, string>)TestOrderState.Draft).Value.Should().Be("Draft");
 
     #endregion
 
@@ -317,22 +313,22 @@ public class RequiredEnumTests
     }
 
     [Fact]
-    public void Name_IsCorrect()
+    public void Value_IsStringName()
     {
         // Assert
-        TestOrderState.Draft.Name.Should().Be("Draft");
-        TestOrderState.Confirmed.Name.Should().Be("Confirmed");
+        TestOrderState.Draft.Value.Should().Be("Draft");
+        TestOrderState.Confirmed.Value.Should().Be("Confirmed");
     }
 
     [Fact]
-    public void Value_IsAssignedInOrder()
+    public void Ordinal_IsAssignedInOrder()
     {
-        // Assert (values are assigned based on declaration order)
-        TestOrderState.Draft.Value.Should().Be(0);
-        TestOrderState.Confirmed.Value.Should().Be(1);
-        TestOrderState.Shipped.Value.Should().Be(2);
-        TestOrderState.Delivered.Value.Should().Be(3);
-        TestOrderState.Cancelled.Value.Should().Be(4);
+        // Assert (ordinals are assigned based on declaration order)
+        TestOrderState.Draft.Ordinal.Should().Be(0);
+        TestOrderState.Confirmed.Ordinal.Should().Be(1);
+        TestOrderState.Shipped.Ordinal.Should().Be(2);
+        TestOrderState.Delivered.Ordinal.Should().Be(3);
+        TestOrderState.Cancelled.Ordinal.Should().Be(4);
     }
 
     [Fact]

@@ -146,9 +146,9 @@ public partial class OrderState : RequiredEnum<OrderState>
     public static readonly OrderState Cancelled = new();
 }
 
-// Members are discovered via reflection, Name and Value are auto-generated
-Console.WriteLine(OrderState.Draft.Name);  // "Draft"
-Console.WriteLine(OrderState.Draft.Value); // 0
+// Members are discovered via reflection, Value and Ordinal are auto-generated
+Console.WriteLine(OrderState.Draft.Value);   // "Draft"
+Console.WriteLine(OrderState.Draft.Ordinal); // 0
 
 // Create from string
 var result = OrderState.TryCreate("Confirmed");

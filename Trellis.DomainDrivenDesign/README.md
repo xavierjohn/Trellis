@@ -106,7 +106,7 @@ public partial class OrderState : RequiredEnum<OrderState>
     public Result<OrderState> TryTransitionTo(OrderState newState) =>
         AllowedTransitions.Contains(newState)
             ? newState
-            : Error.Validation($"Cannot transition from '{Name}' to '{newState.Name}'");
+            : Error.Validation($"Cannot transition from '{this}' to '{newState}'");
 }
 
 // Usage
@@ -258,7 +258,7 @@ if (order.IsSuccess)
 ### RequiredEnum<T>
 - Type-safe enumeration with behavior (moved to Trellis.Primitives)
 - Prevents invalid values (unlike C# enums)
-- Name-only constructor (Value auto-generated for persistence)
+- Value-only declaration (Ordinal auto-generated for persistence)
 - Supports state machine patterns
 - Source-generated JSON serialization and ASP.NET Core model binding
 - `Is()` and `IsNot()` helper methods

@@ -20,8 +20,8 @@ public class OrdersController : ControllerBase
         {
             states = OrderState.GetAll().Select(s => new
             {
-                name = s.Name,
                 value = s.Value,
+                ordinal = s.Ordinal,
                 canModify = s.CanModify,
                 canCancel = s.CanCancel
             })
@@ -34,11 +34,11 @@ public class OrdersController : ControllerBase
     public ActionResult GetStateByName(OrderState state) =>
         Ok(new
         {
-            name = state.Name,
             value = state.Value,
+            ordinal = state.Ordinal,
             canModify = state.CanModify,
             canCancel = state.CanCancel,
-            message = $"Successfully bound OrderState '{state.Name}' from route!"
+            message = $"Successfully bound OrderState '{state}' from route!"
         });
 
     /// <summary>
@@ -48,7 +48,7 @@ public class OrdersController : ControllerBase
     public ActionResult UpdateOrder([FromBody] UpdateOrderDto dto) =>
         Ok(new
         {
-            newState = dto.State.Name,
+            newState = dto.State.Value,
             canModify = dto.State.CanModify,
             canCancel = dto.State.CanCancel,
             assignedTo = dto.AssignedTo.Match(name => name.Value, () => (string?)null),
@@ -57,7 +57,7 @@ public class OrdersController : ControllerBase
         });
 
     /// <summary>
-    /// Create order (tests multiple value objects including RequiredEnum).
+    /// Create order (tests JSON body validation with RequiredEnum).
     /// </summary>
     [HttpPost("create")]
     public ActionResult CreateOrder([FromBody] CreateOrderDto dto) =>
@@ -71,7 +71,8 @@ public class OrdersController : ControllerBase
             },
             state = new
             {
-                name = dto.InitialState.Name,
+                value = dto.InitialState.Value,
+                ordinal = dto.InitialState.Ordinal,
                 canModify = dto.InitialState.CanModify,
                 canCancel = dto.InitialState.CanCancel
             },
@@ -87,8 +88,8 @@ public class OrdersController : ControllerBase
             ? Ok(new { message = "No state filter provided" })
             : Ok(new
             {
-                filterState = state.Name,
+                filterState = state.Value,
                 canModify = state.CanModify,
-                message = $"Filtering orders by state: {state.Name}"
+                message = $"Filtering orders by state: {state}"
             });
 }

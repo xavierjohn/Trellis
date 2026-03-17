@@ -728,8 +728,8 @@ Inherits `ScalarValueObject<TSelf, decimal>`. Same pattern as RequiredInt with `
 **NOT a ScalarValueObject** — standalone hierarchy. Smart enum pattern.
 
 ```csharp
-string Name { get; }      // auto-derived from field name
-int Value { get; }         // auto-assigned (0, 1, 2...)
+string Value { get; }      // auto-derived from field name
+int Ordinal { get; }       // auto-assigned (0, 1, 2...)
 
 static IReadOnlyCollection<TSelf> GetAll()
 static Result<TSelf> TryFromName(string? name, string? fieldName = null)  // case-insensitive

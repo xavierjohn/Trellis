@@ -119,6 +119,34 @@ public class ScalarValueJsonConverterGeneratorTests
     }
 
     /// <summary>
+    /// RequiredEnum derivatives must serialize using the string Value.
+    /// </summary>
+    [Fact]
+    public void RequiredEnum_Derivative_Writes_String_Value()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderState : RequiredEnum<OrderState>
+            {
+                public static readonly OrderState Draft = new();
+                public static readonly OrderState Confirmed = new();
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+
+        generatedSources.Should().Contain(source =>
+            source.Contains("OrderStateJsonConverter")
+            && source.Contains("writer.WriteStringValue(value.Value);"),
+            "RequiredEnum JSON converters must emit the string Value");
+    }
+
+    /// <summary>
     /// Value objects with the same simple name in different namespaces must not collide in generated converter names.
     /// </summary>
     [Fact]

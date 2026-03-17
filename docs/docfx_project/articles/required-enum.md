@@ -27,16 +27,16 @@ public partial class OrderState : RequiredEnum<OrderState>
     private OrderState() { }
 }
 
-// Cannot create invalid values - Name is auto-derived from field name
+// Cannot create invalid values - Value is auto-derived from field name
 var result = OrderState.TryCreate("Invalid");  // Returns Result.Failure with "Valid values: Draft, Confirmed, Shipped"
-var state = OrderState.Draft;  // state.Name == "Draft"
+var state = OrderState.Draft;  // state.Value == "Draft"
 ```
 
 ## Basic Usage
 
 ### Defining a RequiredEnum
 
-Use `partial` to enable source generation. The Name is automatically derived from the field name — pure domain, no strings needed:
+Use `partial` to enable source generation. The Value is automatically derived from the field name — pure domain, no strings needed:
 
 ```csharp
 using Trellis;
@@ -44,7 +44,7 @@ using Trellis.Primitives;
 
 public partial class PaymentMethod : RequiredEnum<PaymentMethod>
 {
-    // Name auto-derived: "CreditCard", "DebitCard", etc.
+    // Value auto-derived: "CreditCard", "DebitCard", etc.
     public static readonly PaymentMethod CreditCard = new();
     public static readonly PaymentMethod DebitCard = new();
     public static readonly PaymentMethod BankTransfer = new();
@@ -60,7 +60,7 @@ public partial class PaymentMethod : RequiredEnum<PaymentMethod>
 // From name (case-insensitive, returns Result<T>)
 var result = PaymentMethod.TryCreate("creditcard");
 if (result.IsSuccess)
-    Console.WriteLine(result.Value.Name);  // "CreditCard"
+    Console.WriteLine(result.Value.Value);  // "CreditCard"
 
 // Direct access when known valid
 var method = PaymentMethod.Create("CreditCard");  // Throws if invalid
@@ -74,7 +74,7 @@ if (payment.IsNot(PaymentMethod.Crypto))
 
 // Enumerate all values
 foreach (var m in PaymentMethod.GetAll())
-    Console.WriteLine($"{m.Value}: {m.Name}");
+    Console.WriteLine($"{m.Ordinal}: {m.Value}");
 ```
 
 ## Adding Behavior
@@ -84,7 +84,7 @@ RequiredEnum types can have properties and methods:
 ```csharp
 public partial class OrderState : RequiredEnum<OrderState>
 {
-    // Name auto-derived from field name
+    // Value auto-derived from field name
     public static readonly OrderState Draft = new(canModify: true, canCancel: true, isTerminal: false);
     public static readonly OrderState Confirmed = new(canModify: false, canCancel: true, isTerminal: false);
     public static readonly OrderState Shipped = new(canModify: false, canCancel: false, isTerminal: false);
@@ -137,8 +137,8 @@ public partial class OrderState : RequiredEnum<OrderState>
             return newState;
 
         return Error.Validation(
-            $"Cannot transition from '{Name}' to '{newState.Name}'. " +
-            $"Allowed: {string.Join(", ", AllowedTransitions.Select(s => s.Name))}");
+            $"Cannot transition from '{this}' to '{newState}'. " +
+            $"Allowed: {string.Join(", ", AllowedTransitions)}");
     }
 }
 ```
@@ -154,7 +154,7 @@ public partial class OrderState : RequiredEnum<OrderState>
     // ...
 }
 
-// Serializes to: "Confirmed" (the Name)
+// Serializes to: "Confirmed" (the Value)
 var json = JsonSerializer.Serialize(OrderState.Confirmed);
 
 // Deserializes from string (case-insensitive)
@@ -169,7 +169,7 @@ Store RequiredEnum types using the auto-generated Value property:
 // In DbContext.OnModelCreating
 modelBuilder.Entity<Order>(builder =>
 {
-    // Store as int using auto-generated Value (0, 1, 2, ...)
+    // Store as string using the auto-generated Value ("Draft", "Confirmed", ...)
     builder.Property(o => o.State)
         .HasConversion(
             state => state.Value,
@@ -178,9 +178,8 @@ modelBuilder.Entity<Order>(builder =>
 });
 ```
 
-**Note:** The Value is assigned based on field declaration order (0, 1, 2, ...). 
-If you reorder fields, database values will change. For existing databases, 
-use explicit mapping instead.
+**Note:** `Ordinal` is assigned based on field declaration order (0, 1, 2, ...).
+If you persist ordinals yourself instead of `Value`, reordering fields will change stored values.
 
 ## ASP.NET Core Integration
 
@@ -197,8 +196,8 @@ Because the source generator adds `IScalarValue<TSelf, string>`, RequiredEnum ty
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Name` | `string` | Auto-derived from field name |
-| `Value` | `int` | Auto-generated based on declaration order (0, 1, 2, ...) |
+| `Value` | `string` | Auto-derived from field name |
+| `Ordinal` | `int` | Auto-generated based on declaration order (0, 1, 2, ...) |
 
 ### Static Methods
 
@@ -224,7 +223,7 @@ Because the source generator adds `IScalarValue<TSelf, string>`, RequiredEnum ty
 
 1. **Use private constructor** - Prevent external instantiation
 2. **Define members as static readonly** - Ensures single instances
-3. **No strings in domain** - Name is auto-derived from field name
+3. **No strings in domain** - Value is auto-derived from field name
 4. **Add behavior for domain logic** - Encapsulate rules in the enum
 5. **Use TryCreate** - For user input validation
 6. **Use Create** - For known-valid values (tests, constants)

@@ -114,6 +114,9 @@ public partial class OrderState : RequiredEnum<OrderState>
 
 var result = OrderState.TryCreate("Confirmed");
 // result.Value == OrderState.Confirmed
+
+Console.WriteLine(OrderState.Confirmed.Value);   // "Confirmed"
+Console.WriteLine(OrderState.Confirmed.Ordinal); // 1
 ```
 
 ## ASP.NET Core Integration
