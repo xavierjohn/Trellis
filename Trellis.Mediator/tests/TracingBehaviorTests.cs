@@ -135,10 +135,11 @@ public class TracingBehaviorTests : IDisposable
         _activities.Should().ContainSingle();
         _activities[0].Status.Should().Be(ActivityStatusCode.Error,
             "unhandled exceptions should set activity status to Error");
+        _activities[0].GetTagItem("error.type").Should().Be("InvalidOperationException");
     }
 
     [Fact]
-    public async Task Handle_HandlerThrows_PreservesExceptionMessageInActivityStatus()
+    public async Task Handle_HandlerThrows_DoesNotLeakExceptionMessageInActivityStatus()
     {
         var behavior = new TracingBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("Alice");
@@ -150,7 +151,9 @@ public class TracingBehaviorTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>();
         _activities.Should().ContainSingle();
         _activities[0].Status.Should().Be(ActivityStatusCode.Error);
-        _activities[0].StatusDescription.Should().Be("Connection string: Server=prod-db;Password=s3cret");
+        _activities[0].StatusDescription.Should().BeNullOrEmpty(
+            "exception messages may contain secrets and must not be copied into telemetry status descriptions");
+        _activities[0].GetTagItem("error.type").Should().Be("InvalidOperationException");
     }
 
     #endregion
