@@ -66,9 +66,9 @@ public class Order : Aggregate<OrderId>
 
 ## How It Works
 
-- Uses Stateless's `CanFire()` to check before firing — **no try/catch internally**
+- Calls Stateless's `Fire()` directly and wraps known invalid-transition `InvalidOperationException`s in a `DomainError`
 - Returns `Result<TState>` with the new state on success
-- Returns a `DomainError` on invalid transitions
+- Preserves exceptions from user entry, exit, or transition actions instead of swallowing them
 - Inherits Stateless thread-safety constraints — do not call `FireResult(...)` concurrently on the same machine instance without external synchronization
 
 ## Related Packages

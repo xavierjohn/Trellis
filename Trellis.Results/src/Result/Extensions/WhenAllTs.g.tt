@@ -131,7 +131,8 @@ public static partial class WhenAllExtensionsAsync
        }
        catch (Exception ex)
        {
-           activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+           activity?.SetStatus(ActivityStatusCode.Error);
+           activity?.SetTag("error.type", ex.GetType().Name);
            throw;
        }
 
@@ -199,7 +200,8 @@ public static partial class WhenAllExtensionsAsync
         }
         catch (Exception ex)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            activity?.SetTag("error.type", ex.GetType().Name);
             throw;
         }
 

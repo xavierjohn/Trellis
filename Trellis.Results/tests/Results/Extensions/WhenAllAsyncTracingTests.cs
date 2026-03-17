@@ -79,6 +79,27 @@ public class WhenAllAsyncTracingTests : TestBase
         activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
     }
 
+    [Fact]
+    public async Task WhenAllAsync_2Tuple_FaultedTask_DoesNotRecordExceptionMessageInStatusDescription()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+        const string sensitiveMessage = "password=hunter2";
+        var task1 = Task.FromException<Result<int>>(new InvalidOperationException(sensitiveMessage));
+        var task2 = Task.FromResult(Result.Success(2));
+
+        // Act
+        var act = () => (task1, task2).WhenAllAsync();
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        var activity = activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
+        activity.StatusDescription.Should().BeNullOrEmpty();
+        activity.Tags.Should().Contain(tag => tag.Key == "error.type" && tag.Value == nameof(InvalidOperationException));
+        activity.StatusDescription.Should().NotContain(sensitiveMessage);
+    }
+
     #endregion
 
     #region Chaining Tests
