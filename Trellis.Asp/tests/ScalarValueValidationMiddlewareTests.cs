@@ -466,6 +466,26 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_BindingFailure_MessageContainsSubstringButDoesNotMatchFormat_Rethrows()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("Proxy error: Failed to bind parameter happened upstream before request processing.", 400));
+
+        // Act
+        var act = async () => await middleware.InvokeAsync(context);
+
+        // Assert
+        await act.Should().ThrowAsync<BadHttpRequestException>();
+    }
+
+    [Fact]
     public async Task InvokeAsync_ReadParameterFailure_Returns400WithErrorDetails()
     {
         // Arrange
@@ -532,6 +552,22 @@ public class ScalarValueValidationMiddlewareTests
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
             .Should().Contain("invalid JSON");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ReadFailure_MessageContainsSubstringButDoesNotMatchFormat_Rethrows()
+    {
+        // Arrange
+        var context = CreateHttpContextWithServices();
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("Gateway failure: Failed to read parameter after the request body was already rejected.", 400));
+
+        // Act
+        var act = async () => await middleware.InvokeAsync(context);
+
+        // Assert
+        await act.Should().ThrowAsync<BadHttpRequestException>();
     }
 
     [Fact]

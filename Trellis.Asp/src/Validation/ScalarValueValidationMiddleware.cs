@@ -44,6 +44,9 @@ public sealed partial class ScalarValueValidationMiddleware
     [GeneratedRegex("""^Failed to bind parameter "(.+?)\s+([^"\s]+)" from "(.*)".$""", RegexOptions.Compiled)]
     private static partial Regex ParameterBindingFailedRegex();
 
+    [GeneratedRegex("""^Failed to read parameter ".+" from the request body as JSON\.$""", RegexOptions.Compiled)]
+    private static partial Regex ParameterReadFailedRegex();
+
     /// <summary>
     /// Creates a new instance of <see cref="ScalarValueValidationMiddleware"/>.
     /// </summary>
@@ -65,8 +68,9 @@ public sealed partial class ScalarValueValidationMiddleware
             }
             catch (BadHttpRequestException ex) when (IsParameterBindingFailureMessage(ex.Message))
             {
-                // Parse the exception message to extract parameter info
-                var (parameterName, typeName, invalidValue) = ParseBindingFailureMessage(ex.Message);
+                // Only handle the known ASP.NET Core binding failure format.
+                if (!TryParseBindingFailureMessage(ex.Message, out var parameterName, out var typeName, out var invalidValue))
+                    throw;
 
                 // Only handle binding failures for IScalarValue types
                 var scalarValueType = GetScalarValueParameterType(context, parameterName);
@@ -93,10 +97,10 @@ public sealed partial class ScalarValueValidationMiddleware
     }
 
     private static bool IsParameterBindingFailureMessage(string message) =>
-        message.Contains("Failed to bind parameter", StringComparison.Ordinal);
+        ParameterBindingFailedRegex().IsMatch(message);
 
     private static bool IsParameterReadFailureMessage(string message) =>
-        message.Contains("Failed to read parameter", StringComparison.Ordinal);
+        ParameterReadFailedRegex().IsMatch(message);
 
     [UnconditionalSuppressMessage("AOT", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]
@@ -171,19 +175,25 @@ public sealed partial class ScalarValueValidationMiddleware
         };
     }
 
-    private static (string ParameterName, string TypeName, string InvalidValue) ParseBindingFailureMessage(string message)
+    private static bool TryParseBindingFailureMessage(
+        string message,
+        out string parameterName,
+        out string typeName,
+        out string invalidValue)
     {
         // Try to parse: Failed to bind parameter "TypeName paramName" from "value".
         var match = ParameterBindingFailedRegex().Match(message);
         if (match.Success)
         {
-            var typeName = match.Groups[1].Value;
-            var paramName = match.Groups[2].Value;
-            var invalidValue = match.Groups[3].Value;
-            return (paramName, typeName, invalidValue);
+            typeName = match.Groups[1].Value;
+            parameterName = match.Groups[2].Value;
+            invalidValue = match.Groups[3].Value;
+            return true;
         }
 
-        // Fallback if regex doesn't match
-        return ("parameter", "value", string.Empty);
+        parameterName = string.Empty;
+        typeName = string.Empty;
+        invalidValue = string.Empty;
+        return false;
     }
 }
