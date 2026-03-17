@@ -178,6 +178,9 @@ public static class ResultDebugExtensions
                 var stackTrace = new StackTrace(true);
                 var frames = stackTrace.GetFrames();
 
+                if (frames is null)
+                    return result;
+
                 // Capture up to 10 stack frames
                 for (int i = 0; i < Math.Min(frames.Length, 10); i++)
                 {
@@ -223,6 +226,8 @@ public static class ResultDebugExtensions
     /// </example>
     public static Result<TValue> DebugOnSuccess<TValue>(this Result<TValue> result, Action<TValue> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
 #if DEBUG
         if (result.IsSuccess)
         {
@@ -261,6 +266,8 @@ public static class ResultDebugExtensions
     /// </example>
     public static Result<TValue> DebugOnFailure<TValue>(this Result<TValue> result, Action<Error> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
 #if DEBUG
         if (result.IsFailure)
         {
@@ -292,6 +299,8 @@ public static class ResultDebugExtensionsAsync
     /// </summary>
     public static async Task<Result<TValue>> DebugAsync<TValue>(this Task<Result<TValue>> resultTask, string message = "")
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
         return result.Debug(message);
@@ -306,6 +315,8 @@ public static class ResultDebugExtensionsAsync
     /// </summary>
     public static async Task<Result<TValue>> DebugDetailedAsync<TValue>(this Task<Result<TValue>> resultTask, string message = "")
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
         return result.DebugDetailed(message);
@@ -320,6 +331,8 @@ public static class ResultDebugExtensionsAsync
     /// </summary>
     public static async Task<Result<TValue>> DebugWithStackAsync<TValue>(this Task<Result<TValue>> resultTask, string message = "", bool includeStackTrace = true)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
         return result.DebugWithStack(message, includeStackTrace);
@@ -334,6 +347,9 @@ public static class ResultDebugExtensionsAsync
     /// </summary>
     public static async Task<Result<TValue>> DebugOnSuccessAsync<TValue>(this Task<Result<TValue>> resultTask, Action<TValue> action)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(action);
+
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
         return result.DebugOnSuccess(action);
@@ -348,6 +364,9 @@ public static class ResultDebugExtensionsAsync
     /// </summary>
     public static async Task<Result<TValue>> DebugOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Action<Error> action)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(action);
+
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
         return result.DebugOnFailure(action);
@@ -362,6 +381,9 @@ public static class ResultDebugExtensionsAsync
     /// </summary>
     public static async Task<Result<TValue>> DebugOnSuccessAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task> action)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(action);
+
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
         if (result.IsSuccess)
@@ -385,6 +407,9 @@ public static class ResultDebugExtensionsAsync
     /// </summary>
     public static async Task<Result<TValue>> DebugOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<Error, Task> action)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(action);
+
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
         if (result.IsFailure)

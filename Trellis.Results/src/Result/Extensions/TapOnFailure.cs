@@ -39,6 +39,8 @@ public static partial class TapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static Result<TValue> TapOnFailure<TValue>(this Result<TValue> result, Action action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
             action();
@@ -61,6 +63,8 @@ public static partial class TapOnFailureExtensions
     [RailwayTrack(TrackBehavior.Failure)]
     public static Result<TValue> TapOnFailure<TValue>(this Result<TValue> result, Action<Error> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
             action(result.Error);
@@ -95,6 +99,9 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<TValue>> TapOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Action<Error> action)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(action);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return result.TapOnFailure(action);
     }
@@ -109,6 +116,9 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<TValue>> TapOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Action action)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(action);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return result.TapOnFailure(action);
     }
@@ -123,6 +133,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<TValue>> TapOnFailureAsync<TValue>(this Result<TValue> result, Func<Task> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
             await func().ConfigureAwait(false);
@@ -141,6 +153,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<TValue>> TapOnFailureAsync<TValue>(this Result<TValue> result, Func<Error, Task> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
             await func(result.Error).ConfigureAwait(false);
@@ -159,6 +173,9 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<TValue>> TapOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<Task> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return await result.TapOnFailureAsync(func).ConfigureAwait(false);
     }
@@ -173,6 +190,9 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async Task<Result<TValue>> TapOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<Error, Task> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return await result.TapOnFailureAsync(func).ConfigureAwait(false);
     }
@@ -187,6 +207,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<TValue>> TapOnFailureAsync<TValue>(this ValueTask<Result<TValue>> resultTask, Action action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return result.TapOnFailure(action);
     }
@@ -201,6 +223,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<TValue>> TapOnFailureAsync<TValue>(this ValueTask<Result<TValue>> resultTask, Action<Error> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return result.TapOnFailure(action);
     }
@@ -215,6 +239,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<TValue>> TapOnFailureAsync<TValue>(this Result<TValue> result, Func<ValueTask> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
             await func().ConfigureAwait(false);
@@ -233,6 +259,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<TValue>> TapOnFailureAsync<TValue>(this Result<TValue> result, Func<Error, ValueTask> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
             await func(result.Error).ConfigureAwait(false);
@@ -251,6 +279,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<TValue>> TapOnFailureAsync<TValue>(this ValueTask<Result<TValue>> resultTask, Func<ValueTask> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return await result.TapOnFailureAsync(func).ConfigureAwait(false);
     }
@@ -265,6 +295,8 @@ public static partial class TapOnFailureExtensionsAsync
     [RailwayTrack(TrackBehavior.Failure)]
     public static async ValueTask<Result<TValue>> TapOnFailureAsync<TValue>(this ValueTask<Result<TValue>> resultTask, Func<Error, ValueTask> func)
     {
+        ArgumentNullException.ThrowIfNull(func);
+
         Result<TValue> result = await resultTask.ConfigureAwait(false);
         return await result.TapOnFailureAsync(func).ConfigureAwait(false);
     }

@@ -115,32 +115,24 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
             _ => null
         };
 
-    private static bool IsAccessOnParameter(MemberAccessExpressionSyntax memberAccess, string parameterName)
-    {
-        // Check if the expression is directly the parameter or parameter.Property
-        var expression = memberAccess.Expression;
+    private static bool IsAccessOnParameter(MemberAccessExpressionSyntax memberAccess, string parameterName) =>
+        DependsOnParameter(memberAccess.Expression, parameterName);
 
-        // Direct access: x.Value where x is Result/Maybe
-        if (expression is IdentifierNameSyntax identifier)
-            return identifier.Identifier.Text == parameterName;
-
-        // Nested access: x.SomeProperty.Value where x is Result<ComplexType>/Maybe<ComplexType>
-        // We need to trace back to the parameter
-        if (expression is MemberAccessExpressionSyntax nestedAccess)
-        {
-            var root = GetRootIdentifier(nestedAccess);
-            return root?.Identifier.Text == parameterName;
-        }
-
-        return false;
-    }
-
-    private static IdentifierNameSyntax? GetRootIdentifier(ExpressionSyntax expression) =>
+    private static bool DependsOnParameter(ExpressionSyntax expression, string parameterName) =>
         expression switch
         {
-            IdentifierNameSyntax identifier => identifier,
-            MemberAccessExpressionSyntax memberAccess => GetRootIdentifier(memberAccess.Expression),
-            _ => null
+            IdentifierNameSyntax identifier => identifier.Identifier.Text == parameterName,
+            MemberAccessExpressionSyntax memberAccess => DependsOnParameter(memberAccess.Expression, parameterName),
+            InvocationExpressionSyntax invocation =>
+                DependsOnParameter(invocation.Expression, parameterName) ||
+                invocation.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
+            ElementAccessExpressionSyntax elementAccess =>
+                DependsOnParameter(elementAccess.Expression, parameterName) ||
+                elementAccess.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
+            CastExpressionSyntax cast => DependsOnParameter(cast.Expression, parameterName),
+            ParenthesizedExpressionSyntax parenthesized => DependsOnParameter(parenthesized.Expression, parameterName),
+            ConditionalAccessExpressionSyntax conditionalAccess => DependsOnParameter(conditionalAccess.Expression, parameterName),
+            _ => false
         };
 
     private static bool HasPriorFilterClause(

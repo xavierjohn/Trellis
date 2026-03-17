@@ -88,6 +88,27 @@ public class UseMatchErrorAnalyzerTests
     }
 
     [Fact]
+    public async Task IsPatternOnErrorTypeWithoutCapture_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public bool TestMethod(Result<int> result)
+                {
+                    return result.Error is ValidationError;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UseMatchErrorAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseMatchErrorForDiscrimination)
+                .WithLocation(11, 16));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task UsingMatchError_NoDiagnostic()
     {
         const string source = """

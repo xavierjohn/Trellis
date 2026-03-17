@@ -146,9 +146,9 @@ public partial class OrderState : RequiredEnum<OrderState>
     public static readonly OrderState Cancelled = new();
 }
 
-// Members are discovered via reflection, Name and Value are auto-generated
-Console.WriteLine(OrderState.Draft.Name);  // "Draft"
-Console.WriteLine(OrderState.Draft.Value); // 0
+// Members are discovered via reflection, Value and Ordinal are auto-generated
+Console.WriteLine(OrderState.Draft.Value);   // "Draft"
+Console.WriteLine(OrderState.Draft.Ordinal); // 0
 
 // Create from string
 var result = OrderState.TryCreate("Confirmed");
@@ -427,7 +427,7 @@ Primitive value objects wrap single primitive types (`string`, `Guid`, etc.) to 
 - Validation with descriptive error messages
 - Property name inference for error messages (class name converted to camelCase)
 - JSON serialization via `ParsableJsonConverter<T>`
-- OpenTelemetry activity tracing support
+- OpenTelemetry activity tracing support, typically a better day-to-day diagnostic signal than full ROP tracing because it emits spans at value creation and validation boundaries
 
 ## Best Practices
 

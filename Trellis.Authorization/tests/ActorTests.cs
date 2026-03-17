@@ -41,6 +41,18 @@ public class ActorTests
         fromFactory.Attributes.Should().BeEmpty();
     }
 
+    [Fact]
+    public void Create_MutatingSourcePermissionsAfterConstruction_DoesNotChangeActor()
+    {
+        var permissions = new HashSet<string> { "Orders.Read" };
+        var actor = Actor.Create("user-1", permissions);
+
+        permissions.Add("Admin.Write");
+
+        actor.HasPermission("Orders.Read").Should().BeTrue();
+        actor.HasPermission("Admin.Write").Should().BeFalse("Actor should snapshot permissions at construction time");
+    }
+
     #endregion
 
     #region PermissionScopeSeparator constant
@@ -338,6 +350,19 @@ public class ActorTests
         actor.HasPermission("Document.Edit", "Tenant_B").Should().BeTrue("not denied");
         actor.HasAttribute(ActorAttributes.IpAddress).Should().BeTrue();
         actor.GetAttribute(ActorAttributes.MfaAuthenticated).Should().Be("true");
+    }
+
+    [Fact]
+    public void Constructor_MutatingSourceAttributesAfterConstruction_DoesNotChangeActor()
+    {
+        var attributes = new Dictionary<string, string> { [ActorAttributes.TenantId] = "tenant-a" };
+        var actor = new Actor("user-1", new HashSet<string>(), new HashSet<string>(), attributes);
+
+        attributes[ActorAttributes.TenantId] = "tenant-b";
+        attributes[ActorAttributes.MfaAuthenticated] = "true";
+
+        actor.GetAttribute(ActorAttributes.TenantId).Should().Be("tenant-a");
+        actor.HasAttribute(ActorAttributes.MfaAuthenticated).Should().BeFalse("Actor should snapshot attributes at construction time");
     }
 
     #endregion

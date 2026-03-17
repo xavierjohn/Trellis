@@ -19,8 +19,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success("World"));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
     }
 
     [Fact]
@@ -31,8 +30,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success("World"));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().ContainSingle();
         validation.FieldErrors[0].Should().BeEquivalentTo(new ValidationError.FieldError("left", ["Bad left"]));
     }
@@ -45,8 +43,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Failure<string>(Error.Validation("Bad right", "right")));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().ContainSingle();
         validation.FieldErrors[0].Should().BeEquivalentTo(new ValidationError.FieldError("right", ["Bad right"]));
     }
@@ -59,8 +56,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Failure<string>(Error.Validation("Bad right", "right")));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
         validation.FieldErrors[0].Should().BeEquivalentTo(new ValidationError.FieldError("left", ["Bad left"]));
         validation.FieldErrors[1].Should().BeEquivalentTo(new ValidationError.FieldError("right", ["Bad right"]));
@@ -74,8 +70,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success(42));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("text", 42));
+        result.Should().BeSuccess().Which.Should().Be(("text", 42));
     }
 
     [Fact]
@@ -86,8 +81,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Failure<string>(Error.NotFound("Not found")));
 
         // Assert
-        result.Should().BeFailureOfType<AggregateError>();
-        var aggregate = (AggregateError)result.Error;
+        var aggregate = result.Should().BeFailureOfType<AggregateError>().Which;
         aggregate.Errors.Should().HaveCount(2);
     }
 
@@ -116,8 +110,7 @@ public class CombineAsyncTests
             .CombineAsync(Task.FromResult(Result.Success("World")));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
     }
 
     [Fact]
@@ -150,8 +143,7 @@ public class CombineAsyncTests
             .CombineAsync(Task.FromResult(Result.Failure<string>(Error.Validation("Bad right", "right"))));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
     }
 
@@ -167,8 +159,7 @@ public class CombineAsyncTests
             .CombineAsync(Task.FromResult(Result.Success("World")));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
     }
 
     [Fact]
@@ -190,8 +181,7 @@ public class CombineAsyncTests
             .CombineAsync(Task.FromResult(Result.Failure<string>(Error.Validation("Bad right", "right"))));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
     }
 
@@ -203,8 +193,7 @@ public class CombineAsyncTests
             .CombineAsync(Task.FromResult(Result.Success(true)));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be((42, true));
+        result.Should().BeSuccess().Which.Should().Be((42, true));
     }
 
     #endregion
@@ -219,8 +208,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success());
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be("Hello");
+        result.Should().BeSuccess().Which.Should().Be("Hello");
     }
 
     [Fact]
@@ -253,8 +241,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Failure(Error.Validation("Bad right", "right")));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
     }
 
@@ -270,8 +257,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success("World"));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
     }
 
     [Fact]
@@ -293,8 +279,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Failure<string>(Error.Validation("Bad right", "right")));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
     }
 
@@ -306,8 +291,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success(3.14m));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("text", 3.14m));
+        result.Should().BeSuccess().Which.Should().Be(("text", 3.14m));
     }
 
     [Fact]
@@ -335,8 +319,7 @@ public class CombineAsyncTests
             .CombineAsync(ValueTask.FromResult(Result.Success("World")));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
     }
 
     [Fact]
@@ -358,8 +341,7 @@ public class CombineAsyncTests
             .CombineAsync(ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad", "right"))));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
     }
 
@@ -375,8 +357,7 @@ public class CombineAsyncTests
             .CombineAsync(ValueTask.FromResult(Result.Success("World")));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
     }
 
     [Fact]
@@ -387,8 +368,7 @@ public class CombineAsyncTests
             .CombineAsync(ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad right", "right"))));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
     }
 
@@ -404,8 +384,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success());
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be("Hello");
+        result.Should().BeSuccess().Which.Should().Be("Hello");
     }
 
     [Fact]
@@ -432,8 +411,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success("c"));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("a", "b", "c"));
+        result.Should().BeSuccess().Which.Should().Be(("a", "b", "c"));
     }
 
     [Fact]
@@ -469,9 +447,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Failure<string>(Error.Validation("Bad c", "c")));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(3);
     }
 
@@ -498,8 +474,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success());
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
     }
 
     [Fact]
@@ -527,8 +502,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success("c"));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("a", "b", "c"));
+        result.Should().BeSuccess().Which.Should().Be(("a", "b", "c"));
     }
 
     [Fact]
@@ -583,7 +557,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Failure<string>(Error.Validation("Bad 9")));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
+        result.Should().BeFailure();
     }
 
     [Fact]
@@ -597,8 +571,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success(5));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3, 4, 5));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5));
     }
 
     #endregion
@@ -613,8 +586,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success<int?>(42));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Should().Be(("value", (int?)42));
+        result.Should().BeSuccess().Which.Should().Be(("value", (int?)42));
     }
 
     [Fact]
@@ -629,9 +601,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Success(record2));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.Item1.Should().Be(record1);
-        result.Value.Item2.Should().Be(record2);
+        result.Should().BeSuccess().Which.Should().Be((record1, record2));
     }
 
     [Fact]
@@ -668,9 +638,7 @@ public class CombineAsyncTests
             .CombineAsync(badLast);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(2);
         validation.FieldErrors[0].Should().BeEquivalentTo(new ValidationError.FieldError("firstName", ["First name required"]));
         validation.FieldErrors[1].Should().BeEquivalentTo(new ValidationError.FieldError("lastName", ["Last name required"]));
@@ -693,7 +661,7 @@ public class CombineAsyncTests
 
         // Assert
         bindCalled.Should().BeFalse();
-        result.IsFailure.Should().BeTrue();
+        result.Should().BeFailure();
     }
 
     #endregion

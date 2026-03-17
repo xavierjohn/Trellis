@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Asp.Tests;
 
+using System;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
@@ -9,8 +10,17 @@ using Xunit;
 /// Tests for <see cref="TrellisAspOptions"/> default mappings, override behavior,
 /// and <c>AddTrellisAsp</c> integration.
 /// </summary>
-public class TrellisAspOptionsTests
+[Collection("TrellisAspOptionsState")]
+public class TrellisAspOptionsTests : IDisposable
 {
+    public TrellisAspOptionsTests() => TrellisAspOptions.ResetCurrent();
+
+    public void Dispose()
+    {
+        TrellisAspOptions.ResetCurrent();
+        GC.SuppressFinalize(this);
+    }
+
     #region Default Mappings
 
     [Fact]

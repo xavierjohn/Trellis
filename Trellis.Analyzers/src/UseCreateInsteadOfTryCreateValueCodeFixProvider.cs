@@ -32,6 +32,10 @@ public sealed class UseCreateInsteadOfTryCreateValueCodeFixProvider : CodeFixPro
         if (root == null)
             return;
 
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
+        if (semanticModel == null)
+            return;
+
         var diagnostic = context.Diagnostics.First();
         var diagnosticSpan = diagnostic.Location.SourceSpan;
 
@@ -50,6 +54,9 @@ public sealed class UseCreateInsteadOfTryCreateValueCodeFixProvider : CodeFixPro
             tryCreateMemberAccess.Name.Identifier.Text != "TryCreate")
             return;
 
+        if (!CanRewriteToCreate(semanticModel, tryCreateInvocation, tryCreateMemberAccess))
+            return;
+
         // Register the code fix
         context.RegisterCodeFix(
             CodeAction.Create(
@@ -62,6 +69,23 @@ public sealed class UseCreateInsteadOfTryCreateValueCodeFixProvider : CodeFixPro
                     c),
                 equivalenceKey: Title),
             diagnostic);
+    }
+
+    private static bool CanRewriteToCreate(
+        SemanticModel semanticModel,
+        InvocationExpressionSyntax tryCreateInvocation,
+        MemberAccessExpressionSyntax tryCreateMemberAccess)
+    {
+        var createInvocation = SyntaxFactory.InvocationExpression(
+            tryCreateMemberAccess.WithName(SyntaxFactory.IdentifierName("Create")),
+            tryCreateInvocation.ArgumentList);
+
+        var symbolInfo = semanticModel.GetSpeculativeSymbolInfo(
+            tryCreateInvocation.SpanStart,
+            createInvocation,
+            SpeculativeBindingOption.BindAsExpression);
+
+        return symbolInfo.Symbol is IMethodSymbol { Name: "Create" };
     }
 
     private static async Task<Document> ReplaceTryCreateValueWithCreateAsync(

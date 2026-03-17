@@ -17,8 +17,8 @@ public static class OrderRoutes
             {
                 states = OrderState.GetAll().Select(s => new
                 {
-                    name = s.Name,
                     value = s.Value,
+                    ordinal = s.Ordinal,
                     canModify = s.CanModify,
                     canCancel = s.CanCancel
                 })
@@ -29,11 +29,11 @@ public static class OrderRoutes
         orderApi.MapGet("/states/{state}", (OrderState state) =>
             Results.Ok(new
             {
-                name = state.Name,
                 value = state.Value,
+                ordinal = state.Ordinal,
                 canModify = state.CanModify,
                 canCancel = state.CanCancel,
-                message = $"Successfully bound OrderState '{state.Name}' from route!"
+                message = $"Successfully bound OrderState '{state}' from route!"
             }))
             .WithScalarValueValidation()
             .WithName("GetOrderStateByName");
@@ -42,7 +42,7 @@ public static class OrderRoutes
         orderApi.MapPost("/update", (UpdateOrderDto dto) =>
             Results.Ok(new
             {
-                newState = dto.State.Name,
+                newState = dto.State.Value,
                 canModify = dto.State.CanModify,
                 canCancel = dto.State.CanCancel,
                 assignedTo = dto.AssignedTo.Match(name => name.Value, () => (string?)null),
@@ -64,7 +64,8 @@ public static class OrderRoutes
                 },
                 state = new
                 {
-                    name = dto.InitialState.Name,
+                    value = dto.InitialState.Value,
+                    ordinal = dto.InitialState.Ordinal,
                     canModify = dto.InitialState.CanModify,
                     canCancel = dto.InitialState.CanCancel
                 },
@@ -79,9 +80,9 @@ public static class OrderRoutes
                 ? Results.Ok(new { message = "No state filter provided" })
                 : Results.Ok(new
                 {
-                    filterState = state.Name,
+                    filterState = state.Value,
                     canModify = state.CanModify,
-                    message = $"Filtering orders by state: {state.Name}"
+                    message = $"Filtering orders by state: {state}"
                 }))
             .WithScalarValueValidation()
             .WithName("FilterOrders");

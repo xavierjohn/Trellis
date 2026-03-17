@@ -79,7 +79,7 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
                     continue;
 
                 var propertyName = propertySymbol.Name;
-                var backingFieldName = "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
+                var backingFieldName = "_" + ToCamelCase(propertyName);
 
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.HasIndexMaybeProperty,
@@ -113,6 +113,45 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
         };
 
     private static bool IsAccessOnParameter(MemberAccessExpressionSyntax memberAccess, string parameterName) =>
-        memberAccess.Expression is IdentifierNameSyntax identifier &&
-        identifier.Identifier.Text == parameterName;
+        DependsOnParameter(memberAccess.Expression, parameterName);
+
+    private static bool DependsOnParameter(ExpressionSyntax expression, string parameterName) =>
+        expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text == parameterName,
+            MemberAccessExpressionSyntax nestedMemberAccess => DependsOnParameter(nestedMemberAccess.Expression, parameterName),
+            InvocationExpressionSyntax invocation =>
+                DependsOnParameter(invocation.Expression, parameterName) ||
+                invocation.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
+            ElementAccessExpressionSyntax elementAccess =>
+                DependsOnParameter(elementAccess.Expression, parameterName) ||
+                elementAccess.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
+            CastExpressionSyntax cast => DependsOnParameter(cast.Expression, parameterName),
+            ParenthesizedExpressionSyntax parenthesized => DependsOnParameter(parenthesized.Expression, parameterName),
+            ConditionalAccessExpressionSyntax conditionalAccess => DependsOnParameter(conditionalAccess.Expression, parameterName),
+            _ => false
+        };
+
+    private static string ToCamelCase(string propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName))
+            return propertyName;
+
+        var chars = propertyName.ToCharArray();
+        chars[0] = char.ToLowerInvariant(chars[0]);
+
+        for (var i = 1; i < chars.Length; i++)
+        {
+            if (!char.IsUpper(chars[i]))
+                break;
+
+            var hasNext = i + 1 < chars.Length;
+            if (hasNext && !char.IsUpper(chars[i + 1]))
+                break;
+
+            chars[i] = char.ToLowerInvariant(chars[i]);
+        }
+
+        return new string(chars);
+    }
 }

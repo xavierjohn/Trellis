@@ -317,6 +317,7 @@ public class ScalarValueValidationMiddlewareTests
 
     // Helper method signatures used to obtain ParameterInfo via reflection
     private static void ScalarValueParam(OrderCode code) { }
+    private static void MaybeScalarValueParam(Maybe<OrderCode> code) { }
     private static void NonScalarValueParam(int id) { }
     private static void IntOnlyScalarValueParam(IntOnlyScalarValue val) { }
 
@@ -357,6 +358,78 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_BindingFailure_ForScalarValueWithQualifiedTypeName_Returns400WithRichErrors()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "Trellis.Asp.Tests.OrderCode code" from "INVALID".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("code")[0].GetString()
+            .Should().Contain("ORD-", "qualified type names should still resolve the real scalar parameter");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_BindingFailure_ForScalarValueWithNestedTypeName_Returns400WithRichErrors()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "ScalarValueValidationMiddlewareTests+OrderCode code" from "INVALID".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("code")[0].GetString()
+            .Should().Contain("ORD-", "nested type names should still resolve the real scalar parameter");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_BindingFailure_ForMaybeScalarValue_Returns400WithRichErrors()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(MaybeScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "Maybe<OrderCode> code" from "INVALID".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("code")[0].GetString()
+            .Should().Contain("ORD-", "Maybe<T> scalar parameters should surface the wrapped scalar validation error");
+    }
+
+    [Fact]
     public async Task InvokeAsync_BindingFailure_ForNonScalarValue_Rethrows()
     {
         // Arrange
@@ -393,6 +466,26 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_BindingFailure_MessageContainsSubstringButDoesNotMatchFormat_Rethrows()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("Proxy error: Failed to bind parameter happened upstream before request processing.", 400));
+
+        // Act
+        var act = async () => await middleware.InvokeAsync(context);
+
+        // Assert
+        await act.Should().ThrowAsync<BadHttpRequestException>();
+    }
+
+    [Fact]
     public async Task InvokeAsync_ReadParameterFailure_Returns400WithErrorDetails()
     {
         // Arrange
@@ -413,11 +506,34 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("missing required properties");
+            .Should().Contain("invalid JSON");
     }
 
     [Fact]
-    public async Task InvokeAsync_ReadParameterFailure_NoInnerException_UsesExceptionMessage()
+    public async Task InvokeAsync_ReadParameterFailure_DoesNotLeakJsonExceptionInternals()
+    {
+        var innerException = new JsonException(
+            "The JSON value could not be converted to System.Int32. Path: $.age | LineNumber: 0 | BytePositionInLine: 14");
+        var context = CreateHttpContextWithServices();
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException(
+                """Failed to read parameter "CreateOrderRequest order" from the request body as JSON.""",
+                400,
+                innerException));
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        var errorMessage = problem.GetProperty("errors").GetProperty("$")[0].GetString()!;
+        errorMessage.Should().NotContain("System.Int32",
+            "internal type names from JsonException should not be exposed to clients");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ReadParameterFailure_NoInnerException_UsesGenericMessage()
     {
         // Arrange
         var context = CreateHttpContextWithServices();
@@ -435,7 +551,23 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("Failed to read parameter");
+            .Should().Contain("invalid JSON");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ReadFailure_MessageContainsSubstringButDoesNotMatchFormat_Rethrows()
+    {
+        // Arrange
+        var context = CreateHttpContextWithServices();
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("Gateway failure: Failed to read parameter after the request body was already rejected.", 400));
+
+        // Act
+        var act = async () => await middleware.InvokeAsync(context);
+
+        // Assert
+        await act.Should().ThrowAsync<BadHttpRequestException>();
     }
 
     [Fact]
@@ -475,10 +607,10 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_BindingFailure_ScalarValueWithoutStringTryCreate_ReturnsFallbackError()
+    public async Task InvokeAsync_BindingFailure_ScalarValueWithoutStringTryCreate_ReturnsRichValidationError()
     {
-        // Arrange - IntOnlyScalarValue has no TryCreate(string, string), so GetValidationErrors returns null
-        // and the middleware falls back to CreateFallbackErrors
+        // Arrange - IntOnlyScalarValue has no TryCreate(string, string), but the raw value is parseable as int
+        // so the middleware should surface the value object's own validation error.
         var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
@@ -486,7 +618,7 @@ public class ScalarValueValidationMiddlewareTests
         var context = CreateContextWithEndpointMetadata(paramInfo, "val");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
-            throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "abc".""", 400));
+            throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "0".""", 400));
 
         // Act
         await middleware.InvokeAsync(context);
@@ -496,7 +628,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("val")[0].GetString()
-            .Should().Contain("not a valid IntOnlyScalarValue", "should use the fallback error message");
+            .Should().Be("Must be positive.");
     }
 
     [Fact]

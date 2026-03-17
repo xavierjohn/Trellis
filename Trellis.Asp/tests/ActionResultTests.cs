@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Asp.Tests;
 
+using System;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -7,8 +8,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
 
-public class ActionResultTests
+[Collection("TrellisAspOptionsState")]
+public class ActionResultTests : IDisposable
 {
+    public ActionResultTests() => TrellisAspOptions.ResetCurrent();
+
+    public void Dispose()
+    {
+        TrellisAspOptions.ResetCurrent();
+        GC.SuppressFinalize(this);
+    }
+
     [Fact]
     public void Will_return_Ok_Result()
     {

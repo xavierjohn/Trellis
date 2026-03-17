@@ -112,6 +112,23 @@ public class AggregateTests
         events.Should().BeAssignableTo<IReadOnlyList<IDomainEvent>>();
     }
 
+    [Fact]
+    public void UncommittedEvents_ReturnsSnapshot_NotLiveView()
+    {
+        // Arrange
+        var aggregate = TestAggregate.Create("1");
+        aggregate.DoSomething();
+        aggregate.DoSomething();
+
+        // Act
+        var events = aggregate.UncommittedEvents();
+        aggregate.AcceptChanges();
+
+        // Assert
+        events.Should().HaveCount(2);
+        aggregate.UncommittedEvents().Should().BeEmpty();
+    }
+
     #endregion
 
     #region IsChanged Tests

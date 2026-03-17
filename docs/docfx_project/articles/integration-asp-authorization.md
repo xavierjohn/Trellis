@@ -58,7 +58,7 @@ That's it. `IActorProvider` is now available via DI, and `Actor` is automaticall
 | `Attributes["azpacr"]` | `azpacr` claim | Client authentication method |
 | `Attributes["acrs"]` | `acrs` claim | Auth context class reference |
 | `Attributes["ip_address"]` | `HttpContext.Connection.RemoteIpAddress` | Client IP |
-| `Attributes["mfa"]` | Derived from `amr` claim | `"true"` if `amr` contains `"mfa"` |
+| `Attributes["mfa"]` | Derived from `amr` claim | `"true"` if `amr` contains `"mfa"` in any casing |
 
 ## Customizing Mappings
 
@@ -133,6 +133,24 @@ builder.Services.AddEntraActorProvider(options =>
 });
 ```
 
+### Mapper Failure Behavior
+
+Custom mapping delegates run during actor hydration on every request. If `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` throws, `EntraActorProvider` wraps the original exception in an `InvalidOperationException` that identifies which mapping delegate failed. This makes misconfiguration easier to diagnose in logs and exception telemetry.
+
+```csharp
+builder.Services.AddEntraActorProvider(options =>
+{
+    options.MapPermissions = claims =>
+    {
+        // If this throws, the provider wraps it with EntraActorOptions.MapPermissions context
+        return claims
+            .Where(c => c.Type == "roles")
+            .Select(c => c.Value)
+            .ToHashSet();
+    };
+});
+```
+
 ## ActorAttributes Constants
 
 Use `ActorAttributes` constants for well-known attribute keys to avoid typos:
@@ -156,7 +174,7 @@ var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
 | `AuthorizedPartyAcr` | `"azpacr"` | Entra `azpacr` claim |
 | `AuthContextClassReference` | `"acrs"` | Entra `acrs` claim |
 | `IpAddress` | `"ip_address"` | `HttpContext.Connection.RemoteIpAddress` |
-| `MfaAuthenticated` | `"mfa"` | Derived from `amr` claim |
+| `MfaAuthenticated` | `"mfa"` | Derived from `amr` claim, case-insensitive on the claim value |
 
 ## Integration with Trellis.Mediator
 

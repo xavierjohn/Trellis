@@ -106,7 +106,7 @@ public class RequiredStringTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Attempted to access the Value for a failed result. A failed result has no Value.");
+            .WithMessage("Failed to create TrackingId:*Tracking Id cannot be empty*");
     }
 
     [Fact]
@@ -222,6 +222,16 @@ public class RequiredStringTests
         // Assert
         act.Should().Throw<FormatException>()
             .WithMessage("Tracking Id cannot be empty.");
+    }
+
+    [Fact]
+    public void TryCreate_with_whitespace_padding_should_trim()
+    {
+        var result = TrackingId.TryCreate("  ABC123  ");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be("ABC123",
+            "RequiredString should trim leading and trailing whitespace per its XML documentation");
     }
 
     public static TheoryData<string?> GetBadString() =>

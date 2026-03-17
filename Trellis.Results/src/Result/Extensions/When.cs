@@ -41,6 +41,9 @@ public static class WhenExtensions
         Func<T, bool> predicate,
         Func<T, Result<T>> operation)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(When));
         if (result.IsFailure)
         {
@@ -72,6 +75,8 @@ public static class WhenExtensions
         bool condition,
         Func<T, Result<T>> operation)
     {
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(When));
         if (result.IsFailure)
         {
@@ -103,6 +108,9 @@ public static class WhenExtensions
         Func<T, bool> predicate,
         Func<T, Result<T>> operation)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Unless));
         if (result.IsFailure)
         {
@@ -134,6 +142,8 @@ public static class WhenExtensions
         bool condition,
         Func<T, Result<T>> operation)
     {
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Unless));
         if (result.IsFailure)
         {
@@ -175,6 +185,9 @@ public static class WhenExtensionsAsync
         Func<T, bool> predicate,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
         if (result.IsFailure)
         {
@@ -206,6 +219,8 @@ public static class WhenExtensionsAsync
         bool condition,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
         if (result.IsFailure)
         {
@@ -237,6 +252,10 @@ public static class WhenExtensionsAsync
         Func<T, bool> predicate,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.WhenAsync(predicate, operation).ConfigureAwait(false);
     }
@@ -254,6 +273,9 @@ public static class WhenExtensionsAsync
         bool condition,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(operation);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.WhenAsync(condition, operation).ConfigureAwait(false);
     }
@@ -271,6 +293,9 @@ public static class WhenExtensionsAsync
         Func<T, bool> predicate,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
         if (result.IsFailure)
         {
@@ -302,6 +327,8 @@ public static class WhenExtensionsAsync
         bool condition,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(operation);
+
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
         if (result.IsFailure)
         {
@@ -333,6 +360,10 @@ public static class WhenExtensionsAsync
         Func<T, bool> predicate,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.UnlessAsync(predicate, operation).ConfigureAwait(false);
     }
@@ -350,6 +381,9 @@ public static class WhenExtensionsAsync
         bool condition,
         Func<T, Task<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(operation);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         return await result.UnlessAsync(condition, operation).ConfigureAwait(false);
     }
@@ -369,6 +403,9 @@ public static class WhenExtensionsAsync
         Func<T, bool> predicate,
         Func<T, ValueTask<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
         if (result.IsFailure)
@@ -378,6 +415,40 @@ public static class WhenExtensionsAsync
         }
 
         if (predicate(result.Value))
+        {
+            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            operationResult.LogActivityStatus();
+            return operationResult;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <summary>
+    /// Conditionally executes an async operation if the condition is true.
+    /// </summary>
+    /// <typeparam name="T">Type of the result value.</typeparam>
+    /// <param name="resultTask">ValueTask containing the result to test.</param>
+    /// <param name="condition">Boolean condition.</param>
+    /// <param name="operation">Async operation to execute if condition is true.</param>
+    /// <returns>Result from the operation if condition is true and result is success; otherwise the original result.</returns>
+    public static async ValueTask<Result<T>> WhenAsync<T>(
+        this ValueTask<Result<T>> resultTask,
+        bool condition,
+        Func<T, ValueTask<Result<T>>> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        Result<T> result = await resultTask.ConfigureAwait(false);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
+        if (result.IsFailure)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        if (condition)
         {
             var operationResult = await operation(result.Value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
@@ -401,6 +472,9 @@ public static class WhenExtensionsAsync
         Func<T, bool> predicate,
         Func<T, ValueTask<Result<T>>> operation)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(operation);
+
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
         if (result.IsFailure)
@@ -410,6 +484,40 @@ public static class WhenExtensionsAsync
         }
 
         if (!predicate(result.Value))
+        {
+            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            operationResult.LogActivityStatus();
+            return operationResult;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <summary>
+    /// Conditionally executes an async operation if the condition is false.
+    /// </summary>
+    /// <typeparam name="T">Type of the result value.</typeparam>
+    /// <param name="resultTask">ValueTask containing the result to test.</param>
+    /// <param name="condition">Boolean condition.</param>
+    /// <param name="operation">Async operation to execute if condition is false.</param>
+    /// <returns>Result from the operation if condition is false and result is success; otherwise the original result.</returns>
+    public static async ValueTask<Result<T>> UnlessAsync<T>(
+        this ValueTask<Result<T>> resultTask,
+        bool condition,
+        Func<T, ValueTask<Result<T>>> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        Result<T> result = await resultTask.ConfigureAwait(false);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
+        if (result.IsFailure)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        if (!condition)
         {
             var operationResult = await operation(result.Value).ConfigureAwait(false);
             operationResult.LogActivityStatus();

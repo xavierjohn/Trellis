@@ -20,17 +20,14 @@ public static class MatchExtensions
     /// <returns>The output from either the success or failure function.</returns>
     public static TOut Match<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            return onSuccess(result.Value);
-        }
-        else
-        {
-            activity?.SetStatus(ActivityStatusCode.Error);
-            return onFailure(result.Error);
-        }
+            return InvokeAndTrace(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok);
+
+        return InvokeAndTrace(activity, () => onFailure(result.Error), ActivityStatusCode.Error);
     }
 
     /// <summary>
@@ -42,16 +39,42 @@ public static class MatchExtensions
     /// <param name="onFailure">Action to execute on failure.</param>
     public static void Switch<TIn>(this Result<TIn> result, Action<TIn> onSuccess, Action<Error> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            onSuccess(result.Value);
-        }
+            InvokeAndTrace(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok);
         else
+            InvokeAndTrace(activity, () => onFailure(result.Error), ActivityStatusCode.Error);
+    }
+
+    private static TOut InvokeAndTrace<TOut>(Activity? activity, Func<TOut> handler, ActivityStatusCode successStatus)
+    {
+        try
+        {
+            var output = handler();
+            activity?.SetStatus(successStatus);
+            return output;
+        }
+        catch
         {
             activity?.SetStatus(ActivityStatusCode.Error);
-            onFailure(result.Error);
+            throw;
+        }
+    }
+
+    private static void InvokeAndTrace(Activity? activity, Action handler, ActivityStatusCode successStatus)
+    {
+        try
+        {
+            handler();
+            activity?.SetStatus(successStatus);
+        }
+        catch
+        {
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
         }
     }
 }
@@ -73,6 +96,10 @@ public static class MatchExtensionsAsync
     /// <returns>The output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return result.Match(onSuccess, onFailure);
     }
@@ -89,17 +116,14 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Result<TIn> result, Func<TIn, CancellationToken, Task<TOut>> onSuccess, Func<Error, CancellationToken, Task<TOut>> onFailure, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            return await onSuccess(result.Value, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            activity?.SetStatus(ActivityStatusCode.Error);
-            return await onFailure(result.Error, cancellationToken).ConfigureAwait(false);
-        }
+            return await InvokeAndTraceAsync(activity, () => onSuccess(result.Value, cancellationToken), ActivityStatusCode.Ok).ConfigureAwait(false);
+
+        return await InvokeAndTraceAsync(activity, () => onFailure(result.Error, cancellationToken), ActivityStatusCode.Error).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -113,17 +137,14 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Result<TIn> result, Func<TIn, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            return await onSuccess(result.Value).ConfigureAwait(false);
-        }
-        else
-        {
-            activity?.SetStatus(ActivityStatusCode.Error);
-            return await onFailure(result.Error).ConfigureAwait(false);
-        }
+            return await InvokeAndTraceAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
+
+        return await InvokeAndTraceAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -138,6 +159,10 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, CancellationToken, Task<TOut>> onSuccess, Func<Error, CancellationToken, Task<TOut>> onFailure, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure, cancellationToken).ConfigureAwait(false);
     }
@@ -153,6 +178,10 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from either the success or failure function.</returns>
     public static async Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure).ConfigureAwait(false);
     }
@@ -168,18 +197,16 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation.</returns>
     public static async Task SwitchAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, CancellationToken, Task> onSuccess, Func<Error, CancellationToken, Task> onFailure, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            await onSuccess(result.Value, cancellationToken).ConfigureAwait(false);
-        }
+            await InvokeAndTraceAsync(activity, () => onSuccess(result.Value, cancellationToken), ActivityStatusCode.Ok).ConfigureAwait(false);
         else
-        {
-            activity?.SetStatus(ActivityStatusCode.Error);
-            await onFailure(result.Error, cancellationToken).ConfigureAwait(false);
-        }
+            await InvokeAndTraceAsync(activity, () => onFailure(result.Error, cancellationToken), ActivityStatusCode.Error).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -192,18 +219,16 @@ public static class MatchExtensionsAsync
     /// <returns>A task that represents the asynchronous operation.</returns>
     public static async Task SwitchAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Task> onSuccess, Func<Error, Task> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            await onSuccess(result.Value).ConfigureAwait(false);
-        }
+            await InvokeAndTraceAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
         else
-        {
-            activity?.SetStatus(ActivityStatusCode.Error);
-            await onFailure(result.Error).ConfigureAwait(false);
-        }
+            await InvokeAndTraceAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }
 
     #region ValueTask-based overloads
@@ -213,6 +238,9 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask<TOut> MatchAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return result.Match(onSuccess, onFailure);
     }
@@ -222,17 +250,14 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask<TOut> MatchAsync<TIn, TOut>(this Result<TIn> result, Func<TIn, ValueTask<TOut>> onSuccess, Func<Error, ValueTask<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            return await onSuccess(result.Value).ConfigureAwait(false);
-        }
-        else
-        {
-            activity?.SetStatus(ActivityStatusCode.Error);
-            return await onFailure(result.Error).ConfigureAwait(false);
-        }
+            return await InvokeAndTraceValueTaskAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
+
+        return await InvokeAndTraceValueTaskAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -240,6 +265,9 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask<TOut> MatchAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, Func<TIn, ValueTask<TOut>> onSuccess, Func<Error, ValueTask<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure).ConfigureAwait(false);
     }
@@ -249,17 +277,72 @@ public static class MatchExtensionsAsync
     /// </summary>
     public static async ValueTask SwitchAsync<TIn>(this ValueTask<Result<TIn>> resultTask, Func<TIn, ValueTask> onSuccess, Func<Error, ValueTask> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess)
-        {
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            await onSuccess(result.Value).ConfigureAwait(false);
-        }
+            await InvokeAndTraceValueTaskAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
         else
+            await InvokeAndTraceValueTaskAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
+    }
+
+    private static async Task<TOut> InvokeAndTraceAsync<TOut>(Activity? activity, Func<Task<TOut>> handler, ActivityStatusCode successStatus)
+    {
+        try
+        {
+            var output = await handler().ConfigureAwait(false);
+            activity?.SetStatus(successStatus);
+            return output;
+        }
+        catch
         {
             activity?.SetStatus(ActivityStatusCode.Error);
-            await onFailure(result.Error).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private static async Task InvokeAndTraceAsync(Activity? activity, Func<Task> handler, ActivityStatusCode successStatus)
+    {
+        try
+        {
+            await handler().ConfigureAwait(false);
+            activity?.SetStatus(successStatus);
+        }
+        catch
+        {
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+    }
+
+    private static async ValueTask<TOut> InvokeAndTraceValueTaskAsync<TOut>(Activity? activity, Func<ValueTask<TOut>> handler, ActivityStatusCode successStatus)
+    {
+        try
+        {
+            var output = await handler().ConfigureAwait(false);
+            activity?.SetStatus(successStatus);
+            return output;
+        }
+        catch
+        {
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+    }
+
+    private static async ValueTask InvokeAndTraceValueTaskAsync(Activity? activity, Func<ValueTask> handler, ActivityStatusCode successStatus)
+    {
+        try
+        {
+            await handler().ConfigureAwait(false);
+            activity?.SetStatus(successStatus);
+        }
+        catch
+        {
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
         }
     }
 

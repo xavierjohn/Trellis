@@ -484,6 +484,143 @@ public class MaybeQueryableExtensionsTests : IDisposable
         loaded!.Phone.HasNoValue.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedBackingField_ForValueTypeInner()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("Golf");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var order = CreateOrder(customer.Id);
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var submittedAt = new DateTime(2026, 4, 15, 9, 30, 0, DateTimeKind.Utc);
+
+        // Act
+        await _context.Orders
+            .Where(o => o.Id == order.Id)
+            .ExecuteUpdateAsync(
+                setters => setters.SetMaybeValue(o => o.SubmittedAt, submittedAt),
+                ct);
+
+        _context.ChangeTracker.Clear();
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.SubmittedAt.HasValue.Should().BeTrue();
+        loaded.SubmittedAt.Value.Should().Be(submittedAt);
+    }
+
+    [Fact]
+    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedBackingField_ForEnumInner()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("Hotel");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var order = CreateOrder(customer.Id, TestOrderStatus.Confirmed);
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        await _context.Orders
+            .Where(o => o.Id == order.Id)
+            .ExecuteUpdateAsync(
+                setters => setters.SetMaybeNone(o => o.OptionalStatus),
+                ct);
+
+        _context.ChangeTracker.Clear();
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.OptionalStatus.HasNoValue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedBackingField_ForInheritedMaybeProperty()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        using var context = new InheritedMaybeQueryDbContext(
+            new DbContextOptionsBuilder<InheritedMaybeQueryDbContext>()
+                .UseSqlite(connection)
+                .Options);
+        context.Database.EnsureCreated();
+
+        var customer = new DerivedTestCustomer
+        {
+            Id = TestCustomerId.NewUniqueV4(),
+            Name = TestCustomerName.Create("InheritedValue"),
+            Email = EmailAddress.Create("inheritedvalue@example.com"),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.DerivedCustomers.Add(customer);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var updatedPhone = PhoneNumber.Create("+1-555-0900");
+
+        await context.DerivedCustomers
+            .Where(c => c.Id == customer.Id)
+            .ExecuteUpdateAsync(setters => setters.SetMaybeValue(c => c.Phone, updatedPhone), ct);
+
+        context.ChangeTracker.Clear();
+        var loaded = await context.DerivedCustomers.FindAsync([customer.Id], ct);
+
+        loaded.Should().NotBeNull();
+        loaded!.Phone.HasValue.Should().BeTrue();
+        loaded.Phone.Value.Value.Should().Be(updatedPhone.Value);
+    }
+
+    [Fact]
+    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedBackingField_ForInheritedMaybeProperty()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        using var context = new InheritedMaybeQueryDbContext(
+            new DbContextOptionsBuilder<InheritedMaybeQueryDbContext>()
+                .UseSqlite(connection)
+                .Options);
+        context.Database.EnsureCreated();
+
+        var customer = new DerivedTestCustomer
+        {
+            Id = TestCustomerId.NewUniqueV4(),
+            Name = TestCustomerName.Create("InheritedNone"),
+            Email = EmailAddress.Create("inheritednone@example.com"),
+            CreatedAt = DateTime.UtcNow,
+            Phone = Maybe.From(PhoneNumber.Create("+1-555-0910"))
+        };
+
+        context.DerivedCustomers.Add(customer);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        await context.DerivedCustomers
+            .Where(c => c.Id == customer.Id)
+            .ExecuteUpdateAsync(setters => setters.SetMaybeNone(c => c.Phone), ct);
+
+        context.ChangeTracker.Clear();
+        var loaded = await context.DerivedCustomers.FindAsync([customer.Id], ct);
+
+        loaded.Should().NotBeNull();
+        loaded!.Phone.HasNoValue.Should().BeTrue();
+    }
+
     #endregion
 
     #region Helpers
@@ -518,6 +655,24 @@ public class MaybeQueryableExtensionsTests : IDisposable
             order.OptionalStatus = Maybe.From(optionalStatus);
 
         return order;
+    }
+
+    private sealed class InheritedMaybeQueryDbContext(DbContextOptions<InheritedMaybeQueryDbContext> options)
+        : DbContext(options)
+    {
+        public DbSet<DerivedTestCustomer> DerivedCustomers => Set<DerivedTestCustomer>();
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestCustomerId).Assembly);
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            modelBuilder.Entity<DerivedTestCustomer>(builder =>
+            {
+                builder.HasKey(customer => customer.Id);
+                builder.Property(customer => customer.Name).HasMaxLength(100).IsRequired();
+                builder.Property(customer => customer.Email).HasMaxLength(254).IsRequired();
+                builder.Property(customer => customer.CreatedAt).IsRequired();
+            });
     }
 
     #endregion

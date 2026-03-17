@@ -33,6 +33,24 @@ internal static class PrimitiveJsonWriter
             case long l:
                 writer.WriteNumberValue(l);
                 break;
+            case short s:
+                writer.WriteNumberValue(s);
+                break;
+            case byte b:
+                writer.WriteNumberValue(b);
+                break;
+            case sbyte sb:
+                writer.WriteNumberValue(sb);
+                break;
+            case ushort us:
+                writer.WriteNumberValue(us);
+                break;
+            case uint ui:
+                writer.WriteNumberValue(ui);
+                break;
+            case ulong ul:
+                writer.WriteNumberValue(ul);
+                break;
             case double d:
                 writer.WriteNumberValue(d);
                 break;
@@ -42,8 +60,8 @@ internal static class PrimitiveJsonWriter
             case decimal m:
                 writer.WriteNumberValue(m);
                 break;
-            case bool b:
-                writer.WriteBooleanValue(b);
+            case bool boolean:
+                writer.WriteBooleanValue(boolean);
                 break;
             case DateTime dt:
                 writer.WriteStringValue(dt);

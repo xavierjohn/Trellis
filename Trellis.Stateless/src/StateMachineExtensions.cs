@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Stateless;
 
+using System;
 using global::Stateless;
 using Trellis;
 
@@ -9,9 +10,13 @@ using Trellis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// These extensions use <see cref="StateMachine{TState, TTrigger}.CanFire(TTrigger)"/>
-/// to check transition validity before firing, avoiding exceptions for expected failure paths.
-/// Invalid transitions return a <see cref="DomainError"/> describing the violation.
+/// These extensions fire the trigger once and translate Stateless invalid-transition exceptions
+/// into a <see cref="DomainError"/> for expected failure paths.
+/// </para>
+/// <para>
+/// These extensions do not change the concurrency model of <see cref="StateMachine{TState, TTrigger}"/>.
+/// Stateless state machines are not thread-safe, so concurrent calls to <see cref="FireResult{TState, TTrigger}(StateMachine{TState, TTrigger}, TTrigger)"/>
+/// on the same machine instance must still be externally synchronized.
 /// </para>
 /// <para>
 /// Usage with Railway Oriented Programming:
@@ -38,8 +43,11 @@ public static class StateMachineExtensions
     /// or a <see cref="DomainError"/> if the trigger cannot be fired from the current state.
     /// </returns>
     /// <remarks>
-    /// This method uses <see cref="StateMachine{TState, TTrigger}.CanFire(TTrigger)"/> to validate
-    /// the transition before firing. No try/catch is used internally.
+    /// This method fires the trigger once and converts Stateless invalid-transition exceptions
+    /// into a failure result. Exceptions thrown by user entry, exit, or transition actions are
+    /// not swallowed.
+    /// The underlying <see cref="StateMachine{TState, TTrigger}"/> remains not thread-safe,
+    /// so callers must not invoke this method concurrently on the same machine instance without synchronization.
     /// </remarks>
     /// <example>
     /// <code>
@@ -61,13 +69,25 @@ public static class StateMachineExtensions
         where TState : notnull
         where TTrigger : notnull
     {
-        if (!stateMachine.CanFire(trigger))
+        try
+        {
+            stateMachine.Fire(trigger);
+            return stateMachine.State;
+        }
+        catch (InvalidOperationException exception) when (IsStatelessInvalidTransition(exception))
+        {
             return Error.Domain(
-                $"Cannot fire trigger '{trigger}' from state '{stateMachine.State}'.",
+                exception.Message,
                 code: "state.machine.invalid.transition",
                 instance: null);
-
-        stateMachine.Fire(trigger);
-        return stateMachine.State;
+        }
     }
+
+    private static bool IsStatelessInvalidTransition(InvalidOperationException exception) =>
+        string.Equals(exception.Source, typeof(StateMachine<,>).Assembly.GetName().Name, StringComparison.Ordinal)
+        && IsInvalidTransitionMessage(exception.Message);
+
+    private static bool IsInvalidTransitionMessage(string message) =>
+        message.StartsWith("No valid leaving transitions are permitted from state '", StringComparison.Ordinal)
+        || message.Contains(" is valid for transition from state '", StringComparison.Ordinal);
 }

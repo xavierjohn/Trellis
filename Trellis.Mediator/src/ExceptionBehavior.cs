@@ -40,7 +40,7 @@ public sealed partial class ExceptionBehavior<TMessage, TResponse>
             var messageName = typeof(TMessage).Name;
             LogUnhandledException(_logger, ex, messageName);
 
-            var error = Error.Unexpected($"Unhandled exception in {messageName}: {ex.Message}");
+            var error = Error.Unexpected($"An unexpected error occurred while processing {messageName}.");
             return TResponse.CreateFailure(error);
         }
     }

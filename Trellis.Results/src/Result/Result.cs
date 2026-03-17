@@ -156,6 +156,10 @@ public readonly partial struct Result
         {
             return Success(func());
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             return Failure<T>((map ?? DefaultExceptionMapper)(ex));
@@ -174,6 +178,10 @@ public readonly partial struct Result
         try
         {
             return Success(await func().ConfigureAwait(false));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

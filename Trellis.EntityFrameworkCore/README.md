@@ -74,7 +74,7 @@ public class AppDbContext : DbContext
 | Value Object Base | Database Type | Converter |
 |-------------------|---------------|-----------|
 | `IScalarValue<TSelf, TPrimitive>` | `TPrimitive` (string, Guid, int, decimal) | `Value` → DB, `Create()` ← DB |
-| `RequiredEnum<TSelf>` | `string` | `Name` → DB, `TryFromName()` ← DB |
+| `RequiredEnum<TSelf>` | `string` | `Value` → DB, `TryFromName()` ← DB |
 | `Money` | Owned type: `decimal(18,3)` + `nvarchar(3)` | Auto-mapped as owned entity (Amount + Currency columns) |
 
 This covers all built-in types: `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredEnum<T>`, `EmailAddress`, `Money`, and any custom `ScalarValueObject<TSelf, T>`.
@@ -310,7 +310,7 @@ catch (DbUpdateException ex)
 
 The scanner checks each type in the provided assemblies:
 
-1. **`RequiredEnum<TSelf>`** — checked first because it implements `IScalarValue<TSelf, string>` but needs a different converter (stores `Name` instead of `Value`)
+1. **`RequiredEnum<TSelf>`** — checked first because it implements `IScalarValue<TSelf, string>` but still needs a different converter because it reconstructs via `TryFromName()` instead of `Create()`
 2. **`IScalarValue<TSelf, TPrimitive>`** — interface-based detection for all scalar value objects. The `TPrimitive` type argument determines the database column type
 
 ### Expression Tree Converters

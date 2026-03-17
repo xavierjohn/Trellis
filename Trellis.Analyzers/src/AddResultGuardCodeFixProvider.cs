@@ -152,7 +152,8 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
 
         // Check if the wrapped statements contain a return statement and there are no statements after
         // If so, add a default return to ensure all code paths return a value
-        var needsDefaultReturn = !statementsAfterWrapped.Any() &&
+        var needsDefaultReturn = IsTopLevelFunctionBlock(containingBlock) &&
+            !statementsAfterWrapped.Any() &&
             statementsToWrap.Any(s => s is ReturnStatementSyntax);
 
         IEnumerable<StatementSyntax> newStatements = statementsBeforeGuard
@@ -178,6 +179,9 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
         // Nodes already have Formatter.Annotation — the host IDE handles formatting
         return document.WithSyntaxRoot(newRoot);
     }
+
+    private static bool IsTopLevelFunctionBlock(BlockSyntax block) =>
+        block.Parent is MethodDeclarationSyntax or LocalFunctionStatementSyntax or AccessorDeclarationSyntax;
 
     // Get the base identifier from an expression (e.g., "result" from "result.Error")
     // Recursive, but limited by realistic code depth

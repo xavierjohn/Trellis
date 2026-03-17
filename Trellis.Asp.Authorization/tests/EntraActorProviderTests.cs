@@ -46,6 +46,17 @@ public class EntraActorProviderTests
     }
 
     [Fact]
+    public void GetCurrentActor_DefaultMapping_SetsIdFromShortOidClaim()
+    {
+        var user = AuthenticatedUser(
+            new Claim("oid", "user-oid-short-123"));
+
+        var actor = CreateProvider(user).GetCurrentActor();
+
+        actor.Id.Should().Be("user-oid-short-123");
+    }
+
+    [Fact]
     public void GetCurrentActor_DefaultMapping_MapsRolesClaimsToPermissions()
     {
         var user = AuthenticatedUser(
@@ -158,6 +169,21 @@ public class EntraActorProviderTests
             new Claim(OidClaimType, "user-1"),
             new Claim("amr", "pwd"),
             new Claim("amr", "mfa"));
+
+        var actor = CreateProvider(user).GetCurrentActor();
+
+        actor.GetAttribute(ActorAttributes.MfaAuthenticated).Should().Be("true");
+    }
+
+    [Theory]
+    [InlineData("MFA")]
+    [InlineData("Mfa")]
+    public void GetCurrentActor_DefaultMapping_MfaInAmrClaim_WithDifferentCasing_SetsMfaTrue(string mfaValue)
+    {
+        var user = AuthenticatedUser(
+            new Claim(OidClaimType, "user-1"),
+            new Claim("amr", "pwd"),
+            new Claim("amr", mfaValue));
 
         var actor = CreateProvider(user).GetCurrentActor();
 
@@ -293,6 +319,57 @@ public class EntraActorProviderTests
         var actor = CreateProvider(user, options).GetCurrentActor();
 
         actor.GetAttribute("region").Should().Be("us-west-2");
+    }
+
+    [Fact]
+    public void GetCurrentActor_CustomMapPermissions_WhenDelegateThrows_WrapsExceptionWithContext()
+    {
+        var user = AuthenticatedUser(new Claim(OidClaimType, "user-1"));
+        var options = new EntraActorOptions
+        {
+            MapPermissions = _ => throw new InvalidOperationException("Permissions exploded")
+        };
+
+        var act = () => CreateProvider(user, options).GetCurrentActor();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*EntraActorOptions.MapPermissions*")
+            .WithInnerException<InvalidOperationException>()
+            .WithMessage("Permissions exploded");
+    }
+
+    [Fact]
+    public void GetCurrentActor_CustomMapForbiddenPermissions_WhenDelegateThrows_WrapsExceptionWithContext()
+    {
+        var user = AuthenticatedUser(new Claim(OidClaimType, "user-1"));
+        var options = new EntraActorOptions
+        {
+            MapForbiddenPermissions = _ => throw new InvalidOperationException("Forbidden exploded")
+        };
+
+        var act = () => CreateProvider(user, options).GetCurrentActor();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*EntraActorOptions.MapForbiddenPermissions*")
+            .WithInnerException<InvalidOperationException>()
+            .WithMessage("Forbidden exploded");
+    }
+
+    [Fact]
+    public void GetCurrentActor_CustomMapAttributes_WhenDelegateThrows_WrapsExceptionWithContext()
+    {
+        var user = AuthenticatedUser(new Claim(OidClaimType, "user-1"));
+        var options = new EntraActorOptions
+        {
+            MapAttributes = (_, _) => throw new InvalidOperationException("Attributes exploded")
+        };
+
+        var act = () => CreateProvider(user, options).GetCurrentActor();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*EntraActorOptions.MapAttributes*")
+            .WithInnerException<InvalidOperationException>()
+            .WithMessage("Attributes exploded");
     }
 
     #endregion

@@ -27,41 +27,47 @@ public sealed class UseResultCombineAnalyzer : DiagnosticAnalyzer
     {
         var conditional = (IConditionalOperation)context.Operation;
 
-        // Check if the condition is a binary AND operation
         if (conditional.Condition is not IBinaryOperation binaryOp)
             return;
 
-        if (binaryOp.OperatorKind != BinaryOperatorKind.ConditionalAnd)
+        string propertyName;
+        switch (binaryOp.OperatorKind)
+        {
+            case BinaryOperatorKind.ConditionalAnd:
+                propertyName = "IsSuccess";
+                break;
+            case BinaryOperatorKind.ConditionalOr:
+                propertyName = "IsFailure";
+                break;
+            default:
+                return;
+        }
+
+        var resultCheckCount = CountResultChecks(binaryOp, propertyName);
+
+        if (resultCheckCount < 2)
             return;
 
-        // Count IsSuccess checks in the condition
-        var isSuccessCount = CountIsSuccessChecks(binaryOp);
+        var diagnostic = Diagnostic.Create(
+            DiagnosticDescriptors.UseResultCombine,
+            conditional.Syntax.GetLocation());
 
-        // If there are 2 or more IsSuccess checks, suggest using Combine
-        if (isSuccessCount >= 2)
-        {
-            var diagnostic = Diagnostic.Create(
-                DiagnosticDescriptors.UseResultCombine,
-                conditional.Syntax.GetLocation());
-
-            context.ReportDiagnostic(diagnostic);
-        }
+        context.ReportDiagnostic(diagnostic);
     }
 
-    private static int CountIsSuccessChecks(IOperation operation)
+    private static int CountResultChecks(IOperation operation, string propertyName)
     {
         var count = 0;
 
         if (operation is IBinaryOperation binaryOp)
         {
             // Recursively count in left and right operands
-            count += CountIsSuccessChecks(binaryOp.LeftOperand);
-            count += CountIsSuccessChecks(binaryOp.RightOperand);
+            count += CountResultChecks(binaryOp.LeftOperand, propertyName);
+            count += CountResultChecks(binaryOp.RightOperand, propertyName);
         }
         else if (operation is IPropertyReferenceOperation propertyRef)
         {
-            // Check if it's accessing IsSuccess on a Result
-            if (propertyRef.Property.Name == "IsSuccess" &&
+            if (propertyRef.Property.Name == propertyName &&
                 propertyRef.Property.ContainingType.IsResultType())
             {
                 count++;

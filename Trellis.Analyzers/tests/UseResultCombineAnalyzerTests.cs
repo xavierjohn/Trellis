@@ -61,6 +61,33 @@ public class UseResultCombineAnalyzerTests
     }
 
     [Fact]
+    public async Task MultipleIsFailureChecks_WithOr_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    Result<int> result1 = Result.Success(1);
+                    Result<int> result2 = Result.Success(2);
+
+                    if (result1.IsFailure || result2.IsFailure)
+                    {
+                        var error = result1.IsFailure ? result1.Error : result2.Error;
+                    }
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UseResultCombineAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseResultCombine)
+                .WithLocation(14, 9));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task UsingCombineChaining_NoDiagnostic()
     {
         const string source = """

@@ -102,13 +102,13 @@ Build type-safe repository patterns with EF Core:
 
 Enable distributed tracing and monitoring:
 
-- **OpenTelemetry Tracing** - Automatic ROP and Value Object tracing
+- **OpenTelemetry Tracing** - Primitive value object tracing for normal diagnostics, with ROP tracing available as a deeper break-glass option
 - **Problem Details (RFC 7807)** - Standard error response format
 - **Trace Correlation** - Link HTTP errors to distributed traces
 - **Production Monitoring** - Set up observability in production
 
 **Key Features:**
-- ✅ Automatic span creation for ROP operations
+- ✅ Automatic span creation for primitive value objects and, when explicitly enabled, ROP operations
 - ✅ Detailed trace attributes (error types, timings, etc.)
 - ✅ Compatible with Jaeger, Zipkin, Application Insights
 - ✅ Problem Details with trace IDs
@@ -174,12 +174,15 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracerBuilder =>
     {
         tracerBuilder
-            .AddResultsInstrumentation()
             .AddPrimitiveValueObjectInstrumentation()
             .AddAspNetCoreInstrumentation()
             .AddEntityFrameworkCoreInstrumentation()
             .AddOtlpExporter();
     });
+
+// AddResultsInstrumentation() is available when you need deep, temporary
+// pipeline forensics, but it is intentionally omitted from the default
+// example because it traces every Result<T> operation and can be noisy.
 
 var app = builder.Build();
 
@@ -305,9 +308,13 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracerBuilder =>
     {
         tracerBuilder
-            .AddResultsInstrumentation()
+            .AddPrimitiveValueObjectInstrumentation()
             .AddOtlpExporter();
     });
+
+// AddResultsInstrumentation() can be enabled temporarily when you need
+// full Result<T> pipeline forensics, but it is usually too noisy to make
+// a good default production setting.
 ```
 
 ### 5. Always Pass CancellationToken

@@ -285,7 +285,8 @@ public static class HttpResultExtensions
             return Results.ValidationProblem(errors, validationError.Detail, validationError.Instance, statusCode);
         }
 
-        return Results.Problem(error.Detail, error.Instance, statusCode);
+        var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
+        return Results.Problem(detail, error.Instance, statusCode);
     }
 
     /// <summary>

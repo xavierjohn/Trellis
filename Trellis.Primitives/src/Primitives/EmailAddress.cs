@@ -141,7 +141,7 @@ using Trellis;
 /// 
 /// // Automatic JSON serialization/deserialization
 /// var user = new UserDto(
-///     EmailAddress.TryCreate("user@example.com").Value,
+///     EmailAddress.Create("user@example.com"),
 ///     "John Doe"
 /// );
 /// 

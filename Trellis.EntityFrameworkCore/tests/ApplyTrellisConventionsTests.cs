@@ -122,7 +122,7 @@ public class ApplyTrellisConventionsTests : IDisposable
         // Assert
         loaded.Should().NotBeNull();
         loaded!.Status.Should().Be(TestOrderStatus.Confirmed);
-        loaded.Status.Name.Should().Be("Confirmed");
+        loaded.Status.Value.Should().Be("Confirmed");
     }
 
     #endregion
@@ -344,4 +344,73 @@ public class ApplyTrellisConventionsTests : IDisposable
     }
 
     #endregion
+
+    #region Internal Trellis types in scanned assembly
+
+    [Fact]
+    public async Task InternalScalarValueType_RoundTripWorks()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<InternalValueObjectDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new InternalValueObjectDbContext(options);
+        await context.Database.EnsureCreatedAsync(ct);
+
+        var entity = new InternalValueEntity
+        {
+            Id = Guid.NewGuid(),
+            Code = InternalCustomerCode.Create("INT-42")
+        };
+
+        // Act
+        context.Items.Add(entity);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Items.FindAsync([entity.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.Code.Value.Should().Be("INT-42");
+    }
+
+    private class InternalValueObjectDbContext(DbContextOptions<InternalValueObjectDbContext> options)
+        : DbContext(options)
+    {
+        public DbSet<InternalValueEntity> Items => Set<InternalValueEntity>();
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(InternalCustomerCode).Assembly);
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            modelBuilder.Entity<InternalValueEntity>(builder => builder.HasKey(entity => entity.Id));
+    }
+
+    #endregion
+}
+
+internal sealed class InternalCustomerCode : ScalarValueObject<InternalCustomerCode, string>, IScalarValue<InternalCustomerCode, string>
+{
+    private InternalCustomerCode(string value) : base(value) { }
+
+    public static Result<InternalCustomerCode> TryCreate(string? value, string? fieldName = null)
+    {
+        var field = fieldName ?? "code";
+        if (string.IsNullOrWhiteSpace(value))
+            return Error.Validation("Code is required.", field);
+
+        return new InternalCustomerCode(value);
+    }
+}
+
+internal sealed class InternalValueEntity
+{
+    public Guid Id { get; set; }
+    public InternalCustomerCode Code { get; set; } = null!;
 }

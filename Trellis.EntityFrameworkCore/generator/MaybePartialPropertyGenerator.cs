@@ -162,12 +162,15 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 
         // Get setter accessibility
         var setterAccessibility = "";
+        var isInitOnly = false;
         if (prop.AccessorList != null)
         {
             foreach (var accessor in prop.AccessorList.Accessors)
             {
-                if (accessor.IsKind(SyntaxKind.SetAccessorDeclaration))
+                if (accessor.IsKind(SyntaxKind.SetAccessorDeclaration) ||
+                    accessor.IsKind(SyntaxKind.InitAccessorDeclaration))
                 {
+                    isInitOnly = accessor.IsKind(SyntaxKind.InitAccessorDeclaration);
                     if (accessor.Modifiers.Count > 0)
                         setterAccessibility = accessor.Modifiers.ToString();
                     break;
@@ -185,6 +188,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
         }
 
         var isRecord = prop.Parent is RecordDeclarationSyntax;
+        var typePath = BuildTypePath(containingType);
 #pragma warning restore CS8603
 
         return new MaybePropertyInfo(
@@ -197,10 +201,12 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
             propertyName: symbol.Name,
             propertyAccessibility: AccessibilityToString(symbol.DeclaredAccessibility),
             setterAccessibility: setterAccessibility,
+            isInitOnly: isInitOnly,
             innerTypeName: innerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             innerTypeShortName: innerType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
             innerTypeIsValueType: innerType.IsValueType,
-            nestingParents: nestingParents.ToArray());
+            nestingParents: nestingParents.ToArray(),
+            typePath: typePath);
     }
 
     /// <summary>
@@ -252,9 +258,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
         foreach (var prop in properties)
         {
             if (prop is null) continue;
-            var key = string.IsNullOrEmpty(prop.Namespace)
-                ? prop.TypeName
-                : $"{prop.Namespace}.{prop.TypeName}";
+            var key = prop.TypePath;
             if (!grouped.TryGetValue(key, out var list))
             {
                 list = new List<MaybePropertyInfo>();
@@ -366,7 +370,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                     sb.Append(' ');
                 }
 
-                sb.Append("set => ");
+                sb.Append(prop.IsInitOnly ? "init => " : "set => ");
                 sb.Append(backingFieldName);
                 sb.Append(" = value.HasValue ? value.Value : null;");
                 sb.AppendLine();
@@ -389,12 +393,29 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                 sb.AppendLine("}");
             }
 
-            var fileName = string.IsNullOrEmpty(first.Namespace)
-                ? $"{first.TypeName}.Maybe.g.cs"
-                : $"{first.Namespace}.{first.TypeName}.Maybe.g.cs";
+            var fileName = $"{first.TypePath}.Maybe.g.cs";
 
             spc.AddSource(fileName, sb.ToString());
         }
+    }
+
+    private static string BuildTypePath(INamedTypeSymbol type)
+    {
+        var typeNames = new Stack<string>();
+        var current = type;
+
+        while (current is not null)
+        {
+            typeNames.Push(current.Name);
+            current = current.ContainingType;
+        }
+
+        var typePath = string.Join(".", typeNames);
+        var @namespace = type.ContainingNamespace?.IsGlobalNamespace == true
+            ? string.Empty
+            : type.ContainingNamespace?.ToString() ?? string.Empty;
+
+        return string.IsNullOrEmpty(@namespace) ? typePath : $"{@namespace}.{typePath}";
     }
 
     private static string ToCamelCaseField(string propertyName)

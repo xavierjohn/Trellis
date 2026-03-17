@@ -52,7 +52,7 @@ public class Order : Aggregate<OrderId>
     public Result<Order> AddLine(Product product, int quantity) =>
         this.ToResult()
             // RequiredEnum provides the CanModify property
-            .Ensure(_ => State.CanModify, Error.Validation($"Cannot modify order in '{State.Name}' state"))
+            .Ensure(_ => State.CanModify, Error.Validation($"Cannot modify order in '{State}' state"))
             .Ensure(_ => quantity > 0, Error.Validation("Quantity must be positive", nameof(quantity)))
             .Tap(_ => _lines.Add(new OrderLine(Id, product, quantity)));
 
@@ -105,7 +105,7 @@ public class Order : Aggregate<OrderId>
     public Result<Order> Cancel() =>
         this.ToResult()
             // RequiredEnum provides the CanCancel property
-            .Ensure(_ => State.CanCancel, Error.Validation($"Cannot cancel order in '{State.Name}' state"))
+            .Ensure(_ => State.CanCancel, Error.Validation($"Cannot cancel order in '{State}' state"))
             .Bind(_ => State.TryTransitionTo(OrderState.Cancelled))
             .Tap(newState =>
             {

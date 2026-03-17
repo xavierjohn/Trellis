@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
-    <Description>Wraps the Stateless library's Fire() method to return Result instead of throwing on invalid transitions. Uses CanFire() for safe pre-checks with Railway Oriented Programming.</Description>
+    <Description>Wraps the Stateless library's Fire() method to return Result instead of throwing on invalid transitions, converting known invalid-transition exceptions into failure results for Railway Oriented Programming.</Description>
     <PackageTags>trellis;stateless;state-machine;railway-oriented;result;functional-programming;error-handling</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

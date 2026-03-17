@@ -32,9 +32,10 @@ public static class DbExceptionClassifier
         if (typeName == "PostgresException" && TryGetPostgresSqlState(inner, out var state))
             return state == "23505";
 
-        // SQLite: SqliteException with message containing UNIQUE constraint
+        // SQLite: duplicate key can surface as UNIQUE or PRIMARY KEY constraint failures
         if (typeName == "SqliteException")
-            return message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase);
+            return message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("PRIMARY KEY constraint failed", StringComparison.OrdinalIgnoreCase);
 
         // Fallback: message-based detection for unknown providers
         return message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
@@ -95,7 +96,10 @@ public static class DbExceptionClassifier
                 return $"Constraint: {constraintName}";
         }
 
-        // For other providers, the message itself is the best detail
+        // For other providers the message itself is the most specific detail available.
+        // IMPORTANT: this value is intended for logging/diagnostics only — do not surface it
+        // directly in Error.Detail or API responses, as it may contain schema information
+        // (table names, index names, rejected values). Use a safe generic message for end-users.
         return inner.Message;
     }
 

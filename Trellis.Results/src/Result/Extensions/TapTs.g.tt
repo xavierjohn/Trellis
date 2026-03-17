@@ -153,6 +153,7 @@ public static partial class TapExtensionsAsync
                   (this Task<Result<(<# WriteTs(i); #>)>> resultTask,
                   Action<<# WriteTs(i); #>> action)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(action);
 
         var result = await resultTask.ConfigureAwait(false);
@@ -197,6 +198,7 @@ public static partial class TapExtensionsAsync
                   (this Task<Result<(<# WriteTs(i); #>)>> resultTask,
                   Func<<# WriteTs(i); #>, Task> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);
 
         var result = await resultTask.ConfigureAwait(false);

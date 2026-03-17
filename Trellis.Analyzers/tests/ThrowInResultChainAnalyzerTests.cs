@@ -146,4 +146,23 @@ public class ThrowInResultChainAnalyzerTests
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ThrowInResultChainAnalyzer>(source);
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task ThrowStatement_InsideTapOnFailureLambda_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    var error = Error.Validation("Invalid");
+                    var result = Result.Failure<int>(error)
+                        .TapOnFailure(err => throw new ApplicationException(err.Detail));
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ThrowInResultChainAnalyzer>(source);
+        await test.RunAsync();
+    }
 }

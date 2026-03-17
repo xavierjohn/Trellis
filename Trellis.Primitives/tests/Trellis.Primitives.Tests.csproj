@@ -4,9 +4,11 @@
    </PropertyGroup>
    <ItemGroup>
       <ProjectReference Include="..\generator\Trellis.Primitives.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\generator\Trellis.Primitives.Generator.csproj" />
       <ProjectReference Include="..\src\Trellis.Primitives.csproj" />
    </ItemGroup>
    <ItemGroup>
+      <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
       <PackageReference Include="OpenTelemetry" />
    </ItemGroup>
 </Project>

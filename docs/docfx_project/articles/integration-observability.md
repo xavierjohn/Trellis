@@ -12,7 +12,9 @@ Enable distributed tracing and monitoring for Railway-Oriented Programming opera
 
 Enable distributed tracing for Railway Oriented Programming operations and Value Objects.
 
-> **Important:** Auto-instrumentation (`AddResultsInstrumentation()`) traces **every** `Result<T>` operation and can create significant noise in production. It's recommended to **manually instrument** critical paths and use auto-instrumentation only for development/debugging.
+> **Important:** Auto-instrumentation (`AddResultsInstrumentation()`) traces **every** `Result<T>` operation and can create significant noise in production. Treat it as a break-glass debugging option for pipeline forensics, not as the default observability strategy.
+>
+> `AddPrimitiveValueObjectInstrumentation()` is often the more practical diagnostic default because it emits spans at value creation and validation boundaries, which usually carry higher signal with much lower volume.
 
 ### Installation
 
@@ -80,7 +82,10 @@ builder.Services.AddOpenTelemetry()
 
 ### Auto-Instrumentation (Development/Debugging Only)
 
-Auto-instrumentation is useful for **development and debugging** to see all ROP operations:
+Auto-instrumentation is useful for **development and debugging** to see all ROP operations. In practice, the two built-in tracing modes serve different purposes:
+
+- `AddResultsInstrumentation()` — best for short-lived deep debugging when you need to reconstruct an entire pipeline
+- `AddPrimitiveValueObjectInstrumentation()` — often suitable for regular troubleshooting because value object creation/validation spans are fewer and easier to interpret
 
 ```csharp
 // ⚠️ Development/debugging only - creates significant trace noise
@@ -99,6 +104,11 @@ builder.Services.AddOpenTelemetry()
 - 🧪 Development/testing environments
 - 📊 Analyzing performance bottlenecks
 - 🐛 Troubleshooting specific issues
+
+**Prefer primitive value object tracing when:**
+- ✅ You want visibility into validation failures at API or message boundaries
+- ✅ You need a lower-noise trace stream than full ROP pipeline tracing
+- ✅ You care more about input quality and parsing failures than every intermediate pipeline step
 
 **Avoid in production when:**
 - ❌ High-traffic applications (performance overhead)

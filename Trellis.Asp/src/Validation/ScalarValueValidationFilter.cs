@@ -1,7 +1,10 @@
 ﻿namespace Trellis.Asp;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -120,6 +123,9 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                 if (rawValue is null)
                     continue;
 
+                if (ShouldTreatEmptyQueryValueAsMissing(context, parameter, rawValue))
+                    continue;
+
                 // Call TryCreate to get the real validation error (e.g., with valid values list)
                 var errors = ScalarValueTypeHelper.GetValidationErrors(underlyingType, rawValue, parameter.Name!);
 
@@ -158,6 +164,32 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             return queryValue.ToString();
 
         return null;
+    }
+
+    private static bool ShouldTreatEmptyQueryValueAsMissing(
+        ActionExecutingContext context,
+        ParameterDescriptor parameter,
+        string rawValue)
+    {
+        if (!string.IsNullOrEmpty(rawValue))
+            return false;
+
+        if (context.RouteData.Values.ContainsKey(parameter.Name!))
+            return false;
+
+        return IsNullableReferenceParameter(parameter);
+    }
+
+    private static bool IsNullableReferenceParameter(ParameterDescriptor parameter)
+    {
+        if (parameter is not ControllerParameterDescriptor controllerParameter)
+            return false;
+
+        if (controllerParameter.ParameterType.IsValueType)
+            return Nullable.GetUnderlyingType(controllerParameter.ParameterType) is not null;
+
+        var nullability = new NullabilityInfoContext().Create(controllerParameter.ParameterInfo);
+        return nullability.ReadState == NullabilityState.Nullable;
     }
 
     /// <inheritdoc />

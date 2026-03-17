@@ -176,13 +176,22 @@ public static class FluentValidationResultExtensions
     /// // Email: Email must be a valid email address
     /// </code>
     /// </example>
-    public static Result<T> ToResult<T>(this ValidationResult validationResult, T value)
+    /// <param name="paramName">
+    /// The caller argument expression for <paramref name="value"/>. Used as the field name when
+    /// FluentValidation reports a root-level failure with no property name.
+    /// </param>
+    public static Result<T> ToResult<T>(
+        this ValidationResult validationResult,
+        T value,
+        [CallerArgumentExpression(nameof(value))] string paramName = "value")
     {
+        ArgumentNullException.ThrowIfNull(validationResult);
+
         if (validationResult.IsValid)
             return Result.Success(value);
 
         ImmutableArray<FieldError> errors = validationResult.Errors
-            .GroupBy(e => e.PropertyName)
+            .GroupBy(e => string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName)
             .Select(g => new FieldError(g.Key, g.Select(e => e.ErrorMessage).ToArray()))
             .ToImmutableArray();
 
@@ -277,11 +286,13 @@ public static class FluentValidationResultExtensions
         [CallerArgumentExpression(nameof(value))] string paramName = "value",
         string? message = null)
     {
+        ArgumentNullException.ThrowIfNull(validator);
+
         ValidationResult result = value is null
         ? new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")])
         : validator.Validate(value);
 
-        return result.ToResult(value);
+        return result.ToResult(value, paramName);
     }
 
     /// <summary>
@@ -386,10 +397,12 @@ public static class FluentValidationResultExtensions
         string? message = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(validator);
+
         ValidationResult result = value is null
             ? new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")])
             : await validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false);
 
-        return result.ToResult(value);
+        return result.ToResult(value, paramName);
     }
 }

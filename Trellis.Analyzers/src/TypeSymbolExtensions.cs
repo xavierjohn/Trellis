@@ -68,8 +68,10 @@ internal static class TypeSymbolExtensions
             return false;
 
         var fullName = namedType.ToDisplayString();
-        return fullName.StartsWith("System.Threading.Tasks.Task", System.StringComparison.Ordinal) ||
-               fullName.StartsWith("System.Threading.Tasks.ValueTask", System.StringComparison.Ordinal);
+        return fullName == "System.Threading.Tasks.Task"
+               || fullName.StartsWith("System.Threading.Tasks.Task<", System.StringComparison.Ordinal)
+               || fullName == "System.Threading.Tasks.ValueTask"
+               || fullName.StartsWith("System.Threading.Tasks.ValueTask<", System.StringComparison.Ordinal);
     }
 
     /// <summary>

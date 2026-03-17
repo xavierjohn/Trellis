@@ -98,7 +98,7 @@ customer1 != customer2; // true
 // Update operations
 var updated = customer1.Value
     .UpdateName("John Smith")
-    .Bind(c => c.UpdateEmail(EmailAddress.TryCreate("john.smith@example.com").Value));
+    .Bind(c => c.UpdateEmail(EmailAddress.Create("john.smith@example.com")));
 ```
 
 ---
@@ -350,7 +350,7 @@ public class Order : Aggregate<OrderId>
         CustomerId = customerId;
         Status = OrderStatus.Draft;
         CreatedAt = DateTime.UtcNow;
-        Total = Money.TryCreate(0).Value;
+        Total = Money.Create(0m, "USD");
         
         DomainEvents.Add(new OrderCreated(id, customerId, CreatedAt));
     }
@@ -439,7 +439,7 @@ public class Order : Aggregate<OrderId>
     private void RecalculateTotal()
     {
         var total = Lines.Sum(l => l.Price.Amount * l.Quantity);
-        Total = Money.TryCreate(total, Lines.FirstOrDefault()?.Price.Currency ?? "USD").Value;
+        Total = Money.Create(total, Lines.FirstOrDefault()?.Price.Currency ?? "USD");
     }
 }
 

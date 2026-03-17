@@ -168,7 +168,23 @@ T? AsNullable<T>(this Maybe<T> maybe) where T : struct
 Result<T> ToResult<T>(this Maybe<T>, Error) where T : notnull
 Result<T> ToResult<T>(this Maybe<T>, Func<Error>) where T : notnull
 Task<Result<T>> ToResultAsync<T>(this Task<Maybe<T>>, Error)
+Task<Result<T>> ToResultAsync<T>(this Task<Maybe<T>>, Func<Error>)
 ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<Maybe<T>>, Error)
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<Maybe<T>>, Func<Error>)
+
+// ToResult (from nullable)
+Result<T> ToResult<T>(this T? value, Error) where T : struct
+Result<T> ToResult<T>(this T? value, Func<Error>) where T : struct
+Result<T> ToResult<T>(this T? value, Error) where T : class
+Result<T> ToResult<T>(this T? value, Func<Error>) where T : class
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Error) where T : struct
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Func<Error>) where T : struct
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Error) where T : class
+Task<Result<T>> ToResultAsync<T>(this Task<T?> valueTask, Func<Error>) where T : class
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Error) where T : struct
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>) where T : struct
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Error) where T : class
+ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>) where T : class
 ```
 
 ---
@@ -413,7 +429,7 @@ Result<T> When<T>(this Result<T>, Func<T, bool> predicate, Func<T, Result<T>> ac
 Result<T> When<T>(this Result<T>, bool condition, Func<T, Result<T>> action)
 Result<T> Unless<T>(this Result<T>, Func<T, bool> predicate, Func<T, Result<T>> action)
 Result<T> Unless<T>(this Result<T>, bool condition, Func<T, Result<T>> action)
-// + async variants
+// + async variants, including Task<Result<T>> and ValueTask<Result<T>> boolean-condition overloads
 ```
 
 ### Traverse — Apply to Collection
@@ -502,13 +518,17 @@ Result<T> DebugOnFailure<T>(this Result<T>, Action<Error>)
 
 ROP operations automatically create `Activity` spans when instrumentation is enabled. Each `Bind`, `Map`, `Tap`, `Ensure`, `RecoverOnFailure`, and `Combine` call starts a child activity with success/error status.
 
+Use `AddResultsInstrumentation()` when you need deep pipeline forensics. It traces every `Result<T>` step and can be noisy in normal production monitoring.
+For lower-noise day-to-day diagnostics, `AddPrimitiveValueObjectInstrumentation()` is often the better default because it emits spans at value creation and validation boundaries.
+
 ### Registration
 
 ```csharp
 services.AddOpenTelemetry()
     .WithTracing(builder => builder
-        .AddResultsInstrumentation()                    // ROP operations (Bind, Map, Tap, Ensure, etc.)
-        .AddPrimitiveValueObjectInstrumentation());     // Value object creation (EmailAddress.TryCreate, etc.)
+    .AddPrimitiveValueObjectInstrumentation());     // Recommended default diagnostic signal
+
+// AddResultsInstrumentation() is available when you need to trace the full ROP pipeline.
 ```
 
 ### Extension Methods
@@ -708,8 +728,8 @@ Inherits `ScalarValueObject<TSelf, decimal>`. Same pattern as RequiredInt with `
 **NOT a ScalarValueObject** — standalone hierarchy. Smart enum pattern.
 
 ```csharp
-string Name { get; }      // auto-derived from field name
-int Value { get; }         // auto-assigned (0, 1, 2...)
+string Value { get; }      // auto-derived from field name
+int Ordinal { get; }       // auto-assigned (0, 1, 2...)
 
 static IReadOnlyCollection<TSelf> GetAll()
 static Result<TSelf> TryFromName(string? name, string? fieldName = null)  // case-insensitive
@@ -1734,7 +1754,10 @@ public void CreateOrder_ValidInput_ReturnsSuccess()
 [Fact]
 public void CreateOrder_EmptySubmit_ReturnsFailure()
 {
-    var order = Order.TryCreate(CustomerId.NewUniqueV4()).Value;
+    var orderResult = Order.TryCreate(CustomerId.NewUniqueV4());
+    orderResult.Should().BeSuccess();
+
+    var order = orderResult.Value;
     var result = order.Submit();
 
     result.Should().BeFailure()

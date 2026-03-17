@@ -32,6 +32,16 @@ public partial class TestPaymentMethod : RequiredEnum<TestPaymentMethod>
     public decimal CalculateFee(decimal amount) => amount * Fee;
 }
 
+/// <summary>
+/// Test enum used to verify GetAll does not expose mutable shared cache state.
+/// </summary>
+public partial class TestImmutableEnumMembers : RequiredEnum<TestImmutableEnumMembers>
+{
+    public static readonly TestImmutableEnumMembers One = new();
+    public static readonly TestImmutableEnumMembers Two = new();
+    public static readonly TestImmutableEnumMembers Three = new();
+}
+
 public class RequiredEnumTests
 {
     #region TryCreate Tests
@@ -231,12 +241,8 @@ public class RequiredEnumTests
     #region IScalarValue Interface Tests
 
     [Fact]
-    public void ImplementsIScalarValue()
-    {
-        // Assert - verify via explicit interface access
-        IScalarValue<TestOrderState, string> scalarValue = TestOrderState.Draft;
-        scalarValue.Value.Should().Be("Draft");
-    }
+    public void ImplementsIScalarValue() =>
+        ((IScalarValue<TestOrderState, string>)TestOrderState.Draft).Value.Should().Be("Draft");
 
     #endregion
 
@@ -292,22 +298,37 @@ public class RequiredEnumTests
     }
 
     [Fact]
-    public void Name_IsCorrect()
+    public void GetAll_ReturnedCollection_CannotMutateCachedMembers()
     {
+        // Arrange
+        var all = TestImmutableEnumMembers.GetAll();
+
+        // Act
+        var act = () => ((ICollection<TestImmutableEnumMembers>)all).Clear();
+
         // Assert
-        TestOrderState.Draft.Name.Should().Be("Draft");
-        TestOrderState.Confirmed.Name.Should().Be("Confirmed");
+        act.Should().Throw<NotSupportedException>();
+        TestImmutableEnumMembers.GetAll().Should().Equal(
+            [TestImmutableEnumMembers.One, TestImmutableEnumMembers.Two, TestImmutableEnumMembers.Three]);
     }
 
     [Fact]
-    public void Value_IsAssignedInOrder()
+    public void Value_IsStringName()
     {
-        // Assert (values are assigned based on declaration order)
-        TestOrderState.Draft.Value.Should().Be(0);
-        TestOrderState.Confirmed.Value.Should().Be(1);
-        TestOrderState.Shipped.Value.Should().Be(2);
-        TestOrderState.Delivered.Value.Should().Be(3);
-        TestOrderState.Cancelled.Value.Should().Be(4);
+        // Assert
+        TestOrderState.Draft.Value.Should().Be("Draft");
+        TestOrderState.Confirmed.Value.Should().Be("Confirmed");
+    }
+
+    [Fact]
+    public void Ordinal_IsAssignedInOrder()
+    {
+        // Assert (ordinals are assigned based on declaration order)
+        TestOrderState.Draft.Ordinal.Should().Be(0);
+        TestOrderState.Confirmed.Ordinal.Should().Be(1);
+        TestOrderState.Shipped.Ordinal.Should().Be(2);
+        TestOrderState.Delivered.Ordinal.Should().Be(3);
+        TestOrderState.Cancelled.Ordinal.Should().Be(4);
     }
 
     [Fact]

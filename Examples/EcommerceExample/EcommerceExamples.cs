@@ -296,7 +296,7 @@ public static class EcommerceExamples
         // Helper to create an order at a given status with a specific total
         Order CreateOrder(CustomerId cid, decimal amount, OrderStatus targetStatus)
         {
-            var order = Order.TryCreate(cid).Value;
+            var order = Order.Create(cid);
             order.AddLine(productId, "Widget", Money.Create(amount, "USD"), 1);
 
             if (targetStatus >= OrderStatus.Pending)
@@ -314,7 +314,7 @@ public static class EcommerceExamples
             if (targetStatus == OrderStatus.Cancelled)
             {
                 // Reset to a cancellable state first (Draft)
-                var fresh = Order.TryCreate(cid).Value;
+                var fresh = Order.Create(cid);
                 fresh.AddLine(productId, "Widget", Money.Create(amount, "USD"), 1);
                 fresh.Cancel("No longer needed");
                 return fresh;

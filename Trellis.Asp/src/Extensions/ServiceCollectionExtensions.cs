@@ -418,6 +418,7 @@ public static class ServiceCollectionExtensions
         var options = new TrellisAspOptions();
         configure(options);
         services.AddSingleton(options);
+        TrellisAspOptions.SetCurrent(options);
         return services;
     }
 }

@@ -61,4 +61,22 @@ public class ValidationErrorTests
         ve.FieldErrors[0].FieldName.Should().Be("FieldX");
         ve.FieldErrors[0].Details[0].Should().Be("MessageY");
     }
+
+    [Fact]
+    public void ToDictionary_DuplicateFieldEntries_MergesMessagesInsteadOfOverwriting()
+    {
+        var error = new ValidationError(
+        [
+            new ValidationError.FieldError("email", ["Required"]),
+            new ValidationError.FieldError("email", ["Invalid format"]),
+            new ValidationError.FieldError("password", ["Too short"])
+        ],
+        "validation.error");
+
+        var dictionary = error.ToDictionary();
+
+        dictionary.Should().ContainKey("email");
+        dictionary["email"].Should().Equal(["Required", "Invalid format"]);
+        dictionary["password"].Should().Equal(["Too short"]);
+    }
 }

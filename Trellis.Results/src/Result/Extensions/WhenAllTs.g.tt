@@ -39,11 +39,16 @@ using System.Diagnostics;
 /// then combines their results using the standard Combine semantics.
 /// </para>
 /// <para>
+/// These overloads expect each task to complete with a <see cref="Result{TValue}"/>. If a task faults or is canceled,
+/// the exception escapes from <c>Task.WhenAll</c> instead of being converted into a failed result.
+/// </para>
+/// <para>
 /// Key characteristics:
 /// <list type="bullet">
 /// <item>All tasks execute in parallel (not sequentially)</item>
 /// <item>Waits for all tasks to complete before combining results</item>
 /// <item>If any task's result fails, all errors are aggregated</item>
+/// <item>Faulted or canceled tasks propagate their exception to the caller</item>
 /// <item>More efficient than sequential await chains for independent operations</item>
 /// <item>Creates distributed tracing spans for observability</item>
 /// </list>
@@ -98,6 +103,7 @@ public static partial class WhenAllExtensionsAsync
     /// <remarks>
     /// This method uses Task.WhenAll to execute both operations in parallel,
     /// then combines their results using standard Combine semantics.
+    /// If either task faults or is canceled, that exception escapes immediately.
     /// Creates a distributed tracing span to monitor parallel execution.
     /// </remarks>
     /// <example>
@@ -118,8 +124,18 @@ public static partial class WhenAllExtensionsAsync
     {
        using var activity = RopTrace.ActivitySource.StartActivity("WhenAllAsync");
        activity?.SetTag("parallel.task_count", 2);
-       
-       await Task.WhenAll(tasks.Item1, tasks.Item2);
+
+       try
+       {
+           await Task.WhenAll(tasks.Item1, tasks.Item2).ConfigureAwait(false);
+       }
+       catch (Exception ex)
+       {
+           activity?.SetStatus(ActivityStatusCode.Error);
+           activity?.SetTag("error.type", ex.GetType().Name);
+           throw;
+       }
+
        var result = Result.Combine(tasks.Item1.Result, tasks.Item2.Result);
        
        result.LogActivityStatus();
@@ -148,6 +164,7 @@ public static partial class WhenAllExtensionsAsync
     /// <para>
     /// All <#= i #> tasks execute in parallel using Task.WhenAll for maximum efficiency.
     /// Results are combined only after all tasks complete.
+    /// If any task faults or is canceled, that exception escapes immediately.
     /// Creates a distributed tracing span to monitor parallel execution.
     /// </para>
     /// <para>
@@ -176,8 +193,18 @@ public static partial class WhenAllExtensionsAsync
     {
         using var activity = RopTrace.ActivitySource.StartActivity("WhenAllAsync");
         activity?.SetTag("parallel.task_count", <#= i #>);
-        
-        await Task.WhenAll(<# WriteTaskItem(i); #>);
+
+        try
+        {
+            await Task.WhenAll(<# WriteTaskItem(i); #>).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error);
+            activity?.SetTag("error.type", ex.GetType().Name);
+            throw;
+        }
+
         var result = Result.Combine(<# WriteTaskItemResults(i); #>);
         
         result.LogActivityStatus();

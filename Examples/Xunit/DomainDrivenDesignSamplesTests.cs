@@ -93,6 +93,15 @@ public class DomainDrivenDesignSamplesTests
                        Error.Validation("Name cannot be empty"))
                 .Map(n => new Customer(CustomerId.NewUnique(), n, email));
 
+        public static Customer Create(string name, EmailAddress email)
+        {
+            var result = TryCreate(name, email);
+            if (result.IsFailure)
+                throw new InvalidOperationException($"Failed to create Customer: {result.Error.Detail}");
+
+            return result.Value;
+        }
+
         public Result<Customer> UpdateName(string newName) =>
             newName.ToResult()
                 .Ensure(n => !string.IsNullOrWhiteSpace(n),
@@ -118,15 +127,15 @@ public class DomainDrivenDesignSamplesTests
     public void EntityExample_CreateCustomer_Succeeds()
     {
         // Arrange
-        var email = EmailAddress.TryCreate("john@example.com");
+        var email = EmailAddress.Create("john@example.com");
 
         // Act
-        var result = Customer.TryCreate("John Doe", email.Value);
+        var result = Customer.TryCreate("John Doe", email);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be("John Doe");
-        result.Value.Email.Should().Be(email.Value);
+        result.Value.Email.Should().Be(email);
         result.Value.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
         result.Value.UpdatedAt.Should().BeNull();
     }
@@ -135,10 +144,10 @@ public class DomainDrivenDesignSamplesTests
     public void EntityExample_CreateCustomerWithEmptyName_Fails()
     {
         // Arrange
-        var email = EmailAddress.TryCreate("john@example.com");
+        var email = EmailAddress.Create("john@example.com");
 
         // Act
-        var result = Customer.TryCreate("", email.Value);
+        var result = Customer.TryCreate("", email);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -149,11 +158,11 @@ public class DomainDrivenDesignSamplesTests
     public void EntityExample_TwoCustomersWithSameData_HaveDifferentIdentity()
     {
         // Arrange
-        var email = EmailAddress.TryCreate("john@example.com");
+        var email = EmailAddress.Create("john@example.com");
 
         // Act
-        var customer1 = Customer.TryCreate("John Doe", email.Value);
-        var customer2 = Customer.TryCreate("John Doe", email.Value);
+        var customer1 = Customer.TryCreate("John Doe", email);
+        var customer2 = Customer.TryCreate("John Doe", email);
 
         // Assert - Different instances, different IDs, not equal
         customer1.Value.Should().NotBe(customer2.Value);
@@ -164,8 +173,8 @@ public class DomainDrivenDesignSamplesTests
     public void EntityExample_UpdateName_Succeeds()
     {
         // Arrange
-        var email = EmailAddress.TryCreate("john@example.com");
-        var customer = Customer.TryCreate("John Doe", email.Value).Value;
+        var email = EmailAddress.Create("john@example.com");
+        var customer = Customer.Create("John Doe", email);
 
         // Act
         var result = customer.UpdateName("John Smith");
@@ -180,16 +189,16 @@ public class DomainDrivenDesignSamplesTests
     public void EntityExample_UpdateEmail_Succeeds()
     {
         // Arrange
-        var email = EmailAddress.TryCreate("john@example.com");
-        var customer = Customer.TryCreate("John Doe", email.Value).Value;
-        var newEmail = EmailAddress.TryCreate("john.smith@example.com");
+        var email = EmailAddress.Create("john@example.com");
+        var customer = Customer.Create("John Doe", email);
+        var newEmail = EmailAddress.Create("john.smith@example.com");
 
         // Act
-        var result = customer.UpdateEmail(newEmail.Value);
+        var result = customer.UpdateEmail(newEmail);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Email.Should().Be(newEmail.Value);
+        result.Value.Email.Should().Be(newEmail);
         result.Value.UpdatedAt.Should().NotBeNull();
     }
 
@@ -197,19 +206,19 @@ public class DomainDrivenDesignSamplesTests
     public void EntityExample_ChainedUpdates_Succeeds()
     {
         // Arrange
-        var email = EmailAddress.TryCreate("john@example.com");
-        var customer = Customer.TryCreate("John Doe", email.Value).Value;
-        var newEmail = EmailAddress.TryCreate("john.smith@example.com");
+        var email = EmailAddress.Create("john@example.com");
+        var customer = Customer.Create("John Doe", email);
+        var newEmail = EmailAddress.Create("john.smith@example.com");
 
         // Act
         var result = customer
             .UpdateName("John Smith")
-            .Bind(c => c.UpdateEmail(newEmail.Value));
+            .Bind(c => c.UpdateEmail(newEmail));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be("John Smith");
-        result.Value.Email.Should().Be(newEmail.Value);
+        result.Value.Email.Should().Be(newEmail);
     }
 
     #endregion
@@ -442,6 +451,15 @@ public class DomainDrivenDesignSamplesTests
                        Error.Validation("Currency must be 3-letter ISO code", nameof(currency)))
                 .Map(x => new Money(x.amount, x.currency.ToUpperInvariant()));
 
+        public static Money Create(decimal amount, string currency = "USD")
+        {
+            var result = TryCreate(amount, currency);
+            if (result.IsFailure)
+                throw new InvalidOperationException($"Failed to create Money: {result.Error.Detail}");
+
+            return result.Value;
+        }
+
         public static Money Zero(string currency = "USD") => new(0, currency);
 
         protected override IEnumerable<IComparable> GetEqualityComponents()
@@ -628,7 +646,7 @@ public class DomainDrivenDesignSamplesTests
             CustomerId = customerId;
             Status = OrderStatus.Draft;
             CreatedAt = DateTime.UtcNow;
-            Total = Money.TryCreate(0).Value;
+            Total = Money.Create(0m, "USD");
 
             DomainEvents.Add(new OrderCreated(id, customerId, DateTime.UtcNow));
         }
@@ -636,6 +654,15 @@ public class DomainDrivenDesignSamplesTests
         public static Result<Order> TryCreate(CustomerId customerId) =>
             customerId.ToResult()
                 .Map(cid => new Order(OrderId.NewUnique(), cid));
+
+        public static Order Create(CustomerId customerId)
+        {
+            var result = TryCreate(customerId);
+            if (result.IsFailure)
+                throw new InvalidOperationException($"Failed to create Order: {result.Error.Detail}");
+
+            return result.Value;
+        }
 
         public Result<Order> AddLine(ProductId productId, string productName, Money price, int quantity) =>
             this.ToResult()
@@ -723,7 +750,7 @@ public class DomainDrivenDesignSamplesTests
                 total += Lines[i].Price.Amount * Lines[i].Quantity;
             }
 
-            Total = Money.TryCreate(total, Lines.Count > 0 ? Lines[0].Price.Currency : "USD").Value;
+            Total = Money.Create(total, Lines.Count > 0 ? Lines[0].Price.Currency : "USD");
         }
     }
 
@@ -751,7 +778,7 @@ public class DomainDrivenDesignSamplesTests
         var customerId = CustomerId.NewUnique();
 
         // Act
-        var order = Order.TryCreate(customerId).Value;
+        var order = Order.Create(customerId);
 
         // Assert
         order.UncommittedEvents().Count.Should().Be(1);
@@ -763,9 +790,9 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
-        var productId = ProductId.TryCreate("PROD-001").Value;
-        var price = Money.TryCreate(29.99m, "USD").Value;
+        var order = Order.Create(customerId);
+        var productId = ProductId.Create("PROD-001");
+        var price = Money.Create(29.99m, "USD");
 
         // Act
         var result = order.AddLine(productId, "Widget", price, 5);
@@ -783,9 +810,9 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
-        var productId = ProductId.TryCreate("PROD-001").Value;
-        var price = Money.TryCreate(29.99m, "USD").Value;
+        var order = Order.Create(customerId);
+        var productId = ProductId.Create("PROD-001");
+        var price = Money.Create(29.99m, "USD");
 
         // Act
         var result = order
@@ -803,9 +830,9 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
-        var productId = ProductId.TryCreate("PROD-001").Value;
-        var price = Money.TryCreate(29.99m, "USD").Value;
+        var order = Order.Create(customerId);
+        var productId = ProductId.Create("PROD-001");
+        var price = Money.Create(29.99m, "USD");
         order.AddLine(productId, "Widget", price, 5);
 
         // Act
@@ -822,9 +849,9 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
-        var productId = ProductId.TryCreate("PROD-001").Value;
-        var price = Money.TryCreate(29.99m, "USD").Value;
+        var order = Order.Create(customerId);
+        var productId = ProductId.Create("PROD-001");
+        var price = Money.Create(29.99m, "USD");
         order.AddLine(productId, "Widget", price, 5);
 
         // Act
@@ -841,7 +868,7 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
+        var order = Order.Create(customerId);
 
         // Act
         var result = order.Submit();
@@ -856,9 +883,9 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
-        var productId = ProductId.TryCreate("PROD-001").Value;
-        var price = Money.TryCreate(29.99m, "USD").Value;
+        var order = Order.Create(customerId);
+        var productId = ProductId.Create("PROD-001");
+        var price = Money.Create(29.99m, "USD");
         order.AddLine(productId, "Widget", price, 5);
         order.Submit();
 
@@ -876,9 +903,9 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
-        var productId = ProductId.TryCreate("PROD-001").Value;
-        var price = Money.TryCreate(29.99m, "USD").Value;
+        var order = Order.Create(customerId);
+        var productId = ProductId.Create("PROD-001");
+        var price = Money.Create(29.99m, "USD");
         order.AddLine(productId, "Widget", price, 5);
 
         // Act
@@ -895,9 +922,9 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
-        var productId = ProductId.TryCreate("PROD-001").Value;
-        var price = Money.TryCreate(29.99m, "USD").Value;
+        var order = Order.Create(customerId);
+        var productId = ProductId.Create("PROD-001");
+        var price = Money.Create(29.99m, "USD");
 
         // Act
         order.AddLine(productId, "Widget", price, 5);
@@ -915,7 +942,7 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var order = Order.TryCreate(customerId).Value;
+        var order = Order.Create(customerId);
 
         // Act
         order.AcceptChanges();
@@ -930,10 +957,10 @@ public class DomainDrivenDesignSamplesTests
     {
         // Arrange
         var customerId = CustomerId.NewUnique();
-        var productId1 = ProductId.TryCreate("PROD-001").Value;
-        var productId2 = ProductId.TryCreate("PROD-002").Value;
-        var price1 = Money.TryCreate(29.99m, "USD").Value;
-        var price2 = Money.TryCreate(49.99m, "USD").Value;
+        var productId1 = ProductId.Create("PROD-001");
+        var productId2 = ProductId.Create("PROD-002");
+        var price1 = Money.Create(29.99m, "USD");
+        var price2 = Money.Create(49.99m, "USD");
 
         // Act
         var result = Order.TryCreate(customerId)

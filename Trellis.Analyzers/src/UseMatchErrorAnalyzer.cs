@@ -25,6 +25,7 @@ public sealed class UseMatchErrorAnalyzer : DiagnosticAnalyzer
         context.RegisterSyntaxNodeAction(AnalyzeSwitchStatement, SyntaxKind.SwitchStatement);
         context.RegisterSyntaxNodeAction(AnalyzeSwitchExpression, SyntaxKind.SwitchExpression);
         context.RegisterSyntaxNodeAction(AnalyzeIfStatement, SyntaxKind.IsPatternExpression);
+        context.RegisterSyntaxNodeAction(AnalyzeIsExpression, SyntaxKind.IsExpression);
     }
 
     private static void AnalyzeSwitchStatement(SyntaxNodeAnalysisContext context)
@@ -92,6 +93,28 @@ public sealed class UseMatchErrorAnalyzer : DiagnosticAnalyzer
         }
     }
 
+    private static void AnalyzeIsExpression(SyntaxNodeAnalysisContext context)
+    {
+        var isExpression = (BinaryExpressionSyntax)context.Node;
+
+        if (!IsErrorExpression(isExpression.Left, context.SemanticModel))
+            return;
+
+        var typeInfo = context.SemanticModel.GetTypeInfo(isExpression.Right);
+        if (!typeInfo.Type.IsErrorOrDerivedType())
+        {
+            var typeSymbol = context.SemanticModel.GetSymbolInfo(isExpression.Right).Symbol as ITypeSymbol;
+            if (!typeSymbol.IsErrorOrDerivedType())
+                return;
+        }
+
+        var diagnostic = Diagnostic.Create(
+            DiagnosticDescriptors.UseMatchErrorForDiscrimination,
+            isExpression.GetLocation());
+
+        context.ReportDiagnostic(diagnostic);
+    }
+
     // Check if expression accesses an Error (e.g., result.Error)
     private static bool IsErrorExpression(ExpressionSyntax expression, SemanticModel semanticModel)
     {
@@ -102,10 +125,33 @@ public sealed class UseMatchErrorAnalyzer : DiagnosticAnalyzer
     // Check if pattern matches a specific error type
     private static bool IsErrorTypePattern(PatternSyntax pattern, SemanticModel semanticModel)
     {
-        if (pattern is not DeclarationPatternSyntax declarationPattern)
-            return false;
+        TypeSyntax? typeSyntax = pattern switch
+        {
+            DeclarationPatternSyntax declarationPattern => declarationPattern.Type,
+            TypePatternSyntax typePattern => typePattern.Type,
+            _ => null
+        };
 
-        var typeInfo = semanticModel.GetTypeInfo(declarationPattern.Type);
-        return typeInfo.Type.IsErrorOrDerivedType();
+        if (typeSyntax is null)
+        {
+            if (pattern is ConstantPatternSyntax constantPattern)
+            {
+                var constantType = semanticModel.GetTypeInfo(constantPattern.Expression).Type;
+                if (constantType.IsErrorOrDerivedType())
+                    return true;
+
+                var symbol = semanticModel.GetSymbolInfo(constantPattern.Expression).Symbol as ITypeSymbol;
+                return symbol.IsErrorOrDerivedType();
+            }
+
+            return false;
+        }
+
+        var typeInfo = semanticModel.GetTypeInfo(typeSyntax);
+        if (typeInfo.Type.IsErrorOrDerivedType())
+            return true;
+
+        var typeSymbol = semanticModel.GetSymbolInfo(typeSyntax).Symbol as ITypeSymbol;
+        return typeSymbol.IsErrorOrDerivedType();
     }
 }

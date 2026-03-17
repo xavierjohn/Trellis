@@ -71,7 +71,7 @@ public interface IScalarValue<TSelf, TPrimitive>
     /// <para>
     /// Use this method when you know the value is valid (e.g., in tests, with constants,
     /// or when building from other validated values). This provides cleaner code
-    /// than calling <c>TryCreate().Value</c>.
+    /// than calling <c>Create(...)</c> through a manual <c>TryCreate(...).Value</c> pattern.
     /// </para>
     /// <para>
     /// ⚠️ Don't use this method with user input or uncertain data - use <see cref="TryCreate"/>

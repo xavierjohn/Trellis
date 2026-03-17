@@ -205,6 +205,16 @@ When both `Task<T>` and `ValueTask<T>` overloads exist, use explicit constructor
 3. **Value preservation**: Original values preserved through transformations
 4. **Error propagation**: Errors flow through pipeline unchanged
 
+### Test-Driven Development (TDD)
+
+Follow TDD when fixing bugs or adding new features:
+
+1. **RED** — Write a failing test that proves the bug exists or specifies the new behavior
+2. **GREEN** — Write the minimum code to make the test pass
+3. **REFACTOR** — Clean up without changing behavior; all tests must stay green
+
+Do NOT skip the RED step. A fix without a failing test is untested by definition.
+
 ## Test Organization
 
 ### Async Extension File Naming

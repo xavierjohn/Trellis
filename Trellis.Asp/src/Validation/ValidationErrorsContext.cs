@@ -71,8 +71,9 @@ public static class ValidationErrorsContext
     public static IDisposable BeginScope()
     {
         var previous = s_current.Value;
+        var previousPropertyName = s_currentPropertyName.Value;
         s_current.Value = new ErrorCollector();
-        return new Scope(previous);
+        return new Scope(previous, previousPropertyName);
     }
 
     /// <summary>
@@ -114,12 +115,19 @@ public static class ValidationErrorsContext
     private sealed class Scope : IDisposable
     {
         private readonly ErrorCollector? _previous;
+        private readonly string? _previousPropertyName;
 
-        public Scope(ErrorCollector? previous) =>
+        public Scope(ErrorCollector? previous, string? previousPropertyName)
+        {
             _previous = previous;
+            _previousPropertyName = previousPropertyName;
+        }
 
-        public void Dispose() =>
+        public void Dispose()
+        {
             s_current.Value = _previous;
+            s_currentPropertyName.Value = _previousPropertyName;
+        }
     }
 
     internal sealed class ErrorCollector

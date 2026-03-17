@@ -216,8 +216,20 @@ var result = EmailAddress.TryCreate(email)
 
 ## OpenTelemetry Tracing
 
-Every ROP extension method creates an `Activity` span automatically. Enable tracing
-to see the full pipeline as a distributed trace:
+Every ROP extension method creates an `Activity` span automatically. That can be very useful when
+you need to reconstruct an entire pipeline, but it also means trace volume grows with every `Ensure`,
+`Bind`, `Map`, `Tap`, `Match`, and tuple helper in the chain.
+
+Treat Results tracing as a **break-glass debugging tool**:
+
+- Use it when you need full pipeline forensics for a hard-to-reproduce issue
+- Prefer it in development, test environments, or short-lived troubleshooting sessions
+- Avoid assuming it will be a low-noise production default for most applications
+
+If you want a lower-noise observability surface for normal diagnostics, primitive value object tracing
+is usually the better fit because it fires at clearer domain boundaries like parse/validate/create.
+
+Enable Results tracing when you need to see the full pipeline as a distributed trace:
 
 ```csharp
 builder.Services.AddOpenTelemetry()

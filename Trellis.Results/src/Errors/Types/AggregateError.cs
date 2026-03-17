@@ -41,7 +41,8 @@ public sealed class AggregateError : Error
     {
         if (errors.Count < 1)
             throw new ArgumentException("At least one error is required", nameof(errors));
-        Errors = errors;
+
+        Errors = Array.AsReadOnly([.. errors]);
     }
 
     /// <summary>

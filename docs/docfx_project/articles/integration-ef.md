@@ -105,7 +105,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 | `RequiredString<T>` | `string` | `v.Value` ↔ `T.Create(str)` |
 | `RequiredInt<T>` | `int` | `v.Value` ↔ `T.Create(num)` |
 | `RequiredDecimal<T>` | `decimal` | `v.Value` ↔ `T.Create(num)` |
-| `RequiredEnum<T>` | `string` | `v.Name` ↔ `T.TryFromName(str).Value` |
+| `RequiredEnum<T>` | `string` | `v.Value` ↔ `T.TryFromName(str).Value` |
 | `EmailAddress` | `string(254)` | `v.Value` ↔ `EmailAddress.Create(str)` |
 | Custom `ScalarValueObject<T,P>` | `P` | `v.Value` ↔ `T.Create(p)` |
 

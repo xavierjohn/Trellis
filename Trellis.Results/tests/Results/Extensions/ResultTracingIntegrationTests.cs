@@ -10,6 +10,82 @@ using Trellis.Testing;
 /// </summary>
 public class ResultTracingIntegrationTests
 {
+    #region Map Tracing Tests
+
+    [Fact]
+    public void Map_Success_LogsOkStatus()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = Result.Success(21)
+            .Map(x => x * 2);
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be(42);
+        activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public void Map_Failure_LogsErrorStatus_AndShortCircuits()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+        var functionCalled = false;
+
+        // Act
+        var result = Result.Failure<int>(Error.Validation("Invalid value"))
+            .Map(x =>
+            {
+                functionCalled = true;
+                return x * 2;
+            });
+
+        // Assert
+        functionCalled.Should().BeFalse();
+        result.Should().BeFailureOfType<ValidationError>();
+        activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task MapAsync_Success_LogsOkStatus()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = await Result.Success(21)
+            .MapAsync(x => Task.FromResult(x * 2));
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be(42);
+        activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public async Task MapAsync_Failure_LogsErrorStatus_AndShortCircuits()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+        var functionCalled = false;
+
+        // Act
+        var result = await Result.Failure<int>(Error.Validation("Invalid value"))
+            .MapAsync(x =>
+            {
+                functionCalled = true;
+                return Task.FromResult(x * 2);
+            });
+
+        // Assert
+        functionCalled.Should().BeFalse();
+        result.Should().BeFailureOfType<ValidationError>();
+        activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Error);
+    }
+
+    #endregion
+
     #region Success Path Integration Tests
 
     [Fact]

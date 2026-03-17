@@ -44,7 +44,7 @@ public sealed class CombineLimitAnalyzer : DiagnosticAnalyzer
             return;
 
         // Count chain depth syntactically to determine the would-be tuple size
-        var elementCount = CountCombineChainElements(invocation);
+        var elementCount = CountCombineChainElements(invocation, context.SemanticModel);
         if (elementCount <= MaxTupleElements)
             return;
 
@@ -66,31 +66,39 @@ public sealed class CombineLimitAnalyzer : DiagnosticAnalyzer
         parentMemberAccess.Parent is InvocationExpressionSyntax;
 
     /// <summary>
-    /// Counts the total number of elements being combined by walking the Combine chain syntactically.
-    /// For example, <c>r1.Combine(r2).Combine(r3)</c> = 3 elements.
+    /// Counts the total number of elements that would exist after the current Combine call.
+    /// This uses the semantic type of the receiver, so it also works when the chain continues
+    /// from an intermediate variable like <c>temp.Combine(r6)</c> where <c>temp</c> is already a combined tuple result.
     /// </summary>
-    private static int CountCombineChainElements(InvocationExpressionSyntax invocation)
+    private static int CountCombineChainElements(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
     {
-        var combineCount = 0;
-        var current = invocation;
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+            return 0;
 
-        while (true)
-        {
-            if (current.Expression is not MemberAccessExpressionSyntax ma)
-                break;
+        return CountReceiverElements(memberAccess.Expression, semanticModel) + 1;
+    }
 
-            if (ma.Name.Identifier.Text is not ("Combine" or "CombineAsync"))
-                break;
+    private static int CountReceiverElements(ExpressionSyntax receiverExpression, SemanticModel semanticModel)
+    {
+        var receiverType = semanticModel.GetTypeInfo(receiverExpression).Type;
+        if (receiverType is not INamedTypeSymbol namedType)
+            return 1;
 
-            combineCount++;
+        if (namedType.IsTaskType() && namedType.TypeArguments.Length == 1)
+            return CountResultElements(namedType.TypeArguments[0]);
 
-            if (ma.Expression is InvocationExpressionSyntax receiver)
-                current = receiver;
-            else
-                break;
-        }
+        return CountResultElements(namedType);
+    }
 
-        // +1 for the initial Result<T> at the start of the chain
-        return combineCount + 1;
+    private static int CountResultElements(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is not INamedTypeSymbol namedType || !namedType.IsResultType())
+            return 1;
+
+        var resultValueType = namedType.TypeArguments[0];
+        if (resultValueType is INamedTypeSymbol { IsTupleType: true } tupleType)
+            return tupleType.TupleElements.Length;
+
+        return 1;
     }
 }

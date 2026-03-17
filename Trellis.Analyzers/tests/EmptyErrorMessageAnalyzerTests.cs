@@ -125,4 +125,25 @@ public class EmptyErrorMessageAnalyzerTests
 
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task ErrorValidation_EmptyInterpolatedString_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    var error = Error.Validation($"");
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<EmptyErrorMessageAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.EmptyErrorMessage)
+                .WithLocation(11, 38));
+
+        await test.RunAsync();
+    }
 }

@@ -98,9 +98,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => { });
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -114,9 +112,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => Task.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -130,9 +126,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => Task.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Error);
     }
 
     [Fact]
@@ -146,9 +140,7 @@ public class TapTupleTracingTests : TestBase
         await result.TapAsync((a, b) => ValueTask.CompletedTask);
 
         // Assert
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     #endregion
@@ -287,13 +279,8 @@ public class TapTupleTracingTests : TestBase
         result.Should().BeSuccess();
 
         // Should have 2 Combines + 1 Tap
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
-
-        // Verify Tap has Ok status
-        var activities = activityTest.CapturedActivities;
-        activities.Should().Contain(a =>
-            a.DisplayName == "Tap" &&
-            a.Status == ActivityStatusCode.Ok);
+        activityTest.AssertActivityCaptured("Combine", 2);
+        activityTest.AssertActivityCapturedWithStatus("Tap", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -356,7 +343,9 @@ public class TapTupleTracingTests : TestBase
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Should have activities for all operations
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
+        activityTest.AssertActivityCaptured("Tap", 2);
+        activityTest.AssertActivityCapturedWithStatus("Bind", ActivityStatusCode.Ok);
     }
 
     #endregion

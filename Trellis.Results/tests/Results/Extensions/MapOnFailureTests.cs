@@ -1,9 +1,33 @@
-﻿using Trellis.Testing;
+﻿using System.Diagnostics;
+using Trellis.Results.Tests.Helpers;
+using Trellis.Testing;
 
 namespace Trellis.Results.Tests.Results.Extensions;
 
 public class MapOnFailureTests : TestBase
 {
+    [Fact]
+    public void MapOnFailure_WithNullMap_ThrowsArgumentNullException()
+    {
+        var original = Result.Failure<int>(Error1);
+
+        var act = () => original.MapOnFailure((Func<Error, Error>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "map");
+    }
+
+    [Fact]
+    public async Task MapOnFailureAsync_TaskResult_WithNullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<int>> original = null!;
+
+        Func<Task<Result<int>>> act = () => original.MapOnFailureAsync(e => e);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
     [Fact]
     public void MapOnFailure_transforms_failure_error()
     {
@@ -224,6 +248,31 @@ public class MapOnFailureTests : TestBase
         // Assert
         transformed.Should().BeFailure();
         transformed.Error.Should().BeOfType<ServiceUnavailableError>();
+    }
+
+    [Fact]
+    public void MapOnFailure_Success_LogsOkStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+
+        var result = Result.Success(42)
+            .MapOnFailure(error => Error.Unexpected($"Wrapped: {error.Detail}"));
+
+        result.Should().BeSuccess()
+            .Which.Should().Be(42);
+        activityTest.AssertActivityCapturedWithStatus("MapOnFailure", ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public async Task MapOnFailureAsync_Result_WithAsyncFunc_Failure_LogsErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+
+        var result = await Result.Failure<int>(Error.Validation("Bad input"))
+            .MapOnFailureAsync(error => Task.FromResult<Error>(Error.Conflict($"Wrapped: {error.Detail}")));
+
+        result.Should().BeFailureOfType<ConflictError>();
+        activityTest.AssertActivityCapturedWithStatus("MapOnFailure", ActivityStatusCode.Error);
     }
 
     #endregion

@@ -157,6 +157,19 @@ public class PercentageTests
     }
 
     [Fact]
+    public void FromFraction_out_of_range_uses_fraction_context()
+    {
+        // Act
+        var result = Percentage.FromFraction(1.5m, "discountRate");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = result.Error.Should().BeOfType<ValidationError>().Subject;
+        validation.FieldErrors[0].FieldName.Should().Be("discountRate");
+        validation.FieldErrors[0].Details[0].Should().Be("Fraction must be between 0 and 1.");
+    }
+
+    [Fact]
     public void Two_Percentage_with_same_value_should_be_equal()
     {
         // Arrange

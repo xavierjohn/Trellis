@@ -207,6 +207,61 @@ public class StateMachineExtensionsTests
         result2.Value.Should().Be(State.Running);
     }
 
+    [Fact]
+    public void FireResult_GuardedTransition_EvaluatesGuardOnlyOnce()
+    {
+        // Arrange
+        var guardCallCount = 0;
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle)
+            .PermitIf(Trigger.Start, State.Running, () =>
+            {
+                guardCallCount++;
+                return true;
+            });
+
+        // Act
+        var result = machine.FireResult(Trigger.Start);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(State.Running);
+        guardCallCount.Should().Be(1, "FireResult should not evaluate transition guards more than once");
+    }
+
+    [Fact]
+    public void FireResult_EntryActionThrowsInvalidOperationException_PropagatesException()
+    {
+        // Arrange
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.Configure(State.Running)
+            .OnEntry(() => throw new InvalidOperationException("boom"));
+
+        // Act
+        var exception = Assert.Throws<InvalidOperationException>(() => machine.FireResult(Trigger.Start));
+
+        // Assert
+        exception.Message.Should().Be("boom");
+    }
+
+    [Fact]
+    public void FireResult_EntryActionThrowsMatchingInvalidTransitionMessage_StillPropagatesException()
+    {
+        // Arrange
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.Configure(State.Running)
+            .OnEntry(() => throw new InvalidOperationException(
+                "No valid leaving transitions are permitted from state 'Idle' for trigger 'Start'."));
+
+        // Act
+        var exception = Assert.Throws<InvalidOperationException>(() => machine.FireResult(Trigger.Start));
+
+        // Assert
+        exception.Message.Should().Be("No valid leaving transitions are permitted from state 'Idle' for trigger 'Start'.");
+    }
+
     #endregion
 
     #region String state machine

@@ -43,6 +43,15 @@ public class RequiredStringLengthTests
     }
 
     [Fact]
+    public void TryCreate_MaxLengthOnly_ValidAfterTrimming_ReturnsTrimmedSuccess()
+    {
+        var result = ShortCode.TryCreate("  ABC123  "); // trims to 6 characters
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be("ABC123");
+    }
+
+    [Fact]
     public void TryCreate_MaxLengthOnly_ExceedsMaxLength_ReturnsFailure()
     {
         var result = ShortCode.TryCreate("12345678901"); // 11 characters
@@ -232,7 +241,8 @@ public class RequiredStringLengthTests
     public void ExplicitCast_ExceedsMaxLength_ThrowsInvalidOperationException()
     {
         Action act = () => { ShortCode sc = (ShortCode)"12345678901"; };
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Failed to create ShortCode:*Short Code must be 10 characters or fewer*");
     }
 
     #endregion

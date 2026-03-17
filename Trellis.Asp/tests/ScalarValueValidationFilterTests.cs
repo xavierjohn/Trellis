@@ -2,10 +2,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
@@ -456,7 +458,29 @@ public class ScalarValueValidationFilterTests
         context.Result.Should().BeNull("optional parameter not provided should not trigger validation");
     }
 
+    [Fact]
+    public void OnActionExecuting_OptionalNullableScalarValueParam_EmptyQueryValue_DoesNotShortCircuit()
+    {
+        // Arrange - simulates: FilterOrders([FromQuery] OrderState? state) called with ?state=
+        // ASP.NET Core treats empty query string input for nullable simple values as null, not a validation error.
+        var filter = new ScalarValueValidationFilter();
+        var paramDescriptor = CreateControllerParameterDescriptor(nameof(OptionalNullableScalarValueParam), "state");
+        var context = CreateActionExecutingContextWithParams(
+            parameters: [paramDescriptor],
+            arguments: new Dictionary<string, object?> { ["state"] = null },
+            routeValues: new RouteValueDictionary(),
+            queryString: "?state=");
+
+        // Act
+        filter.OnActionExecuting(context);
+
+        // Assert - empty query string for an optional nullable parameter should behave like no value
+        context.Result.Should().BeNull("optional nullable parameter with empty query input should not trigger validation");
+    }
+
     #endregion
+
+    private static void OptionalNullableScalarValueParam(TestOrderCode? state) { }
 
     #region Test Value Objects
 
@@ -565,6 +589,20 @@ public class ScalarValueValidationFilterTests
             new List<IFilterMetadata>(),
             arguments,
             controller: null!);
+    }
+
+    private static ControllerParameterDescriptor CreateControllerParameterDescriptor(string methodName, string parameterName)
+    {
+        var parameterInfo = typeof(ScalarValueValidationFilterTests)
+            .GetMethod(methodName, BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        return new ControllerParameterDescriptor
+        {
+            Name = parameterName,
+            ParameterType = parameterInfo.ParameterType,
+            ParameterInfo = parameterInfo
+        };
     }
 
     #endregion

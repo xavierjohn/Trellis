@@ -313,7 +313,12 @@ var result = await GetUserAsync(id)
 
 ### OpenTelemetry Distributed Tracing
 
-Enable distributed tracing to automatically trace your ROP chains:
+Enable distributed tracing to automatically trace your ROP chains when you need full pipeline forensics.
+This is powerful, but it can also get noisy because every ROP step creates a span. Treat it as a
+break-glass debugging option rather than the default observability setting for routine production use.
+
+If you want lower-noise traces for normal diagnostics, prefer primitive value object tracing and add
+manual spans around critical business operations.
 
 ```csharp
 // Startup configuration (Program.cs or Startup.cs)
@@ -325,7 +330,7 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());  // Or .AddConsoleExporter() for development
 ```
 
-**Your ROP chains are automatically traced**:
+**Your ROP chains are automatically traced** when you enable Results instrumentation:
 
 ```csharp
 // Each operation creates a span in your trace

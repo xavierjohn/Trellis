@@ -183,6 +183,17 @@ public class TapTupleTests : TestBase
     }
 
     [Fact]
+    public async Task TapAsync_2Tuple_TaskResultWithAction_NullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<(int, string)>> result = null!;
+
+        Func<Task<Result<(int, string)>>> act = () => result.TapAsync((a, b) => { });
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
+    [Fact]
     public async Task TapAsync_2Tuple_WithFuncTask_Success_ExecutesFunction()
     {
         // Arrange

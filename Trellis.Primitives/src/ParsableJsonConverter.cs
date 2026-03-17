@@ -72,8 +72,8 @@ using System.Text.Json.Serialization;
 /// 
 /// var user = new UserDto(
 ///     UserId.NewUnique(),
-///     EmailAddress.TryCreate("user@example.com").Value,
-///     FirstName.TryCreate("John").Value
+///     EmailAddress.Create("user@example.com"),
+///     FirstName.Create("John")
 /// );
 /// 
 /// var json = JsonSerializer.Serialize(user);

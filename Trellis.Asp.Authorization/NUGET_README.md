@@ -22,6 +22,8 @@ Default mapping:
 | `ForbiddenPermissions` | Empty (override to populate) |
 | `Attributes` | `tid`, `preferred_username`, `azp`, `azpacr`, `acrs`, `ip_address`, `mfa` |
 
+`mfa` is derived from the `amr` claim and treats `mfa`, `Mfa`, and `MFA` equivalently.
+
 ## Customization
 
 ```csharp
@@ -40,6 +42,8 @@ builder.Services.AddEntraActorProvider(options =>
         .ToHashSet();
 });
 ```
+
+If a custom `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` delegate throws, `EntraActorProvider` wraps the original exception with context identifying which delegate failed.
 
 ## Requirements
 

@@ -53,6 +53,20 @@ public class SpecificationTests
         result.Should().BeFalse();
     }
 
+    [Fact]
+    public void IsSatisfiedBy_WhenExpressionSnapshotsCurrentState_UsesLatestExpression()
+    {
+        var spec = new SnapshottingPriceAboveSpec(50m);
+        var product = new Product("Widget", 60m, "Electronics");
+
+        spec.IsSatisfiedBy(product).Should().BeTrue();
+
+        spec.Threshold = 70m;
+
+        spec.IsSatisfiedBy(product).Should().BeFalse(
+            "IsSatisfiedBy should evaluate the current ToExpression semantics on each call");
+    }
+
     #endregion
 
     #region ToExpression
@@ -137,4 +151,15 @@ public class SpecificationTests
     }
 
     #endregion
+}
+
+file class SnapshottingPriceAboveSpec(decimal threshold) : Specification<Product>
+{
+    public decimal Threshold { get; set; } = threshold;
+
+    public override Expression<Func<Product, bool>> ToExpression()
+    {
+        var currentThreshold = Threshold;
+        return p => p.Price > currentThreshold;
+    }
 }

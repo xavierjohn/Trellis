@@ -16,6 +16,17 @@ public class TapOnFailureTests : TestBase
     #region TapOnFailure with Action
 
     [Fact]
+    public void TapOnFailure_WithNullAction_ThrowsArgumentNullException()
+    {
+        var result = Result.Failure<int>(Error1);
+
+        var act = () => result.TapOnFailure((Action)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "action");
+    }
+
+    [Fact]
     public void TapOnFailure_WithAction_FailureResult_ExecutesAction()
     {
         // Arrange
@@ -94,6 +105,17 @@ public class TapOnFailureTests : TestBase
     #region TapErrorAsync - Task<Result<T>> with Action
 
     [Fact]
+    public async Task TapOnFailureAsync_TaskResult_WithNullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<int>> result = null!;
+
+        Func<Task<Result<int>>> act = () => result.TapOnFailureAsync(() => { });
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
+    [Fact]
     public async Task TapOnFailureAsync_TaskResult_WithAction_FailureResult_ExecutesAction()
     {
         // Arrange
@@ -143,6 +165,17 @@ public class TapOnFailureTests : TestBase
     #endregion
 
     #region TapErrorAsync - Result<T> with Func<Task>
+
+    [Fact]
+    public async Task TapOnFailureAsync_Result_WithNullFuncTask_ThrowsArgumentNullException()
+    {
+        var result = Result.Failure<int>(Error1);
+
+        Func<Task<Result<int>>> act = () => result.TapOnFailureAsync((Func<Task>)null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "func");
+    }
 
     [Fact]
     public async Task TapOnFailureAsync_Result_WithFuncTask_FailureResult_ExecutesFunction()

@@ -46,6 +46,18 @@ public class MoneyTests
     }
 
     [Fact]
+    public void Cannot_create_Money_with_invalid_currency_uses_custom_field_name()
+    {
+        // Act
+        var result = Money.TryCreate(100.00m, "INVALID", "unitPrice");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("unitPrice");
+    }
+
+    [Fact]
     public void Create_returns_Money_for_valid_input()
     {
         // Act
@@ -561,6 +573,18 @@ public class MoneyTests
 
         // Assert
         str.Should().Be("99.99 USD");
+    }
+
+    #endregion
+
+    #region FieldName Edge Cases
+
+    [Fact]
+    public void TryCreate_with_empty_string_fieldName_should_not_throw()
+    {
+        var act = () => Money.TryCreate(-1m, "USD", fieldName: "");
+
+        act.Should().NotThrow();
     }
 
     #endregion

@@ -39,6 +39,37 @@ public class ValidatingJsonConverterEdgeCasesTests
         }
     }
 
+    public class URL : ScalarValueObject<URL, string>, IScalarValue<URL, string>
+    {
+        private URL(string value) : base(value) { }
+
+        public static Result<URL> TryCreate(string? value, string? fieldName = null)
+        {
+            var field = fieldName ?? "url";
+            if (string.IsNullOrWhiteSpace(value))
+                return Error.Validation("URL is required.", field);
+
+            return new URL(value);
+        }
+    }
+
+    public enum ProcessingMode
+    {
+        Unknown = 0,
+        Fast = 1,
+        Safe = 2,
+    }
+
+    public sealed class ProcessingModeVO : ScalarValueObject<ProcessingModeVO, ProcessingMode>, IScalarValue<ProcessingModeVO, ProcessingMode>
+    {
+        private ProcessingModeVO(ProcessingMode value) : base(value) { }
+
+        public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
+            value == ProcessingMode.Unknown
+                ? Error.Validation("Processing mode is required.", fieldName ?? "processingMode")
+                : new ProcessingModeVO(value);
+    }
+
     #endregion
 
     #region Null Handling Tests
@@ -160,6 +191,29 @@ public class ValidatingJsonConverterEdgeCasesTests
         }
     }
 
+    [Fact]
+    public void Read_AcronymTypeName_UsesCamelCaseDefaultFieldName()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<URL, string>();
+        var json = "\"\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            // Act
+            var result = converter.Read(ref reader, typeof(URL), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            var error = ValidationErrorsContext.GetValidationError();
+            error.Should().NotBeNull();
+            error!.FieldErrors.Should().ContainSingle()
+                .Which.FieldName.Should().Be("url");
+        }
+    }
+
     #endregion
 
     #region Error Without Scope Tests
@@ -186,6 +240,29 @@ public class ValidatingJsonConverterEdgeCasesTests
     #endregion
 
     #region Non-ValidationError Handling Tests
+
+    [Fact]
+    public void Read_EnumStringValue_BindsSuccessfully()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "\"Safe\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Value.Should().Be(ProcessingMode.Safe);
+            ValidationErrorsContext.HasErrors.Should().BeFalse();
+        }
+    }
 
     [Fact]
     public void Read_NonValidationError_CollectsAsSimpleError()
@@ -265,6 +342,31 @@ public class ValidatingJsonConverterEdgeCasesTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void Read_InvalidPrimitiveToken_CollectsValidationError()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<Age, int>();
+        var json = "\"abc\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "Age";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(Age), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            var error = ValidationErrorsContext.GetValidationError();
+            error.Should().NotBeNull();
+            error!.FieldErrors.Should().ContainSingle()
+                .Which.FieldName.Should().Be("Age");
         }
     }
 

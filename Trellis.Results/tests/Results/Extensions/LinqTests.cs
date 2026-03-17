@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Trellis;
+using Trellis.Testing;
 using Xunit;
 
 namespace Trellis.Results.Tests.Results.Extensions.Linq;
@@ -13,8 +14,7 @@ public class LinqTests : TestBase
 
         var projected = r.Select(x => x * 2); // query Select extension
 
-        projected.IsSuccess.Should().BeTrue();
-        projected.Value.Should().Be(10);
+        projected.Should().BeSuccess().Which.Should().Be(10);
     }
 
     [Fact]
@@ -24,8 +24,7 @@ public class LinqTests : TestBase
 
         var projected = r.Select(x => x * 2);
 
-        projected.IsFailure.Should().BeTrue();
-        projected.Error.Should().Be(Error1);
+        projected.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -37,8 +36,7 @@ public class LinqTests : TestBase
         var combined =
             a.SelectMany(_ => b, (x, y) => x + y);
 
-        combined.IsSuccess.Should().BeTrue();
-        combined.Value.Should().Be(5);
+        combined.Should().BeSuccess().Which.Should().Be(5);
     }
 
     [Fact]
@@ -50,8 +48,7 @@ public class LinqTests : TestBase
         var combined =
             a.SelectMany(_ => b, (x, y) => x + y);
 
-        combined.IsFailure.Should().BeTrue();
-        combined.Error.Should().Be(Error1);
+        combined.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -61,8 +58,7 @@ public class LinqTests : TestBase
             Result.Success(5)
                   .Where(v => v > 10); // predicate false
 
-        r.IsFailure.Should().BeTrue();
-        r.Error.Should().Be(Error.Unexpected("Result filtered out by predicate."));
+        r.Should().BeFailure().Which.Should().Be(Error.Unexpected("Result filtered out by predicate."));
     }
 
     [Fact]
@@ -72,8 +68,7 @@ public class LinqTests : TestBase
             Result.Success(15)
                   .Where(v => v > 10);
 
-        r.IsSuccess.Should().BeTrue();
-        r.Value.Should().Be(15);
+        r.Should().BeSuccess().Which.Should().Be(15);
     }
 
     [Fact]
@@ -92,7 +87,6 @@ public class LinqTests : TestBase
             from dv in d
             select av + bv + cv + dv;
 
-        combined.IsSuccess.Should().BeTrue();
-        combined.Value.Should().Be(1 + 2 + 3 + 4);
+        combined.Should().BeSuccess().Which.Should().Be(1 + 2 + 3 + 4);
     }
 }

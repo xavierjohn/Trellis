@@ -59,11 +59,8 @@ public abstract class Specification<T>
     /// </summary>
     /// <param name="entity">The entity to evaluate against this specification.</param>
     /// <returns><c>true</c> if the entity satisfies this specification; otherwise, <c>false</c>.</returns>
-    public bool IsSatisfiedBy(T entity)
-    {
-        var predicate = ToExpression().Compile();
-        return predicate(entity);
-    }
+    public bool IsSatisfiedBy(T entity) =>
+        ToExpression().Compile()(entity);
 
     /// <summary>Combines this specification with another using logical AND.</summary>
     /// <param name="other">The specification to combine with.</param>

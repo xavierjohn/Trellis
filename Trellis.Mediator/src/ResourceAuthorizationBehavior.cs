@@ -70,7 +70,11 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
         CancellationToken cancellationToken)
     {
         // Resolve the scoped loader per-request (like middleware resolving scoped services)
-        var loader = _serviceProvider.GetRequiredService<IResourceLoader<TMessage, TResource>>();
+        var loader = _serviceProvider.GetService<IResourceLoader<TMessage, TResource>>()
+            ?? throw new InvalidOperationException(
+                $"ResourceAuthorizationBehavior<{typeof(TMessage).Name}, {typeof(TResource).Name}, {typeof(TResponse).Name}> " +
+                $"requires a registered {typeof(IResourceLoader<TMessage, TResource>).Name}. " +
+                $"Register IResourceLoader<{typeof(TMessage).Name}, {typeof(TResource).Name}> in the current DI scope.");
 
         // 1. Load the resource
         var loadResult = await loader.LoadAsync(message, cancellationToken).ConfigureAwait(false);
@@ -79,6 +83,7 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
 
         // 2. Authorize against the loaded resource
         var actor = _actorProvider.GetCurrentActor();
+        ArgumentNullException.ThrowIfNull(actor);
         var authResult = message.Authorize(actor, loadResult.Value);
         if (authResult.IsFailure)
             return TResponse.CreateFailure(authResult.Error);

@@ -31,6 +31,9 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
     /// <summary>The accessibility of the setter, if different from the property (e.g., "private").</summary>
     public readonly string SetterAccessibility;
 
+    /// <summary>Whether the property uses an init-only accessor instead of a set accessor.</summary>
+    public readonly bool IsInitOnly;
+
     /// <summary>The fully-qualified inner type name (e.g., "PhoneNumber" or "System.DateTime").</summary>
     public readonly string InnerTypeName;
 
@@ -43,6 +46,9 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
     /// <summary>The nesting chain of parent types if the type is nested (e.g., ["OuterClass"]).</summary>
     public readonly string[] NestingParents;
 
+    /// <summary>The namespace- and nesting-qualified type path used for grouping and hint names.</summary>
+    public readonly string TypePath;
+
     public MaybePropertyInfo(
         string @namespace,
         string typeName,
@@ -51,10 +57,12 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         string propertyName,
         string propertyAccessibility,
         string setterAccessibility,
+        bool isInitOnly,
         string innerTypeName,
         string innerTypeShortName,
         bool innerTypeIsValueType,
-        string[] nestingParents)
+        string[] nestingParents,
+        string typePath)
     {
         Namespace = @namespace;
         TypeName = typeName;
@@ -63,10 +71,12 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         PropertyName = propertyName;
         PropertyAccessibility = propertyAccessibility;
         SetterAccessibility = setterAccessibility;
+        IsInitOnly = isInitOnly;
         InnerTypeName = innerTypeName;
         InnerTypeShortName = innerTypeShortName;
         InnerTypeIsValueType = innerTypeIsValueType;
         NestingParents = nestingParents;
+        TypePath = typePath;
     }
 
     public bool Equals(MaybePropertyInfo? other)
@@ -81,9 +91,11 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
             && PropertyName == other.PropertyName
             && PropertyAccessibility == other.PropertyAccessibility
             && SetterAccessibility == other.SetterAccessibility
+            && IsInitOnly == other.IsInitOnly
             && InnerTypeName == other.InnerTypeName
             && InnerTypeShortName == other.InnerTypeShortName
             && InnerTypeIsValueType == other.InnerTypeIsValueType
+            && TypePath == other.TypePath
             && NestingParents.SequenceEqual(other.NestingParents);
     }
 
@@ -98,6 +110,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypeName);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(PropertyName);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(InnerTypeName);
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             hash = (hash * 31) + InnerTypeIsValueType.GetHashCode();
             return hash;
         }

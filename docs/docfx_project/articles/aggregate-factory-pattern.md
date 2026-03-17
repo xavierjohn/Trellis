@@ -33,8 +33,23 @@ public class Product : Aggregate<ProductId>
         .Map(() => new Product(id, ...));
 
     // ✅ Pattern 5: Convenience methods that throw
-    public static Product Create(...) => TryCreate(...).Value;
-    public static Product CreateExisting(ProductId id, ...) => TryCreateExisting(id, ...).Value;
+    public static Product Create(...)
+    {
+        var result = TryCreate(...);
+        if (result.IsFailure)
+            throw new InvalidOperationException($"Failed to create Product: {result.Error.Detail}");
+
+        return result.Value;
+    }
+
+    public static Product CreateExisting(ProductId id, ...)
+    {
+        var result = TryCreateExisting(id, ...);
+        if (result.IsFailure)
+            throw new InvalidOperationException($"Failed to create Product: {result.Error.Detail}");
+
+        return result.Value;
+    }
 }
 ```
 

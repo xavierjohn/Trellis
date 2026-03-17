@@ -1,12 +1,22 @@
 ﻿namespace Trellis.Asp.Tests;
 
+using System;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Trellis;
 using Xunit;
 
-public class HttpResultValueTaskTests
+[Collection("TrellisAspOptionsState")]
+public class HttpResultValueTaskTests : IDisposable
 {
+    public HttpResultValueTaskTests() => TrellisAspOptions.ResetCurrent();
+
+    public void Dispose()
+    {
+        TrellisAspOptions.ResetCurrent();
+        GC.SuppressFinalize(this);
+    }
+
     [Fact]
     public async Task Will_return_Ok_Result_Async()
     {

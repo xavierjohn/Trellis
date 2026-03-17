@@ -75,7 +75,15 @@ public sealed class AsyncLambdaWithSyncMethodAnalyzer : DiagnosticAnalyzer
             return false;
 
         var containingNamespace = methodSymbol.ContainingType?.ContainingNamespace?.ToDisplayString();
-        return containingNamespace == "Trellis";
+        if (containingNamespace != "Trellis")
+            return false;
+
+        var receiverType = methodSymbol.ReducedFrom?.Parameters.FirstOrDefault()?.Type
+            ?? methodSymbol.Parameters.FirstOrDefault()?.Type;
+
+        return receiverType.IsResultType() ||
+               receiverType.IsMaybeType() ||
+               receiverType.IsTaskWrappingResult();
     }
 
     private static bool IsAsyncLambda(ExpressionSyntax expression, SemanticModel semanticModel)

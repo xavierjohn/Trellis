@@ -2,6 +2,8 @@
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Trellis.Authorization;
 using Trellis.Mediator.Tests.Helpers;
 
@@ -278,6 +280,32 @@ public class AddResourceAuthorizationScanTests
 
         descriptor.Should().NotBeNull();
         descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void AddResourceAuthorization_Assembly_ResolvesResourceAuthorizationBeforeValidation()
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisBehaviors();
+        services.AddResourceAuthorization(typeof(ValidatedFullAuthResourceCommand).Assembly);
+        services.AddSingleton<IActorProvider>(FakeActorProvider.WithPermissions("owner-1", "Resources.Write"));
+        services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
+        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var behaviors = serviceProvider
+            .GetServices<IPipelineBehavior<ValidatedFullAuthResourceCommand, Result<string>>>()
+            .Select(static behavior => behavior.GetType().GetGenericTypeDefinition())
+            .ToArray();
+
+        behaviors.Should().ContainInOrder(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ResourceAuthorizationBehavior<,,>),
+            typeof(ValidationBehavior<,>));
     }
 
     #endregion

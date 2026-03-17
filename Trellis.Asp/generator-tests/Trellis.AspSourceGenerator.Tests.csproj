@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\generator\Trellis.AspSourceGenerator.csproj" />
+    <ProjectReference Include="..\..\Trellis.Results\src\Trellis.Results.csproj" />
+    <ProjectReference Include="..\..\Trellis.DomainDrivenDesign\src\Trellis.DomainDrivenDesign.csproj" />
+    <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+</Project>

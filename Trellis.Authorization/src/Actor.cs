@@ -24,32 +24,79 @@ using System.Collections.Frozen;
 /// Ensure consistent casing when hydrating permissions, forbidden permissions, and attributes.
 /// </para>
 /// </remarks>
-/// <param name="Id">The unique identifier of the actor (e.g., user ID from JWT sub claim).</param>
-/// <param name="Permissions">
-/// The set of permissions granted to the actor.
-/// Implementations such as <see cref="HashSet{T}"/> and <see cref="System.Collections.Frozen.FrozenSet{T}"/>
-/// provide O(1) lookups.
-/// </param>
-/// <param name="ForbiddenPermissions">
-/// Permissions that are explicitly denied for this actor.
-/// A permission present in both <paramref name="Permissions"/> and <paramref name="ForbiddenPermissions"/>
-/// is treated as denied (deny always overrides allow).
-/// </param>
-/// <param name="Attributes">
-/// Contextual attributes for attribute-based access control (ABAC).
-/// Stores environmental metadata such as IP address, MFA status, risk score, or VPN status.
-/// Use <see cref="ActorAttributes"/> constants for well-known keys.
-/// </param>
-public sealed record Actor(
-    string Id,
-    IReadOnlySet<string> Permissions,
-    IReadOnlySet<string> ForbiddenPermissions,
-    IReadOnlyDictionary<string, string> Attributes)
+public sealed record Actor
 {
+    private IReadOnlySet<string> _permissions = FrozenSet<string>.Empty;
+    private IReadOnlySet<string> _forbiddenPermissions = FrozenSet<string>.Empty;
+    private IReadOnlyDictionary<string, string> _attributes = FrozenDictionary<string, string>.Empty;
+
+    /// <summary>
+    /// Initializes a new <see cref="Actor"/> and snapshots the supplied authorization state.
+    /// </summary>
+    /// <param name="id">The unique identifier of the actor (e.g., user ID from JWT sub claim).</param>
+    /// <param name="permissions">
+    /// The set of permissions granted to the actor.
+    /// Implementations such as <see cref="HashSet{T}"/> and <see cref="System.Collections.Frozen.FrozenSet{T}"/>
+    /// provide O(1) lookups.
+    /// </param>
+    /// <param name="forbiddenPermissions">
+    /// Permissions that are explicitly denied for this actor.
+    /// A permission present in both <paramref name="permissions"/> and <paramref name="forbiddenPermissions"/>
+    /// is treated as denied (deny always overrides allow).
+    /// </param>
+    /// <param name="attributes">
+    /// Contextual attributes for attribute-based access control (ABAC).
+    /// Stores environmental metadata such as IP address, MFA status, risk score, or VPN status.
+    /// Use <see cref="ActorAttributes"/> constants for well-known keys.
+    /// </param>
+    public Actor(
+        string id,
+        IReadOnlySet<string> permissions,
+        IReadOnlySet<string> forbiddenPermissions,
+        IReadOnlyDictionary<string, string> attributes)
+    {
+        Id = id;
+        Permissions = permissions;
+        ForbiddenPermissions = forbiddenPermissions;
+        Attributes = attributes;
+    }
+
     /// <summary>
     /// The separator used between permission name and scope in scoped permission strings.
     /// </summary>
     public const char PermissionScopeSeparator = ':';
+
+    /// <summary>
+    /// The unique identifier of the actor (e.g., user ID from JWT sub claim).
+    /// </summary>
+    public string Id { get; init; }
+
+    /// <summary>
+    /// The set of permissions granted to the actor.
+    /// </summary>
+    public IReadOnlySet<string> Permissions
+    {
+        get => _permissions;
+        init => _permissions = SnapshotSet(value);
+    }
+
+    /// <summary>
+    /// Permissions that are explicitly denied for this actor.
+    /// </summary>
+    public IReadOnlySet<string> ForbiddenPermissions
+    {
+        get => _forbiddenPermissions;
+        init => _forbiddenPermissions = SnapshotSet(value);
+    }
+
+    /// <summary>
+    /// Contextual attributes for attribute-based access control (ABAC).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Attributes
+    {
+        get => _attributes;
+        init => _attributes = SnapshotDictionary(value);
+    }
 
     /// <summary>
     /// Creates an <see cref="Actor"/> with no forbidden permissions and no ABAC attributes.
@@ -121,4 +168,14 @@ public sealed record Actor(
     /// <returns>The attribute value if found; otherwise <c>null</c>.</returns>
     public string? GetAttribute(string key) =>
         Attributes.TryGetValue(key, out var value) ? value : null;
+
+    private static FrozenSet<string> SnapshotSet(IReadOnlySet<string> values) =>
+        values.Count == 0
+            ? FrozenSet<string>.Empty
+            : values.ToFrozenSet(StringComparer.Ordinal);
+
+    private static FrozenDictionary<string, string> SnapshotDictionary(IReadOnlyDictionary<string, string> values) =>
+        values.Count == 0
+            ? FrozenDictionary<string, string>.Empty
+            : values.ToFrozenDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 }

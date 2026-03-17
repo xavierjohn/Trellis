@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis;
+using Trellis.Testing;
 
 public class Ensure_ValueTask_Tests
 {
@@ -18,8 +19,8 @@ public class Ensure_ValueTask_Tests
             Error.Validation("Value should not be empty"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("predicate passed");
-        result.Value.Should().Be("Initial value");
+        result.Should().BeSuccess("predicate passed")
+            .Which.Should().Be("Initial value");
     }
 
     [Fact]
@@ -34,8 +35,8 @@ public class Ensure_ValueTask_Tests
             Error.Validation("Value is too short"));
 
         // Assert
-        result.IsFailure.Should().BeTrue("predicate failed");
-        result.Error.Should().Be(Error.Validation("Value is too short"));
+        result.Should().BeFailure("predicate failed")
+            .Which.Should().Be(Error.Validation("Value is too short"));
     }
 
     [Fact]
@@ -56,8 +57,8 @@ public class Ensure_ValueTask_Tests
             Error.Validation("Should not see this error"));
 
         // Assert
-        result.IsFailure.Should().BeTrue("initial result is failure");
-        result.Error.Should().Be(initialError);
+        result.Should().BeFailure("initial result is failure")
+            .Which.Should().Be(initialError);
         predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
     }
 
@@ -77,8 +78,8 @@ public class Ensure_ValueTask_Tests
             Error.Validation("Value must be between 0 and 100"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("value is within range");
-        result.Value.Should().Be(42);
+        result.Should().BeSuccess("value is within range")
+            .Which.Should().Be(42);
     }
 
     #endregion
@@ -97,8 +98,8 @@ public class Ensure_ValueTask_Tests
             value => Error.Validation($"Value {value} must be non-negative"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("predicate passed");
-        result.Value.Should().Be(100);
+        result.Should().BeSuccess("predicate passed")
+            .Which.Should().Be(100);
     }
 
     [Fact]
@@ -113,8 +114,8 @@ public class Ensure_ValueTask_Tests
             value => Error.Validation($"Value {value} must be non-negative"));
 
         // Assert
-        result.IsFailure.Should().BeTrue("predicate failed");
-        result.Error.Should().Be(Error.Validation("Value -5 must be non-negative"));
+        result.Should().BeFailure("predicate failed")
+            .Which.Should().Be(Error.Validation("Value -5 must be non-negative"));
     }
 
     [Fact]
@@ -135,8 +136,8 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsFailure.Should().BeTrue("initial result is failure");
-        result.Error.Should().Be(initialError);
+        result.Should().BeFailure("initial result is failure")
+            .Which.Should().Be(initialError);
         errorFactoryInvoked.Should().BeFalse("error factory should not be invoked for failed results");
     }
 
@@ -157,7 +158,7 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsFailure.Should().BeTrue("email is invalid");
+        result.Should().BeFailure("email is invalid");
         capturedValue.Should().Be("test@example");
         result.Error.Detail.Should().Contain("test@example");
     }
@@ -182,8 +183,8 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsSuccess.Should().BeTrue("predicate passed");
-        result.Value.Should().Be("valid-username");
+        result.Should().BeSuccess("predicate passed")
+            .Which.Should().Be("valid-username");
     }
 
     [Fact]
@@ -202,7 +203,7 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsFailure.Should().BeTrue("predicate failed");
+        result.Should().BeFailure("predicate failed");
         result.Error.Detail.Should().Contain("ab");
         result.Error.Detail.Should().Contain("must be at least 3 characters");
     }
@@ -226,8 +227,8 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsFailure.Should().BeTrue("initial result is failure");
-        result.Error.Should().Be(initialError);
+        result.Should().BeFailure("initial result is failure")
+            .Which.Should().Be(initialError);
         asyncErrorFactoryInvoked.Should().BeFalse("async error factory should not be invoked for failed results");
     }
 
@@ -251,7 +252,7 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsSuccess.Should().BeTrue("date is in the past");
+        result.Should().BeSuccess("date is in the past");
     }
 
     #endregion
@@ -269,8 +270,8 @@ public class Ensure_ValueTask_Tests
             () => ValueTask.FromResult(Result.Success<string>("Validation passed")));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("initial result and predicate succeeded");
-        result.Value.Should().Be("Initial message");
+        result.Should().BeSuccess("initial result and predicate succeeded")
+            .Which.Should().Be("Initial message");
     }
 
     [Fact]
@@ -285,8 +286,8 @@ public class Ensure_ValueTask_Tests
             () => ValueTask.FromResult(Result.Failure<string>(predicateError)));
 
         // Assert
-        result.IsFailure.Should().BeTrue("predicate returned failure");
-        result.Error.Should().Be(predicateError);
+        result.Should().BeFailure("predicate returned failure")
+            .Which.Should().Be(predicateError);
     }
 
     [Fact]
@@ -306,8 +307,8 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsFailure.Should().BeTrue("initial result is failure");
-        result.Error.Should().Be(initialError);
+        result.Should().BeFailure("initial result is failure")
+            .Which.Should().Be(initialError);
         predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
     }
 
@@ -329,8 +330,8 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsSuccess.Should().BeTrue("system check passed");
-        result.Value.Should().Be(42, "original value is preserved");
+        result.Should().BeSuccess("system check passed")
+            .Which.Should().Be(42, "original value is preserved");
     }
 
     #endregion
@@ -348,8 +349,8 @@ public class Ensure_ValueTask_Tests
             value => ValueTask.FromResult(Result.Success<string>($"Validated: {value}")));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("initial result and predicate succeeded");
-        result.Value.Should().Be("Initial message");
+        result.Should().BeSuccess("initial result and predicate succeeded")
+            .Which.Should().Be("Initial message");
     }
 
     [Fact]
@@ -367,8 +368,8 @@ public class Ensure_ValueTask_Tests
                     : Result.Failure<int>(predicateError)));
 
         // Assert
-        result.IsFailure.Should().BeTrue("age validation failed");
-        result.Error.Should().Be(predicateError);
+        result.Should().BeFailure("age validation failed")
+            .Which.Should().Be(predicateError);
     }
 
     [Fact]
@@ -388,8 +389,8 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsFailure.Should().BeTrue("initial result is failure");
-        result.Error.Should().Be(initialError);
+        result.Should().BeFailure("initial result is failure")
+            .Which.Should().Be(initialError);
         predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
     }
 
@@ -411,8 +412,8 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsSuccess.Should().BeTrue("email is valid");
-        result.Value.Should().Be("user@example.com");
+        result.Should().BeSuccess("email is valid")
+            .Which.Should().Be("user@example.com");
     }
 
     [Fact]
@@ -432,7 +433,7 @@ public class Ensure_ValueTask_Tests
             });
 
         // Assert
-        result.IsFailure.Should().BeTrue("email validation failed");
+        result.Should().BeFailure("email validation failed");
         result.Error.Detail.Should().Contain("invalid-email");
         result.Error.Detail.Should().Contain("must contain @ and .");
     }
@@ -455,8 +456,8 @@ public class Ensure_ValueTask_Tests
                 Error.Validation("Password must contain at least one digit"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("password meets all requirements");
-        result.Value.Should().Be("valid-password-123");
+        result.Should().BeSuccess("password meets all requirements")
+            .Which.Should().Be("valid-password-123");
     }
 
     #endregion
@@ -476,7 +477,7 @@ public class Ensure_ValueTask_Tests
             Error.Validation("Value should be null for this test"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("null value passes the null check");
+        result.Should().BeSuccess("null value passes the null check");
     }
 
     [Fact]
@@ -496,8 +497,8 @@ public class Ensure_ValueTask_Tests
             p => Error.Validation($"{p.Name} must be 18 or older"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("person is adult");
-        result.Value.Should().Be(person);
+        result.Should().BeSuccess("person is adult")
+            .Which.Should().Be(person);
     }
 
     [Fact]
@@ -535,7 +536,7 @@ public class Ensure_ValueTask_Tests
                 Error.Validation("Third check failed"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue("all checks passed");
+        result.Should().BeSuccess("all checks passed");
         executionOrder.Should().Equal([1, 2, 3], "ensures execute in order");
     }
 
@@ -574,8 +575,8 @@ public class Ensure_ValueTask_Tests
                 Error.Validation("Third check failed"));
 
         // Assert
-        result.IsFailure.Should().BeTrue("second check failed");
-        result.Error.Should().Be(Error.Validation("Second check failed"));
+        result.Should().BeFailure("second check failed")
+            .Which.Should().Be(Error.Validation("Second check failed"));
         executionOrder.Should().Equal([1, 2], "execution stops after first failure");
     }
 

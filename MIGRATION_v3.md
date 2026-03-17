@@ -116,34 +116,42 @@ Replace: .RecoverOnFailureAsync(
 # Navigate to your solution directory
 cd C:\MyProject
 
+$utf8Bom = New-Object System.Text.UTF8Encoding $true
+
 # Replace TapError → TapOnFailure
 Get-ChildItem -Recurse -Include *.cs | ForEach-Object {
-    (Get-Content $_) -replace '\.TapError\(', '.TapOnFailure(' | Set-Content $_
+    $content = [System.IO.File]::ReadAllText($_.FullName) -replace '\.TapError\(', '.TapOnFailure('
+    [System.IO.File]::WriteAllText($_.FullName, $content, $utf8Bom)
 }
 
 # Replace TapErrorAsync → TapOnFailureAsync  
 Get-ChildItem -Recurse -Include *.cs | ForEach-Object {
-    (Get-Content $_) -replace '\.TapErrorAsync\(', '.TapOnFailureAsync(' | Set-Content $_
+    $content = [System.IO.File]::ReadAllText($_.FullName) -replace '\.TapErrorAsync\(', '.TapOnFailureAsync('
+    [System.IO.File]::WriteAllText($_.FullName, $content, $utf8Bom)
 }
 
 # Replace MapError → MapOnFailure
 Get-ChildItem -Recurse -Include *.cs | ForEach-Object {
-    (Get-Content $_) -replace '\.MapError\(', '.MapOnFailure(' | Set-Content $_
+    $content = [System.IO.File]::ReadAllText($_.FullName) -replace '\.MapError\(', '.MapOnFailure('
+    [System.IO.File]::WriteAllText($_.FullName, $content, $utf8Bom)
 }
 
 # Replace MapErrorAsync → MapOnFailureAsync
 Get-ChildItem -Recurse -Include *.cs | ForEach-Object {
-    (Get-Content $_) -replace '\.MapErrorAsync\(', '.MapOnFailureAsync(' | Set-Content $_
+    $content = [System.IO.File]::ReadAllText($_.FullName) -replace '\.MapErrorAsync\(', '.MapOnFailureAsync('
+    [System.IO.File]::WriteAllText($_.FullName, $content, $utf8Bom)
 }
 
 # Replace Compensate → RecoverOnFailure
 Get-ChildItem -Recurse -Include *.cs | ForEach-Object {
-    (Get-Content $_) -replace '\.Compensate\(', '.RecoverOnFailure(' | Set-Content $_
+    $content = [System.IO.File]::ReadAllText($_.FullName) -replace '\.Compensate\(', '.RecoverOnFailure('
+    [System.IO.File]::WriteAllText($_.FullName, $content, $utf8Bom)
 }
 
 # Replace CompensateAsync → RecoverOnFailureAsync
 Get-ChildItem -Recurse -Include *.cs | ForEach-Object {
-    (Get-Content $_) -replace '\.CompensateAsync\(', '.RecoverOnFailureAsync(' | Set-Content $_
+    $content = [System.IO.File]::ReadAllText($_.FullName) -replace '\.CompensateAsync\(', '.RecoverOnFailureAsync('
+    [System.IO.File]::WriteAllText($_.FullName, $content, $utf8Bom)
 }
 ```
 

@@ -18,7 +18,7 @@ public class FakeRepository<TAggregate, TId>
     /// <summary>
     /// Gets the list of domain events published by saved aggregates.
     /// </summary>
-    public IReadOnlyList<IDomainEvent> PublishedEvents => _publishedEvents.AsReadOnly();
+    public IReadOnlyList<IDomainEvent> PublishedEvents => Array.AsReadOnly([.. _publishedEvents]);
 
     /// <summary>
     /// Gets an aggregate by its ID.
@@ -62,7 +62,7 @@ public class FakeRepository<TAggregate, TId>
         _store[id] = aggregate;
         _publishedEvents.AddRange(aggregate.UncommittedEvents());
         aggregate.AcceptChanges();
-        return Task.FromResult(Result.Success(new Unit()));
+        return Task.FromResult(Result.Success());
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public class FakeRepository<TAggregate, TId>
     public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken ct = default)
     {
         if (_store.Remove(id))
-            return Task.FromResult(Result.Success(new Unit()));
+            return Task.FromResult(Result.Success());
 
         return Task.FromResult(Result.Failure<Unit>(
             Error.NotFound($"{typeof(TAggregate).Name} with ID {id} not found")));
@@ -107,7 +107,7 @@ public class FakeRepository<TAggregate, TId>
     /// Gets all stored aggregates.
     /// </summary>
     /// <returns>All aggregates in the repository.</returns>
-    public IEnumerable<TAggregate> GetAll() => _store.Values;
+    public IEnumerable<TAggregate> GetAll() => [.. _store.Values];
 
     /// <summary>
     /// Gets the count of stored aggregates.

@@ -347,6 +347,25 @@ public class ValidationErrorsContextConcurrencyTests
     }
 
     [Fact]
+    public void NestedScopes_RestoreCurrentPropertyName()
+    {
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "OuterProperty";
+
+            using (ValidationErrorsContext.BeginScope())
+            {
+                ValidationErrorsContext.CurrentPropertyName = "InnerProperty";
+                ValidationErrorsContext.CurrentPropertyName.Should().Be("InnerProperty");
+            }
+
+            ValidationErrorsContext.CurrentPropertyName.Should().Be("OuterProperty");
+        }
+
+        ValidationErrorsContext.CurrentPropertyName.Should().BeNull();
+    }
+
+    [Fact]
     public async Task RapidScopeCreationAndDisposal_NoLeaks()
     {
         // Arrange & Act - Create and dispose many scopes rapidly

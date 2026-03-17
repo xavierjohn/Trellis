@@ -1,12 +1,22 @@
 ﻿namespace Trellis.Asp.Tests;
 
+using System;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Trellis;
 using Xunit;
 
-public class HttpResultsTests
+[Collection("TrellisAspOptionsState")]
+public class HttpResultsTests : IDisposable
 {
+    public HttpResultsTests() => TrellisAspOptions.ResetCurrent();
+
+    public void Dispose()
+    {
+        TrellisAspOptions.ResetCurrent();
+        GC.SuppressFinalize(this);
+    }
+
     [Fact]
     public void Will_return_Ok_Result()
     {
@@ -186,7 +196,7 @@ public class HttpResultsTests
         var expected = new ProblemDetails
         {
             Title = "An error occurred while processing your request.",
-            Detail = "An unexpected error occurred.",
+            Detail = "An internal error occurred.",
             Instance = "Server",
             Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
             Status = StatusCodes.Status500InternalServerError
@@ -291,7 +301,7 @@ public class HttpResultsTests
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Detail.Should().Be("Service is under maintenance. Please try again later");
+        problemResult.ProblemDetails.Detail.Should().Be("An internal error occurred.");
         problemResult.ProblemDetails.Instance.Should().Be("payment-service");
         problemResult.ProblemDetails.Status.Should().Be(StatusCodes.Status503ServiceUnavailable);
     }
@@ -362,6 +372,67 @@ public class HttpResultsTests
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
             .ProblemDetails.Status.Should().Be(StatusCodes.Status404NotFound);
+    }
+
+    #endregion
+
+    #region AddTrellisAsp integration
+
+    [Fact]
+    public void ToHttpResult_without_explicit_options_uses_AddTrellisAsp_configuration()
+    {
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddTrellisAsp(options =>
+            options.MapError<DomainError>(StatusCodes.Status400BadRequest));
+
+        var result = Result.Failure<string>(Error.Domain("Business rule"));
+
+        var response = result.ToHttpResult();
+
+        response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+        response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
+            .ProblemDetails.Status.Should().Be(StatusCodes.Status400BadRequest,
+                "AddTrellisAsp configured DomainError → 400, but ToHttpResult ignores it without explicit options");
+    }
+
+    [Fact]
+    public async Task ToHttpResult_without_explicit_options_preserves_AddTrellisAsp_configuration_across_execution_context_boundaries()
+    {
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddTrellisAsp(options =>
+            options.MapError<DomainError>(StatusCodes.Status400BadRequest));
+
+        var result = Result.Failure<string>(Error.Domain("Business rule"));
+
+        Task<Microsoft.AspNetCore.Http.IResult> responseTask;
+        using (ExecutionContext.SuppressFlow())
+            responseTask = Task.Run(() => result.ToHttpResult());
+
+        var response = await responseTask;
+
+        response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+        response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
+            .ProblemDetails.Status.Should().Be(StatusCodes.Status400BadRequest,
+                "AddTrellisAsp configuration should apply even when ToHttpResult runs in a different execution context");
+    }
+
+    #endregion
+
+    #region 5xx detail redaction
+
+    [Fact]
+    public void ToHttpResult_5xx_error_should_not_leak_internal_detail()
+    {
+        var result = Result.Failure<string>(
+            Error.Unexpected("NullReferenceException at MyService.GetUser line 45"));
+
+        var response = result.ToHttpResult();
+
+        response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+        var problem = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+        problem.ProblemDetails.Status.Should().Be(StatusCodes.Status500InternalServerError);
+        problem.ProblemDetails.Detail.Should().NotContain("NullReferenceException",
+            "5xx responses must not leak internal error details to clients");
     }
 
     #endregion

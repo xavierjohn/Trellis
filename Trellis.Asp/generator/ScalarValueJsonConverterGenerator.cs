@@ -126,11 +126,19 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         // Look for class declarations with base types that might be value objects
         if (node is ClassDeclarationSyntax c && c.BaseList is not null)
         {
-            // Check if any base type contains "ScalarValueObject" or implements IScalarValue
+            // Check if any base type text matches known value object base types or interface.
+            // The semantic transform (GetValueObjectInfo) walks the full type hierarchy,
+            // but this syntax predicate must let candidates through first.
             foreach (var baseType in c.BaseList.Types)
             {
                 var typeName = baseType.Type.ToString();
-                if (typeName.Contains(ScalarValueInterfaceName))
+                if (typeName.Contains(ScalarValueInterfaceName)
+                    || typeName.Contains("RequiredString")
+                    || typeName.Contains("RequiredGuid")
+                    || typeName.Contains("RequiredInt")
+                    || typeName.Contains("RequiredDecimal")
+                    || typeName.Contains("RequiredEnum")
+                    || typeName.Contains("ScalarValueObject"))
                 {
                     return true;
                 }
@@ -193,10 +201,15 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             ? GetPrimitiveTypeName(primitiveType)
             : GetPrimitiveTypeNameFromBase(baseTypeName);
 
+        var fullTypeName = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            .Replace("global::", string.Empty);
+
         return new ScalarValueInfo(
             classSymbol.ContainingNamespace.ToDisplayString(),
             classSymbol.Name,
-            primitiveTypeName);
+            primitiveTypeName,
+            fullTypeName,
+            CreateGeneratedTypeName(fullTypeName));
     }
 
     /// <summary>
@@ -211,7 +224,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         {
             var baseName = baseType.Name;
 
-            // Check for RequiredString<T> or RequiredGuid<T> (CRTP pattern)
+            // Check for Trellis primitive CRTP base types
             if (baseName == "RequiredString" && baseType.IsGenericType)
             {
                 // The type argument should be the class itself (CRTP), primitive is string
@@ -231,6 +244,33 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
                 {
                     // Return a marker that we'll convert to "Guid" in GetPrimitiveTypeName
                     return ("RequiredGuid", null);
+                }
+            }
+
+            if (baseName == "RequiredInt" && baseType.IsGenericType)
+            {
+                if (baseType.TypeArguments.Length == 1 &&
+                    SymbolEqualityComparer.Default.Equals(baseType.TypeArguments[0], classSymbol))
+                {
+                    return ("RequiredInt", null);
+                }
+            }
+
+            if (baseName == "RequiredDecimal" && baseType.IsGenericType)
+            {
+                if (baseType.TypeArguments.Length == 1 &&
+                    SymbolEqualityComparer.Default.Equals(baseType.TypeArguments[0], classSymbol))
+                {
+                    return ("RequiredDecimal", null);
+                }
+            }
+
+            if (baseName == "RequiredEnum" && baseType.IsGenericType)
+            {
+                if (baseType.TypeArguments.Length == 1 &&
+                    SymbolEqualityComparer.Default.Equals(baseType.TypeArguments[0], classSymbol))
+                {
+                    return ("RequiredEnum", null);
                 }
             }
 
@@ -258,6 +298,9 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         {
             "RequiredString" => "string",
             "RequiredGuid" => "System.Guid",
+            "RequiredInt" => "int",
+            "RequiredDecimal" => "decimal",
+            "RequiredEnum" => "string",
             _ => "object"
         };
 
@@ -348,7 +391,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
     /// </summary>
     private static void GenerateSingleConverter(StringBuilder sb, ScalarValueInfo vo)
     {
-        var converterName = $"{vo.TypeName}JsonConverter";
+        var converterName = $"{vo.GeneratedTypeName}JsonConverter";
         var fullTypeName = vo.FullTypeName;
         var primitiveType = vo.PrimitiveType;
 
@@ -508,7 +551,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
 
         foreach (var vo in scalarValueInfo)
         {
-            sb.AppendLine($"        {{ typeof({vo.FullTypeName}), new {vo.TypeName}JsonConverter() }},");
+            sb.AppendLine($"        {{ typeof({vo.FullTypeName}), new {vo.GeneratedTypeName}JsonConverter() }},");
         }
 
         sb.AppendLine("    };");
@@ -556,5 +599,20 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine("}");
 
         context.AddSource($"{contextName}.ValueObjects.g.cs", sb.ToString());
+    }
+
+    private static string CreateGeneratedTypeName(string fullTypeName)
+    {
+        var builder = new StringBuilder(fullTypeName.Length);
+
+        foreach (var character in fullTypeName)
+        {
+            builder.Append(char.IsLetterOrDigit(character) ? character : '_');
+        }
+
+        if (builder.Length == 0 || (!char.IsLetter(builder[0]) && builder[0] != '_'))
+            builder.Insert(0, '_');
+
+        return builder.ToString();
     }
 }

@@ -106,7 +106,7 @@ public partial class OrderState : RequiredEnum<OrderState>
     public Result<OrderState> TryTransitionTo(OrderState newState) =>
         AllowedTransitions.Contains(newState)
             ? newState
-            : Error.Validation($"Cannot transition from '{Name}' to '{newState.Name}'");
+            : Error.Validation($"Cannot transition from '{this}' to '{newState}'");
 }
 
 // Usage
@@ -143,7 +143,7 @@ public class Order : Aggregate<OrderId>
     {
         CustomerId = customerId;
         Status = OrderStatus.Draft;
-        Total = Money.TryCreate(0).Value;
+        Total = Money.Create(0m, "USD");
         DomainEvents.Add(new OrderCreated(id, customerId, DateTime.UtcNow));
     }
     
@@ -173,7 +173,7 @@ public class Order : Aggregate<OrderId>
     private void RecalculateTotal()
     {
         var total = Lines.Sum(l => l.Price.Amount * l.Quantity);
-        Total = Money.TryCreate(total).Value;
+        Total = Money.Create(total, Lines.FirstOrDefault()?.Price.Currency ?? "USD");
     }
 }
 ```
@@ -258,7 +258,7 @@ if (order.IsSuccess)
 ### RequiredEnum<T>
 - Type-safe enumeration with behavior (moved to Trellis.Primitives)
 - Prevents invalid values (unlike C# enums)
-- Name-only constructor (Value auto-generated for persistence)
+- Value-only declaration (Ordinal auto-generated for persistence)
 - Supports state machine patterns
 - Source-generated JSON serialization and ASP.NET Core model binding
 - `Is()` and `IsNot()` helper methods

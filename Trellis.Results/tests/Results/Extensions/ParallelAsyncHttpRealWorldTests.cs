@@ -495,34 +495,50 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
     [Fact]
     public async Task ParallelAsync_MultiStage_Performance_ComparedToSequential()
     {
-        // Demonstrate performance benefit of multi-stage parallel vs sequential
+        Task<Result<(FraudCheckResponse FraudCheck, ShippingResponse Shipping)>> RunSequentialAsync() =>
+            FetchUserAsync("user-123")
+                .BindAsync(user => CheckInventoryAsync("prod-456")
+                    .BindAsync(inventory => ValidatePaymentAsync("pm-789")
+                        .BindAsync(payment => RunFraudDetectionAsync(user, payment, inventory)
+                            .BindAsync(fraudCheck => CalculateShippingWithWeightAsync("123 Main St", inventory)
+                                .BindAsync(shipping => Result.Success((fraudCheck, shipping)))))));
 
-        var stopwatch = Stopwatch.StartNew();
-
-        // Act - Multi-stage parallel execution
-        var result = await Result.ParallelAsync(
-            () => FetchUserAsync("user-123"),         // 50ms
-            () => CheckInventoryAsync("prod-456"),     // 50ms
-            () => ValidatePaymentAsync("pm-789")       // 50ms
-        )
-        .WhenAllAsync()  // Stage 1: ~50ms (parallel)
-
-        .BindAsync((user, inventory, payment) =>
+        static Task<Result<(FraudCheckResponse FraudCheck, ShippingResponse Shipping)>> RunParallelAsync() =>
             Result.ParallelAsync(
-                () => RunFraudDetectionAsync(user, payment, inventory),  // 30ms
-                () => CalculateShippingWithWeightAsync("123 Main St", inventory)  // 40ms
+                () => FetchUserAsync("user-123"),
+                () => CheckInventoryAsync("prod-456"),
+                () => ValidatePaymentAsync("pm-789")
             )
-            .WhenAllAsync()  // Stage 2: ~40ms (parallel)
-        );
+            .WhenAllAsync()
+            .BindAsync((user, inventory, payment) =>
+                Result.ParallelAsync(
+                    () => RunFraudDetectionAsync(user, payment, inventory),
+                    () => CalculateShippingWithWeightAsync("123 Main St", inventory)
+                )
+                .WhenAllAsync()
+            );
 
-        stopwatch.Stop();
+        // Measure sequential and parallel versions of the same workflow on the same machine.
+        var sequentialStopwatch = Stopwatch.StartNew();
+        var sequentialResult = await RunSequentialAsync();
+        sequentialStopwatch.Stop();
+
+        var parallelStopwatch = Stopwatch.StartNew();
+        var parallelResult = await RunParallelAsync();
+        parallelStopwatch.Stop();
 
         // Assert
-        result.Should().BeSuccess();
+        sequentialResult.Should().BeSuccess();
+        parallelResult.Should().BeSuccess();
 
-        // Sequential would be: 50 + 50 + 50 + 30 + 40 = 220ms
-        // Parallel is: max(50,50,50) + max(30,40) = 50 + 40 = 90ms
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(150); // ~2.4x faster!
+        var sequentialElapsed = sequentialStopwatch.ElapsedMilliseconds;
+        var parallelElapsed = parallelStopwatch.ElapsedMilliseconds;
+
+        parallelElapsed.Should().BeLessThan(sequentialElapsed,
+            "the same workflow should complete faster when independent operations run in parallel");
+
+        parallelElapsed.Should().BeLessThan(sequentialElapsed - 40,
+            "the parallel version should save at least one network-sized delay over the sequential pipeline");
     }
 
     #endregion

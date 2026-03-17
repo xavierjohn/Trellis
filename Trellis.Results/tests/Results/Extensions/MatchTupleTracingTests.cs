@@ -267,6 +267,19 @@ public class MatchTupleTracingTests : TestBase
     #region Async Match Tracing Tests
 
     [Fact]
+    public async Task MatchAsync_2Tuple_SyncHandlers_NullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<(int, string)>> resultTask = null!;
+
+        Func<Task<string>> act = () => resultTask.MatchAsync(
+            onSuccess: (num, str) => $"{num}-{str}",
+            onFailure: _ => "Error");
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
+
+    [Fact]
     public async Task MatchAsync_2Tuple_SyncHandlers_Success_CreatesActivityWithOkStatus()
     {
         // Arrange
@@ -281,10 +294,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         output.Should().Be("42-hello");
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -310,10 +320,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         output.Should().Be("42-hello");
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -339,15 +346,25 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         output.Should().Be("Not found");
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
     }
 
     #endregion
 
     #region Async Switch Tracing Tests
+
+    [Fact]
+    public async Task SwitchAsync_2Tuple_NullResultTask_ThrowsArgumentNullException()
+    {
+        Task<Result<(int, string)>> resultTask = null!;
+
+        Func<Task> act = () => resultTask.SwitchAsync(
+            onSuccess: (num, str) => Task.CompletedTask,
+            onFailure: _ => Task.CompletedTask);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resultTask");
+    }
 
     [Fact]
     public async Task SwitchAsync_2Tuple_Success_CreatesActivity()
@@ -369,10 +386,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         executed.Should().BeTrue();
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -395,10 +409,7 @@ public class MatchTupleTracingTests : TestBase
 
         // Assert
         errorLogged.Should().BeTrue();
-
-        // Wait for async activity capture
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Error);
     }
 
     #endregion

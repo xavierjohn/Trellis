@@ -47,6 +47,14 @@ public class ScalarValueTypeHelperTests
             new InterfaceOnly(value);
     }
 
+    public class InterfaceOnlyValidated : IScalarValue<InterfaceOnlyValidated, int>
+    {
+        public int Value { get; }
+        private InterfaceOnlyValidated(int value) => Value = value;
+        public static Result<InterfaceOnlyValidated> TryCreate(int value, string? fieldName = null) =>
+            value > 0 ? new InterfaceOnlyValidated(value) : Error.Validation("Must be positive.", fieldName ?? "field");
+    }
+
     // Generic value object
     public class GenericVO<T> : ScalarValueObject<GenericVO<T>, T>, IScalarValue<GenericVO<T>, T>
         where T : IComparable
@@ -446,16 +454,18 @@ public class ScalarValueTypeHelperTests
     }
 
     [Fact]
-    public void GetValidationErrors_TypeWithoutStringTryCreate_ReturnsNull()
+    public void GetValidationErrors_TypeWithoutStringTryCreate_ParseablePrimitive_ReturnsValidationErrors()
     {
-        // Arrange - InterfaceOnly has TryCreate(int, string?) — no TryCreate(string, string) overload
-        var type = typeof(InterfaceOnly);
+        // Arrange - InterfaceOnlyValidated has TryCreate(int, string?) — no TryCreate(string, string) overload
+        var type = typeof(InterfaceOnlyValidated);
 
         // Act
-        var errors = ScalarValueTypeHelper.GetValidationErrors(type, "someValue", "param");
+        var errors = ScalarValueTypeHelper.GetValidationErrors(type, "0", "param");
 
         // Assert
-        errors.Should().BeNull("InterfaceOnly has no TryCreate(string, string) overload");
+        errors.Should().NotBeNull();
+        errors!.Should().ContainKey("param");
+        errors!["param"].Should().Contain("Must be positive.");
     }
 
     [Fact]

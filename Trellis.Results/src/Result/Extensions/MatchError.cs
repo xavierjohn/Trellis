@@ -59,6 +59,8 @@ public static class MatchErrorExtensions
         Func<UnexpectedError, TOut>? onUnexpected = null,
         Func<Error, TOut>? onError = null)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
 
         if (result.IsSuccess)
@@ -126,6 +128,8 @@ public static class MatchErrorExtensions
         Action<UnexpectedError>? onUnexpected = null,
         Action<Error>? onError = null)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
 
         if (result.IsSuccess)
@@ -223,6 +227,9 @@ public static class MatchErrorExtensionsAsync
         Func<UnexpectedError, TOut>? onUnexpected = null,
         Func<Error, TOut>? onError = null)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+
         var result = await resultTask.ConfigureAwait(false);
         return result.MatchError(
             onSuccess,
@@ -275,6 +282,8 @@ public static class MatchErrorExtensionsAsync
         Func<Error, CancellationToken, Task<TOut>>? onError = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
 
         if (result.IsSuccess)
@@ -342,6 +351,9 @@ public static class MatchErrorExtensionsAsync
         Func<Error, CancellationToken, Task<TOut>>? onError = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchErrorAsync(
             onSuccess,
@@ -394,6 +406,9 @@ public static class MatchErrorExtensionsAsync
         Func<Error, CancellationToken, Task>? onError = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
 

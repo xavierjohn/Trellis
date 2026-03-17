@@ -395,23 +395,20 @@ public class ResultEdgeCaseTests
     }
 
     [Fact]
-    public async Task TryAsync_WithCancelledToken_ShouldReturnFailure()
+    public async Task TryAsync_WithCancelledToken_ShouldPropagateException()
     {
         // Arrange
         var cts = new CancellationTokenSource();
         cts.Cancel();
         var ct = cts.Token;
 
-        // Act
-        var result = await Result.TryAsync(async () =>
-        {
-            await Task.Delay(1000, ct);
-            return 42;
-        });
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
+        // Act & Assert — OperationCanceledException must not be swallowed
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Result.TryAsync(async () =>
+            {
+                await Task.Delay(1000, ct);
+                return 42;
+            }));
     }
 
     #endregion

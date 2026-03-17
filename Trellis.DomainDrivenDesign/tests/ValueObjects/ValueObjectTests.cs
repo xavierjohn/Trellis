@@ -260,6 +260,54 @@ public class ValueObjectTests
         (nullAddress >= address).Should().BeFalse();
     }
 
+    [Fact]
+    public void LessThan_value_on_left_null_on_right_should_not_throw()
+    {
+        var address = new Address("Street", "City");
+        Address? nullAddress = null;
+
+        var act = () => address < nullAddress;
+
+        act.Should().NotThrow();
+        (address < nullAddress).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GreaterThan_value_on_left_null_on_right_should_not_throw()
+    {
+        var address = new Address("Street", "City");
+        Address? nullAddress = null;
+
+        var act = () => address > nullAddress;
+
+        act.Should().NotThrow();
+        (address > nullAddress).Should().BeTrue();
+    }
+
+    [Fact]
+    public void LessThanOrEqual_value_on_left_null_on_right_should_not_throw()
+    {
+        var address = new Address("Street", "City");
+        Address? nullAddress = null;
+
+        var act = () => address <= nullAddress;
+
+        act.Should().NotThrow();
+        (address <= nullAddress).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GreaterThanOrEqual_value_on_left_null_on_right_should_not_throw()
+    {
+        var address = new Address("Street", "City");
+        Address? nullAddress = null;
+
+        var act = () => address >= nullAddress;
+
+        act.Should().NotThrow();
+        (address >= nullAddress).Should().BeTrue();
+    }
+
     #endregion
 
     #region HashSet and Dictionary Usage

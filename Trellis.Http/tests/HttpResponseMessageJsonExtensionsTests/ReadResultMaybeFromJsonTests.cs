@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
+using System.IO;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -68,7 +69,7 @@ public class ReadResultMaybeFromJsonTests
     }
 
     [Fact]
-    public async Task Successful_response_with_null_content_Throws_JsonException()
+    public async Task Successful_response_with_null_content_Returns_none()
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK)
@@ -77,10 +78,24 @@ public class ReadResultMaybeFromJsonTests
         };
 
         // Act
-        Func<Task> act = async () => await httpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+        var result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<JsonException>();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Null_response_Throws_ArgumentNullException()
+    {
+        HttpResponseMessage httpResponseMessage = null!;
+
+        Func<Task> act = async () => await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "response");
     }
 
     [Theory]
@@ -154,6 +169,84 @@ public class ReadResultMaybeFromJsonTests
     }
 
     [Fact]
+    public async Task NoContent_response_without_body_Returns_none()
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.NoContent)
+        {
+            Content = null
+        };
+
+        // Act
+        Result<Maybe<camelcasePerson>> result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResetContent_response_without_body_Returns_none()
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.ResetContent)
+        {
+            Content = null
+        };
+
+        // Act
+        Result<Maybe<camelcasePerson>> result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NoContent)]
+    [InlineData(HttpStatusCode.ResetContent)]
+    public async Task NoContent_status_with_empty_content_and_no_length_header_Returns_none(HttpStatusCode statusCode)
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(statusCode)
+        {
+            Content = new EmptyUnknownLengthContent()
+        };
+
+        // Act
+        Result<Maybe<camelcasePerson>> result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Successful_response_with_empty_content_and_no_length_header_Returns_none()
+    {
+        // Arrange
+        using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK)
+        {
+            Content = new EmptyUnknownLengthContent()
+        };
+
+        // Act
+        Result<Maybe<camelcasePerson>> result = await httpResponseMessage.ReadResultMaybeFromJsonAsync(
+            SourceGenerationContext.Default.camelcasePerson,
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HasNoValue.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Successful_response_with_failure_handler_Does_not_invoke_callback()
     {
         // Arrange
@@ -174,6 +267,17 @@ public class ReadResultMaybeFromJsonTests
         maybePerson.HasValue.Should().BeTrue();
         maybePerson.Value.firstName.Should().Be("Chris");
         maybePerson.Value.age.Should().Be(18);
+    }
+
+    private sealed class EmptyUnknownLengthContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => Task.CompletedTask;
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
     }
 
     [Fact]

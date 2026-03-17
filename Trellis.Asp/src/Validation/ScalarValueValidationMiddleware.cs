@@ -40,8 +40,12 @@ public sealed partial class ScalarValueValidationMiddleware
     private readonly RequestDelegate _next;
 
     // Regex to parse: Failed to bind parameter "TypeName paramName" from "value".
-    [GeneratedRegex("""^Failed to bind parameter "(\w+)\s+(\w+)" from "([^"]*)".$""", RegexOptions.Compiled)]
+    // The type name may include namespaces or nested type separators (e.g., Namespace.Type or Outer+Inner).
+    [GeneratedRegex("""^Failed to bind parameter "(.+?)\s+([^"\s]+)" from "(.*)".$""", RegexOptions.Compiled)]
     private static partial Regex ParameterBindingFailedRegex();
+
+    [GeneratedRegex("""^Failed to read parameter ".+" from the request body as JSON\.$""", RegexOptions.Compiled)]
+    private static partial Regex ParameterReadFailedRegex();
 
     /// <summary>
     /// Creates a new instance of <see cref="ScalarValueValidationMiddleware"/>.
@@ -62,10 +66,11 @@ public sealed partial class ScalarValueValidationMiddleware
             {
                 await _next(context).ConfigureAwait(false);
             }
-            catch (BadHttpRequestException ex) when (ex.Message.StartsWith("Failed to bind parameter", StringComparison.Ordinal))
+            catch (BadHttpRequestException ex) when (IsParameterBindingFailureMessage(ex.Message))
             {
-                // Parse the exception message to extract parameter info
-                var (parameterName, typeName, invalidValue) = ParseBindingFailureMessage(ex.Message);
+                // Only handle the known ASP.NET Core binding failure format.
+                if (!TryParseBindingFailureMessage(ex.Message, out var parameterName, out var typeName, out var invalidValue))
+                    throw;
 
                 // Only handle binding failures for IScalarValue types
                 var scalarValueType = GetScalarValueParameterType(context, parameterName);
@@ -83,13 +88,19 @@ public sealed partial class ScalarValueValidationMiddleware
                     throw;
                 }
             }
-            catch (BadHttpRequestException ex) when (ex.Message.StartsWith("Failed to read parameter", StringComparison.Ordinal))
+            catch (BadHttpRequestException ex) when (IsParameterReadFailureMessage(ex.Message))
             {
                 // Handle JSON body deserialization failures (e.g., missing required properties)
                 await WriteJsonDeserializationErrorAsync(context, ex).ConfigureAwait(false);
             }
         }
     }
+
+    private static bool IsParameterBindingFailureMessage(string message) =>
+        ParameterBindingFailedRegex().IsMatch(message);
+
+    private static bool IsParameterReadFailureMessage(string message) =>
+        ParameterReadFailedRegex().IsMatch(message);
 
     [UnconditionalSuppressMessage("AOT", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]
@@ -116,7 +127,13 @@ public sealed partial class ScalarValueValidationMiddleware
         // Handle nullable types (e.g., OrderState?)
         var underlyingType = Nullable.GetUnderlyingType(parameterType) ?? parameterType;
 
-        return ScalarValueTypeHelper.IsScalarValue(underlyingType) ? underlyingType : null;
+        if (ScalarValueTypeHelper.IsScalarValue(underlyingType))
+            return underlyingType;
+
+        var maybeInnerType = ScalarValueTypeHelper.GetMaybeInnerType(underlyingType);
+        return maybeInnerType is not null && ScalarValueTypeHelper.IsScalarValue(maybeInnerType)
+            ? maybeInnerType
+            : null;
     }
 
     private static async Task WriteValidationProblemAsync(
@@ -134,11 +151,9 @@ public sealed partial class ScalarValueValidationMiddleware
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
-        // Extract meaningful error from the inner JsonException
-        var errorMessage = ex.InnerException?.Message ?? ex.Message;
         var errors = new Dictionary<string, string[]>
         {
-            ["$"] = [errorMessage]
+            ["$"] = ["The request body contains invalid JSON."]
         };
 
         var result = Results.ValidationProblem(errors);
@@ -160,19 +175,25 @@ public sealed partial class ScalarValueValidationMiddleware
         };
     }
 
-    private static (string ParameterName, string TypeName, string InvalidValue) ParseBindingFailureMessage(string message)
+    private static bool TryParseBindingFailureMessage(
+        string message,
+        out string parameterName,
+        out string typeName,
+        out string invalidValue)
     {
         // Try to parse: Failed to bind parameter "TypeName paramName" from "value".
         var match = ParameterBindingFailedRegex().Match(message);
         if (match.Success)
         {
-            var typeName = match.Groups[1].Value;
-            var paramName = match.Groups[2].Value;
-            var invalidValue = match.Groups[3].Value;
-            return (paramName, typeName, invalidValue);
+            typeName = match.Groups[1].Value;
+            parameterName = match.Groups[2].Value;
+            invalidValue = match.Groups[3].Value;
+            return true;
         }
 
-        // Fallback if regex doesn't match
-        return ("parameter", "value", string.Empty);
+        parameterName = string.Empty;
+        typeName = string.Empty;
+        invalidValue = string.Empty;
+        return false;
     }
 }

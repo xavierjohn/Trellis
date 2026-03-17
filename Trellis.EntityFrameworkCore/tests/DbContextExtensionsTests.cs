@@ -112,6 +112,39 @@ public class DbContextExtensionsTests : IDisposable
         result.Error.Should().BeOfType<ConflictError>();
     }
 
+    [Fact]
+    public async Task SaveChangesResultAsync_DuplicatePrimaryKey_ReturnsConflictError()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = TestCustomerId.NewUniqueV4();
+
+        _context.Customers.Add(new TestCustomer
+        {
+            Id = customerId,
+            Name = TestCustomerName.Create("Alice"),
+            Email = EmailAddress.Create("pk-1@example.com"),
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        _context.Customers.Add(new TestCustomer
+        {
+            Id = customerId,
+            Name = TestCustomerName.Create("Bob"),
+            Email = EmailAddress.Create("pk-2@example.com"),
+            CreatedAt = DateTime.UtcNow
+        });
+
+        // Act
+        var result = await _context.SaveChangesResultAsync(ct);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().BeOfType<ConflictError>();
+    }
+
     #endregion
 
     #region SaveChangesResultAsync — foreign key violation

@@ -116,6 +116,7 @@ public async Task<Result<Order>> SubmitOrderAsync(OrderId orderId, CancellationT
 - Returns `Result<TState>` with the new state on success
 - Returns a `DomainError` with details about the invalid transition on failure
 - Preserves Stateless's guard clause support
+- Inherits Stateless thread-safety constraints — do not call `FireResult()` concurrently on the same machine instance without external synchronization
 
 ## Spec Mapping
 
@@ -186,6 +187,7 @@ Key behaviors:
 - **Constructor-safe** — `stateAccessor` and `stateMutator` are not invoked until first `FireResult()` or `Machine` access
 - **Configure once** — the configuration callback runs exactly once on first access
 - **Direct access** — use `.Machine` to reach the underlying `StateMachine<TState, TTrigger>` for `CanFire()` checks
+- **Not thread-safe** — `LazyStateMachine` follows the same concurrency rules as Stateless; synchronize concurrent access to a single machine instance
 
 ## Next Steps
 

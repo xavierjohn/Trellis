@@ -31,23 +31,30 @@ public sealed class ResultNotHandledAnalyzer : DiagnosticAnalyzer
         // Check for method invocations that return Result
         if (expression is InvocationExpressionSyntax invocation)
         {
-            AnalyzeInvocation(context, invocation);
+            AnalyzeResultExpression(context, invocation);
         }
         // Check for await expressions
-        else if (expression is AwaitExpressionSyntax awaitExpression &&
-                 awaitExpression.Expression is InvocationExpressionSyntax awaitedInvocation)
+        else if (expression is AwaitExpressionSyntax awaitExpression)
         {
-            AnalyzeInvocation(context, awaitedInvocation);
+            var awaitedExpression = awaitExpression.Expression;
+
+            // Unwrap ConfigureAwait: await x.ConfigureAwait(false) → x
+            if (awaitedExpression is InvocationExpressionSyntax awaitedInvocation &&
+                awaitedInvocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                memberAccess.Name.Identifier.Text == "ConfigureAwait")
+            {
+                awaitedExpression = memberAccess.Expression;
+            }
+
+            AnalyzeResultExpression(context, awaitedExpression);
         }
     }
 
-    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context, InvocationExpressionSyntax invocation)
+    private static void AnalyzeResultExpression(SyntaxNodeAnalysisContext context, ExpressionSyntax expression)
     {
-        var symbolInfo = context.SemanticModel.GetSymbolInfo(invocation);
-        if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
+        var returnType = context.SemanticModel.GetTypeInfo(expression).Type;
+        if (returnType == null)
             return;
-
-        var returnType = methodSymbol.ReturnType;
 
         // Unwrap Task<T> or ValueTask<T>
         if (returnType.IsTaskType() && returnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
@@ -60,24 +67,51 @@ public sealed class ResultNotHandledAnalyzer : DiagnosticAnalyzer
             return;
 
         // Get the method name for the diagnostic message
-        var methodName = GetMethodName(invocation, methodSymbol);
+        var methodName = GetExpressionName(expression, context.SemanticModel);
 
         var diagnostic = Diagnostic.Create(
             DiagnosticDescriptors.ResultNotHandled,
-            invocation.GetLocation(),
+            expression.GetLocation(),
             methodName);
 
         context.ReportDiagnostic(diagnostic);
     }
 
-    private static string GetMethodName(InvocationExpressionSyntax invocation, IMethodSymbol methodSymbol)
+    private static string GetExpressionName(ExpressionSyntax expression, SemanticModel semanticModel)
     {
-        // For extension methods, try to get a more descriptive name
-        if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+        if (expression is InvocationExpressionSyntax invocation)
         {
-            return memberAccess.Name.Identifier.Text;
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+                return memberAccess.Name.Identifier.Text;
+
+            var symbolInfo = semanticModel.GetSymbolInfo(invocation);
+            if (symbolInfo.Symbol is IMethodSymbol methodSymbol)
+                return methodSymbol.Name;
         }
 
-        return methodSymbol.Name;
+        if (expression is IdentifierNameSyntax identifierName)
+            return identifierName.Identifier.Text;
+
+        if (expression is MemberAccessExpressionSyntax memberAccessExpression)
+        {
+            if (memberAccessExpression.Name.Identifier.Text == "ConfigureAwait")
+                return GetExpressionName(memberAccessExpression.Expression, semanticModel);
+
+            if (semanticModel.GetSymbolInfo(memberAccessExpression).Symbol is IPropertySymbol propertySymbol)
+                return propertySymbol.Name;
+
+            if (semanticModel.GetSymbolInfo(memberAccessExpression).Symbol is IMethodSymbol methodSymbol)
+                return methodSymbol.Name;
+
+            return memberAccessExpression.Name.Identifier.Text;
+        }
+
+        if (semanticModel.GetSymbolInfo(expression).Symbol is IMethodSymbol fallbackMethod)
+            return fallbackMethod.Name;
+
+        if (semanticModel.GetSymbolInfo(expression).Symbol is IPropertySymbol fallbackProperty)
+            return fallbackProperty.Name;
+
+        return expression.ToString();
     }
 }

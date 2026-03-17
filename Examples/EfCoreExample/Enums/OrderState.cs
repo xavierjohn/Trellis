@@ -5,12 +5,12 @@ using Trellis;
 /// <summary>
 /// Enum value object demonstrating rich domain behavior for order state.
 /// Unlike a regular C# enum, this encapsulates business rules about state transitions.
-/// Name is auto-derived from the field name (pure DDD - no strings in domain).
+/// Value is auto-derived from the field name (pure DDD - no strings in domain).
 /// Note: JsonConverter is automatically added by the source generator.
 /// </summary>
 public partial class OrderState : RequiredEnum<OrderState>
 {
-    // Pure domain - Name auto-derived from field name
+    // Pure domain - Value auto-derived from field name
     public static readonly OrderState Draft = new(canModify: true, canCancel: true, isTerminal: false);
     public static readonly OrderState Confirmed = new(canModify: false, canCancel: true, isTerminal: false);
     public static readonly OrderState Shipped = new(canModify: false, canCancel: false, isTerminal: false);
@@ -47,7 +47,7 @@ public partial class OrderState : RequiredEnum<OrderState>
             return newState;
 
         return Error.Validation(
-            $"Cannot transition from '{Name}' to '{newState.Name}'. Allowed transitions: {string.Join(", ", AllowedTransitions.Select(s => s.Name))}",
+            $"Cannot transition from '{this}' to '{newState}'. Allowed transitions: {string.Join(", ", AllowedTransitions)}",
             "state");
     }
 }

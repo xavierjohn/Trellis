@@ -296,12 +296,7 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-
-        // Wait a bit for async activity to be captured
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-
-        // Should have captured the Combine activity
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
     }
 
     [Fact]
@@ -316,12 +311,7 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeFailure();
-
-        // Wait a bit for async activity to be captured
-        await Task.Delay(50, TestContext.Current.CancellationToken);
-
-        // Should have captured the Combine activity
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Error);
     }
 
     [Fact]
@@ -337,12 +327,53 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
+        activityTest.AssertActivityCapturedWithStatus("Bind", ActivityStatusCode.Ok);
+    }
 
-        // Wait a bit for async activities to be captured
-        await Task.Delay(50, TestContext.Current.CancellationToken);
+    [Fact]
+    public async Task CombineAsync_ValueTaskResult_Success_CreatesActivity()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
 
-        // Should have captured both Combine and Bind activities
-        activityTest.ActivityCount.Should().BeGreaterThan(0);
+        // Act
+        var result = await ValueTask.FromResult(Result.Success("First"))
+            .CombineAsync(ValueTask.FromResult(Result.Success("Second")));
+
+        // Assert
+        result.Should().BeSuccess();
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public async Task CombineAsync_ValueTaskResult_Failure_CreatesActivity()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = await ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad first")))
+            .CombineAsync(ValueTask.FromResult(Result.Success("Second")));
+
+        // Assert
+        result.Should().BeFailure();
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task CombineAsync_ValueTaskWithUnit_Success_CreatesActivity()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+
+        // Act
+        var result = await ValueTask.FromResult(Result.Success("First"))
+            .CombineAsync(Result.Success());
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be("First");
+        activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
     }
 
     #endregion
