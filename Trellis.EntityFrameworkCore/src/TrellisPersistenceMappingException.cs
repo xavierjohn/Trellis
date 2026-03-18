@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.EntityFrameworkCore;
 
 /// <summary>
 /// Represents a failure to materialize a Trellis value object from persisted data.

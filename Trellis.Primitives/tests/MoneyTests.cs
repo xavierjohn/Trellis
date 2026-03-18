@@ -2,9 +2,9 @@
 
 namespace Trellis.Primitives.Tests;
 
-using Trellis;
-using System.Text.Json;
 using System.Reflection;
+using System.Text.Json;
+using Trellis;
 
 public class MoneyTests
 {
