@@ -218,11 +218,15 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// <summary>
     /// Checks if this instance is one of the specified values.
     /// </summary>
+    /// <param name="values">The values to compare against.</param>
+    /// <returns><c>true</c> if this instance matches any of the specified values; otherwise, <c>false</c>.</returns>
     public bool Is(params TSelf[] values) => values.Contains((TSelf)this);
 
     /// <summary>
     /// Checks if this instance is not one of the specified values.
     /// </summary>
+    /// <param name="values">The values to compare against.</param>
+    /// <returns><c>true</c> if this instance does not match any of the specified values; otherwise, <c>false</c>.</returns>
     public bool IsNot(params TSelf[] values) => !Is(values);
 
     /// <inheritdoc />

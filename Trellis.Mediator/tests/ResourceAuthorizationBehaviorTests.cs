@@ -289,4 +289,182 @@ public class ResourceAuthorizationBehaviorTests
     }
 
     #endregion
+
+    #region Async actor provider — resource owner allows access
+
+    [Fact]
+    public async Task Handle_AsyncResourceOwner_AllowsAccess()
+    {
+        var resource = new TestResource("res-1", "owner-1");
+        var behavior = CreateAsyncBehavior<ResourceOwnerCommand>("owner-1", resource);
+        var command = new ResourceOwnerCommand("res-1");
+        var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("Done"));
+
+        var result = await behavior.Handle(command, next, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be("Done");
+        tracker.WasInvoked.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Async actor provider — non-owner returns forbidden
+
+    [Fact]
+    public async Task Handle_AsyncNonOwner_ReturnsForbidden()
+    {
+        var resource = new TestResource("res-1", "owner-1");
+        var behavior = CreateAsyncBehavior<ResourceOwnerCommand>("other-user", resource);
+        var command = new ResourceOwnerCommand("res-1");
+        var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("should not reach"));
+
+        var result = await behavior.Handle(command, next, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ForbiddenError>();
+        result.Error.Detail.Should().Contain("Only the resource owner");
+        tracker.WasInvoked.Should().BeFalse("handler should not be invoked when authorization fails");
+    }
+
+    #endregion
+
+    #region Async provider preferred over sync for resource auth
+
+    [Fact]
+    public async Task Handle_AsyncPreferredOverSync_ForResourceAuth()
+    {
+        var resource = new TestResource("res-1", "async-user");
+        // Sync provider has the owner ID, async provider has a different ID that matches the resource owner
+        var syncProvider = FakeActorProvider.NoPermissions("sync-user");
+        var asyncProvider = FakeAsyncActorProvider.NoPermissions("async-user");
+
+        var services = new ServiceCollection();
+        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
+            new FakeResourceLoader<ResourceOwnerCommand>(resource));
+        var sp = services.BuildServiceProvider();
+
+        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            syncProvider, sp, asyncProvider);
+        var command = new ResourceOwnerCommand("res-1");
+        var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("Done"));
+
+        // Resource owner is "async-user" which matches the async provider's actor ID
+        var result = await behavior.Handle(command, next, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        tracker.WasInvoked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_AsyncPreferredOverSync_SyncActorIgnored()
+    {
+        var resource = new TestResource("res-1", "sync-user");
+        // Sync provider has the matching owner ID, but async is registered and takes precedence
+        var syncProvider = FakeActorProvider.NoPermissions("sync-user");
+        var asyncProvider = FakeAsyncActorProvider.NoPermissions("async-user");
+
+        var services = new ServiceCollection();
+        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
+            new FakeResourceLoader<ResourceOwnerCommand>(resource));
+        var sp = services.BuildServiceProvider();
+
+        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            syncProvider, sp, asyncProvider);
+        var command = new ResourceOwnerCommand("res-1");
+        var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("should not reach"));
+
+        // Resource owner is "sync-user" but async provider returns "async-user" → forbidden
+        var result = await behavior.Handle(command, next, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ForbiddenError>();
+        tracker.WasInvoked.Should().BeFalse("sync provider should be ignored when async is registered");
+    }
+
+    #endregion
+
+    #region Async null actor throws for resource auth
+
+    [Fact]
+    public async Task Handle_AsyncActorProviderReturnsNull_ThrowsInvalidOperationException_ResourceAuth()
+    {
+        var resource = new TestResource("res-1", "owner-1");
+        var syncProvider = FakeActorProvider.NoPermissions("owner-1");
+
+        var services = new ServiceCollection();
+        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
+            new FakeResourceLoader<ResourceOwnerCommand>(resource));
+        var sp = services.BuildServiceProvider();
+
+        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            syncProvider, sp, new NullAsyncActorProvider());
+        var command = new ResourceOwnerCommand("res-1");
+        var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("should not reach"));
+
+        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    #endregion
+
+    #region Async cancellation token propagated to actor provider
+
+    [Fact]
+    public async Task Handle_AsyncPropagatesCancellationTokenToActorProvider()
+    {
+        using var cts = new CancellationTokenSource();
+        var actor = Actor.Create("owner-1", new HashSet<string>());
+        var capturingProvider = new TokenCapturingAsyncActorProvider(actor);
+        var resource = new TestResource("res-1", "owner-1");
+        var syncProvider = FakeActorProvider.NoPermissions("owner-1");
+
+        var services = new ServiceCollection();
+        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
+            new FakeResourceLoader<ResourceOwnerCommand>(resource));
+        var sp = services.BuildServiceProvider();
+
+        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            syncProvider, sp, capturingProvider);
+        var command = new ResourceOwnerCommand("res-1");
+        var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Success("Done"));
+
+        await behavior.Handle(command, next, cts.Token);
+
+        capturingProvider.LastCancellationToken.Should().Be(cts.Token);
+    }
+
+    #endregion
+
+    #region Async helpers
+
+    private static ResourceAuthorizationBehavior<TMessage, TestResource, Result<string>>
+        CreateAsyncBehavior<TMessage>(
+            string actorId,
+            TestResource? resource,
+            params string[] permissions)
+        where TMessage : IAuthorizeResource<TestResource>, global::Mediator.IMessage
+    {
+        var asyncProvider = permissions.Length > 0
+            ? FakeAsyncActorProvider.WithPermissions(actorId, permissions)
+            : FakeAsyncActorProvider.NoPermissions(actorId);
+        var syncProvider = FakeActorProvider.NoPermissions("sync-fallback");
+
+        var services = new ServiceCollection();
+        services.AddScoped<IResourceLoader<TMessage, TestResource>>(_ =>
+            new FakeResourceLoader<TMessage>(resource));
+        var sp = services.BuildServiceProvider();
+
+        return new ResourceAuthorizationBehavior<TMessage, TestResource, Result<string>>(
+            syncProvider, sp, asyncProvider);
+    }
+
+    #endregion
 }

@@ -60,4 +60,31 @@ public sealed class AggregateError : Error
     /// </summary>
     /// <value>A read-only list of <see cref="Error"/> instances that were aggregated together.</value>
     public IReadOnlyList<Error> Errors { get; }
+
+    /// <summary>
+    /// Extracts and merges all <see cref="ValidationError"/> field errors from the aggregated errors.
+    /// Non-validation errors are ignored.
+    /// </summary>
+    /// <returns>A merged <see cref="ValidationError"/> containing all field errors, or null if no validation errors exist.</returns>
+    public ValidationError? FlattenValidationErrors()
+    {
+        ValidationError? merged = null;
+
+        foreach (var error in Errors)
+        {
+            var validation = error switch
+            {
+                ValidationError ve => ve,
+                AggregateError nested => nested.FlattenValidationErrors(),
+                _ => null
+            };
+
+            if (validation is null)
+                continue;
+
+            merged = merged is null ? validation : merged.Merge(validation);
+        }
+
+        return merged;
+    }
 }

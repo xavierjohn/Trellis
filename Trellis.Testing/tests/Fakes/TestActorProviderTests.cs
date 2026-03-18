@@ -170,6 +170,57 @@ public class TestActorProviderTests
 
     #endregion
 
+    #region IAsyncActorProvider Contract Tests
+
+    [Fact]
+    public async Task GetCurrentActorAsync_ImplementsIAsyncActorProvider()
+    {
+        var provider = new TestActorProvider("user-1", "Read");
+
+        var actor = await ((IAsyncActorProvider)provider).GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.Id.Should().Be("user-1");
+        actor.HasPermission("Read").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_ReturnsSameActorAsSync()
+    {
+        var provider = new TestActorProvider("user-1", "Read", "Write");
+
+        var syncActor = provider.GetCurrentActor();
+        var asyncActor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        asyncActor.Should().BeSameAs(syncActor);
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_ReflectsScopedActor()
+    {
+        var provider = new TestActorProvider("admin", "Admin");
+
+        await using (provider.WithActor("user-1", "Read"))
+        {
+            var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+            actor.Id.Should().Be("user-1");
+            actor.HasPermission("Read").Should().BeTrue();
+            actor.HasPermission("Admin").Should().BeFalse();
+        }
+
+        var restoredActor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+        restoredActor.Id.Should().Be("admin");
+    }
+
+    [Fact]
+    public void TestActorProvider_ImplementsIAsyncActorProvider()
+    {
+        var provider = new TestActorProvider("user-1");
+
+        provider.Should().BeAssignableTo<IAsyncActorProvider>();
+    }
+
+    #endregion
+
     #region Parallel Isolation Tests
 
     [Fact]

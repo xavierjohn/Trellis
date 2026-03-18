@@ -108,6 +108,7 @@ Result<T> FromException<T>(Exception ex, Func<Exception, Error>? map = null)
 Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2)
 // ... through 9-tuple arity:
 Result<(T1,...,T9)> Combine<T1,...,T9>(Result<T1> r1, ..., Result<T9> r9)
+Maybe<T> SuccessOrNone<T>(T? value)               // Maybe.From(value) if non-null, Maybe.None<T>() if null
 ```
 
 ## RailwayTrackAttribute & TrackBehavior
@@ -199,6 +200,8 @@ string Detail { get; }
 string? Instance { get; }
 ```
 
+**Equality:** `Equals` and `GetHashCode` are `virtual`. Base `Error` compares `GetType()`, `Code`, `Detail`, and `Instance` (DDD Value Object semantics). `ValidationError` additionally compares `FieldErrors`. `AggregateError` additionally compares `Errors`. Override in custom error types to include additional properties.
+
 ### Factory Methods
 
 ```csharp
@@ -254,6 +257,18 @@ IDictionary<string, string[]> ToDictionary()
 IReadOnlyList<Error> Errors { get; }
 AggregateError(IReadOnlyList<Error> errors)
 AggregateError(IReadOnlyList<Error> errors, string code)
+
+// Extracts and merges all nested ValidationError field errors.
+// Non-validation errors are ignored. Returns null if no validation errors exist.
+ValidationError? FlattenValidationErrors()
+```
+
+### FlattenValidationErrors — Result Extension
+
+Convenience extension on `Result<T>` that delegates to `AggregateError.FlattenValidationErrors()` when the error is an `AggregateError`, or returns the error directly when it is a `ValidationError`.
+
+```csharp
+ValidationError? FlattenValidationErrors<T>(this Result<T> result)
 ```
 
 ### CombineErrorExtensions — Merge Errors
@@ -372,6 +387,7 @@ TOut MatchError<TIn, TOut>(
     Func<RateLimitError, TOut>? onRateLimit = null,
     Func<ServiceUnavailableError, TOut>? onServiceUnavailable = null,
     Func<UnexpectedError, TOut>? onUnexpected = null,
+    Func<AggregateError, TOut>? onAggregate = null,  // handles AggregateError specifically; falls through to onError when null
     Func<Error, TOut>? onError = null)
 // + async variants (Task Left-only, Task Both with CancellationToken)
 ```
@@ -386,6 +402,7 @@ void SwitchError<TIn>(
     Action<TIn> onSuccess,
     Action<ValidationError>? onValidation = null,
     // ... same error type parameters as MatchError ...
+    Action<AggregateError>? onAggregate = null,      // handles AggregateError specifically; falls through to onError when null
     Action<Error>? onError = null)
 // + SwitchErrorAsync (Task with CancellationToken)
 ```
@@ -435,9 +452,10 @@ Result<T> Unless<T>(this Result<T>, bool condition, Func<T, Result<T>> action)
 ### Traverse — Apply to Collection
 
 ```csharp
-Result<IEnumerable<TOut>> Traverse<TIn, TOut>(this IEnumerable<TIn>, Func<TIn, Result<TOut>>)
-Task<Result<IEnumerable<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn>, Func<TIn, Task<Result<TOut>>>)
+Result<IReadOnlyList<TOut>> Traverse<TIn, TOut>(this IEnumerable<TIn>, Func<TIn, Result<TOut>>)
+Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn>, Func<TIn, Task<Result<TOut>>>)
 // + CancellationToken overloads, ValueTask variants
+// Returns IReadOnlyList<TOut> (not IEnumerable<TOut>) — materializes eagerly
 ```
 
 ### Nullable → Result
@@ -598,7 +616,12 @@ DateTime OccurredAt { get; }
 Structural equality based on `GetEqualityComponents()`. Hash code is cached (immutability assumed).
 
 ```csharp
-protected abstract IEnumerable<IComparable> GetEqualityComponents()
+protected abstract IEnumerable<IComparable?> GetEqualityComponents()
+
+// Helper for including Maybe<T> in equality components.
+// Returns the inner value if present, or null if empty.
+protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable
+
 // Operators: ==, !=, <, <=, >, >=
 // Implements: IComparable<ValueObject>, IEquatable<ValueObject>
 ```
@@ -630,6 +653,8 @@ Composable business rules that produce `Expression<Func<T, bool>>`.
 ```csharp
 abstract Expression<Func<T, bool>> ToExpression()
 bool IsSatisfiedBy(T entity)
+protected virtual bool CacheCompilation => true    // when true (default), IsSatisfiedBy caches the compiled expression
+                                                   // override to false for specifications that capture mutable state
 Specification<T> And(Specification<T> other)
 Specification<T> Or(Specification<T> other)
 Specification<T> Not()
@@ -733,7 +758,11 @@ int Ordinal { get; }       // declaration-order metadata, not stable identity
 
 static IReadOnlyCollection<TSelf> GetAll()
 static Result<TSelf> TryFromName(string? name, string? fieldName = null)  // case-insensitive symbolic value lookup
+bool Is(TSelf value)                               // allocation-free single-value check
+bool Is(TSelf value1, TSelf value2)                // allocation-free two-value check
 bool Is(params TSelf[] values)
+bool IsNot(TSelf value)                            // allocation-free single-value check
+bool IsNot(TSelf value1, TSelf value2)             // allocation-free two-value check
 bool IsNot(params TSelf[] values)
 
 // Source-generated:
@@ -815,6 +844,7 @@ string? GetAttribute(string key)
 
 ```csharp
 interface IActorProvider { Actor GetCurrentActor(); }
+interface IAsyncActorProvider { Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default); }
 interface IAuthorize { IReadOnlyList<string> RequiredPermissions { get; } }
 interface IAuthorizeResource<TResource> { IResult Authorize(Actor actor, TResource resource); }
 interface IResourceLoader<TMessage, TResource> { Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken ct); }
@@ -824,6 +854,19 @@ abstract class ResourceLoaderById<TMessage, TResource, TId> : IResourceLoader<TM
     protected abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken ct);
 }
 ```
+
+### IAsyncActorProvider
+
+Asynchronous variant of `IActorProvider`. Use when permission resolution requires async operations such as database lookups or external service calls.
+
+```csharp
+public interface IAsyncActorProvider
+{
+    Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default);
+}
+```
+
+Use `IActorProvider` when the actor can be resolved synchronously (e.g., from in-memory claims). Use `IAsyncActorProvider` when resolution requires I/O (e.g., loading permissions from a database).
 
 ## ActorAttributes Constants
 
@@ -1027,7 +1070,7 @@ Resource-based authorization with a loaded resource (`IAuthorizeResource<TResour
 | Behavior | Constraint on TMessage | Purpose |
 |----------|----------------------|---------|
 | `ExceptionBehavior` | `IMessage` | Catches unhandled exceptions → `Error.Unexpected` |
-| `TracingBehavior` | `IMessage` | OpenTelemetry Activity span |
+| `TracingBehavior` | `IMessage` | OpenTelemetry Activity span (`ActivitySourceName = "Trellis.Mediator"`) |
 | `LoggingBehavior` | `IMessage` | Structured logging with duration |
 | `AuthorizationBehavior` | `IAuthorize, IMessage` | Checks `HasAllPermissions` → `Error.Forbidden` |
 | `ResourceAuthorizationBehavior<,,>` | `IAuthorizeResource<TResource>, IMessage` | Loads resource via `IResourceLoader`, delegates to `message.Authorize(actor, resource)`. Auto-discovered via `AddResourceAuthorization(Assembly)`. |
@@ -1038,6 +1081,14 @@ Resource-based authorization with a loaded resource (`IAuthorizeResource<TResour
 ```csharp
 interface IValidate { IResult Validate(); }
 ```
+
+### TracingBehavior Constants
+
+```csharp
+public const string ActivitySourceName = "Trellis.Mediator";
+```
+
+Use `ActivitySourceName` to register the activity source with OpenTelemetry: `builder.AddSource(TracingBehavior<IMessage, IResult>.ActivitySourceName)`.
 
 ### Registration
 
@@ -1142,7 +1193,9 @@ repo.PublishedEvents                                   // IReadOnlyList<IDomainE
 
 **Namespace: `Trellis.Testing.Fakes`**
 
-Mutable `IActorProvider` for authorization testing. Uses `AsyncLocal<Actor?>` internally so parallel tests sharing a singleton provider never interfere. `WithActor` returns a scope that restores the previous actor on dispose, eliminating `try/finally` boilerplate.
+Mutable `IActorProvider` and `IAsyncActorProvider` for authorization testing. Uses `AsyncLocal<Actor?>` internally so parallel tests sharing a singleton provider never interfere. `WithActor` returns a scope that restores the previous actor on dispose, eliminating `try/finally` boilerplate.
+
+Implements both `IActorProvider` (sync) and `IAsyncActorProvider` (async). Register as both interfaces in DI when the system under test uses `IAsyncActorProvider`.
 
 ### Construction
 

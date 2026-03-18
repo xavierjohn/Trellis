@@ -2,6 +2,7 @@
 
 using System.Linq.Expressions;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
@@ -63,50 +64,55 @@ public static class MaybeUpdateExtensions
         where TInner : notnull
     {
         var descriptor = MaybePropertyResolver.Resolve(propertySelector);
-        var propertyLambda = MaybePropertyResolver.BuildStorageMemberLambda(propertySelector);
-        var propertyType = descriptor.StoreType;
+        var parameter = propertySelector.Parameters[0];
 
-        if (!clearValue && typeof(TInner).IsValueType)
-        {
-            var constantValue = CreateStoreValue<TInner>(propertyType, value!);
-            var method = SetPropertyMethodCache<TEntity>.ConstantValueDefinition.MakeGenericMethod(propertyType);
+        // When setting a non-null value for a value type, use the inner type so the
+        // expression return type matches what EF Core's TryTranslateSetterValueSelector
+        // expects (it strips Nullable<T> from the property type before comparing).
+        var effectiveType = (!clearValue && typeof(TInner).IsValueType)
+            ? typeof(TInner)
+            : descriptor.StoreType;
 
-            method.Invoke(updateSettersBuilder, [propertyLambda, constantValue]);
-            return;
-        }
-
-        var valueLambda = BuildValueLambda<TEntity, TInner>(propertySelector.Parameters[0], descriptor, value, clearValue);
-        var expressionMethod = SetPropertyMethodCache<TEntity>.ExpressionValueDefinition.MakeGenericMethod(propertyType);
+        var propertyLambda = BuildPropertyLambda<TEntity>(parameter, descriptor.StorageMemberName, effectiveType);
+        var valueLambda = BuildValueLambda<TEntity>(parameter, effectiveType, value, clearValue);
+        var expressionMethod = SetPropertyMethodCache<TEntity>.ExpressionValueDefinition.MakeGenericMethod(effectiveType);
 
         expressionMethod.Invoke(updateSettersBuilder, [propertyLambda, valueLambda]);
     }
 
-    private static object? CreateStoreValue<TInner>(Type storeType, TInner value)
-        where TInner : notnull
-    {
-        if (!storeType.IsValueType || Nullable.GetUnderlyingType(storeType) is null)
-            return value;
-
-        return Activator.CreateInstance(storeType, value);
-    }
-
-    private static LambdaExpression BuildValueLambda<TEntity, TInner>(
+    private static LambdaExpression BuildPropertyLambda<TEntity>(
         ParameterExpression parameter,
-        MaybePropertyDescriptor descriptor,
-        TInner? value,
-        bool clearValue)
+        string storageMemberName,
+        Type effectiveType)
         where TEntity : class
-        where TInner : notnull
     {
-        Expression body = clearValue
-            ? Expression.Constant(null, descriptor.StoreType)
-            : typeof(TInner).IsValueType
-                ? Expression.Convert(Expression.Constant(value, typeof(TInner)), descriptor.StoreType)
-                : Expression.Constant(value, descriptor.StoreType);
+        var efPropertyMethod = s_efPropertyMethodInfo.MakeGenericMethod(effectiveType);
+        var body = Expression.Call(
+            efPropertyMethod,
+            Expression.Convert(parameter, typeof(object)),
+            Expression.Constant(storageMemberName));
 
-        var delegateType = typeof(Func<,>).MakeGenericType(typeof(TEntity), descriptor.StoreType);
+        var delegateType = typeof(Func<,>).MakeGenericType(typeof(TEntity), effectiveType);
         return Expression.Lambda(delegateType, body, parameter);
     }
+
+    private static LambdaExpression BuildValueLambda<TEntity>(
+        ParameterExpression parameter,
+        Type effectiveType,
+        object? value,
+        bool clearValue)
+        where TEntity : class
+    {
+        Expression body = clearValue
+            ? Expression.Constant(null, effectiveType)
+            : Expression.Constant(value, effectiveType);
+
+        var delegateType = typeof(Func<,>).MakeGenericType(typeof(TEntity), effectiveType);
+        return Expression.Lambda(delegateType, body, parameter);
+    }
+
+    private static readonly MethodInfo s_efPropertyMethodInfo =
+        typeof(EF).GetMethod(nameof(EF.Property))!;
 
     private static class SetPropertyMethodCache<TEntity> where TEntity : class
     {
@@ -118,13 +124,5 @@ public static class MaybeUpdateExtensions
                 && method.GetParameters().Length == 2
                 && method.GetParameters()[1].ParameterType.IsGenericType
                 && method.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Expression<>));
-
-        internal static readonly MethodInfo ConstantValueDefinition = typeof(UpdateSettersBuilder<TEntity>)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .Single(method =>
-                method.Name == nameof(UpdateSettersBuilder<TEntity>.SetProperty)
-                && method.IsGenericMethodDefinition
-                && method.GetParameters().Length == 2
-                && !method.GetParameters()[1].ParameterType.IsGenericType);
     }
 }

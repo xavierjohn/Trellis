@@ -16,23 +16,28 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>
     where TResponse : IResult, IFailureFactory<TResponse>
 {
     private readonly IActorProvider _actorProvider;
+    private readonly IAsyncActorProvider? _asyncActorProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthorizationBehavior{TMessage, TResponse}"/> class.
     /// </summary>
     /// <param name="actorProvider">Provides the current authenticated actor.</param>
-    public AuthorizationBehavior(IActorProvider actorProvider)
-        => _actorProvider = actorProvider;
+    /// <param name="asyncActorProvider">
+    /// Optional async actor provider. When registered, takes precedence over <paramref name="actorProvider"/>.
+    /// </param>
+    public AuthorizationBehavior(IActorProvider actorProvider, IAsyncActorProvider? asyncActorProvider = null)
+    {
+        _actorProvider = actorProvider;
+        _asyncActorProvider = asyncActorProvider;
+    }
 
     /// <inheritdoc />
-    public ValueTask<TResponse> Handle(
+    public async ValueTask<TResponse> Handle(
         TMessage message,
         MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
-        var actor = _actorProvider.GetCurrentActor();
-        if (actor is null)
-            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
+        var actor = await GetActorAsync(cancellationToken).ConfigureAwait(false);
 
         if (!actor.HasAllPermissions(message.RequiredPermissions))
         {
@@ -42,9 +47,23 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>
             var error = Error.Forbidden(
                 $"Missing required permissions: {string.Join(", ", missing)}");
 
-            return new ValueTask<TResponse>(TResponse.CreateFailure(error));
+            return TResponse.CreateFailure(error);
         }
 
-        return next(message, cancellationToken);
+        return await next(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Actor> GetActorAsync(CancellationToken cancellationToken)
+    {
+        if (_asyncActorProvider is not null)
+        {
+            var actor = await _asyncActorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
+            return actor ?? throw new InvalidOperationException("No authenticated actor available. Ensure an IAsyncActorProvider is configured and the user is authenticated.");
+        }
+
+        var syncActor = _actorProvider.GetCurrentActor();
+        if (syncActor is null)
+            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
+        return syncActor;
     }
 }
