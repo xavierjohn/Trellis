@@ -14,6 +14,8 @@ public partial class TestCustomer
     public DateTime CreatedAt { get; set; }
 
     public partial Maybe<PhoneNumber> Phone { get; set; }
+
+    public List<TestOrder> Orders { get; set; } = [];
 }
 
 public class DerivedTestCustomer : TestCustomer

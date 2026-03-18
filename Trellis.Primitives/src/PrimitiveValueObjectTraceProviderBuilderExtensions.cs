@@ -5,7 +5,7 @@ namespace Trellis;
 using OpenTelemetry.Trace;
 
 /// <summary>
-/// Provides extension methods for configuring OpenTelemetry tracing for Primitive Value Objects (PVO).
+/// Provides extension methods for configuring OpenTelemetry tracing for Trellis primitive value objects.
 /// </summary>
 /// <remarks>
 /// This class enables distributed tracing and monitoring for value object operations such as
@@ -15,14 +15,14 @@ using OpenTelemetry.Trace;
 public static class PrimitiveValueObjectTraceProviderBuilderExtensions
 {
     /// <summary>
-    /// Adds PrimitiveValueObjects instrumentation to the OpenTelemetry tracing pipeline.
+    /// Adds primitive value object instrumentation to the OpenTelemetry tracing pipeline.
     /// Enables distributed tracing for value object creation, validation, and parsing operations.
     /// </summary>
     /// <param name="builder">The <see cref="TracerProviderBuilder"/> to configure.</param>
     /// <returns>The configured <see cref="TracerProviderBuilder"/> for method chaining.</returns>
     /// <remarks>
     /// <para>
-    /// This extension method registers the PrimitiveValueObjects <see cref="System.Diagnostics.ActivitySource"/> with OpenTelemetry,
+    /// This extension method registers the Trellis primitive value object <see cref="System.Diagnostics.ActivitySource"/> with OpenTelemetry,
     /// allowing you to observe and monitor value object operations in your distributed tracing system.
     /// </para>
     /// <para>
@@ -36,7 +36,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     /// </list>
     /// </para>
     /// <para>
-    /// Benefits of enabling PVO instrumentation:
+    /// Benefits of enabling primitive value object instrumentation:
     /// <list type="bullet">
     /// <item>Monitor validation performance and identify slow operations</item>
     /// <item>Track validation failure rates and patterns</item>
@@ -54,7 +54,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     /// builder.Services.AddOpenTelemetry()
     ///     .WithTracing(tracerProviderBuilder =>
     ///         tracerProviderBuilder
-    ///             .AddPrimitiveValueObjectInstrumentation()  // Enable PVO tracing
+    ///             .AddPrimitiveValueObjectInstrumentation()  // Enable Trellis primitive tracing
     ///             .AddAspNetCoreInstrumentation()         // Add ASP.NET Core tracing
     ///             .AddHttpClientInstrumentation()         // Add HTTP client tracing
     ///             .AddConsoleExporter());                 // Export to console
@@ -77,7 +77,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     ///                     builder.Configuration["ApplicationInsights:ConnectionString"];
     ///             }));
     /// 
-    /// // Now you can see PVO traces in Application Insights:
+    /// // Now you can see Trellis primitive traces in Application Insights:
     /// // - Search for operations like "EmailAddress.TryCreate"
     /// // - View validation success/failure rates
     /// // - Analyze performance metrics

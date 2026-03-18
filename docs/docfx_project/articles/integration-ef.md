@@ -31,7 +31,7 @@ This package provides:
 
 | Feature | Description |
 |---------|-------------|
-| `ApplyTrellisConventions` | Auto-registers EF Core value converters for all Trellis value objects and auto-maps `Money` as owned types |
+| `ApplyTrellisConventions` | Auto-registers EF Core value converters for scalar/symbolic Trellis value objects and auto-maps `Money` as a structured owned type |
 | `SaveChangesResultAsync` | Wraps `SaveChangesAsync` — returns `Result<int>` instead of throwing |
 | `SaveChangesResultUnitAsync` | Same as above but returns `Result<Unit>` |
 | `DbExceptionClassifier` | Provider-agnostic exception classification (SQL Server, PostgreSQL, SQLite) |
@@ -76,7 +76,7 @@ public class AppDbContext : DbContext
 `ApplyTrellisConventions` automatically:
 
 - Scans your assemblies for types implementing `IScalarValue<TSelf, TPrimitive>` (e.g., `RequiredGuid<T>`, `RequiredString<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, custom `ScalarValueObject<,>` subclasses)
-- Scans for `RequiredEnum<T>` types and stores them as strings (using `Name` / `TryFromName`)
+- Scans for `RequiredEnum<T>` types and stores them as strings (using `Value` / `TryFromName`)
 - Always includes the `Trellis.Primitives` assembly (for `EmailAddress`, `Url`, `PhoneNumber`, etc.)
 
 ### Manual Override
@@ -105,7 +105,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 | `RequiredString<T>` | `string` | `v.Value` ↔ `T.Create(str)` |
 | `RequiredInt<T>` | `int` | `v.Value` ↔ `T.Create(num)` |
 | `RequiredDecimal<T>` | `decimal` | `v.Value` ↔ `T.Create(num)` |
-| `RequiredEnum<T>` | `string` | `v.Value` ↔ `T.TryFromName(str).Value` |
+| `RequiredEnum<T>` | `string` | `v.Value` ↔ symbolic value lookup via `T.TryFromName(str).Value` |
 | `EmailAddress` | `string(254)` | `v.Value` ↔ `EmailAddress.Create(str)` |
 | Custom `ScalarValueObject<T,P>` | `P` | `v.Value` ↔ `T.Create(p)` |
 
@@ -778,6 +778,7 @@ var orders = await context.Orders
 ## Money Property Convention
 
 `Money` properties on entities are automatically mapped as owned types by `ApplyTrellisConventions` — no `OwnsOne` configuration needed.
+That is the expected structured-value-object path, not a scalar converter special case.
 
 ### How It Works
 
@@ -827,7 +828,7 @@ modelBuilder.Entity<Order>(b =>
 
 ## <a id="maybe-property-convention"></a>Maybe\<T\> Property Convention
 
-`Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. The `Trellis.EntityFrameworkCore.Generator` source generator and `MaybeConvention` eliminate all boilerplate.
+`Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. Trellis keeps the primary programming model at the CLR property level and hides the EF workaround behind generated code, conventions, and helpers.
 
 ### Entity Declaration
 
@@ -846,9 +847,38 @@ public partial class Customer
 
 No `OnModelCreating` configuration needed — `MaybeConvention` (registered by `ApplyTrellisConventions`) handles everything automatically.
 
-### How It Works
+### Day-to-Day Usage
 
-The **source generator** emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property:
+Use the property-level helpers when querying, indexing, updating, or diagnosing `Maybe<T>` mappings:
+
+```csharp
+var withoutPhone = await context.Customers.WhereNone(c => c.Phone).ToListAsync(ct);
+
+var withPhone = await context.Customers.WhereHasValue(c => c.Phone).ToListAsync(ct);
+
+var matches = await context.Customers.WhereEquals(c => c.Phone, phone).ToListAsync(ct);
+
+modelBuilder.Entity<Customer>(builder =>
+{
+    builder.HasKey(c => c.Id);
+    builder.HasTrellisIndex(c => c.Phone);
+    builder.HasTrellisIndex(c => new { c.Name, c.SubmittedAt });
+});
+
+await context.Customers
+    .Where(c => c.Id == customerId)
+    .ExecuteUpdateAsync(setters => setters.SetMaybeValue(c => c.Phone, phone), ct);
+
+var mappings = context.GetMaybePropertyMappings();
+var debugView = context.ToMaybeMappingDebugString();
+```
+
+> [!WARNING]
+> Do not use direct property references like `.Where(c => c.Phone.HasValue)` — EF Core cannot translate them. Use the Trellis query helpers instead.
+
+### Implementation Details
+
+Under the hood, the **source generator** emits a private `_camelCase` storage field and getter/setter for each `partial Maybe<T>` property:
 
 ```csharp
 // Auto-generated
@@ -863,46 +893,22 @@ public partial Maybe<PhoneNumber> Phone
 The **`MaybeConvention`** (`IModelFinalizingConvention`) then:
 
 1. Always ignores the `Maybe<T>` CLR property (EF Core can't map structs as nullable)
-2. Discovers the private `_camelCase` backing field
-3. Maps the backing field as optional (`IsRequired(false)`)
+2. Discovers the private `_camelCase` storage field
+3. Maps the storage member as optional (`IsRequired(false)`)
 4. Sets the column name to the original property name (`Phone`, not `_phone`)
 5. Configures field-only access mode
 
 ### Column Naming
 
-| Property | Backing Field | Column Name |
+| Property | Storage Member | Column Name |
 |----------|---------------|-------------|
 | `Phone` | `_phone` | `Phone` |
 | `SubmittedAt` | `_submittedAt` | `SubmittedAt` |
 | `AlternateEmail` | `_alternateEmail` | `AlternateEmail` |
 
-### Querying Maybe\<T\> Properties
-
-Because `MaybeConvention` ignores the `Maybe<T>` CLR property, EF Core cannot translate direct LINQ references to it. Use the query extensions:
-
-```csharp
-// WhereNone — WHERE column IS NULL
-var withoutPhone = await context.Customers.WhereNone(c => c.Phone).ToListAsync(ct);
-
-// WhereHasValue — WHERE column IS NOT NULL
-var withPhone = await context.Customers.WhereHasValue(c => c.Phone).ToListAsync(ct);
-
-// WhereEquals — WHERE column = @value
-var matches = await context.Customers.WhereEquals(c => c.Phone, phone).ToListAsync(ct);
-
-// OrderByMaybe — ORDER BY mapped backing field
-var ordered = await context.Customers
-    .WhereHasValue(c => c.Phone)
-    .OrderByMaybe(c => c.Phone)
-    .ToListAsync(ct);
-```
-
-> [!WARNING]
-> Do not use direct property references like `.Where(c => c.Phone.HasValue)` — EF Core cannot translate them. Always use the query extensions above.
-
 ### Indexing, Bulk Updates, and Diagnostics
 
-Use the CLR-property helpers when you need features that normally force you down to string-backed field names:
+Use the CLR-property helpers when you need features that would otherwise tempt you to reach for raw field names:
 
 ```csharp
 modelBuilder.Entity<Customer>(builder =>
@@ -924,11 +930,11 @@ var mappings = context.GetMaybePropertyMappings();
 var debugView = context.ToMaybeMappingDebugString();
 ```
 
-`HasTrellisIndex` resolves `Maybe<T>` selectors to their mapped backing fields while leaving regular properties unchanged, so mixed composite indexes stay strongly typed.
+`HasTrellisIndex` resolves `Maybe<T>` selectors to the mapped storage automatically while leaving regular properties unchanged, so mixed composite indexes stay strongly typed.
 
-`HasTrellisIndex` only accepts **direct** property access on the lambda parameter. Nested selectors such as `o => o.Customer.Phone` are rejected with `ArgumentException` so the helper cannot accidentally resolve a backing field name against the wrong entity type.
+`HasTrellisIndex` only accepts **direct** property access on the lambda parameter. Nested selectors such as `o => o.Customer.Phone` are rejected with `ArgumentException` so the helper cannot accidentally resolve a storage member name against the wrong entity type.
 
-For `Maybe<T>` properties, `HasTrellisIndex` also validates that the expected backing field exists on the CLR type hierarchy or is already mapped in the EF model. If the source-generated backing field is missing, the method throws `InvalidOperationException` with guidance to declare the property as `partial` or configure the backing field property explicitly before calling `HasTrellisIndex`.
+For `Maybe<T>` properties, `HasTrellisIndex` also validates that the expected generated storage member exists on the CLR type hierarchy or is already mapped in the EF model. If it is missing, the method throws `InvalidOperationException` with guidance to declare the property as `partial` or configure the mapping explicitly before calling `HasTrellisIndex`.
 
 ### TRLSGEN100 Diagnostic
 

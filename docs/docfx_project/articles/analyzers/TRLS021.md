@@ -2,21 +2,21 @@
 
 ## Cause
 
-A `HasIndex` lambda expression in an EF Core entity configuration references a property declared as `Maybe<T>`. This silently fails to create the index because `MaybeConvention` maps `Maybe<T>` via private backing fields, making the CLR property invisible to EF Core's index builder.
+A `HasIndex` lambda expression in an EF Core entity configuration references a property declared as `Maybe<T>`. This silently fails to create the index because `MaybeConvention` maps `Maybe<T>` through generated storage members, making the CLR property invisible to EF Core's index builder.
 
 ## Rule Description
 
-When you use `Maybe<T>` for optional properties, the Trellis `MaybeConvention` ignores the `Maybe<T>` CLR property and maps the private `_camelCase` backing field instead. EF Core's `HasIndex` with a lambda expression resolves properties by their CLR property name — since the `Maybe<T>` property is ignored, the index silently doesn't get created.
+When you use `Maybe<T>` for optional properties, Trellis provides `HasTrellisIndex` so you can keep indexing at the CLR-property level. Plain EF Core `HasIndex` does not understand the Trellis mapping strategy for `Maybe<T>`, so an index that mentions a `Maybe<T>` property will silently miss that column.
 
 This rule fires as a **Warning** because the code compiles and runs without errors, but the database index simply won't exist at runtime.
 
 ## How to Fix Violations
 
-Replace the lambda-based `HasIndex` with `HasTrellisIndex`, or use the string-based overload with the mapped backing field name.
+Replace the lambda-based `HasIndex` with `HasTrellisIndex`. Use the string-based storage member name only as a fallback when you intentionally need to bypass the Trellis helper.
 
 `HasTrellisIndex` only accepts direct property access on the lambda parameter. Expressions like `e => e.Customer.SubmittedAt` are rejected with `ArgumentException` instead of being interpreted as indexes on the root entity.
 
-For `Maybe<T>` properties, `HasTrellisIndex` validates that the expected backing field exists on the entity CLR type hierarchy or is already mapped in the EF model. If the backing field is missing, it throws `InvalidOperationException` with guidance to use `partial` properties or explicit field mapping.
+For `Maybe<T>` properties, `HasTrellisIndex` validates that the expected generated storage member exists on the entity CLR type hierarchy or is already mapped in the EF model. If that mapping is missing, it throws `InvalidOperationException` with guidance to use `partial` properties or explicit field mapping.
 
 ### Single property index
 
@@ -24,10 +24,10 @@ For `Maybe<T>` properties, `HasTrellisIndex` validates that the expected backing
 // ❌ Bad - index silently not created
 builder.HasIndex(e => e.SubmittedAt);
 
-// ✅ Preferred - resolves Maybe<T> to the mapped backing field for you
+// ✅ Preferred - resolves Maybe<T> to the mapped storage member for you
 builder.HasTrellisIndex(e => e.SubmittedAt);
 
-// ✅ Also valid - uses backing field name directly
+// ✅ Fallback - uses the mapped storage member name directly
 builder.HasIndex("_submittedAt");
 ```
 
@@ -40,7 +40,7 @@ builder.HasIndex(e => new { e.Status, e.SubmittedAt });
 // ✅ Preferred - regular properties stay regular, Maybe<T> resolves automatically
 builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt });
 
-// ✅ Also valid - uses string-based overload with backing field
+// ✅ Fallback - uses string-based overload with the mapped storage member
 builder.HasIndex("Status", "_submittedAt");
 ```
 
@@ -51,19 +51,19 @@ builder.HasIndex("Status", "_submittedAt");
 builder.HasIndex(e => new { e.Status, e.Name });
 ```
 
-## Backing Field Naming Convention
+## Storage Naming Convention
 
-The backing field follows `_camelCase` naming from the property name:
+If you must drop to the raw mapped member name, the generated storage field follows `_camelCase` naming from the property name:
 
-| Property | Backing Field |
-|----------|---------------|
+| Property | Storage Member |
+|----------|----------------|
 | `SubmittedAt` | `_submittedAt` |
 | `Phone` | `_phone` |
 | `AlternateEmail` | `_alternateEmail` |
 
 ## Background
 
-`Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional. The Trellis source generator emits a private nullable backing field (e.g., `DateTime? _submittedAt`) and the `MaybeConvention` maps that field instead. See the [EF Core integration guide](../integration-ef.md) for full details.
+`Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional. Trellis compensates with generated storage members and conventions so your normal entry point can remain the CLR property and the Trellis helpers. See the [EF Core integration guide](../integration-ef.md) for full details.
 
 ## When to Suppress Warnings
 

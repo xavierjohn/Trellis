@@ -144,6 +144,28 @@ public static Money Create(decimal amount, string currencyCode)
 }
 ```
 
+## Value Object Category Review
+
+Before adding or approving a new value-like type, classify it first:
+
+| Category | Identity Shape | Expected Contract |
+|---------|----------------|-------------------|
+| Scalar value object | One primitive value | Public `Value`, `TryCreate`/`Create`, converter-based JSON/EF |
+| Symbolic value object | One symbolic member from a finite set | One canonical symbolic identity, stable wire/storage contract |
+| Structured value object | Multiple meaningful components | Explicit JSON shape, explicit persistence strategy, no fake scalar `Value` |
+| Optionality wrapper | Presence/absence around another type | Preserve the wrapped type's model; keep storage details hidden |
+
+Review checklist for new value-like types:
+
+1. Does it clearly belong to exactly one category?
+2. Is there exactly one canonical semantic identity?
+3. Does the creation API align with that identity?
+4. Would renaming a field or property accidentally change wire or storage contracts?
+5. Can JSON, ASP.NET, analyzers, and EF handle it without type-specific hacks?
+6. Are any public APIs exposing infrastructure details rather than domain meaning?
+
+Working rule: do not force structured value objects like `Money` through the scalar pipeline, and do not let symbolic or optional types inherit scalar assumptions by accident.
+
 ## Diagnostic ID Conventions
 
 Analyzers (`Trellis.Analyzers`) and source generators use **separate ID prefixes** to avoid collisions:

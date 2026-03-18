@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 using Trellis;
 
 /// <summary>
-/// JSON converter for Money value objects.
+/// JSON converter for the structured <see cref="Money"/> value object.
 /// Serializes Money as {"amount": 99.99, "currency": "USD"}.
 /// </summary>
 public class MoneyJsonConverter : JsonConverter<Money>

@@ -75,9 +75,9 @@ public class AppDbContext : DbContext
 |-------------------|---------------|-----------|
 | `IScalarValue<TSelf, TPrimitive>` | `TPrimitive` (string, Guid, int, decimal) | `Value` → DB, `Create()` ← DB |
 | `RequiredEnum<TSelf>` | `string` | `Value` → DB, `TryFromName()` ← DB |
-| `Money` | Owned type: `decimal(18,3)` + `nvarchar(3)` | Auto-mapped as owned entity (Amount + Currency columns) |
+| `Money` | Structured owned type: `decimal(18,3)` + `nvarchar(3)` | Auto-mapped as owned entity (Amount + Currency columns) |
 
-This covers all built-in types: `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredEnum<T>`, `EmailAddress`, `Money`, and any custom `ScalarValueObject<TSelf, T>`.
+This covers converter-based scalar/symbolic types (`RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredEnum<T>`, `EmailAddress`, and any custom `ScalarValueObject<TSelf, T>`) plus `Money` as a structured owned type.
 
 ### Multiple Assemblies
 
@@ -93,6 +93,7 @@ configurationBuilder.ApplyTrellisConventions(
 ## Money Property Convention
 
 `Money` properties on entities are automatically mapped as owned types — no `OwnsOne` configuration needed.
+That behavior is intentional because `Money` is a structured value object, not a scalar wrapper with a single persisted `Value`.
 This also applies when `Money` is declared on owned entity types, including items inside `OwnsMany` collections.
 
 ```csharp
@@ -143,11 +144,11 @@ public partial class Customer
 }
 ```
 
-No `OnModelCreating` configuration needed — `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, maps the generated `_camelCase` backing field as nullable, and sets the column name to the property name.
+No `OnModelCreating` configuration needed — `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, maps the generated `_camelCase` storage member as nullable, and sets the column name to the property name.
 
 ### Column Naming
 
-| Property | Backing Field | Column Name |
+| Property | Storage Member | Column Name |
 |----------|---------------|-------------|
 | `Phone` | `_phone` | `Phone` |
 | `SubmittedAt` | `_submittedAt` | `SubmittedAt` |
@@ -188,11 +189,11 @@ await context.Customers
     .ExecuteUpdateAsync(setters => setters.SetMaybeNone(c => c.Phone), ct);
 ```
 
-`HasTrellisIndex` resolves `Maybe<T>` properties to their mapped backing fields while leaving regular properties unchanged, so mixed composite indexes stay strongly typed.
+`HasTrellisIndex` resolves `Maybe<T>` properties to their mapped storage members while leaving regular properties unchanged, so mixed composite indexes stay strongly typed.
 
 ### Mapping Diagnostics
 
-You can inspect resolved `Maybe<T>` mappings at runtime to verify the generated field, column name, and provider type:
+You can inspect resolved `Maybe<T>` mappings at runtime to verify the generated storage member, column name, and provider type:
 
 ```csharp
 var mappings = context.GetMaybePropertyMappings();
@@ -310,19 +311,20 @@ catch (DbUpdateException ex)
 
 The scanner checks each type in the provided assemblies:
 
-1. **`RequiredEnum<TSelf>`** — checked first because it implements `IScalarValue<TSelf, string>` but still needs a different converter because it reconstructs via `TryFromName()` instead of `Create()`
-2. **`IScalarValue<TSelf, TPrimitive>`** — interface-based detection for all scalar value objects. The `TPrimitive` type argument determines the database column type
+1. **Symbolic value objects** such as `RequiredEnum<TSelf>` — detected from the base type and mapped with a string provider plus `TryFromName()` reconstruction
+2. **Scalar value objects** implementing `IScalarValue<TSelf, TPrimitive>` — interface-based detection where the `TPrimitive` type argument determines the database column type
 
 ### Expression Tree Converters
 
-`TrellisScalarConverter<TModel, TProvider>` and `TrellisEnumConverter<TModel>` build compiled expression trees:
+`TrellisScalarConverter<TModel, TProvider>` builds compiled expression trees for both scalar and symbolic value objects:
 
 ```
-To Database:    v => v.Value          (or v => v.Name for enums)
-From Database:  v => TModel.Create(v) (or TryFromName(v, null).Value for enums)
+To Database:    v => v.Value
+From Database:  v => TryCreate(v, null) or TryFromName(v, null)
 ```
 
 Expression trees are preserved so EF Core can translate them for LINQ query translation.
+If persisted data is invalid, materialization throws `TrellisPersistenceMappingException` with the value object type, persisted value, factory method, and validation detail.
 
 ## Related Packages
 

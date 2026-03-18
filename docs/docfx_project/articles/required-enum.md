@@ -27,7 +27,7 @@ public partial class OrderState : RequiredEnum<OrderState>
     private OrderState() { }
 }
 
-// Cannot create invalid values - Value is auto-derived from field name
+// Cannot create invalid values - Value defaults to the field name
 var result = OrderState.TryCreate("Invalid");  // Returns Result.Failure with "Valid values: Draft, Confirmed, Shipped"
 var state = OrderState.Draft;  // state.Value == "Draft"
 ```
@@ -36,7 +36,7 @@ var state = OrderState.Draft;  // state.Value == "Draft"
 
 ### Defining a RequiredEnum
 
-Use `partial` to enable source generation. The Value is automatically derived from the field name — pure domain, no strings needed:
+Use `partial` to enable source generation. By default, `Value` is just the field name:
 
 ```csharp
 using Trellis;
@@ -44,7 +44,6 @@ using Trellis.Primitives;
 
 public partial class PaymentMethod : RequiredEnum<PaymentMethod>
 {
-    // Value auto-derived: "CreditCard", "DebitCard", etc.
     public static readonly PaymentMethod CreditCard = new();
     public static readonly PaymentMethod DebitCard = new();
     public static readonly PaymentMethod BankTransfer = new();
@@ -52,18 +51,41 @@ public partial class PaymentMethod : RequiredEnum<PaymentMethod>
 
     private PaymentMethod() { }
 }
+
+// CreditCard.Value == "CreditCard"
+// Crypto.Value == "Crypto"
+```
+
+Only add `[EnumValue(...)]` when the external name must differ from the field name:
+
+```csharp
+public partial class PaymentMethod : RequiredEnum<PaymentMethod>
+{
+    public static readonly PaymentMethod CreditCard = new();
+
+    [EnumValue("bank-transfer")]
+    public static readonly PaymentMethod BankTransfer = new();
+
+    private PaymentMethod() { }
+}
+
+// CreditCard.Value == "CreditCard"
+// BankTransfer.Value == "bank-transfer"
 ```
 
 ### Creating Instances
 
 ```csharp
-// From name (case-insensitive, returns Result<T>)
-var result = PaymentMethod.TryCreate("creditcard");
+// From name/value (case-insensitive, returns Result<T>)
+var result = PaymentMethod.TryCreate("CreditCard");
 if (result.IsSuccess)
     Console.WriteLine(result.Value.Value);  // "CreditCard"
 
 // Direct access when known valid
 var method = PaymentMethod.Create("CreditCard");  // Throws if invalid
+
+// Use the override only when you intentionally exposed a different external name
+var transfer = PaymentMethod.Create("bank-transfer");
 
 // Check membership
 if (payment.Is(PaymentMethod.CreditCard, PaymentMethod.DebitCard))
@@ -74,7 +96,7 @@ if (payment.IsNot(PaymentMethod.Crypto))
 
 // Enumerate all values
 foreach (var m in PaymentMethod.GetAll())
-    Console.WriteLine($"{m.Ordinal}: {m.Value}");
+    Console.WriteLine(m.Value);
 ```
 
 ## Adding Behavior
@@ -84,7 +106,7 @@ RequiredEnum types can have properties and methods:
 ```csharp
 public partial class OrderState : RequiredEnum<OrderState>
 {
-    // Value auto-derived from field name
+    // Value follows the field name unless you intentionally override it with [EnumValue(...)]
     public static readonly OrderState Draft = new(canModify: true, canCancel: true, isTerminal: false);
     public static readonly OrderState Confirmed = new(canModify: false, canCancel: true, isTerminal: false);
     public static readonly OrderState Shipped = new(canModify: false, canCancel: false, isTerminal: false);
@@ -178,8 +200,8 @@ modelBuilder.Entity<Order>(builder =>
 });
 ```
 
-**Note:** `Ordinal` is assigned based on field declaration order (0, 1, 2, ...).
-If you persist ordinals yourself instead of `Value`, reordering fields will change stored values.
+**Note:** `Ordinal` is assigned from field declaration order (0, 1, 2, ...), so it is secondary metadata rather than semantic identity.
+Do not persist or expose `Ordinal` as a public contract unless you intentionally want declaration order to become part of that contract.
 
 ## ASP.NET Core Integration
 
@@ -196,16 +218,16 @@ Because the source generator adds `IScalarValue<TSelf, string>`, RequiredEnum ty
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Value` | `string` | Auto-derived from field name |
-| `Ordinal` | `int` | Auto-generated based on declaration order (0, 1, 2, ...) |
+| `Value` | `string` | Semantic symbolic value; defaults to the field name and can be overridden with `[EnumValue(...)]` |
+| `Ordinal` | `int` | Declaration-order metadata; not a stable public identity |
 
 ### Static Methods
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `GetAll()` | `IReadOnlyCollection<T>` | All defined members |
-| `TryCreate(string)` | `Result<T>` | Find by name (case-insensitive) |
-| `TryCreate(string?, string?)` | `Result<T>` | Find by name with field name for errors |
+| `TryCreate(string)` | `Result<T>` | Find by symbolic value (case-insensitive) |
+| `TryCreate(string?, string?)` | `Result<T>` | Find by symbolic value with field name for errors |
 | `Create(string)` | `T` | Find by name, throws if invalid |
 
 ### Instance Methods
@@ -223,12 +245,14 @@ Because the source generator adds `IScalarValue<TSelf, string>`, RequiredEnum ty
 
 1. **Use private constructor** - Prevent external instantiation
 2. **Define members as static readonly** - Ensures single instances
-3. **No strings in domain** - Value is auto-derived from field name
-4. **Add behavior for domain logic** - Encapsulate rules in the enum
-5. **Use TryCreate** - For user input validation
-6. **Use Create** - For known-valid values (tests, constants)
-7. **Model state machines** - When values have valid transitions
-8. **Use Is() and IsNot()** - For readable membership checks
+3. **Use the field name by default** - keep one source of truth whenever the external name can match
+4. **Use `[EnumValue(...)]` only as an override** - reserve it for cases where the external name must differ
+5. **Treat `Ordinal` as secondary metadata** - avoid teaching it as a wire, JSON, or persistence contract
+6. **Add behavior for domain logic** - Encapsulate rules in the enum
+7. **Use TryCreate** - For user input validation
+8. **Use Create** - For known-valid values (tests, constants)
+9. **Model state machines** - When values have valid transitions
+10. **Use Is() and IsNot()** - For readable membership checks
 
 ## See Also
 

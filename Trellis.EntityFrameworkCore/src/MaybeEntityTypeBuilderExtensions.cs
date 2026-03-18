@@ -5,7 +5,7 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 /// <summary>
-/// Entity type builder helpers that resolve <see cref="Maybe{T}"/> properties to their mapped backing fields.
+/// Entity type builder helpers that resolve <see cref="Maybe{T}"/> properties to their mapped storage members.
 /// </summary>
 public static class MaybeEntityTypeBuilderExtensions
 {
@@ -21,7 +21,7 @@ public static class MaybeEntityTypeBuilderExtensions
     /// </param>
     /// <returns>The index builder for additional configuration.</returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when a <see cref="Maybe{T}"/> selector resolves to a backing field that neither exists on the CLR type
+    /// Thrown when a <see cref="Maybe{T}"/> selector resolves to a storage member that neither exists on the CLR type
     /// nor is already mapped in the EF model.
     /// </exception>
     public static IndexBuilder<TEntity> HasTrellisIndex<TEntity>(
@@ -48,14 +48,14 @@ public static class MaybeEntityTypeBuilderExtensions
             return property.Name;
 
         var descriptor = MaybePropertyResolver.Describe(property);
-        var backingField = MaybePropertyResolver.FindBackingField(entityTypeBuilder.Metadata.ClrType, descriptor);
+        var storageMember = MaybePropertyResolver.FindStorageMember(entityTypeBuilder.Metadata.ClrType, descriptor);
 
-        if (backingField is not null || entityTypeBuilder.Metadata.FindProperty(descriptor.BackingFieldName) is not null)
-            return descriptor.BackingFieldName;
+        if (storageMember is not null || entityTypeBuilder.Metadata.FindProperty(descriptor.StorageMemberName) is not null)
+            return descriptor.StorageMemberName;
 
         throw new InvalidOperationException(
             $"Cannot create an index for Maybe<T> property '{descriptor.PropertyName}' on entity '{entityTypeBuilder.Metadata.ClrType.Name}'. " +
-            $"Expected backing field '{descriptor.BackingFieldName}' was not found on the CLR type and no mapped EF property with that name exists. " +
-            "Declare the property as partial so the Trellis.EntityFrameworkCore.Generator can emit the backing field, or configure the backing field property explicitly before calling HasTrellisIndex.");
+            $"Expected storage member '{descriptor.StorageMemberName}' was not found on the CLR type and no mapped EF property with that name exists. " +
+            "Declare the property as partial so the Trellis.EntityFrameworkCore.Generator can emit the storage member, or configure the storage-member property explicitly before calling HasTrellisIndex.");
     }
 }

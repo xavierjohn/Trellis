@@ -5,8 +5,8 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>
-/// LINQ query extensions for <see cref="Maybe{T}"/> properties backed by private nullable fields.
-/// These methods rewrite the expression tree to target the underlying <c>_camelCase</c> backing field
+/// LINQ query extensions for <see cref="Maybe{T}"/> properties backed by generated nullable storage members.
+/// These methods rewrite the expression tree to target the underlying <c>_camelCase</c> storage member
 /// via <see cref="EF.Property{TProperty}"/>, enabling EF Core to translate the query to SQL.
 /// </summary>
 /// <remarks>
@@ -32,7 +32,7 @@ public static class MaybeQueryableExtensions
 
     /// <summary>
     /// Filters the query to entities where the <see cref="Maybe{T}"/> property has no value
-    /// (backing field IS NULL).
+    /// (mapped storage field IS NULL).
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
@@ -40,7 +40,7 @@ public static class MaybeQueryableExtensions
     /// <param name="propertySelector">
     /// An expression selecting the <see cref="Maybe{T}"/> property (e.g., <c>c =&gt; c.Phone</c>).
     /// </param>
-    /// <returns>A filtered queryable where the backing field is NULL.</returns>
+    /// <returns>A filtered queryable where the mapped storage field is NULL.</returns>
     /// <example>
     /// <code>
     /// var customersWithoutPhone = await context.Customers
@@ -63,7 +63,7 @@ public static class MaybeQueryableExtensions
 
     /// <summary>
     /// Filters the query to entities where the <see cref="Maybe{T}"/> property has a value
-    /// (backing field IS NOT NULL).
+    /// (mapped storage field IS NOT NULL).
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
@@ -71,7 +71,7 @@ public static class MaybeQueryableExtensions
     /// <param name="propertySelector">
     /// An expression selecting the <see cref="Maybe{T}"/> property (e.g., <c>c =&gt; c.Phone</c>).
     /// </param>
-    /// <returns>A filtered queryable where the backing field is NOT NULL.</returns>
+    /// <returns>A filtered queryable where the mapped storage field is NOT NULL.</returns>
     /// <example>
     /// <code>
     /// var customersWithPhone = await context.Customers
@@ -94,7 +94,7 @@ public static class MaybeQueryableExtensions
 
     /// <summary>
     /// Filters the query to entities where the <see cref="Maybe{T}"/> property equals the
-    /// specified value (backing field = <paramref name="value"/>).
+    /// specified value (mapped storage field = <paramref name="value"/>).
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
@@ -103,7 +103,7 @@ public static class MaybeQueryableExtensions
     /// An expression selecting the <see cref="Maybe{T}"/> property (e.g., <c>c =&gt; c.Phone</c>).
     /// </param>
     /// <param name="value">The value to compare against.</param>
-    /// <returns>A filtered queryable where the backing field equals the value.</returns>
+    /// <returns>A filtered queryable where the mapped storage field equals the value.</returns>
     /// <example>
     /// <code>
     /// var phone = PhoneNumber.Create("+15550100");
@@ -137,7 +137,7 @@ public static class MaybeQueryableExtensions
     }
 
     /// <summary>
-    /// Orders the query ascending by the mapped backing field for the selected <see cref="Maybe{T}"/> property.
+    /// Orders the query ascending by the mapped storage field for the selected <see cref="Maybe{T}"/> property.
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
@@ -157,7 +157,7 @@ public static class MaybeQueryableExtensions
     }
 
     /// <summary>
-    /// Orders the query descending by the mapped backing field for the selected <see cref="Maybe{T}"/> property.
+    /// Orders the query descending by the mapped storage field for the selected <see cref="Maybe{T}"/> property.
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
@@ -177,7 +177,7 @@ public static class MaybeQueryableExtensions
     }
 
     /// <summary>
-    /// Adds an ascending secondary ordering using the mapped backing field for the selected <see cref="Maybe{T}"/> property.
+    /// Adds an ascending secondary ordering using the mapped storage field for the selected <see cref="Maybe{T}"/> property.
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
@@ -197,7 +197,7 @@ public static class MaybeQueryableExtensions
     }
 
     /// <summary>
-    /// Adds a descending secondary ordering using the mapped backing field for the selected <see cref="Maybe{T}"/> property.
+    /// Adds a descending secondary ordering using the mapped storage field for the selected <see cref="Maybe{T}"/> property.
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
@@ -241,7 +241,7 @@ public static class MaybeQueryableExtensions
         where TEntity : class
         where TInner : notnull
     {
-        var keySelector = MaybePropertyResolver.BuildBackingFieldLambda(propertySelector);
+        var keySelector = MaybePropertyResolver.BuildStorageMemberLambda(propertySelector);
         var method = methodDefinition.MakeGenericMethod(typeof(TEntity), keySelector.ReturnType);
 
         return (IOrderedQueryable<TEntity>)method.Invoke(null, [source, keySelector])!;

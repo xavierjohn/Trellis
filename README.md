@@ -133,7 +133,7 @@ For a complete service built with Trellis, see the **[Training Lab](https://gith
 | Package | Description |
 |---------|-------------|
 | [Trellis.Results](https://www.nuget.org/packages/Trellis.Results) | `Result<T>`, `Maybe<T>`, error types, pipeline operators, async extensions |
-| [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Base types (`RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum`) + 12 ready-to-use value objects |
+| [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Base types (`RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum`) + built-in scalar value objects + structured `Money` |
 | [Trellis.Primitives.Generator](https://www.nuget.org/packages/Trellis.Primitives.Generator) | Source generator — eliminates value object boilerplate |
 | [Trellis.DomainDrivenDesign](https://www.nuget.org/packages/Trellis.DomainDrivenDesign) | `Aggregate`, `Entity`, `ValueObject`, `Specification`, domain events |
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | 19 Roslyn analyzers for compile-time safety |

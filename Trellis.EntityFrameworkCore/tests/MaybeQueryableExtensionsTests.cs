@@ -28,7 +28,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region WhereNone — reference type inner (PhoneNumber)
 
     [Fact]
-    public async Task WhereNone_ReturnsEntitiesWithNullBackingField()
+    public async Task WhereNone_ReturnsEntitiesWithNullStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -72,7 +72,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region WhereHasValue — reference type inner (PhoneNumber)
 
     [Fact]
-    public async Task WhereHasValue_ReturnsEntitiesWithNonNullBackingField()
+    public async Task WhereHasValue_ReturnsEntitiesWithNonNullStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -172,7 +172,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region Maybe ordering helpers
 
     [Fact]
-    public async Task OrderByMaybe_ReferenceTypeInner_ReturnsEntitiesOrderedByBackingField()
+    public async Task OrderByMaybe_ReferenceTypeInner_ReturnsEntitiesOrderedByStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -195,7 +195,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task OrderByMaybeDescending_ReferenceTypeInner_ReturnsEntitiesOrderedDescendingByBackingField()
+    public async Task OrderByMaybeDescending_ReferenceTypeInner_ReturnsEntitiesOrderedDescendingByStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -218,7 +218,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task ThenByMaybe_ValueTypeInner_UsesBackingFieldForSecondaryOrdering()
+    public async Task ThenByMaybe_ValueTypeInner_UsesStorageMemberForSecondaryOrdering()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -251,7 +251,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task ThenByMaybeDescending_ValueTypeInner_UsesBackingFieldForSecondaryOrdering()
+    public async Task ThenByMaybeDescending_ValueTypeInner_UsesStorageMemberForSecondaryOrdering()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -288,7 +288,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region WhereNone / WhereHasValue — enum inner (TestOrderStatus)
 
     [Fact]
-    public async Task WhereNone_EnumInner_ReturnsEntitiesWithNullBackingField()
+    public async Task WhereNone_EnumInner_ReturnsEntitiesWithNullStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -344,7 +344,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region WhereNone / WhereHasValue / WhereEquals — value-type inner (DateTime)
 
     [Fact]
-    public async Task WhereNone_ValueTypeInner_ReturnsEntitiesWithNullBackingField()
+    public async Task WhereNone_ValueTypeInner_ReturnsEntitiesWithNullStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -432,7 +432,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region ExecuteUpdate helpers
 
     [Fact]
-    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedBackingField()
+    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -460,7 +460,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedBackingField()
+    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedStorageMember()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -485,7 +485,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedBackingField_ForValueTypeInner()
+    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedStorageMember_ForValueTypeInner()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -517,7 +517,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedBackingField_ForEnumInner()
+    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedStorageMember_ForEnumInner()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -546,7 +546,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedBackingField_ForInheritedMaybeProperty()
+    public async Task SetMaybeValue_ExecuteUpdate_SetsMappedStorageMember_ForInheritedMaybeProperty()
     {
         var ct = TestContext.Current.CancellationToken;
         using var connection = new SqliteConnection("DataSource=:memory:");
@@ -585,7 +585,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedBackingField_ForInheritedMaybeProperty()
+    public async Task SetMaybeNone_ExecuteUpdate_ClearsMappedStorageMember_ForInheritedMaybeProperty()
     {
         var ct = TestContext.Current.CancellationToken;
         using var connection = new SqliteConnection("DataSource=:memory:");
@@ -665,14 +665,19 @@ public class MaybeQueryableExtensionsTests : IDisposable
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions(typeof(TestCustomerId).Assembly);
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
-            modelBuilder.Entity<DerivedTestCustomer>(builder =>
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<TestCustomer>(builder =>
             {
                 builder.HasKey(customer => customer.Id);
+                builder.Ignore(customer => customer.Orders);
                 builder.Property(customer => customer.Name).HasMaxLength(100).IsRequired();
                 builder.Property(customer => customer.Email).HasMaxLength(254).IsRequired();
                 builder.Property(customer => customer.CreatedAt).IsRequired();
             });
+
+            modelBuilder.Entity<DerivedTestCustomer>(builder => builder.HasBaseType<TestCustomer>());
+        }
     }
 
     #endregion

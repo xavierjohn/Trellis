@@ -16,7 +16,6 @@ public static class OrderRoutes
             Results.Ok(new OrderStatesResponse(
                 OrderState.GetAll().Select(s => new OrderStateInfo(
                     s.Value,
-                    s.Ordinal,
                     s.CanModify,
                     s.CanCancel
                 )).ToArray()
@@ -27,7 +26,6 @@ public static class OrderRoutes
         orderApi.MapGet("/states/{state}", (OrderState state) =>
             Results.Ok(new OrderStateDetailResponse(
                 state.Value,
-                state.Ordinal,
                 state.CanModify,
                 state.CanCancel,
                 $"Successfully bound OrderState '{state}' from route!"
@@ -58,7 +56,6 @@ public static class OrderRoutes
                 ),
                 new OrderStateInfo(
                     dto.InitialState.Value,
-                    dto.InitialState.Ordinal,
                     dto.InitialState.CanModify,
                     dto.InitialState.CanCancel
                 ),
@@ -82,9 +79,9 @@ public static class OrderRoutes
 }
 
 // Response types for AOT compatibility
-public record OrderStateInfo(string Value, int Ordinal, bool CanModify, bool CanCancel);
+public record OrderStateInfo(string Name, bool CanModify, bool CanCancel);
 public record OrderStatesResponse(OrderStateInfo[] States);
-public record OrderStateDetailResponse(string Value, int Ordinal, bool CanModify, bool CanCancel, string Message);
+public record OrderStateDetailResponse(string Name, bool CanModify, bool CanCancel, string Message);
 public record UpdateOrderResponse(string NewState, bool CanModify, bool CanCancel, string? AssignedTo, string? Notes, string Message);
 public record CustomerInfo(string FirstName, string LastName, string Email);
 public record CreateOrderResponse(CustomerInfo Customer, OrderStateInfo State, string Message);

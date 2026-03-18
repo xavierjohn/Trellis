@@ -5,10 +5,12 @@ using System.Text.Json.Serialization;
 using Trellis;
 
 /// <summary>
-/// Represents a monetary amount with a currency code.
+/// Represents a structured monetary value object composed of an amount and currency code.
 /// Provides type-safe arithmetic operations that prevent mixing different currencies.
 /// </summary>
 /// <remarks>
+/// Money is intentionally not a scalar value object because its semantic identity spans
+/// both <see cref="Amount"/> and <see cref="Currency"/>.
 /// Money uses decimal for precision and stores amounts in the currency's base unit.
 /// All arithmetic operations enforce currency matching and return Result for error handling.
 /// Amounts are automatically rounded to the appropriate number of decimal places for the currency.

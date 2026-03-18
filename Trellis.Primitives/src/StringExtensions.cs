@@ -3,7 +3,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
-/// Provides internal string manipulation extension methods for the PrimitiveValueObjects library.
+/// Provides internal string manipulation extension methods for Trellis primitives.
 /// </summary>
 internal static class StringExtensions
 {
