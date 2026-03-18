@@ -287,8 +287,6 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     }
 
     private static string NormalizeFieldName(string? fieldName, string typeName) =>
-        !string.IsNullOrEmpty(fieldName)
-            ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-            : char.ToLowerInvariant(typeName[0]) + typeName[1..];
+        fieldName.NormalizeFieldName(typeName.ToCamelCase());
 }
 #pragma warning restore CA1000

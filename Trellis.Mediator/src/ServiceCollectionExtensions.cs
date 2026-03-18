@@ -38,7 +38,7 @@ public static class ServiceCollectionExtensions
     /// });
     /// </code>
     /// </example>
-    public static Type[] PipelineBehaviors =>
+    private static readonly Type[] s_pipelineBehaviors =
     [
         typeof(ExceptionBehavior<,>),
         typeof(TracingBehavior<,>),
@@ -46,6 +46,9 @@ public static class ServiceCollectionExtensions
         typeof(AuthorizationBehavior<,>),
         typeof(ValidationBehavior<,>),
     ];
+
+    /// <inheritdoc cref="s_pipelineBehaviors" />
+    public static Type[] PipelineBehaviors => s_pipelineBehaviors;
 
     /// <summary>
     /// Registers Trellis Result-aware pipeline behaviors as open generic

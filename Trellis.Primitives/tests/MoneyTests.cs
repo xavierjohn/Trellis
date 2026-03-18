@@ -170,7 +170,7 @@ public class MoneyTests
         // Assert
         result.IsFailure.Should().BeTrue();
         var validation = (ValidationError)result.Error;
-        validation.FieldErrors[0].Details[0].Should().Be("Amount cannot be negative.");
+        validation.FieldErrors[0].Details[0].Should().Be("Subtraction would result in a negative amount.");
     }
 
     [Fact]

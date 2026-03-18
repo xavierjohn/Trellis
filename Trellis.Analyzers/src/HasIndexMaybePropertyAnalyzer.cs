@@ -61,14 +61,14 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
             if (argument.Expression is not LambdaExpressionSyntax lambda)
                 continue;
 
-            var lambdaParameter = GetLambdaParameter(lambda);
+            var lambdaParameter = LambdaSyntaxHelpers.GetLambdaParameter(lambda);
             if (lambdaParameter is null)
                 continue;
 
             var memberAccesses = lambda.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
             foreach (var ma in memberAccesses)
             {
-                if (!IsAccessOnParameter(ma, lambdaParameter))
+                if (!LambdaSyntaxHelpers.IsAccessOnParameter(ma, lambdaParameter))
                     continue;
 
                 var propSymbol = context.SemanticModel.GetSymbolInfo(ma).Symbol;
@@ -102,35 +102,6 @@ public sealed class HasIndexMaybePropertyAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
-
-    private static string? GetLambdaParameter(LambdaExpressionSyntax lambda) =>
-        lambda switch
-        {
-            SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.Text,
-            ParenthesizedLambdaExpressionSyntax paren when paren.ParameterList.Parameters.Count > 0 =>
-                paren.ParameterList.Parameters[0].Identifier.Text,
-            _ => null
-        };
-
-    private static bool IsAccessOnParameter(MemberAccessExpressionSyntax memberAccess, string parameterName) =>
-        DependsOnParameter(memberAccess.Expression, parameterName);
-
-    private static bool DependsOnParameter(ExpressionSyntax expression, string parameterName) =>
-        expression switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.Text == parameterName,
-            MemberAccessExpressionSyntax nestedMemberAccess => DependsOnParameter(nestedMemberAccess.Expression, parameterName),
-            InvocationExpressionSyntax invocation =>
-                DependsOnParameter(invocation.Expression, parameterName) ||
-                invocation.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
-            ElementAccessExpressionSyntax elementAccess =>
-                DependsOnParameter(elementAccess.Expression, parameterName) ||
-                elementAccess.ArgumentList.Arguments.Any(arg => DependsOnParameter(arg.Expression, parameterName)),
-            CastExpressionSyntax cast => DependsOnParameter(cast.Expression, parameterName),
-            ParenthesizedExpressionSyntax parenthesized => DependsOnParameter(parenthesized.Expression, parameterName),
-            ConditionalAccessExpressionSyntax conditionalAccess => DependsOnParameter(conditionalAccess.Expression, parameterName),
-            _ => false
-        };
 
     private static string ToCamelCase(string propertyName)
     {

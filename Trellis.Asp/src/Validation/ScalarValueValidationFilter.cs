@@ -180,6 +180,8 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         return IsNullableReferenceParameter(parameter);
     }
 
+    private static readonly NullabilityInfoContext s_nullabilityInfoContext = new();
+
     private static bool IsNullableReferenceParameter(ParameterDescriptor parameter)
     {
         if (parameter is not ControllerParameterDescriptor controllerParameter)
@@ -188,7 +190,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         if (controllerParameter.ParameterType.IsValueType)
             return Nullable.GetUnderlyingType(controllerParameter.ParameterType) is not null;
 
-        var nullability = new NullabilityInfoContext().Create(controllerParameter.ParameterInfo);
+        var nullability = s_nullabilityInfoContext.Create(controllerParameter.ParameterInfo);
         return nullability.ReadState == NullabilityState.Nullable;
     }
 

@@ -78,9 +78,8 @@ public class ValidationErrorAssertions : ReferenceTypeAssertions<ValidationError
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
             .ForCondition(fieldError != default)
-            .FailWith("Expected {context:validationError} to contain field {0}{reason}, but it did not.", fieldName);
-
-        Execute.Assertion
+            .FailWith("Expected {context:validationError} to contain field {0}{reason}, but it did not.", fieldName)
+            .Then
             .BecauseOf(because, becauseArgs)
             .ForCondition(fieldError.Details.Contains(expectedDetail))
             .FailWith("Expected field {0} to have detail '{1}'{reason}, but found: {2}",

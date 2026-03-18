@@ -154,6 +154,10 @@ public static class QueryableExtensions
     public static IQueryable<T> Where<T>(
         this IQueryable<T> query,
         Specification<T> specification)
-        where T : class =>
-        query.Where(specification.ToExpression());
+        where T : class
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(specification);
+        return query.Where(specification.ToExpression());
+    }
 }

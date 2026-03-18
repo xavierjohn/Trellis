@@ -31,7 +31,8 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         var actor = _actorProvider.GetCurrentActor();
-        ArgumentNullException.ThrowIfNull(actor);
+        if (actor is null)
+            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
 
         if (!actor.HasAllPermissions(message.RequiredPermissions))
         {

@@ -70,7 +70,6 @@ public static class DbExceptionClassifier
 
         // Fallback
         return message.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("foreign key constraint", StringComparison.OrdinalIgnoreCase)
             || message.Contains("violates foreign key", StringComparison.OrdinalIgnoreCase);
     }
 

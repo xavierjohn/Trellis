@@ -138,7 +138,7 @@ public abstract class Entity<TId>
     /// </para>
     /// <para>
     /// Transient entities (those with null or default IDs) are never equal to other entities,
-    /// even if they are the same instance. This prevents issues with unsaved entities.
+    /// unless they are the same instance (reference equality).
     /// </para>
     /// </remarks>
     public override bool Equals(object? obj)

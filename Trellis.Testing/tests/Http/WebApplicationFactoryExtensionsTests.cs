@@ -25,6 +25,8 @@ public sealed class WebApplicationFactoryExtensionsTests : IDisposable
         doc.RootElement.GetProperty("Permissions").EnumerateArray()
             .Select(e => e.GetString())
             .Should().Equal("Orders.Read", "Orders.Write");
+        doc.RootElement.GetProperty("ForbiddenPermissions").EnumerateArray().Should().BeEmpty();
+        doc.RootElement.GetProperty("Attributes").EnumerateObject().Should().BeEmpty();
     }
 
     [Fact]

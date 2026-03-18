@@ -101,7 +101,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_ActorProviderReturnsNull_ThrowsArgumentNullException()
+    public async Task Handle_ActorProviderReturnsNull_ThrowsInvalidOperationException()
     {
         var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(new NullActorProvider());
         var command = new AdminCommand("data");
@@ -110,7 +110,7 @@ public class AuthorizationBehaviorTests
 
         var act = async () => await behavior.Handle(command, next, CancellationToken.None);
 
-        await act.Should().ThrowAsync<ArgumentNullException>();
+        await act.Should().ThrowAsync<InvalidOperationException>();
         tracker.WasInvoked.Should().BeFalse();
     }
 

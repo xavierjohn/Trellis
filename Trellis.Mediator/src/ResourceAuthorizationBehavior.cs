@@ -83,7 +83,8 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
 
         // 2. Authorize against the loaded resource
         var actor = _actorProvider.GetCurrentActor();
-        ArgumentNullException.ThrowIfNull(actor);
+        if (actor is null)
+            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
         var authResult = message.Authorize(actor, loadResult.Value);
         if (authResult.IsFailure)
             return TResponse.CreateFailure(authResult.Error);

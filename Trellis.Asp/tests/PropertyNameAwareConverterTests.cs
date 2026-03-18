@@ -40,7 +40,7 @@ public class PropertyNameAwareConverterTests
             if (value == "ok@example.com")
                 return new DomainOnlyEmail(value);
 
-            return Error.Domain(null!, code: "email.domain.invalid", instance: null);
+            return Error.Domain(string.Empty, code: "email.domain.invalid", instance: null);
         }
     }
 

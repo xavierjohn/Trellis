@@ -389,6 +389,10 @@ public static class ActionResultExtensions
         {
             var contentRange = funcRange(result.Value);
             var value = funcValue(result.Value);
+
+            if (contentRange.From is null || contentRange.To is null || contentRange.Length is null)
+                return controllerBase.Ok(value);
+
             var partialResult = contentRange.To - contentRange.From + 1 != contentRange.Length;
             if (partialResult)
                 return new PartialObjectResult(contentRange, value);

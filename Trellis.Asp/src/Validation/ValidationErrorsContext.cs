@@ -54,7 +54,7 @@ public static class ValidationErrorsContext
     /// and read by the validating converter when creating validation errors.
     /// Using AsyncLocal ensures thread-safety and proper isolation across concurrent requests.
     /// </remarks>
-    public static string? CurrentPropertyName
+    internal static string? CurrentPropertyName
     {
         get => s_currentPropertyName.Value;
         set => s_currentPropertyName.Value = value;

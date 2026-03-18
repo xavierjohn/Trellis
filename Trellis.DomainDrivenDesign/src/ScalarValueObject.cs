@@ -328,7 +328,7 @@ where T : IComparable
     /// </summary>
     /// <param name="provider">An <see cref="IFormatProvider"/> for culture-specific formatting.</param>
     /// <returns>The wrapped value converted to a <see cref="string"/>, or an empty string if null.</returns>
-    public string ToString(IFormatProvider? provider) => Value?.ToString() ?? string.Empty;
+    public string ToString(IFormatProvider? provider) => Convert.ToString(Value, provider) ?? string.Empty;
 
     /// <summary>
     /// Converts the wrapped value to the specified type.

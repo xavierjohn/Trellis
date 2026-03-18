@@ -41,10 +41,10 @@ public sealed partial class ScalarValueValidationMiddleware
 
     // Regex to parse: Failed to bind parameter "TypeName paramName" from "value".
     // The type name may include namespaces or nested type separators (e.g., Namespace.Type or Outer+Inner).
-    [GeneratedRegex("""^Failed to bind parameter "(.+?)\s+([^"\s]+)" from "(.*)".$""", RegexOptions.Compiled)]
+    [GeneratedRegex("""^Failed to bind parameter "(.+?)\s+([^"\s]+)" from "(.*)".$""")]
     private static partial Regex ParameterBindingFailedRegex();
 
-    [GeneratedRegex("""^Failed to read parameter ".+" from the request body as JSON\.$""", RegexOptions.Compiled)]
+    [GeneratedRegex("""^Failed to read parameter ".+" from the request body as JSON\.$""")]
     private static partial Regex ParameterReadFailedRegex();
 
     /// <summary>

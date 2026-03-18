@@ -209,7 +209,7 @@ public class FakeRepositoryTests
     }
 
     [Fact]
-    public async Task PublishedEvents_ReturnsSnapshot_NotLiveView()
+    public async Task PublishedEvents_ReturnsLiveView()
     {
         // Arrange
         var repository = new FakeRepository<TestAggregate, string>();
@@ -218,10 +218,11 @@ public class FakeRepositoryTests
 
         // Act
         var publishedEvents = repository.PublishedEvents;
-        repository.Clear();
 
-        // Assert
+        // Assert — live wrapper reflects current state
         publishedEvents.Should().HaveCount(2);
+        repository.Clear();
+        publishedEvents.Should().BeEmpty();
         repository.PublishedEvents.Should().BeEmpty();
     }
 

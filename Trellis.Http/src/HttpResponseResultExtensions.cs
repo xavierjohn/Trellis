@@ -183,6 +183,45 @@ public static partial class HttpResponseExtensions
 
     #endregion
 
+    #region HandleFailure — Result overloads
+
+    /// <summary>
+    /// Handles the case when the HTTP response is not successful.
+    /// </summary>
+    /// <typeparam name="TContext">The type of the context object.</typeparam>
+    /// <param name="result">The result containing the HTTP response message.</param>
+    /// <param name="callbackFailedStatusCode">The callback function to handle the failed status code.</param>
+    /// <param name="context">The context object.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
+    public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(
+        this Result<HttpResponseMessage> result,
+        Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode,
+        TContext context,
+        CancellationToken cancellationToken)
+        => await result.BindAsync(r => r.HandleFailureAsync(callbackFailedStatusCode, context, cancellationToken)).ConfigureAwait(false);
+
+    /// <summary>
+    /// Handles the case when the HTTP response is not successful asynchronously.
+    /// </summary>
+    /// <typeparam name="TContext">The type of the context object.</typeparam>
+    /// <param name="resultTask">The task representing the result containing the HTTP response message.</param>
+    /// <param name="callbackFailedStatusCode">The callback function to handle the failed status code.</param>
+    /// <param name="context">The context object.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
+    public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(
+        this Task<Result<HttpResponseMessage>> resultTask,
+        Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode,
+        TContext context,
+        CancellationToken cancellationToken)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return await result.HandleFailureAsync(callbackFailedStatusCode, context, cancellationToken).ConfigureAwait(false);
+    }
+
+    #endregion
+
     #region EnsureSuccess — Result overloads
 
     /// <summary>

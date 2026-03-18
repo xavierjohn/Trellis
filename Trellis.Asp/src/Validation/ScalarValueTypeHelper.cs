@@ -79,7 +79,7 @@ internal static class ScalarValueTypeHelper
             var constructedType = genericTypeDefinition.MakeGenericType(valueObjectType, primitiveType);
             return Activator.CreateInstance(constructedType) as TResult;
         }
-        catch
+        catch (Exception)
         {
             // Return null if type construction fails (e.g., constraint violations)
             return null;
@@ -142,7 +142,7 @@ internal static class ScalarValueTypeHelper
         {
             result = tryCreateMethod.Invoke(null, args);
         }
-        catch
+        catch (Exception)
         {
             return null;
         }
@@ -180,7 +180,7 @@ internal static class ScalarValueTypeHelper
         {
             conversionResult = convertMethod.MakeGenericMethod(primitiveType).Invoke(null, [rawValue]);
         }
-        catch
+        catch (Exception)
         {
             return null;
         }

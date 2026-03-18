@@ -186,7 +186,7 @@ public class ResourceAuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_ActorProviderReturnsNull_ThrowsArgumentNullException()
+    public async Task Handle_ActorProviderReturnsNull_ThrowsInvalidOperationException()
     {
         var services = new ServiceCollection();
         services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
@@ -200,7 +200,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var act = async () => await behavior.Handle(command, next, CancellationToken.None);
 
-        await act.Should().ThrowAsync<ArgumentNullException>();
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     #endregion

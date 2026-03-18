@@ -14,7 +14,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 public sealed class ThrowInResultChainAnalyzer : DiagnosticAnalyzer
 {
     private static readonly ImmutableHashSet<string> ResultChainMethods =
-        ["Bind", "BindAsync", "Map", "MapAsync", "Tap", "TapAsync", "Ensure", "EnsureAsync"];
+        [
+            "Bind", "BindAsync", "Map", "MapAsync", "Tap", "TapAsync", "Ensure", "EnsureAsync",
+            "TapOnFailure", "TapOnFailureAsync", "MapOnFailure", "MapOnFailureAsync",
+            "RecoverOnFailure", "RecoverOnFailureAsync", "DebugOnFailure", "DebugOnFailureAsync"
+        ];
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [DiagnosticDescriptors.ThrowInResultChain];
@@ -69,7 +73,7 @@ public sealed class ThrowInResultChainAnalyzer : DiagnosticAnalyzer
         if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
             return;
 
-        if (!IsTrellisMethod(methodSymbol))
+        if (!methodSymbol.IsTrellisExtensionMethod())
             return;
 
         var diagnostic = Diagnostic.Create(
@@ -78,14 +82,5 @@ public sealed class ThrowInResultChainAnalyzer : DiagnosticAnalyzer
             methodName);
 
         context.ReportDiagnostic(diagnostic);
-    }
-
-    private static bool IsTrellisMethod(IMethodSymbol methodSymbol)
-    {
-        if (!methodSymbol.IsExtensionMethod)
-            return false;
-
-        var containingNamespace = methodSymbol.ContainingType?.ContainingNamespace?.ToDisplayString();
-        return containingNamespace == "Trellis";
     }
 }

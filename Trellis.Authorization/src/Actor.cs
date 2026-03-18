@@ -55,6 +55,7 @@ public sealed record Actor
         IReadOnlySet<string> forbiddenPermissions,
         IReadOnlyDictionary<string, string> attributes)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
         Id = id;
         Permissions = permissions;
         ForbiddenPermissions = forbiddenPermissions;

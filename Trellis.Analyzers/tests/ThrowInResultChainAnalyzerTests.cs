@@ -148,7 +148,7 @@ public class ThrowInResultChainAnalyzerTests
     }
 
     [Fact]
-    public async Task ThrowStatement_InsideTapOnFailureLambda_NoDiagnostic()
+    public async Task ThrowStatement_InsideTapOnFailureLambda_ReportsDiagnostic()
     {
         const string source = """
             public class TestClass
@@ -162,7 +162,12 @@ public class ThrowInResultChainAnalyzerTests
             }
             """;
 
-        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ThrowInResultChainAnalyzer>(source);
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ThrowInResultChainAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ThrowInResultChain)
+                .WithArguments("TapOnFailure")
+                .WithLocation(13, 34));
+
         await test.RunAsync();
     }
 }

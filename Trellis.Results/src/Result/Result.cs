@@ -27,6 +27,7 @@ public readonly partial struct Result
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="funcOk"/> is null.</exception>
     public static Result<TValue> Success<TValue>(Func<TValue> funcOk)
     {
+        ArgumentNullException.ThrowIfNull(funcOk);
         TValue value = funcOk();
         return new(false, value, default);
     }
@@ -48,6 +49,7 @@ public readonly partial struct Result
     /// <returns>A failed <see cref="Result{TValue}"/>.</returns>
     public static Result<TValue> Failure<TValue>(Func<Error> error)
     {
+        ArgumentNullException.ThrowIfNull(error);
         Error err = error();
         return new(true, default, err);
     }

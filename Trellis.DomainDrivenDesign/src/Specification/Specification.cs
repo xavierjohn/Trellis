@@ -65,14 +65,20 @@ public abstract class Specification<T>
     /// <summary>Combines this specification with another using logical AND.</summary>
     /// <param name="other">The specification to combine with.</param>
     /// <returns>A new specification that is satisfied only when both specifications are satisfied.</returns>
-    public Specification<T> And(Specification<T> other) =>
-        new AndSpecification<T>(this, other);
+    public Specification<T> And(Specification<T> other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return new AndSpecification<T>(this, other);
+    }
 
     /// <summary>Combines this specification with another using logical OR.</summary>
     /// <param name="other">The specification to combine with.</param>
     /// <returns>A new specification that is satisfied when either specification is satisfied.</returns>
-    public Specification<T> Or(Specification<T> other) =>
-        new OrSpecification<T>(this, other);
+    public Specification<T> Or(Specification<T> other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return new OrSpecification<T>(this, other);
+    }
 
     /// <summary>Negates this specification.</summary>
     /// <returns>A new specification that is satisfied when this specification is not satisfied.</returns>

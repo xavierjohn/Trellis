@@ -14,7 +14,11 @@ public sealed class TracingBehavior<TMessage, TResponse>
     where TMessage : global::Mediator.IMessage
     where TResponse : IResult
 {
-    internal static readonly ActivitySource ActivitySource = new("Trellis.Mediator");
+    /// <summary>
+    /// The name used for the <see cref="ActivitySource"/> that traces mediator pipeline operations.
+    /// </summary>
+    public const string ActivitySourceName = "Trellis.Mediator";
+    internal static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
     /// <inheritdoc />
     public async ValueTask<TResponse> Handle(

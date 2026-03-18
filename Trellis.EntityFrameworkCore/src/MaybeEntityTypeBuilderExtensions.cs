@@ -36,7 +36,7 @@ public static class MaybeEntityTypeBuilderExtensions
             .Select(property => ResolveMappedPropertyName(entityTypeBuilder, property))
             .ToArray();
 
-        return entityTypeBuilder.HasIndex([.. propertyNames]);
+        return entityTypeBuilder.HasIndex(propertyNames);
     }
 
     private static string ResolveMappedPropertyName<TEntity>(

@@ -42,6 +42,8 @@ public class Error : IEquatable<Error>
     /// <param name="code">The machine-readable error code.</param>
     public Error(string detail, string code)
     {
+        ArgumentNullException.ThrowIfNull(detail);
+        ArgumentNullException.ThrowIfNull(code);
         Detail = detail;
         Code = code;
     }
@@ -54,6 +56,8 @@ public class Error : IEquatable<Error>
     /// <param name="instance">An optional identifier for the specific instance that caused the error.</param>
     public Error(string detail, string code, string? instance)
     {
+        ArgumentNullException.ThrowIfNull(detail);
+        ArgumentNullException.ThrowIfNull(code);
         Detail = detail;
         Code = code;
         Instance = instance;

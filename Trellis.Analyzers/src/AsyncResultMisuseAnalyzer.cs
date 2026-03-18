@@ -21,6 +21,7 @@ public sealed class AsyncResultMisuseAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeMemberAccess, SyntaxKind.SimpleMemberAccessExpression);
+        context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
     private static void AnalyzeMemberAccess(SyntaxNodeAnalysisContext context)
@@ -42,6 +43,43 @@ public sealed class AsyncResultMisuseAnalyzer : DiagnosticAnalyzer
             var diagnostic = Diagnostic.Create(
                 DiagnosticDescriptors.AsyncResultMisuse,
                 memberAccess.Name.GetLocation(),
+                resultInnerType);
+
+            context.ReportDiagnostic(diagnostic);
+        }
+    }
+
+    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+
+        // Look for .GetAwaiter().GetResult() pattern
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+            return;
+
+        if (memberAccess.Name.Identifier.Text != "GetResult")
+            return;
+
+        // Check if the receiver is a .GetAwaiter() call
+        if (memberAccess.Expression is not InvocationExpressionSyntax getAwaiterInvocation)
+            return;
+
+        if (getAwaiterInvocation.Expression is not MemberAccessExpressionSyntax getAwaiterMemberAccess)
+            return;
+
+        if (getAwaiterMemberAccess.Name.Identifier.Text != "GetAwaiter")
+            return;
+
+        // Get the type of the expression before .GetAwaiter()
+        var expressionType = context.SemanticModel.GetTypeInfo(getAwaiterMemberAccess.Expression).Type;
+        if (expressionType == null)
+            return;
+
+        if (expressionType.IsAsyncResultType(out var resultInnerType))
+        {
+            var diagnostic = Diagnostic.Create(
+                DiagnosticDescriptors.AsyncResultMisuse,
+                invocation.GetLocation(),
                 resultInnerType);
 
             context.ReportDiagnostic(diagnostic);
