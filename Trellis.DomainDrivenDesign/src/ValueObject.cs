@@ -74,7 +74,7 @@
 ///             .Map(x => new Address(x.street, x.city, x.state, x.postalCode));
 ///
 ///     // Define what makes two addresses equal
-///     protected override IEnumerable&lt;IComparable&gt; GetEqualityComponents()
+///     protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
 ///     {
 ///         yield return Street;
 ///         yield return City;
@@ -116,7 +116,7 @@
 ///                    Error.Validation("Currency must be 3-letter ISO code"))
 ///             .Map(x => new Money(x.amount, x.currency.ToUpperInvariant()));
 ///     
-///     protected override IEnumerable&lt;IComparable&gt; GetEqualityComponents()
+///     protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
 ///     {
 ///         yield return Amount;
 ///         yield return Currency;
@@ -149,7 +149,7 @@
 ///     }
 ///
 ///     // Include base components plus additional ones
-///     protected override IEnumerable&lt;IComparable&gt; GetEqualityComponents()
+///     protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
 ///     {
 ///         foreach (var component in base.GetEqualityComponents())
 ///             yield return component;
@@ -191,7 +191,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// </remarks>
     /// <example>
     /// <code>
-    /// protected override IEnumerable&lt;IComparable&gt; GetEqualityComponents()
+    /// protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
     /// {
     ///     yield return Street;
     ///     yield return City;
@@ -199,7 +199,26 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// }
     /// </code>
     /// </example>
-    protected abstract IEnumerable<IComparable> GetEqualityComponents();
+    protected abstract IEnumerable<IComparable?> GetEqualityComponents();
+
+    /// <summary>
+    /// Converts a <see cref="Maybe{T}"/> to an <see cref="IComparable"/> for use in
+    /// <see cref="GetEqualityComponents"/>. Returns the value if present, or <c>null</c> if empty.
+    /// </summary>
+    /// <typeparam name="T">The type of the optional value. Must implement <see cref="IComparable"/>.</typeparam>
+    /// <param name="maybe">The optional value to convert.</param>
+    /// <returns>The underlying value as <see cref="IComparable"/>, or <c>null</c> if the Maybe is empty.</returns>
+    /// <example>
+    /// <code>
+    /// protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    /// {
+    ///     yield return Street;
+    ///     yield return MaybeComponent(Apartment);
+    /// }
+    /// </code>
+    /// </example>
+    protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable
+        => maybe.HasValue ? maybe.Value : null;
 
     /// <summary>
     /// Determines whether the specified object is equal to the current value object.
@@ -347,7 +366,11 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is less than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator <(ValueObject? left, ValueObject? right)
-        => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : !ReferenceEquals(right, null) && left.CompareTo(right) < 0;
+    {
+        if (left is null || right is null) return false;
+        if (left.GetType() != right.GetType()) return false;
+        return left.CompareTo(right) < 0;
+    }
 
     /// <summary>
     /// Determines whether the first value object is less than or equal to the second.
@@ -356,7 +379,11 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is less than or equal to <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator <=(ValueObject? left, ValueObject? right)
-        => ReferenceEquals(left, null) || (!ReferenceEquals(right, null) && left.CompareTo(right) <= 0);
+    {
+        if (left is null || right is null) return left is null && right is null;
+        if (left.GetType() != right.GetType()) return false;
+        return left.CompareTo(right) <= 0;
+    }
 
     /// <summary>
     /// Determines whether the first value object is greater than the second.
@@ -365,7 +392,11 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is greater than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator >(ValueObject? left, ValueObject? right)
-        => !ReferenceEquals(left, null) && (ReferenceEquals(right, null) || left.CompareTo(right) > 0);
+    {
+        if (left is null || right is null) return false;
+        if (left.GetType() != right.GetType()) return false;
+        return left.CompareTo(right) > 0;
+    }
 
     /// <summary>
     /// Determines whether the first value object is greater than or equal to the second.
@@ -374,5 +405,9 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is greater than or equal to <paramref name="right"/>; otherwise, <c>false</c>.</returns>
     public static bool operator >=(ValueObject? left, ValueObject? right)
-        => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : (ReferenceEquals(right, null) || left.CompareTo(right) >= 0);
+    {
+        if (left is null || right is null) return left is null && right is null;
+        if (left.GetType() != right.GetType()) return false;
+        return left.CompareTo(right) >= 0;
+    }
 }

@@ -58,7 +58,7 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
 {
     private readonly Uri _uri;
 
-    private Url(string value, Uri uri) : base(value)
+    private Url(Uri uri) : base(uri.AbsoluteUri)
         => _uri = uri;
 
     /// <summary>
@@ -87,7 +87,7 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
             return Result.Failure<Url>(Error.Validation("URL must use HTTP or HTTPS scheme.", field));
 
-        return new Url(trimmed, uri);
+        return new Url(uri);
     }
 
     /// <summary>
@@ -138,7 +138,7 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         StringExtensions.TryParseScalarValue(s, out result);
 
     /// <inheritdoc/>
-    protected override IEnumerable<IComparable> GetEqualityComponents()
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
         // Normalize URL comparison by using the absolute URI
         yield return _uri.AbsoluteUri;

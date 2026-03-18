@@ -207,12 +207,12 @@ public class ValueObjectTests
     #region Null Comparison Operator Edge Cases
 
     [Fact]
-    public void LessThan_null_on_left_with_value_on_right_is_true()
+    public void LessThan_null_on_left_with_value_on_right_is_false()
     {
         Address? nullAddress = null;
         var address = new Address("Street", "City");
 
-        (nullAddress < address).Should().BeTrue();
+        (nullAddress < address).Should().BeFalse();
     }
 
     [Fact]
@@ -234,12 +234,12 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void LessThanOrEqual_null_on_left_is_always_true()
+    public void LessThanOrEqual_null_on_left_with_value_on_right_is_false()
     {
         Address? nullAddress = null;
         var address = new Address("Street", "City");
 
-        (nullAddress <= address).Should().BeTrue();
+        (nullAddress <= address).Should().BeFalse();
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class ValueObjectTests
         var act = () => address > nullAddress;
 
         act.Should().NotThrow();
-        (address > nullAddress).Should().BeTrue();
+        (address > nullAddress).Should().BeFalse();
     }
 
     [Fact]
@@ -305,7 +305,7 @@ public class ValueObjectTests
         var act = () => address >= nullAddress;
 
         act.Should().NotThrow();
-        (address >= nullAddress).Should().BeTrue();
+        (address >= nullAddress).Should().BeFalse();
     }
 
     #endregion
@@ -386,9 +386,9 @@ internal class AddressWithNullable : ValueObject
         City = city;
     }
 
-    protected override IEnumerable<IComparable> GetEqualityComponents()
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
         yield return Street;
-        yield return City!; // Allow null for testing
+        yield return City; // Allow null for testing
     }
 }

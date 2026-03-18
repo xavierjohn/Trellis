@@ -74,7 +74,7 @@
 ///             .Map(v => new Temperature(v));
 ///     
 ///     // Custom equality - round to 2 decimal places
-///     protected override IEnumerable<IComparable> GetEqualityComponents()
+///     protected override IEnumerable<IComparable?> GetEqualityComponents()
 ///     {
 ///         yield return Math.Round(Value, 2);
 ///     }
@@ -156,13 +156,13 @@ where T : IComparable
     /// <example>
     /// <code><![CDATA[
     /// // Custom equality for Temperature - round to 2 decimal places
-    /// protected override IEnumerable<IComparable> GetEqualityComponents()
+    /// protected override IEnumerable<IComparable?> GetEqualityComponents()
     /// {
     ///     yield return Math.Round(Value, 2);
     /// }
     /// ]]></code>
     /// </example>
-    protected override IEnumerable<IComparable> GetEqualityComponents()
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
         yield return Value;
     }
@@ -229,14 +229,13 @@ where T : IComparable
     /// </example>
 #pragma warning disable CA1000 // Do not declare static members on generic types - Required by CRTP pattern
     public static TSelf Create(T value)
-#pragma warning restore CA1000
     {
         var result = TSelf.TryCreate(value);
         if (result.IsFailure)
             throw new InvalidOperationException($"Failed to create {typeof(TSelf).Name}: {result.Error.Detail}");
-
         return result.Value;
     }
+#pragma warning restore CA1000
 
     // IConvertible implementation - delegates to Convert class for the wrapped value
 

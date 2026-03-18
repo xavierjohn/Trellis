@@ -337,6 +337,19 @@ public class PercentageTests
     }
 
     [Fact]
+    public void ConvertFromJson_NumericToken()
+    {
+        // Arrange — deserialize from a JSON number token
+        var json = "50";
+
+        // Act
+        var actual = JsonSerializer.Deserialize<Percentage>(json)!;
+
+        // Assert
+        actual.Value.Should().Be(50m);
+    }
+
+    [Fact]
     public void Cannot_deserialize_negative_from_JSON()
     {
         // Arrange

@@ -219,21 +219,34 @@ public class RequiredIntTests
         // Arrange
         var intValue = 12345;
         TicketNumber ticketNumber = TicketNumber.TryCreate(intValue).Value;
-        var expected = $"\"{intValue}\"";
 
         // Act
         var actual = JsonSerializer.Serialize(ticketNumber);
 
-        // Assert
-        actual.Should().Be(expected);
+        // Assert — numeric value objects serialize as JSON numbers
+        actual.Should().Be($"{intValue}");
     }
 
     [Fact]
     public void ConvertFromJson()
     {
-        // Arrange
+        // Arrange — deserialize from a JSON string token
         var intValue = 12345;
         var json = $"\"{intValue}\"";
+
+        // Act
+        TicketNumber actual = JsonSerializer.Deserialize<TicketNumber>(json)!;
+
+        // Assert
+        actual.Value.Should().Be(intValue);
+    }
+
+    [Fact]
+    public void ConvertFromJson_NumericToken()
+    {
+        // Arrange — deserialize from a JSON number token
+        var intValue = 12345;
+        var json = $"{intValue}";
 
         // Act
         TicketNumber actual = JsonSerializer.Deserialize<TicketNumber>(json)!;

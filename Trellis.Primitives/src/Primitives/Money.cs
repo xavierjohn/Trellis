@@ -222,7 +222,7 @@ public class Money : ValueObject
     /// <summary>
     /// Gets the equality components for value comparison.
     /// </summary>
-    protected override IEnumerable<IComparable> GetEqualityComponents()
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
         yield return Math.Round(Amount, GetDecimalPlaces(Currency));
         yield return (string)Currency;

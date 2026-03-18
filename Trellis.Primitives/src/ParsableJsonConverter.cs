@@ -1,5 +1,6 @@
 ﻿namespace Trellis;
 
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -164,7 +165,7 @@ public class ParsableJsonConverter<T> :
     /// <para>
     /// This method:
     /// <list type="bullet">
-    /// <item>Reads the JSON string value using <see cref="Utf8JsonReader.GetString"/></item>
+    /// <item>Reads the JSON value from string, number, boolean, or null tokens</item>
     /// <item>Delegates to <typeparamref name="T"/>'s <see cref="IParsable{TSelf}.Parse"/> method</item>
     /// <item>Throws <see cref="JsonException"/> if parsing fails</item>
     /// </list>
@@ -175,7 +176,21 @@ public class ParsableJsonConverter<T> :
     /// </para>
     /// </remarks>
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        => T.Parse(reader.GetString()!, default);
+    {
+        string? raw = reader.TokenType switch
+        {
+            JsonTokenType.String => reader.GetString(),
+            JsonTokenType.Number when reader.TryGetInt64(out var l) => l.ToString(CultureInfo.InvariantCulture),
+            JsonTokenType.Number when reader.TryGetDecimal(out var d) => d.ToString(CultureInfo.InvariantCulture),
+            JsonTokenType.Number => reader.GetDouble().ToString(CultureInfo.InvariantCulture),
+            JsonTokenType.True => "true",
+            JsonTokenType.False => "false",
+            JsonTokenType.Null => null,
+            _ => throw new JsonException($"Unexpected JSON token type '{reader.TokenType}' when deserializing '{typeof(T).Name}'. Expected string, number, boolean, or null.")
+        };
+
+        return T.Parse(raw!, default);
+    }
 
     /// <summary>
     /// Writes a specified value as JSON.
@@ -186,7 +201,8 @@ public class ParsableJsonConverter<T> :
     /// <remarks>
     /// <para>
     /// This method converts the value object to its string representation using
-    /// <see cref="object.ToString"/> and writes it as a JSON string value.
+    /// <see cref="object.ToString"/>. For numeric value objects, writes a JSON number;
+    /// for all others, writes a JSON string.
     /// </para>
     /// <para>
     /// For value objects inheriting from <see cref="ScalarValueObject{TSelf, T}"/>, this typically
@@ -194,5 +210,25 @@ public class ParsableJsonConverter<T> :
     /// </para>
     /// </remarks>
     public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
-        => writer.WriteStringValue(value.ToString());
+    {
+        if (value is null)
+        {
+            writer.WriteNullValue();
+            return;
+        }
+
+        var stringValue = value.ToString();
+
+        const NumberStyles style = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent;
+        if (stringValue is not null
+            && !stringValue.StartsWith('+')
+            && decimal.TryParse(stringValue, style, CultureInfo.InvariantCulture, out _))
+        {
+            writer.WriteRawValue(stringValue);
+        }
+        else
+        {
+            writer.WriteStringValue(stringValue);
+        }
+    }
 }

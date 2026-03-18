@@ -66,38 +66,53 @@ public sealed partial class ScalarValueValidationMiddleware
             {
                 await _next(context).ConfigureAwait(false);
             }
-            catch (BadHttpRequestException ex) when (IsParameterBindingFailureMessage(ex.Message))
+            catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status400BadRequest)
             {
-                // Only handle the known ASP.NET Core binding failure format.
-                if (!TryParseBindingFailureMessage(ex.Message, out var parameterName, out var typeName, out var invalidValue))
-                    throw;
-
-                // Only handle binding failures for IScalarValue types
-                var scalarValueType = GetScalarValueParameterType(context, parameterName);
-                if (scalarValueType is not null)
+                // Use StatusCode as the primary check; regex is a secondary detail extractor.
+                if (TryParseBindingFailureMessage(ex.Message, out var parameterName, out var typeName, out var invalidValue))
                 {
-                    // Call TryCreate to get the real validation error (e.g., with valid values list)
-                    var errors = ScalarValueTypeHelper.GetValidationErrors(scalarValueType, invalidValue, parameterName)
-                        ?? CreateFallbackErrors(parameterName, typeName, invalidValue);
+                    // Only handle binding failures for IScalarValue types
+                    var scalarValueType = GetScalarValueParameterType(context, parameterName);
+                    if (scalarValueType is not null)
+                    {
+                        // Call TryCreate to get the real validation error (e.g., with valid values list)
+                        var errors = ScalarValueTypeHelper.GetValidationErrors(scalarValueType, invalidValue, parameterName)
+                            ?? CreateFallbackErrors(parameterName, typeName, invalidValue);
 
-                    await WriteValidationProblemAsync(context, errors).ConfigureAwait(false);
+                        await WriteValidationProblemAsync(context, errors).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // Re-throw for non-scalar value types (e.g., int, Guid, DateTime)
+                        throw;
+                    }
+                }
+                else if (IsParameterReadFailureMessage(ex.Message))
+                {
+                    // Handle JSON body deserialization failures (e.g., missing required properties)
+                    await WriteJsonDeserializationErrorAsync(context, ex).ConfigureAwait(false);
                 }
                 else
                 {
-                    // Re-throw for non-scalar value types (e.g., int, Guid, DateTime)
-                    throw;
+                    // Unrecognized 400 format - return generic 400 to prevent 500 propagation
+                    await WriteGenericBadRequestAsync(context, ex).ConfigureAwait(false);
                 }
-            }
-            catch (BadHttpRequestException ex) when (IsParameterReadFailureMessage(ex.Message))
-            {
-                // Handle JSON body deserialization failures (e.g., missing required properties)
-                await WriteJsonDeserializationErrorAsync(context, ex).ConfigureAwait(false);
             }
         }
     }
 
-    private static bool IsParameterBindingFailureMessage(string message) =>
-        ParameterBindingFailedRegex().IsMatch(message);
+    private static async Task WriteGenericBadRequestAsync(HttpContext context, BadHttpRequestException ex)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+
+        var errors = new Dictionary<string, string[]>
+        {
+            ["$"] = [ex.Message]
+        };
+
+        var result = Results.ValidationProblem(errors);
+        await result.ExecuteAsync(context).ConfigureAwait(false);
+    }
 
     private static bool IsParameterReadFailureMessage(string message) =>
         ParameterReadFailedRegex().IsMatch(message);

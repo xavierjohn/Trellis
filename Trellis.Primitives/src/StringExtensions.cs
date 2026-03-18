@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 /// <summary>
 /// Provides internal string manipulation extension methods for Trellis primitives.
 /// </summary>
-internal static class StringExtensions
+public static class StringExtensions
 {
     /// <summary>
     /// Normalizes an optional field name to camelCase, falling back to a default name.

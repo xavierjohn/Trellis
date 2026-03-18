@@ -8,20 +8,20 @@ using System.Text.Json;
 public class UrlTests
 {
     [Theory]
-    [InlineData("https://example.com")]
-    [InlineData("https://www.example.com/path")]
-    [InlineData("https://api.example.com/v1/users")]
-    [InlineData("http://localhost:8080")]
-    [InlineData("https://example.com/search?q=test")]
-    [InlineData("https://example.com:443/path")]
-    public void Can_create_valid_Url(string url)
+    [InlineData("https://example.com", "https://example.com/")]
+    [InlineData("https://www.example.com/path", "https://www.example.com/path")]
+    [InlineData("https://api.example.com/v1/users", "https://api.example.com/v1/users")]
+    [InlineData("http://localhost:8080", "http://localhost:8080/")]
+    [InlineData("https://example.com/search?q=test", "https://example.com/search?q=test")]
+    [InlineData("https://example.com:443/path", "https://example.com/path")]
+    public void Can_create_valid_Url(string url, string expected)
     {
         // Act
         var result = Url.TryCreate(url);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(url);
+        result.Value.Value.Should().Be(expected);
     }
 
     [Theory]
@@ -211,20 +211,20 @@ public class UrlTests
         string stringValue = value;
 
         // Assert
-        stringValue.Should().Be("https://example.com");
+        stringValue.Should().Be("https://example.com/");
     }
 
     [Theory]
-    [InlineData("https://example.com")]
-    [InlineData("http://localhost:8080")]
-    public void Can_try_parse_valid_string(string input)
+    [InlineData("https://example.com", "https://example.com/")]
+    [InlineData("http://localhost:8080", "http://localhost:8080/")]
+    public void Can_try_parse_valid_string(string input, string expected)
     {
         // Act
         Url.TryParse(input, CultureInfo.InvariantCulture, out var result)
             .Should().BeTrue();
 
         // Assert
-        result!.Value.Should().Be(input);
+        result!.Value.Should().Be(expected);
     }
 
     [Theory]
@@ -243,15 +243,15 @@ public class UrlTests
     }
 
     [Theory]
-    [InlineData("https://example.com")]
-    [InlineData("http://localhost:8080")]
-    public void Can_parse_valid_string(string input)
+    [InlineData("https://example.com", "https://example.com/")]
+    [InlineData("http://localhost:8080", "http://localhost:8080/")]
+    public void Can_parse_valid_string(string input, string expected)
     {
         // Act
         var result = Url.Parse(input, CultureInfo.InvariantCulture);
 
         // Assert
-        result.Value.Should().Be(input);
+        result.Value.Should().Be(expected);
     }
 
     [Theory]
@@ -271,7 +271,7 @@ public class UrlTests
     {
         // Arrange
         var value = Url.TryCreate("https://example.com").Value;
-        var expected = JsonSerializer.Serialize("https://example.com");
+        var expected = JsonSerializer.Serialize("https://example.com/");
 
         // Act
         var actual = JsonSerializer.Serialize(value);
@@ -290,7 +290,7 @@ public class UrlTests
         var actual = JsonSerializer.Deserialize<Url>(json)!;
 
         // Assert
-        actual.Value.Should().Be("https://example.com");
+        actual.Value.Should().Be("https://example.com/");
     }
 
     [Fact]
@@ -326,7 +326,7 @@ public class UrlTests
         var url = Url.Create("https://example.com");
 
         // Assert
-        url.Value.Should().Be("https://example.com");
+        url.Value.Should().Be("https://example.com/");
     }
 
     [Fact]

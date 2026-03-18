@@ -126,9 +126,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 ///     public static Result&lt;CustomerId&gt; TryCreate(Guid? requiredGuidOrNothing, string? fieldName = null)
 ///     {
 ///         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity("CustomerId.TryCreate");
-///         var field = !string.IsNullOrEmpty(fieldName)
-///             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-///             : "customerId";
+///         var field = fieldName.NormalizeFieldName("customerId");
 ///         return requiredGuidOrNothing
 ///             .ToResult(Error.Validation("Customer Id cannot be empty.", field))
 ///             .Ensure(x =&gt; x != Guid.Empty, Error.Validation("Customer Id cannot be empty.", field))
@@ -398,9 +396,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(Guid value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             if (value == Guid.Empty)
                 return Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field);
             return new {g.ClassName}(value);
@@ -409,9 +405,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(Guid? requiredGuidOrNothing, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             return requiredGuidOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x != Guid.Empty, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
@@ -421,9 +415,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             Guid parsedGuid = Guid.Empty;
             return stringOrNull
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
@@ -512,9 +504,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(string? value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             return value
                 .EnsureNotNullOrWhiteSpace(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field)){lengthEnsures}
                 .Map(str => new {g.ClassName}(str.Trim()));
@@ -552,9 +542,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(int value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             if (value == 0)
                 return Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field);
             return new {g.ClassName}(value);
@@ -563,9 +551,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(int? valueOrNothing, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             return valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x != 0, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field))
@@ -575,9 +561,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             int parsedInt = 0;
             return stringOrNull
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
@@ -633,9 +617,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(decimal value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             if (value == 0m)
                 return Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field);
             return new {g.ClassName}(value);
@@ -644,9 +626,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(decimal? valueOrNothing, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             return valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x != 0m, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field))
@@ -656,9 +636,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = !string.IsNullOrEmpty(fieldName)
-                ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
-                : ""{g.ClassName.ToCamelCase()}"";
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             decimal parsedDecimal = 0m;
             return stringOrNull
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))

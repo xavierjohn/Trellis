@@ -78,7 +78,7 @@ public sealed class UseBindInsteadOfMapAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static ITypeSymbol?GetLambdaReturnType(ExpressionSyntax expression, SemanticModel semanticModel)
+    private static ITypeSymbol? GetLambdaReturnType(ExpressionSyntax expression, SemanticModel semanticModel)
     {
         // Handle lambda expressions
         if (expression is LambdaExpressionSyntax lambda)
