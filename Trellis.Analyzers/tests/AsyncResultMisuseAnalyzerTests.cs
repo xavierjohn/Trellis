@@ -209,4 +209,51 @@ public class AsyncResultMisuseAnalyzerTests
 
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task GetAwaiterGetResult_OnTaskResultT_ReportsDiagnostic()
+    {
+        const string source = """
+            using System.Threading.Tasks;
+
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    Task<Result<int>> task = GetValueAsync();
+                    var result = task.GetAwaiter().GetResult();
+                }
+
+                private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Success(42));
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<AsyncResultMisuseAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
+                .WithLocation(14, 22)
+                .WithArguments("int"));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task GetAwaiterGetResult_OnNonResultTask_NoDiagnostic()
+    {
+        const string source = """
+            using System.Threading.Tasks;
+
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    Task<int> task = Task.FromResult(42);
+                    var result = task.GetAwaiter().GetResult();
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<AsyncResultMisuseAnalyzer>(source);
+        await test.RunAsync();
+    }
 }
