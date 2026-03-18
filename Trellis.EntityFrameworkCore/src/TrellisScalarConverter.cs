@@ -77,13 +77,6 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
                 $"Symbolic value object {typeof(TModel).Name} must use a string provider type.");
 
         var param = Expression.Parameter(typeof(TProvider), "v");
-        _ = typeof(TModel).GetMethod(
-                "TryFromName",
-                BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy,
-                [typeof(string), typeof(string)])
-            ?? throw new InvalidOperationException(
-                $"{typeof(TModel).Name} must have a static TryFromName(string, string?) method.");
-
         var materializeMethod = typeof(TrellisScalarConverter<TModel, TProvider>)
             .GetMethod(nameof(MaterializeSymbolic), BindingFlags.NonPublic | BindingFlags.Static)!;
         var body = Expression.Call(materializeMethod, param);
