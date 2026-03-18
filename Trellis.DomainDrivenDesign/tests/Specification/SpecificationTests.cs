@@ -157,6 +157,8 @@ file class SnapshottingPriceAboveSpec(decimal threshold) : Specification<Product
 {
     public decimal Threshold { get; set; } = threshold;
 
+    protected override bool CacheCompilation => false;
+
     public override Expression<Func<Product, bool>> ToExpression()
     {
         var currentThreshold = Threshold;

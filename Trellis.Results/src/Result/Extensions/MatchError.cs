@@ -28,6 +28,7 @@ public static class MatchErrorExtensions
     /// <param name="onRateLimit">Function to execute when the error is a RateLimitError.</param>
     /// <param name="onServiceUnavailable">Function to execute when the error is a ServiceUnavailableError.</param>
     /// <param name="onUnexpected">Function to execute when the error is an UnexpectedError.</param>
+    /// <param name="onAggregate">Optional function to execute when the error is an <see cref="AggregateError"/>. If null, falls through to <paramref name="onError"/>.</param>
     /// <param name="onError">Default function to execute for any other error type.</param>
     /// <returns>The output from the appropriate handler function.</returns>
     /// <remarks>
@@ -57,6 +58,7 @@ public static class MatchErrorExtensions
         Func<RateLimitError, TOut>? onRateLimit = null,
         Func<ServiceUnavailableError, TOut>? onServiceUnavailable = null,
         Func<UnexpectedError, TOut>? onUnexpected = null,
+        Func<AggregateError, TOut>? onAggregate = null,
         Func<Error, TOut>? onError = null)
     {
         ArgumentNullException.ThrowIfNull(onSuccess);
@@ -85,6 +87,7 @@ public static class MatchErrorExtensions
             RateLimitError rl when onRateLimit != null => onRateLimit(rl),
             ServiceUnavailableError su when onServiceUnavailable != null => onServiceUnavailable(su),
             UnexpectedError ue when onUnexpected != null => onUnexpected(ue),
+            AggregateError ae when onAggregate is not null => onAggregate(ae),
             _ when onError != null => onError(error),
             _ => throw new InvalidOperationException(
                 $"No handler provided for error type {error.GetType().Name}. " +
@@ -108,6 +111,7 @@ public static class MatchErrorExtensions
     /// <param name="onRateLimit">Action to execute when the error is a RateLimitError.</param>
     /// <param name="onServiceUnavailable">Action to execute when the error is a ServiceUnavailableError.</param>
     /// <param name="onUnexpected">Action to execute when the error is an UnexpectedError.</param>
+    /// <param name="onAggregate">Optional action to execute when the error is an <see cref="AggregateError"/>. If null, falls through to <paramref name="onError"/>.</param>
     /// <param name="onError">Default action to execute for any other error type.</param>
     /// <remarks>
     /// Error handlers are evaluated in order. The first matching error type handler is executed.
@@ -126,6 +130,7 @@ public static class MatchErrorExtensions
         Action<RateLimitError>? onRateLimit = null,
         Action<ServiceUnavailableError>? onServiceUnavailable = null,
         Action<UnexpectedError>? onUnexpected = null,
+        Action<AggregateError>? onAggregate = null,
         Action<Error>? onError = null)
     {
         ArgumentNullException.ThrowIfNull(onSuccess);
@@ -175,6 +180,9 @@ public static class MatchErrorExtensions
             case UnexpectedError ue when onUnexpected != null:
                 onUnexpected(ue);
                 break;
+            case AggregateError ae when onAggregate is not null:
+                onAggregate(ae);
+                break;
             default:
                 if (onError != null)
                     onError(error);
@@ -210,6 +218,7 @@ public static class MatchErrorExtensionsAsync
     /// <param name="onRateLimit">Function to execute when the error is a RateLimitError.</param>
     /// <param name="onServiceUnavailable">Function to execute when the error is a ServiceUnavailableError.</param>
     /// <param name="onUnexpected">Function to execute when the error is an UnexpectedError.</param>
+    /// <param name="onAggregate">Optional function to execute when the error is an <see cref="AggregateError"/>. If null, falls through to <paramref name="onError"/>.</param>
     /// <param name="onError">Default function to execute for any other error type.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from the appropriate handler function.</returns>
     public static async Task<TOut> MatchErrorAsync<TIn, TOut>(
@@ -225,6 +234,7 @@ public static class MatchErrorExtensionsAsync
         Func<RateLimitError, TOut>? onRateLimit = null,
         Func<ServiceUnavailableError, TOut>? onServiceUnavailable = null,
         Func<UnexpectedError, TOut>? onUnexpected = null,
+        Func<AggregateError, TOut>? onAggregate = null,
         Func<Error, TOut>? onError = null)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
@@ -243,6 +253,7 @@ public static class MatchErrorExtensionsAsync
             onRateLimit,
             onServiceUnavailable,
             onUnexpected,
+            onAggregate,
             onError);
     }
 
@@ -263,6 +274,7 @@ public static class MatchErrorExtensionsAsync
     /// <param name="onRateLimit">Async function to execute when the error is a RateLimitError.</param>
     /// <param name="onServiceUnavailable">Async function to execute when the error is a ServiceUnavailableError.</param>
     /// <param name="onUnexpected">Async function to execute when the error is an UnexpectedError.</param>
+    /// <param name="onAggregate">Optional async function to execute when the error is an <see cref="AggregateError"/>. If null, falls through to <paramref name="onError"/>.</param>
     /// <param name="onError">Default async function to execute for any other error type.</param>
     /// <param name="cancellationToken">The cancellation token to observe.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from the appropriate handler function.</returns>
@@ -279,6 +291,7 @@ public static class MatchErrorExtensionsAsync
         Func<RateLimitError, CancellationToken, Task<TOut>>? onRateLimit = null,
         Func<ServiceUnavailableError, CancellationToken, Task<TOut>>? onServiceUnavailable = null,
         Func<UnexpectedError, CancellationToken, Task<TOut>>? onUnexpected = null,
+        Func<AggregateError, CancellationToken, Task<TOut>>? onAggregate = null,
         Func<Error, CancellationToken, Task<TOut>>? onError = null,
         CancellationToken cancellationToken = default)
     {
@@ -308,6 +321,7 @@ public static class MatchErrorExtensionsAsync
             RateLimitError rl when onRateLimit != null => await onRateLimit(rl, cancellationToken).ConfigureAwait(false),
             ServiceUnavailableError su when onServiceUnavailable != null => await onServiceUnavailable(su, cancellationToken).ConfigureAwait(false),
             UnexpectedError ue when onUnexpected != null => await onUnexpected(ue, cancellationToken).ConfigureAwait(false),
+            AggregateError ae when onAggregate is not null => await onAggregate(ae, cancellationToken).ConfigureAwait(false),
             _ when onError != null => await onError(error, cancellationToken).ConfigureAwait(false),
             _ => throw new InvalidOperationException(
                 $"No handler provided for error type {error.GetType().Name}. " +
@@ -332,6 +346,7 @@ public static class MatchErrorExtensionsAsync
     /// <param name="onRateLimit">Async function to execute when the error is a RateLimitError.</param>
     /// <param name="onServiceUnavailable">Async function to execute when the error is a ServiceUnavailableError.</param>
     /// <param name="onUnexpected">Async function to execute when the error is an UnexpectedError.</param>
+    /// <param name="onAggregate">Optional async function to execute when the error is an <see cref="AggregateError"/>. If null, falls through to <paramref name="onError"/>.</param>
     /// <param name="onError">Default async function to execute for any other error type.</param>
     /// <param name="cancellationToken">The cancellation token to observe.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the output from the appropriate handler function.</returns>
@@ -348,6 +363,7 @@ public static class MatchErrorExtensionsAsync
         Func<RateLimitError, CancellationToken, Task<TOut>>? onRateLimit = null,
         Func<ServiceUnavailableError, CancellationToken, Task<TOut>>? onServiceUnavailable = null,
         Func<UnexpectedError, CancellationToken, Task<TOut>>? onUnexpected = null,
+        Func<AggregateError, CancellationToken, Task<TOut>>? onAggregate = null,
         Func<Error, CancellationToken, Task<TOut>>? onError = null,
         CancellationToken cancellationToken = default)
     {
@@ -367,6 +383,7 @@ public static class MatchErrorExtensionsAsync
             onRateLimit,
             onServiceUnavailable,
             onUnexpected,
+            onAggregate,
             onError,
             cancellationToken).ConfigureAwait(false);
     }
@@ -387,6 +404,7 @@ public static class MatchErrorExtensionsAsync
     /// <param name="onRateLimit">Async action to execute when the error is a RateLimitError.</param>
     /// <param name="onServiceUnavailable">Async action to execute when the error is a ServiceUnavailableError.</param>
     /// <param name="onUnexpected">Async action to execute when the error is an UnexpectedError.</param>
+    /// <param name="onAggregate">Optional async action to execute when the error is an <see cref="AggregateError"/>. If null, falls through to <paramref name="onError"/>.</param>
     /// <param name="onError">Default async action to execute for any other error type.</param>
     /// <param name="cancellationToken">The cancellation token to observe.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
@@ -403,6 +421,7 @@ public static class MatchErrorExtensionsAsync
         Func<RateLimitError, CancellationToken, Task>? onRateLimit = null,
         Func<ServiceUnavailableError, CancellationToken, Task>? onServiceUnavailable = null,
         Func<UnexpectedError, CancellationToken, Task>? onUnexpected = null,
+        Func<AggregateError, CancellationToken, Task>? onAggregate = null,
         Func<Error, CancellationToken, Task>? onError = null,
         CancellationToken cancellationToken = default)
     {
@@ -454,6 +473,9 @@ public static class MatchErrorExtensionsAsync
                 break;
             case UnexpectedError ue when onUnexpected != null:
                 await onUnexpected(ue, cancellationToken).ConfigureAwait(false);
+                break;
+            case AggregateError ae when onAggregate is not null:
+                await onAggregate(ae, cancellationToken).ConfigureAwait(false);
                 break;
             default:
                 if (onError != null)

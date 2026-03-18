@@ -33,6 +33,16 @@ public readonly partial struct Result
     }
 
     /// <summary>
+    /// Creates a <see cref="Maybe{TValue}"/> from a nullable value.
+    /// Returns <see cref="Maybe{TValue}"/> with the value if non-null, or none if null.
+    /// </summary>
+    /// <typeparam name="TValue">The type of the value.</typeparam>
+    /// <param name="value">The nullable value.</param>
+    /// <returns>A <see cref="Maybe{TValue}"/> containing the value or none.</returns>
+    public static Maybe<TValue> SuccessOrNone<TValue>(TValue? value) where TValue : notnull
+        => value is not null ? Maybe.From(value) : Maybe.None<TValue>();
+
+    /// <summary>
     /// Creates a failed result with the specified <paramref name="error"/>.
     /// </summary>
     /// <typeparam name="TValue">Type of the (missing) success value.</typeparam>
