@@ -17,8 +17,7 @@ public static class OrderRoutes
             {
                 states = OrderState.GetAll().Select(s => new
                 {
-                    value = s.Value,
-                    ordinal = s.Ordinal,
+                    name = s,
                     canModify = s.CanModify,
                     canCancel = s.CanCancel
                 })
@@ -29,8 +28,7 @@ public static class OrderRoutes
         orderApi.MapGet("/states/{state}", (OrderState state) =>
             Results.Ok(new
             {
-                value = state.Value,
-                ordinal = state.Ordinal,
+                name = state,
                 canModify = state.CanModify,
                 canCancel = state.CanCancel,
                 message = $"Successfully bound OrderState '{state}' from route!"
@@ -42,7 +40,7 @@ public static class OrderRoutes
         orderApi.MapPost("/update", (UpdateOrderDto dto) =>
             Results.Ok(new
             {
-                newState = dto.State.Value,
+                newState = dto.State,
                 canModify = dto.State.CanModify,
                 canCancel = dto.State.CanCancel,
                 assignedTo = dto.AssignedTo.Match(name => name.Value, () => (string?)null),
@@ -64,8 +62,7 @@ public static class OrderRoutes
                 },
                 state = new
                 {
-                    value = dto.InitialState.Value,
-                    ordinal = dto.InitialState.Ordinal,
+                    name = dto.InitialState,
                     canModify = dto.InitialState.CanModify,
                     canCancel = dto.InitialState.CanCancel
                 },
@@ -80,7 +77,7 @@ public static class OrderRoutes
                 ? Results.Ok(new { message = "No state filter provided" })
                 : Results.Ok(new
                 {
-                    filterState = state.Value,
+                    filterState = state,
                     canModify = state.CanModify,
                     message = $"Filtering orders by state: {state}"
                 }))

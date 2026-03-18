@@ -5,12 +5,12 @@ using Trellis;
 /// <summary>
 /// Enum value object demonstrating rich domain behavior for order state.
 /// Unlike a regular C# enum, this encapsulates business rules about state transitions.
-/// Value is auto-derived from the field name (pure DDD - no strings in domain).
+/// Value defaults to the field name and can be overridden with EnumValueAttribute only when the external name must differ.
 /// Note: JsonConverter is automatically added by the source generator.
 /// </summary>
 public partial class OrderState : RequiredEnum<OrderState>
 {
-    // Pure domain - Value auto-derived from field name
+    // Pure domain - symbolic values currently follow field names by default
     public static readonly OrderState Draft = new(canModify: true, canCancel: true, isTerminal: false);
     public static readonly OrderState Confirmed = new(canModify: false, canCancel: true, isTerminal: false);
     public static readonly OrderState Shipped = new(canModify: false, canCancel: false, isTerminal: false);

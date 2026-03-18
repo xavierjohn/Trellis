@@ -249,6 +249,55 @@ public class SqlServerMaybeIntegrationTests : IAsyncLifetime
         loaded.Customer.Phone.Value.Value.Should().Be(phone.Value);
     }
 
+    [Fact]
+    public async Task RequiredEnumAndMaybeEnum_CollectionInclude_SqlServer()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = new TestCustomer
+        {
+            Id = TestCustomerId.NewUniqueV4(),
+            Name = TestCustomerName.Create("SqlGrace"),
+            Email = EmailAddress.Create("sqlgrace@example.com"),
+            CreatedAt = DateTime.UtcNow
+        };
+        var shippedOrder = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customer.Id,
+            Amount = 110m,
+            Status = TestOrderStatus.Confirmed,
+            OptionalStatus = Maybe.From(TestOrderStatus.Shipped)
+        };
+        var draftOrder = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customer.Id,
+            Amount = 65m,
+            Status = TestOrderStatus.Draft
+        };
+
+        _context.Customers.Add(customer);
+        _context.Orders.AddRange(shippedOrder, draftOrder);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var loaded = await _context.Customers
+            .Include(c => c.Orders)
+            .SingleAsync(c => c.Id == customer.Id, ct);
+
+        // Assert
+        loaded.Orders.Should().HaveCount(2);
+
+        var confirmed = loaded.Orders.Single(order => order.Status == TestOrderStatus.Confirmed);
+        confirmed.OptionalStatus.HasValue.Should().BeTrue();
+        confirmed.OptionalStatus.Value.Should().Be(TestOrderStatus.Shipped);
+
+        var draft = loaded.Orders.Single(order => order.Status == TestOrderStatus.Draft);
+        draft.OptionalStatus.HasNoValue.Should().BeTrue();
+    }
+
     #endregion
 
     /// <summary>
@@ -283,7 +332,7 @@ public class SqlServerMaybeIntegrationTests : IAsyncLifetime
             modelBuilder.Entity<TestOrder>(b =>
             {
                 b.HasKey(o => o.Id);
-                b.HasOne(o => o.Customer).WithMany().HasForeignKey(o => o.CustomerId);
+                b.HasOne(o => o.Customer).WithMany(c => c.Orders).HasForeignKey(o => o.CustomerId);
                 b.Property(o => o.Amount).IsRequired();
                 b.Property(o => o.Status).IsRequired();
             });

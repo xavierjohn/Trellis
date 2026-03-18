@@ -125,6 +125,56 @@ public class ApplyTrellisConventionsTests : IDisposable
         loaded.Status.Value.Should().Be("Confirmed");
     }
 
+    [Fact]
+    public async Task RequiredEnumProperty_InvalidPersistedValue_ThrowsClearMappingException()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+
+        await ExecuteNonQueryAsync(
+            "INSERT INTO Customers (Id, Name, Email, CreatedAt) VALUES ($id, $name, $email, $createdAt)",
+            ct,
+            ("$id", customerId),
+            ("$name", "Customer"),
+            ("$email", "customer@example.com"),
+            ("$createdAt", DateTime.UtcNow));
+
+        await ExecuteNonQueryAsync(
+            "INSERT INTO Orders (Id, CustomerId, Amount, Status) VALUES ($id, $customerId, $amount, $status)",
+            ct,
+            ("$id", orderId),
+            ("$customerId", customerId),
+            ("$amount", 99.99m),
+            ("$status", "NotAStatus"));
+
+        // Act
+        var act = async () => await _context.Orders
+            .AsNoTracking()
+            .SingleAsync(order => order.Id == TestOrderId.Create(orderId), ct);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<TrellisPersistenceMappingException>();
+        ex.Which.Message.Should().Contain("TestOrderStatus");
+        ex.Which.Message.Should().Contain("NotAStatus");
+        ex.Which.Message.Should().Contain("TryFromName");
+        ex.Which.Message.Should().Contain("Valid values");
+    }
+
+    [Fact]
+    public void RequiredEnumProperty_UsesCategoryDrivenConverter()
+    {
+        // Act
+        var property = _context.Model.FindEntityType(typeof(TestOrder))!
+            .FindProperty(nameof(TestOrder.Status))!;
+        var converter = property.GetTypeMapping().Converter;
+
+        // Assert
+        converter.Should().NotBeNull();
+        converter.Should().BeOfType<TrellisScalarConverter<TestOrderStatus, string>>();
+    }
+
     #endregion
 
     #region Built-in EmailAddress converter
@@ -153,6 +203,34 @@ public class ApplyTrellisConventionsTests : IDisposable
         // Assert
         loaded.Should().NotBeNull();
         loaded!.Email.Value.Should().Be("charlie@example.com");
+    }
+
+    [Fact]
+    public async Task ScalarValueProperty_InvalidPersistedValue_ThrowsClearMappingException()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = Guid.NewGuid();
+
+        await ExecuteNonQueryAsync(
+            "INSERT INTO Customers (Id, Name, Email, CreatedAt) VALUES ($id, $name, $email, $createdAt)",
+            ct,
+            ("$id", customerId),
+            ("$name", "Customer"),
+            ("$email", "not-an-email"),
+            ("$createdAt", DateTime.UtcNow));
+
+        // Act
+        var act = async () => await _context.Customers
+            .AsNoTracking()
+            .SingleAsync(customer => customer.Id == TestCustomerId.Create(customerId), ct);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<TrellisPersistenceMappingException>();
+        ex.Which.Message.Should().Contain("EmailAddress");
+        ex.Which.Message.Should().Contain("not-an-email");
+        ex.Which.Message.Should().Contain("TryCreate");
+        ex.Which.Message.Should().Contain("not valid");
     }
 
     #endregion
@@ -390,6 +468,28 @@ public class ApplyTrellisConventionsTests : IDisposable
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             modelBuilder.Entity<InternalValueEntity>(builder => builder.HasKey(entity => entity.Id));
+    }
+
+    private async Task ExecuteNonQueryAsync(string commandText, params (string Name, object? Value)[] parameters) =>
+        await ExecuteNonQueryAsync(commandText, TestContext.Current.CancellationToken, parameters);
+
+    private async Task ExecuteNonQueryAsync(
+        string commandText,
+        CancellationToken cancellationToken,
+        params (string Name, object? Value)[] parameters)
+    {
+        await using var command = _connection.CreateCommand();
+        command.CommandText = commandText;
+
+        foreach (var (name, value) in parameters)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value ?? DBNull.Value;
+            command.Parameters.Add(parameter);
+        }
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     #endregion

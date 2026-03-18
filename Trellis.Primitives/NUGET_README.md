@@ -14,7 +14,7 @@ dotnet add package Trellis.Primitives.Generator
 ```
 
 **Important:** Both packages are required:
-- `Trellis.Primitives` — Base classes and **12 ready-to-use value objects**
+- `Trellis.Primitives` — Base classes, built-in scalar value objects, and the structured `Money` value object
 - `Trellis.Primitives.Generator` — Source generator for `Required*` derivatives
 
 ## Quick Start
@@ -100,6 +100,8 @@ var pct = Percentage.TryCreate(15.5m);
 var money = Money.TryCreate(99.99m, "USD");
 ```
 
+All built-ins in the table except `Money` follow the scalar `IScalarValue<TSelf, TPrimitive>` pattern. `Money` is intentionally structured: its identity is `Amount` + `Currency`, and it keeps object-shaped JSON and EF persistence.
+
 ## RequiredEnum
 
 Type-safe enumerations that replace C# enums with full-featured classes:
@@ -116,7 +118,8 @@ var result = OrderState.TryCreate("Confirmed");
 // result.Value == OrderState.Confirmed
 
 Console.WriteLine(OrderState.Confirmed.Value);   // "Confirmed"
-Console.WriteLine(OrderState.Confirmed.Ordinal); // 1
+
+// Ordinal exists as secondary declaration-order metadata, not as the main public contract
 ```
 
 ## ASP.NET Core Integration
@@ -147,6 +150,8 @@ public IActionResult Create(CreateUserDto dto)
 ```
 
 See [Trellis.Asp](https://www.nuget.org/packages/Trellis.Asp) for full ASP.NET Core integration.
+
+`Money` is not part of that scalar model-binding pipeline; it uses its own JSON converter because it is a structured value object.
 
 ## Generated Code Features
 

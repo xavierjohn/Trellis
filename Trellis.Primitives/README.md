@@ -31,7 +31,7 @@ dotnet add package Trellis.Primitives.Generator
 ```
 
 **Important:** Both packages are required:
-- `Trellis.Primitives` - Provides base classes (`RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum`) and **12 ready-to-use value objects** (`EmailAddress`, `Url`, `PhoneNumber`, `Percentage`, `CurrencyCode`, `IpAddress`, `Hostname`, `Slug`, `CountryCode`, `LanguageCode`, `Age`, `Money`)
+- `Trellis.Primitives` - Provides base classes (`RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum`), built-in scalar value objects, and the structured `Money` value object
 - `Trellis.Primitives.Generator` - Source generator that creates implementations for `Required*` base class derivatives
 
 ## Quick Start
@@ -146,9 +146,8 @@ public partial class OrderState : RequiredEnum<OrderState>
     public static readonly OrderState Cancelled = new();
 }
 
-// Members are discovered via reflection, Value and Ordinal are auto-generated
+// Members are discovered via reflection; Value is the semantic contract
 Console.WriteLine(OrderState.Draft.Value);   // "Draft"
-Console.WriteLine(OrderState.Draft.Ordinal); // 0
 
 // Create from string
 var result = OrderState.TryCreate("Confirmed");
@@ -161,6 +160,8 @@ OrderState.Confirmed.IsNot(OrderState.Cancelled);  // true
 // Invalid values are impossible
 var invalid = OrderState.TryCreate("Unknown");
 // Returns: Error.Validation("Invalid OrderState value: Unknown", "orderState")
+
+// Ordinal exists as declaration-order metadata, not as the primary public identity
 ```
 
 ### EmailAddress
@@ -294,6 +295,8 @@ var tooOld = Age.TryCreate(200);
 
 #### Money
 
+`Money` is a structured value object, not a scalar wrapper. Its identity is the pair of `Amount` and `Currency`, so its JSON and EF representations stay object-shaped rather than flowing through the `IScalarValue<TSelf, TPrimitive>` pipeline.
+
 Monetary amounts with currency code and type-safe arithmetic:
 
 ```csharp
@@ -381,6 +384,8 @@ public class UsersController : ControllerBase
 - Standard ASP.NET Core validation infrastructure
 - Works with `[ApiController]` attribute for automatic 400 responses
 
+`Money` is the main built-in exception here: it is a structured value object with its own JSON converter, so it is not part of the automatic scalar model-binding/validation pipeline.
+
 ## Core Concepts
 
 ### Available Value Objects
@@ -396,7 +401,7 @@ This library provides both **base classes** for creating custom value objects an
 | **RequiredDecimal** | Primitive wrapper | Non-default decimals | Source generation, IScalarValue, IParsable, ASP.NET validation |
 | **RequiredEnum** | Enum value object | Type-safe enumerations | Source generation, behavior, state machines, JSON serialization |
 
-#### Ready-to-Use Value Objects
+#### Ready-to-Use Scalar Value Objects
 | Value Object | Purpose | Validation Rules | Example |
 |-------------|----------|-----------------|---------|
 | **EmailAddress** | Email validation | RFC 5322 compliant, trimmed | `user@example.com` |
@@ -410,6 +415,10 @@ This library provides both **base classes** for creating custom value objects an
 | **CountryCode** | Country codes | ISO 3166-1 alpha-2 | `US`, `GB`, `FR` |
 | **LanguageCode** | Language codes | ISO 639-1 alpha-2 | `en`, `es`, `fr` |
 | **Age** | Age values | 0-150 range | `42` |
+
+#### Ready-to-Use Structured Value Object
+| Value Object | Purpose | Validation Rules | Example |
+|-------------|----------|-----------------|---------|
 | **Money** | Monetary amounts | Non-negative amount + ISO 4217 currency | `99.99 USD` |
 
 **What are Primitive Value Objects?**
@@ -419,6 +428,8 @@ Primitive value objects wrap single primitive types (`string`, `Guid`, etc.) to 
 - **Domain semantics**: Makes code self-documenting and expressive
 - **Validation**: Encapsulates validation rules at creation time
 - **Immutability**: Ensures values cannot change after creation
+
+`Money` is intentionally separate from that scalar bucket. It is still a value object, but it is a structured one composed of multiple meaningful components.
 
 **Generated Code Features:**
 - `TryCreate` methods returning `Result<T>` with optional `fieldName` parameter

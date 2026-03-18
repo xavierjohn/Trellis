@@ -78,6 +78,20 @@ public static class AnalyzerTestHelper
             using System;
             using System.Threading.Tasks;
 
+            [AttributeUsage(AttributeTargets.Field, AllowMultiple = false, Inherited = false)]
+            public sealed class EnumValueAttribute : Attribute
+            {
+                public EnumValueAttribute(string value) { }
+            }
+
+            public abstract class RequiredEnum<TSelf>
+                where TSelf : RequiredEnum<TSelf>
+            {
+                public string Value => string.Empty;
+
+                public static Result<TSelf> TryFromName(string? name, string? fieldName = null) => default;
+            }
+
             // IScalarValue interface stub
             public interface IScalarValue<TSelf, TPrimitive>
                 where TSelf : IScalarValue<TSelf, TPrimitive>

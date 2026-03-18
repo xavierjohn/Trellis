@@ -49,21 +49,13 @@ public static class ModelConfigurationBuilderExtensions
                 if (type.IsAbstract)
                     continue;
 
-                var baseInfo = TrellisTypeScanner.FindTrellisBase(type);
-                if (baseInfo is null)
+                var valueObject = TrellisTypeScanner.FindValueObject(type);
+                if (valueObject is null)
                     continue;
 
-                var (providerType, isEnum) = baseInfo.Value;
-                if (isEnum)
-                {
-                    var converterType = typeof(TrellisEnumConverter<>).MakeGenericType(type);
-                    configurationBuilder.Properties(type).HaveConversion(converterType);
-                }
-                else
-                {
-                    var converterType = typeof(TrellisScalarConverter<,>).MakeGenericType(type, providerType);
-                    configurationBuilder.Properties(type).HaveConversion(converterType);
-                }
+                var converterType = typeof(TrellisScalarConverter<,>)
+                    .MakeGenericType(type, valueObject.Value.ProviderType);
+                configurationBuilder.Properties(type).HaveConversion(converterType);
             }
         }
 

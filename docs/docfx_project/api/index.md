@@ -228,13 +228,13 @@ A value object is an object that represents a descriptive aspect of the domain w
 
 ### ASP.NET Core Integration
 
-#### [ActionResult Extensions](xref:Trellis.ActionResultExtensions)
+#### [ActionResult Extensions](xref:Trellis.Asp.ActionResultExtensions)
 
 Convert `Result<T>` to ASP.NET Core action results for MVC controllers.
 
 **Features:** Automatic status code mapping, Problem Details (RFC 7807) format, field-level validation errors
 
-#### [HttpResult Extensions](xref:Trellis.HttpResultExtensions)
+#### [HttpResult Extensions](xref:Trellis.Asp.HttpResultExtensions)
 
 Convert `Result<T>` to `IResult` for Minimal API endpoints.
 
@@ -242,7 +242,7 @@ Convert `Result<T>` to `IResult` for Minimal API endpoints.
 
 ### HTTP Client Integration
 
-#### [HttpResponseExtensions](xref:Trellis.HttpResponseExtensions)
+#### [HttpResponseExtensions](xref:Trellis.Http.HttpResponseExtensions)
 
 Extension methods for `HttpResponseMessage` that enable functional HTTP communication with Result types.
 
@@ -255,7 +255,7 @@ Extension methods for `HttpResponseMessage` that enable functional HTTP communic
 
 ### FluentValidation Integration
 
-#### [FluentValidation Extensions](xref:Trellis.FluentValidationResultExtensions)
+#### [FluentValidation Extensions](xref:Trellis.FluentValidation.FluentValidationResultExtensions)
 
 Convert FluentValidation results to `Result<T>` for seamless integration with Railway-Oriented Programming.
 

@@ -8,7 +8,7 @@ using Trellis.Testing;
 
 /// <summary>
 /// Tests for the <see cref="MaybeConvention"/> and source-generated <c>partial Maybe&lt;T&gt;</c> properties.
-/// Validates that Maybe{T} properties backed by generated private nullable fields
+/// Validates that Maybe{T} properties backed by generated private nullable storage members
 /// round-trip correctly through EF Core with SQLite in-memory.
 /// </summary>
 public class MaybePropertyTests : IDisposable
@@ -273,21 +273,21 @@ public class MaybePropertyTests : IDisposable
     #region Column metadata
 
     [Fact]
-    public void MaybeConvention_BackingField_IsNullableInModel()
+    public void MaybeConvention_StorageMember_IsNullableInModel()
     {
         var customerType = _context.Model.FindEntityType(typeof(TestCustomer))!;
         var phoneProp = customerType.FindProperty("_phone")!;
 
-        phoneProp.IsNullable.Should().BeTrue("Maybe<T> backing field should be nullable");
+        phoneProp.IsNullable.Should().BeTrue("Maybe<T> storage member should be nullable");
     }
 
     [Fact]
-    public void MaybeConvention_BackingField_ColumnName_UsesPropertyName()
+    public void MaybeConvention_StorageMember_ColumnName_UsesPropertyName()
     {
         var customerType = _context.Model.FindEntityType(typeof(TestCustomer))!;
         var phoneProp = customerType.FindProperty("_phone")!;
 
-        phoneProp.GetColumnName().Should().Be("Phone", "column name should use the original property name, not the backing field name");
+        phoneProp.GetColumnName().Should().Be("Phone", "column name should use the original property name, not the storage member name");
     }
 
     [Fact]
@@ -300,21 +300,21 @@ public class MaybePropertyTests : IDisposable
     }
 
     [Fact]
-    public void MaybeConvention_ValueType_BackingField_IsNullableInModel()
+    public void MaybeConvention_ValueType_StorageMember_IsNullableInModel()
     {
         var orderType = _context.Model.FindEntityType(typeof(TestOrder))!;
         var submittedAtProp = orderType.FindProperty("_submittedAt")!;
 
-        submittedAtProp.IsNullable.Should().BeTrue("Maybe<DateTime> backing field should be nullable");
+        submittedAtProp.IsNullable.Should().BeTrue("Maybe<DateTime> storage member should be nullable");
     }
 
     [Fact]
-    public void MaybeConvention_Enum_BackingField_IsNullableInModel()
+    public void MaybeConvention_Enum_StorageMember_IsNullableInModel()
     {
         var orderType = _context.Model.FindEntityType(typeof(TestOrder))!;
         var optionalStatusProp = orderType.FindProperty("_optionalStatus")!;
 
-        optionalStatusProp.IsNullable.Should().BeTrue("Maybe<TestOrderStatus> backing field should be nullable");
+        optionalStatusProp.IsNullable.Should().BeTrue("Maybe<TestOrderStatus> storage member should be nullable");
     }
 
     [Fact]
@@ -325,7 +325,7 @@ public class MaybePropertyTests : IDisposable
             mapping.EntityClrType == typeof(TestCustomer)
             && mapping.PropertyName == nameof(TestCustomer.Phone));
 
-        phoneMapping.BackingFieldName.Should().Be("_phone");
+        phoneMapping.MappedBackingFieldName.Should().Be("_phone");
         phoneMapping.ColumnName.Should().Be(nameof(TestCustomer.Phone));
         phoneMapping.IsMapped.Should().BeTrue();
         phoneMapping.IsNullable.Should().BeTrue();
@@ -337,7 +337,7 @@ public class MaybePropertyTests : IDisposable
     {
         var debugString = _context.ToMaybeMappingDebugString();
 
-        debugString.Should().Contain("TestCustomer.Phone => field=_phone");
+        debugString.Should().Contain("TestCustomer.Phone => mappedBackingField=_phone");
         debugString.Should().Contain("column=Phone");
     }
 
@@ -346,7 +346,7 @@ public class MaybePropertyTests : IDisposable
     #region HasTrellisIndex
 
     [Fact]
-    public void HasTrellisIndex_MaybeProperty_UsesBackingFieldName()
+    public void HasTrellisIndex_MaybeProperty_UsesStorageMemberName()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
@@ -395,12 +395,12 @@ public class MaybePropertyTests : IDisposable
         var customerType = context.Model.FindEntityType(typeof(TestCustomer))!;
         var phoneProperty = customerType.FindProperty("_phone")!;
 
-        phoneProperty.IsNullable.Should().BeTrue("indexed Maybe<T> backing fields should remain optional");
-        phoneProperty.GetColumnName().Should().Be(nameof(TestCustomer.Phone), "indexed Maybe<T> backing fields should still map to the CLR property column name");
+        phoneProperty.IsNullable.Should().BeTrue("indexed Maybe<T> storage members should remain optional");
+        phoneProperty.GetColumnName().Should().Be(nameof(TestCustomer.Phone), "indexed Maybe<T> storage members should still map to the CLR property column name");
     }
 
     [Fact]
-    public void HasTrellisIndex_InheritedMaybeProperty_FindsBackingFieldOnBaseType()
+    public void HasTrellisIndex_InheritedMaybeProperty_FindsStorageMemberOnBaseType()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
@@ -410,11 +410,13 @@ public class MaybePropertyTests : IDisposable
                 .UseSqlite(connection)
                 .Options);
 
-        var customerType = context.Model.FindEntityType(typeof(DerivedTestCustomer))!;
+        var derivedType = context.Model.FindEntityType(typeof(DerivedTestCustomer))!;
+        var customerType = context.Model.FindEntityType(typeof(TestCustomer))!;
         var index = customerType.GetIndexes()
             .Single(candidate => candidate.Properties.Select(property => property.Name).SequenceEqual(["_phone"]));
         var phoneProperty = customerType.FindProperty("_phone")!;
 
+        derivedType.BaseType.Should().Be(customerType);
         index.Properties.Select(property => property.Name).Should().Equal(["_phone"]);
         phoneProperty.GetColumnName().Should().Be(nameof(TestCustomer.Phone));
     }
@@ -500,18 +502,111 @@ public class MaybePropertyTests : IDisposable
         loaded.Customer.Phone.Value.Value.Should().Be(phone.Value);
     }
 
-    #endregion
+    [Fact]
+    public async Task RequiredEnumAndMaybeEnum_CollectionInclude_LoadsChildOrdersFromParent()
+    {
+        // Arrange
+        var (context, connection) = TestDbContext.CreateInMemory();
+        using var _ = connection;
+        await using var __ = context;
+        var ct = TestContext.Current.CancellationToken;
 
-    #region MaybeConvention — entity without backing field fails fast
+        var customer = new TestCustomer
+        {
+            Id = TestCustomerId.NewUniqueV4(),
+            Name = TestCustomerName.Create("NavCollection"),
+            Email = EmailAddress.Create("navcollection@example.com"),
+            CreatedAt = DateTime.UtcNow
+        };
+        var shippedOrder = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customer.Id,
+            Amount = 90m,
+            Status = TestOrderStatus.Confirmed,
+            OptionalStatus = Maybe.From(TestOrderStatus.Shipped)
+        };
+        var draftOrder = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customer.Id,
+            Amount = 45m,
+            Status = TestOrderStatus.Draft
+        };
+
+        context.Customers.Add(customer);
+        context.Orders.AddRange(shippedOrder, draftOrder);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        // Act
+        var loaded = await context.Customers
+            .Include(c => c.Orders)
+            .SingleAsync(c => c.Id == customer.Id, ct);
+
+        // Assert
+        loaded.Orders.Should().HaveCount(2);
+
+        var confirmed = loaded.Orders.Single(order => order.Status == TestOrderStatus.Confirmed);
+        confirmed.OptionalStatus.HasValue.Should().BeTrue();
+        confirmed.OptionalStatus.Value.Should().Be(TestOrderStatus.Shipped);
+
+        var draft = loaded.Orders.Single(order => order.Status == TestOrderStatus.Draft);
+        draft.OptionalStatus.HasNoValue.Should().BeTrue();
+    }
 
     [Fact]
-    public void MaybeConvention_NoBackingField_ThrowsClearException()
+    public async Task MaybeEnum_InvalidPersistedValue_CollectionInclude_ThrowsClearMappingException()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+
+        await ExecuteNonQueryAsync(
+            _context,
+            "INSERT INTO Customers (Id, Name, Email, CreatedAt) VALUES ($id, $name, $email, $createdAt)",
+            ct,
+            ("$id", customerId),
+            ("$name", "InvalidChildParent"),
+            ("$email", "invalid-child-parent@example.com"),
+            ("$createdAt", DateTime.UtcNow));
+
+        await ExecuteNonQueryAsync(
+            _context,
+            "INSERT INTO Orders (Id, CustomerId, Amount, Status, OptionalStatus) VALUES ($id, $customerId, $amount, $status, $optionalStatus)",
+            ct,
+            ("$id", orderId),
+            ("$customerId", customerId),
+            ("$amount", 123.45m),
+            ("$status", "Confirmed"),
+            ("$optionalStatus", "NotAStatus"));
+
+        // Act
+        var act = async () => await _context.Customers
+            .AsNoTracking()
+            .Include(c => c.Orders)
+            .SingleAsync(customer => customer.Id == TestCustomerId.Create(customerId), ct);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<TrellisPersistenceMappingException>();
+        ex.Which.Message.Should().Contain("TestOrderStatus");
+        ex.Which.Message.Should().Contain("NotAStatus");
+        ex.Which.Message.Should().Contain("TryFromName");
+    }
+
+    #endregion
+
+    #region MaybeConvention — entity without storage member fails fast
+
+    [Fact]
+    public void MaybeConvention_NoStorageMember_ThrowsClearException()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
 
-        using var context = new NoBackingFieldDbContext(
-            new DbContextOptionsBuilder<NoBackingFieldDbContext>().UseSqlite(connection).Options);
+        using var context = new NoStorageMemberDbContext(
+            new DbContextOptionsBuilder<NoStorageMemberDbContext>().UseSqlite(connection).Options);
 
         var act = () => context.Model;
 
@@ -520,13 +615,13 @@ public class MaybePropertyTests : IDisposable
     }
 
     [Fact]
-    public void HasTrellisIndex_NoBackingField_ThrowsClearException()
+    public void HasTrellisIndex_NoStorageMember_ThrowsClearException()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
 
-        using var context = new NoBackingFieldIndexedDbContext(
-            new DbContextOptionsBuilder<NoBackingFieldIndexedDbContext>().UseSqlite(connection).Options);
+        using var context = new NoStorageMemberIndexedDbContext(
+            new DbContextOptionsBuilder<NoStorageMemberIndexedDbContext>().UseSqlite(connection).Options);
 
         var act = () => context.Model;
 
@@ -534,34 +629,58 @@ public class MaybePropertyTests : IDisposable
             .WithMessage("*Website*_website*");
     }
 
-    private class EntityWithoutBackingField
+    private class EntityWithoutStorageMember
     {
         public Guid Id { get; set; }
         public Maybe<Url> Website { get; set; }
     }
 
-    private class NoBackingFieldDbContext(DbContextOptions<NoBackingFieldDbContext> options)
-        : DbContext(options)
+    private static async Task ExecuteNonQueryAsync(
+        DbContext context,
+        string sql,
+        CancellationToken cancellationToken,
+        params (string Name, object? Value)[] parameters)
     {
-        public DbSet<EntityWithoutBackingField> Items => Set<EntityWithoutBackingField>();
+        var connection = context.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(cancellationToken);
 
-        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-            configurationBuilder.ApplyTrellisConventions();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
-            modelBuilder.Entity<EntityWithoutBackingField>(b => b.HasKey(e => e.Id));
+        foreach (var (name, value) in parameters)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value ?? DBNull.Value;
+            command.Parameters.Add(parameter);
+        }
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private class NoBackingFieldIndexedDbContext(DbContextOptions<NoBackingFieldIndexedDbContext> options)
+    private class NoStorageMemberDbContext(DbContextOptions<NoStorageMemberDbContext> options)
         : DbContext(options)
     {
-        public DbSet<EntityWithoutBackingField> Items => Set<EntityWithoutBackingField>();
+        public DbSet<EntityWithoutStorageMember> Items => Set<EntityWithoutStorageMember>();
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
-            modelBuilder.Entity<EntityWithoutBackingField>(builder =>
+            modelBuilder.Entity<EntityWithoutStorageMember>(b => b.HasKey(e => e.Id));
+    }
+
+    private class NoStorageMemberIndexedDbContext(DbContextOptions<NoStorageMemberIndexedDbContext> options)
+        : DbContext(options)
+    {
+        public DbSet<EntityWithoutStorageMember> Items => Set<EntityWithoutStorageMember>();
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            modelBuilder.Entity<EntityWithoutStorageMember>(builder =>
             {
                 builder.HasKey(entity => entity.Id);
                 builder.HasTrellisIndex(entity => entity.Website);
@@ -596,12 +715,17 @@ public class MaybePropertyTests : IDisposable
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions(typeof(TestCustomerId).Assembly);
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
-            modelBuilder.Entity<DerivedTestCustomer>(builder =>
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<TestCustomer>(builder =>
             {
                 builder.HasKey(customer => customer.Id);
+                builder.Ignore(customer => customer.Orders);
                 builder.HasTrellisIndex(customer => customer.Phone);
             });
+
+            modelBuilder.Entity<DerivedTestCustomer>(builder => builder.HasBaseType<TestCustomer>());
+        }
     }
 
     private class InvalidSelectorIndexedDbContext(DbContextOptions<InvalidSelectorIndexedDbContext> options)

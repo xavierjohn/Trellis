@@ -27,14 +27,14 @@ public static class MaybeModelExtensions
 
             foreach (var maybeProperty in MaybePropertyResolver.GetMaybeProperties(entityType.ClrType))
             {
-                var mappedProperty = entityType.FindProperty(maybeProperty.BackingFieldName);
+                var mappedProperty = entityType.FindProperty(maybeProperty.StorageMemberName);
                 var providerClrType = mappedProperty?.GetTypeMapping().Converter?.ProviderClrType;
 
                 mappings.Add(new MaybePropertyMapping(
                     entityType.Name,
                     entityType.ClrType,
                     maybeProperty.PropertyName,
-                    maybeProperty.BackingFieldName,
+                    maybeProperty.StorageMemberName,
                     maybeProperty.InnerType,
                     maybeProperty.StoreType,
                     mappedProperty is not null,
@@ -78,8 +78,8 @@ public static class MaybeModelExtensions
             builder.Append(mapping.EntityTypeName)
                 .Append('.')
                 .Append(mapping.PropertyName)
-                .Append(" => field=")
-                .Append(mapping.BackingFieldName)
+                .Append(" => mappedBackingField=")
+                .Append(mapping.MappedBackingFieldName)
                 .Append(", column=")
                 .Append(mapping.ColumnName ?? "<none>")
                 .Append(", storeType=")

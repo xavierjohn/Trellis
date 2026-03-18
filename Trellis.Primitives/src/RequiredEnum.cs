@@ -24,8 +24,8 @@ using System.Reflection;
 /// Each enum value object member is defined as a static readonly field:
 /// <list type="bullet">
 /// <item>Members are discovered via reflection and cached for performance</item>
-/// <item>The <see cref="Value"/> property is auto-derived from the field name and is the semantic string value</item>
-/// <item>The <see cref="Ordinal"/> property is auto-generated for persistence when an integer representation is needed</item>
+/// <item>The <see cref="Value"/> property is the semantic string value. It defaults to the field name and can be overridden with <see cref="EnumValueAttribute"/> only when the external name must differ.</item>
+/// <item>The <see cref="Ordinal"/> property is secondary declaration-order metadata, not semantic identity</item>
 /// </list>
 /// </para>
 /// <para>
@@ -71,19 +71,20 @@ using System.Reflection;
 /// // - public static bool TryParse(string? s, IFormatProvider? provider, out OrderState result)
 /// // - [JsonConverter(typeof(RequiredEnumJsonConverter<OrderState>))] attribute
 /// 
-/// // Usage - Value is auto-derived from field name
+/// // Usage - Value defaults to the field name
 /// var state = OrderState.Draft;           // Value = "Draft"
 /// var all = OrderState.GetAll();
 /// var result = OrderState.TryCreate("Draft");  // Result<OrderState>
 /// ]]></code>
 /// </example>
 /// <example>
-/// Enum value object with behavior:
+/// Enum value object with behavior, using field names by default and an override only where needed:
 /// <code><![CDATA[
 /// public partial class PaymentMethod : RequiredEnum<PaymentMethod>
 /// {
 ///     public static readonly PaymentMethod CreditCard = new(fee: 0.029m);
 ///     public static readonly PaymentMethod BankTransfer = new(fee: 0.005m);
+///     [EnumValue("cash-payment")]
 ///     public static readonly PaymentMethod Cash = new(fee: 0m);
 ///     
 ///     public decimal Fee { get; }
@@ -92,6 +93,9 @@ using System.Reflection;
 ///     
 ///     public decimal CalculateFee(decimal amount) => amount * Fee;
 /// }
+/// 
+/// // CreditCard.Value == "CreditCard"
+/// // Cash.Value == "cash-payment"
 /// ]]></code>
 /// </example>
 /// <example>
@@ -139,7 +143,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 
     /// <summary>
     /// Gets the string value of this enum value object member.
-    /// Auto-derived from the field name during discovery.
+    /// Defaults to the field name during discovery and can be overridden with <see cref="EnumValueAttribute"/>.
     /// </summary>
     /// <remarks>
     /// Value is lazily initialized on first access to avoid chicken-and-egg issues
@@ -156,12 +160,16 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     }
 
     /// <summary>
-    /// Gets the auto-generated integer ordinal for persistence.
-    /// This is an infrastructure concern - values are assigned based on declaration order (0, 1, 2, ...).
+    /// Gets auto-generated declaration-order metadata for the member.
+    /// This is a secondary infrastructure/detail value, not semantic identity.
     /// </summary>
     /// <remarks>
+    /// Ordinal values are assigned from declaration order (0, 1, 2, ...).
+    /// Reordering fields changes ordinals, so they should not be treated as stable wire or storage contracts.
+    /// <para>
     /// Ordinal is lazily initialized on first access to avoid chicken-and-egg issues
     /// with static field initialization order.
+    /// </para>
     /// </remarks>
     public int Ordinal => _ordinal ?? InitializeOrdinal();
 
@@ -174,7 +182,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     }
 
     /// <summary>
-    /// Initializes a new instance. The value is auto-derived from the field name.
+    /// Initializes a new instance. The symbolic value is assigned during member discovery.
     /// </summary>
     protected RequiredEnum()
     {
@@ -187,9 +195,9 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     public static IReadOnlyCollection<TSelf> GetAll() => GetCache().Members;
 
     /// <summary>
-    /// Attempts to find a member by its name (case-insensitive).
+    /// Attempts to find a member by its symbolic value (case-insensitive).
     /// </summary>
-    /// <param name="name">The name to search for.</param>
+    /// <param name="name">The symbolic value to search for.</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
     /// <returns>A <see cref="Result{TSelf}"/> containing the matching member or a validation error.</returns>
     public static Result<TSelf> TryFromName(string? name, string? fieldName = null)
@@ -246,6 +254,15 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         s_cache.GetOrAdd(typeof(TSelf), _ =>
         {
             var members = DiscoverMembers().ToList();
+            var duplicateValue = members
+                .GroupBy(member => member.Value, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(group => group.Count() > 1);
+
+            if (duplicateValue is not null)
+                throw new InvalidOperationException(
+                    $"RequiredEnum '{typeof(TSelf).Name}' contains duplicate symbolic value '{duplicateValue.Key}'. " +
+                    "Each member must have a unique Value.");
+
             var byName = members.ToDictionary(m => m.Value, StringComparer.OrdinalIgnoreCase);
             return (members.AsReadOnly(), byName);
         });
@@ -259,8 +276,10 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         {
             if (field.FieldType == typeof(TSelf) && field.IsInitOnly && field.GetValue(null) is TSelf member)
             {
-                // Auto-derive Value from field name and assign Ordinal
-                member._value = field.Name;
+                var enumValue = field.GetCustomAttribute<EnumValueAttribute>()?.Value;
+
+                // Assign the semantic symbolic value and declaration order.
+                member._value = enumValue ?? field.Name;
                 member._ordinal = index++;
                 yield return member;
             }

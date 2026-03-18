@@ -54,7 +54,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// For each partial class inheriting from <c>RequiredEnum</c>, generates:
 /// <list type="bullet">
 /// <item><c>IScalarValue&lt;TSelf, string&gt;</c> - Interface for ASP.NET Core automatic validation</item>
-/// <item><c>TryCreate(string)</c> - Creates by looking up enum member by name (delegates to TryFromName)</item>
+/// <item><c>TryCreate(string)</c> - Creates by looking up enum member by symbolic value (delegates to TryFromName)</item>
 /// <item><c>TryCreate(string?, string?)</c> - Creates with custom field name for validation errors</item>
 /// <item><c>Parse(string, IFormatProvider?)</c> - IParsable implementation</item>
 /// <item><c>TryParse(...)</c> - IParsable try-parse pattern</item>
@@ -90,6 +90,8 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// {
 ///     public static readonly OrderState Draft = new();
 ///     public static readonly OrderState Confirmed = new();
+///     [EnumValue("awaiting-payment")]
+///     public static readonly OrderState AwaitingPayment = new();
 /// }
 /// 
 /// // Generated code provides everything else:
@@ -266,10 +268,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     {g.Accessibility.ToCamelCase()} partial class {g.ClassName} : IScalarValue<{g.ClassName}, string>, IParsable<{g.ClassName}>
     {{
         /// <summary>
-        /// Creates a validated instance from a string by looking up the enum member by name.
+        /// Creates a validated instance from a string by looking up the enum member by symbolic value.
         /// Required by IScalarValue interface for model binding and JSON deserialization.
         /// </summary>
-        /// <param name=""value"">The string value to look up.</param>
+        /// <param name=""value"">The symbolic value to look up.</param>
         /// <returns>Success with the enum member, or Failure with validation errors.</returns>
         public static Result<{g.ClassName}> TryCreate(string value)
         {{
@@ -278,9 +280,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         }}
 
         /// <summary>
-        /// Creates a validated instance from a string by looking up the enum member by name.
+        /// Creates a validated instance from a string by looking up the enum member by symbolic value.
         /// </summary>
-        /// <param name=""value"">The string value to look up.</param>
+        /// <param name=""value"">The symbolic value to look up.</param>
         /// <param name=""fieldName"">Optional field name for validation error messages.</param>
         /// <returns>Success with the enum member, or Failure with validation errors.</returns>
         public static Result<{g.ClassName}> TryCreate(string? value, string? fieldName = null)

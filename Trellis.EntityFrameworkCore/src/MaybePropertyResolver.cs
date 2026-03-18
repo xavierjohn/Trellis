@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 internal readonly record struct MaybePropertyDescriptor(
     PropertyInfo Property,
     string PropertyName,
-    string BackingFieldName,
+    string StorageMemberName,
     Type InnerType,
     Type StoreType);
 
@@ -65,7 +65,7 @@ internal static class MaybePropertyResolver
         return properties;
     }
 
-    internal static LambdaExpression BuildBackingFieldLambda<TEntity, TInner>(
+    internal static LambdaExpression BuildStorageMemberLambda<TEntity, TInner>(
         Expression<Func<TEntity, Maybe<TInner>>> propertySelector)
         where TEntity : class
         where TInner : notnull
@@ -86,18 +86,18 @@ internal static class MaybePropertyResolver
         return Expression.Call(
             genericMethod,
             Expression.Convert(parameter, typeof(object)),
-            Expression.Constant(descriptor.BackingFieldName));
+            Expression.Constant(descriptor.StorageMemberName));
     }
 
     internal static string ResolveMappedPropertyName(PropertyInfo property) =>
         IsMaybeProperty(property)
-            ? CreateDescriptor(property).BackingFieldName
+            ? CreateDescriptor(property).StorageMemberName
             : property.Name;
 
     internal static MaybePropertyDescriptor Describe(PropertyInfo property) =>
         CreateDescriptor(property);
 
-    internal static FieldInfo? FindBackingField(Type clrType, MaybePropertyDescriptor descriptor)
+    internal static FieldInfo? FindStorageMember(Type clrType, MaybePropertyDescriptor descriptor)
     {
         for (var currentType = descriptor.Property.DeclaringType; currentType is not null; currentType = currentType.BaseType)
         {
@@ -105,7 +105,7 @@ internal static class MaybePropertyResolver
                 continue;
 
             var field = currentType.GetField(
-                descriptor.BackingFieldName,
+                descriptor.StorageMemberName,
                 BindingFlags.Instance | BindingFlags.NonPublic);
 
             if (field is not null)
@@ -124,12 +124,12 @@ internal static class MaybePropertyResolver
             throw new ArgumentException($"Property '{property.Name}' is not of type Maybe<T>.", nameof(property));
 
         var innerType = property.PropertyType.GetGenericArguments()[0];
-        var backingFieldName = MaybeFieldNaming.ToBackingFieldName(property.Name);
+        var storageMemberName = MaybeFieldNaming.ToStorageMemberName(property.Name);
         var storeType = innerType.IsValueType
             ? typeof(Nullable<>).MakeGenericType(innerType)
             : innerType;
 
-        return new MaybePropertyDescriptor(property, property.Name, backingFieldName, innerType, storeType);
+        return new MaybePropertyDescriptor(property, property.Name, storageMemberName, innerType, storeType);
     }
 
     private static void CollectReferencedProperties(

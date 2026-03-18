@@ -33,6 +33,31 @@ public partial class TestPaymentMethod : RequiredEnum<TestPaymentMethod>
 }
 
 /// <summary>
+/// Test enum value object with a custom external name for one member.
+/// </summary>
+public partial class TestOverriddenOrderState : RequiredEnum<TestOverriddenOrderState>
+{
+    public static readonly TestOverriddenOrderState Draft = new();
+
+    [EnumValue("payment-pending")]
+    public static readonly TestOverriddenOrderState AwaitingPayment = new();
+
+    public static readonly TestOverriddenOrderState Shipped = new();
+}
+
+/// <summary>
+/// Test enum value object with duplicate symbolic codes.
+/// </summary>
+public partial class TestDuplicateEnumValue : RequiredEnum<TestDuplicateEnumValue>
+{
+    [EnumValue("duplicate")]
+    public static readonly TestDuplicateEnumValue First = new();
+
+    [EnumValue("duplicate")]
+    public static readonly TestDuplicateEnumValue Second = new();
+}
+
+/// <summary>
 /// Test enum used to verify GetAll does not expose mutable shared cache state.
 /// </summary>
 public partial class TestImmutableEnumMembers : RequiredEnum<TestImmutableEnumMembers>
@@ -236,6 +261,26 @@ public class RequiredEnumTests
         json.Should().Contain("\"State\":\"Draft\"");
     }
 
+    [Fact]
+    public void JsonSerialize_OverriddenEnumValue_WritesCustomExternalName()
+    {
+        // Act
+        var json = JsonSerializer.Serialize(TestOverriddenOrderState.AwaitingPayment);
+
+        // Assert
+        json.Should().Be("\"payment-pending\"");
+    }
+
+    [Fact]
+    public void JsonDeserialize_OverriddenEnumValue_ReadsCustomExternalName()
+    {
+        // Act
+        var state = JsonSerializer.Deserialize<TestOverriddenOrderState>("\"payment-pending\"");
+
+        // Assert
+        state.Should().Be(TestOverriddenOrderState.AwaitingPayment);
+    }
+
     #endregion
 
     #region IScalarValue Interface Tests
@@ -276,6 +321,17 @@ public class RequiredEnumTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Fee.Should().Be(0.005m);
+    }
+
+    [Fact]
+    public void TryCreate_OverriddenEnumValue_ReturnsMatchingMember()
+    {
+        // Act
+        var result = TestOverriddenOrderState.TryCreate("payment-pending");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(TestOverriddenOrderState.AwaitingPayment);
     }
 
     #endregion
@@ -321,6 +377,15 @@ public class RequiredEnumTests
     }
 
     [Fact]
+    public void Value_UsesFieldNameByDefault_AndOnlyOverridesWhenSpecified()
+    {
+        // Assert
+        TestOverriddenOrderState.Draft.Value.Should().Be("Draft");
+        TestOverriddenOrderState.AwaitingPayment.Value.Should().Be("payment-pending");
+        TestOverriddenOrderState.Shipped.Value.Should().Be("Shipped");
+    }
+
+    [Fact]
     public void Ordinal_IsAssignedInOrder()
     {
         // Assert (ordinals are assigned based on declaration order)
@@ -349,6 +414,17 @@ public class RequiredEnumTests
         // Assert
         (TestOrderState.Draft == TestOrderState.Confirmed).Should().BeFalse();
         TestOrderState.Draft.Equals(TestOrderState.Confirmed).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetAll_DuplicateSymbolicValues_ThrowsInvalidOperationException()
+    {
+        // Act
+        var act = () => TestDuplicateEnumValue.GetAll();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*duplicate symbolic value 'duplicate'*");
     }
 
     #endregion

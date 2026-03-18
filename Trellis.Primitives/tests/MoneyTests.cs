@@ -2,7 +2,9 @@
 
 namespace Trellis.Primitives.Tests;
 
+using System.Reflection;
 using System.Text.Json;
+using Trellis;
 
 public class MoneyTests
 {
@@ -535,6 +537,62 @@ public class MoneyTests
             .WithMessage("Currency is required.");
     }
 
+    #region Taxonomy Tests
+
+    [Fact]
+    public void Money_IsStructuredValueObject_NotScalarValueObject()
+    {
+        typeof(Money).IsAssignableTo(typeof(IScalarValue<,>)).Should().BeFalse();
+        typeof(Money).BaseType.Should().Be<ValueObject>();
+        typeof(Money).GetProperty("Value", BindingFlags.Instance | BindingFlags.Public)
+            .Should().BeNull("Money exposes Amount and Currency as structured components instead of one canonical scalar Value");
+    }
+
+    [Theory]
+    [MemberData(nameof(ScalarValueObjectAuditCases))]
+    public void BuiltInScalarValueObjects_FollowScalarContract(Type valueObjectType, Type primitiveType)
+    {
+        valueObjectType.BaseType.Should().NotBeNull();
+        valueObjectType.BaseType!.IsGenericType.Should().BeTrue();
+        (valueObjectType.BaseType!.GetGenericTypeDefinition() == typeof(ScalarValueObject<,>)).Should().BeTrue();
+        valueObjectType.BaseType!.GetGenericArguments().Should().Equal([valueObjectType, primitiveType]);
+
+        valueObjectType.GetInterfaces().Should().Contain(interfaceType =>
+            interfaceType.IsGenericType
+            && interfaceType.GetGenericTypeDefinition() == typeof(IScalarValue<,>)
+            && interfaceType.GetGenericArguments()[0] == valueObjectType
+            && interfaceType.GetGenericArguments()[1] == primitiveType);
+
+        var valueProperty = valueObjectType.GetProperty("Value", BindingFlags.Instance | BindingFlags.Public);
+        valueProperty.Should().NotBeNull();
+        valueProperty!.PropertyType.Should().Be(primitiveType);
+
+        valueObjectType.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+            .Should().Contain(method => method.Name == nameof(Money.TryCreate)
+                && method.ReturnType == typeof(Result<>).MakeGenericType(valueObjectType));
+
+        valueObjectType.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+            .Should().Contain(method => method.Name == nameof(Money.Create)
+                && method.ReturnType == valueObjectType);
+    }
+
+    public static TheoryData<Type, Type> ScalarValueObjectAuditCases =>
+        new()
+        {
+            { typeof(EmailAddress), typeof(string) },
+            { typeof(PhoneNumber), typeof(string) },
+            { typeof(Url), typeof(string) },
+            { typeof(Slug), typeof(string) },
+            { typeof(CurrencyCode), typeof(string) },
+            { typeof(CountryCode), typeof(string) },
+            { typeof(LanguageCode), typeof(string) },
+            { typeof(IpAddress), typeof(string) },
+            { typeof(Hostname), typeof(string) },
+            { typeof(Age), typeof(int) },
+            { typeof(Percentage), typeof(decimal) },
+        };
+
+    #endregion
     #endregion
 
     #region Utility Tests

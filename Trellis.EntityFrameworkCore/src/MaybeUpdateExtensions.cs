@@ -63,7 +63,7 @@ public static class MaybeUpdateExtensions
         where TInner : notnull
     {
         var descriptor = MaybePropertyResolver.Resolve(propertySelector);
-        var propertyLambda = MaybePropertyResolver.BuildBackingFieldLambda(propertySelector);
+        var propertyLambda = MaybePropertyResolver.BuildStorageMemberLambda(propertySelector);
         var propertyType = descriptor.StoreType;
 
         if (!clearValue && typeof(TInner).IsValueType)

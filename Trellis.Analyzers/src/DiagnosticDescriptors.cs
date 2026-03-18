@@ -299,14 +299,15 @@ public static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor HasIndexMaybeProperty = new(
         id: "TRLS021",
         title: "HasIndex references a Maybe<T> property",
-        messageFormat: "'{0}' is a Maybe<T> property. Prefer HasTrellisIndex, or use the backing field name '{1}' in HasIndex.",
+        messageFormat: "'{0}' is a Maybe<T> property. Prefer HasTrellisIndex; use mapped storage member '{1}' only as a fallback.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps " +
-                 "Maybe<T> via backing fields, so the CLR property is invisible to EF Core's index builder. " +
-                 "Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped backing fields automatically. " +
-                 "If needed, you can also use string-based HasIndex with the backing field name directly. " +
+                 "Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. " +
+                 "Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. " +
+                 "If needed, you can also use string-based HasIndex with the storage member name directly. " +
                  "Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex(\"Status\", \"_submittedAt\").",
         helpLinkUri: HelpLinkBase + "TRLS021");
+
 }

@@ -20,8 +20,7 @@ public class OrdersController : ControllerBase
         {
             states = OrderState.GetAll().Select(s => new
             {
-                value = s.Value,
-                ordinal = s.Ordinal,
+                name = s,
                 canModify = s.CanModify,
                 canCancel = s.CanCancel
             })
@@ -34,8 +33,7 @@ public class OrdersController : ControllerBase
     public ActionResult GetStateByName(OrderState state) =>
         Ok(new
         {
-            value = state.Value,
-            ordinal = state.Ordinal,
+            name = state,
             canModify = state.CanModify,
             canCancel = state.CanCancel,
             message = $"Successfully bound OrderState '{state}' from route!"
@@ -48,7 +46,7 @@ public class OrdersController : ControllerBase
     public ActionResult UpdateOrder([FromBody] UpdateOrderDto dto) =>
         Ok(new
         {
-            newState = dto.State.Value,
+            newState = dto.State,
             canModify = dto.State.CanModify,
             canCancel = dto.State.CanCancel,
             assignedTo = dto.AssignedTo.Match(name => name.Value, () => (string?)null),
@@ -71,8 +69,7 @@ public class OrdersController : ControllerBase
             },
             state = new
             {
-                value = dto.InitialState.Value,
-                ordinal = dto.InitialState.Ordinal,
+                name = dto.InitialState,
                 canModify = dto.InitialState.CanModify,
                 canCancel = dto.InitialState.CanCancel
             },
@@ -88,7 +85,7 @@ public class OrdersController : ControllerBase
             ? Ok(new { message = "No state filter provided" })
             : Ok(new
             {
-                filterState = state.Value,
+                filterState = state,
                 canModify = state.CanModify,
                 message = $"Filtering orders by state: {state}"
             });

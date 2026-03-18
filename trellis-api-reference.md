@@ -728,11 +728,11 @@ Inherits `ScalarValueObject<TSelf, decimal>`. Same pattern as RequiredInt with `
 **NOT a ScalarValueObject** — standalone hierarchy. Smart enum pattern.
 
 ```csharp
-string Value { get; }      // auto-derived from field name
-int Ordinal { get; }       // auto-assigned (0, 1, 2...)
+string Value { get; }      // semantic symbolic value; defaults to field name or [EnumValue(...)]
+int Ordinal { get; }       // declaration-order metadata, not stable identity
 
 static IReadOnlyCollection<TSelf> GetAll()
-static Result<TSelf> TryFromName(string? name, string? fieldName = null)  // case-insensitive
+static Result<TSelf> TryFromName(string? name, string? fieldName = null)  // case-insensitive symbolic value lookup
 bool Is(params TSelf[] values)
 bool IsNot(params TSelf[] values)
 
@@ -740,6 +740,8 @@ bool IsNot(params TSelf[] values)
 static Result<Foo> TryCreate(string? value, string? fieldName = null)
 // IParsable<Foo>, [JsonConverter(typeof(RequiredEnumJsonConverter<Foo>))]
 ```
+
+Use `[EnumValue("code")]` only when the external name must differ from the default field name.
 
 ## Concrete Value Objects (namespace: `Trellis.Primitives`)
 
@@ -762,7 +764,7 @@ All have `TryCreate` → `Result<T>` and `Create` → `T` (throws). All implemen
 
 ### Money (extends ValueObject, NOT ScalarValueObject)
 
-Multi-value: `Amount` (decimal) + `Currency` (CurrencyCode). JSON: `{"amount": 99.99, "currency": "USD"}`.
+Structured value object with two semantic components: `Amount` (decimal) + `Currency` (CurrencyCode). JSON: `{"amount": 99.99, "currency": "USD"}`.
 
 ```csharp
 decimal Amount { get; }

@@ -5,12 +5,12 @@ using System.Reflection;
 using Trellis.Primitives;
 
 /// <summary>
-/// Provides OpenTelemetry activity tracing for Primitive Value Objects operations.
+/// Provides OpenTelemetry activity tracing for Trellis primitive value object operations.
 /// Enables monitoring and diagnostics of value object creation, validation, and parsing activities.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This static class configures distributed tracing support for the PrimitiveValueObjects library,
+/// This static class configures distributed tracing support for Trellis primitive value objects,
 /// allowing you to observe value object operations in Application Insights, Jaeger, Zipkin,
 /// or other OpenTelemetry-compatible observability platforms.
 /// </para>
@@ -36,14 +36,14 @@ using Trellis.Primitives;
 /// builder.Services.AddOpenTelemetry()
 ///     .WithTracing(tracerProviderBuilder =>
 ///         tracerProviderBuilder
-///             .AddPrimitiveValueObjectInstrumentation()  // Adds PVO activity source
+///             .AddPrimitiveValueObjectInstrumentation()  // Adds Trellis primitive tracing
 ///             .AddAspNetCoreInstrumentation()
 ///             .AddHttpClientInstrumentation()
 ///             .AddConsoleExporter());
 /// 
 /// var app = builder.Build();
 /// 
-/// // Now EmailAddress.TryCreate and other PVO operations will be traced
+/// // Now EmailAddress.TryCreate and other primitive value object operations will be traced
 /// app.MapPost("/users", (CreateUserRequest request) =>
 ///     EmailAddress.TryCreate(request.Email) // This creates a traced activity
 ///         .Bind(email => _userService.CreateUser(email))
@@ -72,14 +72,14 @@ using Trellis.Primitives;
 public static class PrimitiveValueObjectTrace
 {
     /// <summary>
-    /// Gets the assembly name of the PrimitiveValueObjects library.
+    /// Gets the assembly name for Trellis primitive value object tracing.
     /// Used for versioning and metadata in traces.
     /// </summary>
     internal static readonly AssemblyName AssemblyName = typeof(PrimitiveValueObjectTrace).Assembly.GetName();
 
     /// <summary>
-    /// Gets the name of the activity source used for PrimitiveValueObjects tracing.
-    /// Value: "Functional DDD PVO"
+    /// Gets the name of the activity source used for primitive value object tracing.
+    /// Uses the existing activity source identifier for compatibility with current telemetry pipelines.
     /// </summary>
     /// <remarks>
     /// This name is used to identify traces from this library in observability platforms.
@@ -88,7 +88,7 @@ public static class PrimitiveValueObjectTrace
     internal static readonly string ActivitySourceName = "Functional DDD PVO";
 
     /// <summary>
-    /// Gets the version of the PrimitiveValueObjects library.
+    /// Gets the version used for primitive value object tracing metadata.
     /// </summary>
     /// <remarks>
     /// The version is included in trace metadata to help correlate behavior with specific library versions.
@@ -101,7 +101,7 @@ public static class PrimitiveValueObjectTrace
     private static readonly AsyncLocal<ActivitySource?> _testActivitySource = new();
 
     /// <summary>
-    /// Gets the <see cref="ActivitySource"/> for tracing PrimitiveValueObjects operations.
+    /// Gets the <see cref="ActivitySource"/> for tracing primitive value object operations.
     /// </summary>
     /// <remarks>
     /// <para>
