@@ -1,4 +1,4 @@
-# Specifications
+﻿# Specifications
 
 **Level:** Intermediate | **Package:** `Trellis.DomainDrivenDesign`
 
@@ -125,11 +125,30 @@ public class OrderRepository : IOrderRepository
 | Member | Description |
 |--------|-------------|
 | `ToExpression()` | Returns `Expression<Func<T, bool>>` for LINQ providers |
-| `IsSatisfiedBy(T)` | Evaluates the specification in-memory |
+| `IsSatisfiedBy(T)` | Evaluates the specification in-memory (cached compilation) |
+| `CacheCompilation` | `true` by default; override to `false` for mutable-state specs |
 | `And(Specification<T>)` | Logical AND composition |
 | `Or(Specification<T>)` | Logical OR composition |
 | `Not()` | Logical negation |
 | Implicit operator | Converts to `Expression<Func<T, bool>>` for `IQueryable.Where()` |
+
+## Expression Caching
+
+`IsSatisfiedBy` automatically caches the compiled expression using `Lazy<Func<T, bool>>`, so repeated in-memory evaluations compile the expression tree only once.
+
+If your specification captures **mutable state** — for example, a threshold that changes at runtime — the cached delegate will not reflect updated values. In that case, override `CacheCompilation` to opt out:
+
+```csharp
+// Mutable threshold spec — opt out of caching
+public class ThresholdSpec(Func<int> getThreshold) : Specification<int>
+{
+    protected override bool CacheCompilation => false;
+    public override Expression<Func<int, bool>> ToExpression()
+        => x => x > getThreshold();
+}
+```
+
+> **Tip:** Most specifications are constructed with immutable parameters (e.g., `new HighValueOrderSpec(500m)`). For these, caching is always safe and enabled by default.
 
 ## Design Principles
 

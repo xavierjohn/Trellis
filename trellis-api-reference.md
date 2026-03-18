@@ -108,7 +108,6 @@ Result<T> FromException<T>(Exception ex, Func<Exception, Error>? map = null)
 Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2)
 // ... through 9-tuple arity:
 Result<(T1,...,T9)> Combine<T1,...,T9>(Result<T1> r1, ..., Result<T9> r9)
-Maybe<T> SuccessOrNone<T>(T? value)               // Maybe.From(value) if non-null, Maybe.None<T>() if null
 ```
 
 ## RailwayTrackAttribute & TrackBehavior

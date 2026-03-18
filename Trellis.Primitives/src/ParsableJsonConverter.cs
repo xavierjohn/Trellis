@@ -189,7 +189,10 @@ public class ParsableJsonConverter<T> :
             _ => throw new JsonException($"Unexpected JSON token type '{reader.TokenType}' when deserializing '{typeof(T).Name}'. Expected string, number, boolean, or null.")
         };
 
-        return T.Parse(raw!, default);
+        if (raw is null)
+            throw new JsonException($"Cannot deserialize null JSON value to non-nullable type '{typeof(T).Name}'.");
+
+        return T.Parse(raw, default);
     }
 
     /// <summary>
@@ -222,9 +225,9 @@ public class ParsableJsonConverter<T> :
         const NumberStyles style = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent;
         if (stringValue is not null
             && !stringValue.StartsWith('+')
-            && decimal.TryParse(stringValue, style, CultureInfo.InvariantCulture, out _))
+            && decimal.TryParse(stringValue, style, CultureInfo.InvariantCulture, out var numericValue))
         {
-            writer.WriteRawValue(stringValue);
+            writer.WriteNumberValue(numericValue);
         }
         else
         {

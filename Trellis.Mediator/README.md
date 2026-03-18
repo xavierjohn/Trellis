@@ -31,7 +31,7 @@ using Trellis.Mediator;
 services.AddMediator(options =>
 {
     options.Assemblies = [typeof(MyCommand).Assembly];
-    options.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors;
+    options.PipelineBehaviors = [.. ServiceCollectionExtensions.PipelineBehaviors];
 });
 
 // Auto-discover IAuthorizeResource<T> commands and IResourceLoader<,> implementations

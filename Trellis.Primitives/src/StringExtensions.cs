@@ -3,7 +3,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
-/// Provides internal string manipulation extension methods for Trellis primitives.
+/// String manipulation helpers for value object field name normalization.
 /// </summary>
 public static class StringExtensions
 {
