@@ -542,11 +542,21 @@ Maybe<string> fullName =
 
 ### WhenAll — Parallel Execution
 
-Runs multiple `Task<Result<T>>` in parallel and combines into a tuple result.
+Awaits multiple `Task<Result<T>>` in parallel and combines into a tuple result.
+**This is an extension method on a tuple of tasks**, enabling fluent chaining with `ParallelAsync`.
 
 ```csharp
-Task<Result<(T1, T2)>> WhenAllAsync<T1, T2>(Task<Result<T1>>, Task<Result<T2>>)
+// Extension method on value tuple — enables .WhenAllAsync() fluent chain
+Task<Result<(T1, T2)>> WhenAllAsync<T1, T2>(this (Task<Result<T1>>, Task<Result<T2>>) tasks)
 // ... through 9-tuple arity
+
+// Usage — fluent chain with ParallelAsync
+var result = await Result.ParallelAsync(
+    () => _customerRepo.GetByIdAsync(customerId, ct),
+    () => _productRepo.GetByIdsAsync(productIds, ct))
+    .WhenAllAsync()
+    .BindAsync((Customer customer, List<Product> products) =>
+        Order.TryCreate(customer, products, lineItems));
 ```
 
 ### ParallelAsync — Launch Parallel Operations
