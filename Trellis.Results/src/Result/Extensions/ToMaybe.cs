@@ -21,6 +21,8 @@ public static class ToMaybeExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(ToMaybe));
 
+        result.LogActivityStatus();
+
         if (result.IsSuccess)
             return Maybe.From(result.Value);
 
