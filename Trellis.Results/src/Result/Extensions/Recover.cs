@@ -23,6 +23,7 @@ public static class RecoverExtensions
     /// <param name="result">The result to recover from.</param>
     /// <param name="fallback">The fallback value to use if the result is a failure.</param>
     /// <returns>The original result if success; otherwise a success with the fallback value.</returns>
+    [RailwayTrack(TrackBehavior.Failure)]
     public static Result<TValue> Recover<TValue>(this Result<TValue> result, TValue fallback)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Recover));
@@ -47,6 +48,7 @@ public static class RecoverExtensions
     /// <param name="result">The result to recover from.</param>
     /// <param name="fallbackFunc">The function to produce a fallback value if the result is a failure.</param>
     /// <returns>The original result if success; otherwise a success with the fallback value.</returns>
+    [RailwayTrack(TrackBehavior.Failure)]
     public static Result<TValue> Recover<TValue>(this Result<TValue> result, Func<TValue> fallbackFunc)
     {
         ArgumentNullException.ThrowIfNull(fallbackFunc);
@@ -73,6 +75,7 @@ public static class RecoverExtensions
     /// <param name="result">The result to recover from.</param>
     /// <param name="fallbackFunc">The function that receives the error and produces a fallback value.</param>
     /// <returns>The original result if success; otherwise a success with the fallback value.</returns>
+    [RailwayTrack(TrackBehavior.Failure)]
     public static Result<TValue> Recover<TValue>(this Result<TValue> result, Func<Error, TValue> fallbackFunc)
     {
         ArgumentNullException.ThrowIfNull(fallbackFunc);
