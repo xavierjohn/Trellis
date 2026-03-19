@@ -24,7 +24,7 @@ public static class ServiceCollectionExtensions
     /// </list>
     /// <para>
     /// To add resource-based authorization with a loaded resource, call
-    /// <see cref="AddResourceAuthorization(IServiceCollection, Assembly)"/> to auto-discover commands
+    /// <see cref="AddResourceAuthorization(IServiceCollection, Assembly[])"/> to auto-discover commands
     /// implementing <see cref="IAuthorizeResource{TResource}"/>, or register per-command via
     /// <see cref="AddResourceAuthorization{TMessage, TResource, TResponse}"/>.
     /// </para>
@@ -85,7 +85,7 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
     /// <para>
-    /// Prefer <see cref="AddResourceAuthorization(IServiceCollection, Assembly)"/> for automatic
+    /// Prefer <see cref="AddResourceAuthorization(IServiceCollection, Assembly[])"/> for automatic
     /// discovery. Use this explicit overload for AOT/trimming scenarios where assembly scanning
     /// is not available.
     /// </para>
@@ -122,7 +122,9 @@ public static class ServiceCollectionExtensions
     /// as scoped services.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="assembly">The assembly to scan.</param>
+    /// <param name="assemblies">The assemblies to scan. Pass both the Application assembly
+    /// (containing <see cref="IAuthorizeResource{TResource}"/> commands) and the Acl assembly
+    /// (containing <see cref="IResourceLoader{TMessage, TResource}"/> implementations).</param>
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
     /// <para>
@@ -141,14 +143,16 @@ public static class ServiceCollectionExtensions
     /// </remarks>
     /// <example>
     /// <code>
-    /// // Scans for both IAuthorizeResource&lt;T&gt; commands and IResourceLoader&lt;,&gt; implementations
-    /// services.AddResourceAuthorization(typeof(CancelOrderCommand).Assembly);
+    /// // Scans both Application (commands) and Acl (loaders) assemblies
+    /// services.AddResourceAuthorization(
+    ///     typeof(CancelOrderCommand).Assembly,
+    ///     typeof(CancelOrderResourceLoader).Assembly);
     /// </code>
     /// </example>
     [RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.")]
     [RequiresDynamicCode("Constructs closed generic types at runtime. Use explicit registration for AOT scenarios.")]
     public static IServiceCollection AddResourceAuthorization(
-        this IServiceCollection services, Assembly assembly)
+        this IServiceCollection services, params Assembly[] assemblies)
     {
         var authorizeResourceDef = typeof(IAuthorizeResource<>);
         var loaderDef = typeof(IResourceLoader<,>);
@@ -162,6 +166,7 @@ public static class ServiceCollectionExtensions
             typeof(global::Mediator.IRequest<>),
         ];
 
+        foreach (var assembly in assemblies)
         foreach (var type in GetLoadableTypes(assembly))
         {
             if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
