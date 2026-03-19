@@ -68,6 +68,16 @@ public class FlattenValidationErrorsTests
     }
 
     [Fact]
+    public void FlattenValidationErrors_SuccessResult_ReturnsNull()
+    {
+        var result = Result.Success("hello");
+
+        var flattened = result.FlattenValidationErrors();
+
+        flattened.Should().BeNull();
+    }
+
+    [Fact]
     public void FlattenValidationErrors_AggregateWithMixedErrors_ExtractsOnlyValidationErrors()
     {
         var ve = ValidationError.For("email", "Email is required");

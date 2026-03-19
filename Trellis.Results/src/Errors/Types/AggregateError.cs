@@ -63,9 +63,12 @@ public sealed class AggregateError : Error
 
     /// <summary>
     /// Extracts and merges all <see cref="ValidationError"/> field errors from the aggregated errors.
-    /// Non-validation errors are ignored.
     /// </summary>
     /// <returns>A merged <see cref="ValidationError"/> containing all field errors, or null if no validation errors exist.</returns>
+    /// <remarks>
+    /// <para><strong>Warning:</strong> Non-validation errors are silently discarded.
+    /// For full control over all error types, use the <c>onAggregate</c> parameter on <c>MatchError</c> instead.</para>
+    /// </remarks>
     public ValidationError? FlattenValidationErrors()
     {
         ValidationError? merged = null;

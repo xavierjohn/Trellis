@@ -195,6 +195,29 @@ public class ParsableJsonConverter<T> :
         return T.Parse(raw, default);
     }
 
+    private static readonly bool s_isNumericType = IsNumericScalarType();
+
+    private static bool IsNumericScalarType()
+    {
+        // Walk the type hierarchy to find ScalarValueObject<TSelf, T> and check if T is numeric
+        var type = typeof(T);
+        while (type is not null)
+        {
+            if (type.IsGenericType && type.GetGenericTypeDefinition().Name.StartsWith("ScalarValueObject", StringComparison.Ordinal))
+            {
+                var primitiveType = type.GetGenericArguments()[1]; // T in ScalarValueObject<TSelf, T>
+                return primitiveType == typeof(int) || primitiveType == typeof(long)
+                    || primitiveType == typeof(decimal) || primitiveType == typeof(double)
+                    || primitiveType == typeof(float) || primitiveType == typeof(short)
+                    || primitiveType == typeof(byte);
+            }
+
+            type = type.BaseType;
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// Writes a specified value as JSON.
     /// </summary>
@@ -203,13 +226,8 @@ public class ParsableJsonConverter<T> :
     /// <param name="options">The serializer options to use.</param>
     /// <remarks>
     /// <para>
-    /// This method converts the value object to its string representation using
-    /// <see cref="object.ToString"/>. For numeric value objects, writes a JSON number;
-    /// for all others, writes a JSON string.
-    /// </para>
-    /// <para>
-    /// For value objects inheriting from <see cref="ScalarValueObject{TSelf, T}"/>, this typically
-    /// returns the wrapped primitive value (e.g., the email string, GUID string, etc.).
+    /// For value objects backed by numeric primitives (int, decimal, etc.), writes a JSON number.
+    /// For all others, writes a JSON string via <see cref="object.ToString"/>.
     /// </para>
     /// </remarks>
     public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
@@ -222,10 +240,9 @@ public class ParsableJsonConverter<T> :
 
         var stringValue = value.ToString();
 
-        const NumberStyles style = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent;
-        if (stringValue is not null
-            && !stringValue.StartsWith('+')
-            && decimal.TryParse(stringValue, style, CultureInfo.InvariantCulture, out var numericValue))
+        if (s_isNumericType
+            && stringValue is not null
+            && decimal.TryParse(stringValue, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var numericValue))
         {
             writer.WriteNumberValue(numericValue);
         }
