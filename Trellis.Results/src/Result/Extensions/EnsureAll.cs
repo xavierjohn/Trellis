@@ -37,8 +37,16 @@ public static class EnsureAllExtensions
         }
 
         Error? accumulated = null;
-        foreach (var (predicate, error) in checks)
+        for (var i = 0; i < checks.Length; i++)
         {
+            var (predicate, error) = checks[i];
+
+            if (predicate is null)
+                throw new ArgumentNullException($"checks[{i}].predicate");
+
+            if (error is null)
+                throw new ArgumentNullException($"checks[{i}].error");
+
             if (!predicate(result.Value))
                 accumulated = accumulated.Combine(error);
         }
