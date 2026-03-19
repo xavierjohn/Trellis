@@ -263,6 +263,34 @@ Result<PhoneNumber> result = maybePhone
 Result<Maybe<PhoneNumber>> result = Maybe.Optional(input, PhoneNumber.TryCreate);
 ```
 
+### LINQ Query Syntax
+
+Compose multiple optional values using C# query syntax:
+
+```csharp
+Maybe<string> fullName =
+    from first in firstName
+    from last in lastName
+    select $"{first} {last}";
+
+// Chain optional lookups — any None short-circuits to None
+Maybe<Email> managerEmail =
+    from user in users.FindById(userId)
+    from manager in users.FindById(user.ManagerId)
+    from email in manager.Email
+    select email;
+```
+
+### Bridging from Result (ToMaybe)
+
+```csharp
+// Convert Result to Maybe — success→Some, failure→None (error discarded)
+Maybe<Avatar> avatar = avatarService.GetByUserId(userId).ToMaybe();
+
+// Async variant
+Maybe<Avatar> avatar = await avatarService.GetByUserId(userId).ToMaybeAsync();
+```
+
 ## Next Steps
 
 - Learn the [Basics](basics.md) of Railway Oriented Programming

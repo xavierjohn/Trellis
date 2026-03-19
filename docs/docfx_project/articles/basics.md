@@ -413,6 +413,32 @@ var result = Age.TryCreate(25)
 - **TryCreate validation**: Format and structure rules (email format, non-empty)
 - **Ensure validation**: Business rules and context-specific rules (age limits, domain restrictions)
 
+### EnsureAll - Validate All, Collect All Errors
+
+**Use when:** You need to report all validation errors at once (e.g., form validation).
+
+Unlike `Ensure` which short-circuits on the first failure, `EnsureAll` runs ALL checks and accumulates errors:
+
+```csharp
+var result = Result.Success(request)
+    .EnsureAll(
+        (r => r.Name.Length > 0, Error.Validation("Name required", "name")),
+        (r => r.Age >= 18, Error.Validation("Must be 18+", "age")),
+        (r => r.Email.Contains('@'), Error.Validation("Invalid email", "email")));
+// Returns ONE ValidationError with ALL 3 field errors
+```
+
+### Recover - Simple Fallback Value
+
+**Use when:** You want a simple default value on failure (no need for a `Result`-returning function).
+
+```csharp
+var maxRetries = configService.GetInt("max_retries").Recover(3);
+var items = GetRecommendations(userId).Recover(Array.Empty<Product>());
+```
+
+For conditional recovery or when the fallback itself can fail, use `RecoverOnFailure` instead.
+
 ### RecoverOnFailure - Recover from Errors
 
 **Use when:** You want to try a fallback when an error occurs.
@@ -576,7 +602,9 @@ public async Task<IActionResult> ProcessOrderAsync(int orderId, CancellationToke
 | **Map** | Transform successful values | `T` | Type conversion, formatting |
 | **Tap** | Execute side effects (logging, etc.) | `void` | Logging, notifications, caching |
 | **Ensure** | Add business rule validation | `bool` | Age limits, domain restrictions |
-| **RecoverOnFailure** | Provide fallback on errors | `Result<T>` | Retry logic, default values |
+| **EnsureAll** | Validate all, accumulate errors | `bool` per check | Form validation (all errors at once) |
+| **Recover** | Provide simple fallback value | `T` | Default values, graceful degradation |
+| **RecoverOnFailure** | Provide fallback on errors | `Result<T>` | Retry logic, conditional recovery |
 | **Match** | Extract final value | `TResult` | Convert to HTTP response, display message |
 
 **All operations have `Async` variants** that accept `CancellationToken` for async/await support.

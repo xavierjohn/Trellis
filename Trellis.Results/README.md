@@ -17,10 +17,14 @@ Railway Oriented Programming (ROP) is a functional approach to error handling th
   - [Map](#map)
   - [Tap](#tap)
   - [Ensure](#ensure)
+  - [EnsureAll](#ensureall)
+  - [Recover](#recover)
   - [RecoverOnFailure](#recoveronfailure)
   - [Combine](#combine)
 - [Advanced Features](#advanced-features)
   - [LINQ Query Syntax](#linq-query-syntax)
+  - [Maybe LINQ Query Syntax](#maybe-linq-query-syntax)
+  - [ToMaybe — Convert Result to Maybe](#tomaybe--convert-result-to-maybe)
   - [Pattern Matching](#pattern-matching)
   - [Exception Capture](#exception-capture)
   - [Parallel Operations](#parallel-operations)
@@ -392,6 +396,46 @@ var result = await GetUserAsync("123")
                 Error.Validation("Email not verified"));
 ```
 
+### EnsureAll
+
+`EnsureAll` runs ALL validation checks and accumulates failures into a single error, instead of short-circuiting on the first failure like `Ensure`. Useful for form validation where users need to see all errors at once.
+
+**Use when:** You need to report all validation errors simultaneously.
+
+```csharp
+var result = Result.Success(request)
+    .EnsureAll(
+        (r => r.Name.Length > 0, Error.Validation("Name required", "name")),
+        (r => r.Age >= 18, Error.Validation("Must be 18+", "age")),
+        (r => r.Email.Contains('@'), Error.Validation("Invalid email", "email")));
+// If all three fail → ONE ValidationError with 3 field errors
+```
+
+Error merging uses `Error.Combine()` — `ValidationError` instances merge their field errors, mixed error types create an `AggregateError`.
+
+### Recover
+
+`Recover` converts any failure to success with a simple fallback value. Sugar for the most common `RecoverOnFailure` pattern.
+
+**Use when:** You want a simple fallback value without needing a `Result`-returning function.
+
+```csharp
+// Simple value fallback
+var maxRetries = configService.GetInt("max_retries").Recover(3);
+
+// Lazy fallback (function not called on success)
+var items = GetRecommendations(userId).Recover(() => Array.Empty<Product>());
+
+// Fallback with error context
+var message = TranslateKey(key).Recover(err => $"[{err.Code}] {key}");
+```
+
+**Async variant:**
+
+```csharp
+var result = await GetUserAsync(userId).RecoverAsync(defaultUser);
+```
+
 ### RecoverOnFailure
 
 `RecoverOnFailure` provides error recovery by calling a fallback function when a result fails. Useful for providing default values or alternative paths.
@@ -518,6 +562,46 @@ var userOrder = from user in GetUser(userId)
 ```
 
 **Note:** `where` uses an `UnexpectedError` if the predicate fails. For domain-specific errors, prefer `Ensure`.
+
+### Maybe LINQ Query Syntax
+
+You can use C# query expressions with `Maybe<T>` via `Select` and `SelectMany`:
+
+```csharp
+// Compose optional values
+Maybe<string> fullName =
+    from first in firstName
+    from last in lastName
+    select $"{first} {last}";
+
+// Chain optional lookups
+Maybe<Email> managerEmail =
+    from user in users.FindById(userId)
+    from manager in users.FindById(user.ManagerId)
+    from email in manager.Email
+    select email;
+
+// Any None short-circuits to None
+Maybe<string> a = Maybe.From("A");
+Maybe<string> b = Maybe.None<string>();
+var result = from x in a
+             from y in b    // None → entire expression is None
+             select x + y;  // Never reached
+```
+
+### ToMaybe — Convert Result to Maybe
+
+`ToMaybe` converts a `Result<T>` to a `Maybe<T>`: success→Some(value), failure→None. The error is intentionally discarded.
+
+**Use when:** You don't care why an operation failed — you just want the value if it succeeded, or nothing.
+
+```csharp
+// Try to load avatar — if it fails, just don't show one
+Maybe<Avatar> avatar = await avatarService.GetByUserId(userId).ToMaybeAsync();
+
+// Sync
+Maybe<User> user = GetUser(id).ToMaybe();
+```
 
 ### Pattern Matching
 
