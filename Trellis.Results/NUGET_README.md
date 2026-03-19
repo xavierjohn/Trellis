@@ -79,16 +79,19 @@ string greeting = some.Match(
 | **Tap** | Side effects on success | `.Tap(user => Log(user.Id))` |
 | **TapOnFailure** | Side effects on failure | `.TapOnFailure(err => Log(err))` |
 | **Ensure** | Validate conditions | `.Ensure(u => u.IsActive, error)` |
+| **EnsureAll** | Validate all, accumulate errors | `.EnsureAll((u => u.IsActive, err1), ...)` |
 | **Match** | Pattern match success/failure | `.Match(onSuccess, onFailure)` |
 | **MatchError** | Pattern match on specific error types | `.MatchError(onSuccess, onNotFound, ...)` |
 | **Combine** | Merge multiple Results | `Result.Combine(r1, r2, r3)` |
+| **Recover** | Simple fallback on failure | `.Recover(defaultValue)` |
 | **RecoverOnFailure** | Fallback on failure | `.RecoverOnFailure(err => default)` |
+| **ToMaybe** | Convert Result to Maybe | `.ToMaybe()` — success→Some, failure→None |
 | **MapOnFailure** | Transform errors | `.MapOnFailure(err => Error.Domain(...))` |
 | **When** | Conditional operations | `.When(u => u.IsPremium, ApplyDiscount)` |
 | **Traverse** | Map collection, short-circuit on first failure | `items.Traverse(i => Validate(i))` |
 
 All operations have **async variants** (`BindAsync`, `MapAsync`, etc.) with `CancellationToken` support.
-LINQ query syntax is also supported (`from`, `select`, `where`).
+LINQ query syntax is also supported (`from`, `select`, `where`) for both `Result<T>` and `Maybe<T>`.
 
 ## Real-World Example
 

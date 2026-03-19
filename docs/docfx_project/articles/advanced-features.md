@@ -355,6 +355,40 @@ var result = await (
 
 **Note:** LINQ query syntax works best with synchronous operations. For complex async workflows, consider using `BindAsync` for better readability and cancellation token support.
 
+### Maybe LINQ Query Syntax
+
+`Maybe<T>` also supports LINQ query syntax via `Select` and `SelectMany`, enabling composition of optional values:
+
+```csharp
+// Compose multiple optional values
+Maybe<string> fullName =
+    from first in firstName
+    from last in lastName
+    select $"{first} {last}";
+// If either is None → result is None
+
+// Chain optional lookups
+Maybe<Email> managerEmail =
+    from user in users.FindById(userId)
+    from manager in users.FindById(user.ManagerId)
+    from email in manager.Email
+    select email;
+```
+
+### ToMaybe - Convert Result to Maybe
+
+`ToMaybe` converts a `Result<T>` to a `Maybe<T>`: success→Some(value), failure→None. The error is intentionally discarded.
+
+**Use when:** You don't care why something failed — you just want the value if it succeeded.
+
+```csharp
+// Try to load avatar — if it fails, just don't show one
+Maybe<Avatar> avatar = await avatarService.GetByUserId(userId).ToMaybeAsync();
+
+// Sync version
+Maybe<User> user = GetUser(id).ToMaybe();
+```
+
 ## Maybe Type
 
 `Maybe<T>` represents domain-level optionality — a value that was either provided or intentionally omitted. It composes with `Result<T>` pipelines and provides type-safe handling of optional value objects.

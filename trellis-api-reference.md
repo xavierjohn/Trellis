@@ -164,6 +164,11 @@ Maybe<T> AsMaybe<T>(this T value) where T : class
 // AsNullable
 T? AsNullable<T>(this Maybe<T> maybe) where T : struct
 
+// ToMaybe (from Result) — discards error, keeps value if success
+Maybe<T> ToMaybe<T>(this Result<T>) where T : notnull
+Task<Maybe<T>> ToMaybeAsync<T>(this Task<Result<T>>) where T : notnull
+ValueTask<Maybe<T>> ToMaybeAsync<T>(this ValueTask<Result<T>>) where T : notnull
+
 // ToResult (from Maybe)
 Result<T> ToResult<T>(this Maybe<T>, Error) where T : notnull
 Result<T> ToResult<T>(this Maybe<T>, Func<Error>) where T : notnull
@@ -338,6 +343,25 @@ static Result<string> EnsureNotNullOrWhiteSpace(this string?, Error error)
 // Async: 5 overloads × 6 async patterns (Task Left/Right/Both + ValueTask Left/Right/Both) = 30 variants
 ```
 
+### EnsureAll — Validation Accumulation
+
+Runs ALL validation checks and accumulates failures into a single error, instead of short-circuiting on the first failure. Uses `Error.Combine()` to merge errors — `ValidationError` instances are merged, mixed types create `AggregateError`.
+
+```csharp
+Result<T> EnsureAll<T>(this Result<T>, params (Func<T, bool> predicate, Error error)[] checks)
+// + Task and ValueTask async variants
+```
+
+Example:
+```csharp
+var result = Result.Success(request)
+    .EnsureAll(
+        (r => r.Name.Length > 0, Error.Validation("Name required", "name")),
+        (r => r.Age >= 18, Error.Validation("Must be 18+", "age")),
+        (r => r.Email.Contains('@'), Error.Validation("Invalid email", "email")));
+// Returns ONE ValidationError with all 3 field errors if all fail
+```
+
 ### Tap — Side Effects on Success
 
 Executes action on success, returns original Result unchanged.
@@ -426,9 +450,26 @@ Result<T> MapOnFailure<T>(this Result<T>, Func<Error, Error>)
 // + 6 async variants
 ```
 
+### Recover — Simple Fallback on Failure
+
+Converts any failure to success with a simple fallback value. Sugar for the most common `RecoverOnFailure` pattern.
+
+```csharp
+Result<T> Recover<T>(this Result<T>, T fallback)
+Result<T> Recover<T>(this Result<T>, Func<T> fallbackFunc)
+Result<T> Recover<T>(this Result<T>, Func<Error, T> fallbackFunc)
+// + 6 async variants (Task and ValueTask)
+```
+
+Example:
+```csharp
+var maxRetries = configService.GetInt("max_retries").Recover(3);
+var items = recommendationEngine.GetFor(userId).Recover(Array.Empty<Product>());
+```
+
 ### RecoverOnFailure — Recover from Failure
 
-Attempts to recover from a failed Result by providing an alternative.
+Attempts to recover from a failed Result by providing an alternative Result.
 
 ```csharp
 Result<T> RecoverOnFailure<T>(this Result<T>, Func<Result<T>>)
@@ -471,12 +512,32 @@ Result<T> ToResult<T>(this T? value, Error error) where T : class
 Result<T> ToResult<T>(this T value)  // wraps value as Success
 ```
 
-### LINQ Support
+### LINQ Support (Result)
 
 ```csharp
 Result<TOut> Select<TIn, TOut>(this Result<TIn>, Func<TIn, TOut>)            // = Map
 Result<TResult> SelectMany<TSource, TCollection, TResult>(...)                // = Bind+Map
 Result<TSource> Where<TSource>(this Result<TSource>, Func<TSource, bool>)     // = Ensure
+```
+
+### LINQ Support (Maybe)
+
+Enables `from`/`select` query syntax for composing optional values.
+
+```csharp
+Maybe<TOut> Select<TIn, TOut>(this Maybe<TIn>, Func<TIn, TOut>)              // = Map
+Maybe<TResult> SelectMany<TSource, TCollection, TResult>(
+    this Maybe<TSource>,
+    Func<TSource, Maybe<TCollection>>,
+    Func<TSource, TCollection, TResult>)                                      // = FlatMap
+```
+
+Example:
+```csharp
+Maybe<string> fullName =
+    from first in firstName
+    from last in lastName
+    select $"{first} {last}";
 ```
 
 ### WhenAll — Parallel Execution

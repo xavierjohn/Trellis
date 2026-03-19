@@ -71,8 +71,8 @@ Display:  Some(hello)
 
 ## Stepping Through ROP Chains
 
-All ROP extension methods (`Bind`, `Map`, `Ensure`, `Tap`, `Match`, `Combine`, `When`,
-`Traverse`, `MapOnFailure`, `TapOnFailure`, `RecoverOnFailure`, and their async variants)
+All ROP extension methods (`Bind`, `Map`, `Ensure`, `EnsureAll`, `Tap`, `Match`, `Combine`, `When`,
+`Traverse`, `MapOnFailure`, `TapOnFailure`, `RecoverOnFailure`, `Recover`, `ToMaybe`, and their async variants)
 are marked with `[DebuggerStepThrough]`.
 
 With **"Just My Code"** enabled (the default in Visual Studio), pressing **F11 (Step Into)** on a
