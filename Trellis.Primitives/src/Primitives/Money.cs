@@ -99,6 +99,10 @@ public class Money : ValueObject
             return Result.Failure<Money>(
                 Error.Validation($"Cannot subtract {other.Currency} from {Currency}.", "currency"));
 
+        if (Amount < other.Amount)
+            return Result.Failure<Money>(
+                Error.Validation("Subtraction would result in a negative amount.", "money"));
+
         return TryCreate(Amount - other.Amount, Currency);
     }
 
@@ -167,7 +171,7 @@ public class Money : ValueObject
         var decimalPlaces = GetDecimalPlaces(Currency);
         var multiplier = (decimal)Math.Pow(10, decimalPlaces);
         var totalRatio = ratios.Sum();
-        var amountInMinorUnits = (long)(Amount * multiplier);
+        var amountInMinorUnits = (long)Math.Round(Amount * multiplier, MidpointRounding.AwayFromZero);
         var remainder = amountInMinorUnits;
         var results = new Money[ratios.Length];
 
@@ -179,12 +183,9 @@ public class Money : ValueObject
         }
 
         // Distribute remainder (due to rounding) to first portions
-        var remainderUnits = (int)Math.Abs(remainder);
-        for (int i = 0; i < remainderUnits && i < results.Length; i++)
-        {
-            var adjustment = 1m / multiplier;
+        var adjustment = 1m / multiplier * Math.Sign(remainder);
+        for (var i = 0; i < Math.Abs(remainder) && i < results.Length; i++)
             results[i] = new Money(results[i].Amount + adjustment, Currency);
-        }
 
         return Result.Success(results);
     }
@@ -221,7 +222,7 @@ public class Money : ValueObject
     /// <summary>
     /// Gets the equality components for value comparison.
     /// </summary>
-    protected override IEnumerable<IComparable> GetEqualityComponents()
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
         yield return Math.Round(Amount, GetDecimalPlaces(Currency));
         yield return (string)Currency;
@@ -230,7 +231,7 @@ public class Money : ValueObject
     /// <summary>
     /// Returns a string representation of the money amount with currency.
     /// </summary>
-    public override string ToString() => $"{Amount:F2} {Currency}";
+    public override string ToString() => $"{Amount.ToString($"F{GetDecimalPlaces(Currency)}", System.Globalization.CultureInfo.InvariantCulture)} {Currency}";
 
     /// <summary>
     /// Gets the number of decimal places for a currency (e.g., 2 for USD/EUR, 0 for JPY).

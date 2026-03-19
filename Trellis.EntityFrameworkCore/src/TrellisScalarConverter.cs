@@ -38,6 +38,11 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
         var valueProp = typeof(TModel).GetProperty("Value")
             ?? throw new InvalidOperationException(
                 $"{typeof(TModel).Name} must have a Value property.");
+
+        if (!typeof(TProvider).IsAssignableFrom(valueProp.PropertyType))
+            throw new InvalidOperationException(
+                $"Property 'Value' on {typeof(TModel).Name} returns {valueProp.PropertyType.Name}, expected {typeof(TProvider).Name}");
+
         var body = Expression.Property(param, valueProp);
         return Expression.Lambda<Func<TModel, TProvider>>(body, param);
     }
@@ -144,7 +149,14 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
     {
         try
         {
-            var result = s_tryFromName!((string)(object)value!);
+            if (value is null)
+                throw new TrellisPersistenceMappingException(
+                    typeof(TModel),
+                    null,
+                    "TryFromName",
+                    "Received null from database for non-nullable symbolic value object.");
+
+            var result = s_tryFromName!((string)(object)value);
             return MaterializeResult(result, value, "TryFromName");
         }
         catch (TrellisPersistenceMappingException)

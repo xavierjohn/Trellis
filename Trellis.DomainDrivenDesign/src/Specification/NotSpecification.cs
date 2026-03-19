@@ -10,10 +10,12 @@ using System.Linq.Expressions;
 internal sealed class NotSpecification<T>(Specification<T> inner)
     : Specification<T>
 {
+    private readonly Specification<T> _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+
     /// <inheritdoc />
     public override Expression<Func<T, bool>> ToExpression()
     {
-        var innerExpr = inner.ToExpression();
+        var innerExpr = _inner.ToExpression();
         var param = Expression.Parameter(typeof(T));
         var body = Expression.Not(Expression.Invoke(innerExpr, param));
         return Expression.Lambda<Func<T, bool>>(body, param);

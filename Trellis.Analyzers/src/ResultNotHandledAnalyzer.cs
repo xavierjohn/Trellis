@@ -97,19 +97,21 @@ public sealed class ResultNotHandledAnalyzer : DiagnosticAnalyzer
             if (memberAccessExpression.Name.Identifier.Text == "ConfigureAwait")
                 return GetExpressionName(memberAccessExpression.Expression, semanticModel);
 
-            if (semanticModel.GetSymbolInfo(memberAccessExpression).Symbol is IPropertySymbol propertySymbol)
+            var memberSymbolInfo = semanticModel.GetSymbolInfo(memberAccessExpression);
+            if (memberSymbolInfo.Symbol is IPropertySymbol propertySymbol)
                 return propertySymbol.Name;
 
-            if (semanticModel.GetSymbolInfo(memberAccessExpression).Symbol is IMethodSymbol methodSymbol)
+            if (memberSymbolInfo.Symbol is IMethodSymbol methodSymbol)
                 return methodSymbol.Name;
 
             return memberAccessExpression.Name.Identifier.Text;
         }
 
-        if (semanticModel.GetSymbolInfo(expression).Symbol is IMethodSymbol fallbackMethod)
+        var fallbackSymbolInfo = semanticModel.GetSymbolInfo(expression);
+        if (fallbackSymbolInfo.Symbol is IMethodSymbol fallbackMethod)
             return fallbackMethod.Name;
 
-        if (semanticModel.GetSymbolInfo(expression).Symbol is IPropertySymbol fallbackProperty)
+        if (fallbackSymbolInfo.Symbol is IPropertySymbol fallbackProperty)
             return fallbackProperty.Name;
 
         return expression.ToString();

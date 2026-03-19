@@ -112,6 +112,9 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(InnerTypeName);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             hash = (hash * 31) + InnerTypeIsValueType.GetHashCode();
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(SetterAccessibility);
+            hash = (hash * 31) + IsInitOnly.GetHashCode();
+            hash = (hash * 31) + IsRecord.GetHashCode();
             return hash;
         }
     }

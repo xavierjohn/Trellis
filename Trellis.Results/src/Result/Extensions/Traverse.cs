@@ -21,7 +21,7 @@ using System.Diagnostics;
 /// );
 /// 
 /// // If any item fails, the entire operation fails with that error
-/// // If all succeed, returns Success with IEnumerable of all results
+/// // If all succeed, returns Success with IReadOnlyList of all results
 /// </code>
 /// </example>
 [DebuggerStepThrough]
@@ -37,7 +37,7 @@ public static class TraverseExtensions
     /// <param name="selector">Transformation function returning a Result.</param>
     /// <returns>Success with all items if all succeed; otherwise the first failure.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="selector"/> is null.</exception>
-    public static Result<IEnumerable<TOut>> Traverse<TIn, TOut>(
+    public static Result<IReadOnlyList<TOut>> Traverse<TIn, TOut>(
         this IEnumerable<TIn> source,
         Func<TIn, Result<TOut>> selector)
     {
@@ -53,13 +53,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IEnumerable<TOut>>(result.Error);
+                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IEnumerable<TOut>>(results);
+        return Result.Success<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -72,7 +72,7 @@ public static class TraverseExtensions
     /// <param name="selector">Async transformation function returning a Result.</param>
     /// <returns>Task producing Success with all items if all succeed; otherwise the first failure.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="selector"/> is null.</exception>
-    public static async Task<Result<IEnumerable<TOut>>> TraverseAsync<TIn, TOut>(
+    public static async Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(
         this IEnumerable<TIn> source,
         Func<TIn, Task<Result<TOut>>> selector)
     {
@@ -88,13 +88,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IEnumerable<TOut>>(result.Error);
+                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IEnumerable<TOut>>(results);
+        return Result.Success<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -108,7 +108,7 @@ public static class TraverseExtensions
     /// <param name="cancellationToken">Cancellation token to observe.</param>
     /// <returns>Task producing Success with all items if all succeed; otherwise the first failure.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="selector"/> is null.</exception>
-    public static async Task<Result<IEnumerable<TOut>>> TraverseAsync<TIn, TOut>(
+    public static async Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(
         this IEnumerable<TIn> source,
         Func<TIn, CancellationToken, Task<Result<TOut>>> selector,
         CancellationToken cancellationToken = default)
@@ -126,13 +126,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IEnumerable<TOut>>(result.Error);
+                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IEnumerable<TOut>>(results);
+        return Result.Success<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -145,7 +145,7 @@ public static class TraverseExtensions
     /// <param name="selector">Async transformation function returning a Result.</param>
     /// <returns>ValueTask producing Success with all items if all succeed; otherwise the first failure.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="selector"/> is null.</exception>
-    public static async ValueTask<Result<IEnumerable<TOut>>> TraverseAsync<TIn, TOut>(
+    public static async ValueTask<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(
         this IEnumerable<TIn> source,
         Func<TIn, ValueTask<Result<TOut>>> selector)
     {
@@ -161,13 +161,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IEnumerable<TOut>>(result.Error);
+                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IEnumerable<TOut>>(results);
+        return Result.Success<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -181,7 +181,7 @@ public static class TraverseExtensions
     /// <param name="cancellationToken">Cancellation token to observe.</param>
     /// <returns>ValueTask producing Success with all items if all succeed; otherwise the first failure.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="selector"/> is null.</exception>
-    public static async ValueTask<Result<IEnumerable<TOut>>> TraverseAsync<TIn, TOut>(
+    public static async ValueTask<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(
         this IEnumerable<TIn> source,
         Func<TIn, CancellationToken, ValueTask<Result<TOut>>> selector,
         CancellationToken cancellationToken = default)
@@ -199,12 +199,12 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IEnumerable<TOut>>(result.Error);
+                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IEnumerable<TOut>>(results);
+        return Result.Success<IReadOnlyList<TOut>>(results);
     }
 }

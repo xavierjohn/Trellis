@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
+using Trellis.Authorization;
 
 /// <summary>
 /// Tests for <see cref="WebApplicationFactoryExtensions.CreateClientWithActor{TEntryPoint}"/>.
@@ -25,6 +26,8 @@ public sealed class WebApplicationFactoryExtensionsTests : IDisposable
         doc.RootElement.GetProperty("Permissions").EnumerateArray()
             .Select(e => e.GetString())
             .Should().Equal("Orders.Read", "Orders.Write");
+        doc.RootElement.GetProperty("ForbiddenPermissions").EnumerateArray().Should().BeEmpty();
+        doc.RootElement.GetProperty("Attributes").EnumerateObject().Should().BeEmpty();
     }
 
     [Fact]
@@ -72,6 +75,52 @@ public sealed class WebApplicationFactoryExtensionsTests : IDisposable
 
         client.Should().NotBeNull();
         client.BaseAddress.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void CreateClientWithActor_ActorObject_SerializesForbiddenPermissions()
+    {
+        var actor = new Actor(
+            "user-3",
+            new HashSet<string> { "Orders.Read" },
+            new HashSet<string> { "Orders.Delete", "Admin.Panel" },
+            new Dictionary<string, string>());
+
+        var client = _factory.CreateClientWithActor(actor);
+
+        client.DefaultRequestHeaders.TryGetValues("X-Test-Actor", out var values).Should().BeTrue();
+        var json = values!.Single();
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("Id").GetString().Should().Be("user-3");
+        doc.RootElement.GetProperty("Permissions").EnumerateArray()
+            .Select(e => e.GetString())
+            .Should().Equal("Orders.Read");
+        doc.RootElement.GetProperty("ForbiddenPermissions").EnumerateArray()
+            .Select(e => e.GetString())
+            .Should().BeEquivalentTo("Orders.Delete", "Admin.Panel");
+    }
+
+    [Fact]
+    public void CreateClientWithActor_ActorObject_SerializesAttributes()
+    {
+        var actor = new Actor(
+            "user-4",
+            new HashSet<string> { "Orders.Read" },
+            new HashSet<string>(),
+            new Dictionary<string, string>
+            {
+                ["ip"] = "10.0.0.1",
+                ["mfa"] = "true"
+            });
+
+        var client = _factory.CreateClientWithActor(actor);
+
+        client.DefaultRequestHeaders.TryGetValues("X-Test-Actor", out var values).Should().BeTrue();
+        var json = values!.Single();
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("Id").GetString().Should().Be("user-4");
+        doc.RootElement.GetProperty("Attributes").GetProperty("ip").GetString().Should().Be("10.0.0.1");
+        doc.RootElement.GetProperty("Attributes").GetProperty("mfa").GetString().Should().Be("true");
     }
 
     public void Dispose() => _factory.Dispose();

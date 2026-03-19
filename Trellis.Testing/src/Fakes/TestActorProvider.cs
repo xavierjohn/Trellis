@@ -18,7 +18,7 @@ using Trellis.Authorization;
 /// // scope disposes → actor reverts to admin
 /// </code>
 /// </example>
-public sealed class TestActorProvider : IActorProvider
+public sealed class TestActorProvider : IActorProvider, IAsyncActorProvider
 {
     private readonly Actor _defaultActor;
     private readonly AsyncLocal<Actor?> _asyncLocalActor = new();
@@ -42,6 +42,10 @@ public sealed class TestActorProvider : IActorProvider
 
     /// <inheritdoc />
     public Actor GetCurrentActor() => _asyncLocalActor.Value ?? _defaultActor;
+
+    /// <inheritdoc />
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(GetCurrentActor());
 
     /// <summary>
     /// Temporarily replaces the current actor for the current async flow.

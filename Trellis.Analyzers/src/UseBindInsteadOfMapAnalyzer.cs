@@ -44,7 +44,7 @@ public sealed class UseBindInsteadOfMapAnalyzer : DiagnosticAnalyzer
             return;
 
         // Check if it's an extension method from Trellis
-        if (!IsTrellisExtensionMethod(methodSymbol))
+        if (!methodSymbol.IsTrellisExtensionMethod())
             return;
 
         // Check if the lambda argument returns a Result type
@@ -76,15 +76,6 @@ public sealed class UseBindInsteadOfMapAnalyzer : DiagnosticAnalyzer
                 memberAccess.Name.GetLocation());
             context.ReportDiagnostic(diagnostic);
         }
-    }
-
-    private static bool IsTrellisExtensionMethod(IMethodSymbol methodSymbol)
-    {
-        if (!methodSymbol.IsExtensionMethod)
-            return false;
-
-        var containingNamespace = methodSymbol.ContainingType?.ContainingNamespace?.ToDisplayString();
-        return containingNamespace == "Trellis";
     }
 
     private static ITypeSymbol? GetLambdaReturnType(ExpressionSyntax expression, SemanticModel semanticModel)

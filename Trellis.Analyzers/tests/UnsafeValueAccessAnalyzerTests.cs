@@ -561,4 +561,63 @@ public class UnsafeValueAccessAnalyzerTests
 
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task ConditionalAccessOnResultItself_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int? TestMethod(Result<int>? result)
+                {
+                    return result?.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ConditionalAccessOnWrapper_ValueAccess_NoDiagnostic()
+    {
+        const string source = """
+            public class Wrapper
+            {
+                public Result<int> Result { get; set; }
+            }
+
+            public class TestClass
+            {
+                public void TestMethod(Wrapper? wrapper)
+                {
+                    var value = wrapper?.Result.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ReversedEquality_TrueEqualsIsSuccess_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod(Result<int> result)
+                {
+                    if (true == result.IsSuccess)
+                    {
+                        var value = result.Value;
+                    }
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
 }

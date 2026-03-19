@@ -10,11 +10,14 @@ using System.Linq.Expressions;
 internal sealed class OrSpecification<T>(Specification<T> left, Specification<T> right)
     : Specification<T>
 {
+    private readonly Specification<T> _left = left ?? throw new ArgumentNullException(nameof(left));
+    private readonly Specification<T> _right = right ?? throw new ArgumentNullException(nameof(right));
+
     /// <inheritdoc />
     public override Expression<Func<T, bool>> ToExpression()
     {
-        var leftExpr = left.ToExpression();
-        var rightExpr = right.ToExpression();
+        var leftExpr = _left.ToExpression();
+        var rightExpr = _right.ToExpression();
         var param = Expression.Parameter(typeof(T));
         var body = Expression.OrElse(
             Expression.Invoke(leftExpr, param),

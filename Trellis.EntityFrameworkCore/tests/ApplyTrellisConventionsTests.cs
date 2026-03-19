@@ -163,6 +163,23 @@ public class ApplyTrellisConventionsTests : IDisposable
     }
 
     [Fact]
+    public void SymbolicConverter_NullValue_ThrowsClearMappingException()
+    {
+        // Arrange — compile the converter expression directly to bypass EF Core's null short-circuit
+        var converter = new TrellisScalarConverter<TestOrderStatus, string>();
+        var fromProvider = converter.ConvertFromProviderExpression.Compile();
+
+        // Act
+        var act = () => fromProvider(null!);
+
+        // Assert
+        var ex = act.Should().Throw<TrellisPersistenceMappingException>();
+        ex.Which.Message.Should().Contain("TestOrderStatus");
+        ex.Which.Message.Should().Contain("TryFromName");
+        ex.Which.Message.Should().Contain("null");
+    }
+
+    [Fact]
     public void RequiredEnumProperty_UsesCategoryDrivenConverter()
     {
         // Act

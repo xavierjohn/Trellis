@@ -29,7 +29,7 @@ public class ScalarValueObjectTests
         public static Result<MoneySimple> TryCreate(decimal value, string? fieldName = null) =>
             Result.Success(new MoneySimple(value));
 
-        protected override IEnumerable<IComparable> GetEqualityComponents()
+        protected override IEnumerable<IComparable?> GetEqualityComponents()
         {
             yield return Math.Round(Value, 2);
         }

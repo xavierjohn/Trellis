@@ -218,21 +218,34 @@ public class RequiredDecimalTests
         // Arrange
         var decimalValue = 19.99m;
         UnitPrice unitPrice = UnitPrice.TryCreate(decimalValue).Value;
-        var expected = "\"19.99\"";
 
         // Act
         var actual = JsonSerializer.Serialize(unitPrice);
 
-        // Assert
-        actual.Should().Be(expected);
+        // Assert — numeric value objects serialize as JSON numbers
+        actual.Should().Be("19.99");
     }
 
     [Fact]
     public void ConvertFromJson()
     {
-        // Arrange
+        // Arrange — deserialize from a JSON string token
         var decimalValue = 19.99m;
         var json = "\"19.99\"";
+
+        // Act
+        UnitPrice actual = JsonSerializer.Deserialize<UnitPrice>(json)!;
+
+        // Assert
+        actual.Value.Should().Be(decimalValue);
+    }
+
+    [Fact]
+    public void ConvertFromJson_NumericToken()
+    {
+        // Arrange — deserialize from a JSON number token
+        var decimalValue = 19.99m;
+        var json = "19.99";
 
         // Act
         UnitPrice actual = JsonSerializer.Deserialize<UnitPrice>(json)!;

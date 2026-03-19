@@ -271,7 +271,7 @@ public sealed class ValidationError : Error, IEquatable<ValidationError>
     /// </summary>
     /// <returns>A formatted string containing the base error information and all field-specific error details.</returns>
     public override string ToString()
-        => base.ToString() + "\r\n" + string.Join("\r\n", FieldErrors.Select(e => $"{e.FieldName}: {string.Join(", ", e.Details)}"));
+        => base.ToString() + Environment.NewLine + string.Join(Environment.NewLine, FieldErrors.Select(e => $"{e.FieldName}: {string.Join(", ", e.Details)}"));
 
     /// <summary>
     /// Converts the validation errors to a dictionary suitable for ASP.NET Core validation problem responses.

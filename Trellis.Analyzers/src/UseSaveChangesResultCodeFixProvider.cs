@@ -195,12 +195,17 @@ public sealed class UseSaveChangesResultCodeFixProvider : CodeFixProvider
     /// </summary>
     private static SyntaxTrivia DetectEndOfLine(SyntaxNode root)
     {
-        var text = root.ToFullString();
-        var idx = text.IndexOf('\n');
-        if (idx > 0 && text[idx - 1] == '\r')
-            return SyntaxFactory.CarriageReturnLineFeed;
-        if (idx >= 0)
-            return SyntaxFactory.LineFeed;
+        var sourceText = root.SyntaxTree.GetText();
+        for (var i = 0; i < sourceText.Length; i++)
+        {
+            if (sourceText[i] == '\n')
+            {
+                if (i > 0 && sourceText[i - 1] == '\r')
+                    return SyntaxFactory.CarriageReturnLineFeed;
+                return SyntaxFactory.LineFeed;
+            }
+        }
+
         return SyntaxFactory.CarriageReturnLineFeed;
     }
 

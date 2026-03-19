@@ -34,11 +34,11 @@ public static class ServiceCollectionExtensions
     /// services.AddMediator(options =>
     /// {
     ///     options.Assemblies = [typeof(MyCommand).Assembly];
-    ///     options.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors;
+    ///     options.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors.ToArray();
     /// });
     /// </code>
     /// </example>
-    public static Type[] PipelineBehaviors =>
+    private static readonly IReadOnlyList<Type> s_pipelineBehaviors =
     [
         typeof(ExceptionBehavior<,>),
         typeof(TracingBehavior<,>),
@@ -46,6 +46,9 @@ public static class ServiceCollectionExtensions
         typeof(AuthorizationBehavior<,>),
         typeof(ValidationBehavior<,>),
     ];
+
+    /// <inheritdoc cref="s_pipelineBehaviors" />
+    public static IReadOnlyList<Type> PipelineBehaviors => s_pipelineBehaviors;
 
     /// <summary>
     /// Registers Trellis Result-aware pipeline behaviors as open generic

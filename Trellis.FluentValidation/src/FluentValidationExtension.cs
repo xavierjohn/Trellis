@@ -288,11 +288,13 @@ public static class FluentValidationResultExtensions
     {
         ArgumentNullException.ThrowIfNull(validator);
 
-        ValidationResult result = value is null
-        ? new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")])
-        : validator.Validate(value);
+        if (value is null)
+        {
+            var nullResult = new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")]);
+            return nullResult.ToResult(value!, paramName);
+        }
 
-        return result.ToResult(value, paramName);
+        return validator.Validate(value).ToResult(value, paramName);
     }
 
     /// <summary>
@@ -399,10 +401,13 @@ public static class FluentValidationResultExtensions
     {
         ArgumentNullException.ThrowIfNull(validator);
 
-        ValidationResult result = value is null
-            ? new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")])
-            : await validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false);
+        if (value is null)
+        {
+            var nullResult = new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")]);
+            return nullResult.ToResult(value!, paramName);
+        }
 
+        var result = await validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false);
         return result.ToResult(value, paramName);
     }
 }

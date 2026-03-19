@@ -140,22 +140,27 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
     /// <summary>
     /// Semantic analysis: extract metadata for a partial Maybe&lt;T&gt; property.
     /// </summary>
-#pragma warning disable CS8603 // Possible null reference return — pipeline filters nulls via .Where()
     private static MaybePropertyInfo GetMaybePropertyInfo(
         GeneratorSyntaxContext ctx, CancellationToken ct)
     {
         var prop = (PropertyDeclarationSyntax)ctx.Node;
         var symbol = ctx.SemanticModel.GetDeclaredSymbol(prop, ct);
         if (symbol is null)
+#pragma warning disable CS8603 // Possible null reference return — pipeline filters nulls via .Where()
             return null;
+#pragma warning restore CS8603
 
         // Verify the type is actually Trellis.Maybe<T>
         if (symbol.Type is not INamedTypeSymbol { IsGenericType: true } namedType)
+#pragma warning disable CS8603
             return null;
+#pragma warning restore CS8603
 
         var originalDef = namedType.ConstructedFrom;
         if (originalDef.ContainingNamespace?.ToString() != "Trellis" || originalDef.Name != "Maybe")
+#pragma warning disable CS8603
             return null;
+#pragma warning restore CS8603
 
         var innerType = namedType.TypeArguments[0];
         var containingType = symbol.ContainingType;
@@ -183,19 +188,18 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
         INamedTypeSymbol? parent = containingType.ContainingType;
         while (parent is not null)
         {
-            nestingParents.Insert(0, $"{AccessibilityToString(parent.DeclaredAccessibility)} partial {TypeKindKeyword(parent)} {parent.Name}");
+            nestingParents.Insert(0, $"{AccessibilityToString(parent.DeclaredAccessibility)} partial {TypeKindKeyword(parent)} {FormatTypeName(parent)}");
             parent = parent.ContainingType;
         }
 
         var isRecord = prop.Parent is RecordDeclarationSyntax;
         var typePath = BuildTypePath(containingType);
-#pragma warning restore CS8603
 
         return new MaybePropertyInfo(
             @namespace: containingType.ContainingNamespace?.IsGlobalNamespace == true
                 ? ""
                 : containingType.ContainingNamespace?.ToString() ?? "",
-            typeName: containingType.Name,
+            typeName: FormatTypeName(containingType),
             typeAccessibility: AccessibilityToString(containingType.DeclaredAccessibility),
             isRecord: isRecord,
             propertyName: symbol.Name,
@@ -440,4 +444,9 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 
     private static string TypeKindKeyword(INamedTypeSymbol type) =>
         type.IsRecord ? "record class" : type.TypeKind == TypeKind.Struct ? "struct" : "class";
+
+    private static string FormatTypeName(INamedTypeSymbol type) =>
+        type.TypeParameters.Length > 0
+            ? $"{type.Name}<{string.Join(", ", type.TypeParameters.Select(tp => tp.Name))}>"
+            : type.Name;
 }

@@ -78,7 +78,7 @@ internal static class RopTrace
     /// <remarks>
     /// The version is included in trace metadata to help correlate behavior with specific library versions.
     /// </remarks>
-    internal static readonly Version Version = AssemblyName.Version!;
+    internal static readonly Version Version = AssemblyName.Version ?? new Version(0, 0, 0);
 
     private static readonly ActivitySource DefaultActivitySource = new(ActivitySourceName, Version.ToString());
 

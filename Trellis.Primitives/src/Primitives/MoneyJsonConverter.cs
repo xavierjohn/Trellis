@@ -20,6 +20,7 @@ public class MoneyJsonConverter : JsonConverter<Money>
 
         decimal amount = 0;
         string? currency = null;
+        bool amountFound = false;
 
         while (reader.Read())
         {
@@ -35,6 +36,7 @@ public class MoneyJsonConverter : JsonConverter<Money>
                 {
                     case "amount":
                         amount = reader.GetDecimal();
+                        amountFound = true;
                         break;
                     case "currency":
                         currency = reader.GetString();
@@ -42,6 +44,9 @@ public class MoneyJsonConverter : JsonConverter<Money>
                 }
             }
         }
+
+        if (!amountFound)
+            throw new JsonException("Required property 'amount' is missing.");
 
         if (currency == null)
             throw new JsonException("Currency is required.");

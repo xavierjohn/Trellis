@@ -156,6 +156,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ClassName);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ClassBase);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(Accessibility);
+            hash = (hash * 31) + MaxLength.GetHashCode();
+            hash = (hash * 31) + MinLength.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             return hash;
         }

@@ -9,7 +9,7 @@ internal class Money : ScalarValueObject<Money, decimal>, IScalarValue<Money, de
     public static Result<Money> TryCreate(decimal value, string? fieldName = null) =>
         Result.Success(new Money(value));
 
-    protected override IEnumerable<IComparable> GetEqualityComponents()
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
         yield return Math.Round(Value, 2);
     }

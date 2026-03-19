@@ -466,7 +466,7 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_BindingFailure_MessageContainsSubstringButDoesNotMatchFormat_Rethrows()
+    public async Task InvokeAsync_BindingFailure_MessageContainsSubstringButDoesNotMatchFormat_ReturnsGeneric400()
     {
         // Arrange
         var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
@@ -479,10 +479,14 @@ public class ScalarValueValidationMiddlewareTests
             throw new BadHttpRequestException("Proxy error: Failed to bind parameter happened upstream before request processing.", 400));
 
         // Act
-        var act = async () => await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context);
 
         // Assert
-        await act.Should().ThrowAsync<BadHttpRequestException>();
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+            .Should().Contain("Proxy error");
     }
 
     [Fact]
@@ -555,7 +559,7 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_ReadFailure_MessageContainsSubstringButDoesNotMatchFormat_Rethrows()
+    public async Task InvokeAsync_ReadFailure_MessageContainsSubstringButDoesNotMatchFormat_ReturnsGeneric400()
     {
         // Arrange
         var context = CreateHttpContextWithServices();
@@ -564,26 +568,34 @@ public class ScalarValueValidationMiddlewareTests
             throw new BadHttpRequestException("Gateway failure: Failed to read parameter after the request body was already rejected.", 400));
 
         // Act
-        var act = async () => await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context);
 
         // Assert
-        await act.Should().ThrowAsync<BadHttpRequestException>();
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+            .Should().Contain("Gateway failure");
     }
 
     [Fact]
-    public async Task InvokeAsync_OtherBadHttpRequestException_Rethrows()
+    public async Task InvokeAsync_OtherBadHttpRequestException_ReturnsGeneric400()
     {
         // Arrange
-        var context = new DefaultHttpContext();
+        var context = CreateHttpContextWithServices();
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("Some other bad request error", 400));
 
         // Act
-        var act = async () => await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context);
 
         // Assert
-        await act.Should().ThrowAsync<BadHttpRequestException>();
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+            .Should().Contain("Some other bad request error");
     }
 
     [Fact]

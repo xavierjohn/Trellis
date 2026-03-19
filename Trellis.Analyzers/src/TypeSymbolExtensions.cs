@@ -48,31 +48,19 @@ internal static class TypeSymbolExtensions
     /// <summary>
     /// Checks if the type is Task&lt;T&gt; or ValueTask&lt;T&gt; from System.Threading.Tasks.
     /// </summary>
-    internal static bool IsTaskType(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is not INamedTypeSymbol namedType)
-            return false;
-
-        var fullName = namedType.ToDisplayString();
-        return fullName.StartsWith("System.Threading.Tasks.Task<", System.StringComparison.Ordinal) ||
-               fullName.StartsWith("System.Threading.Tasks.ValueTask<", System.StringComparison.Ordinal);
-    }
+    internal static bool IsTaskType(this ITypeSymbol? typeSymbol) =>
+        typeSymbol is INamedTypeSymbol { TypeArguments.Length: 1 } namedType &&
+        namedType.Name is "Task" or "ValueTask" &&
+        namedType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
 
     /// <summary>
     /// Checks if the type is Task, Task&lt;T&gt;, ValueTask, or ValueTask&lt;T&gt; from System.Threading.Tasks.
     /// Unlike <see cref="IsTaskType"/>, this also matches non-generic Task and ValueTask.
     /// </summary>
-    internal static bool IsAnyTaskType(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is not INamedTypeSymbol namedType)
-            return false;
-
-        var fullName = namedType.ToDisplayString();
-        return fullName == "System.Threading.Tasks.Task"
-               || fullName.StartsWith("System.Threading.Tasks.Task<", System.StringComparison.Ordinal)
-               || fullName == "System.Threading.Tasks.ValueTask"
-               || fullName.StartsWith("System.Threading.Tasks.ValueTask<", System.StringComparison.Ordinal);
-    }
+    internal static bool IsAnyTaskType(this ITypeSymbol? typeSymbol) =>
+        typeSymbol is INamedTypeSymbol namedType &&
+        namedType.Name is "Task" or "ValueTask" &&
+        namedType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
 
     /// <summary>
     /// Checks if the type is Task&lt;Result&lt;T&gt;&gt; or ValueTask&lt;Result&lt;T&gt;&gt;.
@@ -140,6 +128,13 @@ internal static class TypeSymbolExtensions
 
         return false;
     }
+
+    /// <summary>
+    /// Checks if the method is a Trellis extension method (IsExtensionMethod and in the Trellis namespace).
+    /// </summary>
+    internal static bool IsTrellisExtensionMethod(this IMethodSymbol methodSymbol) =>
+        methodSymbol.IsExtensionMethod &&
+        methodSymbol.ContainingType?.ContainingNamespace?.ToDisplayString() == "Trellis";
 
     /// <summary>
     /// Checks if the type is Maybe&lt;Maybe&lt;T&gt;&gt; (double-wrapped) and returns the inner type name.

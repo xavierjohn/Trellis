@@ -108,4 +108,117 @@ public class MatchErrorTests : TestBase
 
         output.Should().Be("Service down");
     }
+
+    [Fact]
+    public void MatchError_AggregateError_WithOnAggregateHandler_InvokesHandler()
+    {
+        var errors = new List<Error> { Error.Validation("field error", "field") };
+        var result = Result.Failure<int>(new AggregateError(errors));
+
+        var output = result.MatchError(
+            onSuccess: value => $"success:{value}",
+            onAggregate: ae => $"aggregate:{ae.Errors.Count}",
+            onError: error => $"fallback:{error.Code}");
+
+        output.Should().Be("aggregate:1");
+    }
+
+    [Fact]
+    public void MatchError_AggregateError_WithoutOnAggregateHandler_FallsThroughToOnError()
+    {
+        var errors = new List<Error> { Error.Validation("field error", "field") };
+        var result = Result.Failure<int>(new AggregateError(errors));
+
+        var output = result.MatchError(
+            onSuccess: value => $"success:{value}",
+            onError: error => $"fallback:{error.Code}");
+
+        output.Should().Be("fallback:aggregate.error");
+    }
+
+    [Fact]
+    public void MatchError_NonAggregateError_WithOnAggregateProvided_OnAggregateNotCalled()
+    {
+        var result = Result.Failure<int>(Error.NotFound("Missing entity"));
+
+        var output = result.MatchError(
+            onSuccess: value => $"success:{value}",
+            onAggregate: ae => $"aggregate:{ae.Errors.Count}",
+            onError: error => $"fallback:{error.Code}");
+
+        output.Should().StartWith("fallback:");
+    }
+
+    [Fact]
+    public void SwitchError_AggregateError_WithOnAggregateHandler_InvokesHandler()
+    {
+        var errors = new List<Error> { Error.Domain("domain error") };
+        var result = Result.Failure<int>(new AggregateError(errors));
+        string? outcome = null;
+
+        result.SwitchError(
+            onSuccess: _ => { },
+            onAggregate: ae => outcome = $"aggregate:{ae.Errors.Count}",
+            onError: error => outcome = $"fallback:{error.Code}");
+
+        outcome.Should().Be("aggregate:1");
+    }
+
+    [Fact]
+    public void SwitchError_AggregateError_WithoutOnAggregateHandler_FallsThroughToOnError()
+    {
+        var errors = new List<Error> { Error.Domain("domain error") };
+        var result = Result.Failure<int>(new AggregateError(errors));
+        string? outcome = null;
+
+        result.SwitchError(
+            onSuccess: _ => { },
+            onError: error => outcome = $"fallback:{error.Code}");
+
+        outcome.Should().Be("fallback:aggregate.error");
+    }
+
+    [Fact]
+    public void SwitchError_NonAggregateError_WithOnAggregateProvided_OnAggregateNotCalled()
+    {
+        var result = Result.Failure<int>(Error.Conflict("Already exists"));
+        string? outcome = null;
+
+        result.SwitchError(
+            onSuccess: _ => { },
+            onAggregate: ae => outcome = $"aggregate:{ae.Errors.Count}",
+            onError: error => outcome = $"fallback:{error.Code}");
+
+        outcome.Should().StartWith("fallback:");
+    }
+
+    [Fact]
+    public async Task MatchErrorAsync_TaskResult_AggregateError_WithOnAggregateHandler_InvokesHandler()
+    {
+        var errors = new List<Error> { Error.Validation("field error", "field") };
+        var resultTask = Task.FromResult(Result.Failure<int>(new AggregateError(errors)));
+
+        var output = await resultTask.MatchErrorAsync(
+            onSuccess: value => $"success:{value}",
+            onAggregate: ae => $"aggregate:{ae.Errors.Count}",
+            onError: error => $"fallback:{error.Code}");
+
+        output.Should().Be("aggregate:1");
+    }
+
+    [Fact]
+    public async Task SwitchErrorAsync_TaskResult_AggregateError_WithOnAggregateHandler_InvokesHandler()
+    {
+        var errors = new List<Error> { Error.Domain("domain error") };
+        var resultTask = Task.FromResult(Result.Failure<int>(new AggregateError(errors)));
+        string? outcome = null;
+
+        await resultTask.SwitchErrorAsync(
+            onSuccess: (_, ct) => Task.CompletedTask,
+            onAggregate: (ae, ct) => { outcome = $"aggregate:{ae.Errors.Count}"; return Task.CompletedTask; },
+            onError: (error, ct) => { outcome = $"fallback:{error.Code}"; return Task.CompletedTask; },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        outcome.Should().Be("aggregate:1");
+    }
 }

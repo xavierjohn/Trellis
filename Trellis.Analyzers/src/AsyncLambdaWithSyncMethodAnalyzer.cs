@@ -71,11 +71,7 @@ public sealed class AsyncLambdaWithSyncMethodAnalyzer : DiagnosticAnalyzer
 
     private static bool IsTrellisMethod(IMethodSymbol methodSymbol)
     {
-        if (!methodSymbol.IsExtensionMethod)
-            return false;
-
-        var containingNamespace = methodSymbol.ContainingType?.ContainingNamespace?.ToDisplayString();
-        if (containingNamespace != "Trellis")
+        if (!methodSymbol.IsTrellisExtensionMethod())
             return false;
 
         var receiverType = methodSymbol.ReducedFrom?.Parameters.FirstOrDefault()?.Type

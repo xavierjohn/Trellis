@@ -63,12 +63,10 @@ public sealed class StringLengthAttribute : Attribute
     /// with the specified maximum length.
     /// </summary>
     /// <param name="maximumLength">
-    /// The maximum length, inclusive. Must be zero or greater.
-    /// A value of zero means only empty strings are valid (which would conflict with RequiredString's
-    /// non-empty requirement, so in practice use 1 or greater).
+    /// The maximum length, inclusive. Must be at least 1.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="maximumLength"/> is negative.
+    /// Thrown when <paramref name="maximumLength"/> is less than 1.
     /// </exception>
     /// <example>
     /// <code>
@@ -78,8 +76,8 @@ public sealed class StringLengthAttribute : Attribute
     /// </example>
     public StringLengthAttribute(int maximumLength)
     {
-        if (maximumLength < 0)
-            throw new ArgumentOutOfRangeException(nameof(maximumLength), maximumLength, "Maximum length must be zero or greater.");
+        if (maximumLength < 1)
+            throw new ArgumentOutOfRangeException(nameof(maximumLength), maximumLength, "MaximumLength must be at least 1.");
 
         MaximumLength = maximumLength;
     }

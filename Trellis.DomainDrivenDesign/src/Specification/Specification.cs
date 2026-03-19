@@ -46,6 +46,22 @@ using System.Linq.Expressions;
 /// </example>
 public abstract class Specification<T>
 {
+    private readonly Lazy<Func<T, bool>> _compiled;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Specification{T}"/> class,
+    /// setting up lazy compilation caching for <see cref="IsSatisfiedBy"/>.
+    /// </summary>
+    protected Specification() =>
+        _compiled = new Lazy<Func<T, bool>>(() => ToExpression().Compile());
+
+    /// <summary>
+    /// Gets a value indicating whether the compiled expression should be cached.
+    /// Override and return <c>false</c> to force recompilation on each
+    /// <see cref="IsSatisfiedBy"/> call (e.g., when the expression changes between invocations).
+    /// </summary>
+    protected virtual bool CacheCompilation => true;
+
     /// <summary>
     /// The expression tree representing this specification's business rule.
     /// Consumers (repositories, LINQ providers) use this to filter data.
@@ -59,20 +75,30 @@ public abstract class Specification<T>
     /// </summary>
     /// <param name="entity">The entity to evaluate against this specification.</param>
     /// <returns><c>true</c> if the entity satisfies this specification; otherwise, <c>false</c>.</returns>
-    public bool IsSatisfiedBy(T entity) =>
-        ToExpression().Compile()(entity);
+    public bool IsSatisfiedBy(T entity)
+    {
+        if (CacheCompilation)
+            return _compiled.Value(entity);
+        return ToExpression().Compile()(entity);
+    }
 
     /// <summary>Combines this specification with another using logical AND.</summary>
     /// <param name="other">The specification to combine with.</param>
     /// <returns>A new specification that is satisfied only when both specifications are satisfied.</returns>
-    public Specification<T> And(Specification<T> other) =>
-        new AndSpecification<T>(this, other);
+    public Specification<T> And(Specification<T> other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return new AndSpecification<T>(this, other);
+    }
 
     /// <summary>Combines this specification with another using logical OR.</summary>
     /// <param name="other">The specification to combine with.</param>
     /// <returns>A new specification that is satisfied when either specification is satisfied.</returns>
-    public Specification<T> Or(Specification<T> other) =>
-        new OrSpecification<T>(this, other);
+    public Specification<T> Or(Specification<T> other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return new OrSpecification<T>(this, other);
+    }
 
     /// <summary>Negates this specification.</summary>
     /// <returns>A new specification that is satisfied when this specification is not satisfied.</returns>

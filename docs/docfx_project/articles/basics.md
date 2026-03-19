@@ -664,6 +664,26 @@ public partial class EmailAddress : RequiredString { }
 var result = EmailAddress.TryCreate("user@example.com");
 ```
 
+### Value Object Equality
+
+Custom value objects override `GetEqualityComponents()` to define which properties participate in structural equality. The method returns `IEnumerable<IComparable?>`.
+
+When a value object has a `Maybe<T>` property, use the `MaybeComponent<T>()` helper to yield it as an `IComparable?`:
+
+```csharp
+public class Address : ValueObject
+{
+    public RequiredString Street { get; }
+    public Maybe<RequiredString> Apartment { get; }
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return Street;
+        yield return MaybeComponent(Apartment);  // Maybe<T> → IComparable?
+    }
+}
+```
+
 ### Cheat Sheet: Operation Selection
 
 ```mermaid

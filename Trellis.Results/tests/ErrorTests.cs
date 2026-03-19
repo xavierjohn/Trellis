@@ -128,7 +128,7 @@ public class ErrorTests
         validationError.FieldErrors[0].FieldName.Should().Be("field name");
         validationError.FieldErrors[0].Details.Should().HaveCount(1);
         validationError.FieldErrors[0].Details[0].Should().Be("field detail.");
-        validationError.ToString().Should().Be("Type: ValidationError, Code: validation.error, Detail: field detail., Instance: N/A\r\nfield name: field detail.");
+        validationError.ToString().Should().Be($"Type: ValidationError, Code: validation.error, Detail: field detail., Instance: N/A{Environment.NewLine}field name: field detail.");
     }
 
     [Fact]
@@ -154,6 +154,6 @@ public class ErrorTests
         validationError.FieldErrors[0].Details.Should().BeEquivalentTo(["Too short.", "Not complex.", "Make it complex."]);
 
         var errorSting = validationError.ToString();
-        errorSting.Should().Be("Type: ValidationError, Code: validation.error, Detail: Too short., Instance: N/A\r\npassword: Too short., Not complex., Make it complex.");
+        errorSting.Should().Be($"Type: ValidationError, Code: validation.error, Detail: Too short., Instance: N/A{Environment.NewLine}password: Too short., Not complex., Make it complex.");
     }
 }

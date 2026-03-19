@@ -3,9 +3,9 @@
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
-/// Provides internal string manipulation extension methods for Trellis primitives.
+/// String manipulation helpers for value object field name normalization.
 /// </summary>
-internal static class StringExtensions
+public static class StringExtensions
 {
     /// <summary>
     /// Normalizes an optional field name to camelCase, falling back to a default name.
@@ -25,8 +25,10 @@ internal static class StringExtensions
         var r = T.TryCreate(s!);
         if (r.IsFailure)
         {
-            var val = (ValidationError)r.Error;
-            throw new FormatException(val.FieldErrors[0].Details[0]);
+            if (r.Error is ValidationError val && val.FieldErrors.Length > 0 && val.FieldErrors[0].Details.Length > 0)
+                throw new FormatException(val.FieldErrors[0].Details[0]);
+
+            throw new FormatException(r.Error.Detail);
         }
 
         return r.Value;

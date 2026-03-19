@@ -18,6 +18,7 @@ using System.Collections.Immutable;
 - [ValidationError Fluent API](#validationerror-fluent-api)
 - [Async Error Handling](#async-error-handling)
 - [Custom Error Types](#custom-error-types)
+- [Error Equality](#error-equality)
 
 ## Error Types
 
@@ -433,6 +434,30 @@ if (result.IsFailure)
 }
 ```
 
+### Extracting Validation Errors from AggregateError
+
+Use `FlattenValidationErrors()` to extract a merged `ValidationError` from an `AggregateError`. This is useful when you know the aggregate contains validation errors and you want to present them as a single set of field-level errors:
+
+```csharp
+// After Combine produces an AggregateError
+var combined = result1.Combine(result2);
+
+// Extract all validation errors
+var validationError = combined.FlattenValidationErrors();
+```
+
+### Handling AggregateError in MatchError
+
+The `onAggregate` handler in `MatchError` and `SwitchError` lets you handle `AggregateError` specifically, separating it from the generic `onError` fallback:
+
+```csharp
+combined.MatchError(
+    onValidation: err => /* field-level errors */,
+    onAggregate: err => /* unwrap err.Errors */,
+    onError: err => /* fallback */
+);
+```
+
 ### Manual Error Aggregation
 
 ```csharp
@@ -681,6 +706,25 @@ if (inventory.Available < order.Quantity)
 8. **Leverage Fluent API**: Use `ValidationError.For().And()` for building multi-field validations
 9. **Add Tracing IDs**: Include correlation IDs in error instance for distributed tracing
 10. **Use MapError Sparingly**: Only transform errors when you need to add context or change error types
+
+## Error Equality
+
+`Error` follows DDD Value Object equality semantics. `Error.Equals` is virtual, so each subtype compares all of its components:
+
+- Two errors are equal only if they have the **same type**, `Code`, `Detail`, and `Instance`
+- `ValidationError` also compares `FieldErrors`
+- `AggregateError` also compares its inner `Errors`
+
+This means you can use standard equality checks and assertions in tests:
+
+```csharp
+var error1 = Error.NotFound("User not found", "user-42");
+var error2 = Error.NotFound("User not found", "user-42");
+Assert.Equal(error1, error2); // ✅ Same type, Code, Detail, and Instance
+
+var error3 = Error.NotFound("User not found", "user-99");
+Assert.NotEqual(error1, error3); // ❌ Different Instance
+```
 
 ## Next Steps
 

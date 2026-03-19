@@ -221,6 +221,7 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         var left = binaryExpression.Left;
         var right = binaryExpression.Right;
 
+        // Check left is property, right is literal: result.IsSuccess == true
         if (left is MemberAccessExpressionSyntax leftMemberAccess &&
             leftMemberAccess.Name.Identifier.Text == propertyName &&
             right is LiteralExpressionSyntax literal &&
@@ -231,16 +232,22 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             // In then branch: property equals literalValue if ==, or !literalValue if !=
             var propertyValueInThenBranch = isEquals ? literalValue : !literalValue;
 
-            if (propertyValueInThenBranch == expectedValue)
-            {
-                matchesThenBranch = true;
-                return true;
-            }
-            else
-            {
-                matchesThenBranch = false;
-                return true;
-            }
+            matchesThenBranch = propertyValueInThenBranch == expectedValue;
+            return true;
+        }
+
+        // Check right is property, left is literal: true == result.IsSuccess
+        if (right is MemberAccessExpressionSyntax rightMemberAccess &&
+            rightMemberAccess.Name.Identifier.Text == propertyName &&
+            left is LiteralExpressionSyntax literalLeft &&
+            AreSameVariable(rightMemberAccess.Expression, targetExpression, semanticModel))
+        {
+            var literalValue = literalLeft.IsKind(SyntaxKind.TrueLiteralExpression);
+            var isEquals = binaryExpression.IsKind(SyntaxKind.EqualsExpression);
+            var propertyValueInThenBranch = isEquals ? literalValue : !literalValue;
+
+            matchesThenBranch = propertyValueInThenBranch == expectedValue;
+            return true;
         }
 
         return false;
@@ -333,11 +340,11 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         if (memberAccess.FirstAncestorOrSelf<LambdaExpressionSyntax>() is not { Parent: ArgumentSyntax argument } ||
             argument.Parent?.Parent is not InvocationExpressionSyntax invocation ||
             invocation.Expression is not MemberAccessExpressionSyntax methodAccess ||
-            !IsTrellisExtensionMethod(invocation, semanticModel) ||
             !AreSameVariable(methodAccess.Expression, memberAccess.Expression, semanticModel))
             return false;
 
-        if (semanticModel.GetSymbolInfo(invocation).Symbol is not IMethodSymbol methodSymbol)
+        if (semanticModel.GetSymbolInfo(invocation).Symbol is not IMethodSymbol methodSymbol ||
+            !methodSymbol.IsTrellisExtensionMethod())
             return false;
 
         var parameter = GetArgumentParameter(methodSymbol, argument);
@@ -390,15 +397,4 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             _ => false,
         };
 
-    private static bool IsTrellisExtensionMethod(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
-    {
-        var symbolInfo = semanticModel.GetSymbolInfo(invocation);
-        if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
-            return false;
-
-        if (!methodSymbol.IsExtensionMethod)
-            return false;
-
-        return methodSymbol.ContainingType?.ContainingNamespace?.ToDisplayString() == "Trellis";
-    }
 }

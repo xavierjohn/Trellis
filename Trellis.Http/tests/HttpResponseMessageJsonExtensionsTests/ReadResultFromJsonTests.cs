@@ -32,7 +32,7 @@ public class ReadResultFromJsonTests
     }
 
     [Fact]
-    public async Task Will_throw_JsonException_with_wrong_content()
+    public async Task Will_return_failure_with_wrong_content()
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK)
@@ -41,10 +41,12 @@ public class ReadResultFromJsonTests
         };
 
         // Act
-        Func<Task> act = async () => await httpResponseMessage.ReadResultFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+        var result = await httpResponseMessage.ReadResultFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<JsonException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<UnexpectedError>();
+        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]
@@ -65,7 +67,7 @@ public class ReadResultFromJsonTests
     }
 
     [Fact]
-    public async Task Will_throw_JsonException_with_null_content()
+    public async Task Will_return_failure_with_null_content()
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK)
@@ -74,10 +76,12 @@ public class ReadResultFromJsonTests
         };
 
         // Act
-        Func<Task> act = async () => await httpResponseMessage.ReadResultFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+        var result = await httpResponseMessage.ReadResultFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<JsonException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<UnexpectedError>();
+        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]
@@ -389,12 +393,14 @@ public class ReadResultFromJsonTests
         };
 
         // Act
-        Func<Task> act = async () => await httpResponseMessage.ReadResultFromJsonAsync(
+        var result = await httpResponseMessage.ReadResultFromJsonAsync(
             SourceGenerationContext.Default.camelcasePerson,
             CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<JsonException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<UnexpectedError>();
+        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]
@@ -407,12 +413,14 @@ public class ReadResultFromJsonTests
         };
 
         // Act
-        Func<Task> act = async () => await httpResponseMessage.ReadResultFromJsonAsync(
+        var result = await httpResponseMessage.ReadResultFromJsonAsync(
             SourceGenerationContext.Default.camelcasePerson,
             CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<JsonException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<UnexpectedError>();
+        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]

@@ -198,20 +198,33 @@ public class AgeTests
     {
         // Arrange
         var value = Age.TryCreate(25).Value;
-        var expected = JsonSerializer.Serialize("25");
 
         // Act
         var actual = JsonSerializer.Serialize(value);
 
-        // Assert
-        actual.Should().Be(expected);
+        // Assert — numeric value objects serialize as JSON numbers
+        actual.Should().Be("25");
     }
 
     [Fact]
     public void ConvertFromJson()
     {
-        // Arrange
+        // Arrange — deserialize from a JSON string token
         var json = JsonSerializer.Serialize("25");
+
+        // Act
+        var value = JsonSerializer.Deserialize<Age>(json);
+
+        // Assert
+        value.Should().NotBeNull();
+        value!.Value.Should().Be(25);
+    }
+
+    [Fact]
+    public void ConvertFromJson_NumericToken()
+    {
+        // Arrange — deserialize from a JSON number token
+        var json = "25";
 
         // Act
         var value = JsonSerializer.Deserialize<Age>(json);

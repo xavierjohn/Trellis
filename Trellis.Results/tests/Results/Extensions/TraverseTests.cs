@@ -98,7 +98,7 @@ public class TraverseTests : TestBase
         // Assert
         result.Should().BeSuccess();
         result.Value.Should().HaveCount(3);
-        result.Value.First().Name.Should().Be("apple");
+        result.Value[0].Name.Should().Be("apple");
     }
 
     [Fact]

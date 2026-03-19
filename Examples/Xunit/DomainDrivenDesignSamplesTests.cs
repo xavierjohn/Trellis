@@ -262,7 +262,7 @@ public class DomainDrivenDesignSamplesTests
                        Error.Validation("Country is required", nameof(country)))
                 .Map(x => new Address(x.street, x.city, x.state, x.postalCode, x.country));
 
-        protected override IEnumerable<IComparable> GetEqualityComponents()
+        protected override IEnumerable<IComparable?> GetEqualityComponents()
         {
             yield return Street;
             yield return City;
@@ -341,7 +341,7 @@ public class DomainDrivenDesignSamplesTests
         public static Temperature FromFahrenheit(decimal fahrenheit) => new((fahrenheit - 32) * 5 / 9);
         public static Temperature FromKelvin(decimal kelvin) => new(kelvin - 273.15m);
 
-        protected override IEnumerable<IComparable> GetEqualityComponents()
+        protected override IEnumerable<IComparable?> GetEqualityComponents()
         {
             yield return Math.Round(Value, 2);
         }
@@ -462,7 +462,7 @@ public class DomainDrivenDesignSamplesTests
 
         public static Money Zero(string currency = "USD") => new(0, currency);
 
-        protected override IEnumerable<IComparable> GetEqualityComponents()
+        protected override IEnumerable<IComparable?> GetEqualityComponents()
         {
             yield return Amount;
             yield return Currency;

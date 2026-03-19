@@ -70,15 +70,18 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
 {
     private Percentage(decimal value) : base(value) { }
 
+    private static readonly Percentage _zero = new(0m);
+    private static readonly Percentage _full = new(100m);
+
     /// <summary>
     /// Gets a <see cref="Percentage"/> representing 0%.
     /// </summary>
-    public static Percentage Zero => new(0m);
+    public static Percentage Zero => _zero;
 
     /// <summary>
     /// Gets a <see cref="Percentage"/> representing 100%.
     /// </summary>
-    public static Percentage Full => new(100m);
+    public static Percentage Full => _full;
 
     /// <summary>
     /// Attempts to create a <see cref="Percentage"/> from the specified decimal.
