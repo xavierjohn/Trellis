@@ -154,6 +154,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddResourceAuthorization(
         this IServiceCollection services, params Assembly[] assemblies)
     {
+        ArgumentNullException.ThrowIfNull(assemblies);
+        if (assemblies.Length == 0)
+            throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
+
         var authorizeResourceDef = typeof(IAuthorizeResource<>);
         var loaderDef = typeof(IResourceLoader<,>);
         var behaviorDef = typeof(ResourceAuthorizationBehavior<,,>);

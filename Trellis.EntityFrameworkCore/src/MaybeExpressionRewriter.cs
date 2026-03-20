@@ -123,6 +123,10 @@ internal sealed class MaybeExpressionRewriter : ExpressionVisitor
             var left = Visit(node.Left);
             var right = Visit(node.Right);
 
+            // Rewrite Maybe<T>.None / default(Maybe<T>) operands to typed null
+            left = RewriteMaybeDefaultToNull(left, node.Left);
+            right = RewriteMaybeDefaultToNull(right, node.Right);
+
             // Rebuild as a simple comparison without the custom operator method
             return node.NodeType switch
             {
@@ -164,4 +168,25 @@ internal sealed class MaybeExpressionRewriter : ExpressionVisitor
 
     private static bool IsMaybeType(Type type) =>
         type.IsGenericType && type.GetGenericTypeDefinition() == s_maybeOpenGeneric;
+
+    /// <summary>
+    /// Rewrites <c>Maybe&lt;T&gt;.None</c> or <c>default(Maybe&lt;T&gt;)</c> operands to a typed null
+    /// constant so that binary comparisons have compatible operand types.
+    /// </summary>
+    private static Expression RewriteMaybeDefaultToNull(Expression visited, Expression original)
+    {
+        // If the visited expression was already rewritten to an EF.Property call, keep it.
+        if (visited != original && visited.NodeType == ExpressionType.Call)
+            return visited;
+
+        if (!IsMaybeType(original.Type))
+            return visited;
+
+        var innerType = original.Type.GetGenericArguments()[0];
+        var storeType = innerType.IsValueType
+            ? typeof(Nullable<>).MakeGenericType(innerType)
+            : innerType;
+
+        return Expression.Constant(null, storeType);
+    }
 }

@@ -1,4 +1,4 @@
-namespace Trellis.Http;
+﻿namespace Trellis.Http;
 
 using System;
 using System.Net;

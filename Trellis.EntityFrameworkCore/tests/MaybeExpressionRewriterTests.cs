@@ -179,6 +179,52 @@ public class MaybeExpressionRewriterTests : IDisposable
 
     #endregion
 
+    #region Equality with Maybe<T>.None
+
+    [Fact]
+    public async Task EqualsMaybeNone_TranslatesToIsNull()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var withPhone = CreateCustomer("Alice", "+1-555-0100");
+        var withoutPhone = CreateCustomer("Bob");
+        _context.Customers.AddRange(withPhone, withoutPhone);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act — compare Maybe<T> property against Maybe<T>.None using == operator
+        var results = await _context.Customers
+            .Where(c => c.Phone == Maybe<PhoneNumber>.None)
+            .ToListAsync(ct);
+
+        // Assert — only the customer without phone should match
+        results.Should().ContainSingle()
+            .Which.Id.Should().Be(withoutPhone.Id);
+    }
+
+    [Fact]
+    public async Task NotEqualsMaybeNone_TranslatesToIsNotNull()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var withPhone = CreateCustomer("Charlie", "+1-555-0300");
+        var withoutPhone = CreateCustomer("Dave");
+        _context.Customers.AddRange(withPhone, withoutPhone);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var results = await _context.Customers
+            .Where(c => c.Phone != Maybe<PhoneNumber>.None)
+            .ToListAsync(ct);
+
+        // Assert
+        results.Should().ContainSingle()
+            .Which.Id.Should().Be(withPhone.Id);
+    }
+
+    #endregion
+
     #region Helpers
 
     private static TestCustomer CreateCustomer(string name, string? phone = null)

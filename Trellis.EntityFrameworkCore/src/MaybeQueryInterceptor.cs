@@ -14,8 +14,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 /// like <c>WhereHasValue</c> or <c>WhereLessThan</c>.
 /// </para>
 /// <para>
-/// Register via <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/> or
-/// by calling <c>optionsBuilder.AddInterceptors(new MaybeQueryInterceptor())</c>.
+/// Register by calling <c>optionsBuilder.AddInterceptors(new MaybeQueryInterceptor())</c>.
 /// </para>
 /// </remarks>
 /// <example>

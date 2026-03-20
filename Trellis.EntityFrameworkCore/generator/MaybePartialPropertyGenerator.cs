@@ -29,7 +29,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 ///     private PhoneNumber? _phone;
 ///     public partial Maybe&lt;PhoneNumber&gt; Phone
 ///     {
-///         get =&gt; _phone is not null ? Maybe.From(_phone) : Maybe.None&lt;PhoneNumber&gt;();
+///         get =&gt; _phone is not null ? Maybe.From(_phone) : Maybe&lt;PhoneNumber&gt;.None;
 ///         set =&gt; _phone = value.HasValue ? value.Value : null;
 ///     }
 /// }

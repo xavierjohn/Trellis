@@ -1,4 +1,4 @@
-namespace Trellis.Results.Tests.Maybes.Extensions;
+﻿namespace Trellis.Results.Tests.Maybes.Extensions;
 
 using Trellis.Testing;
 
