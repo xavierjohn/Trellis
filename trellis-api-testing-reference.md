@@ -1,0 +1,278 @@
+# Trellis — AI Testing API Reference
+
+> This document covers the `Trellis.Testing` package: FluentAssertions extensions, test builders,
+> fake repositories, actor providers, and testing patterns for Trellis applications.
+> For the core framework API, see `trellis-api-reference.md`.
+
+---
+
+## Result Assertions
+
+```csharp
+result.Should().BeSuccess()                              // returns AndWhichConstraint with value
+result.Should().BeFailure()                              // returns AndWhichConstraint with Error
+result.Should().BeFailureOfType<NotFoundError>()
+result.Should().HaveValue(expected)
+result.Should().HaveValueMatching(v => v.Name == "test")
+result.Should().HaveValueEquivalentTo(expected)
+result.Should().HaveErrorCode("not.found")
+result.Should().HaveErrorDetail("Order not found")
+result.Should().HaveErrorDetailContaining("not found")
+
+// Async
+await result.Should().BeSuccessAsync()
+await result.Should().BeFailureAsync()
+await result.Should().BeFailureOfTypeAsync<ValidationError>()
+```
+
+## Maybe Assertions
+
+```csharp
+maybe.Should().HaveValue()
+maybe.Should().BeNone()
+maybe.Should().HaveValueEqualTo(expected)
+maybe.Should().HaveValueMatching(v => v > 0)
+maybe.Should().HaveValueEquivalentTo(expected)
+```
+
+🔴 **Do NOT use** `.HasValue.Should().BeTrue()` or `.HasNoValue.Should().BeTrue()` — these bypass
+Trellis.Testing's assertion messages. Always use `.Should().HaveValue()` / `.Should().BeNone()`.
+
+## Error Assertions
+
+```csharp
+error.Should().Be(expectedError)
+error.Should().HaveCode("validation.error")
+error.Should().HaveDetail("Field is required")
+error.Should().HaveDetailContaining("required")
+error.Should().HaveInstance("/orders/123")
+error.Should().BeOfType<ValidationError>()
+```
+
+## ValidationError Assertions
+
+```csharp
+validationError.Should().HaveFieldError("email")
+validationError.Should().HaveFieldErrorWithDetail("email", "Email is required")
+validationError.Should().HaveFieldCount(2)
+```
+
+## Test Builders
+
+```csharp
+// ResultBuilder
+ResultBuilder.Success(value)
+ResultBuilder.Failure<T>(error)
+ResultBuilder.NotFound<T>("Order not found")
+ResultBuilder.NotFound<T>("Order", "123")      // "Order '123' not found"
+ResultBuilder.Validation<T>("Invalid", "field")
+ResultBuilder.Unauthorized<T>()
+ResultBuilder.Forbidden<T>()
+// ... Conflict, Unexpected, Domain, RateLimit, BadRequest, ServiceUnavailable
+
+// ValidationErrorBuilder
+ValidationErrorBuilder.Create()
+    .WithFieldError("email", "Required")
+    .WithFieldError("name", "Too short", "Too long")
+    .Build()           // → ValidationError
+    .BuildFailure<T>() // → Result<T>
+```
+
+## FakeRepository
+
+**Namespace: `Trellis.Testing.Fakes`**
+
+In-memory repository for Application-layer handler tests. Stores entities in a dictionary, returns
+`Result<T>` (NotFound if missing), and captures published domain events.
+
+```csharp
+// Construction
+var repo = new FakeRepository<Order, OrderId>();
+
+// CRUD operations
+await repo.SaveAsync(order);
+var result = await repo.GetByIdAsync(orderId);        // Result<Order> (NotFound if missing)
+var maybe = await repo.FindByIdAsync(orderId);        // Result<Maybe<Order>>
+await repo.DeleteAsync(orderId);
+
+// Seeding test data
+var order = Order.Create(...);
+await repo.SaveAsync(order);                           // Now GetByIdAsync will return it
+
+// Domain event inspection
+repo.PublishedEvents                                   // IReadOnlyList<IDomainEvent>
+```
+
+## TestActorProvider and TestActorScope
+
+**Namespace: `Trellis.Testing.Fakes`**
+
+Mutable `IActorProvider` and `IAsyncActorProvider` for authorization testing. Uses `AsyncLocal<Actor?>` internally so parallel tests sharing a singleton provider never interfere. `WithActor` returns a scope that restores the previous actor on dispose, eliminating `try/finally` boilerplate.
+
+Implements both `IActorProvider` (sync) and `IAsyncActorProvider` (async). Register as both interfaces in DI when the system under test uses `IAsyncActorProvider`.
+
+### Construction
+
+```csharp
+var actorProvider = new TestActorProvider("admin", "Orders.Read", "Orders.Write");
+var actorFromInstance = new TestActorProvider(actor);               // from Actor instance
+```
+
+### Scoped Actor Switching
+
+```csharp
+// Temporarily switch actor — restored on dispose
+await using var scope1 = actorProvider.WithActor("user-1", "Orders.Read");
+await using var scope2 = actorProvider.WithActor(actor);           // from Actor instance
+
+// Synchronous dispose also supported
+using var scope3 = actorProvider.WithActor("user-1", "Orders.Read");
+```
+
+### Nested Scopes
+
+```csharp
+await using (actorProvider.WithActor("user-1", "Read"))
+{
+    await using (actorProvider.WithActor("user-2", "Write"))
+    {
+        // actor is user-2
+    }
+    // actor is user-1
+}
+// actor is admin
+```
+
+## ServiceCollection Extensions
+
+Replaces existing `IResourceLoader<TMessage, TResource>` DI registrations with a test implementation. Registered as scoped, matching the production lifetime.
+
+```csharp
+// Stateless fake — capture a pre-created instance
+var fakeLoader = new FakeOrderResourceLoader(fakeRepo);
+services.ReplaceResourceLoader<CancelOrderCommand, Order>(_ => fakeLoader);
+
+// Scoped dependency — resolve from the container
+services.ReplaceResourceLoader<CancelOrderCommand, Order>(
+    sp => new FakeOrderResourceLoader(sp.GetRequiredService<AppDbContext>()));
+// Internally: RemoveAll + AddScoped
+```
+
+## WebApplicationFactory Extensions
+
+Creates an `HttpClient` with the `X-Test-Actor` header pre-set, encoding actor identity and permissions as JSON.
+
+```csharp
+// Extension on WebApplicationFactory<TEntryPoint>
+var client = factory.CreateClientWithActor("user-1", "Orders.Create", "Orders.Read");
+// Sets header: X-Test-Actor: {"Id":"user-1","Permissions":["Orders.Create","Orders.Read"]}
+```
+
+---
+
+## Test Patterns
+
+### Testing Result<T> with TRLS003 Analyzer
+
+The `TRLS003` analyzer warns when accessing `result.Value` without checking `IsSuccess`. Since
+`TreatWarningsAsErrors` is typically enabled, use FluentAssertions to access values safely:
+
+```csharp
+// ✅ Correct — chain off .Which after asserting success
+var result = Customer.TryCreate(firstName, lastName, email, phone, address);
+result.Should().BeSuccess()
+    .Which.Email.Should().Be(email);
+
+// ✅ Also correct — assert then access .Value (TRLS003 still fires but assertion guarantees safety)
+var result = Order.TryCreate(customerId, lineItems);
+result.Should().BeSuccess();
+var order = result.Value;    // safe after assertion, suppress TRLS003 if needed
+
+// ✅ Correct — failure assertions
+var result = order.Submit();
+result.Should().BeFailure()
+    .Which.Should().BeOfType<ValidationError>();
+
+// ❌ Wrong — TRLS003 compile error
+var customer = Customer.TryCreate(...).Value;  // Accessing .Value without guard
+```
+
+### Domain Unit Tests
+
+```csharp
+using Trellis.Testing;
+
+[Fact]
+public void CreateOrder_ValidInput_ReturnsSuccess()
+{
+    var customerId = CustomerId.NewUniqueV4();
+    var result = Order.TryCreate(customerId);
+
+    result.Should().BeSuccess()
+        .Which.CustomerId.Should().Be(customerId);
+}
+
+[Fact]
+public void CreateOrder_EmptySubmit_ReturnsFailure()
+{
+    var orderResult = Order.TryCreate(CustomerId.NewUniqueV4());
+    orderResult.Should().BeSuccess();
+
+    var order = orderResult.Value;
+    var result = order.Submit();
+
+    result.Should().BeFailure()
+        .Which.Should().BeOfType<DomainError>()
+        .Which.Should().HaveDetailContaining("empty");
+}
+```
+
+### Application Handler Tests with FakeRepository
+
+```csharp
+[Fact]
+public async Task GetOrder_NotFound_ReturnsNotFoundError()
+{
+    var repo = new FakeRepository<Order, OrderId>();
+    var result = await repo.GetByIdAsync(OrderId.NewUniqueV4());
+
+    result.Should().BeFailure()
+        .Which.Should().BeOfType<NotFoundError>();
+}
+```
+
+### Maybe<T> Assertions in Tests
+
+```csharp
+// ✅ Correct — Trellis.Testing assertions
+customer.PhoneNumber.Should().HaveValue();
+customer.PhoneNumber.Should().BeNone();
+order.SubmittedAt.Should().HaveValue();
+order.SubmittedAt.Should().HaveValueMatching(d => d > DateTime.UtcNow.AddMinutes(-1));
+
+// ❌ Wrong — bypasses Trellis.Testing, poor error messages
+customer.PhoneNumber.HasValue.Should().BeTrue();
+customer.PhoneNumber.HasNoValue.Should().BeTrue();
+```
+
+### Authorization Tests
+
+```csharp
+[Fact]
+public async Task Cancel_ByOwner_Succeeds()
+{
+    var actorProvider = new TestActorProvider("owner-1", Permissions.OrdersCancel);
+    // ... set up order with CreatedByActorId = "owner-1"
+    var result = await sender.Send(new CancelOrderCommand(orderId));
+    result.Should().BeSuccess();
+}
+
+[Fact]
+public async Task Cancel_ByNonOwner_ReturnsForbidden()
+{
+    var actorProvider = new TestActorProvider("other-user", Permissions.OrdersCancel);
+    // ... set up order with CreatedByActorId = "owner-1"
+    var result = await sender.Send(new CancelOrderCommand(orderId));
+    result.Should().BeFailureOfType<ForbiddenError>();
+}
+```
