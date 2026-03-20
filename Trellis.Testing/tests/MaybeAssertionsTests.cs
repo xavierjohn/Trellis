@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests;
+namespace Trellis.Testing.Tests;
 
 using Trellis;
 using Trellis.Testing;
@@ -37,7 +37,7 @@ public class MaybeAssertionsTests
     public void HaveValue_MaybeWithNoValue_Fails()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act & Assert
         var action = () => maybe.Should().HaveValue();
@@ -49,7 +49,7 @@ public class MaybeAssertionsTests
     public void HaveValue_WithBecauseClause_IncludesReasonInFailureMessage()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act & Assert
         var action = () => maybe.Should().HaveValue("we expected a user");
@@ -88,7 +88,7 @@ public class MaybeAssertionsTests
     public void BeNone_MaybeWithNoValue_Succeeds()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act & Assert
         maybe.Should().BeNone();
@@ -157,7 +157,7 @@ public class MaybeAssertionsTests
     public void HaveValueEqualTo_MaybeWithNoValue_Fails()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act & Assert
         var action = () => maybe.Should().HaveValueEqualTo("expected value");
@@ -169,7 +169,7 @@ public class MaybeAssertionsTests
     public void HaveValueEqualTo_WithBecauseClause_IncludesReasonInFailureMessage()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act & Assert
         var action = () => maybe.Should().HaveValueEqualTo("expected", "the lookup should succeed");
@@ -243,7 +243,7 @@ public class MaybeAssertionsTests
     public void HaveValueMatching_Should_Fail_When_None()
     {
         // Arrange
-        var maybe = Maybe.None<int>();
+        var maybe = Maybe<int>.None;
 
         // Act
         var act = () => maybe.Should().HaveValueMatching(x => x > 0);
@@ -312,7 +312,7 @@ public class MaybeAssertionsTests
     public void BeNone_ReturnsAndConstraint()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act & Assert
         var result = maybe.Should().BeNone();
@@ -400,7 +400,7 @@ public class MaybeAssertionsTests
     {
         // Arrange
         string? nullValue = null;
-        Maybe<string> maybe = nullValue == null ? Maybe.None<string>() : nullValue;
+        Maybe<string> maybe = nullValue == null ? Maybe<string>.None : nullValue;
 
         // Act & Assert
         maybe.Should().BeNone();
@@ -415,7 +415,7 @@ public class MaybeAssertionsTests
     {
         // Arrange
         var result = Result.Success("test");
-        var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe.None<string>();
+        var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe<string>.None;
 
         // Act & Assert
         maybe.Should().HaveValueEqualTo("test");
@@ -426,7 +426,7 @@ public class MaybeAssertionsTests
     {
         // Arrange
         var result = Result.Failure<string>(Error.NotFound("Not found"));
-        var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe.None<string>();
+        var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe<string>.None;
 
         // Act & Assert
         maybe.Should().BeNone();

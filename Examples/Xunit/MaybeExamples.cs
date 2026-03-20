@@ -1,4 +1,4 @@
-﻿namespace Example.Tests;
+namespace Example.Tests;
 
 using Trellis;
 using Xunit;
@@ -22,7 +22,7 @@ public class MaybeExamples
     public void Construction_None_X2F_No_Value()
     {
         // Arrange
-        Maybe<string> fruit1 = Maybe.None<string>();
+        Maybe<string> fruit1 = Maybe<string>.None;
         Maybe<string> fruit2 = default; // reference type
         Maybe<int> fruit3 = default; // value type
 
@@ -47,7 +47,7 @@ public class MaybeExamples
         static Maybe<string> GetFruit(string fruit)
         {
             if (string.IsNullOrWhiteSpace(fruit))
-                return Maybe.None<string>();
+                return Maybe<string>.None;
 
             return fruit; // implicit conversion
         }
@@ -71,7 +71,7 @@ public class MaybeExamples
         Maybe<string> apple = "apple";
         Maybe<string> orange = "orange";
         string alsoOrange = "orange";
-        Maybe<string> noFruit = Maybe.None<string>();
+        Maybe<string> noFruit = Maybe<string>.None;
 
         // Act
 
@@ -86,7 +86,7 @@ public class MaybeExamples
     {
         // Arrange
         Maybe<string> apple = "apple";
-        Maybe<string> noFruit = Maybe.None<string>();
+        Maybe<string> noFruit = Maybe<string>.None;
 
         // Act
 
@@ -100,7 +100,7 @@ public class MaybeExamples
     {
         // Arrange
         Maybe<string> apple = "apple";
-        Maybe<string> noFruit = Maybe.None<string>();
+        Maybe<string> noFruit = Maybe<string>.None;
 
         // Act
         var action1 = () => apple.GetValueOrThrow();
@@ -116,7 +116,7 @@ public class MaybeExamples
     {
         // Arrange
         Maybe<string> apple = "apple";
-        Maybe<string> noFruit = Maybe.None<string>();
+        Maybe<string> noFruit = Maybe<string>.None;
 
         // Act
 
@@ -130,7 +130,7 @@ public class MaybeExamples
     {
         // Arrange
         Maybe<string> apple = "apple";
-        Maybe<string> unknownFruit = Maybe.None<string>();
+        Maybe<string> unknownFruit = Maybe<string>.None;
 
         // Act
         string appleValue = apple.GetValueOrDefault("banana");

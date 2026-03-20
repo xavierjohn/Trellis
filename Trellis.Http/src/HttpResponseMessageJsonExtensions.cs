@@ -1,4 +1,4 @@
-﻿namespace Trellis.Http;
+namespace Trellis.Http;
 
 using System;
 using System.Net;
@@ -452,18 +452,18 @@ public static partial class HttpResponseExtensions
             return Result.Failure<Maybe<TValue>>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
 
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
-            return Result.Success(Maybe.None<TValue>());
+            return Result.Success(Maybe<TValue>.None);
 
         if (response.Content is null)
-            return Result.Success(Maybe.None<TValue>());
+            return Result.Success(Maybe<TValue>.None);
 
         var contentBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         if (contentBytes.Length == 0)
-            return Result.Success(Maybe.None<TValue>());
+            return Result.Success(Maybe<TValue>.None);
 
         var value = JsonSerializer.Deserialize(contentBytes, jsonTypeInfo);
 
-        return Result.Success(value is null ? Maybe.None<TValue>() : Maybe.From(value));
+        return Result.Success(value is null ? Maybe<TValue>.None : Maybe.From(value));
     }
 
     /// <summary>

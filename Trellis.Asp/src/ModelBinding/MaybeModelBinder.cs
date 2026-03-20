@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.ModelBinding;
+namespace Trellis.Asp.ModelBinding;
 
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Trellis;
@@ -27,11 +27,11 @@ public class MaybeModelBinder<TValue, TPrimitive> : ScalarValueModelBinderBase<M
 {
     /// <inheritdoc />
     protected override ModelBindingResult OnMissingValue() =>
-        ModelBindingResult.Success(Maybe.None<TValue>());
+        ModelBindingResult.Success(Maybe<TValue>.None);
 
     /// <inheritdoc />
     protected override ModelBindingResult? OnEmptyValue() =>
-        ModelBindingResult.Success(Maybe.None<TValue>());
+        ModelBindingResult.Success(Maybe<TValue>.None);
 
     /// <inheritdoc />
     protected override ModelBindingResult OnSuccess(TValue value) =>

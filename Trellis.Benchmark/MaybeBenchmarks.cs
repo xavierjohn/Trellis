@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -19,9 +19,9 @@ public class MaybeBenchmarks
     public void Setup()
     {
         _maybeWithValue = Maybe.From(42);
-        _maybeEmpty = Maybe.None<int>();
+        _maybeEmpty = Maybe<int>.None;
         _maybeStringWithValue = Maybe.From("Hello World");
-        _maybeStringEmpty = Maybe.None<string>();
+        _maybeStringEmpty = Maybe<string>.None;
     }
 
     [Benchmark(Baseline = true)]
@@ -81,7 +81,7 @@ public class MaybeBenchmarks
     [Benchmark]
     public Maybe<int> None_Creation()
     {
-        return Maybe.None<int>();
+        return Maybe<int>.None;
     }
 
     [Benchmark]
@@ -109,8 +109,8 @@ public class MaybeBenchmarks
     [Benchmark]
     public bool Equality_BothEmpty()
     {
-        var maybe1 = Maybe.None<int>();
-        var maybe2 = Maybe.None<int>();
+        var maybe1 = Maybe<int>.None;
+        var maybe2 = Maybe<int>.None;
         return maybe1 == maybe2;
     }
 
@@ -160,14 +160,14 @@ public class MaybeBenchmarks
     public Maybe<string> Optional_WithNullValue()
     {
         string? value = null;
-        return value != null ? Maybe.From(value) : Maybe.None<string>();
+        return value != null ? Maybe.From(value) : Maybe<string>.None;
     }
 
     [Benchmark]
     public Maybe<string> Optional_WithValue()
     {
         string? value = "test";
-        return value != null ? Maybe.From(value) : Maybe.None<string>();
+        return value != null ? Maybe.From(value) : Maybe<string>.None;
     }
 
     [Benchmark]

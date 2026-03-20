@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Maybes;
+namespace Trellis.Results.Tests.Maybes;
 
 using Trellis;
 
@@ -135,7 +135,7 @@ public class EqualityTests
     [Fact]
     public void None_is_not_equal_to_any_concrete_value()
     {
-        Maybe<int> none = Maybe.None<int>();
+        Maybe<int> none = Maybe<int>.None;
 
         (none == 0).Should().BeFalse();
         (none == 5).Should().BeFalse();
@@ -155,8 +155,8 @@ public class EqualityTests
     [Fact]
     public void Two_nones_are_equal()
     {
-        Maybe<int> a = Maybe.None<int>();
-        Maybe<int> b = Maybe.None<int>();
+        Maybe<int> a = Maybe<int>.None;
+        Maybe<int> b = Maybe<int>.None;
 
         (a == b).Should().BeTrue();
         a.Equals(b).Should().BeTrue();
@@ -167,7 +167,7 @@ public class EqualityTests
     {
         Maybe<MyClass> maybe = default;
 
-        var result = maybe == Maybe.None<MyClass>();
+        var result = maybe == Maybe<MyClass>.None;
 
         result.Should().BeTrue();
     }

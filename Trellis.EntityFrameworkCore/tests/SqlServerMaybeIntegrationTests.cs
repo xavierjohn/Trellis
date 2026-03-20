@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.EntityFrameworkCore;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
@@ -195,7 +195,7 @@ public class SqlServerMaybeIntegrationTests : IAsyncLifetime
         // Act — clear to None
         _context.ChangeTracker.Clear();
         var tracked = await _context.Customers.FindAsync([customer.Id], ct);
-        tracked!.Phone = Maybe.None<PhoneNumber>();
+        tracked!.Phone = Maybe<PhoneNumber>.None;
         await _context.SaveChangesAsync(ct);
 
         _context.ChangeTracker.Clear();

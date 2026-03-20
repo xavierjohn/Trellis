@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Maybes;
+namespace Trellis.Results.Tests.Maybes;
 
 using Xunit;
 
@@ -27,7 +27,7 @@ public class MaybeEdgeCaseTests
     public void TryGetValue_OnMaybeWithoutValue_ShouldReturnFalseAndDefault()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         bool hasValue = maybe.TryGetValue(out var value);
@@ -41,7 +41,7 @@ public class MaybeEdgeCaseTests
     public void TryGetValue_OnValueType_WithoutValue_ShouldReturnDefault()
     {
         // Arrange
-        Maybe<int> maybe = Maybe.None<int>();
+        Maybe<int> maybe = Maybe<int>.None;
 
         // Act
         bool hasValue = maybe.TryGetValue(out var value);
@@ -72,7 +72,7 @@ public class MaybeEdgeCaseTests
     public void GetValueOrThrow_OnMaybeWithoutValue_ShouldThrowWithDefaultMessage()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         Action act = () => maybe.GetValueOrThrow();
@@ -86,7 +86,7 @@ public class MaybeEdgeCaseTests
     public void GetValueOrThrow_OnMaybeWithoutValue_WithCustomMessage_ShouldThrowWithCustomMessage()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
         string customMessage = "Custom error message";
 
         // Act
@@ -101,7 +101,7 @@ public class MaybeEdgeCaseTests
     public void Value_OnMaybeWithoutValue_ShouldThrow()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         Action act = () => { var _ = maybe.Value; };
@@ -132,7 +132,7 @@ public class MaybeEdgeCaseTests
     public void GetValueOrDefault_OnMaybeWithoutValue_ShouldReturnDefault()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         var value = maybe.GetValueOrDefault("default");
@@ -145,7 +145,7 @@ public class MaybeEdgeCaseTests
     public void GetValueOrDefault_WithNullDefault_ShouldWorkCorrectly()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         var value = maybe.GetValueOrDefault(null!);
@@ -158,7 +158,7 @@ public class MaybeEdgeCaseTests
     public void GetValueOrDefault_OnValueType_ShouldWorkCorrectly()
     {
         // Arrange
-        Maybe<int> maybe = Maybe.None<int>();
+        Maybe<int> maybe = Maybe<int>.None;
 
         // Act
         var value = maybe.GetValueOrDefault(42);
@@ -214,8 +214,8 @@ public class MaybeEdgeCaseTests
     public void Equals_TwoMaybesWithoutValue_ShouldBeEqual()
     {
         // Arrange
-        Maybe<string> maybe1 = Maybe.None<string>();
-        Maybe<string> maybe2 = Maybe.None<string>();
+        Maybe<string> maybe1 = Maybe<string>.None;
+        Maybe<string> maybe2 = Maybe<string>.None;
 
         // Act & Assert
         maybe1.Should().Be(maybe2);
@@ -229,7 +229,7 @@ public class MaybeEdgeCaseTests
     {
         // Arrange
         Maybe<string> maybe1 = "test";
-        Maybe<string> maybe2 = Maybe.None<string>();
+        Maybe<string> maybe2 = Maybe<string>.None;
 
         // Act & Assert
         maybe1.Should().NotBe(maybe2);
@@ -254,7 +254,7 @@ public class MaybeEdgeCaseTests
     public void Equals_MaybeWithoutValue_ComparedToNull_ShouldBeEqual()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act & Assert
         maybe.Equals(null).Should().BeTrue();
@@ -376,8 +376,8 @@ public class MaybeEdgeCaseTests
     public void GetHashCode_TwoMaybesWithoutValue_ShouldHaveSameHashCode()
     {
         // Arrange
-        Maybe<string> maybe1 = Maybe.None<string>();
-        Maybe<string> maybe2 = Maybe.None<string>();
+        Maybe<string> maybe1 = Maybe<string>.None;
+        Maybe<string> maybe2 = Maybe<string>.None;
 
         // Act
         int hash1 = maybe1.GetHashCode();
@@ -393,7 +393,7 @@ public class MaybeEdgeCaseTests
     {
         // Arrange
         Maybe<string> maybe1 = "test";
-        Maybe<string> maybe2 = Maybe.None<string>();
+        Maybe<string> maybe2 = Maybe<string>.None;
 
         // Act
         int hash1 = maybe1.GetHashCode();
@@ -438,7 +438,7 @@ public class MaybeEdgeCaseTests
     public void ToString_OnMaybeWithoutValue_ShouldReturnEmptyString()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         string str = maybe.ToString();
@@ -483,7 +483,7 @@ public class MaybeEdgeCaseTests
     {
         // Arrange
         Maybe<string> withValue = "test";
-        Maybe<string> withoutValue = Maybe.None<string>();
+        Maybe<string> withoutValue = Maybe<string>.None;
 
         // Assert
         withValue.HasValue.Should().BeTrue();
@@ -590,7 +590,7 @@ public class MaybeEdgeCaseTests
     public void Map_OnMaybeWithoutValue_ShouldReturnNone()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         var result = maybe.Map(v => v.ToUpperInvariant());
@@ -634,7 +634,7 @@ public class MaybeEdgeCaseTests
     public void Match_OnMaybeWithoutValue_ShouldCallNone()
     {
         // Arrange
-        Maybe<string> maybe = Maybe.None<string>();
+        Maybe<string> maybe = Maybe<string>.None;
 
         // Act
         var result = maybe.Match(v => $"Got: {v}", () => "Nothing");
@@ -662,7 +662,7 @@ public class MaybeEdgeCaseTests
     public void Match_OnMaybeWithoutValue_ShouldNotCallSome()
     {
         // Arrange
-        Maybe<int> maybe = Maybe.None<int>();
+        Maybe<int> maybe = Maybe<int>.None;
         var someCalled = false;
 
         // Act
@@ -681,7 +681,7 @@ public class MaybeEdgeCaseTests
     public void MaybeNone_ShouldCreateMaybeWithoutValue()
     {
         // Act
-        var maybe = Maybe.None<string>();
+        var maybe = Maybe<string>.None;
 
         // Assert
         maybe.HasNoValue.Should().BeTrue();
@@ -691,8 +691,8 @@ public class MaybeEdgeCaseTests
     public void MaybeNone_MultipleCallsShouldBehaveSame()
     {
         // Act
-        var maybe1 = Maybe.None<string>();
-        var maybe2 = Maybe.None<string>();
+        var maybe1 = Maybe<string>.None;
+        var maybe2 = Maybe<string>.None;
 
         // Assert
         maybe1.Should().Be(maybe2);

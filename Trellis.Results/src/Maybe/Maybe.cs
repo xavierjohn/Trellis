@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Contains static methods to create a <see cref="Maybe{T}"/> object.
@@ -6,18 +6,11 @@
 public static class Maybe
 {
     /// <summary>
-    /// Creates a new <see cref="Maybe{T}"/> with no value.
-    /// </summary>
-    /// <typeparam name="T">The type of the value. Must be a non-null type.</typeparam>
-    /// <returns><see cref="Maybe{T}"/> object with no value.</returns>
-    public static Maybe<T> None<T>() where T : notnull => new();
-
-    /// <summary>
     /// Creates a new <see cref="Maybe{T}"/> from a value.
     /// If the value is null, creates an empty Maybe.
     /// </summary>
     /// <typeparam name="T">The type of the value. Must be a non-null type.</typeparam>
-    /// <param name="value">The value to wrap. If null, returns <see cref="None{T}"/>.</param>
+    /// <param name="value">The value to wrap. If null, returns <see cref="Maybe{T}.None"/>.</param>
     /// <returns>A <see cref="Maybe{T}"/> object with the value, or None if null.</returns>
     public static Maybe<T> From<T>(T? value) where T : notnull => new(value);
 
@@ -26,7 +19,7 @@ public static class Maybe
     /// </summary>
     /// <typeparam name="TIn">The nullable reference input type.</typeparam>
     /// <typeparam name="TOut">The validated output type.</typeparam>
-    /// <param name="value">The nullable input. If null, returns <c>Result.Success(Maybe.None&lt;TOut&gt;())</c>.</param>
+    /// <param name="value">The nullable input. If null, returns <c>Result.Success(Maybe&lt;TOut&gt;.None)</c>.</param>
     /// <param name="function">A function that validates the input and returns a <see cref="Result{TOut}"/>.</param>
     /// <returns>
     ///     <list type="table">
@@ -59,7 +52,7 @@ public static class Maybe
         where TOut : notnull
     {
         if (value is null)
-            return Maybe.None<TOut>();
+            return Maybe<TOut>.None;
 
         return function(value).Map(r => Maybe.From(r));
     }
@@ -69,7 +62,7 @@ public static class Maybe
     /// </summary>
     /// <typeparam name="TIn">The nullable value input type.</typeparam>
     /// <typeparam name="TOut">The validated output type.</typeparam>
-    /// <param name="value">The nullable input. If null, returns <c>Result.Success(Maybe.None&lt;TOut&gt;())</c>.</param>
+    /// <param name="value">The nullable input. If null, returns <c>Result.Success(Maybe&lt;TOut&gt;.None)</c>.</param>
     /// <param name="function">A function that validates the input and returns a <see cref="Result{TOut}"/>.</param>
     /// <returns>
     ///     <list type="table">
@@ -102,7 +95,7 @@ public static class Maybe
         where TOut : notnull
     {
         if (!value.HasValue)
-            return Maybe.None<TOut>();
+            return Maybe<TOut>.None;
 
         return function(value.Value).Map(r => Maybe.From(r));
     }
