@@ -1557,6 +1557,13 @@ IndexBuilder<TEntity> HasTrellisIndex<TEntity>(
     this EntityTypeBuilder<TEntity> entityTypeBuilder,
     Expression<Func<TEntity, object?>> propertySelector)
 
+// Usage — single Maybe<T> property
+builder.HasTrellisIndex(o => o.SubmittedAt);
+
+// Usage — composite index mixing regular + Maybe<T> properties
+builder.HasTrellisIndex(o => new { o.Status, o.SubmittedAt });
+// Resolves to: HasIndex("Status", "_submittedAt") — type-safe, no string typos
+
 // Notes
 // - Accepts direct property access on the lambda parameter only
 // - Rejects nested selectors such as e => e.Customer.Phone
