@@ -994,6 +994,8 @@ ActionResult<T> ToCreatedAtActionResult<T>(this Result<T> result, ControllerBase
 
 // Transform overloads — map domain type to DTO inline
 ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller,
+    Func<TIn, TOut> map)
+ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller,
     Func<TIn, ContentRangeHeaderValue> funcRange, Func<TIn, TOut> funcValue)
 ActionResult<TOut> ToCreatedAtActionResult<TValue, TOut>(this Result<TValue> result, ControllerBase controller,
     string actionName, Func<TValue, object?> routeValues, Func<TValue, TOut> map, string? controllerName = null)
