@@ -1392,8 +1392,9 @@ var overdue = await context.Orders
 Automatically rewrites `Maybe<T>` property accesses in LINQ expression trees to EF Core-translatable storage member references. Enables natural LINQ syntax and `Specification<T>` patterns with `Maybe<T>` properties.
 
 ```csharp
-// Registration — add to DbContext options
-optionsBuilder.AddInterceptors(new MaybeQueryInterceptor());
+// Registration — use a static singleton to avoid ManyServiceProvidersCreatedWarning
+private static readonly MaybeQueryInterceptor s_maybeInterceptor = new();
+optionsBuilder.AddInterceptors(s_maybeInterceptor);
 
 // With interceptor registered, these LINQ expressions work directly:
 context.Customers.Where(c => c.Phone.HasValue)                                    // → IS NOT NULL
