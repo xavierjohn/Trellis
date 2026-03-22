@@ -67,7 +67,7 @@ public class MaybePropertyTests : IDisposable
             Name = TestCustomerName.Create("Bob"),
             Email = EmailAddress.Create("bob@example.com"),
             CreatedAt = DateTime.UtcNow
-            // Phone is default (Maybe.None<PhoneNumber>())
+            // Phone is default (Maybe<PhoneNumber>.None)
         };
 
         // Act
@@ -102,7 +102,7 @@ public class MaybePropertyTests : IDisposable
         // Act — clear to None
         _context.ChangeTracker.Clear();
         var tracked = await _context.Customers.FindAsync([customer.Id], ct);
-        tracked!.Phone = Maybe.None<PhoneNumber>();
+        tracked!.Phone = Maybe<PhoneNumber>.None;
         await _context.SaveChangesAsync(ct);
 
         _context.ChangeTracker.Clear();
@@ -176,7 +176,7 @@ public class MaybePropertyTests : IDisposable
             CustomerId = customerId,
             Amount = 50m,
             Status = TestOrderStatus.Draft
-            // SubmittedAt is default (Maybe.None<DateTime>())
+            // SubmittedAt is default (Maybe<DateTime>.None)
         };
 
         // Act
@@ -253,7 +253,7 @@ public class MaybePropertyTests : IDisposable
             CustomerId = customerId,
             Amount = 50m,
             Status = TestOrderStatus.Confirmed
-            // OptionalStatus is default (Maybe.None<TestOrderStatus>())
+            // OptionalStatus is default (Maybe<TestOrderStatus>.None)
         };
 
         // Act

@@ -39,6 +39,12 @@ public readonly struct Maybe<T> :
     private const string NoValue = "Maybe has no value.";
 
     /// <summary>
+    /// Gets a <see cref="Maybe{T}"/> instance with no value.
+    /// </summary>
+    [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Maybe<T>.None is the idiomatic way to express 'no value' for a specific Maybe type.")]
+    public static Maybe<T> None => default;
+
+    /// <summary>
     /// Gets the underlying value if present, otherwise throws an exception.
     /// </summary>
     /// <param name="errorMessage">Optional custom error message to use when throwing.</param>
@@ -118,7 +124,7 @@ public readonly struct Maybe<T> :
 
     /// <summary>
     /// Transforms the value inside a <see cref="Maybe{T}"/> using the specified function.
-    /// If no value is present, returns <see cref="Maybe.None{TResult}()"/>.
+    /// If no value is present, returns <see cref="Maybe{TResult}.None"/>.
     /// </summary>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
     /// <param name="selector">The function to apply to the value.</param>

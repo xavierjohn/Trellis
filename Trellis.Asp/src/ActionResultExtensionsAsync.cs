@@ -236,6 +236,72 @@ public static class ActionResultExtensionsAsync
     }
 
     /// <summary>
+    /// Converts a Task-wrapped <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/>
+    /// by applying a mapping function on success, or Problem Details on failure.
+    /// </summary>
+    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
+    /// <typeparam name="TOut">The type of the value in the output ActionResult.</typeparam>
+    /// <param name="resultTask">The task containing the result object to convert.</param>
+    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
+    /// <param name="map">Function that transforms the input value to the output type.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation, containing:
+    /// <list type="bullet">
+    /// <item>200 OK with transformed value if result is successful</item>
+    /// <item>Appropriate error status code based on error type if result is failure</item>
+    /// </list>
+    /// </returns>
+    /// <remarks>
+    /// Use this when the Mediator handler returns a domain type and the controller
+    /// needs to map it to a DTO before returning.
+    /// </remarks>
+    /// <example>
+    /// GET endpoint mapping domain to DTO:
+    /// <code>
+    /// [HttpGet("{id}")]
+    /// public Task&lt;ActionResult&lt;OrderDto&gt;&gt; GetOrder(OrderId id) =>
+    ///     _sender.Send(new GetOrderByIdQuery(id), ct)
+    ///         .ToActionResultAsync(this, OrderDto.From);
+    /// </code>
+    /// </example>
+    public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        ControllerBase controllerBase,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToActionResult(controllerBase, map);
+    }
+
+    /// <summary>
+    /// Converts a ValueTask-wrapped <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/>
+    /// by applying a mapping function on success, or Problem Details on failure (ValueTask variant).
+    /// </summary>
+    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
+    /// <typeparam name="TOut">The type of the value in the output ActionResult.</typeparam>
+    /// <param name="resultTask">The ValueTask containing the result object to convert.</param>
+    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
+    /// <param name="map">Function that transforms the input value to the output type.</param>
+    /// <returns>
+    /// A ValueTask that represents the asynchronous operation, containing:
+    /// <list type="bullet">
+    /// <item>200 OK with transformed value if result is successful</item>
+    /// <item>Appropriate error status code based on error type if result is failure</item>
+    /// </list>
+    /// </returns>
+    /// <remarks>
+    /// ValueTask variant optimized for scenarios with cached or frequently synchronous results.
+    /// </remarks>
+    public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        ControllerBase controllerBase,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToActionResult(controllerBase, map);
+    }
+
+    /// <summary>
     /// Converts a Task-wrapped <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/> with support for partial content responses using explicit range values.
     /// </summary>
     /// <typeparam name="TValue">The type of the value contained in the result.</typeparam>

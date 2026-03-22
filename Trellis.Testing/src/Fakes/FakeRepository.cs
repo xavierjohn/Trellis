@@ -45,7 +45,7 @@ public class FakeRepository<TAggregate, TId>
     {
         var maybe = _store.TryGetValue(id, out var aggregate)
             ? Maybe.From(aggregate)
-            : Maybe.None<TAggregate>();
+            : Maybe<TAggregate>.None;
 
         return Task.FromResult(Result.Success(maybe));
     }

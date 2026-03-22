@@ -16,7 +16,7 @@ public static class QueryableExtensions
     /// <summary>
     /// Executes <see cref="EntityFrameworkQueryableExtensions.FirstOrDefaultAsync{TSource}(IQueryable{TSource}, CancellationToken)"/>
     /// and wraps the result in <see cref="Maybe{T}"/>.
-    /// Returns <see cref="Maybe.None{T}()"/> if no entity matches.
+    /// Returns <see cref="Maybe{T}.None"/> if no entity matches.
     /// </summary>
     /// <typeparam name="T">The entity type.</typeparam>
     /// <param name="query">The queryable to execute.</param>

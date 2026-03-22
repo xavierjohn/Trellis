@@ -16,7 +16,7 @@ public class MaybeTests
     [Fact]
     public void Can_create_a_maybe_none()
     {
-        var maybe = Maybe.None<MyClass>();
+        var maybe = Maybe<MyClass>.None;
 
         maybe.HasValue.Should().BeFalse();
         maybe.HasNoValue.Should().BeTrue();
@@ -26,7 +26,7 @@ public class MaybeTests
     public void Nullable_maybe_is_same_as_maybe_none()
     {
         Maybe<MyClass> nullableMaybe = default;
-        var maybeNone = Maybe.None<MyClass>();
+        var maybeNone = Maybe<MyClass>.None;
 
         nullableMaybe.Should().Be(maybeNone);
     }
@@ -79,22 +79,22 @@ public class MaybeTests
     [Fact]
     public void Maybe_None_has_no_value()
     {
-        Maybe.None<string>().HasValue.Should().BeFalse();
-        Maybe.None<int>().HasValue.Should().BeFalse();
+        Maybe<string>.None.HasValue.Should().BeFalse();
+        Maybe<int>.None.HasValue.Should().BeFalse();
     }
 
     [Fact]
     public void Maybe_None_Tuples_has_no_value_is_true()
     {
-        Maybe.None<(Array, Exception)>().HasNoValue.Should().BeTrue();
-        Maybe.None<(double, int, byte)>().HasNoValue.Should().BeTrue();
+        Maybe<(Array, Exception)>.None.HasNoValue.Should().BeTrue();
+        Maybe<(double, int, byte)>.None.HasNoValue.Should().BeTrue();
     }
 
     [Fact]
     public void Maybe_None_Tuples_has_value_is_false()
     {
-        Maybe.None<(DateTime, bool, char)>().HasValue.Should().BeFalse();
-        Maybe.None<(string, TimeSpan)>().HasValue.Should().BeFalse();
+        Maybe<(DateTime, bool, char)>.None.HasValue.Should().BeFalse();
+        Maybe<(string, TimeSpan)>.None.HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class MaybeTests
     [Fact]
     public void Can_cast_non_generic_maybe_none_to_maybe_none()
     {
-        Maybe<int> maybe = Maybe.None<int>();
+        Maybe<int> maybe = Maybe<int>.None;
 
         maybe.HasValue.Should().BeFalse();
         maybe.HasNoValue.Should().BeTrue();
@@ -124,7 +124,7 @@ public class MaybeTests
 
         Action action = () =>
         {
-            var maybe = Maybe.None<int>();
+            var maybe = Maybe<int>.None;
             maybe.GetValueOrThrow(errorMessage);
         };
 
@@ -146,7 +146,7 @@ public class MaybeTests
     [Fact]
     public void TryGetValue_returns_false_if_source_is_empty()
     {
-        var maybe = Maybe.None<int>();
+        var maybe = Maybe<int>.None;
 
         var result = maybe.TryGetValue(out var value);
 

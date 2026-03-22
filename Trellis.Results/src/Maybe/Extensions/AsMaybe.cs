@@ -18,7 +18,7 @@ public static partial class MaybeExtensions
     /// </summary>
     /// <typeparam name="T">The reference type.</typeparam>
     /// <param name="value">The potentially null class instance.</param>
-    /// <returns>Returns <see cref="Maybe.None{T}()"/> if the class instance is null, otherwise returns a Maybe with the value.</returns>
+    /// <returns>Returns <see cref="Maybe{T}.None"/> if the class instance is null, otherwise returns a Maybe with the value.</returns>
     public static Maybe<T> AsMaybe<T>([MaybeNull] this T value) where T : class =>
         value is null ? default : new(value);
 }

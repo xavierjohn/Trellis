@@ -429,6 +429,186 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
     #endregion
 
+    #region WhereLessThan / WhereLessThanOrEqual / WhereGreaterThan / WhereGreaterThanOrEqual — value-type inner (DateTime)
+
+    [Fact]
+    public async Task WhereLessThan_ValueTypeInner_ReturnsEntitiesWithSmallerValues()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("LT-Alice");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var early = CreateOrder(customer.Id);
+        early.SubmittedAt = Maybe.From(new DateTime(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc));
+        var late = CreateOrder(customer.Id);
+        late.SubmittedAt = Maybe.From(new DateTime(2026, 3, 20, 12, 0, 0, DateTimeKind.Utc));
+        var noDate = CreateOrder(customer.Id); // NULL — should be excluded
+
+        _context.Orders.AddRange(early, late, noDate);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var cutoff = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // Act
+        var results = await _context.Orders
+            .WhereLessThan(o => o.SubmittedAt, cutoff)
+            .ToListAsync(ct);
+
+        // Assert
+        results.Should().ContainSingle()
+            .Which.Id.Should().Be(early.Id);
+    }
+
+    [Fact]
+    public async Task WhereLessThan_NoMatch_ReturnsEmpty()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("LT-Bob");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var order = CreateOrder(customer.Id);
+        order.SubmittedAt = Maybe.From(new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc));
+
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var cutoff = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // Act
+        var results = await _context.Orders
+            .WhereLessThan(o => o.SubmittedAt, cutoff)
+            .ToListAsync(ct);
+
+        // Assert
+        results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task WhereLessThanOrEqual_IncludesBoundaryValue()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("LTE-Alice");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var exact = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+        var onBoundary = CreateOrder(customer.Id);
+        onBoundary.SubmittedAt = Maybe.From(exact);
+        var before = CreateOrder(customer.Id);
+        before.SubmittedAt = Maybe.From(new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc));
+        var after = CreateOrder(customer.Id);
+        after.SubmittedAt = Maybe.From(new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc));
+
+        _context.Orders.AddRange(onBoundary, before, after);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var results = await _context.Orders
+            .WhereLessThanOrEqual(o => o.SubmittedAt, exact)
+            .ToListAsync(ct);
+
+        // Assert
+        results.Should().HaveCount(2);
+        results.Select(o => o.Id).Should().BeEquivalentTo([onBoundary.Id, before.Id]);
+    }
+
+    [Fact]
+    public async Task WhereGreaterThan_ValueTypeInner_ReturnsEntitiesWithLargerValues()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("GT-Alice");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var early = CreateOrder(customer.Id);
+        early.SubmittedAt = Maybe.From(new DateTime(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc));
+        var late = CreateOrder(customer.Id);
+        late.SubmittedAt = Maybe.From(new DateTime(2026, 3, 20, 12, 0, 0, DateTimeKind.Utc));
+        var noDate = CreateOrder(customer.Id); // NULL — should be excluded
+
+        _context.Orders.AddRange(early, late, noDate);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var cutoff = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // Act
+        var results = await _context.Orders
+            .WhereGreaterThan(o => o.SubmittedAt, cutoff)
+            .ToListAsync(ct);
+
+        // Assert
+        results.Should().ContainSingle()
+            .Which.Id.Should().Be(late.Id);
+    }
+
+    [Fact]
+    public async Task WhereGreaterThanOrEqual_IncludesBoundaryValue()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("GTE-Alice");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var exact = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+        var onBoundary = CreateOrder(customer.Id);
+        onBoundary.SubmittedAt = Maybe.From(exact);
+        var before = CreateOrder(customer.Id);
+        before.SubmittedAt = Maybe.From(new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc));
+        var after = CreateOrder(customer.Id);
+        after.SubmittedAt = Maybe.From(new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc));
+
+        _context.Orders.AddRange(onBoundary, before, after);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var results = await _context.Orders
+            .WhereGreaterThanOrEqual(o => o.SubmittedAt, exact)
+            .ToListAsync(ct);
+
+        // Assert
+        results.Should().HaveCount(2);
+        results.Select(o => o.Id).Should().BeEquivalentTo([onBoundary.Id, after.Id]);
+    }
+
+    [Fact]
+    public async Task WhereLessThan_NullValues_AreExcluded()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("LT-Null");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var noDate1 = CreateOrder(customer.Id);
+        var noDate2 = CreateOrder(customer.Id);
+
+        _context.Orders.AddRange(noDate1, noDate2);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act — even with a far-future cutoff, NULL values should not match
+        var results = await _context.Orders
+            .WhereLessThan(o => o.SubmittedAt, DateTime.MaxValue)
+            .ToListAsync(ct);
+
+        // Assert
+        results.Should().BeEmpty();
+    }
+
+    #endregion
+
     #region ExecuteUpdate helpers
 
     [Fact]

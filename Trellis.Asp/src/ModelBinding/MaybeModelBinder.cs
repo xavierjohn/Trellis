@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.ModelBinding;
+namespace Trellis.Asp.ModelBinding;
 
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Trellis;
@@ -16,7 +16,7 @@ using Trellis;
 /// unbound (relying on ASP.NET Core's default handling), this binder explicitly produces:
 /// </para>
 /// <list type="bullet">
-/// <item>Parameter absent → <c>Maybe.None&lt;TValue&gt;()</c> — success, value not provided</item>
+/// <item>Parameter absent → <c>Maybe&lt;TValue&gt;.None</c> — success, value not provided</item>
 /// <item>Parameter present, valid → <c>Maybe.From(validatedValue)</c> — success with value</item>
 /// <item>Parameter present, invalid → validation error in ModelState</item>
 /// </list>
@@ -27,11 +27,11 @@ public class MaybeModelBinder<TValue, TPrimitive> : ScalarValueModelBinderBase<M
 {
     /// <inheritdoc />
     protected override ModelBindingResult OnMissingValue() =>
-        ModelBindingResult.Success(Maybe.None<TValue>());
+        ModelBindingResult.Success(Maybe<TValue>.None);
 
     /// <inheritdoc />
     protected override ModelBindingResult? OnEmptyValue() =>
-        ModelBindingResult.Success(Maybe.None<TValue>());
+        ModelBindingResult.Success(Maybe<TValue>.None);
 
     /// <inheritdoc />
     protected override ModelBindingResult OnSuccess(TValue value) =>

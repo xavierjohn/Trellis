@@ -26,6 +26,6 @@ public static class ToMaybeExtensions
         if (result.IsSuccess)
             return Maybe.From(result.Value);
 
-        return Maybe.None<TValue>();
+        return Maybe<TValue>.None;
     }
 }

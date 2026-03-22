@@ -23,7 +23,7 @@ public class MaybeLinqTests
     [Fact]
     public void Select_WhenMaybeHasNoValue_ShouldReturnNone()
     {
-        Maybe<string> sut = Maybe.None<string>();
+        Maybe<string> sut = Maybe<string>.None;
 
         var result = sut.Select(v => v.ToUpperInvariant());
 
@@ -61,7 +61,7 @@ public class MaybeLinqTests
     [Fact]
     public void SelectMany_WhenSourceIsNone_ShouldReturnNone()
     {
-        Maybe<string> first = Maybe.None<string>();
+        Maybe<string> first = Maybe<string>.None;
         Maybe<string> second = Maybe.From("World");
 
         var result = first.SelectMany(_ => second, (a, b) => $"{a} {b}");
@@ -73,7 +73,7 @@ public class MaybeLinqTests
     public void SelectMany_WhenCollectionIsNone_ShouldReturnNone()
     {
         Maybe<string> first = Maybe.From("Hello");
-        Maybe<string> second = Maybe.None<string>();
+        Maybe<string> second = Maybe<string>.None;
 
         var result = first.SelectMany(_ => second, (a, b) => $"{a} {b}");
 
@@ -114,7 +114,7 @@ public class MaybeLinqTests
     public void SelectMany_WithLinqSyntax_WhenAnyIsNone_ShouldReturnNone()
     {
         Maybe<string> a = Maybe.From("A");
-        Maybe<string> b = Maybe.None<string>();
+        Maybe<string> b = Maybe<string>.None;
         Maybe<string> c = Maybe.From("C");
 
         var result = from x in a

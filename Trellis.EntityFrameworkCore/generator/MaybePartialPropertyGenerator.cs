@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore.Generator;
+namespace Trellis.EntityFrameworkCore.Generator;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -29,7 +29,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 ///     private PhoneNumber? _phone;
 ///     public partial Maybe&lt;PhoneNumber&gt; Phone
 ///     {
-///         get =&gt; _phone is not null ? Maybe.From(_phone) : Maybe.None&lt;PhoneNumber&gt;();
+///         get =&gt; _phone is not null ? Maybe.From(_phone) : Maybe&lt;PhoneNumber&gt;.None;
 ///         set =&gt; _phone = value.HasValue ? value.Value : null;
 ///     }
 /// }
@@ -351,9 +351,9 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                     sb.Append(backingFieldName);
                     sb.Append(".HasValue ? Maybe.From(");
                     sb.Append(backingFieldName);
-                    sb.Append(".Value) : Maybe.None<");
+                    sb.Append(".Value) : Maybe<");
                     sb.Append(prop.InnerTypeName);
-                    sb.AppendLine(">();");
+                    sb.AppendLine(">.None;");
                 }
                 else
                 {
@@ -361,9 +361,9 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                     sb.Append(backingFieldName);
                     sb.Append(" is not null ? Maybe.From(");
                     sb.Append(backingFieldName);
-                    sb.Append(") : Maybe.None<");
+                    sb.Append(") : Maybe<");
                     sb.Append(prop.InnerTypeName);
-                    sb.AppendLine(">();");
+                    sb.AppendLine(">.None;");
                 }
 
                 // Setter

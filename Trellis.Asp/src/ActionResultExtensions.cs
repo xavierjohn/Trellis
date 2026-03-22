@@ -405,6 +405,47 @@ public static class ActionResultExtensions
     }
 
     /// <summary>
+    /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> by applying
+    /// a mapping function on success, or Problem Details on failure.
+    /// </summary>
+    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
+    /// <typeparam name="TOut">The type of the value in the output ActionResult.</typeparam>
+    /// <param name="result">The result object to convert.</param>
+    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
+    /// <param name="map">Function that transforms the input value to the output type.</param>
+    /// <returns>
+    /// <list type="bullet">
+    /// <item>200 OK with transformed value if result is successful</item>
+    /// <item>Appropriate error status code (400-599) based on error type if result is failure</item>
+    /// </list>
+    /// </returns>
+    /// <remarks>
+    /// Use this overload when the Mediator handler returns a domain type and the controller
+    /// needs to map it to a DTO before returning.
+    /// </remarks>
+    /// <example>
+    /// GET endpoint mapping domain to DTO:
+    /// <code>
+    /// [HttpGet("{id}")]
+    /// public async Task&lt;ActionResult&lt;OrderDto&gt;&gt; GetOrder(OrderId id)
+    /// {
+    ///     var result = await _sender.Send(new GetOrderByIdQuery(id), ct);
+    ///     return result.ToActionResult(this, OrderDto.From);
+    /// }
+    /// </code>
+    /// </example>
+    public static ActionResult<TOut> ToActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controllerBase,
+        Func<TIn, TOut> map)
+    {
+        if (result.IsSuccess)
+            return controllerBase.Ok(map(result.Value));
+
+        return result.Error.ToActionResult<TOut>(controllerBase);
+    }
+
+    /// <summary>
     /// Converts a <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/> that returns
     /// 201 Created with a Location header on success, or Problem Details on failure.
     /// </summary>
