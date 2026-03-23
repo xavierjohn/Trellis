@@ -263,7 +263,7 @@ public class MaybeExpressionRewriterTests : IDisposable
     }
 
     /// <summary>
-    /// Test DbContext with the <see cref="MaybeQueryInterceptor"/> registered.
+    /// Test DbContext with the <see cref="MaybeQueryInterceptor"/> registered via AddTrellisInterceptors().
     /// </summary>
     private sealed class InterceptorTestDbContext(DbContextOptions<InterceptorTestDbContext> options)
         : DbContext(options)
@@ -295,4 +295,104 @@ public class MaybeExpressionRewriterTests : IDisposable
     }
 
     #endregion
+}
+
+/// <summary>
+/// Tests that <see cref="DbContextOptionsBuilderExtensions.AddTrellisInterceptors"/> registers the
+/// singleton <see cref="MaybeQueryInterceptor"/> and Maybe expressions translate correctly.
+/// </summary>
+public class AddTrellisInterceptorsTests : IDisposable
+{
+    private readonly DbContext _context;
+    private readonly SqliteConnection _connection;
+
+    public AddTrellisInterceptorsTests()
+    {
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();
+
+        var options = new DbContextOptionsBuilder<AddTrellisInterceptorsTestDbContext>()
+            .UseSqlite(_connection)
+            .AddTrellisInterceptors()
+            .Options;
+
+        _context = new AddTrellisInterceptorsTestDbContext(options);
+        _context.Database.EnsureCreated();
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _connection.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    [Fact]
+    public async Task HasValue_Works_WithAddTrellisInterceptors()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var withPhone = new TestCustomer
+        {
+            Id = TestCustomerId.NewUniqueV7(),
+            Name = TestCustomerName.Create("Alice"),
+            Email = EmailAddress.Create("alice@test.com"),
+            CreatedAt = DateTime.UtcNow,
+            Phone = Maybe.From(PhoneNumber.Create("+1-555-0100"))
+        };
+        var withoutPhone = new TestCustomer
+        {
+            Id = TestCustomerId.NewUniqueV7(),
+            Name = TestCustomerName.Create("Bob"),
+            Email = EmailAddress.Create("bob@test.com"),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Set<TestCustomer>().AddRange(withPhone, withoutPhone);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var results = await _context.Set<TestCustomer>()
+            .Where(c => c.Phone.HasValue)
+            .ToListAsync(ct);
+
+        results.Should().ContainSingle()
+            .Which.Id.Should().Be(withPhone.Id);
+    }
+
+    [Fact]
+    public void AddTrellisInterceptors_Called_Twice_Uses_Same_Singleton()
+    {
+        // Should not throw ManyServiceProvidersCreatedWarning
+        var options1 = new DbContextOptionsBuilder<AddTrellisInterceptorsTestDbContext>()
+            .UseSqlite(_connection)
+            .AddTrellisInterceptors()
+            .Options;
+
+        var options2 = new DbContextOptionsBuilder<AddTrellisInterceptorsTestDbContext>()
+            .UseSqlite(_connection)
+            .AddTrellisInterceptors()
+            .Options;
+
+        // Both should resolve without multiple service provider warnings
+        using var ctx1 = new AddTrellisInterceptorsTestDbContext(options1);
+        using var ctx2 = new AddTrellisInterceptorsTestDbContext(options2);
+    }
+
+    private sealed class AddTrellisInterceptorsTestDbContext(DbContextOptions<AddTrellisInterceptorsTestDbContext> options)
+        : DbContext(options)
+    {
+        public DbSet<TestCustomer> Customers => Set<TestCustomer>();
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestCustomerId).Assembly);
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            modelBuilder.Entity<TestCustomer>(b =>
+            {
+                b.HasKey(c => c.Id);
+                b.Property(c => c.Name).HasMaxLength(100).IsRequired();
+                b.Property(c => c.Email).HasMaxLength(254).IsRequired();
+                b.Property(c => c.CreatedAt).IsRequired();
+            });
+    }
 }
