@@ -1,4 +1,4 @@
-﻿# Trellis.Primitives — Primitive Value Objects
+# Trellis.Primitives — Primitive Value Objects
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Primitives.svg)](https://www.nuget.org/packages/Trellis.Primitives)
 

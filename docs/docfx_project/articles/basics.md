@@ -137,7 +137,7 @@ public partial class LineItemQuantity : RequiredInt<LineItemQuantity> { }
 public partial class StockQuantity : RequiredInt<StockQuantity> { }
 ```
 
-> **Tip:** Add `[Range(min, max)]` to constrain values — the generated `TryCreate` will include range validation automatically. When the minimum is 0, the default zero-rejection is overridden.
+> **Tip:** Add `[Range(min, max)]` to constrain values — the generated `TryCreate` will include range validation automatically. When the minimum is 0, the default zero-rejection is overridden. Note: this is `Trellis.RangeAttribute`, not `System.ComponentModel.DataAnnotations.RangeAttribute`. If both namespaces are imported, use `[Trellis.Range(min, max)]`.
 
 The generated `TryCreate` method returns a `Result` type that is either `Success` or `Failure`:
 

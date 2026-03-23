@@ -1,7 +1,5 @@
 ﻿namespace Trellis.Primitives.Tests;
 
-using System.Text.Json;
-
 /// <summary>
 /// Test value object with range constraint (1–999).
 /// </summary>

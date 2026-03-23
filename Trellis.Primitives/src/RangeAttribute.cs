@@ -14,6 +14,11 @@
 /// This attribute is designed specifically for Trellis value objects and is processed at compile time
 /// by the PrimitiveValueObjectGenerator source generator. It does not rely on runtime reflection.
 /// </para>
+/// <para>
+/// <strong>Note:</strong> This is <c>Trellis.RangeAttribute</c>, not <c>System.ComponentModel.DataAnnotations.RangeAttribute</c>.
+/// If your project imports <c>System.ComponentModel.DataAnnotations</c>, use the fully qualified name
+/// <c>[Trellis.Range(min, max)]</c> to avoid ambiguity.
+/// </para>
 /// </remarks>
 /// <example>
 /// Range with positive minimum:
@@ -62,9 +67,6 @@ public sealed class RangeAttribute : Attribute
     /// <param name="maximum">
     /// The maximum allowed value, inclusive. Must be greater than or equal to <paramref name="minimum"/>.
     /// </param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="maximum"/> is less than <paramref name="minimum"/>.
-    /// </exception>
     /// <example>
     /// <code>
     /// [Range(1, 999)]
@@ -73,9 +75,6 @@ public sealed class RangeAttribute : Attribute
     /// </example>
     public RangeAttribute(int minimum, int maximum)
     {
-        if (maximum < minimum)
-            throw new ArgumentOutOfRangeException(nameof(maximum), maximum, "Maximum must be greater than or equal to Minimum.");
-
         Minimum = minimum;
         Maximum = maximum;
     }

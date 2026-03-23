@@ -1,4 +1,4 @@
-﻿# Trellis — AI API Reference
+# Trellis — AI API Reference
 
 > **Purpose**: Machine-readable reference for AI coding assistants. Covers every public type, method signature, and usage pattern in the Trellis library ecosystem.
 
@@ -828,7 +828,7 @@ public partial class LineItemQuantity : RequiredInt<LineItemQuantity> { }
 public partial class StockQuantity : RequiredInt<StockQuantity> { }
 
 // Generated TryCreate validates: min <= value <= max
-// Error: "Line item quantity must be at least 1" / "Line item quantity must be at most 999"
+// Error: "Line Item Quantity must be at least 1." / "Line Item Quantity must be at most 999."
 ```
 
 ### RequiredDecimal\<TSelf\>
