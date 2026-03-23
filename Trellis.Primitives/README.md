@@ -132,6 +132,19 @@ var invalid = Quantity.TryCreate(0);
 // Returns: Error.Validation("Quantity cannot be empty.", "quantity")
 ```
 
+Use `[Range]` to constrain values (like `[StringLength]` for strings):
+
+```csharp
+[Range(1, 999)]
+public partial class LineItemQuantity : RequiredInt<LineItemQuantity> { }
+
+[Range(0, 100)]  // allows zero
+public partial class StockQuantity : RequiredInt<StockQuantity> { }
+
+var qty = LineItemQuantity.TryCreate(1000);
+// Returns: Error.Validation("Line item quantity must be at most 999.", "lineItemQuantity")
+```
+
 ### RequiredEnum
 
 Create type-safe enumeration value objects that replace C# enums with full-featured classes:

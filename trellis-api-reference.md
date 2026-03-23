@@ -818,6 +818,19 @@ static Foo Create(string stringValue)
 // IParsable<Foo>, explicit operator, JsonConverter
 ```
 
+With range constraints using `[Range]`:
+
+```csharp
+[Range(1, 999)]
+public partial class LineItemQuantity : RequiredInt<LineItemQuantity> { }
+
+[Range(0, 100)]  // allows zero (overrides default zero rejection)
+public partial class StockQuantity : RequiredInt<StockQuantity> { }
+
+// Generated TryCreate validates: min <= value <= max
+// Error: "Line item quantity must be at least 1" / "Line item quantity must be at most 999"
+```
+
 ### RequiredDecimal\<TSelf\>
 
 Inherits `ScalarValueObject<TSelf, decimal>`. Same pattern as RequiredInt with `decimal`.
