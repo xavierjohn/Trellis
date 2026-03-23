@@ -1,16 +1,20 @@
 # Trellis.Asp.Authorization
 
-Azure Entra ID v2.0 actor provider for [Trellis](https://github.com/xavierjohn/Trellis).
+ASP.NET Core actor providers for [Trellis](https://github.com/xavierjohn/Trellis).
 
-Maps JWT claims from Azure Entra ID v2.0 tokens to `Actor` with permissions, forbidden permissions, and ABAC attributes. Integrates `Trellis.Authorization` with ASP.NET Core.
+Provides two `IActorProvider` implementations:
+- **`EntraActorProvider`** — Production. Maps Azure Entra ID v2.0 JWT claims to `Actor`.
+- **`DevelopmentActorProvider`** — Development/testing. Reads `Actor` from `X-Test-Actor` HTTP header with production environment guard.
 
 ## Quick Start
 
 ```csharp
 using Trellis.Asp.Authorization;
 
-// Register with default Entra v2.0 claim mappings
-builder.Services.AddEntraActorProvider();
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddDevelopmentActorProvider();
+else
+    builder.Services.AddEntraActorProvider();
 ```
 
 Default mapping:
@@ -48,6 +52,6 @@ If a custom `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` dele
 ## Requirements
 
 - .NET 10.0+
-- ASP.NET Core authentication middleware (e.g., `AddMicrosoftIdentityWebApi`)
+- ASP.NET Core (for `DevelopmentActorProvider`: any environment; for `EntraActorProvider`: authentication middleware e.g., `AddMicrosoftIdentityWebApi`)
 
 See the [full documentation](https://xavierjohn.github.io/Trellis/) for details.

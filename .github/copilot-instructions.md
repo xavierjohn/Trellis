@@ -58,6 +58,7 @@ Each integration package gets its own namespace because it pulls in a third-part
 | Namespace | Used In | Purpose |
 |-----------|---------|---------|
 | `Trellis.Authorization` | Domain/Application layer | `Actor`, `IActorProvider`, `IAuthorize`, `IAuthorizeResource<TResource>`, `IResourceLoader<TMessage, TResource>` |
+| `Trellis.Asp.Authorization` | API layer only | `EntraActorProvider` (production), `DevelopmentActorProvider` (dev/testing), `AddEntraActorProvider()`, `AddDevelopmentActorProvider()` |
 | `Trellis.Asp` | API layer only | `ToMinimalApiResult()`, `ToActionResult()` |
 | `Trellis.Http` | ACL layer only | `HttpClient` → `Result<T>` extensions |
 | `Trellis.Stateless` | Domain layer (when needed) | Stateless state machine integration |

@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
 
 /// <summary>
-/// Extension methods for registering <see cref="EntraActorProvider"/> in ASP.NET Core DI.
+/// Extension methods for registering actor providers in ASP.NET Core DI.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -43,6 +43,61 @@ public static class ServiceCollectionExtensions
             services.Configure<EntraActorOptions>(_ => { });
 
         services.AddScoped<IActorProvider, EntraActorProvider>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="DevelopmentActorProvider"/> as the scoped <see cref="IActorProvider"/>
+    /// for development and testing environments. Reads actor identity from the
+    /// <c>X-Test-Actor</c> HTTP header and falls back to a configurable default actor.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">
+    /// Optional delegate to customize <see cref="DevelopmentActorOptions"/>.
+    /// Set <see cref="DevelopmentActorOptions.DefaultPermissions"/> to grant permissions
+    /// when no header is present, or <see cref="DevelopmentActorOptions.ThrowOnMalformedHeader"/>
+    /// to reject invalid headers instead of falling back.
+    /// </param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>Security:</b> The provider throws <see cref="InvalidOperationException"/> if the
+    /// <c>X-Test-Actor</c> header is present in a Production environment.
+    /// Use <see cref="AddEntraActorProvider"/> for production deployments.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// if (builder.Environment.IsDevelopment())
+    /// {
+    ///     builder.Services.AddDevelopmentActorProvider(options =>
+    ///     {
+    ///         options.DefaultPermissions = new HashSet&lt;string&gt;
+    ///         {
+    ///             "orders:create", "orders:read"
+    ///         };
+    ///     });
+    /// }
+    /// else
+    /// {
+    ///     builder.Services.AddEntraActorProvider();
+    /// }
+    /// </code>
+    /// </example>
+    public static IServiceCollection AddDevelopmentActorProvider(
+        this IServiceCollection services,
+        Action<DevelopmentActorOptions>? configure = null)
+    {
+        services.AddHttpContextAccessor();
+        services.AddLogging();
+
+        if (configure is not null)
+            services.Configure(configure);
+        else
+            services.Configure<DevelopmentActorOptions>(_ => { });
+
+        services.AddScoped<IActorProvider, DevelopmentActorProvider>();
 
         return services;
     }

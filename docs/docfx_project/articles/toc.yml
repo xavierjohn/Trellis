@@ -52,6 +52,8 @@
     href: integration-aspnet.md
   - name: ASP.NET Core Authorization (Entra ID)
     href: integration-asp-authorization.md
+  - name: Testing with Entra ID Tokens
+    href: integration-entra-testing.md
   - name: HTTP Client
     href: integration-http.md
   - name: FluentValidation

@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Testing;
 
+using System.Diagnostics.CodeAnalysis;
+using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Authorization;
@@ -70,6 +72,47 @@ public static class WebApplicationFactoryExtensions
             ["Attributes"] = new JsonObject(actor.Attributes.Select(kvp => new KeyValuePair<string, JsonNode?>(kvp.Key, JsonValue.Create(kvp.Value))).ToList())
         }.ToJsonString();
         client.DefaultRequestHeaders.Add("X-Test-Actor", json);
+        return client;
+    }
+
+    /// <summary>
+    /// Creates an <see cref="HttpClient"/> authenticated with a real Azure Entra ID token
+    /// acquired via MSAL ROPC flow. Use for E2E integration tests against a real Entra test tenant.
+    /// </summary>
+    /// <typeparam name="TEntryPoint">The entry point class of the web application under test.</typeparam>
+    /// <param name="factory">The web application factory.</param>
+    /// <param name="tokenProvider">
+    /// The MSAL token provider configured with test tenant credentials.
+    /// Create one instance per test class/fixture to benefit from token caching.
+    /// </param>
+    /// <param name="testUserName">
+    /// The key in <see cref="MsalTestOptions.TestUsers"/> identifying the test user.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An <see cref="HttpClient"/> with the Authorization Bearer header set.</returns>
+    /// <example>
+    /// <code>
+    /// var tokenProvider = new MsalTestTokenProvider(msalOptions);
+    /// var client = await _factory.CreateClientWithEntraTokenAsync(tokenProvider, "salesRep");
+    /// var response = await client.PostAsync("/api/orders", content);
+    /// response.StatusCode.Should().Be(HttpStatusCode.OK);
+    /// </code>
+    /// </example>
+    [RequiresUnreferencedCode("MSAL uses reflection for token serialization and is not AOT-compatible.")]
+    public static async Task<HttpClient> CreateClientWithEntraTokenAsync<TEntryPoint>(
+        this WebApplicationFactory<TEntryPoint> factory,
+        MsalTestTokenProvider tokenProvider,
+        string testUserName,
+        CancellationToken cancellationToken = default)
+        where TEntryPoint : class
+    {
+        ArgumentNullException.ThrowIfNull(tokenProvider);
+
+        var token = await tokenProvider.AcquireTokenAsync(testUserName, cancellationToken)
+            .ConfigureAwait(false);
+
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
     }
 }
