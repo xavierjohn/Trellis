@@ -214,9 +214,10 @@ var result = FirstName.TryCreate(request.FirstName)
 ### Creating Maybe Values
 
 ```csharp
-Maybe<PhoneNumber> some = Maybe.From(phoneNumber);  // Wrap a value
-Maybe<PhoneNumber> none = Maybe<PhoneNumber>.None; // No value
-Maybe<string> greeting = "hello";                     // Implicit conversion
+Maybe<PhoneNumber> some = Maybe.From(phoneNumber);            // Wrap a value (type inferred)
+Maybe<PhoneNumber> same = Maybe<PhoneNumber>.From(phoneNumber); // Wrap a value (explicit type)
+Maybe<PhoneNumber> none = Maybe<PhoneNumber>.None;            // No value
+Maybe<string> greeting = "hello";                              // Implicit conversion
 ```
 
 ### Checking and Extracting
