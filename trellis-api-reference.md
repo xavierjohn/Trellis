@@ -1091,9 +1091,11 @@ Benefits: Native AOT compatible, no reflection, trimming-safe, faster startup.
 
 ---
 
-# 6. Trellis.Asp.Authorization — Entra ID Actor Provider
+# 6. Trellis.Asp.Authorization — Actor Providers
 
 **Namespace: `Trellis.Asp.Authorization`**
+
+## EntraActorProvider (Production)
 
 ```csharp
 // Registration
@@ -1106,6 +1108,38 @@ services.AddEntraActorProvider(options => {
 // EntraActorProvider : IActorProvider
 // Extracts Actor from HttpContext claims (Entra ID / Azure AD)
 ```
+
+## DevelopmentActorProvider (Development/Testing)
+
+```csharp
+// Registration — for development environments
+services.AddDevelopmentActorProvider();
+services.AddDevelopmentActorProvider(options => {
+    options.DefaultActorId = "admin";
+    options.DefaultPermissions = new HashSet<string> { "orders:create", "orders:read" };
+    options.ThrowOnMalformedHeader = false; // default
+});
+
+// DevelopmentActorProvider : IActorProvider
+// Reads Actor from X-Test-Actor HTTP header (JSON)
+// Throws InvalidOperationException if header present in Production
+// Falls back to configurable default Actor when header absent
+// Header JSON schema: { "Id": "...", "Permissions": [...], "ForbiddenPermissions": [...], "Attributes": {...} }
+
+// Conditional registration pattern:
+if (builder.Environment.IsDevelopment())
+    services.AddDevelopmentActorProvider();
+else
+    services.AddEntraActorProvider();
+```
+
+| Type | Purpose |
+|------|---------|
+| `EntraActorProvider` | Production — maps Entra JWT claims to `Actor` |
+| `EntraActorOptions` | Configuration for Entra claim mapping |
+| `DevelopmentActorProvider` | Development/testing — reads `X-Test-Actor` header |
+| `DevelopmentActorOptions` | Configuration for default actor and error handling |
+| `ServiceCollectionExtensions` | `AddEntraActorProvider()` and `AddDevelopmentActorProvider()` |
 
 ---
 

@@ -20,6 +20,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
     <PackageVersion Include="Microsoft.Extensions.DependencyModel" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Identity.Client" Version="4.83.1" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.9.50" />
     <PackageVersion Include="OpenTelemetry" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Api" Version="1.15.0" />
