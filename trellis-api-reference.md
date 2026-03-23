@@ -150,9 +150,10 @@ implicit operator Maybe<T>(T value)
 ```csharp
 // On Maybe<T> struct:
 static Maybe<T> None { get; }           // e.g., Maybe<PhoneNumber>.None
+static Maybe<T> From(T? value)          // e.g., Maybe<PhoneNumber>.From(phone)
 
-// On Maybe static helper class:
-Maybe<T> From<T>(T? value) where T : notnull
+// On Maybe static helper class (type inference convenience):
+Maybe<T> From<T>(T? value) where T : notnull    // e.g., Maybe.From(phone) — infers T
 Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> function) where TIn : class, TOut : notnull
 Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> function) where TIn : struct, TOut : notnull
 ```
@@ -1392,9 +1393,8 @@ var overdue = await context.Orders
 Automatically rewrites `Maybe<T>` property accesses in LINQ expression trees to EF Core-translatable storage member references. Enables natural LINQ syntax and `Specification<T>` patterns with `Maybe<T>` properties.
 
 ```csharp
-// Registration — use a static singleton to avoid ManyServiceProvidersCreatedWarning
-private static readonly MaybeQueryInterceptor s_maybeInterceptor = new();
-optionsBuilder.AddInterceptors(s_maybeInterceptor);
+// Registration — one call, singleton handled internally
+optionsBuilder.UseSqlite(connectionString).AddTrellisInterceptors();
 
 // With interceptor registered, these LINQ expressions work directly:
 context.Customers.Where(c => c.Phone.HasValue)                                    // → IS NOT NULL
