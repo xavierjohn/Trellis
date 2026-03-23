@@ -33,8 +33,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <!-- Suppress Scriban vulnerability warnings — transitive from Mediator.SourceGenerator, cannot update until Mediator fixes it -->
-    <NoWarn>$(NoWarn);NU1902;NU1903</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Label="Coverage">
