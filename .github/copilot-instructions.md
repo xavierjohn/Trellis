@@ -423,6 +423,40 @@ T4 templates generate 2-tuple through 9-tuple overloads with identical logic. **
 2. Update 2-tuple tests if the pattern changed
 3. Verify one larger tuple still works (5-tuple or 9-tuple)
 
+## Database-Backed Permissions
+
+When permissions need to be stored in the application database instead of AAD app roles, implement `IAsyncActorProvider`. The Mediator `AuthorizationBehavior` prefers `IAsyncActorProvider` over `IActorProvider` when both are registered.
+
+### Pattern
+
+| Layer | Component | Purpose |
+|-------|-----------|---------|
+| Domain | `AppUser`, `Role`, `Permission` entities | Schema for users → roles → permissions |
+| Application | `IPermissionRepository` | Interface for loading permissions by external user ID |
+| Acl | `PermissionRepository` | EF Core implementation with LINQ query |
+| Api | `DatabaseActorProvider : IAsyncActorProvider` | Resolves `oid` claim → DB permissions → `Actor` |
+
+### DI Registration
+
+```csharp
+if (environment.IsDevelopment())
+{
+    services.AddDevelopmentActorProvider();  // X-Test-Actor header
+}
+else
+{
+    services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options => configuration.Bind("AzureAd", options));
+    services.AddMemoryCache();
+    services.AddScoped<IPermissionRepository, PermissionRepository>();
+    services.AddScoped<IAsyncActorProvider, DatabaseActorProvider>();
+}
+```
+
+Do NOT register `EntraActorProvider` when using `DatabaseActorProvider` — the async provider handles everything. Entra still handles authentication (JWT validation); the database provides permissions.
+
+See the [Database-Backed Permissions guide](https://xavierjohn.github.io/Trellis/articles/integration-db-permissions.html) for the complete schema, entities, seed data, and caching strategy.
+
 ## Activity Tracing and OpenTelemetry
 
 ### Core Rules
