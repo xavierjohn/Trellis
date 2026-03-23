@@ -1,4 +1,4 @@
-﻿namespace SourceGenerator;
+namespace SourceGenerator;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -530,7 +530,79 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
             if (g.ClassBase == "RequiredInt")
             {
-                source += $@"
+                var hasRange = g.RangeMin.HasValue && g.RangeMax.HasValue;
+                var rangeMin = g.RangeMin.GetValueOrDefault();
+                var rangeMax = g.RangeMax.GetValueOrDefault();
+
+                // Validate [Range] constraints are consistent
+                if (hasRange && rangeMin > rangeMax)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            id: "TRLSGEN003",
+                            title: "Range Minimum exceeds Maximum",
+                            messageFormat: "Class '{0}' has [Range({1}, {2})] where Minimum exceeds Maximum. No value can satisfy both constraints.",
+                            category: "SourceGenerator",
+                            DiagnosticSeverity.Error,
+                            isEnabledByDefault: true),
+                        location: null,
+                        g.ClassName,
+                        rangeMin,
+                        rangeMax));
+                    continue;
+                }
+
+                if (hasRange)
+                {
+                    // Range-validated TryCreate overloads
+                    source += $@"
+
+        /// <summary>
+        /// Creates a validated instance from an integer.
+        /// Required by IScalarValue interface for model binding and JSON deserialization.
+        /// </summary>
+        /// <param name=""value"">The integer value to validate.</param>
+        /// <param name=""fieldName"">Optional field name for validation error messages.</param>
+        /// <returns>Success with the value object, or Failure with validation errors.</returns>
+        public static Result<{g.ClassName}> TryCreate(int value, string? fieldName = null)
+        {{
+            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
+            if (value < {rangeMin})
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field);
+            if (value > {rangeMax})
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field);
+            return new {g.ClassName}(value);
+        }}
+
+        public static Result<{g.ClassName}> TryCreate(int? valueOrNothing, string? fieldName = null)
+        {{
+            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
+            return valueOrNothing
+                .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
+                .Ensure(x => x >= {rangeMin}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field))
+                .Ensure(x => x <= {rangeMax}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field))
+                .Map(val => new {g.ClassName}(val));
+        }}
+
+        public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
+        {{
+            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
+            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
+            int parsedInt = 0;
+            return stringOrNull
+                .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
+                .Ensure(x => int.TryParse(x, out parsedInt), Error.Validation(""Value must be a valid integer."", field))
+                .Ensure(_ => parsedInt >= {rangeMin}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field))
+                .Ensure(_ => parsedInt <= {rangeMax}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field))
+                .Map(_ => new {g.ClassName}(parsedInt));
+        }}";
+                }
+                else
+                {
+                    // Default zero-check TryCreate overloads
+                    source += $@"
 
         /// <summary>
         /// Creates a validated instance from an integer.
@@ -568,7 +640,11 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 .Ensure(x => int.TryParse(x, out parsedInt), Error.Validation(""Value must be a valid integer."", field))
                 .Ensure(_ => parsedInt != 0, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field))
                 .Map(_ => new {g.ClassName}(parsedInt));
-        }}
+        }}";
+                }
+
+                // Create and Parse are the same regardless of [Range]
+                source += $@"
 
         /// <summary>
         /// Creates a validated instance from an integer. Throws if validation fails.
@@ -752,7 +828,27 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 }
             }
 
-            classToGenerate.Add(new RequiredPartialClassInfo(@namespace, className, @base, accessibility, maxLength, minLength, nestingParents, typePath));
+            // Read [Range] attribute for RequiredInt types
+            int? rangeMin = null;
+            int? rangeMax = null;
+            if (@base == "RequiredInt")
+            {
+                foreach (var attr in classSymbol.GetAttributes())
+                {
+                    if (attr.AttributeClass?.Name == "RangeAttribute"
+                        && attr.AttributeClass.ContainingNamespace?.ToDisplayString() == "Trellis")
+                    {
+                        // Constructor: RangeAttribute(int minimum, int maximum)
+                        if (attr.ConstructorArguments.Length >= 2)
+                        {
+                            if (attr.ConstructorArguments[0].Value is int min) rangeMin = min;
+                            if (attr.ConstructorArguments[1].Value is int max) rangeMax = max;
+                        }
+                    }
+                }
+            }
+
+            classToGenerate.Add(new RequiredPartialClassInfo(@namespace, className, @base, accessibility, maxLength, minLength, rangeMin, rangeMax, nestingParents, typePath));
         }
 
         return classToGenerate;

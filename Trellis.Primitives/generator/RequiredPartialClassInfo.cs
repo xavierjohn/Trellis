@@ -89,6 +89,24 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// </value>
 
     /// <summary>
+    /// Gets the minimum range constraint, if specified via <c>[Range(min, max)]</c>.
+    /// </summary>
+    /// <value>
+    /// The minimum value (inclusive), or <c>null</c> if no constraint was specified.
+    /// Only applicable when <see cref="ClassBase"/> is <c>"RequiredInt"</c>.
+    /// </value>
+    public readonly int? RangeMin;
+
+    /// <summary>
+    /// Gets the maximum range constraint, if specified via <c>[Range(min, max)]</c>.
+    /// </summary>
+    /// <value>
+    /// The maximum value (inclusive), or <c>null</c> if no constraint was specified.
+    /// Only applicable when <see cref="ClassBase"/> is <c>"RequiredInt"</c>.
+    /// </value>
+    public readonly int? RangeMax;
+
+    /// <summary>
     /// Gets the declarations for any containing types when the target class is nested.
     /// </summary>
     public readonly string[] NestingParents;
@@ -108,6 +126,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <param name="accessibility">The accessibility level (public, internal, etc.).</param>
     /// <param name="maxLength">Optional maximum string length from <c>[StringLength]</c> attribute.</param>
     /// <param name="minLength">Optional minimum string length from <c>[StringLength]</c> attribute.</param>
+    /// <param name="rangeMin">Optional minimum value from <c>[Range]</c> attribute.</param>
+    /// <param name="rangeMax">Optional maximum value from <c>[Range]</c> attribute.</param>
     /// <param name="nestingParents">Containing type declarations needed to emit nested generated types.</param>
     /// <param name="typePath">A unique namespace-qualified type path used for generated hint names.</param>
     public RequiredPartialClassInfo(
@@ -117,6 +137,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         string accessibility,
         int? maxLength = null,
         int? minLength = null,
+        int? rangeMin = null,
+        int? rangeMax = null,
         string[]? nestingParents = null,
         string? typePath = null)
     {
@@ -126,6 +148,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         Accessibility = accessibility;
         MaxLength = maxLength;
         MinLength = minLength;
+        RangeMin = rangeMin;
+        RangeMax = rangeMax;
         NestingParents = nestingParents ?? [];
         TypePath = typePath ?? (string.IsNullOrEmpty(nameSpace) ? className : $"{nameSpace}.{className}");
     }
@@ -141,6 +165,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             && Accessibility == other.Accessibility
             && MaxLength == other.MaxLength
             && MinLength == other.MinLength
+            && RangeMin == other.RangeMin
+            && RangeMax == other.RangeMax
             && TypePath == other.TypePath
             && NestingParents.SequenceEqual(other.NestingParents);
     }
@@ -158,6 +184,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(Accessibility);
             hash = (hash * 31) + MaxLength.GetHashCode();
             hash = (hash * 31) + MinLength.GetHashCode();
+            hash = (hash * 31) + RangeMin.GetHashCode();
+            hash = (hash * 31) + RangeMax.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             return hash;
         }
