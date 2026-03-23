@@ -201,6 +201,36 @@ public class MaybeTests
         m.GetValueOrThrow().Should().BeFalse();
     }
 
+    [Fact]
+    public void From_on_generic_struct_creates_maybe_with_value()
+    {
+        var instance = new MyClass();
+
+        var maybe = Maybe<MyClass>.From(instance);
+
+        maybe.HasValue.Should().BeTrue();
+        maybe.GetValueOrThrow().Should().Be(instance);
+    }
+
+    [Fact]
+    public void From_on_generic_struct_with_null_creates_none()
+    {
+        var maybe = Maybe<MyClass>.From(null!);
+
+        maybe.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void From_on_generic_struct_matches_static_helper()
+    {
+        var instance = new MyClass();
+
+        var fromStruct = Maybe<MyClass>.From(instance);
+        var fromHelper = Maybe.From(instance);
+
+        fromStruct.Should().Be(fromHelper);
+    }
+
     private class MyClass
     {
         public override string ToString() => "My custom class";

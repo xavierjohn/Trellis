@@ -136,7 +136,31 @@ internal sealed class MaybeExpressionRewriter : ExpressionVisitor
             };
         }
 
-        return base.VisitBinary(node);
+        // For all other binary expressions, visit children first.
+        // If visiting changed operand types (e.g., Maybe<T>.Value rewritten from T to T?),
+        // rebuild the binary without the original method to let the runtime infer the correct operator.
+        var visitedLeft = Visit(node.Left);
+        var visitedRight = Visit(node.Right);
+
+        if (visitedLeft.Type != node.Left.Type || visitedRight.Type != node.Right.Type)
+        {
+            // Align types — if one side became nullable, lift the other to match
+            if (visitedLeft.Type != visitedRight.Type)
+            {
+                var targetType = Nullable.GetUnderlyingType(visitedLeft.Type) is not null ? visitedLeft.Type
+                    : Nullable.GetUnderlyingType(visitedRight.Type) is not null ? visitedRight.Type
+                    : visitedLeft.Type;
+
+                if (visitedLeft.Type != targetType)
+                    visitedLeft = Expression.Convert(visitedLeft, targetType);
+                if (visitedRight.Type != targetType)
+                    visitedRight = Expression.Convert(visitedRight, targetType);
+            }
+
+            return Expression.MakeBinary(node.NodeType, visitedLeft, visitedRight);
+        }
+
+        return node.Update(visitedLeft, node.Conversion, visitedRight);
     }
 
     private static MethodCallExpression? BuildEfPropertyAccess(MemberExpression maybeMemberExpr)

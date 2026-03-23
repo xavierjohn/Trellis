@@ -111,4 +111,4 @@ However, even in tests, using `Match` or checking `IsSuccess` is preferred.
 - [TRLS004](TRLS004.md) - Unsafe access to Result.Error
 - [TRLS006](TRLS006.md) - Unsafe access to Maybe.Value
 - [TRLS007](TRLS007.md) - Use Create instead of TryCreate().Value
-- [TRLS014](TRLS014.md) - Use GetValueOrDefault or Match instead of ternary
+- [TRLS013](TRLS013.md) - Use GetValueOrDefault or Match instead of ternary

@@ -45,6 +45,15 @@ public readonly struct Maybe<T> :
     public static Maybe<T> None => default;
 
     /// <summary>
+    /// Creates a new <see cref="Maybe{T}"/> from a value.
+    /// If the value is null, creates an empty Maybe.
+    /// </summary>
+    /// <param name="value">The value to wrap. If null, returns <see cref="None"/>.</param>
+    /// <returns>A <see cref="Maybe{T}"/> with the value, or <see cref="None"/> if null.</returns>
+    [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Maybe<T>.From(value) mirrors Maybe<T>.None for a symmetric API.")]
+    public static Maybe<T> From(T? value) => new(value);
+
+    /// <summary>
     /// Gets the underlying value if present, otherwise throws an exception.
     /// </summary>
     /// <param name="errorMessage">Optional custom error message to use when throwing.</param>

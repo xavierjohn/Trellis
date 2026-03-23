@@ -14,11 +14,32 @@ public class FakeRepository<TAggregate, TId>
 {
     private readonly Dictionary<TId, TAggregate> _store = new();
     private readonly List<IDomainEvent> _publishedEvents = new();
+    private readonly List<Func<TAggregate, object?>> _uniqueConstraints = new();
 
     /// <summary>
     /// Gets the list of domain events published by saved aggregates.
     /// </summary>
     public IReadOnlyList<IDomainEvent> PublishedEvents => _publishedEvents.AsReadOnly();
+
+    /// <summary>
+    /// Adds a unique constraint on the specified property. When <see cref="SaveAsync"/> is called,
+    /// the repository checks that no other aggregate (with a different ID) has the same value
+    /// for this property. Returns a <see cref="ConflictError"/> on violation.
+    /// </summary>
+    /// <param name="propertySelector">A function selecting the property to constrain.</param>
+    /// <returns>This repository for fluent chaining.</returns>
+    /// <example>
+    /// <code>
+    /// var repo = new FakeRepository&lt;Customer, CustomerId&gt;()
+    ///     .WithUniqueConstraint(c =&gt; c.Email);
+    /// </code>
+    /// </example>
+    public FakeRepository<TAggregate, TId> WithUniqueConstraint(Func<TAggregate, object?> propertySelector)
+    {
+        ArgumentNullException.ThrowIfNull(propertySelector);
+        _uniqueConstraints.Add(propertySelector);
+        return this;
+    }
 
     /// <summary>
     /// Gets an aggregate by its ID.
@@ -59,6 +80,19 @@ public class FakeRepository<TAggregate, TId>
     public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken ct = default)
     {
         var id = aggregate.Id;
+
+        // Check unique constraints against other aggregates (not self)
+        foreach (var constraint in _uniqueConstraints)
+        {
+            var value = constraint(aggregate);
+            var conflict = _store.Values
+                .FirstOrDefault(existing => !existing.Id.Equals(id) && Equals(constraint(existing), value));
+
+            if (conflict is not null)
+                return Task.FromResult(Result.Failure<Unit>(
+                    Error.Conflict($"A {typeof(TAggregate).Name} with the same value already exists.")));
+        }
+
         _store[id] = aggregate;
         _publishedEvents.AddRange(aggregate.UncommittedEvents());
         aggregate.AcceptChanges();

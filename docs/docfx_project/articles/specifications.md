@@ -166,6 +166,22 @@ Specifications integrate with the rest of Trellis:
 - Result types for specification evaluation failures
 - Aggregate boundaries respected in specification queries
 
+## Maybe<T> Support in Specifications
+
+Specifications that reference `Maybe<T>` properties work with EF Core when using the Trellis query interceptor. Register the interceptor via `AddTrellisInterceptors()`, then use natural LINQ in your specification expression:
+
+```csharp
+public class OverdueOrderSpecification(DateTime cutoff) : Specification<Order>
+{
+    public override Expression<Func<Order, bool>> ToExpression() =>
+        order => order.Status == OrderStatus.Submitted
+              && order.SubmittedAt.HasValue
+              && order.SubmittedAt.Value < cutoff;
+}
+```
+
+The interceptor rewrites `Maybe<T>.HasValue` to `IS NOT NULL` and `Maybe<T>.Value` to the backing storage field, enabling EF Core to translate the expression to SQL. Without the interceptor, use the explicit `WhereLessThan` extension method in the repository instead.
+
 ## Next Steps
 
 - [Clean Architecture](clean-architecture.md) — Architecture patterns that use specifications

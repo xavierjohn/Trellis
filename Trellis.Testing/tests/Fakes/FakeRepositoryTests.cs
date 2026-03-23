@@ -14,12 +14,17 @@ public class FakeRepositoryTests
     private class TestAggregate : Aggregate<string>
     {
         public string Name { get; private set; }
+        public string Email { get; private set; }
 
-        private TestAggregate(string id, string name) : base(id) => Name = name;
-
-        public static TestAggregate Create(string id, string name)
+        private TestAggregate(string id, string name, string email = "default@test.com") : base(id)
         {
-            var aggregate = new TestAggregate(id, name);
+            Name = name;
+            Email = email;
+        }
+
+        public static TestAggregate Create(string id, string name, string email = "default@test.com")
+        {
+            var aggregate = new TestAggregate(id, name, email);
             aggregate.DomainEvents.Add(new TestEvent(id));
             return aggregate;
         }
@@ -316,6 +321,83 @@ public class FakeRepositoryTests
 
         // Act & Assert
         repository.Exists("nonexistent").Should().BeFalse();
+    }
+
+    #endregion
+
+    #region Unique Constraint Tests
+
+    [Fact]
+    public async Task SaveAsync_WithUniqueConstraint_ReturnsConflict_OnDuplicate()
+    {
+        // Arrange
+        var repository = new FakeRepository<TestAggregate, string>()
+            .WithUniqueConstraint(a => a.Email);
+
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice", "alice@test.com"), TestContext.Current.CancellationToken);
+
+        // Act — different ID, same email
+        var result = await repository.SaveAsync(
+            TestAggregate.Create("2", "Bob", "alice@test.com"), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().BeFailureOfType<ConflictError>();
+        repository.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithUniqueConstraint_AllowsUpdate_SameEntity()
+    {
+        // Arrange
+        var repository = new FakeRepository<TestAggregate, string>()
+            .WithUniqueConstraint(a => a.Email);
+
+        var aggregate = TestAggregate.Create("1", "Alice", "alice@test.com");
+        await repository.SaveAsync(aggregate, TestContext.Current.CancellationToken);
+
+        // Act — update same entity (same ID, same email)
+        aggregate.UpdateName("Alice Updated");
+        var result = await repository.SaveAsync(aggregate, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().BeSuccess();
+        repository.Get("1")!.Name.Should().Be("Alice Updated");
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithMultipleUniqueConstraints_ChecksAll()
+    {
+        // Arrange
+        var repository = new FakeRepository<TestAggregate, string>()
+            .WithUniqueConstraint(a => a.Email)
+            .WithUniqueConstraint(a => a.Name);
+
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice", "alice@test.com"), TestContext.Current.CancellationToken);
+
+        // Act — different email but same name
+        var result = await repository.SaveAsync(
+            TestAggregate.Create("2", "Alice", "bob@test.com"), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().BeFailureOfType<ConflictError>();
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithUniqueConstraint_AllowsDifferentValues()
+    {
+        // Arrange
+        var repository = new FakeRepository<TestAggregate, string>()
+            .WithUniqueConstraint(a => a.Email);
+
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice", "alice@test.com"), TestContext.Current.CancellationToken);
+
+        // Act — different email
+        var result = await repository.SaveAsync(
+            TestAggregate.Create("2", "Bob", "bob@test.com"), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.Should().BeSuccess();
+        repository.Count.Should().Be(2);
     }
 
     #endregion

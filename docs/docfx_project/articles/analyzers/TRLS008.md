@@ -65,4 +65,4 @@ If you have a legitimate case (extremely rare), restructure your code to use `Bi
 ## Related Rules
 
 - [TRLS002](TRLS002.md) - Use Bind instead of Map when lambda returns Result
-- [TRLS012](TRLS012.md) - Maybe is double-wrapped
+- [TRLS011](TRLS011.md) - Maybe is double-wrapped

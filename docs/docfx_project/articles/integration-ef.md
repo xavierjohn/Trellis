@@ -1,4 +1,4 @@
-﻿# Entity Framework Core Integration
+# Entity Framework Core Integration
 
 **Level:** Intermediate 📚 | **Time:** 30-40 min | **Prerequisites:** [Basics](basics.md)
 
@@ -858,6 +858,18 @@ var withPhone = await context.Customers.WhereHasValue(c => c.Phone).ToListAsync(
 
 var matches = await context.Customers.WhereEquals(c => c.Phone, phone).ToListAsync(ct);
 
+// Comparison operators for Maybe<T> (requires IComparable<T>)
+var cutoff = DateTime.UtcNow.AddDays(-7);
+var overdue = await context.Orders
+    .WhereLessThan(o => o.SubmittedAt, cutoff)
+    .ToListAsync(ct);
+
+// With MaybeQueryInterceptor, natural LINQ also works:
+// Register via: optionsBuilder.AddTrellisInterceptors()
+var overdueNatural = await context.Orders
+    .Where(o => o.SubmittedAt.HasValue && o.SubmittedAt.Value < cutoff)
+    .ToListAsync(ct);
+
 modelBuilder.Entity<Customer>(builder =>
 {
     builder.HasKey(c => c.Id);
@@ -885,7 +897,7 @@ Under the hood, the **source generator** emits a private `_camelCase` storage fi
 private PhoneNumber? _phone;
 public partial Maybe<PhoneNumber> Phone
 {
-    get => _phone is not null ? Maybe.From(_phone) : Maybe.None<PhoneNumber>();
+    get => _phone is not null ? Maybe.From(_phone) : Maybe<PhoneNumber>.None;
     set => _phone = value.HasValue ? value.Value : null;
 }
 ```
