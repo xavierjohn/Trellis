@@ -123,6 +123,22 @@ Person CreatePerson(FirstName firstName, LastName lastName)
 
 > **Tip:** Add `[StringLength(50)]` to constrain maximum length, or `[StringLength(50, MinimumLength = 2)]` for both min and max — the generated `TryCreate` will include length validation automatically.
 
+For integer domain concepts, use `RequiredInt`:
+
+```csharp
+// Simple non-zero integer
+public partial class TicketNumber : RequiredInt<TicketNumber> { }
+
+// Range-constrained integer
+[Range(1, 999)]
+public partial class LineItemQuantity : RequiredInt<LineItemQuantity> { }
+
+[Range(0, 100)]  // allows zero
+public partial class StockQuantity : RequiredInt<StockQuantity> { }
+```
+
+> **Tip:** Add `[Range(min, max)]` to constrain values — the generated `TryCreate` will include range validation automatically. When the minimum is 0, the default zero-rejection is overridden. Note: this is `Trellis.RangeAttribute`, not `System.ComponentModel.DataAnnotations.RangeAttribute`. If both namespaces are imported, use `[Trellis.Range(min, max)]`.
+
 The generated `TryCreate` method returns a `Result` type that is either `Success` or `Failure`:
 
 ```csharp

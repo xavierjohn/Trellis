@@ -1,4 +1,4 @@
-﻿# Trellis — AI API Reference
+# Trellis — AI API Reference
 
 > **Purpose**: Machine-readable reference for AI coding assistants. Covers every public type, method signature, and usage pattern in the Trellis library ecosystem.
 
@@ -816,6 +816,19 @@ static Result<Foo> TryCreate(string? value, string? fieldName = null)
 static new Foo Create(int value)
 static Foo Create(string stringValue)
 // IParsable<Foo>, explicit operator, JsonConverter
+```
+
+With range constraints using `[Range]`:
+
+```csharp
+[Range(1, 999)]
+public partial class LineItemQuantity : RequiredInt<LineItemQuantity> { }
+
+[Range(0, 100)]  // allows zero (overrides default zero rejection)
+public partial class StockQuantity : RequiredInt<StockQuantity> { }
+
+// Generated TryCreate validates: min <= value <= max
+// Error: "Line Item Quantity must be at least 1." / "Line Item Quantity must be at most 999."
 ```
 
 ### RequiredDecimal\<TSelf\>

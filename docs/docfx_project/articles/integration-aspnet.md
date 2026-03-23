@@ -60,6 +60,10 @@ The **Trellis.Asp** package provides extension methods to convert `Result<T>` to
 ActionResult<T> ToActionResult<T>(this Result<T> result, ControllerBase controller);
 Task<ActionResult<T>> ToActionResultAsync<T>(this Task<Result<T>> resultTask, ControllerBase controller);
 
+// Map domain type to DTO inline
+ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller, Func<TIn, TOut> map);
+Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, TOut> map);
+
 // 201 Created with Location header
 ActionResult<T> ToCreatedAtActionResult<T>(this Result<T> result, ControllerBase controller,
     string actionName, Func<T, object?> routeValues, string? controllerName = null);
