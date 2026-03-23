@@ -237,6 +237,20 @@ Follow TDD when fixing bugs or adding new features:
 
 Do NOT skip the RED step. A fix without a failing test is untested by definition.
 
+### Pre-Submission Checklist
+
+Before considering work complete, verify:
+
+1. **All tests pass** — `dotnet test` with zero failures
+2. **Documentation updated:**
+   - `trellis-api-reference.md` — if any public API was added or changed
+   - `trellis-api-testing-reference.md` — if test helpers were added or changed
+   - Package `README.md` — if the package's public surface changed
+   - Docfx articles in `docs/docfx_project/articles/` — if relevant articles exist for the feature area
+3. **Do NOT commit without explicit approval** — stage changes and present the diff for review
+4. **Do NOT push branches** — the repository owner will push when ready
+5. **Do NOT create or merge pull requests** — present changes locally for review
+
 ## Test Organization
 
 ### Async Extension File Naming
