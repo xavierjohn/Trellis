@@ -1399,12 +1399,13 @@ optionsBuilder.UseSqlite(connectionString).AddTrellisInterceptors();
 // With interceptor registered, these LINQ expressions work directly:
 context.Customers.Where(c => c.Phone.HasValue)                                    // → IS NOT NULL
 context.Customers.Where(c => c.Phone.HasNoValue)                                  // → IS NULL
-context.Orders.Where(o => o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < cutoff)  // → COALESCE < cutoff
+context.Orders.Where(o => o.SubmittedAt.HasValue && o.SubmittedAt.Value < cutoff)  // → column IS NOT NULL AND column < @cutoff
 
 // Specifications with Maybe<T> properties also work:
 public override Expression<Func<Order, bool>> ToExpression() =>
     order => order.Status == OrderStatus.Submitted
-          && order.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < _cutoff;
+          && order.SubmittedAt.HasValue
+          && order.SubmittedAt.Value < _cutoff;
 ```
 
 ### Maybe\<T\> Index, Update, and Diagnostics Helpers

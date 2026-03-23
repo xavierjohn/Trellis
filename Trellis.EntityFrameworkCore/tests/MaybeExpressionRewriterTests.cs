@@ -150,6 +150,41 @@ public class MaybeExpressionRewriterTests : IDisposable
 
     #endregion
 
+    #region Value comparison pattern
+
+    [Fact]
+    public async Task Value_LessThan_TranslatesDirectly()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("Alice");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var early = CreateOrder(customer.Id);
+        early.SubmittedAt = Maybe.From(new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc));
+        var late = CreateOrder(customer.Id);
+        late.SubmittedAt = Maybe.From(new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc));
+        var noDate = CreateOrder(customer.Id);
+
+        _context.Orders.AddRange(early, late, noDate);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var cutoff = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // Act — clean pattern: HasValue && Value < cutoff (no GetValueOrDefault sentinel)
+        var results = await _context.Orders
+            .Where(o => o.SubmittedAt.HasValue && o.SubmittedAt.Value < cutoff)
+            .ToListAsync(ct);
+
+        // Assert — only early matches (noDate excluded by HasValue, late excluded by < cutoff)
+        results.Should().ContainSingle()
+            .Which.Id.Should().Be(early.Id);
+    }
+
+    #endregion
+
     #region Specification integration
 
     [Fact]
