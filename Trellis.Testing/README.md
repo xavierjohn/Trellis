@@ -1,4 +1,4 @@
-﻿# Trellis.Testing — Testing Utilities
+# Trellis.Testing — Testing Utilities
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Testing.svg)](https://www.nuget.org/packages/Trellis.Testing)
 
@@ -91,7 +91,7 @@ public void Should_Have_Value()
 [Fact]
 public void Should_Be_None()
 {
-    var maybe = Maybe.None<string>();
+    var maybe = Maybe<string>.None;
 
     maybe.Should().BeNone();
 }

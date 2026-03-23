@@ -1,4 +1,4 @@
-﻿# Trellis.Results — Railway Oriented Programming
+# Trellis.Results — Railway Oriented Programming
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Results.svg)](https://www.nuget.org/packages/Trellis.Results)
 
@@ -110,7 +110,7 @@ Maybe<string> some = Maybe.From("hello");
 Maybe<string> alsoSome = "hello"; // Implicit conversion
 
 // Create Maybe without value
-Maybe<string> none = Maybe.None<string>();
+Maybe<string> none = Maybe<string>.None;
 Maybe<string> alsoNone = null; // For reference types
 
 // Check and use
@@ -130,7 +130,7 @@ string result = none.GetValueOrDefault("default"); // "default"
 Maybe<string> name = Maybe.From("hello");
 Maybe<int> length = name.Map(s => s.Length);        // Maybe.From(5)
 
-Maybe<string> empty = Maybe.None<string>();
+Maybe<string> empty = Maybe<string>.None;
 Maybe<int> noLength = empty.Map(s => s.Length);     // Maybe.None
 
 // Match — pattern match to extract a value
@@ -583,7 +583,7 @@ Maybe<Email> managerEmail =
 
 // Any None short-circuits to None
 Maybe<string> a = Maybe.From("A");
-Maybe<string> b = Maybe.None<string>();
+Maybe<string> b = Maybe<string>.None;
 var result = from x in a
              from y in b    // None → entire expression is None
              select x + y;  // Never reached

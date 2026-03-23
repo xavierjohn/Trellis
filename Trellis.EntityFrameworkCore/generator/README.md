@@ -1,4 +1,4 @@
-﻿# Trellis.EntityFrameworkCore.Generator
+# Trellis.EntityFrameworkCore.Generator
 
 [![NuGet](https://img.shields.io/nuget/v/Trellis.EntityFrameworkCore.Generator.svg)](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Generator)
 
@@ -18,7 +18,7 @@ public partial class Customer
 
 // Generator creates:
 // - Private nullable backing field (_phone, _submittedAt)
-// - Property getter: returns Maybe.From(_phone) or Maybe.None<T>()
+// - Property getter: returns Maybe.From(_phone) or Maybe<T>.None
 // - Property setter: extracts value or sets null
 ```
 
@@ -41,7 +41,7 @@ For each `partial Maybe<T>` property, the generator emits:
 private PhoneNumber? _phone;
 public partial Maybe<PhoneNumber> Phone
 {
-    get => _phone is not null ? Maybe.From(_phone) : Maybe.None<PhoneNumber>();
+    get => _phone is not null ? Maybe.From(_phone) : Maybe<PhoneNumber>.None;
     set => _phone = value.HasValue ? value.Value : null;
 }
 ```
