@@ -19,20 +19,13 @@ Choose the hybrid approach when you need:
 
 ## Architecture
 
-```
-┌──────────────┐     ┌──────────────────────┐     ┌──────────────┐
-│  Entra ID    │────▶│  ASP.NET Core Auth    │────▶│  HttpContext  │
-│  (JWT token) │     │  (validates token)    │     │  .User (oid) │
-└──────────────┘     └──────────────────────┘     └──────┬───────┘
-                                                         │
-                                                         ▼
-                                                  ┌──────────────┐
-                                                  │  Database     │
-                                                  │  ActorProvider│
-                                                  │              │
-                                                  │  oid ──▶ DB  │
-                                                  │  ──▶ Actor   │
-                                                  └──────────────┘
+```mermaid
+flowchart LR
+    A[Entra ID<br/>JWT token] -->|validates| B[ASP.NET Core Auth]
+    B -->|HttpContext.User| C[DatabaseActorProvider]
+    C -->|oid claim| D[(Application DB<br/>Roles + Permissions)]
+    D -->|permissions| C
+    C -->|Actor| E[Mediator Pipeline]
 ```
 
 Entra handles **authentication** (who are you?). The database handles **authorization** (what can you do?).
