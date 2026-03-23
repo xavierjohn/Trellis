@@ -447,13 +447,14 @@ else
 {
     services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options => configuration.Bind("AzureAd", options));
+    services.AddEntraActorProvider();  // Required IActorProvider for AuthorizationBehavior
     services.AddMemoryCache();
     services.AddScoped<IPermissionRepository, PermissionRepository>();
-    services.AddScoped<IAsyncActorProvider, DatabaseActorProvider>();
+    services.AddScoped<IAsyncActorProvider, DatabaseActorProvider>();  // Takes precedence at runtime
 }
 ```
 
-Do NOT register `EntraActorProvider` when using `DatabaseActorProvider` — the async provider handles everything. Entra still handles authentication (JWT validation); the database provides permissions.
+Both `IActorProvider` (via `AddEntraActorProvider()`) and `IAsyncActorProvider` (via `DatabaseActorProvider`) must be registered. `AuthorizationBehavior` requires `IActorProvider` but prefers the async provider at runtime.
 
 See the [Database-Backed Permissions guide](https://xavierjohn.github.io/Trellis/articles/integration-db-permissions.html) for the complete schema, entities, seed data, and caching strategy.
 

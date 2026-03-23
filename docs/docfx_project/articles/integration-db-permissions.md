@@ -230,6 +230,7 @@ public class PermissionRepository(AppDbContext context) : IPermissionRepository
 ```csharp
 namespace MyService.Api;
 
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Trellis.Authorization;
@@ -294,14 +295,17 @@ else
     services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options => configuration.Bind("AzureAd", options));
 
-    // Database handles authorization
+    // EntraActorProvider satisfies the required IActorProvider dependency
+    services.AddEntraActorProvider();
+
+    // DatabaseActorProvider loads permissions from DB (takes precedence at runtime)
     services.AddMemoryCache();
     services.AddScoped<IPermissionRepository, PermissionRepository>();
     services.AddScoped<IAsyncActorProvider, DatabaseActorProvider>();
 }
 ```
 
-> **Note:** Do NOT register `IActorProvider` (sync) when using `DatabaseActorProvider`. The Mediator `AuthorizationBehavior` prefers `IAsyncActorProvider` when registered — no `EntraActorProvider` needed for the permissions path.
+> **Note:** Both `IActorProvider` and `IAsyncActorProvider` must be registered. `AuthorizationBehavior` requires `IActorProvider` in its constructor but prefers `IAsyncActorProvider` at runtime when available. `AddEntraActorProvider()` provides the required `IActorProvider`; `DatabaseActorProvider` overrides permission resolution via the async path.
 
 ## Seed Data
 
