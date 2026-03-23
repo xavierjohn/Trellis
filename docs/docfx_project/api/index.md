@@ -1,4 +1,4 @@
-﻿# API Documentation for Trellis
+# API Documentation for Trellis
 
 Welcome to the Trellis API reference. Trellis combines Railway-Oriented Programming (ROP) with Domain-Driven Design (DDD) to provide structured building blocks for enterprise software in C#.
 
@@ -182,7 +182,7 @@ if (repository.FindUserByEmail(email).TryGetValue(out var user))
 
 **Factory Methods:**
 - `Maybe.From<T>(T value)` - Create Maybe from nullable value (null becomes None)
-- `Maybe.None<T>()` - Create an empty Maybe
+- `Maybe<T>.None` - Create an empty Maybe
 
 **When to Use:**
 - **Maybe**: When absence is a valid, expected state (e.g., optional config, search results)

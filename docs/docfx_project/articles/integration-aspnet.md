@@ -1,4 +1,4 @@
-﻿# ASP.NET Core Integration
+# ASP.NET Core Integration
 
 **Level:** Intermediate | **Time:** 20-30 min | **Prerequisites:** [Basics](basics.md)
 
@@ -276,7 +276,7 @@ public record UpdateCustomerRequest(
 | JSON Input | Deserialized As | HTTP Response |
 |-----------|----------------|---------------|
 | `"phone": "555-1234"` | `Maybe.From(PhoneNumber)` | Request continues |
-| `"phone": null` or field absent | `Maybe.None<PhoneNumber>()` | Request continues |
+| `"phone": null` or field absent | `Maybe<PhoneNumber>.None` | Request continues |
 | `"phone": "invalid!"` | Validation error collected | 400 Bad Request |
 
 This solves a problem that `T?` cannot: distinguishing "absent" from "invalid." With `PhoneNumber?`, a `null` result tells you nothing — was the field missing, or did it fail validation? With `Maybe<PhoneNumber>`, absence is `None` and invalid input is a validation error.
@@ -296,7 +296,7 @@ Content-Type: application/json
 **Deserialized result:**
 ```csharp
 // name = FirstName("John")
-// phone = Maybe.None<PhoneNumber>()   — null was intentional, not an error
+// phone = Maybe<PhoneNumber>.None   — null was intentional, not an error
 // website = Maybe.From(Url("https://example.com"))
 ```
 
@@ -364,7 +364,7 @@ A single call to `AddScalarValueValidation()` registers all three components:
 |-----------|--------|
 | `MaybeScalarValueJsonConverter` | JSON: `null` → `None`, valid → `From`, invalid → error |
 | `MaybeModelBinder` | Route/query/form: absent → `None`, valid → `From`, invalid → error |
-| `MaybeSuppressChildValidationMetadataProvider` | Prevents validation crash on `Maybe.None` |
+| `MaybeSuppressChildValidationMetadataProvider` | Prevents validation crash on `Maybe<T>.None` |
 
 No additional configuration is needed beyond what you've already set up for scalar value auto-validation.
 

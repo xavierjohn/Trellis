@@ -38,7 +38,7 @@ The analyzer package is automatically included when you install any Trellis pack
 | [TRLS010](TRLS010.md) | Use specific error type instead of base Error class | Info | ❌ |
 | [TRLS011](TRLS011.md) | Maybe is double-wrapped | Warning | ❌ |
 
-### Code Quality (TRLS012-TRLS018)
+### Code Quality (TRLS012-TRLS019)
 
 | ID | Title | Severity | Has Code Fix |
 |----|-------|----------|--------------|

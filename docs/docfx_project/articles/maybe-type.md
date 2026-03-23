@@ -1,4 +1,4 @@
-﻿# Why Maybe&lt;T&gt;?
+# Why Maybe&lt;T&gt;?
 
 C# already has `Nullable<T>` for value types and nullable reference types (`T?`) for reference types. So why does Trellis include a `Maybe<T>` type?
 
@@ -152,7 +152,7 @@ public record UpdateCustomerRequest(
 | JSON Input | Deserialized As | Behavior |
 |-----------|----------------|----------|
 | `"phone": "555-1234"` | `Maybe.From(PhoneNumber)` | Validated and wrapped |
-| `"phone": null` or field absent | `Maybe.None<PhoneNumber>()` | Treated as intentionally empty |
+| `"phone": null` or field absent | `Maybe<PhoneNumber>.None` | Treated as intentionally empty |
 | `"phone": "invalid!"` | Validation error | Returns `400` with field-level error |
 
 This is handled automatically by:
@@ -179,7 +179,7 @@ var result = FirstName.TryCreate(request.FirstName)
         Customer.TryCreate(first, last, phone, website));
 ```
 
-`Maybe.Optional` encodes the rule: **null input → `Maybe.None` (success), non-null input → validate and wrap in `Maybe.From`**, invalid input → propagate the validation error. This composes naturally with `Combine` and keeps optional fields in the same pipeline as required fields.
+`Maybe.Optional` encodes the rule: **null input → `Maybe<T>.None` (success), non-null input → validate and wrap in `Maybe.From`**, invalid input → propagate the validation error. This composes naturally with `Combine` and keeps optional fields in the same pipeline as required fields.
 
 ## When to Use T? Instead
 
@@ -215,7 +215,7 @@ var result = FirstName.TryCreate(request.FirstName)
 
 ```csharp
 Maybe<PhoneNumber> some = Maybe.From(phoneNumber);  // Wrap a value
-Maybe<PhoneNumber> none = Maybe.None<PhoneNumber>(); // No value
+Maybe<PhoneNumber> none = Maybe<PhoneNumber>.None; // No value
 Maybe<string> greeting = "hello";                     // Implicit conversion
 ```
 
