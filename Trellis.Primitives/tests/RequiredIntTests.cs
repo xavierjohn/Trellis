@@ -14,21 +14,6 @@ internal partial class InternalTicketNumber : RequiredInt<InternalTicketNumber>
 public class RequiredIntTests
 {
     [Fact]
-    public void Cannot_create_zero_RequiredInt()
-    {
-        // Act
-        var ticketNumber = TicketNumber.TryCreate(0);
-
-        // Assert
-        ticketNumber.IsFailure.Should().BeTrue();
-        ticketNumber.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)ticketNumber.Error;
-        validation.FieldErrors[0].FieldName.Should().Be("ticketNumber");
-        validation.FieldErrors[0].Details[0].Should().Be("Ticket Number cannot be zero.");
-        validation.Code.Should().Be("validation.error");
-    }
-
-    [Fact]
     public void Cannot_create_null_RequiredInt()
     {
         // Act
@@ -43,12 +28,13 @@ public class RequiredIntTests
     }
 
     [Theory]
+    [InlineData(0)]
     [InlineData(1)]
     [InlineData(100)]
     [InlineData(-5)]
     [InlineData(int.MaxValue)]
     [InlineData(int.MinValue)]
-    public void Can_create_non_zero_RequiredInt(int value)
+    public void Can_create_RequiredInt(int value)
     {
         // Act
         var result = InternalTicketNumber.TryCreate(value);
@@ -119,17 +105,6 @@ public class RequiredIntTests
     }
 
     [Fact]
-    public void Cannot_cast_zero_to_RequiredInt()
-    {
-        // Act
-        Action act = () => { TicketNumber ticketNumber = (TicketNumber)0; };
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TicketNumber:*Ticket Number cannot be zero*");
-    }
-
-    [Fact]
     public void Can_create_RequiredInt_from_try_parsing_valid_string()
     {
         // Arrange
@@ -145,7 +120,6 @@ public class RequiredIntTests
     }
 
     [Theory]
-    [InlineData("0")]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("abc")]
@@ -172,17 +146,6 @@ public class RequiredIntTests
         // Assert
         ticketNumber.Should().BeOfType<TicketNumber>();
         ticketNumber.Value.Should().Be(12345);
-    }
-
-    [Fact]
-    public void Cannot_create_RequiredInt_from_parsing_zero_string()
-    {
-        // Act
-        Action act = () => TicketNumber.Parse("0", null);
-
-        // Assert
-        act.Should().Throw<FormatException>()
-            .WithMessage("Ticket Number cannot be zero.");
     }
 
     [Theory]
@@ -256,24 +219,10 @@ public class RequiredIntTests
     }
 
     [Fact]
-    public void Cannot_create_RequiredInt_from_parsing_zero_in_JSON()
-    {
-        // Arrange
-        var json = "\"0\"";
-
-        // Act
-        Action act = () => JsonSerializer.Deserialize<TicketNumber>(json);
-
-        // Assert
-        act.Should().Throw<FormatException>()
-            .WithMessage("Ticket Number cannot be zero.");
-    }
-
-    [Fact]
     public void TryCreate_with_custom_fieldName()
     {
         // Act
-        var result = TicketNumber.TryCreate(0, "myField");
+        var result = TicketNumber.TryCreate((int?)null, "myField");
 
         // Assert
         result.IsFailure.Should().BeTrue();

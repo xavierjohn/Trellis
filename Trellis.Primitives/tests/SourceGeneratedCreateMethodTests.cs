@@ -104,20 +104,6 @@ public class SourceGeneratedCreateMethodTests
     }
 
     [Fact]
-    public void RequiredInt_Create_WithZero_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var zero = 0;
-
-        // Act
-        var act = () => TicketNumber.Create(zero);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TicketNumber:*Ticket Number cannot be zero*");
-    }
-
-    [Fact]
     public void RequiredInt_Create_WithValidStringInt_ReturnsInstance()
     {
         // Arrange
@@ -161,20 +147,6 @@ public class SourceGeneratedCreateMethodTests
         // Assert
         unitPrice.Should().NotBeNull();
         unitPrice.Value.Should().Be(validDecimal);
-    }
-
-    [Fact]
-    public void RequiredDecimal_Create_WithZero_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var zero = 0m;
-
-        // Act
-        var act = () => UnitPrice.Create(zero);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create UnitPrice:*Unit Price cannot be zero*");
     }
 
     [Fact]

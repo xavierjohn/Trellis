@@ -831,8 +831,8 @@ static explicit operator Foo(Guid value)
 Inherits `ScalarValueObject<TSelf, int>`. Source generator provides:
 
 ```csharp
-static Result<Foo> TryCreate(int value, string? fieldName = null)       // rejects zero
-static Result<Foo> TryCreate(int? value, string? fieldName = null)
+static Result<Foo> TryCreate(int value, string? fieldName = null)       // accepts any int
+static Result<Foo> TryCreate(int? value, string? fieldName = null)     // rejects null
 static Result<Foo> TryCreate(string? value, string? fieldName = null)
 static new Foo Create(int value)
 static Foo Create(string stringValue)

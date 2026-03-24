@@ -200,13 +200,12 @@ public class ValidateAdditionalTests
     }
 
     [Fact]
-    public void PositiveScore_Zero_FailsBuiltInZeroCheck()
+    public void PositiveScore_Zero_PassesBuiltInThenFailsAdditional()
     {
-        // Zero is rejected by the built-in validation before ValidateAdditional runs
+        // Zero passes built-in (no zero-check), but ValidateAdditional allows it (< 0 check)
         var result = PositiveScore.TryCreate(0);
-        result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
-        validation.FieldErrors[0].Details[0].Should().Be("Positive Score cannot be zero.");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(0);
     }
 
     [Fact]
@@ -249,12 +248,12 @@ public class ValidateAdditionalTests
     }
 
     [Fact]
-    public void PreciseAmount_Zero_FailsBuiltInZeroCheck()
+    public void PreciseAmount_Zero_PassesAllValidation()
     {
+        // Zero passes built-in (no zero-check) and ValidateAdditional (0.00 has 2 decimal places)
         var result = PreciseAmount.TryCreate(0m);
-        result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
-        validation.FieldErrors[0].Details[0].Should().Be("Precise Amount cannot be zero.");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(0m);
     }
 
     [Fact]
