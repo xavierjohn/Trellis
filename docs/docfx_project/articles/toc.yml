@@ -54,6 +54,8 @@
     href: integration-asp-authorization.md
   - name: Testing with Entra ID Tokens
     href: integration-entra-testing.md
+  - name: Database-Backed Permissions
+    href: integration-db-permissions.md
   - name: HTTP Client
     href: integration-http.md
   - name: FluentValidation
