@@ -219,7 +219,7 @@ public class ValidateAdditionalTests
     }
 
     [Fact]
-    public void PositiveScore_Zero_PassesBuiltInThenFailsAdditional()
+    public void PositiveScore_Zero_AcceptedByAdditionalValidation()
     {
         // Zero passes built-in (no zero-check), but ValidateAdditional allows it (< 0 check)
         var result = PositiveScore.TryCreate(0);

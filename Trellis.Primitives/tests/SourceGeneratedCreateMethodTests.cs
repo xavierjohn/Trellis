@@ -104,6 +104,17 @@ public class SourceGeneratedCreateMethodTests
     }
 
     [Fact]
+    public void RequiredInt_Create_WithZero_ReturnsInstance()
+    {
+        // Act
+        var ticketNumber = TicketNumber.Create(0);
+
+        // Assert
+        ticketNumber.Should().NotBeNull();
+        ticketNumber.Value.Should().Be(0);
+    }
+
+    [Fact]
     public void RequiredInt_Create_WithValidStringInt_ReturnsInstance()
     {
         // Arrange
@@ -147,6 +158,17 @@ public class SourceGeneratedCreateMethodTests
         // Assert
         unitPrice.Should().NotBeNull();
         unitPrice.Value.Should().Be(validDecimal);
+    }
+
+    [Fact]
+    public void RequiredDecimal_Create_WithZero_ReturnsInstance()
+    {
+        // Act
+        var unitPrice = UnitPrice.Create(0m);
+
+        // Assert
+        unitPrice.Should().NotBeNull();
+        unitPrice.Value.Should().Be(0m);
     }
 
     [Fact]

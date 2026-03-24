@@ -512,19 +512,21 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 source += $@"
 
         /// <summary>
+        /// Optional validation hook. Implement this partial method to add custom validation
+        /// (e.g., regex patterns, format checks). Called after built-in validations pass.
+        /// </summary>
+        /// <param name=""value"">The validated, trimmed string value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
+        static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage);
+
+        /// <summary>
         /// Creates a validated instance from a string.
         /// Required by IScalarValue interface for model binding and JSON deserialization.
         /// </summary>
         /// <param name=""value"">The string value to validate.</param>
         /// <param name=""fieldName"">Optional field name for validation error messages.</param>
         /// <returns>Success with the value object, or Failure with validation errors.</returns>
-        /// <summary>
-        /// Optional validation hook. Implement this partial method to add custom validation
-        /// (e.g., regex patterns, format checks). Called after built-in validations pass.
-        /// Set <paramref name=""errorMessage""/> to a non-null string to reject the value.
-        /// </summary>
-        static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage);
-
         public static Result<{g.ClassName}> TryCreate(string? value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
@@ -591,8 +593,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         /// <summary>
         /// Optional validation hook. Implement this partial method to add custom validation.
         /// Called after built-in validations (null, range) pass.
-        /// Set <paramref name=""errorMessage""/> to a non-null string to reject the value.
         /// </summary>
+        /// <param name=""value"">The validated integer value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
         static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage);
 
         /// <summary>
@@ -663,8 +667,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         /// <summary>
         /// Optional validation hook. Implement this partial method to add custom validation.
         /// Called after built-in validations (null-check) pass.
-        /// Set <paramref name=""errorMessage""/> to a non-null string to reject the value.
         /// </summary>
+        /// <param name=""value"">The validated integer value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
         static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage);
 
         /// <summary>
@@ -763,8 +769,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         /// <summary>
         /// Optional validation hook. Implement this partial method to add custom validation.
         /// Called after built-in validations (null-check) pass.
-        /// Set <paramref name=""errorMessage""/> to a non-null string to reject the value.
         /// </summary>
+        /// <param name=""value"">The validated decimal value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
         static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage);
 
         /// <summary>
