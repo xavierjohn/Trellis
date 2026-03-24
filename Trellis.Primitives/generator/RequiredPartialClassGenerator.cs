@@ -765,6 +765,13 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         /// </summary>
         static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage);
 
+        /// <summary>
+        /// Creates a validated instance from a decimal.
+        /// Required by IScalarValue interface for model binding and JSON deserialization.
+        /// </summary>
+        /// <param name=""value"">The decimal value to validate.</param>
+        /// <param name=""fieldName"">Optional field name for validation error messages.</param>
+        /// <returns>Success with the value object, or Failure with validation errors.</returns>
         public static Result<{g.ClassName}> TryCreate(decimal value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
