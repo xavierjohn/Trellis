@@ -456,7 +456,7 @@ else
 
 Both `IActorProvider` (via `AddEntraActorProvider()`) and `IAsyncActorProvider` (via `DatabaseActorProvider`) must be registered. `AuthorizationBehavior` requires `IActorProvider` but prefers the async provider at runtime.
 
-See the [Database-Backed Permissions guide](https://xavierjohn.github.io/Trellis/articles/integration-db-permissions.html) for the complete schema, entities, seed data, and caching strategy.
+See the [Database-Backed Permissions guide](../docs/docfx_project/articles/integration-db-permissions.md) for the complete schema, entities, seed data, and caching strategy.
 
 ## Activity Tracing and OpenTelemetry
 
