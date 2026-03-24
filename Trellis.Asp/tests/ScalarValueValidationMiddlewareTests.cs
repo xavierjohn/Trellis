@@ -486,7 +486,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("Proxy error");
+            .Should().Be("The request was invalid.", "should not leak ex.Message to clients");
     }
 
     [Fact]
@@ -575,7 +575,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("Gateway failure");
+            .Should().Be("The request was invalid.", "should not leak ex.Message to clients");
     }
 
     [Fact]
@@ -595,7 +595,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("Some other bad request error");
+            .Should().Be("The request was invalid.", "should not leak ex.Message to clients");
     }
 
     [Fact]
@@ -665,6 +665,80 @@ public class ScalarValueValidationMiddlewareTests
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("val")[0].GetString()
             .Should().Contain("is required", "should use the fallback 'required' message for empty values");
+    }
+
+    #endregion
+
+    #region Security Tests — Information Exposure Prevention
+
+    [Fact]
+    public async Task InvokeAsync_GenericBadRequest_DoesNotLeakExceptionMessage()
+    {
+        // Arrange — unrecognized 400 format triggers WriteGenericBadRequestAsync
+        var context = CreateHttpContextWithServices();
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("Proxy error: internal binding detail about System.Int32 parameter.", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        body.Should().NotContain("Proxy error", "ex.Message should not be exposed to clients");
+        body.Should().NotContain("System.Int32", "internal type info should not be exposed");
+        body.Should().NotContain("binding detail", "internal details should not be exposed");
+
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+            .Should().Be("The request was invalid.");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_FallbackErrors_DoesNotReflectInvalidValue()
+    {
+        // Arrange — IntOnlyScalarValue has no TryCreate(string), so fallback path is used
+        // The invalidValue should NOT be reflected back in the error message
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "val");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "<script>alert('xss')</script>".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        body.Should().NotContain("<script>", "user input should not be reflected in error responses");
+        body.Should().NotContain("alert", "user input should not be reflected in error responses");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_FallbackErrors_DoesNotLeakInternalTypeName()
+    {
+        // Arrange
+        var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+
+        var context = CreateContextWithEndpointMetadata(paramInfo, "val");
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "bad".""", 400));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        body.Should().NotContain("IntOnlyScalarValue", "internal type names should not be exposed to clients");
     }
 
     #endregion

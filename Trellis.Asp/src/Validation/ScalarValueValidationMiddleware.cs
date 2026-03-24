@@ -107,7 +107,7 @@ public sealed partial class ScalarValueValidationMiddleware
 
         var errors = new Dictionary<string, string[]>
         {
-            ["$"] = [ex.Message]
+            ["$"] = ["The request was invalid."]
         };
 
         var result = Results.ValidationProblem(errors);
@@ -182,7 +182,7 @@ public sealed partial class ScalarValueValidationMiddleware
     {
         var errorMessage = string.IsNullOrEmpty(invalidValue)
             ? $"'{parameterName}' is required."
-            : $"'{invalidValue}' is not a valid {typeName}.";
+            : $"'{parameterName}' has an invalid value.";
 
         return new Dictionary<string, string[]>
         {
