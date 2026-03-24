@@ -81,6 +81,22 @@ public partial class FirstName : RequiredString<FirstName> { }
 public partial class Description : RequiredString<Description> { }
 ```
 
+Optional: Add `ValidateAdditional` for custom validation (regex, format checks):
+
+```csharp
+[StringLength(10)]
+public partial class Sku : RequiredString<Sku>
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+    {
+        if (!Regex.IsMatch(value, @"^SKU-\d{6}$"))
+            errorMessage = "Sku must match pattern SKU-XXXXXX.";
+    }
+}
+```
+
+The hook is completely optional — if not implemented, the compiler removes the call (zero overhead). Available on `RequiredString`, `RequiredInt`, and `RequiredDecimal`.
+
 ### RequiredGuid
 
 Create strongly-typed GUID value objects. Use `NewUniqueV7()` for time-ordered, sortable identifiers — GUID V7 provides the same benefits as ULIDs (sequential, timestamp-embedded) while using the standard `System.Guid` type.
