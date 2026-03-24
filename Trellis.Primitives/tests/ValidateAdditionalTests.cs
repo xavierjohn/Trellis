@@ -121,6 +121,15 @@ public class ValidateAdditionalTests
         validation.FieldErrors[0].FieldName.Should().Be("itemSku");
     }
 
+    [Fact]
+    public void Sku_WithLeadingTrailingWhitespace_ValidatesOnTrimmedValue()
+    {
+        // "SKU-123456" is 10 chars (at StringLength limit), spaces should be trimmed before validation
+        var result = Sku.TryCreate(" SKU-123456 ");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be("SKU-123456");
+    }
+
     #endregion
 
     #region RequiredString — PlainName without ValidateAdditional (optional hook)

@@ -492,19 +492,21 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                // Build length validation Ensure calls if [StringLength] is applied
-                var lengthEnsures = "";
+                // Build length validation checks if [StringLength] is applied (checked after trim)
+                var lengthChecks = "";
 
                 if (g.MinLength.HasValue)
                 {
-                    lengthEnsures += $@"
-                .Ensure(str => str.Length >= {g.MinLength.Value}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {g.MinLength.Value} {"character" + (g.MinLength.Value == 1 ? "" : "s")}."", field))";
+                    lengthChecks += $@"
+            if (normalized.Length < {g.MinLength.Value})
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {g.MinLength.Value} {"character" + (g.MinLength.Value == 1 ? "" : "s")}."", field);";
                 }
 
                 if (g.MaxLength.HasValue)
                 {
-                    lengthEnsures += $@"
-                .Ensure(str => str.Length <= {g.MaxLength.Value}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be {g.MaxLength.Value} {"character" + (g.MaxLength.Value == 1 ? "" : "s")} or fewer."", field))";
+                    lengthChecks += $@"
+            if (normalized.Length > {g.MaxLength.Value})
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be {g.MaxLength.Value} {"character" + (g.MaxLength.Value == 1 ? "" : "s")} or fewer."", field);";
                 }
 
                 source += $@"
@@ -527,16 +529,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = value
-                .EnsureNotNullOrWhiteSpace(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field)){lengthEnsures};
-            if (validated.IsSuccess)
-            {{
-                string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
-                if (additionalError is not null)
-                    return Error.Validation(additionalError, field);
-            }}
-            return validated.Map(str => new {g.ClassName}(str.Trim()));
+            var notEmpty = value
+                .EnsureNotNullOrWhiteSpace(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
+            if (!notEmpty.IsSuccess)
+                return notEmpty.Map(str => new {g.ClassName}(str));
+            var normalized = notEmpty.Value.Trim();{lengthChecks}
+            string? additionalError = null;
+            ValidateAdditional(normalized, field, ref additionalError);
+            if (additionalError is not null)
+                return Error.Validation(additionalError, field);
+            return new {g.ClassName}(normalized);
         }}
 
         /// <summary>
