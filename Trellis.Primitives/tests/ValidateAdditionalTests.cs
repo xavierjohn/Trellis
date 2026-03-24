@@ -23,6 +23,16 @@ public partial class Sku : RequiredString<Sku>
 public partial class PlainName : RequiredString<PlainName> { }
 
 /// <summary>
+/// RequiredInt without ValidateAdditional — ensures the hook is truly optional.
+/// </summary>
+public partial class PlainCount : RequiredInt<PlainCount> { }
+
+/// <summary>
+/// RequiredDecimal without ValidateAdditional — ensures the hook is truly optional.
+/// </summary>
+public partial class PlainRate : RequiredDecimal<PlainRate> { }
+
+/// <summary>
 /// RequiredInt with range + custom even-number validation.
 /// </summary>
 [Range(1, 100)]
@@ -286,6 +296,90 @@ public class ValidateAdditionalTests
         result.IsFailure.Should().BeTrue();
         var validation = (ValidationError)result.Error;
         validation.FieldErrors[0].Details[0].Should().Be("Precise Amount must have at most 2 decimal places.");
+    }
+
+    #endregion
+
+    #region Optionality — RequiredInt without ValidateAdditional
+
+    [Fact]
+    public void PlainCount_WithoutHook_StillWorks()
+    {
+        var result = PlainCount.TryCreate(42);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(42);
+    }
+
+    #endregion
+
+    #region Optionality — RequiredDecimal without ValidateAdditional
+
+    [Fact]
+    public void PlainRate_WithoutHook_StillWorks()
+    {
+        var result = PlainRate.TryCreate(3.14m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(3.14m);
+    }
+
+    #endregion
+
+    #region Create throws when ValidateAdditional rejects
+
+    [Fact]
+    public void Sku_Create_ValidPattern_ReturnsInstance()
+    {
+        var sku = Sku.Create("SKU-123456");
+        sku.Value.Should().Be("SKU-123456");
+    }
+
+    [Fact]
+    public void Sku_Create_InvalidPattern_ThrowsInvalidOperationException()
+    {
+        Action act = () => Sku.Create("INVALID");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Failed to create Sku:*");
+    }
+
+    [Fact]
+    public void EvenPercentage_Create_Odd_ThrowsInvalidOperationException()
+    {
+        Action act = () => EvenPercentage.Create(51);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Failed to create EvenPercentage:*");
+    }
+
+    [Fact]
+    public void PreciseAmount_Create_TooManyDecimals_ThrowsInvalidOperationException()
+    {
+        Action act = () => PreciseAmount.Create(1.999m);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Failed to create PreciseAmount:*");
+    }
+
+    #endregion
+
+    #region fieldName propagation for int and decimal
+
+    [Fact]
+    public void EvenPercentage_CustomFieldName_PropagatedToAdditionalValidation()
+    {
+        var result = EvenPercentage.TryCreate(51, "discount");
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("discount");
+    }
+
+    [Fact]
+    public void PreciseAmount_CustomFieldName_PropagatedToAdditionalValidation()
+    {
+        var result = PreciseAmount.TryCreate(1.999m, "price");
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("price");
     }
 
     #endregion

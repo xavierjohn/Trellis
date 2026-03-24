@@ -291,6 +291,41 @@ public class RequiredEnumTests
 
     #endregion
 
+    #region Create Tests
+
+    [Fact]
+    public void Create_ValidName_ReturnsInstance()
+    {
+        // Act
+        var state = TestOrderState.Create("Draft");
+
+        // Assert
+        state.Should().Be(TestOrderState.Draft);
+    }
+
+    [Fact]
+    public void Create_InvalidName_ThrowsInvalidOperationException()
+    {
+        // Act
+        Action act = () => TestOrderState.Create("NonExistent");
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Failed to create TestOrderState:*");
+    }
+
+    [Fact]
+    public void Create_OverriddenEnumValue_ReturnsInstance()
+    {
+        // Act
+        var state = TestOverriddenOrderState.Create("payment-pending");
+
+        // Assert
+        state.Should().Be(TestOverriddenOrderState.AwaitingPayment);
+    }
+
+    #endregion
+
     #region Enum with Behavior Tests
 
     [Fact]
