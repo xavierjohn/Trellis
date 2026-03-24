@@ -312,6 +312,21 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             result = r.Value;
             return true;
         }}
+
+        /// <summary>
+        /// Creates a validated instance from a string. Throws if validation fails.
+        /// Use this for known-valid values in tests or with constants.
+        /// </summary>
+        /// <param name=""value"">The symbolic value to look up.</param>
+        /// <returns>The validated enum member.</returns>
+        /// <exception cref=""InvalidOperationException"">Thrown when validation fails.</exception>
+        public static {g.ClassName} Create(string value)
+        {{
+            var result = TryCreate(value, null);
+            if (result.IsFailure)
+                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
+            return result.Value;
+        }}
     }}
     {nestedTypeClose}";
                 context.AddSource($"{g.TypePath}.g.cs", enumSource);
