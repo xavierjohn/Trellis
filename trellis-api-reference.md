@@ -845,7 +845,7 @@ With range constraints using `[Range]`:
 [Range(1, 999)]
 public partial class LineItemQuantity : RequiredInt<LineItemQuantity> { }
 
-[Range(0, 100)]  // allows zero (overrides default zero rejection)
+[Range(0, 100)]  // constrains to 0–100 inclusive
 public partial class StockQuantity : RequiredInt<StockQuantity> { }
 
 // Generated TryCreate validates: min <= value <= max
