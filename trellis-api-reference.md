@@ -788,6 +788,27 @@ public partial class Description : RequiredString<Description> { }
 
 Generated validation errors: `"{Name} must be at least {min} characters."`, `"{Name} must be {max} characters or fewer."`
 
+#### `ValidateAdditional` — Optional Custom Validation Hook
+
+Implement the `ValidateAdditional` partial method to add domain-specific validation (regex patterns, format checks, etc.). Called after built-in validations pass. If not implemented, the compiler removes the call — zero overhead.
+
+```csharp
+[StringLength(10)]
+public partial class Sku : RequiredString<Sku>
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+    {
+        if (!Regex.IsMatch(value, @"^SKU-\d{6}$"))
+            errorMessage = "Sku must match pattern SKU-XXXXXX.";
+    }
+}
+```
+
+**Signature:** `static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)`
+- `value` — the validated string (not null, not whitespace, length-checked)
+- `fieldName` — the normalized field name for error messages
+- `errorMessage` — set to a non-null string to reject; leave null to accept. The generator wraps it in `Error.Validation(errorMessage, fieldName)` automatically.
+
 ### RequiredGuid\<TSelf\>
 
 Inherits `ScalarValueObject<TSelf, Guid>`. Source generator provides:
@@ -810,8 +831,8 @@ static explicit operator Foo(Guid value)
 Inherits `ScalarValueObject<TSelf, int>`. Source generator provides:
 
 ```csharp
-static Result<Foo> TryCreate(int value, string? fieldName = null)       // rejects zero
-static Result<Foo> TryCreate(int? value, string? fieldName = null)
+static Result<Foo> TryCreate(int value, string? fieldName = null)       // accepts any int
+static Result<Foo> TryCreate(int? value, string? fieldName = null)     // rejects null
 static Result<Foo> TryCreate(string? value, string? fieldName = null)
 static new Foo Create(int value)
 static Foo Create(string stringValue)
@@ -831,6 +852,22 @@ public partial class StockQuantity : RequiredInt<StockQuantity> { }
 // Error: "Line Item Quantity must be at least 1." / "Line Item Quantity must be at most 999."
 ```
 
+#### `ValidateAdditional` — Optional Custom Validation Hook
+
+Same pattern as RequiredString. Signature: `static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage)`
+
+```csharp
+[Range(1, 100)]
+public partial class EvenPercentage : RequiredInt<EvenPercentage>
+{
+    static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage)
+    {
+        if (value % 2 != 0)
+            errorMessage = "Even Percentage must be an even number.";
+    }
+}
+```
+
 ### RequiredDecimal\<TSelf\>
 
 Inherits `ScalarValueObject<TSelf, decimal>`. Same pattern as RequiredInt with `decimal`.
@@ -842,6 +879,8 @@ static Foo Create(decimal value)
 static Foo Create(string stringValue)
 // IParsable<Foo>, explicit operator, JsonConverter
 ```
+
+`ValidateAdditional` is also available: `static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage)`
 
 ### RequiredEnum\<TSelf\>
 
@@ -1589,6 +1628,20 @@ public partial class ProductName : RequiredString<ProductName> { }
 
 [StringLength(500, MinimumLength = 10)]
 public partial class Description : RequiredString<Description> { }
+```
+
+With custom validation (regex, format checks):
+
+```csharp
+[StringLength(10)]
+public partial class Sku : RequiredString<Sku>
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+    {
+        if (!Regex.IsMatch(value, @"^SKU-\d{6}$"))
+            errorMessage = "Sku must match pattern SKU-XXXXXX.";
+    }
+}
 ```
 
 ## Create a Custom Value Object (RequiredEnum — Smart Enum)

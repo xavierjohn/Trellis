@@ -14,21 +14,6 @@ internal partial class InternalUnitPrice : RequiredDecimal<InternalUnitPrice>
 public class RequiredDecimalTests
 {
     [Fact]
-    public void Cannot_create_zero_RequiredDecimal()
-    {
-        // Act
-        var unitPrice = UnitPrice.TryCreate(0m);
-
-        // Assert
-        unitPrice.IsFailure.Should().BeTrue();
-        unitPrice.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)unitPrice.Error;
-        validation.FieldErrors[0].FieldName.Should().Be("unitPrice");
-        validation.FieldErrors[0].Details[0].Should().Be("Unit Price cannot be zero.");
-        validation.Code.Should().Be("validation.error");
-    }
-
-    [Fact]
     public void Cannot_create_null_RequiredDecimal()
     {
         // Act
@@ -43,11 +28,12 @@ public class RequiredDecimalTests
     }
 
     [Theory]
+    [InlineData(0)]
     [InlineData(0.01)]
     [InlineData(19.99)]
     [InlineData(-5.50)]
     [InlineData(1000000.00)]
-    public void Can_create_non_zero_RequiredDecimal(decimal value)
+    public void Can_create_RequiredDecimal(decimal value)
     {
         // Act
         var result = InternalUnitPrice.TryCreate(value);
@@ -118,17 +104,6 @@ public class RequiredDecimalTests
     }
 
     [Fact]
-    public void Cannot_cast_zero_to_RequiredDecimal()
-    {
-        // Act
-        Action act = () => { UnitPrice unitPrice = (UnitPrice)0m; };
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create UnitPrice:*Unit Price cannot be zero*");
-    }
-
-    [Fact]
     public void Can_create_RequiredDecimal_from_try_parsing_valid_string()
     {
         // Arrange
@@ -144,7 +119,6 @@ public class RequiredDecimalTests
     }
 
     [Theory]
-    [InlineData("0")]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("abc")]
@@ -171,17 +145,6 @@ public class RequiredDecimalTests
         // Assert
         unitPrice.Should().BeOfType<UnitPrice>();
         unitPrice.Value.Should().Be(19.99m);
-    }
-
-    [Fact]
-    public void Cannot_create_RequiredDecimal_from_parsing_zero_string()
-    {
-        // Act
-        Action act = () => UnitPrice.Parse("0", CultureInfo.InvariantCulture);
-
-        // Assert
-        act.Should().Throw<FormatException>()
-            .WithMessage("Unit Price cannot be zero.");
     }
 
     [Theory]
@@ -255,24 +218,10 @@ public class RequiredDecimalTests
     }
 
     [Fact]
-    public void Cannot_create_RequiredDecimal_from_parsing_zero_in_JSON()
-    {
-        // Arrange
-        var json = "\"0\"";
-
-        // Act
-        Action act = () => JsonSerializer.Deserialize<UnitPrice>(json);
-
-        // Assert
-        act.Should().Throw<FormatException>()
-            .WithMessage("Unit Price cannot be zero.");
-    }
-
-    [Fact]
     public void TryCreate_with_custom_fieldName()
     {
         // Act
-        var result = UnitPrice.TryCreate(0m, "myField");
+        var result = UnitPrice.TryCreate((decimal?)null, "myField");
 
         // Assert
         result.IsFailure.Should().BeTrue();

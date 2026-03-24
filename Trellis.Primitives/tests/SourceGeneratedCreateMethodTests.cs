@@ -104,17 +104,14 @@ public class SourceGeneratedCreateMethodTests
     }
 
     [Fact]
-    public void RequiredInt_Create_WithZero_ThrowsInvalidOperationException()
+    public void RequiredInt_Create_WithZero_ReturnsInstance()
     {
-        // Arrange
-        var zero = 0;
-
         // Act
-        var act = () => TicketNumber.Create(zero);
+        var ticketNumber = TicketNumber.Create(0);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TicketNumber:*Ticket Number cannot be zero*");
+        ticketNumber.Should().NotBeNull();
+        ticketNumber.Value.Should().Be(0);
     }
 
     [Fact]
@@ -164,17 +161,14 @@ public class SourceGeneratedCreateMethodTests
     }
 
     [Fact]
-    public void RequiredDecimal_Create_WithZero_ThrowsInvalidOperationException()
+    public void RequiredDecimal_Create_WithZero_ReturnsInstance()
     {
-        // Arrange
-        var zero = 0m;
-
         // Act
-        var act = () => UnitPrice.Create(zero);
+        var unitPrice = UnitPrice.Create(0m);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create UnitPrice:*Unit Price cannot be zero*");
+        unitPrice.Should().NotBeNull();
+        unitPrice.Value.Should().Be(0m);
     }
 
     [Fact]

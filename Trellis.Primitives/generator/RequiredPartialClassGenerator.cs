@@ -312,6 +312,21 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             result = r.Value;
             return true;
         }}
+
+        /// <summary>
+        /// Creates a validated instance from a string. Throws if validation fails.
+        /// Use this for known-valid values in tests or with constants.
+        /// </summary>
+        /// <param name=""value"">The symbolic value to look up.</param>
+        /// <returns>The validated enum member.</returns>
+        /// <exception cref=""InvalidOperationException"">Thrown when validation fails.</exception>
+        public static {g.ClassName} Create(string value)
+        {{
+            var result = TryCreate(value, null);
+            if (result.IsFailure)
+                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
+            return result.Value;
+        }}
     }}
     {nestedTypeClose}";
                 context.AddSource($"{g.TypePath}.g.cs", enumSource);
@@ -477,22 +492,33 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                // Build length validation Ensure calls if [StringLength] is applied
-                var lengthEnsures = "";
+                // Build length validation checks if [StringLength] is applied (checked after trim)
+                var lengthChecks = "";
 
                 if (g.MinLength.HasValue)
                 {
-                    lengthEnsures += $@"
-                .Ensure(str => str.Length >= {g.MinLength.Value}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {g.MinLength.Value} {"character" + (g.MinLength.Value == 1 ? "" : "s")}."", field))";
+                    lengthChecks += $@"
+            if (normalized.Length < {g.MinLength.Value})
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {g.MinLength.Value} {"character" + (g.MinLength.Value == 1 ? "" : "s")}."", field);";
                 }
 
                 if (g.MaxLength.HasValue)
                 {
-                    lengthEnsures += $@"
-                .Ensure(str => str.Length <= {g.MaxLength.Value}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be {g.MaxLength.Value} {"character" + (g.MaxLength.Value == 1 ? "" : "s")} or fewer."", field))";
+                    lengthChecks += $@"
+            if (normalized.Length > {g.MaxLength.Value})
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be {g.MaxLength.Value} {"character" + (g.MaxLength.Value == 1 ? "" : "s")} or fewer."", field);";
                 }
 
                 source += $@"
+
+        /// <summary>
+        /// Optional validation hook. Implement this partial method to add custom validation
+        /// (e.g., regex patterns, format checks). Called after built-in validations pass.
+        /// </summary>
+        /// <param name=""value"">The validated, trimmed string value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
+        static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage);
 
         /// <summary>
         /// Creates a validated instance from a string.
@@ -505,9 +531,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            return value
-                .EnsureNotNullOrWhiteSpace(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field)){lengthEnsures}
-                .Map(str => new {g.ClassName}(str.Trim()));
+            var notEmpty = value
+                .EnsureNotNullOrWhiteSpace(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
+            if (!notEmpty.IsSuccess)
+                return notEmpty.Map(str => new {g.ClassName}(str));
+            var normalized = notEmpty.Value.Trim();{lengthChecks}
+            string? additionalError = null;
+            ValidateAdditional(normalized, field, ref additionalError);
+            if (additionalError is not null)
+                return Error.Validation(additionalError, field);
+            return new {g.ClassName}(normalized);
         }}
 
         /// <summary>
@@ -558,6 +591,15 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                     source += $@"
 
         /// <summary>
+        /// Optional validation hook. Implement this partial method to add custom validation.
+        /// Called after built-in validations (null, range) pass.
+        /// </summary>
+        /// <param name=""value"">The validated integer value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
+        static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage);
+
+        /// <summary>
         /// Creates a validated instance from an integer.
         /// Required by IScalarValue interface for model binding and JSON deserialization.
         /// </summary>
@@ -572,6 +614,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field);
             if (value > {rangeMax})
                 return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field);
+            string? additionalError = null;
+            ValidateAdditional(value, field, ref additionalError);
+            if (additionalError is not null)
+                return Error.Validation(additionalError, field);
             return new {g.ClassName}(value);
         }}
 
@@ -579,11 +625,18 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            return valueOrNothing
+            var validated = valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x >= {rangeMin}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field))
-                .Ensure(x => x <= {rangeMax}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field))
-                .Map(val => new {g.ClassName}(val));
+                .Ensure(x => x <= {rangeMax}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field));
+            if (validated.IsSuccess)
+            {{
+                string? additionalError = null;
+                ValidateAdditional(validated.Value, field, ref additionalError);
+                if (additionalError is not null)
+                    return Error.Validation(additionalError, field);
+            }}
+            return validated.Map(val => new {g.ClassName}(val));
         }}
 
         public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
@@ -591,18 +644,34 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             int parsedInt = 0;
-            return stringOrNull
+            var validated = stringOrNull
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => int.TryParse(x, out parsedInt), Error.Validation(""Value must be a valid integer."", field))
                 .Ensure(_ => parsedInt >= {rangeMin}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field))
-                .Ensure(_ => parsedInt <= {rangeMax}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field))
-                .Map(_ => new {g.ClassName}(parsedInt));
+                .Ensure(_ => parsedInt <= {rangeMax}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field));
+            if (validated.IsSuccess)
+            {{
+                string? additionalError = null;
+                ValidateAdditional(parsedInt, field, ref additionalError);
+                if (additionalError is not null)
+                    return Error.Validation(additionalError, field);
+            }}
+            return validated.Map(_ => new {g.ClassName}(parsedInt));
         }}";
                 }
                 else
                 {
-                    // Default zero-check TryCreate overloads
+                    // Default TryCreate overloads (no [Range] — accepts any int including zero)
                     source += $@"
+
+        /// <summary>
+        /// Optional validation hook. Implement this partial method to add custom validation.
+        /// Called after built-in validations (null-check) pass.
+        /// </summary>
+        /// <param name=""value"">The validated integer value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
+        static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage);
 
         /// <summary>
         /// Creates a validated instance from an integer.
@@ -615,8 +684,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            if (value == 0)
-                return Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field);
+            string? additionalError = null;
+            ValidateAdditional(value, field, ref additionalError);
+            if (additionalError is not null)
+                return Error.Validation(additionalError, field);
             return new {g.ClassName}(value);
         }}
 
@@ -624,10 +695,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            return valueOrNothing
-                .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
-                .Ensure(x => x != 0, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field))
-                .Map(val => new {g.ClassName}(val));
+            var validated = valueOrNothing
+                .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
+            if (validated.IsSuccess)
+            {{
+                string? additionalError = null;
+                ValidateAdditional(validated.Value, field, ref additionalError);
+                if (additionalError is not null)
+                    return Error.Validation(additionalError, field);
+            }}
+            return validated.Map(val => new {g.ClassName}(val));
         }}
 
         public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
@@ -635,11 +712,17 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             int parsedInt = 0;
-            return stringOrNull
+            var validated = stringOrNull
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
-                .Ensure(x => int.TryParse(x, out parsedInt), Error.Validation(""Value must be a valid integer."", field))
-                .Ensure(_ => parsedInt != 0, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field))
-                .Map(_ => new {g.ClassName}(parsedInt));
+                .Ensure(x => int.TryParse(x, out parsedInt), Error.Validation(""Value must be a valid integer."", field));
+            if (validated.IsSuccess)
+            {{
+                string? additionalError = null;
+                ValidateAdditional(parsedInt, field, ref additionalError);
+                if (additionalError is not null)
+                    return Error.Validation(additionalError, field);
+            }}
+            return validated.Map(_ => new {g.ClassName}(parsedInt));
         }}";
                 }
 
@@ -684,6 +767,15 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 source += $@"
 
         /// <summary>
+        /// Optional validation hook. Implement this partial method to add custom validation.
+        /// Called after built-in validations (null-check) pass.
+        /// </summary>
+        /// <param name=""value"">The validated decimal value.</param>
+        /// <param name=""fieldName"">The normalized field name for error messages.</param>
+        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
+        static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage);
+
+        /// <summary>
         /// Creates a validated instance from a decimal.
         /// Required by IScalarValue interface for model binding and JSON deserialization.
         /// </summary>
@@ -694,8 +786,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            if (value == 0m)
-                return Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field);
+            string? additionalError = null;
+            ValidateAdditional(value, field, ref additionalError);
+            if (additionalError is not null)
+                return Error.Validation(additionalError, field);
             return new {g.ClassName}(value);
         }}
 
@@ -703,10 +797,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            return valueOrNothing
-                .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
-                .Ensure(x => x != 0m, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field))
-                .Map(val => new {g.ClassName}(val));
+            var validated = valueOrNothing
+                .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
+            if (validated.IsSuccess)
+            {{
+                string? additionalError = null;
+                ValidateAdditional(validated.Value, field, ref additionalError);
+                if (additionalError is not null)
+                    return Error.Validation(additionalError, field);
+            }}
+            return validated.Map(val => new {g.ClassName}(val));
         }}
 
         public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
@@ -714,11 +814,17 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             decimal parsedDecimal = 0m;
-            return stringOrNull
+            var validated = stringOrNull
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
-                .Ensure(x => decimal.TryParse(x, out parsedDecimal), Error.Validation(""Value must be a valid decimal."", field))
-                .Ensure(_ => parsedDecimal != 0m, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be zero."", field))
-                .Map(_ => new {g.ClassName}(parsedDecimal));
+                .Ensure(x => decimal.TryParse(x, out parsedDecimal), Error.Validation(""Value must be a valid decimal."", field));
+            if (validated.IsSuccess)
+            {{
+                string? additionalError = null;
+                ValidateAdditional(parsedDecimal, field, ref additionalError);
+                if (additionalError is not null)
+                    return Error.Validation(additionalError, field);
+            }}
+            return validated.Map(_ => new {g.ClassName}(parsedDecimal));
         }}
 
         /// <summary>
