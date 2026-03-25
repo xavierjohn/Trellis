@@ -77,7 +77,7 @@ public sealed partial class ScalarValueValidationMiddleware
                     {
                         // Call TryCreate to get the real validation error (e.g., with valid values list)
                         var errors = ScalarValueTypeHelper.GetValidationErrors(scalarValueType, invalidValue, parameterName)
-                            ?? CreateFallbackErrors(parameterName, typeName, invalidValue);
+                            ?? CreateFallbackErrors(parameterName, invalidValue);
 
                         await WriteValidationProblemAsync(context, errors).ConfigureAwait(false);
                     }
@@ -95,19 +95,19 @@ public sealed partial class ScalarValueValidationMiddleware
                 else
                 {
                     // Unrecognized 400 format - return generic 400 to prevent 500 propagation
-                    await WriteGenericBadRequestAsync(context, ex).ConfigureAwait(false);
+                    await WriteGenericBadRequestAsync(context).ConfigureAwait(false);
                 }
             }
         }
     }
 
-    private static async Task WriteGenericBadRequestAsync(HttpContext context, BadHttpRequestException ex)
+    private static async Task WriteGenericBadRequestAsync(HttpContext context)
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
         var errors = new Dictionary<string, string[]>
         {
-            ["$"] = [ex.Message]
+            ["$"] = ["The request was invalid."]
         };
 
         var result = Results.ValidationProblem(errors);
@@ -177,12 +177,11 @@ public sealed partial class ScalarValueValidationMiddleware
 
     private static Dictionary<string, string[]> CreateFallbackErrors(
         string parameterName,
-        string typeName,
         string invalidValue)
     {
         var errorMessage = string.IsNullOrEmpty(invalidValue)
             ? $"'{parameterName}' is required."
-            : $"'{invalidValue}' is not a valid {typeName}.";
+            : $"'{parameterName}' has an invalid value.";
 
         return new Dictionary<string, string[]>
         {
