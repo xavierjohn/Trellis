@@ -77,7 +77,7 @@ public sealed partial class ScalarValueValidationMiddleware
                     {
                         // Call TryCreate to get the real validation error (e.g., with valid values list)
                         var errors = ScalarValueTypeHelper.GetValidationErrors(scalarValueType, invalidValue, parameterName)
-                            ?? CreateFallbackErrors(parameterName, typeName, invalidValue);
+                            ?? CreateFallbackErrors(parameterName, invalidValue);
 
                         await WriteValidationProblemAsync(context, errors).ConfigureAwait(false);
                     }
@@ -177,7 +177,6 @@ public sealed partial class ScalarValueValidationMiddleware
 
     private static Dictionary<string, string[]> CreateFallbackErrors(
         string parameterName,
-        string typeName,
         string invalidValue)
     {
         var errorMessage = string.IsNullOrEmpty(invalidValue)
