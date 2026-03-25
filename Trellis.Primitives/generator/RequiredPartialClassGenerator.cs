@@ -821,8 +821,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 if (hasRange)
                 {
                     // Format range values for decimal literals in generated code
-                    var minStr = rangeMinD.GetValueOrDefault().ToString(System.Globalization.CultureInfo.InvariantCulture);
-                    var maxStr = rangeMaxD.GetValueOrDefault().ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    // Use "R" (round-trip) format then replace scientific notation to ensure valid decimal literals
+                    var minStr = FormatDecimalLiteral(rangeMinD.GetValueOrDefault());
+                    var maxStr = FormatDecimalLiteral(rangeMaxD.GetValueOrDefault());
 
                     // Range-validated TryCreate overloads
                     source += $@"
@@ -1574,6 +1575,25 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         info.NestingParents.Length == 0
             ? string.Empty
             : string.Join("\n", info.NestingParents.Select(_ => "}").Reverse()) + "\n";
+
+    /// <summary>
+    /// Formats a double value as a string suitable for use as a C# decimal literal (without 'm' suffix).
+    /// Avoids scientific notation (e.g., "1E+20") which is not valid in decimal literals.
+    /// </summary>
+    private static string FormatDecimalLiteral(double value)
+    {
+        // Convert to decimal first to get the exact representation, then format without exponent
+        try
+        {
+            var decimalValue = (decimal)value;
+            return decimalValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch (OverflowException)
+        {
+            // Value exceeds decimal range — fall back to fixed-point notation
+            return value.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
 
     /// <summary>
     /// Fast syntax-only filter to identify potential value object class declarations.

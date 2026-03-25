@@ -19,6 +19,13 @@ public partial class FractionalPrice : RequiredDecimal<FractionalPrice> { }
 public partial class LargeRangeDecimal : RequiredDecimal<LargeRangeDecimal> { }
 
 /// <summary>
+/// Test value object with scientific-notation range values.
+/// 1e20 produces "1E+20" from double.ToString() which is not a valid decimal literal.
+/// </summary>
+[Range(0, 1e20)]
+public partial class ScientificNotationDecimal : RequiredDecimal<ScientificNotationDecimal> { }
+
+/// <summary>
 /// Tests for RequiredDecimal [Range] attribute support.
 /// Validates that the source generator emits range validation in TryCreate.
 /// </summary>
@@ -205,6 +212,33 @@ public class RangedDecimalTests
     {
         var result = LargeRangeDecimal.TryCreate(0m);
         result.IsSuccess.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region ScientificNotationDecimal — [Range(0, 1e20)] — validates no scientific notation in generated code
+
+    [Fact]
+    public void ScientificNotationDecimal_WithinRange_ReturnsSuccess()
+    {
+        // 1e20 would produce "1E+20" from double.ToString() which is not a valid decimal literal.
+        // The generator must format it as "100000000000000000000m" instead.
+        var result = ScientificNotationDecimal.TryCreate(50_000_000_000_000_000_000m);
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ScientificNotationDecimal_AboveMax_ReturnsFailure()
+    {
+        var result = ScientificNotationDecimal.TryCreate(100_000_000_000_000_000_001m);
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ScientificNotationDecimal_Negative_ReturnsFailure()
+    {
+        var result = ScientificNotationDecimal.TryCreate(-1m);
+        result.IsFailure.Should().BeTrue();
     }
 
     #endregion
