@@ -410,6 +410,12 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         string failureProperty,
         string successProperty)
     {
+        // Only safe for side-effect-free receivers (identifiers, member access chains on stable symbols).
+        // Any invocation in the receiver chain (GetResult().Value, GetWrapper().Result.Value)
+        // means two evaluations may return different instances, so early-return doesn't guarantee safety.
+        if (memberAccess.Expression.DescendantNodesAndSelf().Any(n => n is InvocationExpressionSyntax))
+            return false;
+
         // Find the containing block
         var containingStatement = memberAccess.FirstAncestorOrSelf<StatementSyntax>();
         if (containingStatement?.Parent is not BlockSyntax block)
@@ -430,16 +436,22 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                 continue;
 
             // Check: if (result.IsFailure) return ...;
+            var isGuard = false;
             if (ifStatement.Condition is MemberAccessExpressionSyntax conditionMember &&
                 conditionMember.Name.Identifier.Text == failureProperty &&
                 AreSameVariable(conditionMember.Expression, memberAccess.Expression, semanticModel))
-                return true;
+                isGuard = true;
 
             // Check: if (!result.IsSuccess) return ...;
-            if (ifStatement.Condition is PrefixUnaryExpressionSyntax { Operand: MemberAccessExpressionSyntax negatedMember } prefix &&
+            if (!isGuard &&
+                ifStatement.Condition is PrefixUnaryExpressionSyntax { Operand: MemberAccessExpressionSyntax negatedMember } prefix &&
                 prefix.IsKind(SyntaxKind.LogicalNotExpression) &&
                 negatedMember.Name.Identifier.Text == successProperty &&
                 AreSameVariable(negatedMember.Expression, memberAccess.Expression, semanticModel))
+                isGuard = true;
+
+            // Guard is only valid if the variable is not reassigned between guard and usage
+            if (isGuard && !HasReassignmentBetween(block, i + 1, memberAccessIndex, memberAccess.Expression, semanticModel))
                 return true;
         }
 
@@ -456,7 +468,31 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         };
 
     /// <summary>
+    /// Checks if the target variable is reassigned between two statement indices in a block.
+    /// </summary>
+    private static bool HasReassignmentBetween(
+        BlockSyntax block,
+        int startExclusive,
+        int endExclusive,
+        ExpressionSyntax targetExpression,
+        SemanticModel semanticModel)
+    {
+        for (var j = startExclusive; j < endExclusive; j++)
+        {
+            if (block.Statements[j] is ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax assignment } &&
+                assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) &&
+                AreSameVariable(assignment.Left, targetExpression, semanticModel))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Recognizes: x = Maybe&lt;T&gt;.From(...); followed by x.Value in the same block.
+    /// Only suppresses when T is a non-nullable value type (where From() can never return None).
+    /// Verifies the method is actually Trellis.Maybe&lt;T&gt;.From or Trellis.Maybe.From.
+    /// Scans backwards from the access to find the most recent assignment to the variable.
     /// </summary>
     private static bool IsGuardedByPriorAssignment(
         MemberAccessExpressionSyntax memberAccess,
@@ -470,7 +506,8 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         if (memberAccessIndex < 0)
             return false;
 
-        for (var i = 0; i < memberAccessIndex; i++)
+        // Scan backwards to find the most recent assignment to this variable
+        for (var i = memberAccessIndex - 1; i >= 0; i--)
         {
             if (block.Statements[i] is not ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax assignment })
                 continue;
@@ -478,13 +515,32 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
                 continue;
 
-            // Check if assigning to the same variable
             if (!AreSameVariable(assignment.Left, memberAccess.Expression, semanticModel))
                 continue;
 
-            // Check if the right side is Maybe<T>.From(...) or Maybe.From(...)
-            if (assignment.Right is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax methodAccess } &&
-                methodAccess.Name.Identifier.Text == "From")
+            // Found the most recent assignment — check if it's a safe Maybe.From()
+            if (assignment.Right is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax methodAccess } ||
+                methodAccess.Name.Identifier.Text != "From")
+                return false; // Most recent assignment is not From() — not safe
+
+            if (semanticModel.GetSymbolInfo(assignment.Right).Symbol is not IMethodSymbol methodSymbol)
+                return false;
+
+            // Verify the method belongs to Trellis.Maybe or Trellis.Maybe<T>
+            var containingType = methodSymbol.ContainingType;
+            if (containingType?.Name is not "Maybe" ||
+                containingType.ContainingNamespace?.ToDisplayString() is not "Trellis")
+                return false;
+
+            // Only safe when T is a non-nullable value type (From(DateTime) can't return None)
+            // For reference types, From(null) returns None, so .Value would throw
+            var maybeType = semanticModel.GetTypeInfo(memberAccess.Expression).Type;
+            if (maybeType is not INamedTypeSymbol { TypeArguments.Length: 1 } namedType)
+                return false;
+
+            var innerType = namedType.TypeArguments[0];
+            if (innerType.IsValueType && innerType.OriginalDefinition.SpecialType != SpecialType.System_Nullable_T
+                && !HasReassignmentBetween(block, i + 1, memberAccessIndex, memberAccess.Expression, semanticModel))
                 return true;
         }
 
