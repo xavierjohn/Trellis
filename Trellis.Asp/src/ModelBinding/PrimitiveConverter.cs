@@ -37,7 +37,7 @@ internal static class PrimitiveConverter
                         || underlyingType.IsDefined(typeof(FlagsAttribute), inherit: false)))
                     return (TPrimitive)enumValue;
 
-                return Error.Validation("The value is not valid.");
+                return Error.Validation("The value is not a recognized option.");
             }
 
             if (underlyingType == typeof(Guid))
@@ -116,7 +116,7 @@ internal static class PrimitiveConverter
         }
         catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException or ArgumentException)
         {
-            return Error.Validation("The value is not valid.");
+            return Error.Validation("The value could not be converted to the expected type.");
         }
     }
 }
