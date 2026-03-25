@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Fakes;
+namespace Trellis.Testing.Fakes;
 
 using Trellis;
 
@@ -45,9 +45,9 @@ public class FakeRepository<TAggregate, TId>
     /// Gets an aggregate by its ID.
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
-    /// <param name="ct">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A Result containing the aggregate or a NotFoundError.</returns>
-    public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken ct = default)
+    public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
         if (_store.TryGetValue(id, out var aggregate))
             return Task.FromResult(Result.Success(aggregate));
@@ -60,9 +60,9 @@ public class FakeRepository<TAggregate, TId>
     /// Finds an aggregate by its ID, returning Maybe if not found.
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
-    /// <param name="ct">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A Result containing Maybe with the aggregate or None.</returns>
-    public Task<Result<Maybe<TAggregate>>> FindByIdAsync(TId id, CancellationToken ct = default)
+    public Task<Result<Maybe<TAggregate>>> FindByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
         var maybe = _store.TryGetValue(id, out var aggregate)
             ? Maybe.From(aggregate)
@@ -75,9 +75,9 @@ public class FakeRepository<TAggregate, TId>
     /// Saves an aggregate and captures its domain events.
     /// </summary>
     /// <param name="aggregate">The aggregate to save.</param>
-    /// <param name="ct">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A Result indicating success or failure.</returns>
-    public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken ct = default)
+    public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)
     {
         var id = aggregate.Id;
 
@@ -103,9 +103,9 @@ public class FakeRepository<TAggregate, TId>
     /// Deletes an aggregate by its ID.
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
-    /// <param name="ct">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A Result indicating success or NotFoundError.</returns>
-    public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken ct = default)
+    public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default)
     {
         if (_store.Remove(id))
             return Task.FromResult(Result.Success());

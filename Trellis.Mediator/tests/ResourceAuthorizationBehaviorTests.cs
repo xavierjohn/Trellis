@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
@@ -279,9 +279,9 @@ public class ResourceAuthorizationBehaviorTests
             _notFoundError = notFoundError ?? Error.NotFound("Resource not found.");
         }
 
-        public Task<Result<TestResource>> LoadAsync(TMessage message, CancellationToken ct)
+        public Task<Result<TestResource>> LoadAsync(TMessage message, CancellationToken cancellationToken)
         {
-            LastCancellationToken = ct;
+            LastCancellationToken = cancellationToken;
             return _resource is not null
                 ? Task.FromResult(Result.Success(_resource))
                 : Task.FromResult(Result.Failure<TestResource>(_notFoundError));
