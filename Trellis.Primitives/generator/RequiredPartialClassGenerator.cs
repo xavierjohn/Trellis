@@ -794,12 +794,14 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
             if (g.ClassBase == "RequiredDecimal")
             {
-                var hasRange = g.RangeMin.HasValue && g.RangeMax.HasValue;
-                var rangeMin = g.RangeMin.GetValueOrDefault();
-                var rangeMax = g.RangeMax.GetValueOrDefault();
+                var hasRange = g.RangeDoubleMin.HasValue && g.RangeDoubleMax.HasValue;
+                // Use double values for fractional ranges, fall back to int values
+                var rangeMinD = g.RangeDoubleMin ?? (double?)g.RangeMin;
+                var rangeMaxD = g.RangeDoubleMax ?? (double?)g.RangeMax;
+                hasRange = hasRange || (g.RangeMin.HasValue && g.RangeMax.HasValue);
 
                 // Validate [Range] constraints are consistent
-                if (hasRange && rangeMin > rangeMax)
+                if (hasRange && rangeMinD > rangeMaxD)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
                         new DiagnosticDescriptor(
@@ -811,13 +813,17 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                             isEnabledByDefault: true),
                         location: null,
                         g.ClassName,
-                        rangeMin,
-                        rangeMax));
+                        rangeMinD,
+                        rangeMaxD));
                     continue;
                 }
 
                 if (hasRange)
                 {
+                    // Format range values for decimal literals in generated code
+                    var minStr = rangeMinD.GetValueOrDefault().ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    var maxStr = rangeMaxD.GetValueOrDefault().ToString(System.Globalization.CultureInfo.InvariantCulture);
+
                     // Range-validated TryCreate overloads
                     source += $@"
 
@@ -841,10 +847,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            if (value < {rangeMin}m)
-                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field);
-            if (value > {rangeMax}m)
-                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field);
+            if (value < {minStr}m)
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {minStr}."", field);
+            if (value > {maxStr}m)
+                return Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {maxStr}."", field);
             string? additionalError = null;
             ValidateAdditional(value, field, ref additionalError);
             if (additionalError is not null)
@@ -858,8 +864,8 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             var validated = valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
-                .Ensure(x => x >= {rangeMin}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field))
-                .Ensure(x => x <= {rangeMax}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field));
+                .Ensure(x => x >= {minStr}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {minStr}."", field))
+                .Ensure(x => x <= {maxStr}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {maxStr}."", field));
             if (validated.IsSuccess)
             {{
                 string? additionalError = null;
@@ -878,8 +884,8 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var validated = stringOrNull
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => decimal.TryParse(x, out parsedDecimal), Error.Validation(""Value must be a valid decimal."", field))
-                .Ensure(_ => parsedDecimal >= {rangeMin}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field))
-                .Ensure(_ => parsedDecimal <= {rangeMax}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field));
+                .Ensure(_ => parsedDecimal >= {minStr}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {minStr}."", field))
+                .Ensure(_ => parsedDecimal <= {maxStr}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {maxStr}."", field));
             if (validated.IsSuccess)
             {{
                 string? additionalError = null;
@@ -1468,47 +1474,50 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 }
             }
 
-            // Read [Range] attribute for RequiredInt types
+            // Read [Range] attribute for numeric types (RequiredInt, RequiredDecimal, RequiredLong)
             int? rangeMin = null;
             int? rangeMax = null;
-            if (@base is "RequiredInt" or "RequiredDecimal")
-            {
-                foreach (var attr in classSymbol.GetAttributes())
-                {
-                    if (attr.AttributeClass?.Name == "RangeAttribute"
-                        && attr.AttributeClass.ContainingNamespace?.ToDisplayString() == "Trellis")
-                    {
-                        // Constructor: RangeAttribute(int minimum, int maximum)
-                        if (attr.ConstructorArguments.Length >= 2)
-                        {
-                            if (attr.ConstructorArguments[0].Value is int min) rangeMin = min;
-                            if (attr.ConstructorArguments[1].Value is int max) rangeMax = max;
-                        }
-                    }
-                }
-            }
-
-            // Read [Range] attribute for RequiredLong types
             long? rangeLongMin = null;
             long? rangeLongMax = null;
-            if (@base == "RequiredLong")
+            double? rangeDoubleMin = null;
+            double? rangeDoubleMax = null;
+            if (@base is "RequiredInt" or "RequiredDecimal" or "RequiredLong")
             {
                 foreach (var attr in classSymbol.GetAttributes())
                 {
                     if (attr.AttributeClass?.Name == "RangeAttribute"
                         && attr.AttributeClass.ContainingNamespace?.ToDisplayString() == "Trellis")
                     {
-                        // Constructor: RangeAttribute(int minimum, int maximum)
                         if (attr.ConstructorArguments.Length >= 2)
                         {
-                            if (attr.ConstructorArguments[0].Value is int min) rangeLongMin = (long)min;
-                            if (attr.ConstructorArguments[1].Value is int max) rangeLongMax = (long)max;
+                            var arg0 = attr.ConstructorArguments[0].Value;
+                            var arg1 = attr.ConstructorArguments[1].Value;
+
+                            if (@base == "RequiredLong")
+                            {
+                                rangeLongMin = arg0 switch { long l => l, int i => (long)i, _ => null };
+                                rangeLongMax = arg1 switch { long l => l, int i => (long)i, _ => null };
+                            }
+                            else if (@base == "RequiredDecimal")
+                            {
+                                // RangeAttribute(double, double) or RangeAttribute(int, int)
+                                rangeDoubleMin = arg0 switch { double d => d, int i => (double)i, _ => null };
+                                rangeDoubleMax = arg1 switch { double d => d, int i => (double)i, _ => null };
+                                // Also set int range for backward compat (int constructor)
+                                if (arg0 is int minI) rangeMin = minI;
+                                if (arg1 is int maxI) rangeMax = maxI;
+                            }
+                            else
+                            {
+                                if (arg0 is int min) rangeMin = min;
+                                if (arg1 is int max) rangeMax = max;
+                            }
                         }
                     }
                 }
             }
 
-            classToGenerate.Add(new RequiredPartialClassInfo(@namespace, className, @base, accessibility, maxLength, minLength, rangeMin, rangeMax, rangeLongMin, rangeLongMax, nestingParents, typePath));
+            classToGenerate.Add(new RequiredPartialClassInfo(@namespace, className, @base, accessibility, maxLength, minLength, rangeMin, rangeMax, rangeLongMin, rangeLongMax, rangeDoubleMin, rangeDoubleMax, nestingParents, typePath));
         }
 
         return classToGenerate;

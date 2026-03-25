@@ -48,34 +48,90 @@
 public sealed class RangeAttribute : Attribute
 {
     /// <summary>
-    /// Gets the minimum allowed value (inclusive).
+    /// Gets the minimum allowed value (inclusive) as int.
     /// </summary>
-    /// <value>The minimum value, inclusive.</value>
     public int Minimum { get; }
 
     /// <summary>
-    /// Gets the maximum allowed value (inclusive).
+    /// Gets the maximum allowed value (inclusive) as int.
     /// </summary>
-    /// <value>The maximum value, inclusive.</value>
     public int Maximum { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RangeAttribute"/> class
-    /// with the specified minimum and maximum values.
+    /// Gets the minimum allowed value (inclusive) as long.
     /// </summary>
-    /// <param name="minimum">The minimum allowed value, inclusive.</param>
-    /// <param name="maximum">
-    /// The maximum allowed value, inclusive. Must be greater than or equal to <paramref name="minimum"/>.
-    /// </param>
-    /// <example>
-    /// <code>
-    /// [Range(1, 999)]
-    /// public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
-    /// </code>
-    /// </example>
+    public long LongMinimum { get; }
+
+    /// <summary>
+    /// Gets the maximum allowed value (inclusive) as long.
+    /// </summary>
+    public long LongMaximum { get; }
+
+    /// <summary>
+    /// Gets the minimum allowed value (inclusive) as double.
+    /// Used for RequiredDecimal when fractional bounds are needed.
+    /// </summary>
+    public double DoubleMinimum { get; }
+
+    /// <summary>
+    /// Gets the maximum allowed value (inclusive) as double.
+    /// </summary>
+    public double DoubleMaximum { get; }
+
+    /// <summary>
+    /// True when the long constructor was used.
+    /// </summary>
+    public bool IsLongRange { get; }
+
+    /// <summary>
+    /// True when the double constructor was used.
+    /// </summary>
+    public bool IsDoubleRange { get; }
+
+    /// <summary>
+    /// Initializes with int range values. Use for RequiredInt and RequiredDecimal (whole numbers).
+    /// </summary>
     public RangeAttribute(int minimum, int maximum)
     {
         Minimum = minimum;
         Maximum = maximum;
+        LongMinimum = minimum;
+        LongMaximum = maximum;
+        DoubleMinimum = minimum;
+        DoubleMaximum = maximum;
+    }
+
+    /// <summary>
+    /// Initializes with long range values. Use for RequiredLong.
+    /// </summary>
+    public RangeAttribute(long minimum, long maximum)
+    {
+        LongMinimum = minimum;
+        LongMaximum = maximum;
+        IsLongRange = true;
+        DoubleMinimum = minimum;
+        DoubleMaximum = maximum;
+        Minimum = (int)Math.Clamp(minimum, int.MinValue, int.MaxValue);
+        Maximum = (int)Math.Clamp(maximum, int.MinValue, int.MaxValue);
+    }
+
+    /// <summary>
+    /// Initializes with double range values. Use for RequiredDecimal when fractional bounds are needed.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// [Range(0.01, 999.99)]
+    /// public partial class UnitPrice : RequiredDecimal&lt;UnitPrice&gt; { }
+    /// </code>
+    /// </example>
+    public RangeAttribute(double minimum, double maximum)
+    {
+        DoubleMinimum = minimum;
+        DoubleMaximum = maximum;
+        IsDoubleRange = true;
+        Minimum = (int)Math.Clamp(minimum, int.MinValue, int.MaxValue);
+        Maximum = (int)Math.Clamp(maximum, int.MinValue, int.MaxValue);
+        LongMinimum = (long)Math.Clamp(minimum, long.MinValue, long.MaxValue);
+        LongMaximum = (long)Math.Clamp(maximum, long.MinValue, long.MaxValue);
     }
 }

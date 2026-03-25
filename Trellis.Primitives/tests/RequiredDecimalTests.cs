@@ -45,6 +45,22 @@ public class RequiredDecimalTests
     }
 
     [Fact]
+    public void Can_create_RequiredDecimal_MaxValue()
+    {
+        var result = InternalUnitPrice.TryCreate(decimal.MaxValue);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(decimal.MaxValue);
+    }
+
+    [Fact]
+    public void Can_create_RequiredDecimal_MinValue()
+    {
+        var result = InternalUnitPrice.TryCreate(decimal.MinValue);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(decimal.MinValue);
+    }
+
+    [Fact]
     public void Two_RequiredDecimal_with_same_value_should_be_equal() =>
         UnitPrice.TryCreate(19.99m)
             .Combine(UnitPrice.TryCreate(19.99m))

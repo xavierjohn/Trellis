@@ -13,6 +13,12 @@ public partial class TestQuantity : RequiredInt<TestQuantity> { }
 public partial class TestPercentageInt : RequiredInt<TestPercentageInt> { }
 
 /// <summary>
+/// Test value object with full int range (int.MinValue–int.MaxValue).
+/// </summary>
+[Range(int.MinValue, int.MaxValue)]
+public partial class FullRangeInt : RequiredInt<FullRangeInt> { }
+
+/// <summary>
 /// Tests for RequiredInt [Range] attribute support.
 /// Validates that the source generator emits range validation in TryCreate.
 /// </summary>
@@ -31,7 +37,7 @@ public class RangedIntTests
     [Fact]
     public void TryCreate_BelowMinimum_ReturnsFailure()
     {
-        var result = TestQuantity.TryCreate(0);
+        var result = TestQuantity.TryCreate(-10);
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<ValidationError>();
         var validation = (ValidationError)result.Error;
@@ -42,7 +48,7 @@ public class RangedIntTests
     [Fact]
     public void TryCreate_AboveMaximum_ReturnsFailure()
     {
-        var result = TestQuantity.TryCreate(1000);
+        var result = TestQuantity.TryCreate(5000);
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<ValidationError>();
         var validation = (ValidationError)result.Error;
@@ -74,6 +80,20 @@ public class RangedIntTests
         result.Value.Value.Should().Be(0);
     }
 
+    [Fact]
+    public void TryCreate_JustBelowMin_ReturnsFailure()
+    {
+        var result = TestQuantity.TryCreate(0);
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TryCreate_JustAboveMax_ReturnsFailure()
+    {
+        var result = TestQuantity.TryCreate(1000);
+        result.IsFailure.Should().BeTrue();
+    }
+
     #endregion
 
     #region TryCreate(string?) — Range validation through string parsing
@@ -94,6 +114,76 @@ public class RangedIntTests
         result.Error.Should().BeOfType<ValidationError>();
         var validation = (ValidationError)result.Error;
         validation.FieldErrors[0].Details[0].Should().Be("Test Quantity must be at most 999.");
+    }
+
+    #endregion
+
+    #region TryCreate(int?) — Nullable range validation
+
+    [Fact]
+    public void TryCreate_NullableNull_ReturnsFailure()
+    {
+        var result = TestQuantity.TryCreate((int?)null);
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TryCreate_NullableWithinRange_ReturnsSuccess()
+    {
+        var result = TestQuantity.TryCreate((int?)500);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(500);
+    }
+
+    #endregion
+
+    #region Custom fieldName
+
+    [Fact]
+    public void TryCreate_WithCustomFieldName_ReturnsCorrectFieldName()
+    {
+        var result = TestQuantity.TryCreate(0, "myField");
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("myField");
+    }
+
+    #endregion
+
+    #region Create — throws on failure
+
+    [Fact]
+    public void Create_OutOfRange_ThrowsInvalidOperationException()
+    {
+        Action act = () => TestQuantity.Create(0);
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    #endregion
+
+    #region FullRangeInt — [Range(int.MinValue, int.MaxValue)]
+
+    [Fact]
+    public void FullRangeInt_AtIntMinValue_ReturnsSuccess()
+    {
+        var result = FullRangeInt.TryCreate(int.MinValue);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(int.MinValue);
+    }
+
+    [Fact]
+    public void FullRangeInt_AtIntMaxValue_ReturnsSuccess()
+    {
+        var result = FullRangeInt.TryCreate(int.MaxValue);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(int.MaxValue);
+    }
+
+    [Fact]
+    public void FullRangeInt_Zero_ReturnsSuccess()
+    {
+        var result = FullRangeInt.TryCreate(0);
+        result.IsSuccess.Should().BeTrue();
     }
 
     #endregion

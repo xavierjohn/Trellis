@@ -52,4 +52,11 @@ public abstract class RequiredDateTime<TSelf> : ScalarValueObject<TSelf, DateTim
     protected RequiredDateTime(DateTime value) : base(value)
     {
     }
+
+    /// <summary>
+    /// Returns the DateTime in ISO 8601 round-trip format ("O") using invariant culture.
+    /// This ensures JSON serialization via ParsableJsonConverter is deterministic,
+    /// culture-independent, and preserves DateTimeKind (UTC/Local/Unspecified).
+    /// </summary>
+    public override string ToString() => Value.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
 }

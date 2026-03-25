@@ -45,6 +45,14 @@ public class RequiredDateTimeTests
     }
 
     [Fact]
+    public void TryCreate_MaxValue_ReturnsSuccess()
+    {
+        var result = OrderDate.TryCreate(DateTime.MaxValue);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(DateTime.MaxValue);
+    }
+
+    [Fact]
     public void TryCreate_Null_ReturnsFailure()
     {
         var result = OrderDate.TryCreate((DateTime?)null);
@@ -145,6 +153,37 @@ public class RequiredDateTimeTests
         var deserialized = JsonSerializer.Deserialize<OrderDate>(json);
 
         deserialized.Should().Be(original);
+    }
+
+    [Fact]
+    public void JsonRoundTrip_PreservesUtcKind()
+    {
+        var utcDate = new DateTime(2026, 6, 15, 9, 30, 0, DateTimeKind.Utc);
+        OrderDate original = OrderDate.TryCreate(utcDate).Value;
+
+        var json = JsonSerializer.Serialize(original);
+        var deserialized = JsonSerializer.Deserialize<OrderDate>(json)!;
+
+        deserialized.Value.Kind.Should().Be(DateTimeKind.Utc,
+            "UTC DateTimeKind must survive JSON round-trip");
+    }
+
+    [Fact]
+    public void ToString_ProducesIso8601RoundTrippableFormat()
+    {
+        var date = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
+        OrderDate orderDate = OrderDate.TryCreate(date).Value;
+
+        // ParsableJsonConverter uses ToString() — must produce round-trippable output
+#pragma warning disable CA1305 // Testing the parameterless ToString used by JSON serialization
+        var str = orderDate.ToString();
+#pragma warning restore CA1305
+
+        // Must be parseable back to the same value with Kind preserved
+        DateTime.TryParse(str, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind, out var parsed).Should().BeTrue();
+        parsed.Kind.Should().Be(DateTimeKind.Utc);
+        parsed.Should().Be(date);
     }
 
     [Fact]
