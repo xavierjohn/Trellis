@@ -510,6 +510,131 @@ public class ApplyTrellisConventionsTests : IDisposable
     }
 
     #endregion
+
+    #region RequiredBool property converter
+
+    [Fact]
+    public async Task RequiredBoolProperty_RoundTripWorks()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = TestCustomerId.NewUniqueV4();
+        _context.Customers.Add(new TestCustomer
+        {
+            Id = customerId,
+            Name = TestCustomerName.Create("BoolCustomer"),
+            Email = EmailAddress.Create("bool@example.com"),
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync(ct);
+
+        var order = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customerId,
+            Amount = 75m,
+            Status = TestOrderStatus.Draft,
+            GiftWrap = Maybe.From(TestGiftWrap.Create(true))
+        };
+
+        // Act
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+
+        _context.ChangeTracker.Clear();
+
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.GiftWrap.HasValue.Should().BeTrue();
+        loaded.GiftWrap.Value.Value.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RequiredBoolProperty_FalseValue_RoundTripWorks()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = TestCustomerId.NewUniqueV4();
+        _context.Customers.Add(new TestCustomer
+        {
+            Id = customerId,
+            Name = TestCustomerName.Create("BoolFalseCustomer"),
+            Email = EmailAddress.Create("boolfalse@example.com"),
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync(ct);
+
+        var order = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customerId,
+            Amount = 80m,
+            Status = TestOrderStatus.Draft,
+            GiftWrap = Maybe.From(TestGiftWrap.Create(false))
+        };
+
+        // Act
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+
+        _context.ChangeTracker.Clear();
+
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.GiftWrap.HasValue.Should().BeTrue();
+        loaded.GiftWrap.Value.Value.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region RequiredDateTime property converter
+
+    [Fact]
+    public async Task RequiredDateTimeProperty_RoundTripWorks()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var customerId = TestCustomerId.NewUniqueV4();
+        _context.Customers.Add(new TestCustomer
+        {
+            Id = customerId,
+            Name = TestCustomerName.Create("DateTimeCustomer"),
+            Email = EmailAddress.Create("datetime@example.com"),
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync(ct);
+
+        var orderDate = TestOrderDate.Create(new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc));
+        var order = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV4(),
+            CustomerId = customerId,
+            Amount = 200m,
+            Status = TestOrderStatus.Confirmed,
+            OrderDate = Maybe.From(orderDate)
+        };
+
+        // Act
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(ct);
+
+        _context.ChangeTracker.Clear();
+
+        var loaded = await _context.Orders.FindAsync([order.Id], ct);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded!.OrderDate.HasValue.Should().BeTrue();
+        loaded.OrderDate.Value.Value.Year.Should().Be(2026);
+        loaded.OrderDate.Value.Value.Month.Should().Be(1);
+        loaded.OrderDate.Value.Value.Day.Should().Be(15);
+    }
+
+    #endregion
 }
 
 internal sealed class InternalCustomerCode : ScalarValueObject<InternalCustomerCode, string>, IScalarValue<InternalCustomerCode, string>

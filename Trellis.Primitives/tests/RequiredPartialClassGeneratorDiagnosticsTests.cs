@@ -120,4 +120,156 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(static location => MetadataReference.CreateFromFile(location))
             .ToArray();
+
+    [Fact]
+    public void InvalidIntRange_Reports_TRLSGEN003()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Range(100, 1)]
+            public partial class BadQuantity : RequiredInt<BadQuantity>
+            {
+            }
+            """;
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "GeneratorDiagnosticTests",
+            syntaxTrees: [syntaxTree],
+            references: GetMetadataReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = new RequiredPartialClassGenerator();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out var outputCompilation, out var generatorDriverDiagnostics, cancellationToken);
+
+        var diagnostics = generatorDriverDiagnostics
+            .Concat(outputCompilation.GetDiagnostics(cancellationToken))
+            .ToArray();
+
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN003");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN003");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadQuantity");
+    }
+
+    [Fact]
+    public void InvalidDecimalRange_Reports_TRLSGEN003()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Range(999, 1)]
+            public partial class BadPrice : RequiredDecimal<BadPrice>
+            {
+            }
+            """;
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "GeneratorDiagnosticTests",
+            syntaxTrees: [syntaxTree],
+            references: GetMetadataReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = new RequiredPartialClassGenerator();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out var outputCompilation, out var generatorDriverDiagnostics, cancellationToken);
+
+        var diagnostics = generatorDriverDiagnostics
+            .Concat(outputCompilation.GetDiagnostics(cancellationToken))
+            .ToArray();
+
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN003");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN003");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadPrice");
+    }
+
+    [Fact]
+    public void InvalidLongRange_Reports_TRLSGEN003()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Range(1000, 1)]
+            public partial class BadSequence : RequiredLong<BadSequence>
+            {
+            }
+            """;
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "GeneratorDiagnosticTests",
+            syntaxTrees: [syntaxTree],
+            references: GetMetadataReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = new RequiredPartialClassGenerator();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out var outputCompilation, out var generatorDriverDiagnostics, cancellationToken);
+
+        var diagnostics = generatorDriverDiagnostics
+            .Concat(outputCompilation.GetDiagnostics(cancellationToken))
+            .ToArray();
+
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN003");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN003");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadSequence");
+    }
+
+    [Fact]
+    public void DecimalRangeExceedsDecimalRange_Reports_TRLSGEN004()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Range(0.0, 1e30)]
+            public partial class TooBigPrice : RequiredDecimal<TooBigPrice>
+            {
+            }
+            """;
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "GeneratorDiagnosticTests",
+            syntaxTrees: [syntaxTree],
+            references: GetMetadataReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = new RequiredPartialClassGenerator();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out var outputCompilation, out var generatorDriverDiagnostics, cancellationToken);
+
+        var diagnostics = generatorDriverDiagnostics
+            .Concat(outputCompilation.GetDiagnostics(cancellationToken))
+            .ToArray();
+
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN004");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN004");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("TooBigPrice");
+    }
 }

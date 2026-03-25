@@ -1,18 +1,13 @@
 ﻿namespace Trellis;
 
 /// <summary>
-/// Specifies the minimum and maximum allowed values for a
-/// <see cref="RequiredInt{TSelf}"/>-derived value object.
+/// Specifies the minimum and maximum allowed values for numeric value objects
+/// (<see cref="RequiredInt{TSelf}"/>, <see cref="RequiredDecimal{TSelf}"/>, <see cref="RequiredLong{TSelf}"/>).
 /// </summary>
 /// <remarks>
 /// <para>
-/// When applied to a <c>partial class</c> inheriting from <see cref="RequiredInt{TSelf}"/>,
-/// the source generator automatically includes range validation in the generated <c>TryCreate</c> method.
-/// The range check replaces the default zero-check, so <c>[Range(0, 100)]</c> will allow zero.
-/// </para>
-/// <para>
-/// This attribute is designed specifically for Trellis value objects and is processed at compile time
-/// by the PrimitiveValueObjectGenerator source generator. It does not rely on runtime reflection.
+/// The source generator reads the constructor arguments at compile time and emits range validation
+/// in the generated <c>TryCreate</c> method. This attribute does not rely on runtime reflection.
 /// </para>
 /// <para>
 /// <strong>Note:</strong> This is <c>Trellis.RangeAttribute</c>, not <c>System.ComponentModel.DataAnnotations.RangeAttribute</c>.
@@ -21,61 +16,36 @@
 /// </para>
 /// </remarks>
 /// <example>
-/// Range with positive minimum:
 /// <code>
 /// [Range(1, 999)]
 /// public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
 ///
-/// // Generated TryCreate validates:
-/// // - Value &gt;= 1
-/// // - Value &lt;= 999
-/// </code>
-/// </example>
-/// <example>
-/// Range allowing zero:
-/// <code>
-/// [Range(0, 100)]
-/// public partial class Percentage : RequiredInt&lt;Percentage&gt; { }
+/// [Range(0.01, 99.99)]
+/// public partial class UnitPrice : RequiredDecimal&lt;UnitPrice&gt; { }
 ///
-/// // Generated TryCreate validates:
-/// // - Value &gt;= 0
-/// // - Value &lt;= 100
-/// // (zero is allowed because minimum is 0)
+/// [Range(0L, 5_000_000_000L)]
+/// public partial class LargeId : RequiredLong&lt;LargeId&gt; { }
 /// </code>
 /// </example>
 /// <seealso cref="RequiredInt{TSelf}"/>
+/// <seealso cref="RequiredDecimal{TSelf}"/>
+/// <seealso cref="RequiredLong{TSelf}"/>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class RangeAttribute : Attribute
 {
     /// <summary>
-    /// Gets the minimum allowed value (inclusive).
+    /// Specifies an int range. Use for <see cref="RequiredInt{TSelf}"/> and <see cref="RequiredDecimal{TSelf}"/> (whole numbers).
     /// </summary>
-    /// <value>The minimum value, inclusive.</value>
-    public int Minimum { get; }
+    public RangeAttribute(int minimum, int maximum) { }
 
     /// <summary>
-    /// Gets the maximum allowed value (inclusive).
+    /// Specifies a long range. Use for <see cref="RequiredLong{TSelf}"/>.
     /// </summary>
-    /// <value>The maximum value, inclusive.</value>
-    public int Maximum { get; }
+    public RangeAttribute(long minimum, long maximum) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RangeAttribute"/> class
-    /// with the specified minimum and maximum values.
+    /// Specifies a double range. Use for <see cref="RequiredDecimal{TSelf}"/> with fractional bounds.
+    /// C# does not allow decimal in attribute constructors, so double is used.
     /// </summary>
-    /// <param name="minimum">The minimum allowed value, inclusive.</param>
-    /// <param name="maximum">
-    /// The maximum allowed value, inclusive. Must be greater than or equal to <paramref name="minimum"/>.
-    /// </param>
-    /// <example>
-    /// <code>
-    /// [Range(1, 999)]
-    /// public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
-    /// </code>
-    /// </example>
-    public RangeAttribute(int minimum, int maximum)
-    {
-        Minimum = minimum;
-        Maximum = maximum;
-    }
+    public RangeAttribute(double minimum, double maximum) { }
 }

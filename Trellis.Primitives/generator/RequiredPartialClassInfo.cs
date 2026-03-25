@@ -107,6 +107,26 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     public readonly int? RangeMax;
 
     /// <summary>
+    /// Gets the minimum range constraint for RequiredLong types, if specified via <c>[Range(min, max)]</c>.
+    /// </summary>
+    public readonly long? RangeLongMin;
+
+    /// <summary>
+    /// Gets the maximum range constraint for RequiredLong types, if specified via <c>[Range(min, max)]</c>.
+    /// </summary>
+    public readonly long? RangeLongMax;
+
+    /// <summary>
+    /// Gets the minimum range constraint for RequiredDecimal types with fractional bounds.
+    /// </summary>
+    public readonly double? RangeDoubleMin;
+
+    /// <summary>
+    /// Gets the maximum range constraint for RequiredDecimal types with fractional bounds.
+    /// </summary>
+    public readonly double? RangeDoubleMax;
+
+    /// <summary>
     /// Gets the declarations for any containing types when the target class is nested.
     /// </summary>
     public readonly string[] NestingParents;
@@ -128,6 +148,10 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <param name="minLength">Optional minimum string length from <c>[StringLength]</c> attribute.</param>
     /// <param name="rangeMin">Optional minimum value from <c>[Range]</c> attribute.</param>
     /// <param name="rangeMax">Optional maximum value from <c>[Range]</c> attribute.</param>
+    /// <param name="rangeLongMin">Optional minimum value from <c>[Range]</c> attribute for RequiredLong types.</param>
+    /// <param name="rangeLongMax">Optional maximum value from <c>[Range]</c> attribute for RequiredLong types.</param>
+    /// <param name="rangeDoubleMin">Optional minimum value from <c>[Range]</c> attribute for RequiredDecimal with fractional bounds.</param>
+    /// <param name="rangeDoubleMax">Optional maximum value from <c>[Range]</c> attribute for RequiredDecimal with fractional bounds.</param>
     /// <param name="nestingParents">Containing type declarations needed to emit nested generated types.</param>
     /// <param name="typePath">A unique namespace-qualified type path used for generated hint names.</param>
     public RequiredPartialClassInfo(
@@ -139,6 +163,10 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         int? minLength = null,
         int? rangeMin = null,
         int? rangeMax = null,
+        long? rangeLongMin = null,
+        long? rangeLongMax = null,
+        double? rangeDoubleMin = null,
+        double? rangeDoubleMax = null,
         string[]? nestingParents = null,
         string? typePath = null)
     {
@@ -150,6 +178,10 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         MinLength = minLength;
         RangeMin = rangeMin;
         RangeMax = rangeMax;
+        RangeLongMin = rangeLongMin;
+        RangeLongMax = rangeLongMax;
+        RangeDoubleMin = rangeDoubleMin;
+        RangeDoubleMax = rangeDoubleMax;
         NestingParents = nestingParents ?? [];
         TypePath = typePath ?? (string.IsNullOrEmpty(nameSpace) ? className : $"{nameSpace}.{className}");
     }
@@ -167,6 +199,10 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             && MinLength == other.MinLength
             && RangeMin == other.RangeMin
             && RangeMax == other.RangeMax
+            && RangeLongMin == other.RangeLongMin
+            && RangeLongMax == other.RangeLongMax
+            && RangeDoubleMin == other.RangeDoubleMin
+            && RangeDoubleMax == other.RangeDoubleMax
             && TypePath == other.TypePath
             && NestingParents.SequenceEqual(other.NestingParents);
     }
@@ -186,6 +222,10 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             hash = (hash * 31) + MinLength.GetHashCode();
             hash = (hash * 31) + RangeMin.GetHashCode();
             hash = (hash * 31) + RangeMax.GetHashCode();
+            hash = (hash * 31) + RangeLongMin.GetHashCode();
+            hash = (hash * 31) + RangeLongMax.GetHashCode();
+            hash = (hash * 31) + RangeDoubleMin.GetHashCode();
+            hash = (hash * 31) + RangeDoubleMax.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             return hash;
         }
