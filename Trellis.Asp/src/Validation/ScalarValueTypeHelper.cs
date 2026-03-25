@@ -79,9 +79,11 @@ internal static class ScalarValueTypeHelper
             var constructedType = genericTypeDefinition.MakeGenericType(valueObjectType, primitiveType);
             return Activator.CreateInstance(constructedType) as TResult;
         }
-        catch (Exception)
+        catch (Exception ex) when (ex is TargetInvocationException or MemberAccessException or TypeLoadException or ArgumentException or InvalidOperationException or NotSupportedException)
         {
-            // Return null if type construction fails (e.g., constraint violations)
+            // Covers MakeGenericType (ArgumentException, TypeLoadException, NotSupportedException)
+            // and Activator.CreateInstance (MemberAccessException includes MissingMethodException,
+            // TargetInvocationException when ctor throws, InvalidOperationException for abstract types)
             return null;
         }
     }
@@ -142,7 +144,7 @@ internal static class ScalarValueTypeHelper
         {
             result = tryCreateMethod.Invoke(null, args);
         }
-        catch (Exception)
+        catch (Exception ex) when (ex is TargetInvocationException or MemberAccessException or TypeLoadException or ArgumentException or InvalidOperationException)
         {
             return null;
         }
@@ -180,7 +182,7 @@ internal static class ScalarValueTypeHelper
         {
             conversionResult = convertMethod.MakeGenericMethod(primitiveType).Invoke(null, [rawValue]);
         }
-        catch (Exception)
+        catch (Exception ex) when (ex is TargetInvocationException or MemberAccessException or TypeLoadException or ArgumentException or InvalidOperationException or NotSupportedException)
         {
             return null;
         }
