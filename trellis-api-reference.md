@@ -982,11 +982,11 @@ interface IActorProvider { Actor GetCurrentActor(); }
 interface IAsyncActorProvider { Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default); }
 interface IAuthorize { IReadOnlyList<string> RequiredPermissions { get; } }
 interface IAuthorizeResource<TResource> { IResult Authorize(Actor actor, TResource resource); }
-interface IResourceLoader<TMessage, TResource> { Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken ct); }
+interface IResourceLoader<TMessage, TResource> { Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken cancellationToken); }
 abstract class ResourceLoaderById<TMessage, TResource, TId> : IResourceLoader<TMessage, TResource>
 {
     protected abstract TId GetId(TMessage message);
-    protected abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken ct);
+    protected abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
 }
 ```
 
@@ -1200,9 +1200,9 @@ EnsureSuccess(this HttpResponseMessage, Func<HttpStatusCode, Error>? errorFactor
 
 // Custom async error handling with context
 Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this HttpResponseMessage,
-    Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callback, TContext context, CancellationToken ct)
+    Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callback, TContext context, CancellationToken cancellationToken)
 Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this Task<HttpResponseMessage>,
-    Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callback, TContext context, CancellationToken ct)
+    Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callback, TContext context, CancellationToken cancellationToken)
 
 // Also chainable on Result<HttpResponseMessage> for fluent error handling
 HandleNotFound(this Result<HttpResponseMessage>, NotFoundError)
@@ -1831,14 +1831,14 @@ protected override void ConfigureConventions(ModelConfigurationBuilder configura
 }
 
 // Repository
-public async Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
+public async Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken cancellationToken) =>
     await _dbContext.Orders
         .FirstOrDefaultResultAsync(o => o.Id == id, Error.NotFound($"Order {id} not found"), ct);
 
-public async Task<Result<Maybe<Order>>> FindByIdAsync(OrderId id, CancellationToken ct) =>
+public async Task<Result<Maybe<Order>>> FindByIdAsync(OrderId id, CancellationToken cancellationToken) =>
     Result.Success(await _dbContext.Orders.FirstOrDefaultMaybeAsync(o => o.Id == id, ct));
 
-public async Task<Result<Unit>> SaveAsync(Order order, CancellationToken ct)
+public async Task<Result<Unit>> SaveAsync(Order order, CancellationToken cancellationToken)
 {
     _dbContext.Orders.Update(order);
     return await _dbContext.SaveChangesResultUnitAsync(ct);
@@ -1872,10 +1872,11 @@ public sealed record CreateOrderCommand(CustomerId CustomerId, List<OrderLineDto
 public sealed class CreateOrderHandler(IOrderRepository repo)
     : ICommandHandler<CreateOrderCommand, Result<Order>>
 {
-    public async ValueTask<Result<Order>> Handle(CreateOrderCommand command, CancellationToken ct) =>
+    public async ValueTask<Result<Order>> Handle(CreateOrderCommand command, CancellationToken cancellationToken) =>
         await Order.TryCreate(command.CustomerId)
             .BindAsync(order => AddItemsAsync(order, command.Items, ct))
             .BindAsync(order => order.Submit())
             .TapAsync(order => repo.SaveAsync(order, ct));
 }
 ```
+

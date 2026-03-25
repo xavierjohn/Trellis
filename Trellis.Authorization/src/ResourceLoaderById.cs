@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization;
+namespace Trellis.Authorization;
 
 /// <summary>
 /// Convenience base class for resource loaders that extract a typed ID from the message
@@ -42,13 +42,13 @@ public abstract class ResourceLoaderById<TMessage, TResource, TId>
     /// Return <c>Result.Failure</c> with a <see cref="NotFoundError"/> if the resource does not exist.
     /// </summary>
     /// <param name="id">The resource identifier extracted by <see cref="GetId"/>.</param>
-    /// <param name="ct">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>
     /// A success result containing the loaded resource, or a failure result if not found.
     /// </returns>
-    protected abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken ct);
+    protected abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
 
     /// <inheritdoc />
-    public Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken ct)
-        => GetByIdAsync(GetId(message), ct);
+    public Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken cancellationToken)
+        => GetByIdAsync(GetId(message), cancellationToken);
 }

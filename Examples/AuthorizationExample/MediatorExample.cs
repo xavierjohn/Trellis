@@ -51,7 +51,7 @@ public sealed class EditDocumentResourceLoader(DocumentStore store)
     : IResourceLoader<EditDocumentCommand, Document>
 {
     public Task<Result<Document>> LoadAsync(
-        EditDocumentCommand message, CancellationToken ct)
+        EditDocumentCommand message, CancellationToken cancellationToken)
     {
         var doc = store.Get(message.DocumentId);
         return doc is not null

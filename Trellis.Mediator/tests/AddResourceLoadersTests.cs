@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,13 +86,13 @@ public class AddResourceLoadersTests
 
     public sealed class TestLoader : IResourceLoader<TestMessage, TestEntity>
     {
-        public Task<Result<TestEntity>> LoadAsync(TestMessage message, CancellationToken ct)
+        public Task<Result<TestEntity>> LoadAsync(TestMessage message, CancellationToken cancellationToken)
             => Task.FromResult(Result.Success(new TestEntity(message.Id)));
     }
 
     public abstract class AbstractLoader : IResourceLoader<TestMessage, TestEntity>
     {
-        public abstract Task<Result<TestEntity>> LoadAsync(TestMessage message, CancellationToken ct);
+        public abstract Task<Result<TestEntity>> LoadAsync(TestMessage message, CancellationToken cancellationToken);
     }
 
     #endregion
@@ -187,7 +187,7 @@ public class AddResourceAuthorizationTests
     private sealed class TestAuthResourceLoader(TestAuthResource resource)
         : IResourceLoader<TestAuthCommand, TestAuthResource>
     {
-        public Task<Result<TestAuthResource>> LoadAsync(TestAuthCommand message, CancellationToken ct)
+        public Task<Result<TestAuthResource>> LoadAsync(TestAuthCommand message, CancellationToken cancellationToken)
             => Task.FromResult(Result.Success(resource));
     }
 
@@ -341,7 +341,7 @@ public class AddResourceAuthorizationScanTests
 
     public sealed class ScanTestLoader : IResourceLoader<ScanTestCommand, ScanTestResource>
     {
-        public Task<Result<ScanTestResource>> LoadAsync(ScanTestCommand message, CancellationToken ct)
+        public Task<Result<ScanTestResource>> LoadAsync(ScanTestCommand message, CancellationToken cancellationToken)
             => Task.FromResult(Result.Success(new ScanTestResource(message.ResourceId, "owner-1")));
     }
 

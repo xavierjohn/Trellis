@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests;
+namespace Trellis.Testing.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
@@ -146,19 +146,19 @@ public class ServiceCollectionExtensionsTests
 
     private sealed class FakeResourceLoader : IResourceLoader<TestCommand, TestResource>
     {
-        public Task<Result<TestResource>> LoadAsync(TestCommand message, CancellationToken ct) =>
+        public Task<Result<TestResource>> LoadAsync(TestCommand message, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Success(new TestResource("test")));
     }
 
     private sealed class OtherFakeResourceLoader : IResourceLoader<OtherCommand, OtherResource>
     {
-        public Task<Result<OtherResource>> LoadAsync(OtherCommand message, CancellationToken ct) =>
+        public Task<Result<OtherResource>> LoadAsync(OtherCommand message, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Success(new OtherResource("other")));
     }
 
     private sealed class AlternateFakeResourceLoader : IResourceLoader<TestCommand, TestResource>
     {
-        public Task<Result<TestResource>> LoadAsync(TestCommand message, CancellationToken ct) =>
+        public Task<Result<TestResource>> LoadAsync(TestCommand message, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Success(new TestResource("alternate")));
     }
 

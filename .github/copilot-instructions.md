@@ -242,7 +242,8 @@ Do NOT skip the RED step. A fix without a failing test is untested by definition
 
 Before considering work complete, verify:
 
-1. **All tests pass** — `dotnet test` with zero failures
+1. **Build succeeds** — `dotnet build` with zero errors and zero warnings
+2. **All tests pass** — `dotnet test` with zero failures
 2. **Documentation updated:**
    - `trellis-api-reference.md` — if any public API was added or changed
    - `trellis-api-testing-reference.md` — if test helpers were added or changed

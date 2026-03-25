@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization.Tests;
+namespace Trellis.Authorization.Tests;
 
 /// <summary>
 /// Tests for <see cref="ResourceLoaderById{TMessage, TResource, TId}"/>.
@@ -79,7 +79,7 @@ public class ResourceLoaderByIdTests
 
         protected override string GetId(LoadOrderMessage message) => message.OrderId;
 
-        protected override Task<Result<TestOrder>> GetByIdAsync(string id, CancellationToken ct) =>
+        protected override Task<Result<TestOrder>> GetByIdAsync(string id, CancellationToken cancellationToken) =>
             _resource is not null
                 ? Task.FromResult(Result.Success(_resource))
                 : Task.FromResult(Result.Failure<TestOrder>(Error.NotFound($"Order '{id}' not found.")));
@@ -92,10 +92,10 @@ public class ResourceLoaderByIdTests
 
         protected override string GetId(LoadOrderMessage message) => message.OrderId;
 
-        protected override Task<Result<TestOrder>> GetByIdAsync(string id, CancellationToken ct)
+        protected override Task<Result<TestOrder>> GetByIdAsync(string id, CancellationToken cancellationToken)
         {
             LastRequestedId = id;
-            LastCancellationToken = ct;
+            LastCancellationToken = cancellationToken;
             return Task.FromResult(Result.Failure<TestOrder>(Error.NotFound("Not found")));
         }
     }

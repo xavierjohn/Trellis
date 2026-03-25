@@ -20,10 +20,10 @@ public interface IResourceLoader<in TMessage, TResource>
     /// Loads the resource identified by the message.
     /// </summary>
     /// <param name="message">The command or query containing the resource identifier.</param>
-    /// <param name="ct">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>
     /// A success result containing the loaded resource, or a failure result
     /// (typically <see cref="Error.NotFound(string, string?)"/>) if the resource does not exist.
     /// </returns>
-    Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken ct);
+    Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken cancellationToken);
 }
