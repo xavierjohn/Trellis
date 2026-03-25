@@ -95,13 +95,13 @@ public sealed partial class ScalarValueValidationMiddleware
                 else
                 {
                     // Unrecognized 400 format - return generic 400 to prevent 500 propagation
-                    await WriteGenericBadRequestAsync(context, ex).ConfigureAwait(false);
+                    await WriteGenericBadRequestAsync(context).ConfigureAwait(false);
                 }
             }
         }
     }
 
-    private static async Task WriteGenericBadRequestAsync(HttpContext context, BadHttpRequestException ex)
+    private static async Task WriteGenericBadRequestAsync(HttpContext context)
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
