@@ -35,3 +35,13 @@ public partial class TestOrderStatus : RequiredEnum<TestOrderStatus>
     public static readonly TestOrderStatus Shipped = new();
     public static readonly TestOrderStatus Cancelled = new();
 }
+
+/// <summary>
+/// Test value object: strongly-typed boolean flag.
+/// </summary>
+public partial class TestGiftWrap : RequiredBool<TestGiftWrap>;
+
+/// <summary>
+/// Test value object: strongly-typed date.
+/// </summary>
+public partial class TestOrderDate : RequiredDateTime<TestOrderDate>;

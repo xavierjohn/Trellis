@@ -40,4 +40,7 @@ public partial class TestOrder
     public partial Maybe<TestOrderStatus> OptionalStatus { get; set; }
 
     public partial Maybe<DateTime> SubmittedAt { get; set; }
+
+    public partial Maybe<TestGiftWrap> GiftWrap { get; set; }
+    public partial Maybe<TestOrderDate> OrderDate { get; set; }
 }
