@@ -11,7 +11,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// <summary>
 /// C# source generator that automatically creates factory methods, validation logic, and parsing support
 /// for value objects inheriting from <c>RequiredGuid</c>, <c>RequiredString</c>, <c>RequiredInt</c>,
-/// <c>RequiredDecimal</c>, or <c>RequiredEnum</c>.
+/// <c>RequiredLong</c>, <c>RequiredDecimal</c>, <c>RequiredBool</c>, <c>RequiredDateTime</c>, or <c>RequiredEnum</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,46 +20,28 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// maintaining type safety and validation consistency.
 /// </para>
 /// <para>
-/// For each partial class inheriting from <c>RequiredGuid</c>, generates:
+/// For each supported base type, the generator creates:
 /// <list type="bullet">
-/// <item><c>IScalarValue&lt;TSelf, Guid&gt;</c> - Interface for ASP.NET Core automatic validation</item>
-/// <item><c>NewUniqueV4()</c> - Creates a new instance with a unique Version 4 (random) GUID</item>
-/// <item><c>NewUniqueV7()</c> - Creates a new instance with a unique Version 7 (time-ordered) GUID</item>
-/// <item><c>TryCreate(Guid)</c> - Creates from non-nullable GUID (required by IScalarValue)</item>
-/// <item><c>TryCreate(Guid?)</c> - Creates from nullable GUID with empty validation</item>
-/// <item><c>TryCreate(string?)</c> - Parses from string with format and empty validation</item>
-/// <item><c>Parse(string, IFormatProvider?)</c> - IParsable implementation</item>
-/// <item><c>TryParse(...)</c> - IParsable try-parse pattern</item>
-/// <item>Private constructor calling base class</item>
-/// <item>JSON converter attribute for serialization</item>
-/// <item>Explicit cast operator from GUID</item>
+/// <item><c>IScalarValue&lt;TSelf, TPrimitive&gt;</c> — ASP.NET Core model binding and JSON deserialization</item>
+/// <item><c>TryCreate</c> overloads — non-nullable, nullable, and string with validation</item>
+/// <item><c>Create</c> — throwing factory for known-valid values</item>
+/// <item><c>ValidateAdditional</c> — optional partial method hook for custom validation</item>
+/// <item><c>IParsable&lt;T&gt;</c> — <c>Parse</c> and <c>TryParse</c></item>
+/// <item>Private constructor, explicit cast operator, JSON converter attribute</item>
 /// <item>OpenTelemetry activity tracing</item>
 /// </list>
 /// </para>
 /// <para>
-/// For each partial class inheriting from <c>RequiredString</c>, generates:
+/// Type-specific behavior:
 /// <list type="bullet">
-/// <item><c>IScalarValue&lt;TSelf, string&gt;</c> - Interface for ASP.NET Core automatic validation</item>
-/// <item><c>TryCreate(string)</c> - Creates from non-nullable string (required by IScalarValue)</item>
-/// <item><c>TryCreate(string?)</c> - Creates from nullable string with null/empty/whitespace validation</item>
-/// <item><c>Parse(string, IFormatProvider?)</c> - IParsable implementation</item>
-/// <item><c>TryParse(...)</c> - IParsable try-parse pattern</item>
-/// <item>Private constructor calling base class</item>
-/// <item>JSON converter attribute for serialization</item>
-/// <item>Explicit cast operator from string</item>
-/// <item>OpenTelemetry activity tracing</item>
-/// </list>
-/// </para>
-/// <para>
-/// For each partial class inheriting from <c>RequiredEnum</c>, generates:
-/// <list type="bullet">
-/// <item><c>IScalarValue&lt;TSelf, string&gt;</c> - Interface for ASP.NET Core automatic validation</item>
-/// <item><c>TryCreate(string)</c> - Creates by looking up enum member by symbolic value (delegates to TryFromName)</item>
-/// <item><c>TryCreate(string?, string?)</c> - Creates with custom field name for validation errors</item>
-/// <item><c>Parse(string, IFormatProvider?)</c> - IParsable implementation</item>
-/// <item><c>TryParse(...)</c> - IParsable try-parse pattern</item>
-/// <item>JSON converter attribute using <c>RequiredEnumJsonConverter&lt;T&gt;</c></item>
-/// <item>OpenTelemetry activity tracing</item>
+/// <item><c>RequiredGuid</c> — rejects <c>Guid.Empty</c>; generates <c>NewUniqueV4()</c> and <c>NewUniqueV7()</c></item>
+/// <item><c>RequiredString</c> — rejects null/empty/whitespace; trims; supports <c>[StringLength]</c></item>
+/// <item><c>RequiredInt</c> — supports <c>[Range(int, int)]</c></item>
+/// <item><c>RequiredLong</c> — supports <c>[Range(long, long)]</c></item>
+/// <item><c>RequiredDecimal</c> — supports <c>[Range(int, int)]</c> and <c>[Range(double, double)]</c></item>
+/// <item><c>RequiredBool</c> — accepts true/false; rejects null</item>
+/// <item><c>RequiredDateTime</c> — rejects <c>DateTime.MinValue</c>; ISO 8601 round-trip <c>ToString</c></item>
+/// <item><c>RequiredEnum</c> — smart enum; delegates to <c>TryFromName</c></item>
 /// </list>
 /// </para>
 /// <para>
@@ -820,10 +802,24 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
                 if (hasRange)
                 {
-                    // Format range values for decimal literals in generated code
-                    // Use "R" (round-trip) format then replace scientific notation to ensure valid decimal literals
                     var minStr = FormatDecimalLiteral(rangeMinD.GetValueOrDefault());
                     var maxStr = FormatDecimalLiteral(rangeMaxD.GetValueOrDefault());
+
+                    // Validate range values fit in decimal
+                    if (minStr is null || maxStr is null)
+                    {
+                        context.ReportDiagnostic(Diagnostic.Create(
+                            new DiagnosticDescriptor(
+                                id: "TRLSGEN004",
+                                title: "Range value exceeds decimal range",
+                                messageFormat: "Class '{0}' has [Range] values that exceed the decimal type range (±7.9×10²⁸). Use ValidateAdditional for bounds that exceed decimal range.",
+                                category: "SourceGenerator",
+                                DiagnosticSeverity.Error,
+                                isEnabledByDefault: true),
+                            location: null,
+                            g.ClassName));
+                        continue;
+                    }
 
                     // Range-validated TryCreate overloads
                     source += $@"
@@ -1578,11 +1574,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Formats a double value as a string suitable for use as a C# decimal literal (without 'm' suffix).
-    /// Avoids scientific notation (e.g., "1E+20") which is not valid in decimal literals.
+    /// Returns null if the value exceeds the decimal range.
     /// </summary>
-    private static string FormatDecimalLiteral(double value)
+    private static string? FormatDecimalLiteral(double value)
     {
-        // Convert to decimal first to get the exact representation, then format without exponent
         try
         {
             var decimalValue = (decimal)value;
@@ -1590,8 +1585,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         }
         catch (OverflowException)
         {
-            // Value exceeds decimal range — fall back to fixed-point notation
-            return value.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+            return null;
         }
     }
 

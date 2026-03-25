@@ -234,4 +234,42 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadSequence");
     }
+
+    [Fact]
+    public void DecimalRangeExceedsDecimalRange_Reports_TRLSGEN004()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Range(0.0, 1e30)]
+            public partial class TooBigPrice : RequiredDecimal<TooBigPrice>
+            {
+            }
+            """;
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "GeneratorDiagnosticTests",
+            syntaxTrees: [syntaxTree],
+            references: GetMetadataReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = new RequiredPartialClassGenerator();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out var outputCompilation, out var generatorDriverDiagnostics, cancellationToken);
+
+        var diagnostics = generatorDriverDiagnostics
+            .Concat(outputCompilation.GetDiagnostics(cancellationToken))
+            .ToArray();
+
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN004");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN004");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("TooBigPrice");
+    }
 }
