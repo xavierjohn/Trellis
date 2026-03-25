@@ -147,7 +147,7 @@ public class RequiredLongTests
         deserialized.Should().Be(original);
     }
 
-    #region LargeSequence — [Range(0, int.MaxValue)] boundary tests
+    #region LargeSequence — [Range(0L, 5000000000L)] boundary tests
 
     [Fact]
     public void LargeSequence_AtLongMax_ReturnsSuccess()
