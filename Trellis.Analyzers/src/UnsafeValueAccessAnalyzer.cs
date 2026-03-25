@@ -88,6 +88,7 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
     private static bool IsGuardedBySuccessCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
         IsGuardedByCheck(memberAccess, semanticModel, "IsSuccess", true) ||
         IsGuardedByCheck(memberAccess, semanticModel, "IsFailure", false) ||
+        IsGuardedByEarlyReturn(memberAccess, semanticModel, "IsFailure", "IsSuccess") ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
         IsInsideNegatedTryBlock(memberAccess, semanticModel, "TryGetError") ||
         IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.ResultValue);
@@ -102,6 +103,8 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
     private static bool IsGuardedByHasValueCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
         IsGuardedByCheck(memberAccess, semanticModel, "HasValue", true) ||
         IsGuardedByCheck(memberAccess, semanticModel, "HasNoValue", false) ||
+        IsGuardedByShortCircuitAnd(memberAccess, semanticModel) ||
+        IsGuardedByPriorAssignment(memberAccess, semanticModel) ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
         IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.MaybeValue);
 
@@ -396,5 +399,127 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
 
             _ => false,
         };
+
+    /// <summary>
+    /// Recognizes: if (result.IsFailure) return ...; or if (!result.IsSuccess) return ...;
+    /// Any .Value access after the early-return in the same block is safe.
+    /// </summary>
+    private static bool IsGuardedByEarlyReturn(
+        MemberAccessExpressionSyntax memberAccess,
+        SemanticModel semanticModel,
+        string failureProperty,
+        string successProperty)
+    {
+        // Find the containing block
+        var containingStatement = memberAccess.FirstAncestorOrSelf<StatementSyntax>();
+        if (containingStatement?.Parent is not BlockSyntax block)
+            return false;
+
+        var memberAccessIndex = block.Statements.IndexOf(containingStatement);
+        if (memberAccessIndex < 0)
+            return false;
+
+        // Look at preceding statements for early-return guards
+        for (var i = 0; i < memberAccessIndex; i++)
+        {
+            if (block.Statements[i] is not IfStatementSyntax ifStatement)
+                continue;
+
+            // Must have a return/throw in the then branch (early exit)
+            if (!ContainsReturnOrThrow(ifStatement.Statement))
+                continue;
+
+            // Check: if (result.IsFailure) return ...;
+            if (ifStatement.Condition is MemberAccessExpressionSyntax conditionMember &&
+                conditionMember.Name.Identifier.Text == failureProperty &&
+                AreSameVariable(conditionMember.Expression, memberAccess.Expression, semanticModel))
+                return true;
+
+            // Check: if (!result.IsSuccess) return ...;
+            if (ifStatement.Condition is PrefixUnaryExpressionSyntax { Operand: MemberAccessExpressionSyntax negatedMember } prefix &&
+                prefix.IsKind(SyntaxKind.LogicalNotExpression) &&
+                negatedMember.Name.Identifier.Text == successProperty &&
+                AreSameVariable(negatedMember.Expression, memberAccess.Expression, semanticModel))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsReturnOrThrow(StatementSyntax statement) =>
+        statement switch
+        {
+            ReturnStatementSyntax => true,
+            ThrowStatementSyntax => true,
+            BlockSyntax block => block.Statements.Any(s => s is ReturnStatementSyntax or ThrowStatementSyntax),
+            _ => false,
+        };
+
+    /// <summary>
+    /// Recognizes: x = Maybe&lt;T&gt;.From(...); followed by x.Value in the same block.
+    /// </summary>
+    private static bool IsGuardedByPriorAssignment(
+        MemberAccessExpressionSyntax memberAccess,
+        SemanticModel semanticModel)
+    {
+        var containingStatement = memberAccess.FirstAncestorOrSelf<StatementSyntax>();
+        if (containingStatement?.Parent is not BlockSyntax block)
+            return false;
+
+        var memberAccessIndex = block.Statements.IndexOf(containingStatement);
+        if (memberAccessIndex < 0)
+            return false;
+
+        for (var i = 0; i < memberAccessIndex; i++)
+        {
+            if (block.Statements[i] is not ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax assignment })
+                continue;
+
+            if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+                continue;
+
+            // Check if assigning to the same variable
+            if (!AreSameVariable(assignment.Left, memberAccess.Expression, semanticModel))
+                continue;
+
+            // Check if the right side is Maybe<T>.From(...) or Maybe.From(...)
+            if (assignment.Right is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax methodAccess } &&
+                methodAccess.Name.Identifier.Text == "From")
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Recognizes: x.HasValue &amp;&amp; x.Value in binary AND expressions (short-circuit).
+    /// Common in expression trees (Specifications).
+    /// </summary>
+    private static bool IsGuardedByShortCircuitAnd(
+        MemberAccessExpressionSyntax memberAccess,
+        SemanticModel semanticModel)
+    {
+        var current = memberAccess.Parent;
+        while (current != null)
+        {
+            if (current is BinaryExpressionSyntax binaryExpression &&
+                binaryExpression.IsKind(SyntaxKind.LogicalAndExpression))
+            {
+                // Check if .Value access is on the RIGHT side of &&
+                if (binaryExpression.Right.Contains(memberAccess))
+                {
+                    // Check if LEFT side is x.HasValue
+                    if (binaryExpression.Left is MemberAccessExpressionSyntax leftMember &&
+                        leftMember.Name.Identifier.Text == "HasValue" &&
+                        AreSameVariable(leftMember.Expression, memberAccess.Expression, semanticModel))
+                        return true;
+                }
+            }
+
+            current = current.Parent;
+        }
+
+        return false;
+    }
 
 }

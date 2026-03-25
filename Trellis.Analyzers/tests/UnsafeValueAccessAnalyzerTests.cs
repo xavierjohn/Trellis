@@ -620,4 +620,99 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
         await test.RunAsync();
     }
+
+    #region Early-return guard — TRLS003
+
+    [Fact]
+    public async Task EarlyReturnGuard_IsFailureReturn_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Result<string> TestMethod(Result<int> result)
+                {
+                    if (result.IsFailure) return result.Error;
+                    var value = result.Value;
+                    return value.ToString();
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_NegatedIsSuccessReturn_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Result<string> TestMethod(Result<int> result)
+                {
+                    if (!result.IsSuccess) return result.Error;
+                    var value = result.Value;
+                    return value.ToString();
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    #endregion
+
+    #region Assignment guard — TRLS006
+
+    [Fact]
+    public async Task AssignmentGuard_MaybeFromThenValue_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Maybe<DateTime> Timestamp { get; set; }
+
+                public void TestMethod()
+                {
+                    Timestamp = Maybe<DateTime>.From(DateTime.UtcNow);
+                    var value = Timestamp.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    #endregion
+
+    #region Expression tree short-circuit — TRLS006
+
+    [Fact]
+    public async Task ExpressionTreeShortCircuit_HasValueAndValue_NoDiagnostic()
+    {
+        const string source = """
+            using System;
+            using System.Linq.Expressions;
+
+            public class TestClass
+            {
+                public Expression<Func<TestEntity, bool>> GetFilter(DateTime cutoff)
+                {
+                    return e => e.SubmittedAt.HasValue && e.SubmittedAt.Value < cutoff;
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<DateTime> SubmittedAt { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    #endregion
 }
