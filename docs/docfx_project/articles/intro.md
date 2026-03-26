@@ -219,6 +219,8 @@ See [Basics](basics.md) to learn how to create type-safe value objects.
 
 Trellis's structured patterns make it uniquely suited for AI-driven development workflows. The type system and compiler enforce correctness — it is impossible to skip error handling, construct invalid domain objects, or make illegal state transitions.
 
+Today's AI-generated code is tomorrow's maintenance burden. Trellis ensures that AI-generated services are structured the same way a senior engineer would write them — clean architecture, explicit error handling, no hidden state. Six months from now, your team can modify AI-generated code because it follows patterns they already understand.
+
 When a specification says "An Order has an OrderId and a status that transitions from Draft → Submitted → Shipped," Trellis provides a direct mapping:
 
 - **OrderId** → `RequiredGuid`-derived value object
