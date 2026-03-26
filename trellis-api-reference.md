@@ -41,6 +41,8 @@ Represents success (with value) or failure (with error). Implements `IResult<TVa
 
 ## Core Interfaces
 
+Core abstractions for the Result type system.
+
 ### IResult (interface)
 
 Non-generic base — exposes success/failure state and error.
@@ -69,6 +71,8 @@ static abstract TSelf CreateFailure(Error error);
 
 ### Properties & Methods
 
+Instance members on `Result<T>` for checking state and extracting values.
+
 ```csharp
 TValue Value { get; }              // throws if failure
 Error Error { get; }               // throws if success
@@ -81,12 +85,16 @@ void Deconstruct(out bool isSuccess, out TValue? value, out Error? error)
 
 ### Operators
 
+Implicit conversion operators: `T` → `Result<T>` (success) and `Error` → `Result<T>` (failure).
+
 ```csharp
 implicit operator Result<TValue>(TValue value)   // auto-wrap success
 implicit operator Result<TValue>(Error error)     // auto-wrap failure
 ```
 
 ### Static Factories (on `Result`)
+
+Static methods on the non-generic `Result` class for creating `Result<T>` instances.
 
 ```csharp
 Result<TValue> Success<TValue>(TValue value)
@@ -147,6 +155,8 @@ implicit operator Maybe<T>(T value)
 
 ### Maybe Static Members
 
+Factory methods on `Maybe<T>`: `None` (empty), `From(T?)` (wraps nullable), and implicit conversion from `T`.
+
 ```csharp
 // On Maybe<T> struct:
 static Maybe<T> None { get; }           // e.g., Maybe<PhoneNumber>.None
@@ -159,6 +169,8 @@ Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> func
 ```
 
 ### Maybe Extension Methods
+
+Pipeline operations for `Maybe<T>`: `AsMaybe`, `AsNullable`, `ToMaybe`, `ToResult`, `Map`, `Match`, and `GetValueOrDefault`.
 
 ```csharp
 // AsMaybe
@@ -200,7 +212,11 @@ ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>)
 
 ## Error Hierarchy
 
+Trellis uses typed errors instead of exceptions for expected failures. Each error type maps to an HTTP status code — via `ToActionResult()` in MVC controllers or `ToHttpResult()` in Minimal APIs. Use `Error.Validation` for input errors, `Error.NotFound` for missing resources, `Error.Conflict` for duplicate keys, `Error.Forbidden` for authorization failures.
+
 ### Error (base class)
+
+Abstract base class for all Trellis errors. Contains `Code` (machine-readable), `Detail` (human-readable message), and `Instance` (optional resource identifier).
 
 ```csharp
 string Code { get; }
@@ -211,6 +227,8 @@ string? Instance { get; }
 **Equality:** `Equals` and `GetHashCode` are `virtual`. Base `Error` compares `GetType()`, `Code`, `Detail`, and `Instance` (DDD Value Object semantics). `ValidationError` additionally compares `FieldErrors`. `AggregateError` additionally compares `Errors`. Override in custom error types to include additional properties.
 
 ### Factory Methods
+
+Static factory methods on `Error` for creating typed errors without constructing specific subclasses directly.
 
 ```csharp
 // Default code factories
@@ -233,6 +251,8 @@ BadRequestError Error.BadRequest(string detail, string code, string? instance = 
 
 ### Concrete Error Types
 
+Each error type maps to a specific HTTP status code. `ValidationError` → 400, `NotFoundError` → 404, `UnauthorizedError` → 401, `ForbiddenError` → 403, `ConflictError` → 409, `DomainError` → 422, `UnexpectedError` → 500.
+
 | Type | Default Code |
 |------|-------------|
 | `ValidationError` | `"validation.error"` |
@@ -248,6 +268,8 @@ BadRequestError Error.BadRequest(string detail, string code, string? instance = 
 
 ### ValidationError (extends Error)
 
+Represents input validation failures with field-level error details. Use `ValidationError.For(fieldName, message)` to create, or let value object `TryCreate` methods produce them automatically.
+
 ```csharp
 ImmutableArray<FieldError> FieldErrors { get; }
 readonly record struct FieldError(string FieldName, ImmutableArray<string> Details)
@@ -260,6 +282,8 @@ IDictionary<string, string[]> ToDictionary()
 ```
 
 ### AggregateError (extends Error)
+
+Wraps multiple independent errors into a single failure result. Use when several operations fail independently (e.g., batch processing) and all errors need to be reported together. Access individual errors via the `Errors` property.
 
 ```csharp
 IReadOnlyList<Error> Errors { get; }
@@ -485,6 +509,8 @@ Result<T> RecoverOnFailure<T>(this Result<T>, Func<Error, bool> predicate, Func<
 
 ### When / Unless — Conditional Pipeline
 
+Conditionally apply a pipeline step. `When` executes the step only if the predicate is true; `Unless` executes only if false. Use for optional validation or conditional side effects.
+
 ```csharp
 Result<T> When<T>(this Result<T>, Func<T, bool> predicate, Func<T, Result<T>> action)
 Result<T> When<T>(this Result<T>, bool condition, Func<T, Result<T>> action)
@@ -495,6 +521,8 @@ Result<T> Unless<T>(this Result<T>, bool condition, Func<T, Result<T>> action)
 
 ### Traverse — Apply to Collection
 
+Applies a Result-returning function to each element in a collection, collecting all successes or short-circuiting on the first failure. Use for batch validation or processing lists of items.
+
 ```csharp
 Result<IReadOnlyList<TOut>> Traverse<TIn, TOut>(this IEnumerable<TIn>, Func<TIn, Result<TOut>>)
 Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn>, Func<TIn, Task<Result<TOut>>>)
@@ -504,6 +532,8 @@ Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn>
 
 ### Nullable → Result
 
+Converts nullable values to Result types. `null` becomes `Failure` with the specified error; non-null becomes `Success`. Bridges between nullable C# patterns and the ROP pipeline.
+
 ```csharp
 Result<T> ToResult<T>(this T? value, Error error) where T : struct
 Result<T> ToResult<T>(this T? value, Error error) where T : class
@@ -512,11 +542,15 @@ Result<T> ToResult<T>(this T? value, Error error) where T : class
 
 ### ToResult — Wrap as Success
 
+Wraps a plain value as a successful `Result<T>`. Use to enter the ROP pipeline from imperative code.
+
 ```csharp
 Result<T> ToResult<T>(this T value)  // wraps value as Success
 ```
 
 ### LINQ Support (Result)
+
+Enables LINQ query syntax (`from`...`select`) over Result types. Alternative to method chain syntax for developers who prefer query expressions.
 
 ```csharp
 Result<TOut> Select<TIn, TOut>(this Result<TIn>, Func<TIn, TOut>)            // = Map
@@ -597,6 +631,8 @@ Each has sync + Task (3 variants) + ValueTask (3 variants) async overloads.
 
 ### Debug — Pipeline Inspection
 
+Pipeline inspection extensions that emit values and errors to OpenTelemetry activity spans. Use during development to trace intermediate values in ROP chains. Guarded by `#if DEBUG`.
+
 ```csharp
 Result<T> Debug<T>(this Result<T>, string? label = null)
 Result<T> DebugDetailed<T>(this Result<T>, string? label = null)
@@ -671,6 +707,8 @@ protected Entity(TId id)
 
 ## Aggregate\<TId\> (abstract class, extends Entity\<TId\>, implements IAggregate)
 
+Consistency boundary that encapsulates domain state, enforces business rules through domain methods, and publishes domain events. Inherits `Entity<TId>`. Use for root entities that own child entities and control their lifecycle.
+
 ```csharp
 protected Aggregate(TId id)
 protected List<IDomainEvent> DomainEvents { get; }
@@ -680,6 +718,8 @@ void AcceptChanges()                       // clears DomainEvents
 ```
 
 ## IDomainEvent (interface)
+
+Marker interface for domain events raised by aggregates. Events are collected via `UncommittedEvents()` and published after persistence. Use to decouple side effects from the domain operation that triggered them.
 
 ```csharp
 DateTime OccurredAt { get; }
@@ -714,6 +754,8 @@ implicit operator T(ScalarValueObject<TSelf, T> vo)  // unwrap to primitive
 
 ## IScalarValue\<TSelf, TPrimitive\> (interface)
 
+Interface for value objects wrapping a single primitive value. Enables automatic ASP.NET Core model binding, JSON serialization, and EF Core value conversion. Implemented by the source generator on `RequiredString`, `RequiredInt`, `RequiredGuid`, etc.
+
 ```csharp
 static abstract Result<TSelf> TryCreate(TPrimitive value, string? fieldName = null)
 static virtual TSelf Create(TPrimitive value)  // default: TryCreate + throw
@@ -741,6 +783,8 @@ implicit operator Expression<Func<T, bool>>(Specification<T> spec)
 
 ## JSON Converters (namespace: `Trellis`)
 
+Trellis provides automatic JSON serialization for all value objects. `ParsableJsonConverter` handles scalar types; `MoneyJsonConverter` handles the `Money` composite type.
+
 ### ParsableJsonConverter\<T\>
 
 Generic `System.Text.Json` converter for all types implementing `IParsable<T>`. Auto-applied via `[JsonConverter]` on source-generated value objects.
@@ -760,6 +804,8 @@ public class MoneyJsonConverter : JsonConverter<Money>
 ```
 
 ## Base Types (namespace: `Trellis`)
+
+Value object base classes. Declare a `partial class` inheriting from these to trigger source generation of `TryCreate`, `Create`, `Parse`, JSON converters, and model binding.
 
 ### RequiredString\<TSelf\>
 
@@ -787,6 +833,8 @@ public partial class Description : RequiredString<Description> { }
 ```
 
 Generated validation errors: `"{Name} must be at least {min} characters."`, `"{Name} must be {max} characters or fewer."`
+
+> **Namespace note:** This is `Trellis.StringLengthAttribute`, not `System.ComponentModel.DataAnnotations.StringLengthAttribute`. If both namespaces are imported, disambiguate with `[Trellis.StringLength(max)]`.
 
 #### `ValidateAdditional` — Optional Custom Validation Hook
 
@@ -824,6 +872,21 @@ static Foo Create(string stringValue)
 static explicit operator Foo(Guid value)
 // IParsable<Foo>: Parse, TryParse
 // [JsonConverter(typeof(ParsableJsonConverter<Foo>))]
+```
+
+#### `ValidateAdditional` — Optional Custom Validation Hook
+
+Same pattern as RequiredString. Signature: `static partial void ValidateAdditional(Guid value, string fieldName, ref string? errorMessage)`
+
+```csharp
+public partial class TenantId : RequiredGuid<TenantId>
+{
+    static partial void ValidateAdditional(Guid value, string fieldName, ref string? errorMessage)
+    {
+        if (value.Version != 7)
+            errorMessage = "Tenant Id must be a v7 UUID.";
+    }
+}
 ```
 
 ### RequiredInt\<TSelf\>
@@ -880,7 +943,108 @@ static Foo Create(string stringValue)
 // IParsable<Foo>, explicit operator, JsonConverter
 ```
 
+#### `[Range]` — Optional Range Constraints
+
+```csharp
+[Range(1, 999)]           // whole-number bounds (int constructor)
+public partial class UnitPrice : RequiredDecimal<UnitPrice> { }
+
+[Range(0.01, 99.99)]      // fractional bounds (double constructor)
+public partial class TaxRate : RequiredDecimal<TaxRate> { }
+```
+
+> **Note:** C# does not allow `decimal` in attribute constructors, so fractional ranges use the `double` constructor overload. The generated validation still operates on the `decimal` value.
+
 `ValidateAdditional` is also available: `static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage)`
+
+### RequiredLong\<TSelf\>
+
+Inherits `ScalarValueObject<TSelf, long>`. Source generator provides:
+
+```csharp
+static Result<Foo> TryCreate(long value, string? fieldName = null)
+static Result<Foo> TryCreate(long? value, string? fieldName = null)     // rejects null
+static Result<Foo> TryCreate(string? value, string? fieldName = null)
+static new Foo Create(long value)
+static Foo Create(string stringValue)
+// IParsable<Foo>, explicit operator, JsonConverter
+```
+
+With range constraints using `[Range(long, long)]` — supports ranges exceeding `int.MaxValue`:
+
+```csharp
+[Range(0L, 5_000_000_000L)]
+public partial class LargeId : RequiredLong<LargeId> { }
+
+[Range(1L, 9_999_999_999L)]
+public partial class PhoneNumber : RequiredLong<PhoneNumber> { }
+```
+
+#### `ValidateAdditional` — Optional Custom Validation Hook
+
+Same pattern as RequiredInt. Signature: `static partial void ValidateAdditional(long value, string fieldName, ref string? errorMessage)`
+
+### RequiredBool\<TSelf\>
+
+Inherits `ScalarValueObject<TSelf, bool>`. Distinguishes `false` (an explicit value) from `null`/missing — solves the "was the property `false` or not provided?" problem.
+
+```csharp
+static Result<Foo> TryCreate(bool value, string? fieldName = null)      // always succeeds
+static Result<Foo> TryCreate(bool? value, string? fieldName = null)     // rejects null
+static Result<Foo> TryCreate(string? value, string? fieldName = null)   // parses "true"/"false"
+static new Foo Create(bool value)
+static Foo Create(string stringValue)
+// IParsable<Foo>, explicit operator, JsonConverter
+```
+
+```csharp
+public partial class GiftWrap : RequiredBool<GiftWrap> { }
+
+// Usage
+var wrap = GiftWrap.Create(false);   // wrap.Value == false (explicitly false, not missing)
+var result = GiftWrap.TryCreate(null as bool?);  // failure — null is not allowed
+```
+
+#### `ValidateAdditional` — Optional Custom Validation Hook
+
+Signature: `static partial void ValidateAdditional(bool value, string fieldName, ref string? errorMessage)`
+
+### RequiredDateTime\<TSelf\>
+
+Inherits `ScalarValueObject<TSelf, DateTime>`. Rejects `DateTime.MinValue` (the "empty" equivalent for `DateTime`). Overrides `ToString()` to use ISO 8601 round-trip format (`"O"`) for deterministic JSON serialization.
+
+```csharp
+static Result<Foo> TryCreate(DateTime value, string? fieldName = null)    // rejects DateTime.MinValue
+static Result<Foo> TryCreate(DateTime? value, string? fieldName = null)   // rejects null
+static Result<Foo> TryCreate(string? value, string? fieldName = null)     // invariant culture parsing
+static new Foo Create(DateTime value)
+static Foo Create(string stringValue)
+// IParsable<Foo>, explicit operator, JsonConverter
+```
+
+```csharp
+public partial class OrderDate : RequiredDateTime<OrderDate> { }
+
+// Usage
+var date = OrderDate.Create(DateTime.UtcNow);
+var bad = OrderDate.TryCreate(DateTime.MinValue);  // failure — MinValue rejected
+```
+
+#### `ValidateAdditional` — Optional Custom Validation Hook
+
+Signature: `static partial void ValidateAdditional(DateTime value, string fieldName, ref string? errorMessage)`
+
+### `[Range]` Attribute Reference
+
+The `[Range]` attribute constrains numeric value objects at creation time. The source generator emits min/max validation into `TryCreate`.
+
+| Constructor | Applies To | Example |
+|---|---|---|
+| `[Range(int min, int max)]` | `RequiredInt`, `RequiredDecimal` (whole numbers) | `[Range(1, 999)]` |
+| `[Range(long min, long max)]` | `RequiredLong` (values exceeding `int.MaxValue`) | `[Range(0L, 5_000_000_000L)]` |
+| `[Range(double min, double max)]` | `RequiredDecimal` (fractional bounds) | `[Range(0.01, 99.99)]` |
+
+> **Namespace note:** This is `Trellis.RangeAttribute`, not `System.ComponentModel.DataAnnotations.RangeAttribute`. If both namespaces are imported, disambiguate with `[Trellis.Range(min, max)]`.
 
 ### RequiredEnum\<TSelf\>
 
@@ -962,6 +1126,8 @@ bool IsLessThanOrEqual(Money other)
 
 ## Actor (sealed record)
 
+Represents the authenticated user making the current request. Contains identity, permissions, forbidden permissions, and contextual attributes. Hydrated during authentication middleware. Used by authorization behaviors to check permissions and resource ownership.
+
 ```csharp
 Actor(string Id, IReadOnlySet<string> Permissions, IReadOnlySet<string> ForbiddenPermissions, IReadOnlyDictionary<string, string> Attributes)
 
@@ -976,6 +1142,13 @@ string? GetAttribute(string key)
 ```
 
 ## Interfaces
+
+- **`IActorProvider`** — Provides the current authenticated actor synchronously (from JWT claims).
+- **`IAsyncActorProvider`** — Async variant for when permission resolution requires I/O.
+- **`IAuthorize`** — Declares required permissions; checked by authorization pipeline behavior.
+- **`IAuthorizeResource<TResource>`** — Resource-based authorization; receives the loaded resource and actor.
+- **`IResourceLoader<TMessage, TResource>`** — Loads the resource for resource-based authorization checks.
+- **`ResourceLoaderById<TMessage, TResource, TId>`** — Base class for the common "extract ID from message, load by ID" pattern.
 
 ```csharp
 interface IActorProvider { Actor GetCurrentActor(); }
@@ -1004,6 +1177,8 @@ public interface IAsyncActorProvider
 Use `IActorProvider` when the actor can be resolved synchronously (e.g., from in-memory claims). Use `IAsyncActorProvider` when resolution requires I/O (e.g., loading permissions from a database).
 
 ## ActorAttributes Constants
+
+Well-known attribute keys for ABAC (Attribute-Based Access Control): `IpAddress`, `MfaAuthenticated`, `TenantId`, `PreferredUsername`, etc.
 
 ```csharp
 const string TenantId = "tid";
@@ -1040,6 +1215,8 @@ Customizable via `TrellisAspOptions.MapError<TError>(int statusCode)`.
 
 ## MVC Controller Extensions
 
+Extension methods for mapping `Result<T>` to `ActionResult` in MVC controllers. `ToActionResult` maps errors to RFC 9457 Problem Details responses.
+
 ```csharp
 ActionResult<T> ToActionResult<T>(this Result<T> result, ControllerBase controller)
 ActionResult<T> ToCreatedAtActionResult<T>(this Result<T> result, ControllerBase controller,
@@ -1061,6 +1238,8 @@ ActionResult<TValue> ToActionResult<TValue>(this Error error, ControllerBase con
 
 ## Minimal API Extensions
 
+Extension methods for mapping `Result<T>` to `IResult` in Minimal API endpoints. Same error-to-HTTP mapping as MVC but returns `IResult` instead of `ActionResult`.
+
 ```csharp
 IResult ToHttpResult<T>(this Result<T> result, TrellisAspOptions? options = null)
 IResult ToCreatedAtRouteHttpResult<T>(this Result<T> result,
@@ -1077,6 +1256,8 @@ IResult ToHttpResult(this Error error, TrellisAspOptions? options = null)
 ```
 
 ## PartialObjectResult — HTTP 206 Partial Content
+
+HTTP 206 Partial Content response for paginated results. Automatically sets `Content-Range` headers per RFC 9110.
 
 ```csharp
 PartialObjectResult(long rangeStart, long rangeEnd, long totalLength, object? value)
@@ -1095,6 +1276,8 @@ Registered automatically by `AddScalarValueValidation()`.
 | `MaybeSuppressChildValidationMetadataProvider` | Suppresses child validation on `Maybe<T>` properties |
 
 ## Registration
+
+Service collection extension methods for registering Trellis ASP.NET services: `AddTrellisAsp()`, `AddScalarValueValidation()`, `UseScalarValueValidation()`.
 
 ```csharp
 // MVC — registers model binders, JSON converters, validation filters
@@ -1136,6 +1319,8 @@ Benefits: Native AOT compatible, no reflection, trimming-safe, faster startup.
 
 ## EntraActorProvider (Production)
 
+Production actor provider that maps Microsoft Entra ID (Azure AD) JWT claims to an `Actor`. Extracts user ID from `sub` claim and permissions from roles/scopes claims.
+
 ```csharp
 // Registration
 services.AddEntraActorProvider();
@@ -1149,6 +1334,8 @@ services.AddEntraActorProvider(options => {
 ```
 
 ## DevelopmentActorProvider (Development/Testing)
+
+Development/testing actor provider that reads `Actor` from the `X-Test-Actor` HTTP header (JSON). Falls back to a configurable default actor. Throws in Production to prevent accidental use.
 
 ```csharp
 // Registration — for development environments
@@ -1230,6 +1417,8 @@ var result = await httpClient.GetAsync($"/api/orders/{id}")
 
 **Namespace: `Trellis.Mediator`**
 
+CQRS pattern: define a command/query record implementing `ICommand<T>`/`IQuery<T>`, implement a handler, register with `AddTrellisBehaviors()`. The mediator dispatches through the pipeline behavior chain.
+
 ### Pipeline Order
 
 Exception → Tracing → Logging → Authorization → ResourceAuthorization (actor-only) → Validation
@@ -1237,6 +1426,8 @@ Exception → Tracing → Logging → Authorization → ResourceAuthorization (a
 Resource-based authorization with a loaded resource (`IAuthorizeResource<TResource>`) is auto-discovered via `AddResourceAuthorization(Assembly)`, or registered explicitly per-command via `AddResourceAuthorization<TMessage, TResource, TResponse>()` for AOT scenarios.
 
 ### Behaviors
+
+Pipeline behaviors execute in order: `ExceptionBehavior` (catch unhandled) → `TracingBehavior` (OpenTelemetry) → `LoggingBehavior` (structured logging) → `AuthorizationBehavior` (permission check) → `ResourceAuthorizationBehavior` (ownership check) → `ValidationBehavior` (IValidate) → Handler.
 
 | Behavior | Constraint on TMessage | Purpose |
 |----------|----------------------|---------|
@@ -1249,11 +1440,15 @@ Resource-based authorization with a loaded resource (`IAuthorizeResource<TResour
 
 ### IValidate Interface
 
+Implement on a command/query to add validation before the handler runs. The `ValidationBehavior` calls `Validate()` and short-circuits with `ValidationError` on failure.
+
 ```csharp
 interface IValidate { IResult Validate(); }
 ```
 
 ### TracingBehavior Constants
+
+OpenTelemetry activity source names used by the mediator tracing behavior for distributed tracing.
 
 ```csharp
 public const string ActivitySourceName = "Trellis.Mediator";
@@ -1262,6 +1457,8 @@ public const string ActivitySourceName = "Trellis.Mediator";
 Use `ActivitySourceName` to register the activity source with OpenTelemetry: `builder.AddSource(TracingBehavior<IMessage, IResult>.ActivitySourceName)`.
 
 ### Registration
+
+`AddTrellisBehaviors()` registers all pipeline behaviors. `AddResourceAuthorization(params Assembly[])` scans assemblies for `IResourceLoader` implementations.
 
 ```csharp
 services.AddTrellisBehaviors();
@@ -1332,6 +1529,8 @@ Result<TState> FireResult(TTrigger trigger)  // Delegates to Machine.FireResult(
 
 ### DbContext Extensions
 
+`SaveChangesResultAsync()` and `SaveChangesResultUnitAsync()` wrap EF Core `SaveChanges` in `Result<T>`. Duplicate key violations become `ConflictError`; concurrency exceptions become `ConflictError`.
+
 ```csharp
 Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken ct = default)
 Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken ct = default)
@@ -1344,6 +1543,21 @@ Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool accep
 
 ### Queryable Extensions
 
+`FirstOrDefaultResultAsync` returns `NotFoundError` if missing; `FirstOrDefaultMaybeAsync` returns `Maybe<T>.None` if missing; `SingleOrDefaultMaybeAsync` for unique-or-none queries.
+
+**Important:** In LINQ predicates, compare value objects to value objects — not `.Value` to a raw primitive. The value converter handles SQL translation automatically.
+
+```csharp
+// ✅ Correct — wrap the primitive in a value object, then compare
+var email = EmailAddress.Create("alice@example.com");
+var customer = await _dbContext.Customers
+    .FirstOrDefaultResultAsync(c => c.Email == email, Error.NotFound("Not found"), ct);
+
+// ❌ Wrong — .Value won't translate to SQL
+// var customer = await _dbContext.Customers
+//     .FirstOrDefaultResultAsync(c => c.Email.Value == "alice@example.com", ...);
+```
+
 ```csharp
 Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, CancellationToken ct = default)
 Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken ct = default)
@@ -1355,6 +1569,8 @@ IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 ```
 
 ### Value Converter Registration
+
+`ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types and `Money`. Call once — do NOT add manual `HasConversion` for Trellis types.
 
 ```csharp
 // In OnModelCreating or ConfigureConventions
@@ -1496,6 +1712,8 @@ public override Expression<Func<Order, bool>> ToExpression() =>
 
 ### Maybe\<T\> Index, Update, and Diagnostics Helpers
 
+`HasTrellisIndex` resolves `Maybe<T>` properties to backing field names for type-safe index creation. `SetMaybeValue`/`SetMaybeNone` for bulk updates via `ExecuteUpdate`. `TRLS021` analyzer warns when `HasIndex` is used with `Maybe<T>` properties.
+
 ```csharp
 // HasTrellisIndex — resolves Maybe<T> properties to mapped backing fields
 IndexBuilder<TEntity> HasTrellisIndex<TEntity>(
@@ -1535,6 +1753,8 @@ string ToMaybeMappingDebugString(this DbContext dbContext)
 `MaybePropertyMapping` describes the entity type, CLR property name, generated backing field, nullable store type, column name, and resolved provider type for each discovered `Maybe<T>` mapping.
 
 ### Exception Classification
+
+How `SaveChangesResultAsync` classifies EF Core exceptions: `DbUpdateConcurrencyException` → `ConflictError`, duplicate key → `ConflictError`, FK violation → `DomainError`.
 
 ```csharp
 bool DbExceptionClassifier.IsDuplicateKey(DbUpdateException ex)       // SQL Server, PostgreSQL, SQLite
@@ -1598,6 +1818,8 @@ using Unit = Trellis.Unit;
 
 ## Create a Custom Value Object (RequiredGuid ID)
 
+Complete example showing how to define a strongly-typed GUID identifier using `RequiredGuid<TSelf>`.
+
 ```csharp
 using Trellis;
 
@@ -1609,6 +1831,8 @@ var parsed = OrderId.TryCreate("550e8400-e29b-41d4-a716-446655440000");
 ```
 
 ## Create a Custom Value Object (RequiredString)
+
+Complete example showing how to define a validated string value object with optional length constraints and custom validation.
 
 ```csharp
 using Trellis;
@@ -1646,6 +1870,8 @@ public partial class Sku : RequiredString<Sku>
 
 ## Create a Custom Value Object (RequiredEnum — Smart Enum)
 
+Complete example showing how to define a smart enum with static members and case-insensitive parsing.
+
 ```csharp
 using Trellis;
 
@@ -1668,6 +1894,8 @@ if (status.Is(OrderStatus.Draft, OrderStatus.Pending)) { /* ... */ }
 
 ## Create a Custom ScalarValueObject with Custom Validation
 
+Complete example showing how to create a value object with fully custom validation logic by implementing `IScalarValue<TSelf, TPrimitive>` directly.
+
 ```csharp
 using Trellis;
 
@@ -1686,6 +1914,8 @@ public class Temperature : ScalarValueObject<Temperature, decimal>,
 ```
 
 ## Define an Aggregate
+
+Complete example showing how to define a DDD aggregate with domain methods, invariant enforcement, and domain event publishing.
 
 ```csharp
 using Trellis;
@@ -1736,6 +1966,8 @@ public class Order : Aggregate<OrderId>
 
 ## Build an ROP Pipeline
 
+Complete example showing how to compose validation, transformation, and side effects using the Railway Oriented Programming pipeline.
+
 ```csharp
 // Validation + transformation
 var result = EmailAddress.TryCreate(dto.Email)
@@ -1760,6 +1992,8 @@ var result = await ProcessPayment(order, paymentInfo)
 
 ## Use Maybe\<T\> for Optional Fields
 
+Complete example showing how to model optional fields with `Maybe<T>` in requests, validation, and EF Core persistence.
+
 ```csharp
 public record CreateProfileRequest(
     string Email,
@@ -1783,6 +2017,8 @@ public partial class Profile
 ```
 
 ## Convert Result to HTTP Response
+
+Complete example showing how to map `Result<T>` to HTTP responses in both MVC controllers and Minimal API endpoints.
 
 ```csharp
 // MVC Controller
@@ -1813,6 +2049,8 @@ app.MapGet("/orders/{id}", async (string id, IOrderService service) =>
 
 ## HTTP Client → Result Pipeline
 
+Complete example showing how to chain HTTP status handling and JSON deserialization into a `Result<T>` pipeline.
+
 ```csharp
 var result = await _httpClient.GetAsync($"/api/orders/{id}", ct)
     .HandleNotFoundAsync(Error.NotFound($"Order {id} not found"))
@@ -1822,6 +2060,8 @@ var result = await _httpClient.GetAsync($"/api/orders/{id}", ct)
 ```
 
 ## EF Core Integration
+
+Complete example showing how to configure `DbContext` with Trellis conventions and implement a repository using Result-returning queries.
 
 ```csharp
 // DbContext configuration
@@ -1850,7 +2090,23 @@ var highValueOrders = await _dbContext.Orders
     .ToListAsync(ct);
 ```
 
+#### Value Object LINQ Comparisons
+
+In LINQ queries, compare value objects to value objects — the value converter registered by `ApplyTrellisConventions` handles SQL translation automatically.
+
+```csharp
+// ✅ Correct — value object to value object
+var customer = await _dbContext.Customers
+    .FirstOrDefaultResultAsync(c => c.Email == EmailAddress.Create("alice@example.com"), notFoundError, ct);
+
+// ❌ Wrong — .Value won't translate to SQL
+var customer = await _dbContext.Customers
+    .FirstOrDefaultResultAsync(c => c.Email.Value == "alice@example.com", notFoundError, ct);
+```
+
 ## CQRS Command with Authorization
+
+Complete example showing how to define a CQRS command with permission-based authorization, self-validation, and a handler using the ROP pipeline.
 
 ```csharp
 using Mediator;
