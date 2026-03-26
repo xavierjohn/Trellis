@@ -143,6 +143,27 @@ public readonly partial struct Result
     public static Result<Unit> Failure(Error error) =>
         new(true, default, error);
 
+    /// <summary>
+    /// Returns a success result if the flag is true; otherwise returns a failure with the specified error.
+    /// </summary>
+    /// <param name="flag">The boolean condition to test.</param>
+    /// <param name="error">The error to return if the condition is false.</param>
+    /// <returns>A success result if flag is true; otherwise a failure with the specified error.</returns>
+    public static Result<Unit> Ensure(bool flag, Error error) =>
+        flag ? Success() : Failure(error);
+
+    /// <summary>
+    /// Returns a success result if the predicate is true; otherwise returns a failure with the specified error.
+    /// </summary>
+    /// <param name="predicate">The predicate to evaluate.</param>
+    /// <param name="error">The error to return if the predicate is false.</param>
+    /// <returns>A success result if predicate is true; otherwise a failure with the specified error.</returns>
+    public static Result<Unit> Ensure(Func<bool> predicate, Error error)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        return predicate() ? Success() : Failure(error);
+    }
+
     // --- Exception capture helpers --------------------------------------------------
 
     /// <summary>
