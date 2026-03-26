@@ -67,7 +67,7 @@ public class PvoTracingExtensionsTests : IDisposable
     public void AddPrimitiveValueObjectInstrumentation_RegistersCorrectActivitySourceName()
     {
         // Arrange
-        var expectedSourceName = "Functional DDD PVO";
+        var expectedSourceName = "Trellis.Primitives";
 
         // Act
         var actualSourceName = PrimitiveValueObjectTrace.ActivitySourceName;
@@ -173,7 +173,7 @@ public class PvoTracingExtensionsTests : IDisposable
     public void PrimitiveValueObjectTrace_ActivitySourceName_MatchesConstant()
     {
         // Arrange
-        var expectedName = "Functional DDD PVO";
+        var expectedName = "Trellis.Primitives";
 
         // Act & Assert
         PrimitiveValueObjectTrace.ActivitySourceName.Should().Be(expectedName);
