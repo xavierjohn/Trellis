@@ -4,7 +4,7 @@ namespace Example;
 
 using System.Collections.Immutable;
 using Trellis;
-using static EnsureExtensions;
+using static Result;
 using static Trellis.ValidationError;
 
 public class ValidationExample

@@ -149,8 +149,13 @@ public readonly partial struct Result
     /// <param name="flag">The boolean condition to test.</param>
     /// <param name="error">The error to return if the condition is false.</param>
     /// <returns>A success result if flag is true; otherwise a failure with the specified error.</returns>
-    public static Result<Unit> Ensure(bool flag, Error error) =>
-        flag ? Success() : Failure(error);
+    public static Result<Unit> Ensure(bool flag, Error error)
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
+        var result = flag ? Success() : Failure(error);
+        result.LogActivityStatus();
+        return result;
+    }
 
     /// <summary>
     /// Returns a success result if the predicate is true; otherwise returns a failure with the specified error.
@@ -161,7 +166,26 @@ public readonly partial struct Result
     public static Result<Unit> Ensure(Func<bool> predicate, Error error)
     {
         ArgumentNullException.ThrowIfNull(predicate);
-        return predicate() ? Success() : Failure(error);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
+        var result = predicate() ? Success() : Failure(error);
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <summary>
+    /// Asynchronously evaluates the predicate and returns success if true; otherwise returns a failure with the specified error.
+    /// </summary>
+    /// <param name="predicate">Async predicate producing true for success.</param>
+    /// <param name="error">The error to return if the predicate is false.</param>
+    /// <returns>A task producing a success or failure Result of Unit.</returns>
+    public static async Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Error error)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
+        var isSuccess = await predicate().ConfigureAwait(false);
+        var result = isSuccess ? Success() : Failure(error);
+        result.LogActivityStatus();
+        return result;
     }
 
     // --- Exception capture helpers --------------------------------------------------

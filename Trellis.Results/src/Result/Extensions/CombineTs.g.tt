@@ -85,7 +85,7 @@ public static partial class CombineExtensions
     /// <code>
     /// var result = FirstName.TryCreate("John")
     ///     .Combine(LastName.TryCreate("Doe"))
-    ///     .Combine(EnsureExtensions.Ensure(age >= 18, Error.Validation("Must be 18+")))
+    ///     .Combine(Result.Ensure(age >= 18, Error.Validation("Must be 18+")))
     ///     .Bind((first, last) => CreateUser(first, last, age));
     /// // Age validation must pass, but age is not added to the tuple
     /// </code>
