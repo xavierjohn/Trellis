@@ -10,6 +10,8 @@
   items:
   - name: Value Objects
     items:
+    - name: Primitive Value Objects
+      href: primitives.md
     - name: RequiredEnum
       href: required-enum.md
   - name: Maybe Type
