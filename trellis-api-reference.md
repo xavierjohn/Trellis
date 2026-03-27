@@ -150,7 +150,8 @@ T GetValueOrDefault(T defaultValue)
 bool TryGetValue(out T value)
 Maybe<TResult> Map<TResult>(Func<T, TResult> selector) where TResult : notnull
 TResult Match<TResult>(Func<T, TResult> some, Func<TResult> none)
-implicit operator Maybe<T>(T value)
+implicit operator Maybe<T>(T value)  // T → Maybe<T> (implicit)
+// No implicit conversion from Maybe<T> → T (by design — use .Value, Match, or TryGetValue)
 ```
 
 ### Maybe Static Members
@@ -212,7 +213,7 @@ ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>)
 
 ## Error Hierarchy
 
-Trellis uses typed errors instead of exceptions for expected failures. Each error type maps to an HTTP status code — via `ToActionResult()` in MVC controllers or `ToHttpResult()` in Minimal APIs. Use `Error.Validation` for input errors, `Error.NotFound` for missing resources, `Error.Conflict` for duplicate keys, `Error.Forbidden` for authorization failures.
+Trellis uses typed errors instead of exceptions for expected failures. Each error type maps to an HTTP status code via `ToActionResult()`. Use `Error.Validation` for input errors, `Error.NotFound` for missing resources, `Error.Conflict` for duplicate keys, `Error.Forbidden` for authorization failures.
 
 ### Error (base class)
 
@@ -270,6 +271,8 @@ Each error type maps to a specific HTTP status code. `ValidationError` → 400, 
 
 Represents input validation failures with field-level error details. Use `ValidationError.For(fieldName, message)` to create, or let value object `TryCreate` methods produce them automatically.
 
+> ⚠️ **Parameter order differs:** `Error.Validation(fieldDetail, fieldName)` vs `ValidationError.For(fieldName, message)`. The factory method on `Error` takes the detail first; the static method on `ValidationError` takes the field name first.
+
 ```csharp
 ImmutableArray<FieldError> FieldErrors { get; }
 readonly record struct FieldError(string FieldName, ImmutableArray<string> Details)
@@ -283,7 +286,7 @@ IDictionary<string, string[]> ToDictionary()
 
 ### AggregateError (extends Error)
 
-Wraps multiple independent errors into a single failure result. Use when several operations fail independently (e.g., batch processing) and all errors need to be reported together. Access individual errors via the `Errors` property.
+Combines multiple errors from parallel validation. Use `Result.Combine()` or `EnsureAll()` to accumulate errors instead of failing on the first one.
 
 ```csharp
 IReadOnlyList<Error> Errors { get; }
@@ -705,6 +708,17 @@ protected Entity(TId id)
 // Overrides: Equals, GetHashCode
 ```
 
+## IAggregate (interface, extends IChangeTracking)
+
+Marker interface for aggregates. Implemented by `Aggregate<TId>`.
+
+```csharp
+public interface IAggregate : IChangeTracking
+{
+    IReadOnlyList<IDomainEvent> UncommittedEvents();
+}
+```
+
 ## Aggregate\<TId\> (abstract class, extends Entity\<TId\>, implements IAggregate)
 
 Consistency boundary that encapsulates domain state, enforces business rules through domain methods, and publishes domain events. Inherits `Entity<TId>`. Use for root entities that own child entities and control their lifecycle.
@@ -1071,6 +1085,42 @@ static Foo Create(string value)   // throws on invalid input (from IScalarValue)
 
 Use `[EnumValue("code")]` only when the external name must differ from the default field name.
 
+### EnumValueAttribute
+
+Customizes the wire/storage name for a `RequiredEnum` member. Applied to static fields.
+
+```csharp
+[AttributeUsage(AttributeTargets.Field)]
+public sealed class EnumValueAttribute(string value) : Attribute
+{
+    public string Value { get; }
+}
+
+// Usage — custom wire name different from field name
+public partial class PaymentMethod : RequiredEnum<PaymentMethod>
+{
+    [EnumValue("credit-card")]
+    public static readonly PaymentMethod CreditCard = new();
+
+    [EnumValue("bank-transfer")]
+    public static readonly PaymentMethod BankTransfer = new();
+}
+```
+
+### RequiredEnumJsonConverter\<T\>
+
+JSON converter for `RequiredEnum<T>` types. Auto-applied by the source generator via `[JsonConverter(typeof(RequiredEnumJsonConverter<T>))]`. Serializes to/from the string value (field name or `[EnumValue]` override).
+
+```csharp
+public sealed class RequiredEnumJsonConverter<TRequiredEnum> : JsonConverter<TRequiredEnum>
+    where TRequiredEnum : RequiredEnum<TRequiredEnum>, IScalarValue<TRequiredEnum, string>
+// Reads: string → TryFromName/TryFromValue → TRequiredEnum
+// Writes: TRequiredEnum → Value (string)
+// Null tokens → null
+```
+
+You do not need to register this manually — the source generator adds it to each `RequiredEnum<T>` type.
+
 ## Concrete Value Objects (namespace: `Trellis.Primitives`)
 
 All have `TryCreate` → `Result<T>` and `Create` → `T` (throws). All implement `IParsable<T>` and have `[JsonConverter]`.
@@ -1213,6 +1263,20 @@ const string MfaAuthenticated = "mfa";
 
 Customizable via `TrellisAspOptions.MapError<TError>(int statusCode)`.
 
+### TrellisAspOptions
+
+Configures custom error-to-HTTP status code mappings. The default mappings (above) can be overridden for custom error types.
+
+```csharp
+public sealed class TrellisAspOptions
+{
+    TrellisAspOptions MapError<TError>(int statusCode) where TError : Error
+}
+
+// Usage
+builder.Services.AddTrellisAsp(options => options.MapError<MyCustomError>(418));
+```
+
 ## MVC Controller Extensions
 
 Extension methods for mapping `Result<T>` to `ActionResult` in MVC controllers. `ToActionResult` maps errors to RFC 9457 Problem Details responses.
@@ -1277,7 +1341,7 @@ Registered automatically by `AddScalarValueValidation()`.
 
 ## Registration
 
-Service collection extension methods for registering Trellis ASP.NET services: `AddTrellisAsp()`, `AddScalarValueValidation()`, `UseScalarValueValidation()`.
+Service collection extension methods: `AddScalarValueValidation()` (on `IMvcBuilder`), `AddScalarValueValidationForMinimalApi()` (on `IServiceCollection`). Middleware: `UseScalarValueValidation()` (on `IApplicationBuilder`).
 
 ```csharp
 // MVC — registers model binders, JSON converters, validation filters
@@ -1290,6 +1354,14 @@ app.UseScalarValueValidation();  // middleware
 // Full setup
 builder.Services.AddTrellisAsp();
 builder.Services.AddTrellisAsp(options => options.MapError<MyCustomError>(418));
+```
+
+### WithScalarValueValidation (Minimal API per-endpoint)
+
+For Minimal API endpoints, apply scalar value validation per route:
+
+```csharp
+app.MapPost("/api/orders", handler).WithScalarValueValidation();
 ```
 
 ## Source Generator — AOT JSON Converters
@@ -1367,9 +1439,43 @@ else
 | `DevelopmentActorOptions` | Configuration for default actor and error handling |
 | `ServiceCollectionExtensions` | `AddEntraActorProvider()` and `AddDevelopmentActorProvider()` |
 
+### EntraActorOptions
+
+Configures how `EntraActorProvider` extracts actor identity from JWT claims.
+
+```csharp
+public sealed class EntraActorOptions
+{
+    string IdClaimType { get; set; }  // default: "http://schemas.microsoft.com/identity/claims/objectidentifier"
+    Func<IEnumerable<Claim>, IReadOnlySet<string>> MapPermissions { get; set; }  // default: reads "roles" claims
+    Func<IEnumerable<Claim>, IReadOnlySet<string>> MapForbiddenPermissions { get; set; }  // default: empty set
+    Func<IEnumerable<Claim>, HttpContext, IReadOnlyDictionary<string, string>> MapAttributes { get; set; }  // default: tid, preferred_username, azp, IP, MFA
+}
+
+// Usage
+services.AddEntraActorProvider(options =>
+{
+    options.IdClaimType = "sub";
+    options.MapPermissions = claims => claims.Where(c => c.Type == "scope").Select(c => c.Value).ToHashSet();
+});
+```
+
+### DevelopmentActorOptions
+
+Configures the `DevelopmentActorProvider` used during local development. Reads the `X-Test-Actor` header as JSON.
+
+```csharp
+public sealed class DevelopmentActorOptions
+{
+    string DefaultActorId { get; set; }  // default: "development"
+    IReadOnlySet<string> DefaultPermissions { get; set; }  // default: empty
+    bool ThrowOnMalformedHeader { get; set; }  // default: false
+}
+```
+
 ---
 
-# 7. Trellis.Http — HttpClient → Result Extensions
+# 7. Trellis.Http— HttpClient → Result Extensions
 
 **Namespace: `Trellis.Http`**
 
@@ -1417,7 +1523,9 @@ var result = await httpClient.GetAsync($"/api/orders/{id}")
 
 **Namespace: `Trellis.Mediator`**
 
-CQRS pattern: define a command/query record implementing `ICommand<T>`/`IQuery<T>`, implement a handler, register with `AddTrellisBehaviors()`. The mediator dispatches through the pipeline behavior chain.
+> **Import:** Add `using Trellis.Mediator;` for registration extensions (`AddTrellisBehaviors`, `AddResourceAuthorization`). Commands and queries use `Mediator` namespace (`ICommand<T>`, `IQuery<T>`) from the Mediator library. Authorization interfaces use `using Trellis.Authorization;`.
+
+CQRS pattern: define a command/query recordimplementing `ICommand<T>`/`IQuery<T>`, implement a handler, register with `AddTrellisBehaviors()`. The mediator dispatches through the pipeline behavior chain.
 
 ### Pipeline Order
 
@@ -1489,7 +1597,7 @@ Result<T> ToResult<T>(this ValidationResult validationResult, T value)
 
 // Direct validate-and-return
 Result<T> ValidateToResult<T>(this IValidator<T> validator, T value)
-Task<Result<T>> ValidateToResultAsync<T>(this IValidator<T> validator, T value, CancellationToken ct = default)
+Task<Result<T>> ValidateToResultAsync<T>(this IValidator<T> validator, T value, CancellationToken cancellationToken = default)
 ```
 
 ---
@@ -1532,10 +1640,10 @@ Result<TState> FireResult(TTrigger trigger)  // Delegates to Machine.FireResult(
 `SaveChangesResultAsync()` and `SaveChangesResultUnitAsync()` wrap EF Core `SaveChanges` in `Result<T>`. Duplicate key violations become `ConflictError`; concurrency exceptions become `ConflictError`.
 
 ```csharp
-Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken ct = default)
-Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken ct = default)
-Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken ct = default)
-Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken ct = default)
+Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)
+Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)
+Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
 // DbUpdateConcurrencyException → Error.Conflict
 // Duplicate key → Error.Conflict
 // FK violation → Error.Domain
@@ -1545,26 +1653,13 @@ Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool accep
 
 `FirstOrDefaultResultAsync` returns `NotFoundError` if missing; `FirstOrDefaultMaybeAsync` returns `Maybe<T>.None` if missing; `SingleOrDefaultMaybeAsync` for unique-or-none queries.
 
-**Important:** In LINQ predicates, compare value objects to value objects — not `.Value` to a raw primitive. The value converter handles SQL translation automatically.
-
 ```csharp
-// ✅ Correct — wrap the primitive in a value object, then compare
-var email = EmailAddress.Create("alice@example.com");
-var customer = await _dbContext.Customers
-    .FirstOrDefaultResultAsync(c => c.Email == email, Error.NotFound("Not found"), ct);
-
-// ❌ Wrong — .Value won't translate to SQL
-// var customer = await _dbContext.Customers
-//     .FirstOrDefaultResultAsync(c => c.Email.Value == "alice@example.com", ...);
-```
-
-```csharp
-Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, CancellationToken ct = default)
-Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken ct = default)
-Task<Maybe<T>> SingleOrDefaultMaybeAsync<T>(this IQueryable<T> query, CancellationToken ct = default)
-Task<Maybe<T>> SingleOrDefaultMaybeAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken ct = default)
-Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Error notFoundError, CancellationToken ct = default)
-Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, Error notFoundError, CancellationToken ct = default)
+Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
+Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+Task<Maybe<T>> SingleOrDefaultMaybeAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
+Task<Maybe<T>> SingleOrDefaultMaybeAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Error notFoundError, CancellationToken cancellationToken = default)
+Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, Error notFoundError, CancellationToken cancellationToken = default)
 IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 ```
 
@@ -1573,7 +1668,7 @@ IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 `ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types and `Money`. Call once — do NOT add manual `HasConversion` for Trellis types.
 
 ```csharp
-// In OnModelCreating or ConfigureConventions
+// In ConfigureConventions (NOT OnModelCreating)
 configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 // Auto-registers converters for all IScalarValue and RequiredEnum types
 // Auto-maps Money properties as owned types (Amount + Currency columns)
@@ -1621,6 +1716,8 @@ If a `Maybe<T>` property is not declared `partial`, the generator emits diagnost
 **Troubleshooting:** If the generator produces no output despite correct `partial` declarations, run a clean build (`dotnet clean` followed by `dotnet build`). Stale incremental build artifacts can prevent the generator from executing.
 
 ### Maybe\<T\> Queryable Extensions
+
+> **Recommended approach:** Register `AddTrellisInterceptors()` in your DbContext options — this enables the `MaybeQueryInterceptor` which rewrites expressions automatically. The helper methods below (`WhereNone`, `WhereHasValue`, etc.) are available as alternatives when the interceptor is not registered or for explicit control.
 
 Because `MaybeConvention` ignores the `Maybe<T>` CLR property, EF Core cannot translate direct LINQ references to it. Use these extension methods instead of raw `EF.Property` calls:
 
@@ -1688,6 +1785,37 @@ var overdue = await context.Orders
     .Where(o => o.Status == OrderStatus.Submitted)
     .WhereLessThan(o => o.SubmittedAt, cutoff)
     .ToListAsync(ct);
+```
+
+### AddTrellisInterceptors
+
+Registers the `MaybeQueryInterceptor` which rewrites LINQ expressions to support natural `Maybe<T>` property access in EF Core queries.
+
+```csharp
+// Generic overload
+DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder)
+
+// Non-generic overload
+DbContextOptionsBuilder AddTrellisInterceptors(this DbContextOptionsBuilder optionsBuilder)
+
+// Usage
+services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(connectionString)
+           .AddTrellisInterceptors());
+```
+
+### TrellisPersistenceMappingException
+
+Thrown by Trellis value converters when a persisted database value cannot be converted back to a value object (e.g., an invalid string in the database for an `EmailAddress` column). Provides diagnostic context for debugging data corruption.
+
+```csharp
+public sealed class TrellisPersistenceMappingException : InvalidOperationException
+{
+    public Type ValueObjectType { get; }     // e.g., typeof(EmailAddress)
+    public object? PersistedValue { get; }   // the raw DB value that failed
+    public string FactoryMethod { get; }     // e.g., "TryCreate"
+    public string Detail { get; }            // validation failure detail
+}
 ```
 
 ### Maybe\<T\> Query Interceptor
@@ -1815,6 +1943,43 @@ using Unit = Trellis.Unit;
 ---
 
 # Usage Patterns & Recipes
+
+## Full Program.cs Setup
+
+Complete example showing MVC + Mediator + Auth + EF Core registration:
+
+```csharp
+using TodoSample.AntiCorruptionLayer;
+using TodoSample.Api;
+using TodoSample.Api.Middleware;
+using TodoSample.Application;
+using Scalar.AspNetCore;
+using Trellis.Asp;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services
+    .AddPresentation(builder.Environment)   // MVC, versioning, OpenTelemetry, SLI, DevelopmentActorProvider
+    .AddApplication()                        // Mediator + TrellisBehaviors
+    .AddAntiCorruptionLayer(connectionString); // DbContext + repositories + ResourceAuthorization
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi().WithDocumentPerVersion();
+    app.MapScalarApiReference(...);
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.UseScalarValueValidation();             // Middleware for scalar value validation
+app.UseMiddleware<ErrorHandlingMiddleware>();
+app.MapControllers();
+app.MapHealthChecks("/health");
+
+app.Run();
+```
 
 ## Create a Custom Value Object (RequiredGuid ID)
 
