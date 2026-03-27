@@ -2174,7 +2174,7 @@ var result = await OrderId.TryCreate(request.OrderId)
     .BindAsync(id => _repository.GetByIdAsync(id, ct))
     .EnsureAsync(order => order.Status == OrderStatus.Draft, Error.Conflict("Order already submitted"))
     .BindAsync(order => order.Submit())
-    .TapAsync(order => _repository.SaveAsync(order, ct))
+    .BindAsync(order => _repository.SaveAsync(order, ct).MapAsync(_ => order))
     .TapAsync(order => _eventBus.PublishAsync(order.UncommittedEvents(), ct));
 
 // Recovery
@@ -2326,7 +2326,7 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
         await Order.TryCreate(command.CustomerId)
             .BindAsync(order => AddItemsAsync(order, command.Items, ct))
             .BindAsync(order => order.Submit())
-            .TapAsync(order => repo.SaveAsync(order, ct));
+            .BindAsync(order => repo.SaveAsync(order, ct).MapAsync(_ => order));
 }
 ```
 
