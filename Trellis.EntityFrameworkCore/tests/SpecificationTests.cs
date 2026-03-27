@@ -35,22 +35,25 @@ public class SpecificationTests : IAsyncLifetime
         _sqliteContext = new ScalarValueTestDbContext(sqliteOptions);
         await _sqliteContext.Database.EnsureCreatedAsync();
 
-        // SQL Server setup (skip if LocalDB not available)
-        try
+        // SQL Server setup (opt-in via environment variable — not available on GitHub Actions)
+        if (Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER") == "true")
         {
-            var sqlServerOptions = new DbContextOptionsBuilder<ScalarValueTestDbContext>()
-                .UseSqlServer(SqlServerConnectionString)
-                .AddTrellisInterceptors()
-                .Options;
+            try
+            {
+                var sqlServerOptions = new DbContextOptionsBuilder<ScalarValueTestDbContext>()
+                    .UseSqlServer(SqlServerConnectionString)
+                    .AddTrellisInterceptors()
+                    .Options;
 
-            _sqlServerContext = new ScalarValueTestDbContext(sqlServerOptions);
-            await _sqlServerContext.Database.EnsureDeletedAsync();
-            await _sqlServerContext.Database.EnsureCreatedAsync();
-            _sqlServerAvailable = true;
-        }
-        catch
-        {
-            _sqlServerAvailable = false;
+                _sqlServerContext = new ScalarValueTestDbContext(sqlServerOptions);
+                await _sqlServerContext.Database.EnsureDeletedAsync();
+                await _sqlServerContext.Database.EnsureCreatedAsync();
+                _sqlServerAvailable = true;
+            }
+            catch
+            {
+                _sqlServerAvailable = false;
+            }
         }
 
         // Seed data
