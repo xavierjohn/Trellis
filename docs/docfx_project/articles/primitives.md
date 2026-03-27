@@ -35,21 +35,21 @@ public partial class TodoId : RequiredGuid<TodoId> { }
 ### With length constraint
 
 ```csharp
-[StringLength(200)]
+[Trellis.StringLength(200)]
 public partial class Title : RequiredString<Title> { }
 ```
 
 ### With range constraint
 
 ```csharp
-[Range(1, 1000)]
+[Trellis.Range(1, 1000)]
 public partial class Quantity : RequiredInt<Quantity> { }
 ```
 
 ### With custom validation
 
 ```csharp
-[StringLength(50)]
+[Trellis.StringLength(50)]
 public partial class Tag : RequiredString<Tag>
 {
     static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
@@ -196,7 +196,7 @@ protected override void OnConfiguring(DbContextOptionsBuilder options)
 
 ```csharp
 // Your own EmailAddress with stricter validation
-[StringLength(100)]
+[Trellis.StringLength(100)]
 public partial class EmailAddress : RequiredString<EmailAddress>
 {
     static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
