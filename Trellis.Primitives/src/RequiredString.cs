@@ -292,17 +292,22 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     /// Returns whether the string value starts with the specified prefix.
     /// Enables natural LINQ queries like <c>c.Name.StartsWith("Al")</c> without accessing <c>.Value</c>.
     /// </summary>
-    public bool StartsWith(string value) => Value.StartsWith(value, StringComparison.Ordinal);
+    // Single-parameter overloads match what EF Core's ScalarValueExpressionRewriter
+    // targets on string — the rewriter maps Name.StartsWith(x) to ((string)Name).StartsWith(x).
+    // Using StringComparison.Ordinal would produce a two-parameter call that EF Core cannot translate.
+#pragma warning disable CA1310 // Specify StringComparison for correctness
+    public bool StartsWith(string value) => Value.StartsWith(value);
 
     /// <summary>
     /// Returns whether the string value contains the specified substring.
     /// Enables natural LINQ queries like <c>c.Name.Contains("li")</c> without accessing <c>.Value</c>.
     /// </summary>
-    public bool Contains(string value) => Value.Contains(value, StringComparison.Ordinal);
+    public bool Contains(string value) => Value.Contains(value);
 
     /// <summary>
     /// Returns whether the string value ends with the specified suffix.
     /// Enables natural LINQ queries like <c>c.Name.EndsWith("ce")</c> without accessing <c>.Value</c>.
     /// </summary>
-    public bool EndsWith(string value) => Value.EndsWith(value, StringComparison.Ordinal);
+    public bool EndsWith(string value) => Value.EndsWith(value);
+#pragma warning restore CA1310
 }

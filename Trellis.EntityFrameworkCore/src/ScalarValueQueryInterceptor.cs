@@ -4,16 +4,11 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 /// <summary>
-/// An EF Core query expression interceptor that automatically rewrites <c>.Value</c> property
-/// accesses on <see cref="ScalarValueObject{TSelf, T}"/> types in LINQ expression trees.
+/// An EF Core query expression interceptor that enables natural scalar value object
+/// syntax in LINQ queries — comparisons, string methods, and properties translate to SQL
+/// without requiring <c>.Value</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// When registered, this interceptor allows natural LINQ syntax with scalar value object
-/// properties in queries and specifications, using <c>.Value</c> to access the underlying primitive.
-/// Without this interceptor, EF Core cannot translate <c>.Value</c> because it doesn't understand
-/// the <c>ScalarValueObject</c> property navigation.
-/// </para>
 /// <para>
 /// Register via <c>optionsBuilder.AddTrellisInterceptors()</c> — this registers both
 /// the <see cref="MaybeQueryInterceptor"/> and this interceptor.
@@ -22,19 +17,22 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 /// <example>
 /// With this interceptor registered, these LINQ expressions work directly:
 /// <code>
-/// // Specifications using .Value on value object properties
-/// public override Expression&lt;Func&lt;Customer, bool&gt;&gt; ToExpression() =&gt;
-///     c =&gt; c.Name.Value.StartsWith("A");
+/// // Natural value object syntax — no .Value needed
+/// context.Customers.Where(c =&gt; c.Name == "Alice");
+/// context.Customers.Where(c =&gt; c.Name.StartsWith("Al"));
+/// context.Customers.Where(c =&gt; c.Name.Length &gt; 3);
+/// context.Customers.OrderBy(c =&gt; c.Name);
 ///
-/// // Inline LINQ with .Value
-/// context.Customers.Where(c =&gt; c.Name.Value == "Alice");
+/// // Specifications with domain types
+/// public override Expression&lt;Func&lt;TodoItem, bool&gt;&gt; ToExpression() =&gt;
+///     todo =&gt; todo.Status == TodoStatus.Active &amp;&amp; todo.DueDate &lt; _asOf;
 /// </code>
 /// </example>
 public sealed class ScalarValueQueryInterceptor : IQueryExpressionInterceptor
 {
     /// <summary>
-    /// Rewrites the query expression tree before compilation, stripping <c>.Value</c>
-    /// access on scalar value object properties.
+    /// Rewrites the query expression tree before compilation, converting scalar value object
+    /// expressions to forms that EF Core can translate to SQL.
     /// </summary>
     public Expression QueryCompilationStarting(
         Expression queryExpression,

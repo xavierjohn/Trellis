@@ -5,29 +5,32 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>
-/// An <see cref="ExpressionVisitor"/> that rewrites <c>.Value</c> property access on
-/// <see cref="ScalarValueObject{TSelf, T}"/> types in LINQ expression trees.
+/// An <see cref="ExpressionVisitor"/> that rewrites scalar value object expressions
+/// in LINQ so EF Core can translate them to SQL.
 /// </summary>
 /// <remarks>
 /// <para>
 /// EF Core maps scalar value objects via value converters (registered by <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/>),
-/// but the LINQ translator cannot navigate through the <c>.Value</c> property on <c>ScalarValueObject</c>.
-/// This visitor replaces <c>.Value</c> access with a <c>Convert</c> expression using the implicit operator,
-/// which EF Core translates via the registered value converter.
+/// but the LINQ translator cannot navigate through value object properties or methods directly.
+/// This visitor rewrites three patterns:
 /// </para>
+/// <list type="table">
+/// <listheader><term>Pattern</term><description>Rewrite</description></listheader>
+/// <item><term><c>.Value</c> access</term><description><c>entity.Name.Value</c> → <c>Convert(entity.Name, string)</c></description></item>
+/// <item><term>String methods</term><description><c>entity.Name.StartsWith("Al")</c> → <c>((string)entity.Name).StartsWith("Al")</c></description></item>
+/// <item><term>Provider-type properties</term><description><c>entity.Name.Length</c> → <c>((string)entity.Name).Length</c></description></item>
+/// </list>
 /// <para>
-/// Handles <c>.Value</c> access on any expression typed as a scalar value object, including:
-/// direct property access (<c>entity.Name.Value</c>), parameter expressions from projections
-/// (<c>Select(c =&gt; c.Name).Where(n =&gt; n.Value == "Alice")</c>), and method call results
-/// from other rewriters such as <see cref="MaybeExpressionRewriter"/> (<c>Maybe&lt;PhoneNumber&gt;.Value.Value</c>).
+/// Handles any expression typed as a scalar value object, including direct property access,
+/// parameter expressions from projections, and method call results from other rewriters.
 /// </para>
 /// </remarks>
 internal sealed class ScalarValueExpressionRewriter : ExpressionVisitor
 {
     /// <summary>
-    /// Rewrites an expression tree, replacing <c>.Value</c> access on scalar value object properties
-    /// with a <c>Convert</c> expression that uses the implicit operator to the provider type.
-    /// EF Core recognizes Convert expressions and translates them using the registered value converter.
+    /// Rewrites an expression tree, converting scalar value object expressions
+    /// (<c>.Value</c> access, string methods, and provider-type properties) to forms
+    /// that EF Core can translate via registered value converters.
     /// </summary>
     public static Expression Rewrite(Expression expression) =>
         new ScalarValueExpressionRewriter().Visit(expression);
