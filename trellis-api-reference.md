@@ -678,7 +678,7 @@ TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProvider
 // Trellis.Primitives — namespace Trellis
 public static class PrimitiveValueObjectTrace
 {
-    public static ActivitySource ActivitySource { get; }   // "Functional DDD PVO"
+    public static ActivitySource ActivitySource { get; }   // "Trellis.Primitives"
 }
 ```
 
@@ -1475,7 +1475,7 @@ public sealed class DevelopmentActorOptions
 
 ---
 
-# 7. Trellis.Http— HttpClient → Result Extensions
+# 7. Trellis.Http — HttpClient → Result Extensions
 
 **Namespace: `Trellis.Http`**
 
@@ -1525,7 +1525,7 @@ var result = await httpClient.GetAsync($"/api/orders/{id}")
 
 > **Import:** Add `using Trellis.Mediator;` for registration extensions (`AddTrellisBehaviors`, `AddResourceAuthorization`). Commands and queries use `Mediator` namespace (`ICommand<T>`, `IQuery<T>`) from the Mediator library. Authorization interfaces use `using Trellis.Authorization;`.
 
-CQRS pattern: define a command/query recordimplementing `ICommand<T>`/`IQuery<T>`, implement a handler, register with `AddTrellisBehaviors()`. The mediator dispatches through the pipeline behavior chain.
+CQRS pattern: define a command/query record implementing `ICommand<T>`/`IQuery<T>`, implement a handler, register with `AddTrellisBehaviors()`. The mediator dispatches through the pipeline behavior chain.
 
 ### Pipeline Order
 

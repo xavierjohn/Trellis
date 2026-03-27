@@ -450,6 +450,103 @@ public class ResultEdgeCaseTests
 
     #endregion
 
+    #region Result.Ensure / Result.EnsureAsync
+
+    [Fact]
+    public void Ensure_Bool_True_ReturnsSuccess()
+    {
+        var result = Result.Ensure(true, Error.Validation("Should not appear"));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Ensure_Bool_False_ReturnsFailureWithError()
+    {
+        var error = Error.Validation("Condition failed", "field");
+
+        var result = Result.Ensure(false, error);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(error);
+    }
+
+    [Fact]
+    public void Ensure_FuncBool_True_ReturnsSuccess()
+    {
+        var invoked = false;
+
+        var result = Result.Ensure(() => { invoked = true; return true; }, Error.Validation("fail"));
+
+        result.IsSuccess.Should().BeTrue();
+        invoked.Should().BeTrue("predicate should be invoked");
+    }
+
+    [Fact]
+    public void Ensure_FuncBool_False_ReturnsFailureWithError()
+    {
+        var error = Error.Forbidden("Not allowed");
+
+        var result = Result.Ensure(() => false, error);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(error);
+    }
+
+    [Fact]
+    public void Ensure_FuncBool_NullPredicate_ThrowsArgumentNullException()
+    {
+        var act = () => Result.Ensure((Func<bool>)null!, Error.Validation("fail"));
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task EnsureAsync_True_ReturnsSuccess()
+    {
+        var result = await Result.EnsureAsync(
+            async () => { await Task.Yield(); return true; },
+            Error.Validation("fail"));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task EnsureAsync_False_ReturnsFailureWithError()
+    {
+        var error = Error.Forbidden("Denied");
+
+        var result = await Result.EnsureAsync(
+            async () => { await Task.Yield(); return false; },
+            error);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(error);
+    }
+
+    [Fact]
+    public async Task EnsureAsync_NullPredicate_ThrowsArgumentNullException()
+    {
+        var act = () => Result.EnsureAsync((Func<Task<bool>>)null!, Error.Validation("fail"));
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task EnsureAsync_PredicateIsInvoked()
+    {
+        var invoked = false;
+
+        var result = await Result.EnsureAsync(
+            async () => { await Task.Yield(); invoked = true; return true; },
+            Error.Validation("fail"));
+
+        result.IsSuccess.Should().BeTrue();
+        invoked.Should().BeTrue("async predicate should be invoked");
+    }
+
+    #endregion
+
     #region Struct Value Type Edge Cases
 
     [Fact]

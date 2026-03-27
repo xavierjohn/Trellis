@@ -234,7 +234,7 @@ Enable Results tracing when you need to see the full pipeline as a distributed t
 ```csharp
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
-        .AddSource("Functional DDD ROP")
+        .AddSource("Trellis.Results")
         .AddOtlpExporter());
 ```
 
