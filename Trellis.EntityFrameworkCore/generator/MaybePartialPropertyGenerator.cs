@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Generator;
+﻿namespace Trellis.EntityFrameworkCore.Generator;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;

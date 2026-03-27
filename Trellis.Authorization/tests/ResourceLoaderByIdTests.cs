@@ -1,4 +1,4 @@
-namespace Trellis.Authorization.Tests;
+﻿namespace Trellis.Authorization.Tests;
 
 /// <summary>
 /// Tests for <see cref="ResourceLoaderById{TMessage, TResource, TId}"/>.

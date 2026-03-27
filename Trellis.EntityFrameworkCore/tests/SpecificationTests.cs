@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Tests;
+﻿namespace Trellis.EntityFrameworkCore.Tests;
 
 using System.Linq.Expressions;
 using Helpers;
