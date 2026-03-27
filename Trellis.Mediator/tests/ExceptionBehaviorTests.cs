@@ -25,7 +25,7 @@ public class ExceptionBehaviorTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<UnexpectedError>();
         result.Error.Detail.Should().NotContain("Something went wrong");
-        result.Error.Detail.Should().Contain("TestCommand");
+        result.Error.Detail.Should().Be("An unexpected error occurred while processing the request.");
     }
 
     [Fact]
