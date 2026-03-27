@@ -1717,7 +1717,7 @@ If a `Maybe<T>` property is not declared `partial`, the generator emits diagnost
 
 ### Maybe\<T\> Queryable Extensions
 
-> **Recommended approach:** Register `AddTrellisInterceptors()` in your DbContext options — this enables both the `MaybeQueryInterceptor` (for `Maybe<T>` properties) and the `ScalarValueQueryInterceptor` (for `.Value` access on scalar value objects). The helper methods below (`WhereNone`, `WhereHasValue`, etc.) are available as alternatives when the interceptor is not registered or for explicit control.
+> **Recommended approach:** Register `AddTrellisInterceptors()` in your DbContext options — this enables both the `MaybeQueryInterceptor` (for `Maybe<T>` properties) and the `ScalarValueQueryInterceptor` (for natural value object comparisons, string methods, and properties in LINQ). The helper methods below (`WhereNone`, `WhereHasValue`, etc.) are available as alternatives when the interceptor is not registered or for explicit control.
 
 Because `MaybeConvention` ignores the `Maybe<T>` CLR property, EF Core cannot translate direct LINQ references to it. Use these extension methods instead of raw `EF.Property` calls:
 
@@ -1789,7 +1789,7 @@ var overdue = await context.Orders
 
 ### AddTrellisInterceptors
 
-Registers the `MaybeQueryInterceptor` and `ScalarValueQueryInterceptor` as singletons, enabling natural LINQ syntax with `Maybe<T>` properties and `.Value` access on scalar value objects.
+Registers the `MaybeQueryInterceptor` and `ScalarValueQueryInterceptor` as singletons, enabling natural LINQ syntax with `Maybe<T>` properties and natural value object operations (comparisons, string methods, properties) without `.Value`.
 
 ```csharp
 // Generic overload
@@ -1806,7 +1806,7 @@ services.AddDbContext<AppDbContext>(options =>
 
 ### ScalarValueQueryInterceptor
 
-Automatically rewrites `.Value` property access on `ScalarValueObject<TSelf, T>` types in LINQ expression trees. Uses `Expression.Convert` with the existing `implicit operator T(ScalarValueObject<TSelf, T>)` so EF Core translates the expression via its registered value converter.
+Automatically rewrites scalar value object expressions in LINQ so EF Core can translate them. Handles `.Value` property access, string methods (`StartsWith`, `Contains`, `EndsWith`), properties (`Length`), and comparisons — converting them to the provider type via the existing `implicit operator T(ScalarValueObject<TSelf, T>)`.
 
 ```csharp
 // With interceptor registered, natural value object syntax works in LINQ:
