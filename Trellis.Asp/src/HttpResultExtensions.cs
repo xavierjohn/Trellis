@@ -18,7 +18,7 @@ using Trellis;
 /// Key features:
 /// <list type="bullet">
 /// <item>Automatic HTTP status code selection based on error type</item>
-/// <item>Problem Details (RFC 7807) formatting for errors</item>
+/// <item>Problem Details (RFC 9457) formatting for errors</item>
 /// <item>Validation error formatting with field-level details</item>
 /// <item>Unit result to 204 No Content conversion</item>
 /// <item>Clean, declarative endpoint definitions</item>
@@ -141,7 +141,7 @@ public static class HttpResultExtensions
     /// <param name="error">The domain error to convert.</param>
     /// <param name="options">Optional custom error-to-status-code mappings. When null, uses default mappings.</param>
     /// <returns>
-    /// An IResult with Problem Details (RFC 7807) response. The HTTP status code is resolved
+    /// An IResult with Problem Details (RFC 9457) response. The HTTP status code is resolved
     /// from <see cref="TrellisAspOptions"/> (configured via <c>AddTrellisAsp</c>). The default mappings are:
     /// <list type="table">
     ///     <listheader>
@@ -207,7 +207,7 @@ public static class HttpResultExtensions
     /// If <c>AddTrellisAsp</c> is not called, the default mappings shown above are used.
     /// </para>
     /// <para>
-    /// All responses use Problem Details format (RFC 7807) which provides a standard way to
+    /// All responses use Problem Details format (RFC 9457) which provides a standard way to
     /// communicate errors in HTTP APIs. The format includes:
     /// <list type="bullet">
     /// <item><c>type</c>: A URI reference identifying the problem type</item>

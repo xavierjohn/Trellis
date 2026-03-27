@@ -6,7 +6,9 @@ Trellis is designed so that both humans and AI can produce correct, maintainable
 
 ## The Problem with AI-Generated Enterprise Code
 
-Traditional C# enterprise code gives AI no guardrails:
+The hardest part of AI-generated code isn't generating it — it's reading it. Trellis makes AI output predictable. Every service follows the same 4-layer architecture, the same ROP patterns, the same value object conventions. A developer who knows Trellis can review any AI-generated service in minutes, regardless of which AI wrote it.
+
+Without structure, traditional C# enterprise code gives AI no guardrails:
 
 - **Nested if-statements** obscure business logic and make errors easy to miss
 - **Primitive obsession** (using `string` for email, `int` for order ID) lets bugs through that the compiler should catch

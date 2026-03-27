@@ -144,11 +144,4 @@ public static class EnsureExtensions
         return string.IsNullOrWhiteSpace(str) ? Result.Failure<string>(error) : Result.Success(str);
     }
 
-    /// <summary>
-    /// Returns a success result if the flag is true; otherwise returns a failure with the specified error.
-    /// </summary>
-    /// <param name="flag">The boolean flag to test.</param>
-    /// <param name="error">The error to return if the flag is false.</param>
-    /// <returns>A success result if flag is true; otherwise a failure with the specified error.</returns>
-    public static Result<Unit> Ensure(bool flag, Error error) => flag ? Result.Success() : Result.Failure(error);
 }

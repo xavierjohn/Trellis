@@ -85,7 +85,7 @@ public static class PrimitiveValueObjectTrace
     /// This name is used to identify traces from this library in observability platforms.
     /// Register this name when configuring OpenTelemetry tracing.
     /// </remarks>
-    internal static readonly string ActivitySourceName = "Functional DDD PVO";
+    internal static readonly string ActivitySourceName = "Trellis.Primitives";
 
     /// <summary>
     /// Gets the version used for primitive value object tracing metadata.

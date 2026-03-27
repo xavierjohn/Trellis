@@ -5,7 +5,7 @@ namespace Benchmark;
 using BenchmarkDotNet.Attributes;
 using SampleUserLibrary;
 using Trellis;
-using static Trellis.EnsureExtensions;
+using static Trellis.Result;
 
 /// <summary>
 /// Benchmark ROP vs If.

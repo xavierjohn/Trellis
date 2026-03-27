@@ -721,7 +721,7 @@ public Result<User> RegisterUser(string email, string firstName, string lastName
     return EmailAddress.TryCreate(email)
         .Combine(FirstName.TryCreate(firstName))
         .Combine(LastName.TryCreate(lastName))
-        .Combine(EnsureExtensions.Ensure(age >= 18, 
+        .Combine(Result.Ensure(age >= 18, 
                 Error.Validation("Must be 18 or older", "age")))
         .Bind((e, f, l) => User.Create(e, f, l, age));
 }

@@ -63,14 +63,14 @@ internal static class RopTrace
 
     /// <summary>
     /// Gets the name of the activity source used for ROP tracing.
-    /// Value: "Functional DDD ROP"
+    /// Value: "Trellis.Results"
     /// </summary>
     /// <remarks>
     /// This name is used to identify traces from this library in observability platforms.
     /// Register this name when configuring OpenTelemetry tracing using
     /// <see cref="ResultsTraceProviderBuilderExtensions.AddResultsInstrumentation"/>.
     /// </remarks>
-    internal static readonly string ActivitySourceName = "Functional DDD ROP";
+    internal static readonly string ActivitySourceName = "Trellis.Results";
 
     /// <summary>
     /// Gets the version of the ROP library.
