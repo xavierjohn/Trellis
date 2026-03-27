@@ -240,4 +240,64 @@ public class RequiredStringTests
               default(string),
               string.Empty
       };
+
+    #region StartsWith, Contains, EndsWith, Length
+
+    [Fact]
+    public void StartsWith_returns_true_when_value_starts_with_prefix()
+    {
+        var tracking = TrackingId.Create("ABC-12345");
+        tracking.StartsWith("ABC").Should().BeTrue();
+    }
+
+    [Fact]
+    public void StartsWith_returns_false_when_value_does_not_start_with_prefix()
+    {
+        var tracking = TrackingId.Create("ABC-12345");
+        tracking.StartsWith("XYZ").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Contains_returns_true_when_value_contains_substring()
+    {
+        var tracking = TrackingId.Create("ABC-12345");
+        tracking.Contains("-123").Should().BeTrue();
+    }
+
+    [Fact]
+    public void Contains_returns_false_when_value_does_not_contain_substring()
+    {
+        var tracking = TrackingId.Create("ABC-12345");
+        tracking.Contains("XYZ").Should().BeFalse();
+    }
+
+    [Fact]
+    public void EndsWith_returns_true_when_value_ends_with_suffix()
+    {
+        var tracking = TrackingId.Create("ABC-12345");
+        tracking.EndsWith("345").Should().BeTrue();
+    }
+
+    [Fact]
+    public void EndsWith_returns_false_when_value_does_not_end_with_suffix()
+    {
+        var tracking = TrackingId.Create("ABC-12345");
+        tracking.EndsWith("XYZ").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Length_returns_string_length()
+    {
+        var tracking = TrackingId.Create("ABC-12345");
+        tracking.Length.Should().Be(9);
+    }
+
+    [Fact]
+    public void Length_of_single_char_string()
+    {
+        var tracking = TrackingId.Create("X");
+        tracking.Length.Should().Be(1);
+    }
+
+    #endregion
 }

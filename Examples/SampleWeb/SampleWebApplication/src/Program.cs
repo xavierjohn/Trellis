@@ -1,6 +1,6 @@
-﻿using Trellis;
+﻿using Scalar.AspNetCore;
+using Trellis;
 using Trellis.Asp;
-using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 

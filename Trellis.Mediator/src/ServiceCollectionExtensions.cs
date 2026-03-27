@@ -171,50 +171,50 @@ public static class ServiceCollectionExtensions
         ];
 
         foreach (var assembly in assemblies)
-        foreach (var type in GetLoadableTypes(assembly))
-        {
-            if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
-                continue;
-
-            // Register IResourceLoader<,> implementations as scoped
-            foreach (var iface in type.GetInterfaces())
+            foreach (var type in GetLoadableTypes(assembly))
             {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderDef)
-                    services.AddScoped(iface, type);
+                if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                    continue;
+
+                // Register IResourceLoader<,> implementations as scoped
+                foreach (var iface in type.GetInterfaces())
+                {
+                    if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderDef)
+                        services.AddScoped(iface, type);
+                }
+
+                // Register ResourceAuthorizationBehavior for IAuthorizeResource<TResource> commands
+                var authIface = type.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == authorizeResourceDef);
+                if (authIface is null)
+                    continue;
+
+                var tResource = authIface.GetGenericArguments()[0];
+
+                // Find TResponse from ICommand<TResponse>, IQuery<TResponse>, or IRequest<TResponse>
+                var tResponse = type.GetInterfaces()
+                    .Where(i => i.IsGenericType)
+                    .Select(i => (iface: i, def: i.GetGenericTypeDefinition()))
+                    .Where(x => messageInterfaces.Contains(x.def))
+                    .Select(x => x.iface.GetGenericArguments()[0])
+                    .FirstOrDefault();
+
+                if (tResponse is null)
+                    continue;
+
+                // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>
+                if (!typeof(IResult).IsAssignableFrom(tResponse)
+                    || !typeof(IFailureFactory<>).MakeGenericType(tResponse).IsAssignableFrom(tResponse))
+                    continue;
+
+                // Register ResourceAuthorizationBehavior<TMessage, TResource, TResponse>
+                // as IPipelineBehavior<TMessage, TResponse>
+                var closedBehavior = behaviorDef.MakeGenericType(type, tResource, tResponse);
+                var closedPipeline = pipelineDef.MakeGenericType(type, tResponse);
+                InsertResourceAuthorizationBehavior(
+                    services,
+                    ServiceDescriptor.Scoped(closedPipeline, closedBehavior));
             }
-
-            // Register ResourceAuthorizationBehavior for IAuthorizeResource<TResource> commands
-            var authIface = type.GetInterfaces()
-                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == authorizeResourceDef);
-            if (authIface is null)
-                continue;
-
-            var tResource = authIface.GetGenericArguments()[0];
-
-            // Find TResponse from ICommand<TResponse>, IQuery<TResponse>, or IRequest<TResponse>
-            var tResponse = type.GetInterfaces()
-                .Where(i => i.IsGenericType)
-                .Select(i => (iface: i, def: i.GetGenericTypeDefinition()))
-                .Where(x => messageInterfaces.Contains(x.def))
-                .Select(x => x.iface.GetGenericArguments()[0])
-                .FirstOrDefault();
-
-            if (tResponse is null)
-                continue;
-
-            // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>
-            if (!typeof(IResult).IsAssignableFrom(tResponse)
-                || !typeof(IFailureFactory<>).MakeGenericType(tResponse).IsAssignableFrom(tResponse))
-                continue;
-
-            // Register ResourceAuthorizationBehavior<TMessage, TResource, TResponse>
-            // as IPipelineBehavior<TMessage, TResponse>
-            var closedBehavior = behaviorDef.MakeGenericType(type, tResource, tResponse);
-            var closedPipeline = pipelineDef.MakeGenericType(type, tResponse);
-            InsertResourceAuthorizationBehavior(
-                services,
-                ServiceDescriptor.Scoped(closedPipeline, closedBehavior));
-        }
 
         return services;
     }

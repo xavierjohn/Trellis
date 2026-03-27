@@ -1717,7 +1717,7 @@ If a `Maybe<T>` property is not declared `partial`, the generator emits diagnost
 
 ### Maybe\<T\> Queryable Extensions
 
-> **Recommended approach:** Register `AddTrellisInterceptors()` in your DbContext options — this enables the `MaybeQueryInterceptor` which rewrites expressions automatically. The helper methods below (`WhereNone`, `WhereHasValue`, etc.) are available as alternatives when the interceptor is not registered or for explicit control.
+> **Recommended approach:** Register `AddTrellisInterceptors()` in your DbContext options — this enables both the `MaybeQueryInterceptor` (for `Maybe<T>` properties) and the `ScalarValueQueryInterceptor` (for natural value object comparisons, string methods, and properties in LINQ). The helper methods below (`WhereNone`, `WhereHasValue`, etc.) are available as alternatives when the interceptor is not registered or for explicit control.
 
 Because `MaybeConvention` ignores the `Maybe<T>` CLR property, EF Core cannot translate direct LINQ references to it. Use these extension methods instead of raw `EF.Property` calls:
 
@@ -1789,7 +1789,7 @@ var overdue = await context.Orders
 
 ### AddTrellisInterceptors
 
-Registers the `MaybeQueryInterceptor` which rewrites LINQ expressions to support natural `Maybe<T>` property access in EF Core queries.
+Registers the `MaybeQueryInterceptor` and `ScalarValueQueryInterceptor` as singletons, enabling natural LINQ syntax with `Maybe<T>` properties and natural value object operations (comparisons, string methods, properties) without `.Value`.
 
 ```csharp
 // Generic overload
@@ -1802,6 +1802,35 @@ DbContextOptionsBuilder AddTrellisInterceptors(this DbContextOptionsBuilder opti
 services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString)
            .AddTrellisInterceptors());
+```
+
+### ScalarValueQueryInterceptor
+
+Automatically rewrites scalar value object expressions in LINQ so EF Core can translate them. Handles `.Value` property access, string methods (`StartsWith`, `Contains`, `EndsWith`), properties (`Length`), and comparisons — converting them to the provider type via the existing `implicit operator T(ScalarValueObject<TSelf, T>)`.
+
+```csharp
+// With interceptor registered, natural value object syntax works in LINQ:
+
+// RequiredString — comparisons and string methods without .Value
+context.Customers.Where(c => c.Name == "Alice")                       // → Name = 'Alice'
+context.Customers.Where(c => c.Name.StartsWith("Al"))                 // → Name LIKE 'Al%'
+context.Customers.Where(c => c.Name.Contains("lic"))                  // → Name LIKE '%lic%'
+context.Customers.Where(c => c.Name.Length > 3)                       // → LEN(Name) > 3
+context.Customers.OrderBy(c => c.Name)                                // → ORDER BY Name
+context.Customers.OrderByDescending(c => c.Name)                      // → ORDER BY Name DESC
+
+// All scalar value objects — comparisons without .Value
+context.Orders.Where(o => o.DueDate < cutoffDate)                     // → DueDate < @cutoffDate
+
+// Specifications with natural domain syntax:
+public override Expression<Func<TodoItem, bool>> ToExpression() =>
+    todo => todo.Status == TodoStatus.Active
+         && todo.DueDate < _asOf;                                      // no .Value needed
+
+// .Value still needed for:
+// - Select projections to primitives: .Select(c => c.Name.Value)
+// - Provider-type methods not exposed on the VO (e.g., string.Substring)
+// See the EF Core integration guide for the full LINQ support matrix.
 ```
 
 ### TrellisPersistenceMappingException
@@ -2145,7 +2174,7 @@ var result = await OrderId.TryCreate(request.OrderId)
     .BindAsync(id => _repository.GetByIdAsync(id, ct))
     .EnsureAsync(order => order.Status == OrderStatus.Draft, Error.Conflict("Order already submitted"))
     .BindAsync(order => order.Submit())
-    .TapAsync(order => _repository.SaveAsync(order, ct))
+    .BindAsync(order => _repository.SaveAsync(order, ct).MapAsync(_ => order))
     .TapAsync(order => _eventBus.PublishAsync(order.UncommittedEvents(), ct));
 
 // Recovery
@@ -2297,7 +2326,7 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
         await Order.TryCreate(command.CustomerId)
             .BindAsync(order => AddItemsAsync(order, command.Items, ct))
             .BindAsync(order => order.Submit())
-            .TapAsync(order => repo.SaveAsync(order, ct));
+            .BindAsync(order => repo.SaveAsync(order, ct).MapAsync(_ => order));
 }
 ```
 

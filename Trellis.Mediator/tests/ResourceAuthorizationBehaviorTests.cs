@@ -1,4 +1,4 @@
-namespace Trellis.Mediator.Tests;
+﻿namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;

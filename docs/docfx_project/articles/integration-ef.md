@@ -888,6 +888,49 @@ var debugView = context.ToMaybeMappingDebugString();
 > [!WARNING]
 > Do not use direct property references like `.Where(c => c.Phone.HasValue)` — EF Core cannot translate them. Use the Trellis query helpers instead.
 
+## Scalar Value Object LINQ Support
+
+When `AddTrellisInterceptors()` is registered, scalar value objects (`RequiredString<T>`, `RequiredGuid<T>`, `RequiredDateTime<T>`, etc.) can be used naturally in LINQ queries without accessing `.Value`. The `ScalarValueQueryInterceptor` rewrites expression trees to use the implicit conversion operator, which EF Core translates via the registered value converter.
+
+### LINQ Support Matrix
+
+| Scenario | Example | Types | `.Value` needed? |
+|----------|---------|-------|:---:|
+| Equality (VO vs primitive) | `c.Name == "Alice"` | `RequiredString<Name>` vs `string` | No |
+| Equality (VO vs VO) | `c.Name == someName` | `Name` vs `Name` | No |
+| Comparison (VO vs primitive) | `todo.DueDate < cutoff` | `RequiredDateTime<DueDate>` vs `DateTime` | No |
+| Comparison (VO vs VO) | `todo.DueDate < someDueDate` | `DueDate` vs `DueDate` | No |
+| StartsWith | `c.Name.StartsWith("Al")` | method on `RequiredString<Name>` | No |
+| Contains | `c.Name.Contains("lic")` | method on `RequiredString<Name>` | No |
+| EndsWith | `c.Name.EndsWith("ce")` | method on `RequiredString<Name>` | No |
+| Length | `c.Name.Length > 3` | property on `RequiredString<Name>` | No |
+| OrderBy | `OrderBy(c => c.Name)` | key selector returns `Name` | No |
+| Specification | `todo.DueDate < _asOf` | `DueDate` vs `DateTime` (implicit conversion) | No |
+| Select to primitive | `Select(c => c.Name.Value)` | projects `string` | **Yes** |
+| String.Substring | `c.Name.Value.Substring(0,3)` | method on `string` only | **Yes** |
+
+### Specification Example
+
+Specifications work naturally with value objects — no `.Value` needed:
+
+```csharp
+public class OverdueTodoSpecification : Specification<TodoItem>
+{
+    private readonly DateTime _asOf;
+    public OverdueTodoSpecification(DateTime asOf) => _asOf = asOf;
+
+    public override Expression<Func<TodoItem, bool>> ToExpression() =>
+        todo => todo.Status == TodoStatus.Active && todo.DueDate < _asOf;
+}
+
+// Compose with other specifications
+var overdueWithTag = new OverdueTodoSpecification(DateTime.UtcNow)
+    .And(new HasTagSpecification());
+
+// Use in EF Core queries
+var results = await context.TodoItems.Where(overdueWithTag).ToListAsync(ct);
+```
+
 ### Implementation Details
 
 Under the hood, the **source generator** emits a private `_camelCase` storage field and getter/setter for each `partial Maybe<T>` property:
