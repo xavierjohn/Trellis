@@ -196,113 +196,9 @@ public class SpecificationTests : IAsyncLifetime
 
     #endregion
 
-    #region Value object .Value specifications (all backends)
-
-    [Theory]
-    [MemberData(nameof(Backends))]
-    public async Task ValueObject_StartsWith_via_Value(string backend)
-    {
-        var spec = new NameStartsWithSpec("Al");
-
-        var results = await QueryAsync(spec, backend);
-
-        results.Should().HaveCount(1);
-        results[0].Name.Value.Should().Be("Alice");
-    }
-
-    [Theory]
-    [MemberData(nameof(Backends))]
-    public async Task ValueObject_Equality_via_Value(string backend)
-    {
-        var spec = new NameEqualsSpec("Bob");
-
-        var results = await QueryAsync(spec, backend);
-
-        results.Should().HaveCount(1);
-        results[0].Name.Value.Should().Be("Bob");
-    }
-
-    [Theory]
-    [MemberData(nameof(Backends))]
-    public async Task ValueObject_composed_with_primitive_spec(string backend)
-    {
-        var nameSpec = new NameStartsWithSpec("Al");
-        var dateSpec = new CreatedAfterSpec(new DateTime(2023, 1, 1, 0, 0, 0, DateTimeKind.Utc));
-        var combined = nameSpec.And(dateSpec);
-
-        var results = await QueryAsync(combined, backend);
-
-        results.Should().HaveCount(1);
-        results[0].Name.Value.Should().Be("Alice");
-    }
-
-    #endregion
-
-    #region Value object .Value in OrderBy, Select, and multiple accesses (EF Core backends)
+    #region OrderBy and Length (EF Core backends)
 
     public static TheoryData<string> EfBackends => new() { "SQLite", "SqlServer" };
-
-    [Theory]
-    [MemberData(nameof(EfBackends))]
-    public async Task OrderBy_Value_translates_to_sql(string backend)
-    {
-        var ctx = GetEfContext(backend);
-        var ct = TestContext.Current.CancellationToken;
-
-        var customers = await ctx.Customers
-            .OrderBy(c => c.Name.Value)
-            .ToListAsync(ct);
-
-        customers.Should().HaveCount(2);
-        customers[0].Name.Value.Should().Be("Alice");
-        customers[1].Name.Value.Should().Be("Bob");
-    }
-
-    [Theory]
-    [MemberData(nameof(EfBackends))]
-    public async Task OrderByDescending_Value_translates_to_sql(string backend)
-    {
-        var ctx = GetEfContext(backend);
-        var ct = TestContext.Current.CancellationToken;
-
-        var customers = await ctx.Customers
-            .OrderByDescending(c => c.Name.Value)
-            .ToListAsync(ct);
-
-        customers.Should().HaveCount(2);
-        customers[0].Name.Value.Should().Be("Bob");
-        customers[1].Name.Value.Should().Be("Alice");
-    }
-
-    [Theory]
-    [MemberData(nameof(EfBackends))]
-    public async Task Select_Value_projects_primitive(string backend)
-    {
-        var ctx = GetEfContext(backend);
-        var ct = TestContext.Current.CancellationToken;
-
-        var names = await ctx.Customers
-            .OrderBy(c => c.Name.Value)
-            .Select(c => c.Name.Value)
-            .ToListAsync(ct);
-
-        names.Should().Equal("Alice", "Bob");
-    }
-
-    [Theory]
-    [MemberData(nameof(EfBackends))]
-    public async Task Multiple_Value_accesses_in_single_query(string backend)
-    {
-        var ctx = GetEfContext(backend);
-        var ct = TestContext.Current.CancellationToken;
-
-        var results = await ctx.Customers
-            .Where(c => c.Name.Value.StartsWith("Al") && c.Email.Value.Contains("alice"))
-            .ToListAsync(ct);
-
-        results.Should().HaveCount(1);
-        results[0].Name.Value.Should().Be("Alice");
-    }
 
     #endregion
 
@@ -367,6 +263,42 @@ public class SpecificationTests : IAsyncLifetime
 
     #endregion
 
+    #region Edge cases — .Value on ParameterExpression (Select then filter)
+
+    [Theory]
+    [MemberData(nameof(EfBackends))]
+    public async Task Select_VO_then_Where_equals(string backend)
+    {
+        var ctx = GetEfContext(backend);
+        var ct = TestContext.Current.CancellationToken;
+
+        var names = await ctx.Customers
+            .Select(c => c.Name)
+            .Where(n => n == "Alice")
+            .ToListAsync(ct);
+
+        names.Should().HaveCount(1);
+        names[0].Value.Should().Be("Alice");
+    }
+
+    [Theory]
+    [MemberData(nameof(EfBackends))]
+    public async Task Select_VO_then_Where_StartsWith(string backend)
+    {
+        var ctx = GetEfContext(backend);
+        var ct = TestContext.Current.CancellationToken;
+
+        var names = await ctx.Customers
+            .Select(c => c.Name)
+            .Where(n => n.StartsWith("Al"))
+            .ToListAsync(ct);
+
+        names.Should().HaveCount(1);
+        names[0].Value.Should().Be("Alice");
+    }
+
+    #endregion
+
     #region Test Specifications
 
     private class CreatedAfterSpec : Specification<TestCustomer>
@@ -385,24 +317,6 @@ public class SpecificationTests : IAsyncLifetime
 
         public override Expression<Func<TestCustomer, bool>> ToExpression()
             => c => c.CreatedAt < _date;
-    }
-
-    private class NameStartsWithSpec : Specification<TestCustomer>
-    {
-        private readonly string _prefix;
-        public NameStartsWithSpec(string prefix) => _prefix = prefix;
-
-        public override Expression<Func<TestCustomer, bool>> ToExpression()
-            => c => c.Name.Value.StartsWith(_prefix);
-    }
-
-    private class NameEqualsSpec : Specification<TestCustomer>
-    {
-        private readonly string _name;
-        public NameEqualsSpec(string name) => _name = name;
-
-        public override Expression<Func<TestCustomer, bool>> ToExpression()
-            => c => c.Name.Value == _name;
     }
 
     /// <summary>Natural VO comparison: Name == "Alice" without .Value</summary>

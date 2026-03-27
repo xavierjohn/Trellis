@@ -40,31 +40,30 @@ internal sealed class ScalarValueExpressionRewriter : ExpressionVisitor
     /// </summary>
     protected override Expression VisitMember(MemberExpression node)
     {
-        // Pattern 1: entity.ScalarProperty.Value → Convert to provider type
+        // Pattern 1: expr.Value where expr is a scalar VO → Convert to provider type
+        // Handles: entity.Name.Value, parameterExpr.Value, EF.Property(...).Value
         if (node.Member.Name == "Value"
-            && node.Expression is MemberExpression innerMember
-            && innerMember.Member is PropertyInfo innerProp
-            && TrellisTypeScanner.FindValueObject(innerProp.PropertyType) is { Category: TrellisValueObjectCategory.Scalar } info)
+            && node.Expression is not null
+            && TrellisTypeScanner.FindValueObject(node.Expression.Type) is { Category: TrellisValueObjectCategory.Scalar } info)
         {
-            var visited = Visit(innerMember);
-            var conversionMethod = FindImplicitConversion(innerProp.PropertyType, info.ProviderType);
+            var visited = Visit(node.Expression);
+            var conversionMethod = FindImplicitConversion(node.Expression.Type, info.ProviderType);
             return conversionMethod is not null
                 ? Expression.Convert(visited, info.ProviderType, conversionMethod)
                 : Expression.Convert(visited, info.ProviderType);
         }
 
-        // Pattern 2: entity.ScalarProperty.Length (or other provider-type properties)
-        // → ((TProvider)entity.ScalarProperty).Length
-        if (node.Expression is MemberExpression voMember
-            && voMember.Member is PropertyInfo voProp
-            && TrellisTypeScanner.FindValueObject(voProp.PropertyType) is { Category: TrellisValueObjectCategory.Scalar } voInfo
-            && node.Member.Name != "Value")
+        // Pattern 2: expr.Length (or other provider-type properties) where expr is a scalar VO
+        // → ((TProvider)expr).Length
+        if (node.Expression is not null
+            && node.Member.Name != "Value"
+            && TrellisTypeScanner.FindValueObject(node.Expression.Type) is { Category: TrellisValueObjectCategory.Scalar } voInfo)
         {
             var providerProperty = voInfo.ProviderType.GetProperty(node.Member.Name);
             if (providerProperty is not null)
             {
-                var visited = Visit(voMember);
-                var conversionMethod = FindImplicitConversion(voProp.PropertyType, voInfo.ProviderType);
+                var visited = Visit(node.Expression);
+                var conversionMethod = FindImplicitConversion(node.Expression.Type, voInfo.ProviderType);
                 var converted = conversionMethod is not null
                     ? Expression.Convert(visited, voInfo.ProviderType, conversionMethod)
                     : Expression.Convert(visited, voInfo.ProviderType);
@@ -83,9 +82,9 @@ internal sealed class ScalarValueExpressionRewriter : ExpressionVisitor
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         // Instance methods on scalar value objects (e.g., Name.StartsWith, Name.Contains)
-        if (node.Object is MemberExpression memberExpr
-            && memberExpr.Member is PropertyInfo prop
-            && TrellisTypeScanner.FindValueObject(prop.PropertyType) is { Category: TrellisValueObjectCategory.Scalar } info)
+        // Handles: entity.Name.StartsWith(...), parameterExpr.StartsWith(...)
+        if (node.Object is not null
+            && TrellisTypeScanner.FindValueObject(node.Object.Type) is { Category: TrellisValueObjectCategory.Scalar } info)
         {
             // Find the equivalent method on the provider type (e.g., string.StartsWith)
             var providerMethod = info.ProviderType.GetMethod(
@@ -94,8 +93,8 @@ internal sealed class ScalarValueExpressionRewriter : ExpressionVisitor
 
             if (providerMethod is not null)
             {
-                var visited = Visit(memberExpr);
-                var conversionMethod = FindImplicitConversion(prop.PropertyType, info.ProviderType);
+                var visited = Visit(node.Object);
+                var conversionMethod = FindImplicitConversion(node.Object.Type, info.ProviderType);
                 var converted = conversionMethod is not null
                     ? Expression.Convert(visited, info.ProviderType, conversionMethod)
                     : Expression.Convert(visited, info.ProviderType);
