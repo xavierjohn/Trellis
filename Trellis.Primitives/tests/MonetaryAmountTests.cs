@@ -42,6 +42,23 @@ public class MonetaryAmountTests
     }
 
     [Fact]
+    public void TryCreate_NullableDecimal_Null_ReturnsFailure()
+    {
+        decimal? value = null;
+        var result = MonetaryAmount.TryCreate(value);
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TryCreate_NullableDecimal_ValidValue_ReturnsSuccess()
+    {
+        decimal? value = 15.50m;
+        var result = MonetaryAmount.TryCreate(value);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(15.50m);
+    }
+
+    [Fact]
     public void Create_ValidAmount_ReturnsInstance()
     {
         var amount = MonetaryAmount.Create(49.95m);
@@ -53,6 +70,13 @@ public class MonetaryAmountTests
     {
         var zero = MonetaryAmount.Zero;
         zero.Value.Should().Be(0m);
+    }
+
+    [Fact]
+    public void ExplicitCast_FromDecimal_ReturnsInstance()
+    {
+        var amount = (MonetaryAmount)29.99m;
+        amount.Value.Should().Be(29.99m);
     }
 
     #endregion
@@ -110,6 +134,44 @@ public class MonetaryAmountTests
         result.IsFailure.Should().BeTrue();
     }
 
+    [Fact]
+    public void Multiply_ByDecimal_ReturnsResult()
+    {
+        var amount = MonetaryAmount.Create(10.00m);
+
+        var result = amount.Multiply(1.5m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(15.00m);
+    }
+
+    [Fact]
+    public void Multiply_ByNegativeDecimal_ReturnsFailure()
+    {
+        var amount = MonetaryAmount.Create(10.00m);
+
+        var result = amount.Multiply(-0.5m);
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Add_NearMaxValue_ReturnsFailure()
+    {
+        var a = MonetaryAmount.Create(decimal.MaxValue - 1m);
+        var b = MonetaryAmount.Create(decimal.MaxValue - 1m);
+
+        var result = a.Add(b);
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Multiply_LargeValueOverflow_ReturnsFailure()
+    {
+        var amount = MonetaryAmount.Create(decimal.MaxValue - 1m);
+
+        var result = amount.Multiply(2);
+        result.IsFailure.Should().BeTrue();
+    }
+
     #endregion
 
     #region Equality and Comparison
@@ -152,6 +214,54 @@ public class MonetaryAmountTests
 
         amount.Should().NotBeNull();
         amount!.Value.Should().Be(29.99m);
+    }
+
+    #endregion
+
+    #region Parsing
+
+    [Fact]
+    public void Parse_ValidInput_ReturnsInstance()
+    {
+        var amount = MonetaryAmount.Parse("29.99", System.Globalization.CultureInfo.InvariantCulture);
+        amount.Value.Should().Be(29.99m);
+    }
+
+    [Fact]
+    public void Parse_NullInput_ThrowsFormatException()
+    {
+        var act = () => MonetaryAmount.Parse(null, System.Globalization.CultureInfo.InvariantCulture);
+        act.Should().Throw<FormatException>();
+    }
+
+    [Fact]
+    public void Parse_EmptyInput_ThrowsFormatException()
+    {
+        var act = () => MonetaryAmount.Parse(string.Empty, System.Globalization.CultureInfo.InvariantCulture);
+        act.Should().Throw<FormatException>();
+    }
+
+    [Fact]
+    public void Parse_NegativeInput_ThrowsFormatException()
+    {
+        var act = () => MonetaryAmount.Parse("-5.00", System.Globalization.CultureInfo.InvariantCulture);
+        act.Should().Throw<FormatException>();
+    }
+
+    [Fact]
+    public void TryParse_ValidInput_ReturnsTrue()
+    {
+        var success = MonetaryAmount.TryParse("42.50", System.Globalization.CultureInfo.InvariantCulture, out var result);
+        success.Should().BeTrue();
+        result!.Value.Should().Be(42.50m);
+    }
+
+    [Fact]
+    public void TryParse_InvalidInput_ReturnsFalse()
+    {
+        var success = MonetaryAmount.TryParse("not-a-number", System.Globalization.CultureInfo.InvariantCulture, out var result);
+        success.Should().BeFalse();
+        result.Should().BeNull();
     }
 
     #endregion

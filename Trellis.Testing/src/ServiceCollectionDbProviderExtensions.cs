@@ -41,6 +41,9 @@ public static class ServiceCollectionDbProviderExtensions
         Action<DbContextOptionsBuilder> configureOptions)
         where TContext : DbContext
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configureOptions);
+
         services.RemoveAll<TContext>();
         services.RemoveAll<DbContextOptions<TContext>>();
 

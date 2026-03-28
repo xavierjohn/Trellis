@@ -111,6 +111,27 @@ public class ServiceCollectionDbProviderExtensionsTests
         context.Items.Should().ContainSingle(e => e.Name == "test-item");
     }
 
+    [Fact]
+    public void ReplaceDbProvider_NullServices_ThrowsArgumentNullException()
+    {
+        IServiceCollection services = null!;
+
+        var act = () => services.ReplaceDbProvider<TestAppDbContext>(options =>
+            options.UseInMemoryDatabase("test"));
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void ReplaceDbProvider_NullConfigureOptions_ThrowsArgumentNullException()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.ReplaceDbProvider<TestAppDbContext>(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
     #endregion
 
     #region Helpers
