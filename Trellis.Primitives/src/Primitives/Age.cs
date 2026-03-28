@@ -41,6 +41,23 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IParsabl
     }
 
     /// <summary>
+    /// Attempts to create an <see cref="Age"/> from a string representation.
+    /// </summary>
+    public static Result<Age> TryCreate(string? value, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Age) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("age");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<Age>(Error.Validation("Age is required.", field));
+
+        if (!int.TryParse(value, out var parsed))
+            return Result.Failure<Age>(Error.Validation("Age must be a valid integer.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
+    /// <summary>
     /// Parses an age.
     /// </summary>
     public static Age Parse(string? s, IFormatProvider? provider)

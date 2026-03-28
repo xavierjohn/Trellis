@@ -465,7 +465,7 @@ internal class StreetName : ScalarValueObject<StreetName, string>, IScalarValue<
 {
     private StreetName(string value) : base(value) { }
 
-    public static Result<StreetName> TryCreate(string value, string? fieldName = null) =>
+    public static Result<StreetName> TryCreate(string? value, string? fieldName = null) =>
         string.IsNullOrWhiteSpace(value)
             ? Result.Failure<StreetName>(Error.Validation("Street is required", fieldName ?? "street"))
             : Result.Success(new StreetName(value));
@@ -475,7 +475,7 @@ internal class CityName : ScalarValueObject<CityName, string>, IScalarValue<City
 {
     private CityName(string value) : base(value) { }
 
-    public static Result<CityName> TryCreate(string value, string? fieldName = null) =>
+    public static Result<CityName> TryCreate(string? value, string? fieldName = null) =>
         string.IsNullOrWhiteSpace(value)
             ? Result.Failure<CityName>(Error.Validation("City is required", fieldName ?? "city"))
             : Result.Success(new CityName(value));

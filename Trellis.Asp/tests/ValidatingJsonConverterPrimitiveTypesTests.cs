@@ -30,6 +30,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private GuidVO(Guid value) : base(value) { }
         public static Result<GuidVO> TryCreate(Guid value, string? fieldName = null) =>
             value == Guid.Empty ? Error.Validation("Required", fieldName ?? "field") : new GuidVO(value);
+        public static Result<GuidVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // Int
@@ -38,6 +40,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private IntVO(int value) : base(value) { }
         public static Result<IntVO> TryCreate(int value, string? fieldName = null) =>
             value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new IntVO(value);
+        public static Result<IntVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // Long
@@ -46,6 +50,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private LongVO(long value) : base(value) { }
         public static Result<LongVO> TryCreate(long value, string? fieldName = null) =>
             value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new LongVO(value);
+        public static Result<LongVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // Double
@@ -54,6 +60,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private DoubleVO(double value) : base(value) { }
         public static Result<DoubleVO> TryCreate(double value, string? fieldName = null) =>
             double.IsNaN(value) ? Error.Validation("NaN", fieldName ?? "field") : new DoubleVO(value);
+        public static Result<DoubleVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // Float
@@ -62,6 +70,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private FloatVO(float value) : base(value) { }
         public static Result<FloatVO> TryCreate(float value, string? fieldName = null) =>
             float.IsNaN(value) ? Error.Validation("NaN", fieldName ?? "field") : new FloatVO(value);
+        public static Result<FloatVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // Decimal
@@ -70,6 +80,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private DecimalVO(decimal value) : base(value) { }
         public static Result<DecimalVO> TryCreate(decimal value, string? fieldName = null) =>
             value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new DecimalVO(value);
+        public static Result<DecimalVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // Bool
@@ -78,6 +90,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private BoolVO(bool value) : base(value) { }
         public static Result<BoolVO> TryCreate(bool value, string? fieldName = null) =>
             new BoolVO(value);
+        public static Result<BoolVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // DateTime
@@ -86,6 +100,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private DateTimeVO(DateTime value) : base(value) { }
         public static Result<DateTimeVO> TryCreate(DateTime value, string? fieldName = null) =>
             value == DateTime.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new DateTimeVO(value);
+        public static Result<DateTimeVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // DateTimeOffset
@@ -94,6 +110,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private DateTimeOffsetVO(DateTimeOffset value) : base(value) { }
         public static Result<DateTimeOffsetVO> TryCreate(DateTimeOffset value, string? fieldName = null) =>
             value == DateTimeOffset.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new DateTimeOffsetVO(value);
+        public static Result<DateTimeOffsetVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // DateOnly (.NET 6+)
@@ -102,6 +120,8 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private DateOnlyVO(DateOnly value) : base(value) { }
         public static Result<DateOnlyVO> TryCreate(DateOnly value, string? fieldName = null) =>
             value == DateOnly.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new DateOnlyVO(value);
+        public static Result<DateOnlyVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     // TimeOnly (.NET 6+)
@@ -110,55 +130,71 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         private TimeOnlyVO(TimeOnly value) : base(value) { }
         public static Result<TimeOnlyVO> TryCreate(TimeOnly value, string? fieldName = null) =>
             value == TimeOnly.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new TimeOnlyVO(value);
+        public static Result<TimeOnlyVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class TimeSpanVO : ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
+    public class TimeSpanVO: ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
     {
         private TimeSpanVO(TimeSpan value) : base(value) { }
         public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
             value < TimeSpan.Zero ? Error.Validation("Negative", fieldName ?? "field") : new TimeSpanVO(value);
+        public static Result<TimeSpanVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class ShortVO : ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
+    public class ShortVO: ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
     {
         private ShortVO(short value) : base(value) { }
         public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
             value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new ShortVO(value);
+        public static Result<ShortVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class ByteVO : ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
+    public class ByteVO: ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
     {
         private ByteVO(byte value) : base(value) { }
         public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
             new ByteVO(value);
+        public static Result<ByteVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class SByteVO : ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
+    public class SByteVO: ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
     {
         private SByteVO(sbyte value) : base(value) { }
         public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
             value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new SByteVO(value);
+        public static Result<SByteVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class UShortVO : ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
+    public class UShortVO: ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
     {
         private UShortVO(ushort value) : base(value) { }
         public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
             new UShortVO(value);
+        public static Result<UShortVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class UIntVO : ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
+    public class UIntVO: ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
     {
         private UIntVO(uint value) : base(value) { }
         public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
             new UIntVO(value);
+        public static Result<UIntVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class ULongVO : ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
+    public class ULongVO: ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
     {
         private ULongVO(ulong value) : base(value) { }
         public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>
             new ULongVO(value);
+        public static Result<ULongVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion

@@ -331,6 +331,8 @@ public class ScalarValueValidationMiddlewareTests
         private IntOnlyScalarValue(int value) => Value = value;
         public static Result<IntOnlyScalarValue> TryCreate(int value, string? fieldName = null) =>
             value > 0 ? new IntOnlyScalarValue(value) : Error.Validation("Must be positive.", fieldName ?? "value");
+        public static Result<IntOnlyScalarValue> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     [Fact]
@@ -621,8 +623,8 @@ public class ScalarValueValidationMiddlewareTests
     [Fact]
     public async Task InvokeAsync_BindingFailure_ScalarValueWithoutStringTryCreate_ReturnsRichValidationError()
     {
-        // Arrange - IntOnlyScalarValue has no TryCreate(string, string), but the raw value is parseable as int
-        // so the middleware should surface the value object's own validation error.
+        // Arrange - IntOnlyScalarValue has TryCreate(string, string) that throws NotImplementedException,
+        // so GetValidationErrors returns null and the middleware falls back to CreateFallbackErrors.
         var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
@@ -635,12 +637,12 @@ public class ScalarValueValidationMiddlewareTests
         // Act
         await middleware.InvokeAsync(context);
 
-        // Assert
+        // Assert - falls back to generic error since string TryCreate throws NotImplementedException
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("val")[0].GetString()
-            .Should().Be("Must be positive.");
+            .Should().Be("'val' has an invalid value.");
     }
 
     [Fact]

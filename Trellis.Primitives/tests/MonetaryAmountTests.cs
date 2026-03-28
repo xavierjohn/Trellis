@@ -276,4 +276,103 @@ public class MonetaryAmountTests
     }
 
     #endregion
+
+    #region TryCreate from string
+
+    [Theory]
+    [InlineData("0", 0)]
+    [InlineData("29.99", 29.99)]
+    [InlineData("1234.56", 1234.56)]
+    public void TryCreate_string_valid_returns_success(string input, decimal expected)
+    {
+        // Act
+        var result = MonetaryAmount.TryCreate(input);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(expected);
+    }
+
+    [Fact]
+    public void TryCreate_string_null_returns_failure()
+    {
+        // Act
+        var result = MonetaryAmount.TryCreate((string?)null);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_empty_returns_failure()
+    {
+        // Act
+        var result = MonetaryAmount.TryCreate("");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_whitespace_returns_failure()
+    {
+        // Act
+        var result = MonetaryAmount.TryCreate("  ");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("not-a-number")]
+    public void TryCreate_string_invalid_format_returns_failure(string input)
+    {
+        // Act
+        var result = MonetaryAmount.TryCreate(input);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_uses_custom_fieldName()
+    {
+        // Act
+        var result = MonetaryAmount.TryCreate((string?)null, "Price");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("price");
+    }
+
+    [Fact]
+    public void TryCreate_string_delegates_validation_to_decimal_overload()
+    {
+        // Act — valid parse but negative amount
+        var result = MonetaryAmount.TryCreate("-5.00");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].Details[0].Should().Be("Amount cannot be negative.");
+    }
+
+    [Fact]
+    public void TryCreate_string_uses_invariant_culture()
+    {
+        // Act — "1,234.56" should parse correctly with InvariantCulture
+        var result = MonetaryAmount.TryCreate("1234.56");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(1234.56m);
+    }
+
+    #endregion
 }

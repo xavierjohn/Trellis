@@ -62,6 +62,26 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         return TryCreate(value.Value, fieldName);
     }
 
+    /// <summary>
+    /// Attempts to create a <see cref="MonetaryAmount"/> from a string representation.
+    /// </summary>
+    /// <param name="value">The string value to parse (must be a valid decimal).</param>
+    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <returns>Success with the MonetaryAmount if valid; Failure with ValidationError otherwise.</returns>
+    public static Result<MonetaryAmount> TryCreate(string? value, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("amount");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<MonetaryAmount>(Error.Validation("Amount is required.", field));
+
+        if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return Result.Failure<MonetaryAmount>(Error.Validation("Amount must be a valid decimal.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
     /// <summary>Adds two monetary amounts.</summary>
     public Result<MonetaryAmount> Add(MonetaryAmount other)
     {

@@ -127,6 +127,29 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     }
 
     /// <summary>
+    /// Attempts to create a <see cref="Percentage"/> from a string representation.
+    /// Strips a trailing <c>%</c> suffix if present before parsing.
+    /// </summary>
+    /// <param name="value">The string value to parse (must be a valid decimal, optionally with a trailing %).</param>
+    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <returns>Success with the Percentage if valid; Failure with ValidationError otherwise.</returns>
+    public static Result<Percentage> TryCreate(string? value, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("percentage");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<Percentage>(Error.Validation("Percentage is required.", field));
+
+        var trimmed = value.TrimEnd('%', ' ');
+
+        if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return Result.Failure<Percentage>(Error.Validation("Percentage must be a valid decimal.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
+    /// <summary>
     /// Creates a <see cref="Percentage"/> from a fraction (0.0 to 1.0).
     /// </summary>
     /// <param name="fraction">The fraction value (0.0 to 1.0).</param>

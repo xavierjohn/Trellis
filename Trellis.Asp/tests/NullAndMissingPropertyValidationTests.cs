@@ -30,6 +30,8 @@ public class NullAndMissingPropertyValidationTests
             value > 0
                 ? new Quantity(value)
                 : Error.Validation("Quantity must be positive.", fieldName ?? "quantity");
+        public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class Price : ScalarValueObject<Price, decimal>, IScalarValue<Price, decimal>
@@ -39,6 +41,8 @@ public class NullAndMissingPropertyValidationTests
             value >= 0
                 ? new Price(value)
                 : Error.Validation("Price cannot be negative.", fieldName ?? "price");
+        public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class Counter : ScalarValueObject<Counter, long>, IScalarValue<Counter, long>
@@ -48,6 +52,8 @@ public class NullAndMissingPropertyValidationTests
             value >= 0
                 ? new Counter(value)
                 : Error.Validation("Counter cannot be negative.", fieldName ?? "counter");
+        public static Result<Counter> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class IsActive : ScalarValueObject<IsActive, bool>, IScalarValue<IsActive, bool>
@@ -55,6 +61,8 @@ public class NullAndMissingPropertyValidationTests
         private IsActive(bool value) : base(value) { }
         public static Result<IsActive> TryCreate(bool value, string? fieldName = null) =>
             new IsActive(value);
+        public static Result<IsActive> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class ProductName : ScalarValueObject<ProductName, string>, IScalarValue<ProductName, string>

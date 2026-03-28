@@ -57,6 +57,8 @@ public class ServiceCollectionExtensionsTests
             value is < 0 or > 150
                 ? Error.Validation("Age must be between 0 and 150.", fieldName ?? "age")
                 : new TestAge(value);
+        public static Result<TestAge> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion

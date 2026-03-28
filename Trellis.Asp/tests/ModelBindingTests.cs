@@ -28,9 +28,12 @@ public class ModelBindingTests
                 return Error.Validation("UserId cannot be empty.", field);
             return new UserId(value);
         }
+
+        public static Result<UserId> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class ProductCode : ScalarValueObject<ProductCode, string>, IScalarValue<ProductCode, string>
+    public class ProductCode: ScalarValueObject<ProductCode, string>, IScalarValue<ProductCode, string>
     {
         private ProductCode(string value) : base(value) { }
 
@@ -58,9 +61,12 @@ public class ModelBindingTests
                 return Error.Validation("Quantity cannot exceed 1000.", field);
             return new Quantity(value);
         }
+
+        public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
-    public class Price : ScalarValueObject<Price, decimal>, IScalarValue<Price, decimal>
+    public class Price: ScalarValueObject<Price, decimal>, IScalarValue<Price, decimal>
     {
         private Price(decimal value) : base(value) { }
 
@@ -71,6 +77,9 @@ public class ModelBindingTests
                 return Error.Validation("Price cannot be negative.", field);
             return new Price(value);
         }
+
+        public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion
