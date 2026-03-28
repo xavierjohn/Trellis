@@ -701,6 +701,61 @@ modelBuilder.Entity<Order>(b =>
 });
 ```
 
+## Composite ValueObjects as EF Core Owned Types
+
+When a composite `ValueObject` (like `ShippingAddress`) is persisted via EF Core's `OwnsOne`, it needs specific boilerplate for EF Core materialization:
+
+```csharp
+public sealed record ShippingAddress : ValueObject
+{
+    // EF Core requires a private parameterless constructor for materialization
+    private ShippingAddress() { }
+
+    // Properties must use 'private set' (not 'get;' only) and '= null!' for reference types
+    public Street Street { get; private set; } = null!;
+    public City City { get; private set; } = null!;
+    public State State { get; private set; } = null!;
+    public PostalCode PostalCode { get; private set; } = null!;
+    public Country Country { get; private set; } = null!;
+
+    // Public factory — the only way to create instances
+    public static Result<ShippingAddress> TryCreate(
+        Street street, City city, State state, PostalCode postalCode, Country country) =>
+        new ShippingAddress
+        {
+            Street = street, City = city, State = state,
+            PostalCode = postalCode, Country = country
+        };
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return Street;
+        yield return City;
+        yield return State;
+        yield return PostalCode;
+        yield return Country;
+    }
+}
+```
+
+**Rules:**
+- Always add `private ShippingAddress() { }` — EF Core cannot materialize without it
+- Use `{ get; private set; }` not `{ get; }` — EF Core sets properties via reflection
+- Add `= null!` to all reference type properties — suppresses nullable warning for the private constructor path
+- Value type properties (e.g., `int`, `decimal`, `DateTime`) do not need `= null!`
+
+**Entity configuration:**
+```csharp
+// In IEntityTypeConfiguration<Customer>
+builder.OwnsOne(c => c.ShippingAddress);
+```
+
+**Nested OwnsOne with OwnsMany:** When two `OwnsOne` navigations share the same child type that has `OwnsMany` collections, EF Core defaults to the same table name. Use explicit `ToTable()`:
+```csharp
+builder.OwnsOne(s => s.Inning1, b => b.OwnsMany(i => i.BattingEntries).ToTable("Inning1BattingEntries"));
+builder.OwnsOne(s => s.Inning2, b => b.OwnsMany(i => i.BattingEntries).ToTable("Inning2BattingEntries"));
+```
+
 ## Known Namespace Collisions
 
 ### `Trellis.Unit` vs `Mediator.Unit`
