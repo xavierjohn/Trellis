@@ -51,7 +51,7 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IParsabl
         if (string.IsNullOrWhiteSpace(value))
             return Result.Failure<Age>(Error.Validation("Age is required.", field));
 
-        if (!int.TryParse(value, out var parsed))
+        if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
             return Result.Failure<Age>(Error.Validation("Age must be a valid integer.", field));
 
         return TryCreate(parsed, fieldName);

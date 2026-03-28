@@ -780,3 +780,4 @@ Before committing any changes:
 
 1. **All tests pass** — `dotnet test` from the repository root must report zero failures.
 2. **Code review by GPT-5.4** — Use a code-review agent with `model: gpt-5.4` to review all changed files before committing. Address any issues it flags as bugs, security vulnerabilities, or logic errors.
+3. **User review** — Present a summary of changes to the user and wait for explicit approval before committing.
