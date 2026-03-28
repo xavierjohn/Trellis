@@ -170,6 +170,21 @@ var client = factory.CreateClientWithActor("user-1", "Orders.Create", "Orders.Re
 
 ---
 
+## ReplaceDbProvider
+
+Cleanly swaps the EF Core database provider in `WebApplicationFactory` tests. Removes all EF Core internal services for the context (including `IDbContextOptionsConfiguration<TContext>` in EF Core 10) and re-registers with the new provider.
+
+```csharp
+// In TestWebApplicationFactoryFixture.ConfigureWebHost
+builder.ConfigureServices(services =>
+    services.ReplaceDbProvider<AppDbContext>(options =>
+        options.UseSqlite(_connection).AddTrellisInterceptors()));
+```
+
+> **Limitation:** Always re-registers via `AddDbContext<TContext>`. If the application uses `AddDbContextFactory` or `AddPooledDbContextFactory`, swap providers manually instead of using this helper.
+
+---
+
 ## Test Patterns
 
 ### Testing Result<T> with TRLS003 Analyzer
