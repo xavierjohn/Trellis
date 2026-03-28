@@ -321,8 +321,12 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// Non-generic <see cref="IComparable"/> implementation. Delegates to <see cref="CompareTo(ValueObject?)"/>.
     /// Enables value objects to be used in <see cref="ValueObject.GetEqualityComponents"/> of composite value objects.
     /// </summary>
-    int IComparable.CompareTo(object? obj) =>
-        obj is ValueObject other ? CompareTo(other) : throw new ArgumentException($"Cannot compare {GetType()} to {obj?.GetType()}");
+    int IComparable.CompareTo(object? obj) => obj switch
+    {
+        null => 1,
+        ValueObject other => CompareTo(other),
+        _ => throw new ArgumentException($"Cannot compare {GetType()} to {obj.GetType()}")
+    };
 
     private static int CompareComponents(object? object1, object? object2)
     {

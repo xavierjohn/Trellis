@@ -392,6 +392,30 @@ public class ValueObjectTests
     }
 
     #endregion
+
+    #region IComparable null handling
+
+    [Fact]
+    public void IComparable_CompareTo_Null_Returns_Positive()
+    {
+        var addr = new CompositeAddress(StreetName.Create("123 Main St"), CityName.Create("Springfield"));
+        var comparable = (IComparable)addr;
+
+        // Per .NET convention, a non-null instance is greater than null
+        comparable.CompareTo(null).Should().BePositive();
+    }
+
+    [Fact]
+    public void IComparable_CompareTo_WrongType_Throws()
+    {
+        var addr = new CompositeAddress(StreetName.Create("123 Main St"), CityName.Create("Springfield"));
+        var comparable = (IComparable)addr;
+
+        var act = () => comparable.CompareTo("not a ValueObject");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    #endregion
 }
 
 /// <summary>
