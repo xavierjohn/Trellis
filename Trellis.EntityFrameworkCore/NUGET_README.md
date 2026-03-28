@@ -46,6 +46,8 @@ public class AppDbContext : DbContext
 No `OwnsOne` calls needed — just declare `Money` properties on your entities and they work.
 This also applies when `Money` is declared on owned entity types, including items inside `OwnsMany` collections.
 
+`Maybe<Money>` is also supported — it auto-configures as an optional owned type with nullable Amount/Currency columns, no `OwnsOne` needed.
+
 | Property Name | Amount Column | Currency Column | Amount Type | Currency Type |
 |---------------|---------------|-----------------|-------------|---------------|
 | `Price` | `Price` | `PriceCurrency` | `decimal(18,3)` | `nvarchar(3)` |
@@ -65,7 +67,7 @@ public partial class Customer
 }
 ```
 
-No `OnModelCreating` configuration needed. Querying uses dedicated extensions:
+No `OnModelCreating` configuration needed. When `T` is a composite owned type (e.g., `Money`), it creates an optional ownership navigation instead of a scalar column. Querying uses dedicated extensions:
 
 ```csharp
 var withoutPhone = await context.Customers.WhereNone(c => c.Phone).ToListAsync(ct);

@@ -64,6 +64,16 @@ public static class MaybeUpdateExtensions
         where TInner : notnull
     {
         var descriptor = MaybePropertyResolver.Resolve(propertySelector);
+
+        // Maybe<T> where T is a composite owned type (e.g., Money) cannot be updated via
+        // ExecuteUpdate because the backing field is an owned navigation, not a scalar property.
+        // Use tracked entity updates (load, modify, SaveChanges) instead.
+        if (IsCompositeValueObject(descriptor.InnerType))
+            throw new InvalidOperationException(
+                $"Cannot use ExecuteUpdate on Maybe<{descriptor.InnerType.Name}> property '{descriptor.PropertyName}'. " +
+                $"{descriptor.InnerType.Name} is a composite owned type and is mapped as an ownership navigation, not a scalar column. " +
+                "Use tracked entity updates (load the entity, set the property, call SaveChangesAsync) instead.");
+
         var parameter = propertySelector.Parameters[0];
 
         // When setting a non-null value for a value type, use the inner type so the
@@ -113,6 +123,16 @@ public static class MaybeUpdateExtensions
 
     private static readonly MethodInfo s_efPropertyMethodInfo =
         typeof(EF).GetMethod(nameof(EF.Property))!;
+
+    private static readonly Type s_scalarValueOpenGeneric = typeof(IScalarValue<,>);
+
+    /// <summary>
+    /// Returns true if the type is a composite ValueObject (e.g., Money) — inherits from
+    /// ValueObject but does not implement IScalarValue&lt;,&gt;.
+    /// </summary>
+    private static bool IsCompositeValueObject(Type type) =>
+        typeof(ValueObject).IsAssignableFrom(type)
+        && !type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == s_scalarValueOpenGeneric);
 
     private static class SetPropertyMethodCache<TEntity> where TEntity : class
     {

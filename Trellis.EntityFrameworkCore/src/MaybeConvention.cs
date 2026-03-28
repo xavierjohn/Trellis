@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Trellis.Primitives;
 
 /// <summary>
 /// Convention that automatically maps <see cref="Maybe{T}"/> properties by discovering their
@@ -30,6 +31,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 /// <item>Sets the column name to the original property name (e.g., <c>Phone</c> instead of <c>_phone</c>)</item>
 /// </list>
 /// <para>
+/// When <c>T</c> is a composite owned type (e.g., <see cref="Money"/>), the convention creates
+/// an optional ownership navigation via the backing field instead of a scalar column.
+/// All columns in the owned type are marked nullable, and column names use the original
+/// property name as the prefix (matching <see cref="MoneyConvention"/> naming).
+/// </para>
+/// <para>
 /// User code with the source generator:
 /// </para>
 /// <code>
@@ -37,6 +44,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 /// {
 ///     public CustomerId Id { get; set; } = null!;
 ///     public partial Maybe&lt;PhoneNumber&gt; Phone { get; set; }
+///     public partial Maybe&lt;Money&gt; Discount { get; set; }
 /// }
 /// </code>
 /// <para>
@@ -46,6 +54,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 /// </remarks>
 internal sealed class MaybeConvention : IModelFinalizingConvention
 {
+    private static readonly Type s_moneyType = typeof(Money);
+
     /// <summary>
     /// After the model is built, discovers all <see cref="Maybe{T}"/> CLR properties on entity types
     /// and configures their generated storage members as nullable database columns.
@@ -70,6 +80,13 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
                         $"Expected generated storage member '{maybeProperty.StorageMemberName}' was not found. " +
                         "Declare the property as partial so the Trellis.EntityFrameworkCore.Generator can emit the storage member, or configure the storage-member property explicitly before model finalization.");
 
+                // Owned types (e.g., Money) need ownership navigations, not scalar columns.
+                if (modelBuilder.Metadata.IsOwned(maybeProperty.InnerType))
+                {
+                    ConfigureOwnedMaybe(entityType, maybeProperty, storageMember);
+                    continue;
+                }
+
                 // Always ignore the Maybe<T> CLR property — EF Core cannot map structs as nullable
                 entityType.Builder.Ignore(maybeProperty.PropertyName);
 
@@ -90,4 +107,34 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
             }
         }
     }
+
+    /// <summary>
+    /// Configures a <c>Maybe&lt;T&gt;</c> property where <c>T</c> is an owned type.
+    /// Creates an optional ownership navigation via the source-generated backing field.
+    /// </summary>
+    private static void ConfigureOwnedMaybe(
+        IConventionEntityType entityType,
+        MaybePropertyDescriptor maybeProperty,
+        FieldInfo storageMember)
+    {
+        // Ignore the Maybe<T> CLR property — EF Core cannot navigate through a struct
+        entityType.Builder.Ignore(maybeProperty.PropertyName);
+
+        // Create ownership navigation via the backing field (e.g., Money? _monetaryFinePaid).
+        // Column naming and nullable marking are handled by MoneyConvention (registered after
+        // MaybeConvention) using the PropertyName annotation we store here.
+        var fkBuilder = entityType.Builder.HasOwnership(maybeProperty.InnerType, storageMember);
+        if (fkBuilder is null)
+            return;
+
+        // Store the original property name so MoneyConvention can use it for column naming
+        var navigation = entityType.FindNavigation(storageMember.Name);
+        navigation?.Builder.HasAnnotation(MaybeOwnedPropertyNameAnnotation, maybeProperty.PropertyName);
+    }
+
+    /// <summary>
+    /// Annotation key used to pass the original property name from <see cref="MaybeConvention"/>
+    /// to <see cref="MoneyConvention"/> for correct column naming of <c>Maybe&lt;Money&gt;</c> properties.
+    /// </summary>
+    internal const string MaybeOwnedPropertyNameAnnotation = "Trellis:MaybeOwnedPropertyName";
 }

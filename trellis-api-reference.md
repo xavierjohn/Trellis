@@ -1685,6 +1685,8 @@ configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 
 Explicit `OwnsOne` configuration takes precedence over the convention.
 
+`Maybe<Money>` properties are also supported — `MaybeConvention` creates an optional ownership navigation with nullable Amount/Currency columns. No manual `OwnsOne` needed.
+
 ### Maybe\<T\> Property Mapping
 
 `Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. Use C# 13 `partial` properties with the `Trellis.EntityFrameworkCore.Generator` source generator:
@@ -1707,7 +1709,7 @@ modelBuilder.Entity<Customer>(b =>
 });
 ```
 
-The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name.
+The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name. When `T` is a composite owned type (e.g., `Money`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column.
 
 Backing field naming: `Phone` → `_phone`, `SubmittedAt` → `_submittedAt`, `AlternateEmail` → `_alternateEmail`.
 
@@ -1899,6 +1901,9 @@ UpdateSettersBuilder<TEntity> SetMaybeValue<TEntity, TInner>(
 UpdateSettersBuilder<TEntity> SetMaybeNone<TEntity, TInner>(
     this UpdateSettersBuilder<TEntity> updateSettersBuilder,
     Expression<Func<TEntity, Maybe<TInner>>> propertySelector)
+
+// Note: SetMaybeValue/SetMaybeNone throw InvalidOperationException for composite
+// owned types like Money. Use tracked entity updates (load, modify, SaveChangesAsync) instead.
 
 // Diagnostics
 IReadOnlyList<MaybePropertyMapping> GetMaybePropertyMappings(this IModel model)

@@ -28,19 +28,54 @@ public static class MaybeModelExtensions
             foreach (var maybeProperty in MaybePropertyResolver.GetMaybeProperties(entityType.ClrType))
             {
                 var mappedProperty = entityType.FindProperty(maybeProperty.StorageMemberName);
-                var providerClrType = mappedProperty?.GetTypeMapping().Converter?.ProviderClrType;
 
-                mappings.Add(new MaybePropertyMapping(
-                    entityType.Name,
-                    entityType.ClrType,
-                    maybeProperty.PropertyName,
-                    maybeProperty.StorageMemberName,
-                    maybeProperty.InnerType,
-                    maybeProperty.StoreType,
-                    mappedProperty is not null,
-                    mappedProperty?.IsNullable ?? false,
-                    mappedProperty?.GetColumnName(),
-                    providerClrType));
+                if (mappedProperty is not null)
+                {
+                    // Scalar Maybe<T> — mapped as a nullable backing field column
+                    var providerClrType = mappedProperty.GetTypeMapping().Converter?.ProviderClrType;
+                    mappings.Add(new MaybePropertyMapping(
+                        entityType.Name,
+                        entityType.ClrType,
+                        maybeProperty.PropertyName,
+                        maybeProperty.StorageMemberName,
+                        maybeProperty.InnerType,
+                        maybeProperty.StoreType,
+                        IsMapped: true,
+                        mappedProperty.IsNullable,
+                        mappedProperty.GetColumnName(),
+                        providerClrType));
+                }
+                else
+                {
+                    // Owned Maybe<T> (e.g., Maybe<Money>) — mapped as an optional owned navigation.
+                    // Read actual metadata from the owned entity type's properties.
+                    var navigation = entityType.FindNavigation(maybeProperty.StorageMemberName);
+                    var isOwnedMapping = navigation?.TargetEntityType.IsOwned() == true;
+
+                    string? columnName = null;
+                    if (isOwnedMapping)
+                    {
+                        // Use the first owned property's column name as the representative column
+                        var ownedProps = navigation!.TargetEntityType.GetDeclaredProperties()
+                            .Where(p => !p.IsShadowProperty())
+                            .ToList();
+                        if (ownedProps.Count > 0)
+                            columnName = ownedProps[0].GetColumnName();
+                    }
+
+                    // Maybe<T> is always optional by definition — the owned instance can be absent
+                    mappings.Add(new MaybePropertyMapping(
+                        entityType.Name,
+                        entityType.ClrType,
+                        maybeProperty.PropertyName,
+                        maybeProperty.StorageMemberName,
+                        maybeProperty.InnerType,
+                        maybeProperty.StoreType,
+                        IsMapped: isOwnedMapping,
+                        IsNullable: isOwnedMapping,
+                        columnName,
+                        ProviderClrType: null));
+                }
             }
         }
 

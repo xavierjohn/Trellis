@@ -633,10 +633,28 @@ var matches = await context.Customers.WhereEquals(c => c.Phone, phone).ToListAsy
 
 These methods rewrite the expression tree to target the backing field via `EF.Property<T?>`, so EF Core can translate the query to SQL.
 
+### Maybe\<T\> with Composite Owned Types
+
+`partial Maybe<Money>` is also supported. The conventions automatically configure it as an optional owned type — no `OwnsOne` configuration needed:
+
+```csharp
+public partial class Penalty : Aggregate<PenaltyId>
+{
+    public Money Fine { get; set; } = null!;              // required Money (2 NOT NULL columns)
+    public partial Maybe<Money> FinePaid { get; set; }    // optional Money (2 nullable columns)
+}
+```
+
+Column naming follows `MoneyConvention`: `FinePaid` (amount) and `FinePaidCurrency`.
+
+> **Note:** `ExecuteUpdate` helpers (`SetMaybeValue`/`SetMaybeNone`) do not support `Maybe<Money>`. Use tracked entity updates (load, modify, `SaveChangesAsync`) instead.
+
 ## Money with EF Core
 
 `Money` properties are automatically mapped as owned types by `ApplyTrellisConventions` — no `OwnsOne` configuration needed.
 This includes `Money` properties declared on owned entity types, including items inside `OwnsMany` collections.
+
+For optional Money properties, use `partial Maybe<Money>` — see the Maybe\<T\> section above.
 
 ### How It Works
 
@@ -698,3 +716,10 @@ using Unit = Trellis.Unit;
 ```
 
 The parameterless `Result.Success()` is preferred — it avoids the type name entirely.
+
+## Pre-Submission Checklist
+
+Before committing any changes:
+
+1. **All tests pass** — `dotnet test` from the repository root must report zero failures.
+2. **Code review by GPT-5.4** — Use a code-review agent with `model: gpt-5.4` to review all changed files before committing. Address any issues it flags as bugs, security vulnerabilities, or logic errors.
