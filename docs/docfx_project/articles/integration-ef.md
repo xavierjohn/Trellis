@@ -826,6 +826,19 @@ modelBuilder.Entity<Order>(b =>
 > [!NOTE]
 > Multiple `Money` properties on the same entity work automatically — each gets its own pair of columns.
 
+### MonetaryAmount (Single-Currency Alternative)
+
+If your system uses one currency everywhere, use `MonetaryAmount` instead of `Money`. It is a scalar value object (`ScalarValueObject<MonetaryAmount, decimal>`) so it maps to a **single `decimal` column** automatically via `ApplyTrellisConventions` — the same convention that handles all `IScalarValue` types. No owned-type configuration needed.
+
+```csharp
+public class Invoice
+{
+    public InvoiceId Id { get; set; } = null!;
+    public MonetaryAmount Total { get; set; } = null!;     // 1 decimal column: Total
+    public partial Maybe<MonetaryAmount> Discount { get; set; }  // 1 nullable column: Discount
+}
+```
+
 ### Optional Money with Maybe\<Money\>
 
 For optional Money properties, use `partial Maybe<Money>`. The conventions auto-configure it as an optional owned type — no `OwnsOne` needed:

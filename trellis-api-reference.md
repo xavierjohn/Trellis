@@ -1138,7 +1138,27 @@ All have `TryCreate` → `Result<T>` and `Create` → `T` (throws). All implemen
 | `LanguageCode` | `string` | 2 letters, ISO 639-1, lowercase | — |
 | `Age` | `int` | 0–150 inclusive | — |
 | `Percentage` | `decimal` | 0–100 inclusive | `Zero`, `Full`, `AsFraction()`, `Of(decimal)`, `FromFraction(decimal, fieldName?)`, `TryCreate(decimal?)` |
+| `MonetaryAmount` | `decimal` | Non-negative, rounds to 2 dp | `Zero`, `Add`, `Subtract`, `Multiply(int)`, `Multiply(decimal)` |
 | `Money` | multi-value | Amount ≥ 0, valid currency code | See below |
+
+### MonetaryAmount (extends ScalarValueObject)
+
+Scalar value object for single-currency systems where currency is a system-wide policy, not per-row data. Wraps a non-negative `decimal` rounded to 2 decimal places. JSON: plain number (e.g. `99.99`). EF Core: maps to 1 `decimal` column (via `ApplyTrellisConventions`).
+
+```csharp
+// Implements: ScalarValueObject<MonetaryAmount, decimal>, IScalarValue<MonetaryAmount, decimal>, IParsable<MonetaryAmount>
+
+static Result<MonetaryAmount> TryCreate(decimal value)
+static Result<MonetaryAmount> TryCreate(decimal? value)
+static MonetaryAmount Create(decimal value)
+static MonetaryAmount Zero { get; }
+
+// Arithmetic (returns Result — handles overflow)
+Result<MonetaryAmount> Add(MonetaryAmount other)
+Result<MonetaryAmount> Subtract(MonetaryAmount other)
+Result<MonetaryAmount> Multiply(int quantity)
+Result<MonetaryAmount> Multiply(decimal multiplier)
+```
 
 ### Money (extends ValueObject, NOT ScalarValueObject)
 
@@ -1672,6 +1692,7 @@ IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 // Auto-registers converters for all IScalarValue and RequiredEnum types
 // Auto-maps Money properties as owned types (Amount + Currency columns)
+// MonetaryAmount maps to a single decimal column (scalar value object convention)
 ```
 
 ### Money Property Convention

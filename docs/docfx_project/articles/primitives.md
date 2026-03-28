@@ -130,6 +130,7 @@ These types live in the `Trellis.Primitives` namespace and are ready to use out 
 | `LanguageCode` | `string` | ISO 639-1 |
 | `Age` | `int` | 0–199 |
 | `Percentage` | `decimal` | 0–100; `FromFraction()`, `AsFraction()`, `Of()` |
+| `MonetaryAmount` | `decimal` | Non-negative, 2 dp; `Add`, `Subtract`, `Multiply` — single-currency alternative to `Money` |
 | `Money` | composite | Amount + CurrencyCode; arithmetic: `Add`, `Subtract`, `Multiply`, `Divide`, `Allocate` |
 
 ### Usage examples
@@ -153,6 +154,13 @@ Console.WriteLine(half.Value);          // 50
 ```
 
 ```csharp
+// MonetaryAmount — single-currency systems (1 column in EF Core)
+var amount = MonetaryAmount.Create(49.95m);
+var total  = amount.Add(MonetaryAmount.Create(10.00m));  // Result<MonetaryAmount>
+```
+
+```csharp
+// Money — multi-currency systems (2 columns in EF Core)
 var price = Money.Create(100.00m, CurrencyCode.Create("USD"));
 var tax   = price.Multiply(0.08m);
 var total = price.Add(tax);

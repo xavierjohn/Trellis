@@ -1,18 +1,18 @@
 ﻿namespace Trellis;
 
 /// <summary>
-/// Base class for creating strongly-typed decimal value objects that cannot have the default (zero) value.
+/// Base class for creating strongly-typed decimal value objects that must be explicitly provided.
 /// Provides a foundation for monetary amounts, percentages, and other domain concepts represented by decimals.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This class extends <see cref="ScalarValueObject{TSelf, T}"/> to provide a specialized base for decimal-based value objects
-/// with automatic validation that prevents zero/default decimals. When used with the <c>partial</c> keyword,
+/// with automatic validation. When used with the <c>partial</c> keyword,
 /// the PrimitiveValueObjectGenerator source generator automatically creates:
 /// <list type="bullet">
 /// <item><c>IScalarValue&lt;TSelf, decimal&gt;</c> implementation for ASP.NET Core automatic validation</item>
 /// <item><c>TryCreate(decimal)</c> - Factory method for decimals (required by IScalarValue)</item>
-/// <item><c>TryCreate(decimal?, string?)</c> - Factory method with zero validation and custom field name</item>
+/// <item><c>TryCreate(decimal?, string?)</c> - Factory method with null validation and custom field name</item>
 /// <item><c>TryCreate(string?, string?)</c> - Factory method for parsing strings with validation</item>
 /// <item><c>IParsable&lt;T&gt;</c> implementation (<c>Parse</c>, <c>TryParse</c>)</item>
 /// <item>JSON serialization support via <c>ParsableJsonConverter&lt;T&gt;</c></item>
@@ -26,14 +26,14 @@
 /// <item>Monetary amounts (Price, Amount, Balance)</item>
 /// <item>Rates and percentages (InterestRate, TaxRate)</item>
 /// <item>Measurements requiring precision (Weight, Distance)</item>
-/// <item>Any domain concept requiring a non-zero decimal value</item>
+/// <item>Any domain concept requiring a validated decimal value</item>
 /// </list>
 /// </para>
 /// <para>
 /// Benefits over plain decimals:
 /// <list type="bullet">
 /// <item><strong>Type safety</strong>: Cannot accidentally use Price where TaxRate is expected</item>
-/// <item><strong>Validation</strong>: Prevents zero/default decimals at creation time</item>
+/// <item><strong>Validation</strong>: Ensures values are explicitly provided (not null) at creation time</item>
 /// <item><strong>Domain clarity</strong>: Makes code more self-documenting and expressive</item>
 /// <item><strong>Serialization</strong>: Consistent JSON and database representation</item>
 /// </list>
@@ -67,7 +67,7 @@
 /// // Create from string with validation
 /// var result2 = UnitPrice.TryCreate("19.99");
 /// // Returns: Success(UnitPrice) if valid decimal format
-/// // Returns: Failure(ValidationError) if invalid format or zero
+/// // Returns: Failure(ValidationError) if invalid format
 /// 
 /// // With custom field name for validation errors
 /// var result3 = UnitPrice.TryCreate(input, "product.price");
@@ -101,7 +101,7 @@ public abstract class RequiredDecimal<TSelf> : ScalarValueObject<TSelf, decimal>
     /// <summary>
     /// Initializes a new instance of the <see cref="RequiredDecimal{TSelf}"/> class with the specified decimal value.
     /// </summary>
-    /// <param name="value">The decimal value. Must not be zero.</param>
+    /// <param name="value">The decimal value.</param>
     /// <remarks>
     /// <para>
     /// This constructor is protected and should be called by derived classes.

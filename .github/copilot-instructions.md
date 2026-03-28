@@ -656,6 +656,8 @@ This includes `Money` properties declared on owned entity types, including items
 
 For optional Money properties, use `partial Maybe<Money>` — see the Maybe\<T\> section above.
 
+> **Single-currency alternative:** If your system uses one currency everywhere, use `MonetaryAmount` instead of `Money`. It is a scalar value object (`ScalarValueObject<MonetaryAmount, decimal>`) that maps to a single `decimal` column — no currency column needed. See the Trellis.Primitives README for details.
+
 ### How It Works
 
 The `MoneyConvention` (registered by `ApplyTrellisConventions`) uses two EF Core convention interfaces:
