@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Trellis.Primitives;
 
 /// <summary>
 /// Convention that automatically maps <see cref="Maybe{T}"/> properties by discovering their
@@ -31,7 +30,7 @@ using Trellis.Primitives;
 /// <item>Sets the column name to the original property name (e.g., <c>Phone</c> instead of <c>_phone</c>)</item>
 /// </list>
 /// <para>
-/// When <c>T</c> is a composite owned type (e.g., <see cref="Money"/>), the convention creates
+/// When <c>T</c> is a composite owned type (e.g., <c>Money</c>), the convention creates
 /// an optional ownership navigation via the backing field instead of a scalar column.
 /// All columns in the owned type are marked nullable, and column names use the original
 /// property name as the prefix (matching <see cref="MoneyConvention"/> naming).
@@ -54,8 +53,6 @@ using Trellis.Primitives;
 /// </remarks>
 internal sealed class MaybeConvention : IModelFinalizingConvention
 {
-    private static readonly Type s_moneyType = typeof(Money);
-
     /// <summary>
     /// After the model is built, discovers all <see cref="Maybe{T}"/> CLR properties on entity types
     /// and configures their generated storage members as nullable database columns.
