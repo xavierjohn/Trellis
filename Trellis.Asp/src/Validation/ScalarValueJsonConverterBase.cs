@@ -16,6 +16,13 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     where TPrimitive : IComparable
 {
     /// <summary>
+    /// Tells System.Text.Json to call <see cref="JsonConverter{T}.Read"/> even when the JSON
+    /// token is <c>null</c>. Without this, the serializer bypasses the converter for null tokens
+    /// on reference-type results, preventing <see cref="OnNullToken"/> from firing.
+    /// </summary>
+    public override bool HandleNull => true;
+
+    /// <summary>
     /// Returns the result when a JSON null token is read.
     /// </summary>
     /// <param name="fieldName">The resolved field name for error reporting.</param>

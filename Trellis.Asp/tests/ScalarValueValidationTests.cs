@@ -282,7 +282,9 @@ public class ScalarValueValidationTests
 
             // Assert
             result.Should().BeNull();
-            // Null values don't add validation errors - the required validation happens at model level
+            // Null values DO produce validation errors via ValidatingJsonConverter.OnNullToken.
+            // The endpoint filter or action filter will return 400 before the handler runs.
+            ValidationErrorsContext.HasErrors.Should().BeTrue();
         }
     }
 
