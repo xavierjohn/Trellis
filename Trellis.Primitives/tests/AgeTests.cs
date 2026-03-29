@@ -190,7 +190,7 @@ public class AgeTests
 
         // Assert
         act.Should().Throw<FormatException>()
-            .WithMessage("Value must be a valid integer.");
+            .WithMessage("Age must be a valid integer.");
     }
 
     [Fact]
@@ -233,5 +233,94 @@ public class AgeTests
         value.Should().NotBeNull();
         value!.Value.Should().Be(25);
     }
+
+    #region TryCreate from string
+
+    [Theory]
+    [InlineData("0", 0)]
+    [InlineData("25", 25)]
+    [InlineData("150", 150)]
+    public void TryCreate_string_valid_returns_success(string input, int expected)
+    {
+        // Act
+        var result = Age.TryCreate(input);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(expected);
+    }
+
+    [Fact]
+    public void TryCreate_string_null_returns_failure()
+    {
+        // Act
+        var result = Age.TryCreate((string?)null);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_empty_returns_failure()
+    {
+        // Act
+        var result = Age.TryCreate("");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_whitespace_returns_failure()
+    {
+        // Act
+        var result = Age.TryCreate("  ");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("12.5")]
+    [InlineData("not-a-number")]
+    public void TryCreate_string_invalid_format_returns_failure(string input)
+    {
+        // Act
+        var result = Age.TryCreate(input);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_uses_custom_fieldName()
+    {
+        // Act
+        var result = Age.TryCreate((string?)null, "PersonAge");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("personAge");
+    }
+
+    [Fact]
+    public void TryCreate_string_delegates_validation_to_int_overload()
+    {
+        // Act — valid parse but invalid age (> 150)
+        var result = Age.TryCreate("200");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].Details[0].Should().Be("Age is unrealistically high.");
+    }
+
+    #endregion
 
 }

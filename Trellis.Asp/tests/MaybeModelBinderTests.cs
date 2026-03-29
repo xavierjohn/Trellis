@@ -30,6 +30,9 @@ public class MaybeModelBinderTests
                 return Error.Validation("UserId cannot be empty.", field);
             return new UserId(value);
         }
+
+        public static Result<UserId> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public class ProductCode : ScalarValueObject<ProductCode, string>, IScalarValue<ProductCode, string>
@@ -60,6 +63,9 @@ public class MaybeModelBinderTests
                 return Error.Validation("Quantity cannot exceed 1000.", field);
             return new Quantity(value);
         }
+
+        public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public class Price : ScalarValueObject<Price, decimal>, IScalarValue<Price, decimal>
@@ -73,6 +79,9 @@ public class MaybeModelBinderTests
                 return Error.Validation("Price cannot be negative.", field);
             return new Price(value);
         }
+
+        public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion

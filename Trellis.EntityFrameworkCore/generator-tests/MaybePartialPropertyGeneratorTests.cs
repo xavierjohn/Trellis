@@ -1,5 +1,6 @@
 ﻿namespace Trellis.EntityFrameworkCore.Generator.Tests;
 
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -110,6 +111,146 @@ public class MaybePartialPropertyGeneratorTests
         hintNames.Should().OnlyHaveUniqueItems();
         generatedSources.Should().HaveCount(2);
     }
+
+    #region TRLSGEN100 — Non-partial Maybe<T> property diagnostic
+
+    /// <summary>
+    /// A non-partial Maybe&lt;T&gt; auto-property on a partial class should emit TRLSGEN100.
+    /// </summary>
+    [Fact]
+    public void NonPartial_MaybeProperty_On_PartialClass_Should_Emit_TRLSGEN100()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Customer
+            {
+                public int Id { get; set; }
+                public Maybe<string> Phone { get; set; }
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Id == "TRLSGEN100")
+            .Should().ContainSingle()
+            .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Phone");
+    }
+
+    /// <summary>
+    /// A partial Maybe&lt;T&gt; property should NOT emit TRLSGEN100 (correct usage).
+    /// </summary>
+    [Fact]
+    public void Partial_MaybeProperty_Should_Not_Emit_TRLSGEN100()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Customer
+            {
+                public int Id { get; set; }
+                public partial Maybe<string> Phone { get; set; }
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Id == "TRLSGEN100")
+            .Should().BeEmpty("partial Maybe<T> is correct usage");
+    }
+
+    /// <summary>
+    /// A non-partial Maybe&lt;T&gt; property on a NON-partial class should NOT emit TRLSGEN100
+    /// because the generator cannot emit a partial implementation for non-partial types.
+    /// </summary>
+    [Fact]
+    public void NonPartial_MaybeProperty_On_NonPartialClass_Should_Not_Emit_TRLSGEN100()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public class Customer
+            {
+                public int Id { get; set; }
+                public Maybe<string> Phone { get; set; }
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Id == "TRLSGEN100")
+            .Should().BeEmpty("class is not partial — diagnostic should not fire");
+    }
+
+    /// <summary>
+    /// Multiple non-partial Maybe&lt;T&gt; properties should each emit their own TRLSGEN100.
+    /// </summary>
+    [Fact]
+    public void Multiple_NonPartial_MaybeProperties_Should_Emit_Multiple_TRLSGEN100()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Customer
+            {
+                public int Id { get; set; }
+                public Maybe<string> Phone { get; set; }
+                public Maybe<string> Email { get; set; }
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        var gen100 = diagnostics.Where(d => d.Id == "TRLSGEN100").ToList();
+        gen100.Should().HaveCount(2);
+        gen100.Should().Contain(d => d.GetMessage(CultureInfo.InvariantCulture).Contains("Phone"));
+        gen100.Should().Contain(d => d.GetMessage(CultureInfo.InvariantCulture).Contains("Email"));
+    }
+
+    /// <summary>
+    /// TRLSGEN100 message should include the inner type name.
+    /// </summary>
+    [Fact]
+    public void TRLSGEN100_Message_Should_Include_InnerType()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Customer
+            {
+                public int Id { get; set; }
+                public Maybe<int> LoyaltyPoints { get; set; }
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Id == "TRLSGEN100")
+            .Should().ContainSingle()
+            .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("int");
+    }
+
+    #endregion
 
     private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics, List<string> HintNames) RunGenerator(
         string source, CancellationToken cancellationToken)

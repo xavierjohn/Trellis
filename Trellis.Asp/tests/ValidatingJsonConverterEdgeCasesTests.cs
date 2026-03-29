@@ -37,6 +37,8 @@ public class ValidatingJsonConverterEdgeCasesTests
                 return Error.Validation("Age cannot be negative.", field);
             return new Age(value);
         }
+        public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public class URL : ScalarValueObject<URL, string>, IScalarValue<URL, string>
@@ -68,6 +70,8 @@ public class ValidatingJsonConverterEdgeCasesTests
             value == ProcessingMode.Unknown
                 ? Error.Validation("Processing mode is required.", fieldName ?? "processingMode")
                 : new ProcessingModeVO(value);
+        public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion
@@ -296,6 +300,8 @@ public class ValidatingJsonConverterEdgeCasesTests
         public static Result<NonValidationErrorVO> TryCreate(int value, string? fieldName = null) =>
             // Return non-validation error
             Error.Unexpected("Unexpected error", "code");
+        public static Result<NonValidationErrorVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion

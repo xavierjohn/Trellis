@@ -66,7 +66,7 @@ using Trellis;
 /// </code>
 /// </example>
 [JsonConverter(typeof(ParsableJsonConverter<Percentage>))]
-public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<Percentage, decimal>, IParsable<Percentage>
+public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<Percentage, decimal>, IFormattableScalarValue<Percentage, decimal>, IParsable<Percentage>
 {
     private Percentage(decimal value) : base(value) { }
 
@@ -127,6 +127,53 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     }
 
     /// <summary>
+    /// Attempts to create a <see cref="Percentage"/> from a string representation.
+    /// Strips a trailing <c>%</c> suffix if present before parsing.
+    /// </summary>
+    /// <param name="value">The string value to parse (must be a valid decimal, optionally with a trailing %).</param>
+    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <returns>Success with the Percentage if valid; Failure with ValidationError otherwise.</returns>
+    public static Result<Percentage> TryCreate(string? value, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("percentage");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<Percentage>(Error.Validation("Percentage is required.", field));
+
+        var trimmed = value.TrimEnd('%', ' ');
+
+        if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return Result.Failure<Percentage>(Error.Validation("Percentage must be a valid decimal.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
+    /// <summary>
+    /// Attempts to create a <see cref="Percentage"/> from a string using the specified format provider.
+    /// Strips a trailing <c>%</c> suffix if present before parsing.
+    /// </summary>
+    /// <param name="value">The string value to parse (must be a valid decimal, optionally with a trailing %).</param>
+    /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
+    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <returns>Success with the Percentage if valid; Failure with ValidationError otherwise.</returns>
+    public static Result<Percentage> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("percentage");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<Percentage>(Error.Validation("Percentage is required.", field));
+
+        var trimmed = value.TrimEnd('%', ' ');
+
+        if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return Result.Failure<Percentage>(Error.Validation("Percentage must be a valid decimal.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
+    /// <summary>
     /// Creates a <see cref="Percentage"/> from a fraction (0.0 to 1.0).
     /// </summary>
     /// <param name="fraction">The fraction value (0.0 to 1.0).</param>
@@ -164,23 +211,10 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// </summary>
     public static Percentage Parse(string? s, IFormatProvider? provider)
     {
-        if (string.IsNullOrWhiteSpace(s))
-            throw new FormatException("Value must be a valid decimal.");
-
-        // Handle % suffix
-        var trimmed = s.TrimEnd('%', ' ');
-
-        if (!decimal.TryParse(trimmed, provider, out var value))
-            throw new FormatException("Value must be a valid decimal.");
-
-        var r = TryCreate(value);
-        if (r.IsFailure)
-        {
-            var val = (ValidationError)r.Error;
-            throw new FormatException(val.FieldErrors[0].Details[0]);
-        }
-
-        return r.Value;
+        var result = TryCreate(s, provider);
+        if (result.IsFailure)
+            throw new FormatException(result.Error.Detail);
+        return result.Value;
     }
 
     /// <summary>
@@ -188,23 +222,15 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// </summary>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Percentage result)
     {
-        result = default;
+        var r = TryCreate(s, provider);
+        if (r.IsSuccess)
+        {
+            result = r.Value;
+            return true;
+        }
 
-        if (string.IsNullOrWhiteSpace(s))
-            return false;
-
-        // Handle % suffix
-        var trimmed = s.TrimEnd('%', ' ');
-
-        if (!decimal.TryParse(trimmed, provider, out var value))
-            return false;
-
-        var r = TryCreate(value);
-        if (r.IsFailure)
-            return false;
-
-        result = r.Value;
-        return true;
+        result = default!;
+        return false;
     }
 
     /// <summary>

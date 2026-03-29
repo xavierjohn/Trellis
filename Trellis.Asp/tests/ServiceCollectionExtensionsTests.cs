@@ -57,6 +57,8 @@ public class ServiceCollectionExtensionsTests
             value is < 0 or > 150
                 ? Error.Validation("Age must be between 0 and 150.", fieldName ?? "age")
                 : new TestAge(value);
+        public static Result<TestAge> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion
@@ -504,7 +506,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void ConfiguredJsonOptions_DeserializeDto_WithNullableValueObjects_NullValues_Succeeds()
+    public void ConfiguredJsonOptions_DeserializeDto_WithNullableValueObjects_NullValues_CollectsValidationErrors()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -519,11 +521,15 @@ public class ServiceCollectionExtensionsTests
             // Act
             var result = JsonSerializer.Deserialize<NullableValueObjectDto>(json, httpOptions.Value.SerializerOptions);
 
-            // Assert
+            // Assert — explicit JSON null for scalar VOs produces validation errors
             result.Should().NotBeNull();
             result!.Name.Should().BeNull();
             result.Email.Should().BeNull();
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            var error = ValidationErrorsContext.GetValidationError();
+            error.Should().NotBeNull("explicit JSON null for scalar VOs should produce validation errors");
+            error!.FieldErrors.Should().HaveCount(2);
+            error.FieldErrors.Should().Contain(e => e.FieldName == "name");
+            error.FieldErrors.Should().Contain(e => e.FieldName == "email");
         }
     }
 

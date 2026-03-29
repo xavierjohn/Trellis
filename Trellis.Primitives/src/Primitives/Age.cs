@@ -19,7 +19,7 @@ using Trellis;
 /// </para>
 /// </remarks>
 [JsonConverter(typeof(ParsableJsonConverter<Age>))]
-public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IParsable<Age>
+public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormattableScalarValue<Age, int>, IParsable<Age>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="Age"/> class.
@@ -41,20 +41,52 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IParsabl
     }
 
     /// <summary>
+    /// Attempts to create an <see cref="Age"/> from a string representation.
+    /// </summary>
+    public static Result<Age> TryCreate(string? value, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Age) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("age");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<Age>(Error.Validation("Age is required.", field));
+
+        if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return Result.Failure<Age>(Error.Validation("Age must be a valid integer.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
+    /// <summary>
+    /// Attempts to create an <see cref="Age"/> from a string using the specified format provider.
+    /// </summary>
+    /// <param name="value">The string value to parse.</param>
+    /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
+    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <returns>Success with the Age if valid; Failure with ValidationError otherwise.</returns>
+    public static Result<Age> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Age) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("age");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<Age>(Error.Validation("Age is required.", field));
+
+        if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return Result.Failure<Age>(Error.Validation("Age must be a valid integer.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
+    /// <summary>
     /// Parses an age.
     /// </summary>
     public static Age Parse(string? s, IFormatProvider? provider)
     {
-        if (!int.TryParse(s, out var v))
-            throw new FormatException("Value must be a valid integer.");
-        var r = TryCreate(v);
-        if (r.IsFailure)
-        {
-            var val = (ValidationError)r.Error;
-            throw new FormatException(val.FieldErrors[0].Details[0]);
-        }
-
-        return r.Value;
+        var result = TryCreate(s, provider);
+        if (result.IsFailure)
+            throw new FormatException(result.Error.Detail);
+        return result.Value;
     }
 
     /// <summary>
@@ -62,14 +94,14 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IParsabl
     /// </summary>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Age result)
     {
-        result = default;
-        if (!int.TryParse(s, out var v))
-            return false;
-        var r = TryCreate(v);
-        if (r.IsFailure)
-            return false;
+        var r = TryCreate(s, provider);
+        if (r.IsSuccess)
+        {
+            result = r.Value;
+            return true;
+        }
 
-        result = r.Value;
-        return true;
+        result = default!;
+        return false;
     }
 }

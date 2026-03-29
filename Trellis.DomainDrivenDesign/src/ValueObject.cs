@@ -158,7 +158,7 @@
 /// }
 /// </code>
 /// </example>
-public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueObject>
+public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEquatable<ValueObject>
 {
     // NOTE: Not volatile/locked intentionally. Value objects are immutable and DDD aggregates are
     // single-threaded consistency boundaries. The worst-case race is two threads computing the same
@@ -316,6 +316,17 @@ public abstract class ValueObject : IComparable<ValueObject>, IEquatable<ValueOb
                 return comparison;
         }
     }
+
+    /// <summary>
+    /// Non-generic <see cref="IComparable"/> implementation. Delegates to <see cref="CompareTo(ValueObject?)"/>.
+    /// Enables value objects to be used in <see cref="ValueObject.GetEqualityComponents"/> of composite value objects.
+    /// </summary>
+    int IComparable.CompareTo(object? obj) => obj switch
+    {
+        null => 1,
+        ValueObject other => CompareTo(other),
+        _ => throw new ArgumentException($"Cannot compare {GetType()} to {obj.GetType()}")
+    };
 
     private static int CompareComponents(object? object1, object? object2)
     {

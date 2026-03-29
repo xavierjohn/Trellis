@@ -96,6 +96,17 @@ configurationBuilder.ApplyTrellisConventions(
 That behavior is intentional because `Money` is a structured value object, not a scalar wrapper with a single persisted `Value`.
 This also applies when `Money` is declared on owned entity types, including items inside `OwnsMany` collections.
 
+`Maybe<Money>` is also supported — it auto-configures as an optional owned type with nullable Amount/Currency columns:
+
+```csharp
+public partial class Penalty : Aggregate<PenaltyId>
+{
+    public Money Fine { get; set; } = null!;              // required (2 NOT NULL columns)
+    public partial Maybe<Money> FinePaid { get; set; }    // optional (2 nullable columns)
+}
+// Columns: FinePaid (nullable decimal), FinePaidCurrency (nullable nvarchar)
+```
+
 ```csharp
 public class Order
 {
@@ -144,7 +155,7 @@ public partial class Customer
 }
 ```
 
-No `OnModelCreating` configuration needed — `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, maps the generated `_camelCase` storage member as nullable, and sets the column name to the property name.
+No `OnModelCreating` configuration needed — `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, maps the generated `_camelCase` storage member as nullable, and sets the column name to the property name. When `T` is a composite owned type (e.g., `Money`), it creates an optional ownership navigation instead of a scalar column — see the [Money Property Convention](#money-property-convention) section above.
 
 ### Column Naming
 

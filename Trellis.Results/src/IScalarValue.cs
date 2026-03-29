@@ -10,7 +10,7 @@
 /// <para>
 /// This interface uses the Curiously Recurring Template Pattern (CRTP) to enable
 /// static abstract methods on the value object type. This allows model binders and
-/// JSON converters to call <see cref="TryCreate"/> without reflection.
+/// JSON converters to call <see cref="TryCreate(TPrimitive, string?)"/> without reflection.
 /// </para>
 /// <para>
 /// When a type implements this interface, it can be automatically validated during:
@@ -61,6 +61,17 @@ public interface IScalarValue<TSelf, TPrimitive>
     static abstract Result<TSelf> TryCreate(TPrimitive value, string? fieldName = null);
 
     /// <summary>
+    /// Attempts to create a validated scalar value from a string representation.
+    /// </summary>
+    /// <param name="value">The raw string value to parse and validate</param>
+    /// <param name="fieldName">
+    /// Optional field name for validation error messages. If null, implementations should use
+    /// a default field name based on the type name.
+    /// </param>
+    /// <returns>Success with the scalar value, or Failure with validation errors</returns>
+    static abstract Result<TSelf> TryCreate(string? value, string? fieldName = null);
+
+    /// <summary>
     /// Creates a validated scalar value from a primitive value.
     /// Throws an exception if validation fails.
     /// </summary>
@@ -74,11 +85,11 @@ public interface IScalarValue<TSelf, TPrimitive>
     /// than calling <c>Create(...)</c> through a manual <c>TryCreate(...).Value</c> pattern.
     /// </para>
     /// <para>
-    /// ⚠️ Don't use this method with user input or uncertain data - use <see cref="TryCreate"/>
+    /// ⚠️ Don't use this method with user input or uncertain data - use <see cref="TryCreate(TPrimitive, string?)"/>
     /// instead to handle validation errors gracefully.
     /// </para>
     /// <para>
-    /// The default implementation calls <see cref="TryCreate"/> and throws if validation fails.
+    /// The default implementation calls <see cref="TryCreate(TPrimitive, string?)"/> and throws if validation fails.
     /// You can override this if you need custom error handling behavior.
     /// </para>
     /// </remarks>

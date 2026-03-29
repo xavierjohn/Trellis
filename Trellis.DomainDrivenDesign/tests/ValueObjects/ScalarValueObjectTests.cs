@@ -10,8 +10,8 @@ public class ScalarValueObjectTests
     {
         public PasswordSimple(string value) : base(value) { }
 
-        public static Result<PasswordSimple> TryCreate(string value, string? fieldName = null) =>
-            Result.Success(new PasswordSimple(value));
+        public static Result<PasswordSimple> TryCreate(string? value, string? fieldName = null) =>
+            Result.Success(new PasswordSimple(value!));
     }
 
     internal class DerivedPasswordSimple : PasswordSimple
@@ -29,6 +29,9 @@ public class ScalarValueObjectTests
         public static Result<MoneySimple> TryCreate(decimal value, string? fieldName = null) =>
             Result.Success(new MoneySimple(value));
 
+        public static Result<MoneySimple> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
+
         protected override IEnumerable<IComparable?> GetEqualityComponents()
         {
             yield return Math.Round(Value, 2);
@@ -41,6 +44,9 @@ public class ScalarValueObjectTests
 
         public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
             Result.Success(new CustomerId(value));
+
+        public static Result<CustomerId> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     internal class Quantity : ScalarValueObject<Quantity, int>, IScalarValue<Quantity, int>
@@ -49,6 +55,9 @@ public class ScalarValueObjectTests
 
         public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
             Result.Success(new Quantity(value));
+
+        public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     internal class CharWrapper : ScalarValueObject<CharWrapper, char>, IScalarValue<CharWrapper, char>
@@ -57,6 +66,9 @@ public class ScalarValueObjectTests
 
         public static Result<CharWrapper> TryCreate(char value, string? fieldName = null) =>
             Result.Success(new CharWrapper(value));
+
+        public static Result<CharWrapper> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     internal class DateTimeWrapper : ScalarValueObject<DateTimeWrapper, DateTime>, IScalarValue<DateTimeWrapper, DateTime>
@@ -65,6 +77,9 @@ public class ScalarValueObjectTests
 
         public static Result<DateTimeWrapper> TryCreate(DateTime value, string? fieldName = null) =>
             Result.Success(new DateTimeWrapper(value));
+
+        public static Result<DateTimeWrapper> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion

@@ -14,6 +14,7 @@ This library provides infrastructure and ready-to-use implementations for primit
 - [RequiredEnum](#requiredenum)
 - [EmailAddress](#emailaddress)
 - [Additional Value Objects](#additional-value-objects)
+- [MonetaryAmount](#monetaryamount)
 - [Money](#money)
 - [ASP.NET Core Integration](#aspnet-core-integration)
 - [Core Concepts](#core-concepts)
@@ -322,6 +323,22 @@ var tooOld = Age.TryCreate(200);
 // Error: "Age is unrealistically high."
 ```
 
+#### MonetaryAmount
+
+`MonetaryAmount` is a scalar value object for single-currency systems where currency is a system-wide policy, not per-row data. It wraps a non-negative `decimal` rounded to 2 decimal places and maps to a single column in EF Core.
+
+```csharp
+var price = MonetaryAmount.TryCreate(99.99m);   // Result<MonetaryAmount>
+var zero  = MonetaryAmount.Zero;                 // 0.00
+
+// Arithmetic — returns Result<MonetaryAmount> (handles overflow)
+var total = price.Value.Add(MonetaryAmount.Create(10.00m));
+var doubled = price.Value.Multiply(2);
+
+// JSON: serializes as plain decimal number (99.99)
+// EF Core: maps to 1 decimal column via ApplyTrellisConventions
+```
+
 #### Money
 
 `Money` is a structured value object, not a scalar wrapper. Its identity is the pair of `Amount` and `Currency`, so its JSON and EF representations stay object-shaped rather than flowing through the `IScalarValue<TSelf, TPrimitive>` pipeline.
@@ -444,6 +461,7 @@ This library provides both **base classes** for creating custom value objects an
 | **CountryCode** | Country codes | ISO 3166-1 alpha-2 | `US`, `GB`, `FR` |
 | **LanguageCode** | Language codes | ISO 639-1 alpha-2 | `en`, `es`, `fr` |
 | **Age** | Age values | 0-150 range | `42` |
+| **MonetaryAmount** | Monetary amounts (single-currency) | Non-negative, 2 decimal places | `99.99` |
 
 #### Ready-to-Use Structured Value Object
 | Value Object | Purpose | Validation Rules | Example |
@@ -468,6 +486,8 @@ Primitive value objects wrap single primitive types (`string`, `Guid`, etc.) to 
 - Property name inference for error messages (class name converted to camelCase)
 - JSON serialization via `ParsableJsonConverter<T>`
 - OpenTelemetry activity tracing support, typically a better day-to-day diagnostic signal than full ROP tracing because it emits spans at value creation and validation boundaries
+
+**Culture-aware parsing:** Numeric and date types (`Age`, `MonetaryAmount`, `Percentage`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredLong<T>`, `RequiredDateTime<T>`) also implement `IFormattableScalarValue`, adding `TryCreate(string?, IFormatProvider?, string?)` for culture-sensitive parsing. The standard `TryCreate(string?)` always uses `InvariantCulture`. String-based types do not implement this interface — culture doesn't affect their format.
 
 ## Best Practices
 

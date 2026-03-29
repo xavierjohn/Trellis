@@ -43,6 +43,8 @@ public class ValidatingJsonConverterTests
                 return Error.Validation("Age must be realistic.", field);
             return new Age(value);
         }
+        public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<Percentage, decimal>
@@ -58,6 +60,8 @@ public class ValidatingJsonConverterTests
                 return Error.Validation("Percentage cannot exceed 100.", field);
             return new Percentage(value);
         }
+        public static Result<Percentage> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public class ItemId : ScalarValueObject<ItemId, Guid>, IScalarValue<ItemId, Guid>
@@ -71,6 +75,8 @@ public class ValidatingJsonConverterTests
                 return Error.Validation("ItemId cannot be empty.", field);
             return new ItemId(value);
         }
+        public static Result<ItemId> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion

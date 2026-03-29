@@ -293,7 +293,7 @@ public class PercentageTests
 
         // Assert
         act.Should().Throw<FormatException>()
-            .WithMessage("Value must be a valid decimal.");
+            .WithMessage("Percentage must be a valid decimal.");
     }
 
     [Fact]
@@ -388,4 +388,115 @@ public class PercentageTests
         var validation = (ValidationError)result.Error;
         validation.FieldErrors[0].FieldName.Should().Be("discountRate");
     }
+
+    #region TryCreate from string
+
+    [Theory]
+    [InlineData("0", 0)]
+    [InlineData("50", 50)]
+    [InlineData("100", 100)]
+    [InlineData("25.5", 25.5)]
+    public void TryCreate_string_valid_returns_success(string input, decimal expected)
+    {
+        // Act
+        var result = Percentage.TryCreate(input);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(expected);
+    }
+
+    [Fact]
+    public void TryCreate_string_with_percent_suffix_returns_success()
+    {
+        // Act
+        var result = Percentage.TryCreate("50%");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(50m);
+    }
+
+    [Fact]
+    public void TryCreate_string_with_percent_and_space_returns_success()
+    {
+        // Act
+        var result = Percentage.TryCreate("75 %");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(75m);
+    }
+
+    [Fact]
+    public void TryCreate_string_null_returns_failure()
+    {
+        // Act
+        var result = Percentage.TryCreate((string?)null);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_empty_returns_failure()
+    {
+        // Act
+        var result = Percentage.TryCreate("");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_whitespace_returns_failure()
+    {
+        // Act
+        var result = Percentage.TryCreate("  ");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("not-a-number")]
+    public void TryCreate_string_invalid_format_returns_failure(string input)
+    {
+        // Act
+        var result = Percentage.TryCreate(input);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<ValidationError>();
+    }
+
+    [Fact]
+    public void TryCreate_string_uses_custom_fieldName()
+    {
+        // Act
+        var result = Percentage.TryCreate((string?)null, "DiscountRate");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].FieldName.Should().Be("discountRate");
+    }
+
+    [Fact]
+    public void TryCreate_string_delegates_validation_to_decimal_overload()
+    {
+        // Act — valid parse but out of range (> 100)
+        var result = Percentage.TryCreate("150");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        var validation = (ValidationError)result.Error;
+        validation.FieldErrors[0].Details[0].Should().Be("Percentage must be between 0 and 100.");
+    }
+
+    #endregion
 }

@@ -776,6 +776,16 @@ static virtual TSelf Create(TPrimitive value)  // default: TryCreate + throw
 TPrimitive Value { get; }
 ```
 
+## IFormattableScalarValue\<TSelf, TPrimitive\> (interface)
+
+Extends `IScalarValue` with culture-aware string parsing. Implemented by numeric and date value objects where culture affects string parsing (decimal separators, date formats).
+
+```csharp
+static abstract Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null);
+```
+
+Implementors: `Age`, `MonetaryAmount`, `Percentage` (hand-implemented), `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredLong<T>`, `RequiredDateTime<T>` (source-generated). Not implemented by string-based types (`EmailAddress`, `Slug`, etc.) — culture doesn't affect their parsing.
+
 ## Specification\<T\> (abstract class)
 
 Composable business rules that produce `Expression<Func<T, bool>>`.
@@ -1138,7 +1148,27 @@ All have `TryCreate` → `Result<T>` and `Create` → `T` (throws). All implemen
 | `LanguageCode` | `string` | 2 letters, ISO 639-1, lowercase | — |
 | `Age` | `int` | 0–150 inclusive | — |
 | `Percentage` | `decimal` | 0–100 inclusive | `Zero`, `Full`, `AsFraction()`, `Of(decimal)`, `FromFraction(decimal, fieldName?)`, `TryCreate(decimal?)` |
+| `MonetaryAmount` | `decimal` | Non-negative, rounds to 2 dp | `Zero`, `Add`, `Subtract`, `Multiply(int)`, `Multiply(decimal)` |
 | `Money` | multi-value | Amount ≥ 0, valid currency code | See below |
+
+### MonetaryAmount (extends ScalarValueObject)
+
+Scalar value object for single-currency systems where currency is a system-wide policy, not per-row data. Wraps a non-negative `decimal` rounded to 2 decimal places. JSON: plain number (e.g. `99.99`). EF Core: maps to 1 `decimal` column (via `ApplyTrellisConventions`).
+
+```csharp
+// Implements: ScalarValueObject<MonetaryAmount, decimal>, IScalarValue<MonetaryAmount, decimal>, IParsable<MonetaryAmount>
+
+static Result<MonetaryAmount> TryCreate(decimal value)
+static Result<MonetaryAmount> TryCreate(decimal? value)
+static MonetaryAmount Create(decimal value)
+static MonetaryAmount Zero { get; }
+
+// Arithmetic (returns Result — handles overflow)
+Result<MonetaryAmount> Add(MonetaryAmount other)
+Result<MonetaryAmount> Subtract(MonetaryAmount other)
+Result<MonetaryAmount> Multiply(int quantity)
+Result<MonetaryAmount> Multiply(decimal multiplier)
+```
 
 ### Money (extends ValueObject, NOT ScalarValueObject)
 
@@ -1672,6 +1702,7 @@ IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 // Auto-registers converters for all IScalarValue and RequiredEnum types
 // Auto-maps Money properties as owned types (Amount + Currency columns)
+// MonetaryAmount maps to a single decimal column (scalar value object convention)
 ```
 
 ### Money Property Convention
@@ -1684,6 +1715,8 @@ configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 | `ShippingCost` | `ShippingCost` | `ShippingCostCurrency` | `decimal(18,3)` | `nvarchar(3)` |
 
 Explicit `OwnsOne` configuration takes precedence over the convention.
+
+`Maybe<Money>` properties are also supported — `MaybeConvention` creates an optional ownership navigation with nullable Amount/Currency columns. No manual `OwnsOne` needed.
 
 ### Maybe\<T\> Property Mapping
 
@@ -1707,7 +1740,7 @@ modelBuilder.Entity<Customer>(b =>
 });
 ```
 
-The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name.
+The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name. When `T` is a composite owned type (e.g., `Money`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column.
 
 Backing field naming: `Phone` → `_phone`, `SubmittedAt` → `_submittedAt`, `AlternateEmail` → `_alternateEmail`.
 
@@ -1899,6 +1932,9 @@ UpdateSettersBuilder<TEntity> SetMaybeValue<TEntity, TInner>(
 UpdateSettersBuilder<TEntity> SetMaybeNone<TEntity, TInner>(
     this UpdateSettersBuilder<TEntity> updateSettersBuilder,
     Expression<Func<TEntity, Maybe<TInner>>> propertySelector)
+
+// Note: SetMaybeValue/SetMaybeNone throw InvalidOperationException for composite
+// owned types like Money. Use tracked entity updates (load, modify, SaveChangesAsync) instead.
 
 // Diagnostics
 IReadOnlyList<MaybePropertyMapping> GetMaybePropertyMappings(this IModel model)

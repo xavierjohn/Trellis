@@ -315,6 +315,12 @@ public class OrderEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 |--------|-------------|
 | `CreateClientWithActor(actorId, permissions)` | Creates an `HttpClient` with the `X-Test-Actor` header set to a JSON payload containing the actor ID and permissions |
 
+### Service Collection Extensions
+
+| Method | Description |
+|--------|-------------|
+| `ReplaceDbProvider<TContext>(configureOptions)` | Removes all EF Core registrations for `TContext` and re-registers with a new provider. Use in `WebApplicationFactory` tests to swap SQL Server for SQLite. **Note:** Always uses `AddDbContext<T>`. Not compatible with `AddDbContextFactory` or `AddPooledDbContextFactory`. |
+
 ## Benefits
 
 | Before | After |

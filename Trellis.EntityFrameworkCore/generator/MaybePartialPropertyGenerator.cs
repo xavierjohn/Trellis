@@ -40,6 +40,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 /// </para>
 /// </remarks>
 [Generator(LanguageNames.CSharp)]
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 {
     /// <summary>

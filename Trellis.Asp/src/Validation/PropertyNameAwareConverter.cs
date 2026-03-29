@@ -31,6 +31,13 @@ internal sealed class PropertyNameAwareConverter<T> : JsonConverter<T?>
     private readonly string _propertyName;
 
     /// <summary>
+    /// Tells System.Text.Json to call <see cref="Read"/> even when the JSON token is <c>null</c>.
+    /// Without this, the serializer bypasses the converter for null tokens on reference-type
+    /// properties, preventing the inner converter's null-token validation from firing.
+    /// </summary>
+    public override bool HandleNull => true;
+
+    /// <summary>
     /// Creates a new property-name-aware wrapper converter.
     /// </summary>
     /// <param name="innerConverter">The inner converter to delegate to.</param>

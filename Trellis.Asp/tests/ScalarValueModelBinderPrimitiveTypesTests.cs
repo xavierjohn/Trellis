@@ -33,6 +33,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value == Guid.Empty
                 ? Error.Validation("Cannot be empty", fieldName ?? "value")
                 : new GuidVO(value);
+        public static Result<GuidVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class NonNegativeIntVO : ScalarValueObject<NonNegativeIntVO, int>, IScalarValue<NonNegativeIntVO, int>
@@ -42,6 +44,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < 0
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new NonNegativeIntVO(value);
+        public static Result<NonNegativeIntVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class LongVO : ScalarValueObject<LongVO, long>, IScalarValue<LongVO, long>
@@ -51,6 +55,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < 0
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new LongVO(value);
+        public static Result<LongVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class DecimalVO : ScalarValueObject<DecimalVO, decimal>, IScalarValue<DecimalVO, decimal>
@@ -60,6 +66,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < 0
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new DecimalVO(value);
+        public static Result<DecimalVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class DoubleVO : ScalarValueObject<DoubleVO, double>, IScalarValue<DoubleVO, double>
@@ -69,6 +77,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < 0
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new DoubleVO(value);
+        public static Result<DoubleVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class BoolVO : ScalarValueObject<BoolVO, bool>, IScalarValue<BoolVO, bool>
@@ -76,6 +86,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private BoolVO(bool value) : base(value) { }
         public static Result<BoolVO> TryCreate(bool value, string? fieldName = null) =>
             new BoolVO(value);
+        public static Result<BoolVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class DateTimeVO : ScalarValueObject<DateTimeVO, DateTime>, IScalarValue<DateTimeVO, DateTime>
@@ -85,6 +97,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value == default
                 ? Error.Validation("Required", fieldName ?? "value")
                 : new DateTimeVO(value);
+        public static Result<DateTimeVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class DateOnlyVO : ScalarValueObject<DateOnlyVO, DateOnly>, IScalarValue<DateOnlyVO, DateOnly>
@@ -94,6 +108,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value == default
                 ? Error.Validation("Required", fieldName ?? "value")
                 : new DateOnlyVO(value);
+        public static Result<DateOnlyVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class TimeOnlyVO : ScalarValueObject<TimeOnlyVO, TimeOnly>, IScalarValue<TimeOnlyVO, TimeOnly>
@@ -101,6 +117,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private TimeOnlyVO(TimeOnly value) : base(value) { }
         public static Result<TimeOnlyVO> TryCreate(TimeOnly value, string? fieldName = null) =>
             new TimeOnlyVO(value);
+        public static Result<TimeOnlyVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class TimeSpanVO : ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
@@ -110,6 +128,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < TimeSpan.Zero
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new TimeSpanVO(value);
+        public static Result<TimeSpanVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class DateTimeOffsetVO : ScalarValueObject<DateTimeOffsetVO, DateTimeOffset>, IScalarValue<DateTimeOffsetVO, DateTimeOffset>
@@ -119,6 +139,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value == default
                 ? Error.Validation("Required", fieldName ?? "value")
                 : new DateTimeOffsetVO(value);
+        public static Result<DateTimeOffsetVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class ShortVO : ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
@@ -128,6 +150,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < 0
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new ShortVO(value);
+        public static Result<ShortVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class ByteVO : ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
@@ -135,6 +159,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private ByteVO(byte value) : base(value) { }
         public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
             new ByteVO(value);
+        public static Result<ByteVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class SByteVO : ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
@@ -144,6 +170,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < 0
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new SByteVO(value);
+        public static Result<SByteVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class UShortVO : ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
@@ -151,6 +179,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private UShortVO(ushort value) : base(value) { }
         public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
             new UShortVO(value);
+        public static Result<UShortVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class UIntVO : ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
@@ -158,6 +188,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private UIntVO(uint value) : base(value) { }
         public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
             new UIntVO(value);
+        public static Result<UIntVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class ULongVO : ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
@@ -165,6 +197,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private ULongVO(ulong value) : base(value) { }
         public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>
             new ULongVO(value);
+        public static Result<ULongVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public sealed class FloatVO : ScalarValueObject<FloatVO, float>, IScalarValue<FloatVO, float>
@@ -174,6 +208,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value < 0
                 ? Error.Validation("Must be non-negative", fieldName ?? "value")
                 : new FloatVO(value);
+        public static Result<FloatVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     public enum ProcessingMode
@@ -190,6 +226,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             value == ProcessingMode.Unknown
                 ? Error.Validation("Mode is required", fieldName ?? "value")
                 : new ProcessingModeVO(value);
+        public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
     }
 
     #endregion

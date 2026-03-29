@@ -826,6 +826,36 @@ modelBuilder.Entity<Order>(b =>
 > [!NOTE]
 > Multiple `Money` properties on the same entity work automatically — each gets its own pair of columns.
 
+### MonetaryAmount (Single-Currency Alternative)
+
+If your system uses one currency everywhere, use `MonetaryAmount` instead of `Money`. It is a scalar value object (`ScalarValueObject<MonetaryAmount, decimal>`) so it maps to a **single `decimal` column** automatically via `ApplyTrellisConventions` — the same convention that handles all `IScalarValue` types. No owned-type configuration needed.
+
+```csharp
+public class Invoice
+{
+    public InvoiceId Id { get; set; } = null!;
+    public MonetaryAmount Total { get; set; } = null!;     // 1 decimal column: Total
+    public partial Maybe<MonetaryAmount> Discount { get; set; }  // 1 nullable column: Discount
+}
+```
+
+### Optional Money with Maybe\<Money\>
+
+For optional Money properties, use `partial Maybe<Money>`. The conventions auto-configure it as an optional owned type — no `OwnsOne` needed:
+
+```csharp
+public partial class Penalty : Aggregate<PenaltyId>
+{
+    public Money Fine { get; set; } = null!;              // required Money (2 NOT NULL columns)
+    public partial Maybe<Money> FinePaid { get; set; }    // optional Money (2 nullable columns)
+}
+```
+
+Column naming follows the same convention: `FinePaid` (nullable `decimal(18,3)`) and `FinePaidCurrency` (nullable `nvarchar(3)`).
+
+> [!WARNING]
+> `ExecuteUpdate` helpers (`SetMaybeValue`/`SetMaybeNone`) do not support `Maybe<Money>`. Use tracked entity updates (load, modify, `SaveChangesAsync`) instead.
+
 ## <a id="maybe-property-convention"></a>Maybe\<T\> Property Convention
 
 `Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. Trellis keeps the primary programming model at the CLR property level and hides the EF workaround behind generated code, conventions, and helpers.
@@ -846,6 +876,8 @@ public partial class Customer
 ```
 
 No `OnModelCreating` configuration needed — `MaybeConvention` (registered by `ApplyTrellisConventions`) handles everything automatically.
+
+When `T` is a composite owned type (e.g., `Money`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column — see [Optional Money with Maybe\<Money\>](#optional-money-with-maybemoney) above.
 
 ### Day-to-Day Usage
 

@@ -370,6 +370,52 @@ public class ValueObjectTests
     }
 
     #endregion
+
+    #region Composite ValueObject with ScalarValueObject components
+
+    [Fact]
+    public void Composite_ValueObject_with_ScalarVO_components_are_equal()
+    {
+        var addr1 = new CompositeAddress(StreetName.Create("123 Main St"), CityName.Create("Springfield"));
+        var addr2 = new CompositeAddress(StreetName.Create("123 Main St"), CityName.Create("Springfield"));
+
+        addr1.Should().Be(addr2);
+    }
+
+    [Fact]
+    public void Composite_ValueObject_with_ScalarVO_components_are_not_equal()
+    {
+        var addr1 = new CompositeAddress(StreetName.Create("123 Main St"), CityName.Create("Springfield"));
+        var addr2 = new CompositeAddress(StreetName.Create("456 Oak Ave"), CityName.Create("Springfield"));
+
+        addr1.Should().NotBe(addr2);
+    }
+
+    #endregion
+
+    #region IComparable null handling
+
+    [Fact]
+    public void IComparable_CompareTo_Null_Returns_Positive()
+    {
+        var addr = new CompositeAddress(StreetName.Create("123 Main St"), CityName.Create("Springfield"));
+        var comparable = (IComparable)addr;
+
+        // Per .NET convention, a non-null instance is greater than null
+        comparable.CompareTo(null).Should().BePositive();
+    }
+
+    [Fact]
+    public void IComparable_CompareTo_WrongType_Throws()
+    {
+        var addr = new CompositeAddress(StreetName.Create("123 Main St"), CityName.Create("Springfield"));
+        var comparable = (IComparable)addr;
+
+        var act = () => comparable.CompareTo("not a ValueObject");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -391,4 +437,46 @@ internal class AddressWithNullable : ValueObject
         yield return Street;
         yield return City; // Allow null for testing
     }
+}
+
+/// <summary>
+/// Composite ValueObject containing ScalarValueObject properties.
+/// Tests that scalar VOs can be yielded in GetEqualityComponents.
+/// </summary>
+internal class CompositeAddress : ValueObject
+{
+    public StreetName Street { get; }
+    public CityName City { get; }
+
+    public CompositeAddress(StreetName street, CityName city)
+    {
+        Street = street;
+        City = city;
+    }
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return Street;
+        yield return City;
+    }
+}
+
+internal class StreetName : ScalarValueObject<StreetName, string>, IScalarValue<StreetName, string>
+{
+    private StreetName(string value) : base(value) { }
+
+    public static Result<StreetName> TryCreate(string? value, string? fieldName = null) =>
+        string.IsNullOrWhiteSpace(value)
+            ? Result.Failure<StreetName>(Error.Validation("Street is required", fieldName ?? "street"))
+            : Result.Success(new StreetName(value));
+}
+
+internal class CityName : ScalarValueObject<CityName, string>, IScalarValue<CityName, string>
+{
+    private CityName(string value) : base(value) { }
+
+    public static Result<CityName> TryCreate(string? value, string? fieldName = null) =>
+        string.IsNullOrWhiteSpace(value)
+            ? Result.Failure<CityName>(Error.Validation("City is required", fieldName ?? "city"))
+            : Result.Success(new CityName(value));
 }

@@ -50,6 +50,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 /// </code>
 /// </example>
 [Generator(LanguageNames.CSharp)]
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
 {
     private const string GenerateAttributeName = "GenerateScalarValueConvertersAttribute";

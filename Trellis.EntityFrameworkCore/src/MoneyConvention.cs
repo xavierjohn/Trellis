@@ -63,12 +63,17 @@ internal sealed class MoneyConvention : IModelInitializedConvention, IModelFinal
                 if (navigation.TargetEntityType.ClrType != s_moneyType || !navigation.TargetEntityType.IsOwned())
                     continue;
 
-                ConfigureMoneyColumns(navigation.TargetEntityType, navigation.Name);
+                // Check if this navigation was created by MaybeConvention for a Maybe<Money> property.
+                // If so, use the original property name for column naming and mark columns nullable.
+                var maybePropertyName = navigation.FindAnnotation(MaybeConvention.MaybeOwnedPropertyNameAnnotation)?.Value as string;
+                var columnPrefix = maybePropertyName ?? navigation.Name;
+
+                ConfigureMoneyColumns(navigation.TargetEntityType, columnPrefix, isOptional: maybePropertyName is not null);
             }
         }
     }
 
-    private static void ConfigureMoneyColumns(IConventionEntityType entityType, string navigationName)
+    private static void ConfigureMoneyColumns(IConventionEntityType entityType, string navigationName, bool isOptional)
     {
         // Amount → column "{NavigationName}", decimal(18,3)
         // Scale 3 accommodates all ISO 4217 minor units: 0 (JPY), 2 (USD), 3 (BHD/KWD/OMR/TND)
@@ -78,6 +83,8 @@ internal sealed class MoneyConvention : IModelInitializedConvention, IModelFinal
             amount.Builder.HasAnnotation(RelationalAnnotationNames.ColumnName, navigationName);
             amount.Builder.HasPrecision(18);
             amount.Builder.HasScale(3);
+            if (isOptional)
+                amount.Builder.IsRequired(false);
         }
 
         // Currency → column "{NavigationName}Currency", max-length 3
@@ -86,6 +93,8 @@ internal sealed class MoneyConvention : IModelInitializedConvention, IModelFinal
         {
             currency.Builder.HasAnnotation(RelationalAnnotationNames.ColumnName, navigationName + "Currency");
             currency.Builder.HasMaxLength(3);
+            if (isOptional)
+                currency.Builder.IsRequired(false);
         }
     }
 }

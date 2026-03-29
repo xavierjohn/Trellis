@@ -145,6 +145,14 @@ public static Money Create(decimal amount, string currencyCode)
 }
 ```
 
+### Culture-Aware String Parsing
+
+Numeric and date value objects implement `IFormattableScalarValue` for culture-sensitive parsing:
+- `TryCreate(string?)` — always uses `InvariantCulture` (safe for APIs)
+- `TryCreate(string?, IFormatProvider?, string?)` — uses the specified culture (for CSV import, user input with known locale)
+
+String-based VOs (`EmailAddress`, `Slug`, etc.) only have `TryCreate(string?)` — culture doesn't affect their format.
+
 ## Value Object Category Review
 
 Before adding or approving a new value-like type, classify it first:
@@ -633,10 +641,30 @@ var matches = await context.Customers.WhereEquals(c => c.Phone, phone).ToListAsy
 
 These methods rewrite the expression tree to target the backing field via `EF.Property<T?>`, so EF Core can translate the query to SQL.
 
+### Maybe\<T\> with Composite Owned Types
+
+`partial Maybe<Money>` is also supported. The conventions automatically configure it as an optional owned type — no `OwnsOne` configuration needed:
+
+```csharp
+public partial class Penalty : Aggregate<PenaltyId>
+{
+    public Money Fine { get; set; } = null!;              // required Money (2 NOT NULL columns)
+    public partial Maybe<Money> FinePaid { get; set; }    // optional Money (2 nullable columns)
+}
+```
+
+Column naming follows `MoneyConvention`: `FinePaid` (amount) and `FinePaidCurrency`.
+
+> **Note:** `ExecuteUpdate` helpers (`SetMaybeValue`/`SetMaybeNone`) do not support `Maybe<Money>`. Use tracked entity updates (load, modify, `SaveChangesAsync`) instead.
+
 ## Money with EF Core
 
 `Money` properties are automatically mapped as owned types by `ApplyTrellisConventions` — no `OwnsOne` configuration needed.
 This includes `Money` properties declared on owned entity types, including items inside `OwnsMany` collections.
+
+For optional Money properties, use `partial Maybe<Money>` — see the Maybe\<T\> section above.
+
+> **Single-currency alternative:** If your system uses one currency everywhere, use `MonetaryAmount` instead of `Money`. It is a scalar value object (`ScalarValueObject<MonetaryAmount, decimal>`) that maps to a single `decimal` column — no currency column needed. See the Trellis.Primitives README for details.
 
 ### How It Works
 
@@ -681,6 +709,61 @@ modelBuilder.Entity<Order>(b =>
 });
 ```
 
+## Composite ValueObjects as EF Core Owned Types
+
+When a composite `ValueObject` (like `ShippingAddress`) is persisted via EF Core's `OwnsOne`, it needs specific boilerplate for EF Core materialization:
+
+```csharp
+public sealed record ShippingAddress : ValueObject
+{
+    // EF Core requires a private parameterless constructor for materialization
+    private ShippingAddress() { }
+
+    // Properties must use 'private set' (not 'get;' only) and '= null!' for reference types
+    public Street Street { get; private set; } = null!;
+    public City City { get; private set; } = null!;
+    public State State { get; private set; } = null!;
+    public PostalCode PostalCode { get; private set; } = null!;
+    public Country Country { get; private set; } = null!;
+
+    // Public factory — the only way to create instances
+    public static Result<ShippingAddress> TryCreate(
+        Street street, City city, State state, PostalCode postalCode, Country country) =>
+        new ShippingAddress
+        {
+            Street = street, City = city, State = state,
+            PostalCode = postalCode, Country = country
+        };
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return Street;
+        yield return City;
+        yield return State;
+        yield return PostalCode;
+        yield return Country;
+    }
+}
+```
+
+**Rules:**
+- Always add `private ShippingAddress() { }` — EF Core cannot materialize without it
+- Use `{ get; private set; }` not `{ get; }` — EF Core sets properties via reflection
+- Add `= null!` to all reference type properties — suppresses nullable warning for the private constructor path
+- Value type properties (e.g., `int`, `decimal`, `DateTime`) do not need `= null!`
+
+**Entity configuration:**
+```csharp
+// In IEntityTypeConfiguration<Customer>
+builder.OwnsOne(c => c.ShippingAddress);
+```
+
+**Nested OwnsOne with OwnsMany:** When two `OwnsOne` navigations share the same child type that has `OwnsMany` collections, EF Core defaults to the same table name. Use explicit `ToTable()`:
+```csharp
+builder.OwnsOne(s => s.Inning1, b => b.OwnsMany(i => i.BattingEntries).ToTable("Inning1BattingEntries"));
+builder.OwnsOne(s => s.Inning2, b => b.OwnsMany(i => i.BattingEntries).ToTable("Inning2BattingEntries"));
+```
+
 ## Known Namespace Collisions
 
 ### `Trellis.Unit` vs `Mediator.Unit`
@@ -698,3 +781,11 @@ using Unit = Trellis.Unit;
 ```
 
 The parameterless `Result.Success()` is preferred — it avoids the type name entirely.
+
+## Pre-Submission Checklist
+
+Before committing any changes:
+
+1. **All tests pass** — `dotnet test` from the repository root must report zero failures.
+2. **Code review by GPT-5.4** — Use a code-review agent with `model: gpt-5.4` to review all changed files before committing. Address any issues it flags as bugs, security vulnerabilities, or logic errors.
+3. **User review** — Present a summary of changes to the user and wait for explicit approval before committing.

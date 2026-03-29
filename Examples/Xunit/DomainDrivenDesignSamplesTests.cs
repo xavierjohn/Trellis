@@ -23,6 +23,9 @@ public class DomainDrivenDesignSamplesTests
                 ? Error.Validation("Customer ID cannot be empty", fieldName ?? "customerId")
                 : Result.Success(new CustomerId(value));
 
+        public static Result<CustomerId> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
+
         public static Result<CustomerId> TryCreate(Guid? value) =>
             value.ToResult(Error.Validation("Customer ID cannot be empty"))
                 .Ensure(v => v != Guid.Empty, Error.Validation("Customer ID cannot be empty"))
@@ -39,6 +42,9 @@ public class DomainDrivenDesignSamplesTests
             value == Guid.Empty
                 ? Error.Validation("Order ID cannot be empty", fieldName ?? "orderId")
                 : Result.Success(new OrderId(value));
+
+        public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
 
         public static Result<OrderId> TryCreate(Guid? value) =>
             value.ToResult(Error.Validation("Order ID cannot be empty"))
@@ -336,6 +342,9 @@ public class DomainDrivenDesignSamplesTests
                        Error.Validation("Temperature exceeds physical limits", field))
                 .Map(v => new Temperature(v));
         }
+
+        public static Result<Temperature> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
 
         public static Temperature FromCelsius(decimal celsius) => new(celsius);
         public static Temperature FromFahrenheit(decimal fahrenheit) => new((fahrenheit - 32) * 5 / 9);
