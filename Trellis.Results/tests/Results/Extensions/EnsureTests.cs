@@ -299,4 +299,72 @@ public class EnsureTests
 
         result.Should().BeFailure().Which.Should().Be(Error.Unexpected("test error"));
     }
+
+    #region EnsureNotNull for reference types
+
+    [Fact]
+    public void EnsureNotNull_Success_NotNull_ReturnsSuccess()
+    {
+        Result<string?> sut = Result.Success<string?>("hello");
+
+        Result<string> result = sut.EnsureNotNull(Error.Unexpected("was null"));
+
+        result.Should().BeSuccess().Which.Should().Be("hello");
+    }
+
+    [Fact]
+    public void EnsureNotNull_Success_Null_ReturnsFailure()
+    {
+        Result<string?> sut = Result.Success<string?>(value: null);
+
+        Result<string> result = sut.EnsureNotNull(Error.Unexpected("was null"));
+
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("was null"));
+    }
+
+    [Fact]
+    public void EnsureNotNull_Failure_ReturnsOriginalFailure()
+    {
+        Result<string?> sut = Result.Failure<string?>(Error.Unexpected("original error"));
+
+        Result<string> result = sut.EnsureNotNull(Error.Unexpected("was null"));
+
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("original error"));
+    }
+
+    #endregion
+
+    #region EnsureNotNull for value types
+
+    [Fact]
+    public void EnsureNotNull_Struct_Success_HasValue_ReturnsSuccess()
+    {
+        Result<int?> sut = Result.Success<int?>(42);
+
+        Result<int> result = sut.EnsureNotNull(Error.Unexpected("was null"));
+
+        result.Should().BeSuccess().Which.Should().Be(42);
+    }
+
+    [Fact]
+    public void EnsureNotNull_Struct_Success_Null_ReturnsFailure()
+    {
+        Result<int?> sut = Result.Success<int?>(value: null);
+
+        Result<int> result = sut.EnsureNotNull(Error.Unexpected("was null"));
+
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("was null"));
+    }
+
+    [Fact]
+    public void EnsureNotNull_Struct_Failure_ReturnsOriginalFailure()
+    {
+        Result<int?> sut = Result.Failure<int?>(Error.Unexpected("original error"));
+
+        Result<int> result = sut.EnsureNotNull(Error.Unexpected("was null"));
+
+        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("original error"));
+    }
+
+    #endregion
 }
