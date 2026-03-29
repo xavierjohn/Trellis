@@ -167,7 +167,9 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<T>();
         services.AddScoped<IActorProvider>(sp =>
-            new CachingActorProvider(sp.GetRequiredService<T>()));
+            new CachingActorProvider(
+                sp.GetRequiredService<T>(),
+                sp.GetRequiredService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()));
 
         return services;
     }

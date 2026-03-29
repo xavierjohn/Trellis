@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Asp.Authorization.Tests;
 
+using Microsoft.AspNetCore.Http;
 using Trellis.Authorization;
 
 /// <summary>
@@ -7,6 +8,8 @@ using Trellis.Authorization;
 /// </summary>
 public class CachingActorProviderTests
 {
+    private static readonly IHttpContextAccessor s_nullAccessor = new HttpContextAccessor();
+
     #region Caching behavior
 
     [Fact]
@@ -15,7 +18,7 @@ public class CachingActorProviderTests
         var callCount = 0;
         var actor = Actor.Create("user-1", new HashSet<string>(["Read"]));
         var inner = new CountingActorProvider(actor, () => callCount++);
-        var caching = new CachingActorProvider(inner);
+        var caching = new CachingActorProvider(inner, s_nullAccessor);
 
         var result1 = await caching.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         var result2 = await caching.GetCurrentActorAsync(TestContext.Current.CancellationToken);
@@ -29,7 +32,7 @@ public class CachingActorProviderTests
     {
         var actor = Actor.Create("user-1", new HashSet<string>(["Write"]));
         var inner = new CountingActorProvider(actor, () => { });
-        var caching = new CachingActorProvider(inner);
+        var caching = new CachingActorProvider(inner, s_nullAccessor);
 
         var result = await caching.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
@@ -38,18 +41,39 @@ public class CachingActorProviderTests
     }
 
     [Fact]
-    public async Task GetCurrentActorAsync_InnerReceivesCancellationTokenNone()
+    public async Task GetCurrentActorAsync_InnerReceivesRequestAbortedToken()
     {
         using var cts = new CancellationTokenSource();
         CancellationToken capturedToken = default;
         var actor = Actor.Create("user-1", new HashSet<string>());
         var inner = new TokenCapturingProvider(actor, t => capturedToken = t);
-        var caching = new CachingActorProvider(inner);
 
-        await caching.GetCurrentActorAsync(cts.Token);
+        // Simulate HttpContext with a RequestAborted token
+        var httpContext = new DefaultHttpContext();
+        httpContext.RequestAborted = cts.Token;
+        var accessor = new HttpContextAccessor { HttpContext = httpContext };
+        var caching = new CachingActorProvider(inner, accessor);
 
-        // Inner provider receives CancellationToken.None so one caller's
-        // cancellation doesn't cancel the shared resolution for all callers.
+        #pragma warning disable xUnit1051 // Intentionally omitting token to test default behavior
+        await caching.GetCurrentActorAsync();
+        #pragma warning restore xUnit1051
+
+        // Inner provider receives HttpContext.RequestAborted, not CancellationToken.None
+        capturedToken.Should().Be(cts.Token);
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_NoHttpContext_InnerReceivesNone()
+    {
+        CancellationToken capturedToken = new CancellationTokenSource().Token; // non-default
+        var actor = Actor.Create("user-1", new HashSet<string>());
+        var inner = new TokenCapturingProvider(actor, t => capturedToken = t);
+        var caching = new CachingActorProvider(inner, s_nullAccessor);
+
+        #pragma warning disable xUnit1051 // Intentionally omitting token to test default behavior
+        await caching.GetCurrentActorAsync();
+        #pragma warning restore xUnit1051
+
         capturedToken.Should().Be(CancellationToken.None);
     }
 

@@ -14,22 +14,35 @@ using Trellis.Authorization;
 /// <see cref="ServiceCollectionExtensions.AddCachingActorProvider{T}"/>.
 /// </para>
 /// </remarks>
-public sealed class CachingActorProvider(IActorProvider inner) : IActorProvider
+public sealed class CachingActorProvider : IActorProvider
 {
+    private readonly IActorProvider _inner;
+    private readonly CancellationToken _requestAborted;
     private Task<Actor>? _cachedTask;
+
+    /// <summary>
+    /// Initializes a new <see cref="CachingActorProvider"/>.
+    /// </summary>
+    /// <param name="inner">The inner provider to delegate to on the first call.</param>
+    /// <param name="httpContextAccessor">Provides <c>HttpContext.RequestAborted</c> for request-scoped cancellation.</param>
+    public CachingActorProvider(IActorProvider inner, Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor)
+    {
+        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        _requestAborted = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+    }
 
     /// <inheritdoc />
     public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
-        // Use CancellationToken.None for the shared resolution to avoid one caller's
-        // cancellation affecting others. Caller cancellation is applied to the wait only.
+        // The shared resolution uses HttpContext.RequestAborted so expensive work
+        // (e.g., DB queries) is canceled when the HTTP request ends, but individual
+        // callers' tokens don't cancel the shared task for other callers.
         var task = LazyInitializer.EnsureInitialized(
             ref _cachedTask,
-            () => inner.GetCurrentActorAsync(CancellationToken.None));
+            () => _inner.GetCurrentActorAsync(_requestAborted));
 
-        // If the caller's token is cancelable, wrap so their cancellation doesn't
-        // cancel the shared task — only their await.
-        return cancellationToken.CanBeCanceled
+        // If the caller's token differs and is cancelable, apply it to the await only.
+        return cancellationToken.CanBeCanceled && cancellationToken != _requestAborted
             ? WaitWithCancellation(task!, cancellationToken)
             : task!;
     }
@@ -37,7 +50,6 @@ public sealed class CachingActorProvider(IActorProvider inner) : IActorProvider
     private static async Task<Actor> WaitWithCancellation(Task<Actor> task, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        var result = await task.WaitAsync(ct).ConfigureAwait(false);
-        return result;
+        return await task.WaitAsync(ct).ConfigureAwait(false);
     }
 }
