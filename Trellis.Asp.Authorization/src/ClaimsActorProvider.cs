@@ -66,8 +66,13 @@ public class ClaimsActorProvider(
     /// <inheritdoc />
     public virtual Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
-        var user = HttpContextAccessor.HttpContext?.User;
-        var identity = user?.Identities.FirstOrDefault(i => i.IsAuthenticated) as ClaimsIdentity
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var httpContext = HttpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException(
+                "No HttpContext available. Ensure this is called within an HTTP request scope.");
+
+        var identity = httpContext.User.Identities.FirstOrDefault(i => i.IsAuthenticated) as ClaimsIdentity
             ?? throw new InvalidOperationException(
                 "No authenticated user. Ensure authentication middleware runs before actor resolution.");
 

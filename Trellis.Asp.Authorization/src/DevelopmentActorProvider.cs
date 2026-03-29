@@ -48,6 +48,8 @@ public sealed partial class DevelopmentActorProvider(
     /// <inheritdoc />
     public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (!hostEnvironment.IsDevelopment())
             throw new InvalidOperationException(
                 "DevelopmentActorProvider is not allowed outside Development environments. " +

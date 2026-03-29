@@ -48,6 +48,8 @@ public sealed class EntraActorProvider : ClaimsActorProvider
     /// <inheritdoc />
     public override Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var httpContext = HttpContextAccessor.HttpContext
             ?? throw new InvalidOperationException(
                 "No HttpContext available. Ensure this is called within an HTTP request scope.");

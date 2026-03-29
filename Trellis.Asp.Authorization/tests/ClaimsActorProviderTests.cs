@@ -102,7 +102,7 @@ public class ClaimsActorProviderTests
         Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*authenticated*");
+            .WithMessage("*HttpContext*");
     }
 
     [Fact]
