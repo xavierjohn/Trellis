@@ -1438,7 +1438,7 @@ services.AddEntraActorProvider(options => {
 
 ## DevelopmentActorProvider (Development/Testing)
 
-Development/testing actor provider that reads `Actor` from the `X-Test-Actor` HTTP header (JSON). Falls back to a configurable default actor. Throws in Production to prevent accidental use.
+Development/testing actor provider that reads `Actor` from the `X-Test-Actor` HTTP header (JSON). Falls back to a configurable default actor. **Throws unconditionally in any non-Development environment** to prevent accidental use in Production.
 
 ```csharp
 // Registration — for development environments
@@ -1450,8 +1450,8 @@ services.AddDevelopmentActorProvider(options => {
 });
 
 // DevelopmentActorProvider : IActorProvider
-// Reads Actor from X-Test-Actor HTTP header (JSON)
-// Throws InvalidOperationException if header present in Production
+// Throws InvalidOperationException unconditionally in non-Development environments
+// Reads Actor from X-Test-Actor HTTP header (JSON) in Development
 // Falls back to configurable default Actor when header absent
 // Header JSON schema: { "Id": "...", "Permissions": [...], "ForbiddenPermissions": [...], "Attributes": {...} }
 
