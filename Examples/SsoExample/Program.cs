@@ -42,7 +42,9 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-app.UseAuthentication();
+if (!app.Environment.IsDevelopment())
+    app.UseAuthentication();
+
 app.UseAuthorization();
 app.MapControllers();
 
