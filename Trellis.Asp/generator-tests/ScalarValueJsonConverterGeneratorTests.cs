@@ -164,6 +164,8 @@ public class ScalarValueJsonConverterGeneratorTests
                     private Quantity(int value) : base(value) { }
 
                     public static Result<Quantity> TryCreate(int value, string? fieldName = null) => new Quantity(value);
+                    public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
+                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Failure<Quantity>(Error.Validation("Invalid", fieldName));
                 }
             }
 
@@ -174,6 +176,8 @@ public class ScalarValueJsonConverterGeneratorTests
                     private Quantity(int value) : base(value) { }
 
                     public static Result<Quantity> TryCreate(int value, string? fieldName = null) => new Quantity(value);
+                    public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
+                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Failure<Quantity>(Error.Validation("Invalid", fieldName));
                 }
             }
             """;
