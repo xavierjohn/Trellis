@@ -126,6 +126,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// </code>
 /// </example>
 [Generator(LanguageNames.CSharp)]
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class RequiredPartialClassGenerator : IIncrementalGenerator
 {
     /// <summary>
