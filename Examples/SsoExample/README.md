@@ -145,10 +145,12 @@ curl http://localhost:5051/api/me -H "Authorization: Bearer {access-token}"
 
 ## How It Works
 
-| Environment | Actor Provider | Identity Source |
-|---|---|---|
-| Development | `DevelopmentActorProvider` | `X-Test-Actor` HTTP header |
-| Production | `ClaimsActorProvider` | JWT claims from the configured OIDC provider |
+| Environment | Actor Provider | Authentication | Identity Source |
+|---|---|---|---|
+| Development | `DevelopmentActorProvider` | None (anonymous allowed) | `X-Test-Actor` HTTP header |
+| Production | `ClaimsActorProvider` | JWT bearer (required) | JWT claims from the configured OIDC provider |
+
+In Development, JWT authentication is not registered — requests go straight to `DevelopmentActorProvider` which reads the `X-Test-Actor` header. In Production, a fallback authorization policy requires authenticated users on all endpoints, and `ClaimsActorProvider` maps JWT claims to an actor.
 
 The `/api/me` endpoint returns the current actor's identity, permissions, and attributes — useful for verifying the authentication pipeline is working correctly.
 

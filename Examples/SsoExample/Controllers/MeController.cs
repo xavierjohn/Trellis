@@ -1,11 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trellis.Authorization;
 
 namespace SsoExample.Controllers;
 
 [ApiController]
-[Authorize]
 [Route("api/[controller]")]
 public class MeController(IActorProvider actorProvider) : ControllerBase
 {
