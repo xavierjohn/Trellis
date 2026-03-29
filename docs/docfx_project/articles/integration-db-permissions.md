@@ -1,6 +1,6 @@
 ﻿# Database-Backed Permissions
 
-This guide shows how to store roles and permissions in your application database instead of (or in addition to) Azure Entra ID app roles. Uses the existing `IAsyncActorProvider` interface — no additional Trellis packages required.
+This guide shows how to store roles and permissions in your application database instead of (or in addition to) Azure Entra ID app roles. Uses the existing `IActorProvider` interface with `AddCachingActorProvider<T>()` — no additional Trellis packages required.
 
 ## When to Use
 
@@ -237,11 +237,8 @@ using Trellis.Authorization;
 
 public class DatabaseActorProvider(
     IHttpContextAccessor httpContextAccessor,
-    IPermissionRepository permissionRepository,
-    IMemoryCache cache) : IAsyncActorProvider
+    IPermissionRepository permissionRepository) : IActorProvider
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
-
     public async Task<Actor> GetCurrentActorAsync(CancellationToken ct = default)
     {
         var httpContext = httpContextAccessor.HttpContext
@@ -255,17 +252,11 @@ public class DatabaseActorProvider(
             ?? user.FindFirstValue("sub")
             ?? throw new InvalidOperationException("No 'oid' or 'sub' claim found.");
 
-        var permissions = await cache.GetOrCreateAsync(
-            $"permissions:{externalId}",
-            async entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-                return await permissionRepository
-                    .GetPermissionsForUserAsync(externalId, ct)
-                    .ConfigureAwait(false);
-            }).ConfigureAwait(false);
+        var permissions = await permissionRepository
+            .GetPermissionsForUserAsync(externalId, ct)
+            .ConfigureAwait(false);
 
-        return Actor.Create(externalId, permissions ?? new HashSet<string>());
+        return Actor.Create(externalId, permissions);
     }
 }
 ```
@@ -274,10 +265,9 @@ public class DatabaseActorProvider(
 
 | Decision | Choice | Why |
 |----------|--------|-----|
-| Provider type | `IAsyncActorProvider` | DB lookup is async; Mediator pipeline prefers async over sync |
-| Caching | `IMemoryCache` with 5-min TTL | Permissions change infrequently; avoids DB hit per request |
+| Provider type | `IActorProvider` | Single async interface; `GetCurrentActorAsync()` supports DB lookups natively |
+| Caching | `AddCachingActorProvider<T>()` | Wraps the provider with `CachingActorProvider` for per-request caching; avoids DB hit per pipeline behavior |
 | User ID source | `oid` claim (fallback `sub`) | Matches Entra ID token format |
-| Cache key | `permissions:{externalId}` | Per-user isolation |
 
 ## DI Registration
 
@@ -295,17 +285,13 @@ else
     services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options => configuration.Bind("AzureAd", options));
 
-    // EntraActorProvider satisfies the required IActorProvider dependency
-    services.AddEntraActorProvider();
-
-    // DatabaseActorProvider loads permissions from DB (takes precedence at runtime)
-    services.AddMemoryCache();
+    // DatabaseActorProvider loads permissions from DB, wrapped with per-request caching
     services.AddScoped<IPermissionRepository, PermissionRepository>();
-    services.AddScoped<IAsyncActorProvider, DatabaseActorProvider>();
+    services.AddCachingActorProvider<DatabaseActorProvider>();
 }
 ```
 
-> **Note:** Both `IActorProvider` and `IAsyncActorProvider` must be registered. `AuthorizationBehavior` requires `IActorProvider` in its constructor but prefers `IAsyncActorProvider` at runtime when available. `AddEntraActorProvider()` provides the required `IActorProvider`; `DatabaseActorProvider` overrides permission resolution via the async path.
+> **Note:** `AddCachingActorProvider<DatabaseActorProvider>()` registers `DatabaseActorProvider` as the `IActorProvider` implementation, wrapped with `CachingActorProvider` for per-request caching. The `AuthorizationBehavior` calls `IActorProvider.GetCurrentActorAsync()` — the caching layer ensures only one DB round-trip per request even when multiple pipeline behaviors resolve the actor.
 
 ## Seed Data
 

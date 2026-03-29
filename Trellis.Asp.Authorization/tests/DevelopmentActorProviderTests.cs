@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Authorization.Tests;
+namespace Trellis.Asp.Authorization.Tests;
 
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
@@ -58,43 +58,55 @@ public class DevelopmentActorProviderTests
     #region Environment guard — Production
 
     [Fact]
-    public void GetCurrentActor_Production_WithTestActorHeader_ThrowsInvalidOperationException()
+    public async Task GetCurrentActor_Production_WithTestActorHeader_ThrowsInvalidOperationException()
     {
         var header = CreateActorJson("attacker", ["admin:all"]);
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context, isProduction: true);
 
-        var act = provider.GetCurrentActor;
+        Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*not allowed outside Development*");
     }
 
     [Fact]
-    public void GetCurrentActor_Production_WithoutHeader_ReturnsDefaultActor()
+    public async Task GetCurrentActor_Production_WithoutHeader_ThrowsInvalidOperationException()
     {
         var context = new DefaultHttpContext();
         var provider = CreateProvider(context, isProduction: true);
 
-        var actor = provider.GetCurrentActor();
+        Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        actor.Id.Should().Be("development");
-        actor.Permissions.Should().BeEmpty();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not allowed outside Development*");
+    }
+
+    [Fact]
+    public async Task GetCurrentActor_Staging_WithoutHeader_ThrowsInvalidOperationException()
+    {
+        var context = new DefaultHttpContext();
+        var provider = CreateProvider(context, environmentName: "Staging");
+
+        Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not allowed outside Development*");
     }
 
     [Theory]
     [InlineData("Staging")]
     [InlineData("UAT")]
     [InlineData("PreProd")]
-    public void GetCurrentActor_NonDevelopmentEnvironment_WithHeader_ThrowsInvalidOperationException(string environment)
+    public async Task GetCurrentActor_NonDevelopmentEnvironment_WithHeader_ThrowsInvalidOperationException(string environment)
     {
         var header = CreateActorJson("attacker", ["admin:all"]);
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context, environmentName: environment);
 
-        var act = provider.GetCurrentActor;
+        Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*not allowed outside Development*");
     }
 
@@ -103,66 +115,66 @@ public class DevelopmentActorProviderTests
     #region Development — Valid header parsing
 
     [Fact]
-    public void GetCurrentActor_Development_ValidHeader_ReturnsActorWithIdAndPermissions()
+    public async Task GetCurrentActor_Development_ValidHeader_ReturnsActorWithIdAndPermissions()
     {
         var header = CreateActorJson("user-1", ["orders:create", "orders:read"]);
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("user-1");
         actor.Permissions.Should().BeEquivalentTo(["orders:create", "orders:read"]);
     }
 
     [Fact]
-    public void GetCurrentActor_Development_ValidHeader_ParsesForbiddenPermissions()
+    public async Task GetCurrentActor_Development_ValidHeader_ParsesForbiddenPermissions()
     {
         var header = CreateActorJson("user-1", ["orders:create"], ["orders:delete"]);
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.ForbiddenPermissions.Should().Contain("orders:delete");
         actor.HasPermission("orders:delete").Should().BeFalse("deny overrides allow");
     }
 
     [Fact]
-    public void GetCurrentActor_Development_ValidHeader_ParsesAttributes()
+    public async Task GetCurrentActor_Development_ValidHeader_ParsesAttributes()
     {
         var attrs = new Dictionary<string, string> { ["tid"] = "tenant-1", ["region"] = "us-west" };
         var header = CreateActorJson("user-1", attributes: attrs);
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute("tid").Should().Be("tenant-1");
         actor.GetAttribute("region").Should().Be("us-west");
     }
 
     [Fact]
-    public void GetCurrentActor_Development_HeaderWithEmptyPermissions_ReturnsActorWithNoPermissions()
+    public async Task GetCurrentActor_Development_HeaderWithEmptyPermissions_ReturnsActorWithNoPermissions()
     {
         var header = CreateActorJson("user-1");
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("user-1");
         actor.Permissions.Should().BeEmpty();
     }
 
     [Fact]
-    public void GetCurrentActor_Development_MinimalHeader_OnlyIdRequired()
+    public async Task GetCurrentActor_Development_MinimalHeader_OnlyIdRequired()
     {
         var header = """{"Id":"minimal-user"}""";
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("minimal-user");
         actor.Permissions.Should().BeEmpty();
@@ -175,19 +187,19 @@ public class DevelopmentActorProviderTests
     #region Development — No header (fallback to default actor)
 
     [Fact]
-    public void GetCurrentActor_Development_NoHeader_ReturnsDefaultActor()
+    public async Task GetCurrentActor_Development_NoHeader_ReturnsDefaultActor()
     {
         var context = new DefaultHttpContext();
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("development");
         actor.Permissions.Should().BeEmpty();
     }
 
     [Fact]
-    public void GetCurrentActor_Development_NoHeader_UsesConfiguredDefaults()
+    public async Task GetCurrentActor_Development_NoHeader_UsesConfiguredDefaults()
     {
         var context = new DefaultHttpContext();
         var options = new DevelopmentActorOptions
@@ -197,30 +209,30 @@ public class DevelopmentActorProviderTests
         };
         var provider = CreateProvider(context, options: options);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("admin");
         actor.Permissions.Should().BeEquivalentTo(["orders:create", "orders:read"]);
     }
 
     [Fact]
-    public void GetCurrentActor_NoHttpContext_ReturnsDefaultActor()
+    public async Task GetCurrentActor_NoHttpContext_ReturnsDefaultActor()
     {
         var provider = CreateProvider(httpContext: null);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("development");
     }
 
     [Fact]
-    public void GetCurrentActor_EmptyHeader_ReturnsDefaultActor()
+    public async Task GetCurrentActor_EmptyHeader_ReturnsDefaultActor()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers[DevelopmentActorProvider.HeaderName] = "";
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("development");
     }
@@ -230,71 +242,71 @@ public class DevelopmentActorProviderTests
     #region Development — Malformed header
 
     [Fact]
-    public void GetCurrentActor_Development_MalformedJson_FallsBackToDefault()
+    public async Task GetCurrentActor_Development_MalformedJson_FallsBackToDefault()
     {
         var context = CreateHttpContextWithHeader("not valid json {{{");
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("development");
     }
 
     [Fact]
-    public void GetCurrentActor_Development_MissingId_FallsBackToDefault()
+    public async Task GetCurrentActor_Development_MissingId_FallsBackToDefault()
     {
         var context = CreateHttpContextWithHeader("""{"Permissions":["orders:read"]}""");
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("development");
     }
 
     [Fact]
-    public void GetCurrentActor_Development_EmptyId_FallsBackToDefault()
+    public async Task GetCurrentActor_Development_EmptyId_FallsBackToDefault()
     {
         var context = CreateHttpContextWithHeader("""{"Id":"","Permissions":["orders:read"]}""");
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("development");
     }
 
     [Fact]
-    public void GetCurrentActor_Development_MalformedJson_ThrowOnMalformedEnabled_Throws()
+    public async Task GetCurrentActor_Development_MalformedJson_ThrowOnMalformedEnabled_Throws()
     {
         var context = CreateHttpContextWithHeader("not valid json");
         var options = new DevelopmentActorOptions { ThrowOnMalformedHeader = true };
         var provider = CreateProvider(context, options: options);
 
-        var act = provider.GetCurrentActor;
+        Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Malformed*");
     }
 
     [Fact]
-    public void GetCurrentActor_Development_MissingId_ThrowOnMalformedEnabled_Throws()
+    public async Task GetCurrentActor_Development_MissingId_ThrowOnMalformedEnabled_Throws()
     {
         var context = CreateHttpContextWithHeader("""{"Permissions":["orders:read"]}""");
         var options = new DevelopmentActorOptions { ThrowOnMalformedHeader = true };
         var provider = CreateProvider(context, options: options);
 
-        var act = provider.GetCurrentActor;
+        Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Malformed*Id*");
     }
 
     [Fact]
-    public void GetCurrentActor_Development_NonStringPermissionValues_FallsBackToDefault()
+    public async Task GetCurrentActor_Development_NonStringPermissionValues_FallsBackToDefault()
     {
         var context = CreateHttpContextWithHeader("""{"Id":"user-1","Permissions":[123,true]}""");
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("development");
     }
@@ -304,7 +316,7 @@ public class DevelopmentActorProviderTests
     #region Round-trip with CreateClientWithActor JSON schema
 
     [Fact]
-    public void GetCurrentActor_RoundTrip_FullActorJson_AllPropertiesSurvive()
+    public async Task GetCurrentActor_RoundTrip_FullActorJson_AllPropertiesSurvive()
     {
         var header = CreateActorJson(
             "round-trip-user",
@@ -318,7 +330,7 @@ public class DevelopmentActorProviderTests
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("round-trip-user");
         actor.Permissions.Should().BeEquivalentTo(["orders:create", "orders:read", "products:manage-stock"]);
@@ -328,14 +340,14 @@ public class DevelopmentActorProviderTests
     }
 
     [Fact]
-    public void GetCurrentActor_CaseInsensitivePropertyNames_ParsesCorrectly()
+    public async Task GetCurrentActor_CaseInsensitivePropertyNames_ParsesCorrectly()
     {
         // The header may come from hand-written JSON with different casing
         var header = """{"id":"case-user","permissions":["orders:read"],"forbiddenPermissions":[],"attributes":{}}""";
         var context = CreateHttpContextWithHeader(header);
         var provider = CreateProvider(context);
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("case-user");
         actor.Permissions.Should().Contain("orders:read");

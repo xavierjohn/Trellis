@@ -95,7 +95,7 @@ public sealed class CancelOrderResourceLoader(IOrderRepository repo)
 ```csharp
 internal sealed class HttpActorProvider(IHttpContextAccessor accessor) : IActorProvider
 {
-    public Actor GetCurrentActor()
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
         var user = accessor.HttpContext?.User
             ?? throw new InvalidOperationException("No authenticated user.");
@@ -104,7 +104,7 @@ internal sealed class HttpActorProvider(IHttpContextAccessor accessor) : IActorP
             .Where(c => c.Type == "permission")
             .Select(c => c.Value)
             .ToHashSet();
-        return Actor.Create(id, permissions);
+        return Task.FromResult(Actor.Create(id, permissions));
     }
 }
 ```

@@ -39,36 +39,13 @@ using Trellis.Authorization;
 /// </list>
 /// </para>
 /// </remarks>
-public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse>
+public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse>(
+    IActorProvider actorProvider,
+    IServiceProvider serviceProvider)
     : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage
     where TResponse : IResult, IFailureFactory<TResponse>
 {
-    private readonly IActorProvider _actorProvider;
-    private readonly IAsyncActorProvider? _asyncActorProvider;
-    private readonly IServiceProvider _serviceProvider;
-
-    /// <summary>
-    /// Initializes a new instance of the
-    /// <see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> class.
-    /// </summary>
-    /// <param name="actorProvider">Provides the current authenticated actor.</param>
-    /// <param name="serviceProvider">
-    /// Service provider used to resolve the scoped <see cref="IResourceLoader{TMessage, TResource}"/>.
-    /// </param>
-    /// <param name="asyncActorProvider">
-    /// Optional async actor provider. When registered, takes precedence over <paramref name="actorProvider"/>.
-    /// </param>
-    public ResourceAuthorizationBehavior(
-        IActorProvider actorProvider,
-        IServiceProvider serviceProvider,
-        IAsyncActorProvider? asyncActorProvider = null)
-    {
-        _actorProvider = actorProvider;
-        _serviceProvider = serviceProvider;
-        _asyncActorProvider = asyncActorProvider;
-    }
-
     /// <inheritdoc />
     public async ValueTask<TResponse> Handle(
         TMessage message,
@@ -76,7 +53,7 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
         CancellationToken cancellationToken)
     {
         // Resolve the scoped loader per-request (like middleware resolving scoped services)
-        var loader = _serviceProvider.GetService<IResourceLoader<TMessage, TResource>>()
+        var loader = serviceProvider.GetService<IResourceLoader<TMessage, TResource>>()
             ?? throw new InvalidOperationException(
                 $"ResourceAuthorizationBehavior<{typeof(TMessage).Name}, {typeof(TResource).Name}, {typeof(TResponse).Name}> " +
                 $"requires a registered {typeof(IResourceLoader<TMessage, TResource>).Name}. " +
@@ -88,26 +65,16 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
             return TResponse.CreateFailure(loadResult.Error);
 
         // 2. Authorize against the loaded resource
-        var actor = await GetActorAsync(cancellationToken).ConfigureAwait(false);
+        var actor = await actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
+
+        if (actor is null)
+            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
+
         var authResult = message.Authorize(actor, loadResult.Value);
         if (authResult.IsFailure)
             return TResponse.CreateFailure(authResult.Error);
 
         // 3. Proceed to handler
         return await next(message, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<Actor> GetActorAsync(CancellationToken cancellationToken)
-    {
-        if (_asyncActorProvider is not null)
-        {
-            var actor = await _asyncActorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
-            return actor ?? throw new InvalidOperationException("No authenticated actor available. Ensure an IAsyncActorProvider is configured and the user is authenticated.");
-        }
-
-        var syncActor = _actorProvider.GetCurrentActor();
-        if (syncActor is null)
-            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
-        return syncActor;
     }
 }

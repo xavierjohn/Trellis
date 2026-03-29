@@ -40,6 +40,7 @@
     <Project Path="Examples/EcommerceExample/EcommerceExample.csproj" />
     <Project Path="Examples/AuthorizationExample/AuthorizationExample.csproj" />
     <Project Path="Examples/EfCoreExample/EfCoreExample.csproj" />
+    <Project Path="Examples/SsoExample/SsoExample.csproj" />
     <Project Path="Examples/Xunit/Example.Tests.csproj" />
   </Folder>
   <Folder Name="/Examples/SampleWeb/">

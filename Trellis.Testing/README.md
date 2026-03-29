@@ -299,7 +299,7 @@ public class OrderEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 | `new TestActorProvider(userId, permissions)` | Creates a provider from user ID and permission strings |
 | `WithActor(actor)` | Temporarily switches to the given `Actor`; returns `TestActorScope` |
 | `WithActor(userId, permissions)` | Temporarily switches actor; returns `TestActorScope` |
-| `GetCurrentActor()` | Returns the current actor (`IActorProvider` implementation) |
+| `GetCurrentActorAsync()` | Returns the current actor (`IActorProvider` implementation) |
 
 `TestActorScope` implements both `IAsyncDisposable` and `IDisposable`. Nested scopes restore the correct actor at each level.
 

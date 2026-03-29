@@ -23,7 +23,7 @@ using Trellis.Authorization;
 // Implement IActorProvider in your API layer
 public class HttpActorProvider(IHttpContextAccessor accessor) : IActorProvider
 {
-    public Actor GetCurrentActor()
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
         var user = accessor.HttpContext!.User;
         var id = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -31,7 +31,7 @@ public class HttpActorProvider(IHttpContextAccessor accessor) : IActorProvider
             .Where(c => c.Type == "permission")
             .Select(c => c.Value)
             .ToHashSet();
-        return Actor.Create(id, permissions);
+        return Task.FromResult(Actor.Create(id, permissions));
     }
 }
 ```
