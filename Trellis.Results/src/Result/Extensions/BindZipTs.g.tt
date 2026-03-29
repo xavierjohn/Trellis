@@ -13,6 +13,8 @@
 
 namespace Trellis;
 
+using System.CodeDom.Compiler;
+
 /// <summary>
 /// Provides BindZip extension methods for Result types containing tuples (2-9 elements).
 /// These methods enable sequential accumulation of values through a pipeline by binding
@@ -27,6 +29,7 @@ namespace Trellis;
 ///     .BindZip((order, customer, inventory) => CalculateShipping(order, inventory));
 /// </code>
 /// </remarks>
+[GeneratedCode("BindZipTs.g.tt", "1.0")]
 public static partial class BindZipExtensions
 {
 
@@ -88,6 +91,7 @@ public static partial class BindZipExtensions
 /// Provides asynchronous BindZip extension methods for Result types containing tuples (2-9 elements).
 /// Supports Task and ValueTask for async operations.
 /// </summary>
+[GeneratedCode("BindZipTs.g.tt", "1.0")]
 public static partial class BindZipExtensionsAsync
 {
 <#
