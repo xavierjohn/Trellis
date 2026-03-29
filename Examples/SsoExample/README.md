@@ -65,8 +65,6 @@ For Entra-specific features (role-to-permission mapping, ABAC attributes, MFA de
 }
 ```
 
-> **Note:** Google OAuth2 Playground issues opaque access tokens, not JWTs. To test locally, use the **ID token** from the token response (not the access token). Alternatively, use the Google Sign-In SDK to obtain a JWT ID token and send it as the Bearer token.
-
 ### Auth0
 
 1. Register at [auth0.com](https://auth0.com) dashboard.
@@ -118,16 +116,18 @@ TOKEN=$(az account get-access-token --resource {client-id} --query accessToken -
 curl http://localhost:5051/api/me -H "Authorization: Bearer $TOKEN"
 ```
 
-### Google (OAuth2 Playground)
+### Google (ID Token)
 
 1. Go to https://developers.google.com/oauthplayground
-2. Select the scopes your app needs
+2. Select the `openid` scope (and optionally `email`, `profile`)
 3. Exchange the authorization code for tokens
-4. Copy the `access_token` and use it:
+4. Copy the **`id_token`** (not `access_token`) from the response — it's the JWT
 
 ```bash
-curl http://localhost:5051/api/me -H "Authorization: Bearer {access-token}"
+curl http://localhost:5051/api/me -H "Authorization: Bearer {id-token}"
 ```
+
+> **Note:** Google OAuth2 access tokens are opaque strings meant for calling Google APIs. ASP.NET's `JwtBearer` middleware cannot validate them. The `id_token` is a standard JWT containing `sub`, `email`, and other OIDC claims.
 
 ### Auth0 (Dashboard)
 
