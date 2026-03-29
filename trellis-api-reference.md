@@ -776,6 +776,16 @@ static virtual TSelf Create(TPrimitive value)  // default: TryCreate + throw
 TPrimitive Value { get; }
 ```
 
+## IFormattableScalarValue\<TSelf, TPrimitive\> (interface)
+
+Extends `IScalarValue` with culture-aware string parsing. Implemented by numeric and date value objects where culture affects string parsing (decimal separators, date formats).
+
+```csharp
+static abstract Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null);
+```
+
+Implementors: `Age`, `MonetaryAmount`, `Percentage` (hand-implemented), `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredLong<T>`, `RequiredDateTime<T>` (source-generated). Not implemented by string-based types (`EmailAddress`, `Slug`, etc.) — culture doesn't affect their parsing.
+
 ## Specification\<T\> (abstract class)
 
 Composable business rules that produce `Expression<Func<T, bool>>`.

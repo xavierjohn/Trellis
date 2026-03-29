@@ -145,6 +145,14 @@ public static Money Create(decimal amount, string currencyCode)
 }
 ```
 
+### Culture-Aware String Parsing
+
+Numeric and date value objects implement `IFormattableScalarValue` for culture-sensitive parsing:
+- `TryCreate(string?)` — always uses `InvariantCulture` (safe for APIs)
+- `TryCreate(string?, IFormatProvider?, string?)` — uses the specified culture (for CSV import, user input with known locale)
+
+String-based VOs (`EmailAddress`, `Slug`, etc.) only have `TryCreate(string?)` — culture doesn't affect their format.
+
 ## Value Object Category Review
 
 Before adding or approving a new value-like type, classify it first:

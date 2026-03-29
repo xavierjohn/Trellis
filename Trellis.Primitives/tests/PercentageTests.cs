@@ -293,7 +293,7 @@ public class PercentageTests
 
         // Assert
         act.Should().Throw<FormatException>()
-            .WithMessage("Value must be a valid decimal.");
+            .WithMessage("Percentage must be a valid decimal.");
     }
 
     [Fact]

@@ -17,7 +17,7 @@ using Trellis;
 /// </para>
 /// </summary>
 [JsonConverter(typeof(ParsableJsonConverter<MonetaryAmount>))]
-public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScalarValue<MonetaryAmount, decimal>, IParsable<MonetaryAmount>
+public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScalarValue<MonetaryAmount, decimal>, IFormattableScalarValue<MonetaryAmount, decimal>, IParsable<MonetaryAmount>
 {
     private const int DefaultDecimalPlaces = 2;
 
@@ -82,6 +82,27 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         return TryCreate(parsed, fieldName);
     }
 
+    /// <summary>
+    /// Attempts to create a <see cref="MonetaryAmount"/> from a string using the specified format provider.
+    /// </summary>
+    /// <param name="value">The string value to parse (must be a valid decimal).</param>
+    /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
+    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <returns>Success with the MonetaryAmount if valid; Failure with ValidationError otherwise.</returns>
+    public static Result<MonetaryAmount> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
+        var field = fieldName.NormalizeFieldName("amount");
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Failure<MonetaryAmount>(Error.Validation("Amount is required.", field));
+
+        if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            return Result.Failure<MonetaryAmount>(Error.Validation("Amount must be a valid decimal.", field));
+
+        return TryCreate(parsed, fieldName);
+    }
+
     /// <summary>Adds two monetary amounts.</summary>
     public Result<MonetaryAmount> Add(MonetaryAmount other)
     {
@@ -121,39 +142,24 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// <inheritdoc/>
     public static MonetaryAmount Parse(string? s, IFormatProvider? provider)
     {
-        if (string.IsNullOrWhiteSpace(s))
-            throw new FormatException("Value must be a valid decimal.");
-
-        if (!decimal.TryParse(s, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var value))
-            throw new FormatException("Value must be a valid decimal.");
-
-        var r = TryCreate(value);
-        if (r.IsFailure)
-        {
-            var val = (ValidationError)r.Error;
-            throw new FormatException(val.FieldErrors[0].Details[0]);
-        }
-
-        return r.Value;
+        var result = TryCreate(s, provider);
+        if (result.IsFailure)
+            throw new FormatException(result.Error.Detail);
+        return result.Value;
     }
 
     /// <inheritdoc/>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out MonetaryAmount result)
     {
-        result = default;
+        var r = TryCreate(s, provider);
+        if (r.IsSuccess)
+        {
+            result = r.Value;
+            return true;
+        }
 
-        if (string.IsNullOrWhiteSpace(s))
-            return false;
-
-        if (!decimal.TryParse(s, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var value))
-            return false;
-
-        var r = TryCreate(value);
-        if (r.IsFailure)
-            return false;
-
-        result = r.Value;
-        return true;
+        result = default!;
+        return false;
     }
 
     /// <summary>Explicitly converts a decimal to a <see cref="MonetaryAmount"/>.</summary>

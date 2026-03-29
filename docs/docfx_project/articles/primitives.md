@@ -169,6 +169,10 @@ var total = price.Add(tax);
 var shares = total.Allocate(3);
 ```
 
+## Culture-Aware String Parsing
+
+Numeric and date value objects (`Age`, `MonetaryAmount`, `Percentage`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredLong<T>`, `RequiredDateTime<T>`) implement `IFormattableScalarValue<TSelf, TPrimitive>`, which adds `TryCreate(string?, IFormatProvider?, string?)` for culture-sensitive parsing. The standard `TryCreate(string?)` always uses `InvariantCulture` — safe for APIs. Use the `IFormatProvider` overload when importing CSV data or handling user input with a known locale. String-based types (`EmailAddress`, `Slug`, etc.) are not affected by culture and do not implement this interface.
+
 ## EF Core LINQ Support
 
 Trellis value objects work seamlessly in EF Core LINQ queries. In most cases you do **not** need `.Value`:

@@ -190,7 +190,7 @@ public class AgeTests
 
         // Assert
         act.Should().Throw<FormatException>()
-            .WithMessage("Value must be a valid integer.");
+            .WithMessage("Age must be a valid integer.");
     }
 
     [Fact]
