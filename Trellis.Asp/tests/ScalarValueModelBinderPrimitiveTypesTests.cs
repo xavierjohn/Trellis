@@ -37,7 +37,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class NonNegativeIntVO: ScalarValueObject<NonNegativeIntVO, int>, IScalarValue<NonNegativeIntVO, int>
+    public sealed class NonNegativeIntVO : ScalarValueObject<NonNegativeIntVO, int>, IScalarValue<NonNegativeIntVO, int>
     {
         private NonNegativeIntVO(int value) : base(value) { }
         public static Result<NonNegativeIntVO> TryCreate(int value, string? fieldName = null) =>
@@ -59,7 +59,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class DecimalVO: ScalarValueObject<DecimalVO, decimal>, IScalarValue<DecimalVO, decimal>
+    public sealed class DecimalVO : ScalarValueObject<DecimalVO, decimal>, IScalarValue<DecimalVO, decimal>
     {
         private DecimalVO(decimal value) : base(value) { }
         public static Result<DecimalVO> TryCreate(decimal value, string? fieldName = null) =>
@@ -70,7 +70,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class DoubleVO: ScalarValueObject<DoubleVO, double>, IScalarValue<DoubleVO, double>
+    public sealed class DoubleVO : ScalarValueObject<DoubleVO, double>, IScalarValue<DoubleVO, double>
     {
         private DoubleVO(double value) : base(value) { }
         public static Result<DoubleVO> TryCreate(double value, string? fieldName = null) =>
@@ -81,7 +81,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class BoolVO: ScalarValueObject<BoolVO, bool>, IScalarValue<BoolVO, bool>
+    public sealed class BoolVO : ScalarValueObject<BoolVO, bool>, IScalarValue<BoolVO, bool>
     {
         private BoolVO(bool value) : base(value) { }
         public static Result<BoolVO> TryCreate(bool value, string? fieldName = null) =>
@@ -90,7 +90,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class DateTimeVO: ScalarValueObject<DateTimeVO, DateTime>, IScalarValue<DateTimeVO, DateTime>
+    public sealed class DateTimeVO : ScalarValueObject<DateTimeVO, DateTime>, IScalarValue<DateTimeVO, DateTime>
     {
         private DateTimeVO(DateTime value) : base(value) { }
         public static Result<DateTimeVO> TryCreate(DateTime value, string? fieldName = null) =>
@@ -101,7 +101,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class DateOnlyVO: ScalarValueObject<DateOnlyVO, DateOnly>, IScalarValue<DateOnlyVO, DateOnly>
+    public sealed class DateOnlyVO : ScalarValueObject<DateOnlyVO, DateOnly>, IScalarValue<DateOnlyVO, DateOnly>
     {
         private DateOnlyVO(DateOnly value) : base(value) { }
         public static Result<DateOnlyVO> TryCreate(DateOnly value, string? fieldName = null) =>
@@ -112,7 +112,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class TimeOnlyVO: ScalarValueObject<TimeOnlyVO, TimeOnly>, IScalarValue<TimeOnlyVO, TimeOnly>
+    public sealed class TimeOnlyVO : ScalarValueObject<TimeOnlyVO, TimeOnly>, IScalarValue<TimeOnlyVO, TimeOnly>
     {
         private TimeOnlyVO(TimeOnly value) : base(value) { }
         public static Result<TimeOnlyVO> TryCreate(TimeOnly value, string? fieldName = null) =>
@@ -121,7 +121,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class TimeSpanVO: ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
+    public sealed class TimeSpanVO : ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
     {
         private TimeSpanVO(TimeSpan value) : base(value) { }
         public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
@@ -132,7 +132,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class DateTimeOffsetVO: ScalarValueObject<DateTimeOffsetVO, DateTimeOffset>, IScalarValue<DateTimeOffsetVO, DateTimeOffset>
+    public sealed class DateTimeOffsetVO : ScalarValueObject<DateTimeOffsetVO, DateTimeOffset>, IScalarValue<DateTimeOffsetVO, DateTimeOffset>
     {
         private DateTimeOffsetVO(DateTimeOffset value) : base(value) { }
         public static Result<DateTimeOffsetVO> TryCreate(DateTimeOffset value, string? fieldName = null) =>
@@ -143,7 +143,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class ShortVO: ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
+    public sealed class ShortVO : ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
     {
         private ShortVO(short value) : base(value) { }
         public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
@@ -154,7 +154,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class ByteVO: ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
+    public sealed class ByteVO : ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
     {
         private ByteVO(byte value) : base(value) { }
         public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
@@ -163,7 +163,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class SByteVO: ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
+    public sealed class SByteVO : ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
     {
         private SByteVO(sbyte value) : base(value) { }
         public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
@@ -174,7 +174,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class UShortVO: ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
+    public sealed class UShortVO : ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
     {
         private UShortVO(ushort value) : base(value) { }
         public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
@@ -183,7 +183,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class UIntVO: ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
+    public sealed class UIntVO : ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
     {
         private UIntVO(uint value) : base(value) { }
         public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
@@ -192,7 +192,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class ULongVO: ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
+    public sealed class ULongVO : ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
     {
         private ULongVO(ulong value) : base(value) { }
         public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>
@@ -201,7 +201,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public sealed class FloatVO: ScalarValueObject<FloatVO, float>, IScalarValue<FloatVO, float>
+    public sealed class FloatVO : ScalarValueObject<FloatVO, float>, IScalarValue<FloatVO, float>
     {
         private FloatVO(float value) : base(value) { }
         public static Result<FloatVO> TryCreate(float value, string? fieldName = null) =>

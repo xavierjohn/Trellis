@@ -1211,7 +1211,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         }}";
                 }
 
-                // IFormattableScalarValue TryCreate overloadfor culture-sensitive parsing
+                // IFormattableScalarValue TryCreate overload for culture-sensitive parsing
                 source += $@"
 
         /// <summary>

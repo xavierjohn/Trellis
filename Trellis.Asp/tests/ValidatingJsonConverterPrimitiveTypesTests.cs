@@ -134,7 +134,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public class TimeSpanVO: ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
+    public class TimeSpanVO : ScalarValueObject<TimeSpanVO, TimeSpan>, IScalarValue<TimeSpanVO, TimeSpan>
     {
         private TimeSpanVO(TimeSpan value) : base(value) { }
         public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
@@ -143,7 +143,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public class ShortVO: ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
+    public class ShortVO : ScalarValueObject<ShortVO, short>, IScalarValue<ShortVO, short>
     {
         private ShortVO(short value) : base(value) { }
         public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
@@ -152,7 +152,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public class ByteVO: ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
+    public class ByteVO : ScalarValueObject<ByteVO, byte>, IScalarValue<ByteVO, byte>
     {
         private ByteVO(byte value) : base(value) { }
         public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
@@ -161,7 +161,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public class SByteVO: ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
+    public class SByteVO : ScalarValueObject<SByteVO, sbyte>, IScalarValue<SByteVO, sbyte>
     {
         private SByteVO(sbyte value) : base(value) { }
         public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
@@ -170,7 +170,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public class UShortVO: ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
+    public class UShortVO : ScalarValueObject<UShortVO, ushort>, IScalarValue<UShortVO, ushort>
     {
         private UShortVO(ushort value) : base(value) { }
         public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
@@ -179,7 +179,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public class UIntVO: ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
+    public class UIntVO : ScalarValueObject<UIntVO, uint>, IScalarValue<UIntVO, uint>
     {
         private UIntVO(uint value) : base(value) { }
         public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
@@ -188,7 +188,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
-    public class ULongVO: ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
+    public class ULongVO : ScalarValueObject<ULongVO, ulong>, IScalarValue<ULongVO, ulong>
     {
         private ULongVO(ulong value) : base(value) { }
         public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>

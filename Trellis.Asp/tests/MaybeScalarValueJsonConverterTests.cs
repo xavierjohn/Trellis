@@ -50,7 +50,7 @@ public class MaybeScalarValueJsonConverterTests
             throw new NotImplementedException();
     }
 
-    public class Percentage: ScalarValueObject<Percentage, decimal>, IScalarValue<Percentage, decimal>
+    public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<Percentage, decimal>
     {
         private Percentage(decimal value) : base(value) { }
 
@@ -68,7 +68,7 @@ public class MaybeScalarValueJsonConverterTests
             throw new NotImplementedException();
     }
 
-    public class ItemId: ScalarValueObject<ItemId, Guid>, IScalarValue<ItemId, Guid>
+    public class ItemId : ScalarValueObject<ItemId, Guid>, IScalarValue<ItemId, Guid>
     {
         private ItemId(Guid value) : base(value) { }
 
