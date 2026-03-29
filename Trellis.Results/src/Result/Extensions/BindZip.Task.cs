@@ -19,6 +19,7 @@ public static partial class BindZipExtensionsAsync
         this Task<Result<T1>> resultTask,
         Func<T1, Task<Result<T2>>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity();
 

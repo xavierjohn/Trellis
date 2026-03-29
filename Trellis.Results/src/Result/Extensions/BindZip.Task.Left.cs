@@ -19,6 +19,7 @@ public static partial class BindZipExtensionsAsync
         this Task<Result<T1>> resultTask,
         Func<T1, Result<T2>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);
         var result = await resultTask.ConfigureAwait(false);
         return result.BindZip(func);

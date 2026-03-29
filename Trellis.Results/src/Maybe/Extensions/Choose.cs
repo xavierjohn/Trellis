@@ -34,7 +34,6 @@ public static class MaybeChooseExtensions
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="selector"/> is null.</exception>
     public static IEnumerable<TResult> Choose<T, TResult>(this IEnumerable<Maybe<T>> source, Func<T, TResult> selector)
         where T : notnull
-        where TResult : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(selector);
@@ -52,7 +51,6 @@ public static class MaybeChooseExtensions
 
     private static IEnumerable<TResult> ChooseIterator<T, TResult>(IEnumerable<Maybe<T>> source, Func<T, TResult> selector)
         where T : notnull
-        where TResult : notnull
     {
         foreach (var item in source)
         {

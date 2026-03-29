@@ -134,6 +134,7 @@ public static partial class BindZipExtensionsAsync
         this Task<Result<(<# WriteTs(i); #>)>> resultTask,
         Func<<# WriteTs(i); #>, Result<T<#= outputSize #>>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);
         var result = await resultTask.ConfigureAwait(false);
         return result.BindZip(func);
@@ -213,6 +214,39 @@ public static partial class BindZipExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
         var result = await resultTask.ConfigureAwait(false);
         return result.BindZip(func);
+    }
+
+    /// <summary>
+    /// Asynchronously binds an async function on an async <#= i #>-tuple result (ValueTask variant).
+    /// </summary>
+    public static async ValueTask<Result<(<# WriteTs(outputSize); #>)>> BindZipAsync<<# WriteTs(outputSize); #>>(
+        this ValueTask<Result<(<# WriteTs(i); #>)>> resultTask,
+        Func<<# WriteTs(i); #>, ValueTask<Result<T<#= outputSize #>>>> func)
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        var result = await resultTask.ConfigureAwait(false);
+        if (result.IsFailure)
+        {
+            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(result.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        var (<# WriteArgs(i); #>) = result.Value;
+        var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
+        if (nextResult.IsFailure)
+        {
+            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        var success = Result.Success((<# WriteArgs(i); #>, nextResult.Value));
+        success.LogActivityStatus();
+        return success;
     }
 
 <#
