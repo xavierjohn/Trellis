@@ -200,12 +200,13 @@ var identity = new ClaimsIdentity(new[]
 var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
 ```
 
-For `CachingActorProvider`, it wraps any `IActorProvider` and caches per scope. In unit tests, wrap a `TestActorProvider`:
+For `CachingActorProvider`, register via DI using `AddCachingActorProvider<T>()`. For unit tests, construct with an `IHttpContextAccessor`:
 
 ```csharp
 var inner = new TestActorProvider("user-1", "orders:read");
-var caching = new CachingActorProvider(inner);
-var actor = await caching.GetCurrentActorAsync();  // calls inner once, caches
+var accessor = new HttpContextAccessor(); // no HttpContext in unit tests — uses CancellationToken.None
+var caching = new CachingActorProvider(inner, accessor);
+var actor = await caching.GetCurrentActorAsync(ct);  // calls inner once, caches
 ```
 
 ---
