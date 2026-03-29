@@ -38,7 +38,7 @@ public class CachingActorProviderTests
     }
 
     [Fact]
-    public async Task GetCurrentActorAsync_PropagatesCancellationToken()
+    public async Task GetCurrentActorAsync_InnerReceivesCancellationTokenNone()
     {
         using var cts = new CancellationTokenSource();
         CancellationToken capturedToken = default;
@@ -48,7 +48,9 @@ public class CachingActorProviderTests
 
         await caching.GetCurrentActorAsync(cts.Token);
 
-        capturedToken.Should().Be(cts.Token);
+        // Inner provider receives CancellationToken.None so one caller's
+        // cancellation doesn't cancel the shared resolution for all callers.
+        capturedToken.Should().Be(CancellationToken.None);
     }
 
     #endregion

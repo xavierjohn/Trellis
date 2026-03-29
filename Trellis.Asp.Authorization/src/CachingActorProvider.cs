@@ -19,6 +19,25 @@ public sealed class CachingActorProvider(IActorProvider inner) : IActorProvider
     private Task<Actor>? _cachedTask;
 
     /// <inheritdoc />
-    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default) =>
-        _cachedTask ??= inner.GetCurrentActorAsync(cancellationToken);
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    {
+        // Use CancellationToken.None for the shared resolution to avoid one caller's
+        // cancellation affecting others. Caller cancellation is applied to the wait only.
+        var task = LazyInitializer.EnsureInitialized(
+            ref _cachedTask,
+            () => inner.GetCurrentActorAsync(CancellationToken.None));
+
+        // If the caller's token is cancelable, wrap so their cancellation doesn't
+        // cancel the shared task — only their await.
+        return cancellationToken.CanBeCanceled
+            ? WaitWithCancellation(task!, cancellationToken)
+            : task!;
+    }
+
+    private static async Task<Actor> WaitWithCancellation(Task<Actor> task, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var result = await task.WaitAsync(ct).ConfigureAwait(false);
+        return result;
+    }
 }
