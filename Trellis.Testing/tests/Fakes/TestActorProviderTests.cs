@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests.Fakes;
+namespace Trellis.Testing.Tests.Fakes;
 
 using Trellis.Authorization;
 using Trellis.Testing.Fakes;
@@ -11,32 +11,32 @@ public class TestActorProviderTests
     #region Constructor Tests
 
     [Fact]
-    public void Constructor_WithActor_SetsCurrentActor()
+    public async Task Constructor_WithActor_SetsCurrentActor()
     {
         var actor = Actor.Create("user-1", new HashSet<string>(["Read"]));
 
         var provider = new TestActorProvider(actor);
 
-        provider.GetCurrentActor().Should().BeSameAs(actor);
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Should().BeSameAs(actor);
     }
 
     [Fact]
-    public void Constructor_WithUserIdAndPermissions_CreatesActor()
+    public async Task Constructor_WithUserIdAndPermissions_CreatesActor()
     {
         var provider = new TestActorProvider("user-1", "Read", "Write");
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         actor.Id.Should().Be("user-1");
         actor.HasPermission("Read").Should().BeTrue();
         actor.HasPermission("Write").Should().BeTrue();
     }
 
     [Fact]
-    public void Constructor_WithNoPermissions_CreatesActorWithEmptyPermissions()
+    public async Task Constructor_WithNoPermissions_CreatesActorWithEmptyPermissions()
     {
         var provider = new TestActorProvider("user-1");
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         actor.Id.Should().Be("user-1");
         actor.HasPermission("Read").Should().BeFalse();
     }
@@ -54,7 +54,7 @@ public class TestActorProviderTests
 
         await using (provider.WithActor(scoped))
         {
-            provider.GetCurrentActor().Should().BeSameAs(scoped);
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Should().BeSameAs(scoped);
         }
     }
 
@@ -70,7 +70,7 @@ public class TestActorProviderTests
             // Actor changed inside scope
         }
 
-        provider.GetCurrentActor().Should().BeSameAs(original);
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Should().BeSameAs(original);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class TestActorProviderTests
 
         await using (provider.WithActor("user-1", "Read"))
         {
-            var actor = provider.GetCurrentActor();
+            var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
             actor.Id.Should().Be("user-1");
             actor.HasPermission("Read").Should().BeTrue();
             actor.HasPermission("Admin").Should().BeFalse();
@@ -97,7 +97,7 @@ public class TestActorProviderTests
             // Actor changed inside scope
         }
 
-        var actor = provider.GetCurrentActor();
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         actor.Id.Should().Be("admin");
         actor.HasPermission("Admin").Should().BeTrue();
     }
@@ -109,31 +109,31 @@ public class TestActorProviderTests
 
         await using (provider.WithActor("user-1", "Read"))
         {
-            provider.GetCurrentActor().Id.Should().Be("user-1");
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("user-1");
 
             await using (provider.WithActor("user-2", "Write"))
             {
-                provider.GetCurrentActor().Id.Should().Be("user-2");
+                (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("user-2");
             }
 
-            provider.GetCurrentActor().Id.Should().Be("user-1");
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("user-1");
         }
 
-        provider.GetCurrentActor().Id.Should().Be("admin");
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("admin");
     }
 
     [Fact]
-    public void WithActor_SynchronousDispose_RestoresOriginalActor()
+    public async Task WithActor_SynchronousDispose_RestoresOriginalActor()
     {
         var original = Actor.Create("admin", new HashSet<string>(["Admin"]));
         var provider = new TestActorProvider(original);
 
         using (provider.WithActor("user-1", "Read"))
         {
-            provider.GetCurrentActor().Id.Should().Be("user-1");
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("user-1");
         }
 
-        provider.GetCurrentActor().Should().BeSameAs(original);
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Should().BeSameAs(original);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class TestActorProviderTests
         {
             // Second dispose should be a no-op, not restore to "admin" again
             await scope.DisposeAsync();
-            provider.GetCurrentActor().Id.Should().Be("user-2");
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("user-2");
         }
     }
 
@@ -159,39 +159,13 @@ public class TestActorProviderTests
     #region IActorProvider Contract Tests
 
     [Fact]
-    public void GetCurrentActor_ImplementsIActorProvider()
+    public async Task GetCurrentActorAsync_ImplementsIActorProvider()
     {
         var provider = new TestActorProvider("user-1", "Read");
 
-        var actor = ((IActorProvider)provider).GetCurrentActor();
+        var actor = await ((IActorProvider)provider).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("user-1");
-    }
-
-    #endregion
-
-    #region IAsyncActorProvider Contract Tests
-
-    [Fact]
-    public async Task GetCurrentActorAsync_ImplementsIAsyncActorProvider()
-    {
-        var provider = new TestActorProvider("user-1", "Read");
-
-        var actor = await ((IAsyncActorProvider)provider).GetCurrentActorAsync(TestContext.Current.CancellationToken);
-
-        actor.Id.Should().Be("user-1");
-        actor.HasPermission("Read").Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task GetCurrentActorAsync_ReturnsSameActorAsSync()
-    {
-        var provider = new TestActorProvider("user-1", "Read", "Write");
-
-        var syncActor = provider.GetCurrentActor();
-        var asyncActor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
-
-        asyncActor.Should().BeSameAs(syncActor);
     }
 
     [Fact]
@@ -209,14 +183,6 @@ public class TestActorProviderTests
 
         var restoredActor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         restoredActor.Id.Should().Be("admin");
-    }
-
-    [Fact]
-    public void TestActorProvider_ImplementsIAsyncActorProvider()
-    {
-        var provider = new TestActorProvider("user-1");
-
-        provider.Should().BeAssignableTo<IAsyncActorProvider>();
     }
 
     #endregion
@@ -239,11 +205,11 @@ public class TestActorProviderTests
                 ready.SetResult();
                 await hold.Task;
                 // Should still see user-1 even though task2 changed the actor in its flow
-                provider.GetCurrentActor().Id.Should().Be("user-1");
+                (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("user-1");
             }
 
             // After dispose, this flow falls back to the default actor
-            provider.GetCurrentActor().Id.Should().Be("admin");
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("admin");
         }, ct);
 
         var task2 = Task.Run(async () =>
@@ -251,11 +217,11 @@ public class TestActorProviderTests
             await ready.Task; // Ensure task1 scope is active
             await using (provider.WithActor("user-2", "Write"))
             {
-                provider.GetCurrentActor().Id.Should().Be("user-2");
+                (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("user-2");
             }
 
             // After dispose, this flow also falls back to the default actor
-            provider.GetCurrentActor().Id.Should().Be("admin");
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("admin");
 
             hold.SetResult(); // Let task1 verify
         }, ct);
@@ -263,7 +229,7 @@ public class TestActorProviderTests
         await Task.WhenAll(task1, task2);
 
         // Default actor is restored outside any scope
-        provider.GetCurrentActor().Id.Should().Be("admin");
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("admin");
     }
 
     [Fact]
@@ -284,13 +250,13 @@ public class TestActorProviderTests
                 // Synchronize so all scopes overlap
                 barrier.SignalAndWait(ct);
 
-                var actor = provider.GetCurrentActor();
+                var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
                 actor.Id.Should().Be(userId);
                 actor.HasPermission(permission).Should().BeTrue();
             }
 
             // After dispose, default is visible again in this flow
-            provider.GetCurrentActor().Id.Should().Be("admin");
+            (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Id.Should().Be("admin");
         }, ct));
 
         await Task.WhenAll(tasks);

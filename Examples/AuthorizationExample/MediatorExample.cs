@@ -78,13 +78,13 @@ public sealed record PublishDocumentCommand(string DocumentId)
 public sealed class CreateDocumentHandler(DocumentStore store, IActorProvider actorProvider)
     : ICommandHandler<CreateDocumentCommand, Result<Document>>
 {
-    public ValueTask<Result<Document>> Handle(
+    public async ValueTask<Result<Document>> Handle(
         CreateDocumentCommand command, CancellationToken cancellationToken)
     {
-        var actor = actorProvider.GetCurrentActor();
+        var actor = await actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
         var doc = new Document(Guid.NewGuid().ToString(), actor.Id, command.Title, command.Content);
         store.Add(doc);
-        return new ValueTask<Result<Document>>(Result.Success(doc));
+        return Result.Success(doc);
     }
 }
 

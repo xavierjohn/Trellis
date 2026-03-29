@@ -58,7 +58,7 @@ Each integration package gets its own namespace because it pulls in a third-part
 | Namespace | Used In | Purpose |
 |-----------|---------|---------|
 | `Trellis.Authorization` | Domain/Application layer | `Actor`, `IActorProvider`, `IAuthorize`, `IAuthorizeResource<TResource>`, `IResourceLoader<TMessage, TResource>` |
-| `Trellis.Asp.Authorization` | API layer only | `EntraActorProvider` (production), `DevelopmentActorProvider` (dev/testing), `AddEntraActorProvider()`, `AddDevelopmentActorProvider()` |
+| `Trellis.Asp.Authorization` | API layer only | `ClaimsActorProvider` (generic OIDC/JWT), `EntraActorProvider` (Entra ID), `DevelopmentActorProvider` (dev/testing), `CachingActorProvider` (decorator), `AddClaimsActorProvider()`, `AddEntraActorProvider()`, `AddDevelopmentActorProvider()`, `AddCachingActorProvider<T>()` |
 | `Trellis.Asp` | API layer only | `ToMinimalApiResult()`, `ToActionResult()` |
 | `Trellis.Http` | ACL layer only | `HttpClient` → `Result<T>` extensions |
 | `Trellis.Stateless` | Domain layer (when needed) | Stateless state machine integration |
@@ -434,7 +434,7 @@ T4 templates generate 2-tuple through 9-tuple overloads with identical logic. **
 
 ## Database-Backed Permissions
 
-When permissions need to be stored in the application database instead of AAD app roles, implement `IAsyncActorProvider`. The Mediator `AuthorizationBehavior` prefers `IAsyncActorProvider` over `IActorProvider` when both are registered.
+When permissions need to be stored in the application database instead of AAD app roles, implement `IActorProvider` with async database lookups. Use `AddCachingActorProvider<T>()` to avoid repeated database queries within the same request scope.
 
 ### Pattern
 
@@ -443,7 +443,7 @@ When permissions need to be stored in the application database instead of AAD ap
 | Domain | `AppUser`, `Role`, `Permission` entities | Schema for users → roles → permissions |
 | Application | `IPermissionRepository` | Interface for loading permissions by external user ID |
 | Acl | `PermissionRepository` | EF Core implementation with LINQ query |
-| Api | `DatabaseActorProvider : IAsyncActorProvider` | Resolves `oid` claim → DB permissions → `Actor` |
+| Api | `DatabaseActorProvider : IActorProvider` | Resolves `oid` claim → DB permissions → `Actor` |
 
 ### DI Registration
 
@@ -456,14 +456,13 @@ else
 {
     services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options => configuration.Bind("AzureAd", options));
-    services.AddEntraActorProvider();  // Required IActorProvider for AuthorizationBehavior
     services.AddMemoryCache();
     services.AddScoped<IPermissionRepository, PermissionRepository>();
-    services.AddScoped<IAsyncActorProvider, DatabaseActorProvider>();  // Takes precedence at runtime
+    services.AddCachingActorProvider<DatabaseActorProvider>();  // Caches per-request
 }
 ```
 
-Both `IActorProvider` (via `AddEntraActorProvider()`) and `IAsyncActorProvider` (via `DatabaseActorProvider`) must be registered. `AuthorizationBehavior` requires `IActorProvider` but prefers the async provider at runtime.
+`AddCachingActorProvider<T>()` registers the inner provider as scoped and wraps it with `CachingActorProvider`, ensuring `GetCurrentActorAsync()` only executes the database query once per request.
 
 See the [Database-Backed Permissions guide](../docs/docfx_project/articles/integration-db-permissions.md) for the complete schema, entities, seed data, and caching strategy.
 

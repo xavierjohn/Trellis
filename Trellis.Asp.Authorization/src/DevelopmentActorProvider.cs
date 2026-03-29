@@ -14,9 +14,9 @@ using Trellis.Authorization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Security:</b> This provider throws <see cref="InvalidOperationException"/> if the
-/// <c>X-Test-Actor</c> header is present in a Production environment, preventing accidental
-/// deployment of the test bypass.
+/// <b>Security:</b> This provider throws <see cref="InvalidOperationException"/>
+/// unconditionally in non-Development environments, preventing accidental deployment
+/// of the test bypass.
 /// </para>
 /// <para>
 /// When no header is present, returns a configurable default actor (see <see cref="DevelopmentActorOptions"/>).
@@ -46,22 +46,22 @@ public sealed partial class DevelopmentActorProvider(
     internal const string HeaderName = "X-Test-Actor";
 
     /// <inheritdoc />
-    public Actor GetCurrentActor()
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
+        if (!hostEnvironment.IsDevelopment())
+            throw new InvalidOperationException(
+                "DevelopmentActorProvider is not allowed outside Development environments. " +
+                "Use AddClaimsActorProvider or AddEntraActorProvider for production.");
+
         var httpContext = httpContextAccessor.HttpContext;
         if (httpContext is null)
-            return CreateDefaultActor();
+            return Task.FromResult(CreateDefaultActor());
 
         var headerValue = httpContext.Request.Headers[HeaderName].FirstOrDefault();
         if (string.IsNullOrEmpty(headerValue))
-            return CreateDefaultActor();
+            return Task.FromResult(CreateDefaultActor());
 
-        if (!hostEnvironment.IsDevelopment())
-            throw new InvalidOperationException(
-                $"The '{HeaderName}' header is not allowed outside Development environments. " +
-                "Use a proper authentication provider (e.g., EntraActorProvider) in production.");
-
-        return ParseActorFromHeader(headerValue);
+        return Task.FromResult(ParseActorFromHeader(headerValue));
     }
 
     private Actor ParseActorFromHeader(string headerValue)

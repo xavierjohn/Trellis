@@ -8,6 +8,8 @@ using Trellis.Authorization;
 /// <summary>
 /// <see cref="IActorProvider"/> implementation that hydrates an <see cref="Actor"/>
 /// from the current <see cref="HttpContext.User"/> using Azure Entra ID v2.0 JWT claims.
+/// Extends <see cref="ClaimsActorProvider"/> with Entra-specific claim mapping for
+/// permissions, forbidden permissions, and ABAC attributes.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,57 +22,73 @@ using Trellis.Authorization;
 /// <see cref="InvalidOperationException"/> if no authenticated user exists.
 /// </para>
 /// </remarks>
-public sealed class EntraActorProvider(
-    IHttpContextAccessor httpContextAccessor,
-    IOptions<EntraActorOptions> options) : IActorProvider
+public sealed class EntraActorProvider : ClaimsActorProvider
 {
     private const string DefaultOidClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
     private const string ShortOidClaimType = "oid";
 
+    private readonly EntraActorOptions _entraOptions;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EntraActorProvider"/> class.
+    /// </summary>
+    /// <param name="httpContextAccessor">Provides the current HTTP context.</param>
+    /// <param name="options">Entra-specific claim mapping options.</param>
+    public EntraActorProvider(
+        IHttpContextAccessor httpContextAccessor,
+        IOptions<EntraActorOptions> options)
+        : base(httpContextAccessor, Microsoft.Extensions.Options.Options.Create(
+            new ClaimsActorOptions
+            {
+                ActorIdClaim = options.Value.IdClaimType,
+                PermissionsClaim = "roles"
+            })) =>
+        _entraOptions = options.Value;
+
     /// <inheritdoc />
-    public Actor GetCurrentActor()
+    public override Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
-        var httpContext = httpContextAccessor.HttpContext
+        var httpContext = HttpContextAccessor.HttpContext
             ?? throw new InvalidOperationException(
                 "No HttpContext available. Ensure this is called within an HTTP request scope.");
 
         var user = httpContext.User;
 
-        if (user.Identity?.IsAuthenticated != true)
-            throw new InvalidOperationException(
+        var identity = user.Identities.FirstOrDefault(i => i.IsAuthenticated) as ClaimsIdentity
+            ?? throw new InvalidOperationException(
                 "No authenticated user. Ensure authentication middleware runs before actor resolution.");
 
-        var config = options.Value;
-        var claims = user.Claims;
+        var claims = identity.Claims;
 
-        var id = ResolveActorId(user, config)
+        var id = ResolveActorId(identity, _entraOptions)
             ?? throw new InvalidOperationException(
-                $"Claim '{config.IdClaimType}' not found in the authenticated user's claims. " +
+                $"Claim '{_entraOptions.IdClaimType}' not found in the authenticated user's claims. " +
                 "Verify the token configuration or set EntraActorOptions.IdClaimType.");
 
         var permissions = InvokeMapping(
             "MapPermissions",
-            () => config.MapPermissions(claims));
+            () => _entraOptions.MapPermissions(claims));
 
         var forbiddenPermissions = InvokeMapping(
             "MapForbiddenPermissions",
-            () => config.MapForbiddenPermissions(claims));
+            () => _entraOptions.MapForbiddenPermissions(claims));
 
         var attributes = InvokeMapping(
             "MapAttributes",
-            () => config.MapAttributes(claims, httpContext));
+            () => _entraOptions.MapAttributes(claims, httpContext));
 
-        return new Actor(id, permissions, forbiddenPermissions, attributes);
+        var actor = new Actor(id, permissions, forbiddenPermissions, attributes);
+        return Task.FromResult(actor);
     }
 
-    private static string? ResolveActorId(ClaimsPrincipal user, EntraActorOptions config)
+    private static string? ResolveActorId(ClaimsIdentity identity, EntraActorOptions config)
     {
-        var id = user.FindFirstValue(config.IdClaimType);
+        var id = identity.FindFirst(config.IdClaimType)?.Value;
         if (id is not null)
             return id;
 
         return string.Equals(config.IdClaimType, DefaultOidClaimType, StringComparison.Ordinal)
-            ? user.FindFirstValue(ShortOidClaimType)
+            ? identity.FindFirst(ShortOidClaimType)?.Value
             : null;
     }
 

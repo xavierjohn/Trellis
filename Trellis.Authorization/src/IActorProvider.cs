@@ -2,7 +2,8 @@
 
 /// <summary>
 /// Provides the current authenticated actor for authorization behaviors.
-/// Implement in the API/ACL layer, typically extracting from HttpContext.User.
+/// Implement in the API/ACL layer, typically extracting from HttpContext.User
+/// or resolving permissions from a database.
 /// Register as scoped in DI.
 /// </summary>
 public interface IActorProvider
@@ -11,6 +12,7 @@ public interface IActorProvider
     /// Returns the current actor. Throws if no authenticated user exists
     /// (authentication should be handled before the request reaches the mediator pipeline).
     /// </summary>
+    /// <param name="cancellationToken">Token to cancel the asynchronous operation.</param>
     /// <returns>The current authenticated <see cref="Actor"/>.</returns>
-    Actor GetCurrentActor();
+    Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default);
 }

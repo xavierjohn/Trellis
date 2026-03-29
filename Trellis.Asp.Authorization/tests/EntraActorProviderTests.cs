@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Authorization.Tests;
+namespace Trellis.Asp.Authorization.Tests;
 
 using System.Net;
 using System.Security.Claims;
@@ -35,142 +35,142 @@ public class EntraActorProviderTests
     #region Default mapping
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_SetsIdFromOidClaim()
+    public async Task GetCurrentActorAsync_DefaultMapping_SetsIdFromOidClaim()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-oid-123"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("user-oid-123");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_SetsIdFromShortOidClaim()
+    public async Task GetCurrentActorAsync_DefaultMapping_SetsIdFromShortOidClaim()
     {
         var user = AuthenticatedUser(
             new Claim("oid", "user-oid-short-123"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("user-oid-short-123");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_MapsRolesClaimsToPermissions()
+    public async Task GetCurrentActorAsync_DefaultMapping_MapsRolesClaimsToPermissions()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("roles", "Documents.Read"),
             new Claim("roles", "Documents.Write"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Permissions.Should().BeEquivalentTo(["Documents.Read", "Documents.Write"]);
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_ForbiddenPermissionsIsEmpty()
+    public async Task GetCurrentActorAsync_DefaultMapping_ForbiddenPermissionsIsEmpty()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.ForbiddenPermissions.Should().BeEmpty();
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_ExtractsTenantId()
+    public async Task GetCurrentActorAsync_DefaultMapping_ExtractsTenantId()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("tid", "tenant-abc"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.TenantId).Should().Be("tenant-abc");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_ExtractsPreferredUsername()
+    public async Task GetCurrentActorAsync_DefaultMapping_ExtractsPreferredUsername()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("preferred_username", "alice@contoso.com"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.PreferredUsername).Should().Be("alice@contoso.com");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_ExtractsAuthorizedParty()
+    public async Task GetCurrentActorAsync_DefaultMapping_ExtractsAuthorizedParty()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("azp", "app-client-id"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.AuthorizedParty).Should().Be("app-client-id");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_ExtractsAuthorizedPartyAcr()
+    public async Task GetCurrentActorAsync_DefaultMapping_ExtractsAuthorizedPartyAcr()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("azpacr", "2"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.AuthorizedPartyAcr).Should().Be("2");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_ExtractsAuthContextClassReference()
+    public async Task GetCurrentActorAsync_DefaultMapping_ExtractsAuthContextClassReference()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("acrs", "c1"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.AuthContextClassReference).Should().Be("c1");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_ExtractsIpAddress()
+    public async Task GetCurrentActorAsync_DefaultMapping_ExtractsIpAddress()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"));
 
-        var actor = CreateProvider(user, remoteIp: IPAddress.Parse("10.0.0.1")).GetCurrentActor();
+        var actor = await CreateProvider(user, remoteIp: IPAddress.Parse("10.0.0.1")).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.IpAddress).Should().Be("10.0.0.1");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_NoRemoteIp_OmitsIpAttribute()
+    public async Task GetCurrentActorAsync_DefaultMapping_NoRemoteIp_OmitsIpAttribute()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.HasAttribute(ActorAttributes.IpAddress).Should().BeFalse();
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_MfaInAmrClaim_SetsMfaTrue()
+    public async Task GetCurrentActorAsync_DefaultMapping_MfaInAmrClaim_SetsMfaTrue()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("amr", "pwd"),
             new Claim("amr", "mfa"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.MfaAuthenticated).Should().Be("true");
     }
@@ -178,28 +178,91 @@ public class EntraActorProviderTests
     [Theory]
     [InlineData("MFA")]
     [InlineData("Mfa")]
-    public void GetCurrentActor_DefaultMapping_MfaInAmrClaim_WithDifferentCasing_SetsMfaTrue(string mfaValue)
+    public async Task GetCurrentActorAsync_DefaultMapping_MfaInAmrClaim_WithDifferentCasing_SetsMfaTrue(string mfaValue)
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("amr", "pwd"),
             new Claim("amr", mfaValue));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.MfaAuthenticated).Should().Be("true");
     }
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_NoMfaInAmrClaim_SetsMfaFalse()
+    public async Task GetCurrentActorAsync_DefaultMapping_NoMfaInAmrClaim_SetsMfaFalse()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim("amr", "pwd"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute(ActorAttributes.MfaAuthenticated).Should().Be("false");
+    }
+
+    #endregion
+
+    #region Multi-identity claim spoofing (S1)
+
+    [Fact]
+    public async Task GetCurrentActorAsync_MultipleIdentities_OnlyReadsFromAuthenticatedIdentity()
+    {
+        var authenticatedIdentity = new ClaimsIdentity(
+        [
+            new Claim(OidClaimType, "real-user-oid"),
+            new Claim("roles", "Documents.Read"),
+            new Claim("tid", "real-tenant")
+        ], "Bearer");
+
+        var spoofedIdentity = new ClaimsIdentity(
+        [
+            new Claim(OidClaimType, "admin-oid-999"),
+            new Claim("roles", "GlobalAdmin"),
+            new Claim("roles", "Documents.Delete"),
+            new Claim("tid", "spoofed-tenant")
+        ]); // no authenticationType → IsAuthenticated = false
+
+        var principal = new ClaimsPrincipal(new[] { authenticatedIdentity, spoofedIdentity });
+        var provider = CreateProvider(principal);
+
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.Id.Should().Be("real-user-oid", "should read from authenticated identity, not spoofed");
+        actor.HasPermission("Documents.Read").Should().BeTrue();
+        actor.HasPermission("GlobalAdmin").Should().BeFalse("should NOT have permissions from unauthenticated identity");
+        actor.HasPermission("Documents.Delete").Should().BeFalse("should NOT have permissions from unauthenticated identity");
+        actor.GetAttribute(ActorAttributes.TenantId).Should().Be("real-tenant", "attributes should come from authenticated identity only");
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_SpoofedIdentityFirst_OnlyReadsFromAuthenticatedIdentity()
+    {
+        var spoofedIdentity = new ClaimsIdentity(
+        [
+            new Claim(OidClaimType, "admin-oid-999"),
+            new Claim("roles", "GlobalAdmin"),
+            new Claim("tid", "spoofed-tenant")
+        ]); // no authenticationType → IsAuthenticated = false
+
+        var authenticatedIdentity = new ClaimsIdentity(
+        [
+            new Claim(OidClaimType, "real-user-oid"),
+            new Claim("roles", "Documents.Read"),
+            new Claim("tid", "real-tenant")
+        ], "Bearer");
+
+        // Spoofed identity is first — FindFirstValue would return spoofed values before the fix
+        var principal = new ClaimsPrincipal(new[] { spoofedIdentity, authenticatedIdentity });
+        var provider = CreateProvider(principal);
+
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.Id.Should().Be("real-user-oid", "should ignore unauthenticated identity even when listed first");
+        actor.HasPermission("Documents.Read").Should().BeTrue();
+        actor.HasPermission("GlobalAdmin").Should().BeFalse("should NOT have permissions from unauthenticated identity");
+        actor.GetAttribute(ActorAttributes.TenantId).Should().Be("real-tenant");
     }
 
     #endregion
@@ -207,40 +270,40 @@ public class EntraActorProviderTests
     #region Error handling
 
     [Fact]
-    public void GetCurrentActor_NoHttpContext_ThrowsInvalidOperationException()
+    public async Task GetCurrentActorAsync_NoHttpContext_ThrowsInvalidOperationException()
     {
         var accessor = new HttpContextAccessor { HttpContext = null };
         var provider = new EntraActorProvider(accessor, Options.Create(new EntraActorOptions()));
 
-        var act = provider.GetCurrentActor;
+        var act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*HttpContext*");
     }
 
     [Fact]
-    public void GetCurrentActor_NotAuthenticated_ThrowsInvalidOperationException()
+    public async Task GetCurrentActorAsync_NotAuthenticated_ThrowsInvalidOperationException()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity()); // no auth type = not authenticated
         var provider = CreateProvider(user);
 
-        var act = provider.GetCurrentActor;
+        var act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*authenticated*");
     }
 
     [Fact]
-    public void GetCurrentActor_MissingOidClaim_ThrowsInvalidOperationException()
+    public async Task GetCurrentActorAsync_MissingOidClaim_ThrowsInvalidOperationException()
     {
         var user = AuthenticatedUser(
             new Claim("sub", "user-1")); // has sub but not oid
 
         var provider = CreateProvider(user);
 
-        var act = provider.GetCurrentActor;
+        var act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*objectidentifier*");
     }
 
@@ -249,19 +312,19 @@ public class EntraActorProviderTests
     #region Custom options
 
     [Fact]
-    public void GetCurrentActor_CustomIdClaimType_UsesConfiguredClaim()
+    public async Task GetCurrentActorAsync_CustomIdClaimType_UsesConfiguredClaim()
     {
         var user = AuthenticatedUser(
             new Claim("sub", "user-sub-456"));
 
         var options = new EntraActorOptions { IdClaimType = "sub" };
-        var actor = CreateProvider(user, options).GetCurrentActor();
+        var actor = await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Id.Should().Be("user-sub-456");
     }
 
     [Fact]
-    public void GetCurrentActor_CustomMapPermissions_UsesDelegate()
+    public async Task GetCurrentActorAsync_CustomMapPermissions_UsesDelegate()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
@@ -275,13 +338,13 @@ public class EntraActorProviderTests
                 .ToHashSet()
         };
 
-        var actor = CreateProvider(user, options).GetCurrentActor();
+        var actor = await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Permissions.Should().BeEquivalentTo(["User.Read", "Mail.Send"]);
     }
 
     [Fact]
-    public void GetCurrentActor_CustomMapForbiddenPermissions_UsesDelegate()
+    public async Task GetCurrentActorAsync_CustomMapForbiddenPermissions_UsesDelegate()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
@@ -296,14 +359,14 @@ public class EntraActorProviderTests
                 .ToHashSet()
         };
 
-        var actor = CreateProvider(user, options).GetCurrentActor();
+        var actor = await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.ForbiddenPermissions.Should().Contain("Documents.Read");
         actor.HasPermission("Documents.Read").Should().BeFalse("deny overrides allow");
     }
 
     [Fact]
-    public void GetCurrentActor_CustomMapAttributes_UsesDelegate()
+    public async Task GetCurrentActorAsync_CustomMapAttributes_UsesDelegate()
     {
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
@@ -316,13 +379,13 @@ public class EntraActorProviderTests
                 .ToDictionary(c => "region", c => c.Value)
         };
 
-        var actor = CreateProvider(user, options).GetCurrentActor();
+        var actor = await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.GetAttribute("region").Should().Be("us-west-2");
     }
 
     [Fact]
-    public void GetCurrentActor_CustomMapPermissions_WhenDelegateThrows_WrapsExceptionWithContext()
+    public async Task GetCurrentActorAsync_CustomMapPermissions_WhenDelegateThrows_WrapsExceptionWithContext()
     {
         var user = AuthenticatedUser(new Claim(OidClaimType, "user-1"));
         var options = new EntraActorOptions
@@ -330,16 +393,14 @@ public class EntraActorProviderTests
             MapPermissions = _ => throw new InvalidOperationException("Permissions exploded")
         };
 
-        var act = () => CreateProvider(user, options).GetCurrentActor();
+        var act = async () => await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*EntraActorOptions.MapPermissions*")
-            .WithInnerException<InvalidOperationException>()
-            .WithMessage("Permissions exploded");
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*EntraActorOptions.MapPermissions*");
     }
 
     [Fact]
-    public void GetCurrentActor_CustomMapForbiddenPermissions_WhenDelegateThrows_WrapsExceptionWithContext()
+    public async Task GetCurrentActorAsync_CustomMapForbiddenPermissions_WhenDelegateThrows_WrapsExceptionWithContext()
     {
         var user = AuthenticatedUser(new Claim(OidClaimType, "user-1"));
         var options = new EntraActorOptions
@@ -347,16 +408,14 @@ public class EntraActorProviderTests
             MapForbiddenPermissions = _ => throw new InvalidOperationException("Forbidden exploded")
         };
 
-        var act = () => CreateProvider(user, options).GetCurrentActor();
+        var act = async () => await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*EntraActorOptions.MapForbiddenPermissions*")
-            .WithInnerException<InvalidOperationException>()
-            .WithMessage("Forbidden exploded");
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*EntraActorOptions.MapForbiddenPermissions*");
     }
 
     [Fact]
-    public void GetCurrentActor_CustomMapAttributes_WhenDelegateThrows_WrapsExceptionWithContext()
+    public async Task GetCurrentActorAsync_CustomMapAttributes_WhenDelegateThrows_WrapsExceptionWithContext()
     {
         var user = AuthenticatedUser(new Claim(OidClaimType, "user-1"));
         var options = new EntraActorOptions
@@ -364,12 +423,10 @@ public class EntraActorProviderTests
             MapAttributes = (_, _) => throw new InvalidOperationException("Attributes exploded")
         };
 
-        var act = () => CreateProvider(user, options).GetCurrentActor();
+        var act = async () => await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*EntraActorOptions.MapAttributes*")
-            .WithInnerException<InvalidOperationException>()
-            .WithMessage("Attributes exploded");
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*EntraActorOptions.MapAttributes*");
     }
 
     #endregion
@@ -377,14 +434,14 @@ public class EntraActorProviderTests
     #region Role claim type variants
 
     [Fact]
-    public void GetCurrentActor_DefaultMapping_AlsoMapsClaimTypesRoleClaim()
+    public async Task GetCurrentActorAsync_DefaultMapping_AlsoMapsClaimTypesRoleClaim()
     {
         // System.Security.Claims.ClaimTypes.Role is the long-form URI
         var user = AuthenticatedUser(
             new Claim(OidClaimType, "user-1"),
             new Claim(ClaimTypes.Role, "Admin.FullAccess"));
 
-        var actor = CreateProvider(user).GetCurrentActor();
+        var actor = await CreateProvider(user).GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         actor.Permissions.Should().Contain("Admin.FullAccess");
     }

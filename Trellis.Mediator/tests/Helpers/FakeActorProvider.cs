@@ -7,7 +7,8 @@ using Trellis.Authorization;
 /// </summary>
 internal sealed class FakeActorProvider(Actor actor) : IActorProvider
 {
-    public Actor GetCurrentActor() => actor;
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(actor);
 
     public static FakeActorProvider WithPermissions(string userId, params string[] permissions)
         => new(Actor.Create(userId, permissions.ToHashSet()));

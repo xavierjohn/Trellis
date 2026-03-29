@@ -107,9 +107,9 @@ repo.PublishedEvents                                   // IReadOnlyList<IDomainE
 
 **Namespace: `Trellis.Testing.Fakes`**
 
-Mutable `IActorProvider` and `IAsyncActorProvider` for authorization testing. Uses `AsyncLocal<Actor?>` internally so parallel tests sharing a singleton provider never interfere. `WithActor` returns a scope that restores the previous actor on dispose, eliminating `try/finally` boilerplate.
+Mutable `IActorProvider` for authorization testing. Uses `AsyncLocal<Actor?>` internally so parallel tests sharing a singleton provider never interfere. `WithActor` returns a scope that restores the previous actor on dispose, eliminating `try/finally` boilerplate.
 
-Implements both `IActorProvider` (sync) and `IAsyncActorProvider` (async). Register as both interfaces in DI when the system under test uses `IAsyncActorProvider`.
+Implements `IActorProvider` with `GetCurrentActorAsync()` returning `Task.FromResult()`. Register as `IActorProvider` in DI.
 
 ### Construction
 
@@ -182,6 +182,31 @@ builder.ConfigureServices(services =>
 ```
 
 > **Limitation:** Always re-registers via `AddDbContext<TContext>`. If the application uses `AddDbContextFactory` or `AddPooledDbContextFactory`, swap providers manually instead of using this helper.
+
+---
+
+## ClaimsActorProvider and CachingActorProvider in Tests
+
+For integration tests using `WebApplicationFactory`, the `DevelopmentActorProvider` (via `X-Test-Actor` header) is the standard approach. `ClaimsActorProvider` and `CachingActorProvider` are production providers — they read from `HttpContext.User` which requires real authentication middleware.
+
+If your tests need to exercise `ClaimsActorProvider` directly, construct a `ClaimsPrincipal` and set it on `HttpContext.User`:
+
+```csharp
+var identity = new ClaimsIdentity(new[]
+{
+    new Claim("sub", "user-1"),
+    new Claim("permissions", "orders:read"),
+}, "Bearer");
+var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
+```
+
+For `CachingActorProvider`, it wraps any `IActorProvider` and caches per scope. In unit tests, wrap a `TestActorProvider`:
+
+```csharp
+var inner = new TestActorProvider("user-1", "orders:read");
+var caching = new CachingActorProvider(inner);
+var actor = await caching.GetCurrentActorAsync();  // calls inner once, caches
+```
 
 ---
 

@@ -28,5 +28,5 @@ public static class Actors
 public sealed class InMemoryActorProvider(Actor initialActor) : IActorProvider
 {
     public Actor CurrentActor { get; set; } = initialActor;
-    public Actor GetCurrentActor() => CurrentActor;
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default) => Task.FromResult(CurrentActor);
 }

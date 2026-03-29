@@ -1223,16 +1223,14 @@ string? GetAttribute(string key)
 
 ## Interfaces
 
-- **`IActorProvider`** — Provides the current authenticated actor synchronously (from JWT claims).
-- **`IAsyncActorProvider`** — Async variant for when permission resolution requires I/O.
+- **`IActorProvider`** — Provides the current authenticated actor asynchronously. Unified interface for all actor resolution (JWT claims, database lookups, etc.).
 - **`IAuthorize`** — Declares required permissions; checked by authorization pipeline behavior.
 - **`IAuthorizeResource<TResource>`** — Resource-based authorization; receives the loaded resource and actor.
 - **`IResourceLoader<TMessage, TResource>`** — Loads the resource for resource-based authorization checks.
 - **`ResourceLoaderById<TMessage, TResource, TId>`** — Base class for the common "extract ID from message, load by ID" pattern.
 
 ```csharp
-interface IActorProvider { Actor GetCurrentActor(); }
-interface IAsyncActorProvider { Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default); }
+interface IActorProvider { Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default); }
 interface IAuthorize { IReadOnlyList<string> RequiredPermissions { get; } }
 interface IAuthorizeResource<TResource> { IResult Authorize(Actor actor, TResource resource); }
 interface IResourceLoader<TMessage, TResource> { Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken cancellationToken); }
@@ -1242,19 +1240,6 @@ abstract class ResourceLoaderById<TMessage, TResource, TId> : IResourceLoader<TM
     protected abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
 }
 ```
-
-### IAsyncActorProvider
-
-Asynchronous variant of `IActorProvider`. Use when permission resolution requires async operations such as database lookups or external service calls.
-
-```csharp
-public interface IAsyncActorProvider
-{
-    Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default);
-}
-```
-
-Use `IActorProvider` when the actor can be resolved synchronously (e.g., from in-memory claims). Use `IAsyncActorProvider` when resolution requires I/O (e.g., loading permissions from a database).
 
 ## ActorAttributes Constants
 
@@ -1419,9 +1404,25 @@ Benefits: Native AOT compatible, no reflection, trimming-safe, faster startup.
 
 **Namespace: `Trellis.Asp.Authorization`**
 
+## ClaimsActorProvider (Generic OIDC/JWT)
+
+Generic actor provider that maps standard OIDC/JWT claims to an `Actor`. Works with any identity provider (Auth0, Keycloak, Okta, Entra, etc.).
+
+```csharp
+// Registration
+services.AddClaimsActorProvider();
+services.AddClaimsActorProvider(options => {
+    options.ActorIdClaim = "sub";           // default: "sub"
+    options.PermissionsClaim = "permissions"; // default: "permissions"
+});
+
+// ClaimsActorProvider : IActorProvider
+// Extracts Actor from HttpContext claims using configurable claim names
+```
+
 ## EntraActorProvider (Production)
 
-Production actor provider that maps Microsoft Entra ID (Azure AD) JWT claims to an `Actor`. Extracts user ID from `sub` claim and permissions from roles/scopes claims.
+Production actor provider that maps Microsoft Entra ID (Azure AD) JWT claims to an `Actor`. Extends `ClaimsActorProvider` with Entra-specific claim mapping for permissions, forbidden permissions, and ABAC attributes.
 
 ```csharp
 // Registration
@@ -1431,7 +1432,7 @@ services.AddEntraActorProvider(options => {
     options.MapPermissions = claims => /* custom extraction */;
 });
 
-// EntraActorProvider : IActorProvider
+// EntraActorProvider : ClaimsActorProvider
 // Extracts Actor from HttpContext claims (Entra ID / Azure AD)
 ```
 
@@ -1461,13 +1462,40 @@ else
     services.AddEntraActorProvider();
 ```
 
+## CachingActorProvider (Decorator)
+
+Caching decorator that wraps any `IActorProvider` and caches the result per-scope. Use with database-backed providers to avoid redundant queries within a single request.
+
+```csharp
+// Registration — wraps DatabaseActorProvider with per-request caching
+services.AddCachingActorProvider<DatabaseActorProvider>();
+
+// CachingActorProvider : IActorProvider
+// Caches the Task<Actor> from the first call; subsequent calls return the same result
+```
+
 | Type | Purpose |
 |------|---------|
-| `EntraActorProvider` | Production — maps Entra JWT claims to `Actor` |
+| `ClaimsActorProvider` | Generic OIDC/JWT — maps configurable claims to `Actor` |
+| `ClaimsActorOptions` | Configuration for generic claim mapping (`ActorIdClaim`, `PermissionsClaim`) |
+| `EntraActorProvider` | Production — maps Entra JWT claims to `Actor` (extends `ClaimsActorProvider`) |
 | `EntraActorOptions` | Configuration for Entra claim mapping |
 | `DevelopmentActorProvider` | Development/testing — reads `X-Test-Actor` header |
 | `DevelopmentActorOptions` | Configuration for default actor and error handling |
-| `ServiceCollectionExtensions` | `AddEntraActorProvider()` and `AddDevelopmentActorProvider()` |
+| `CachingActorProvider` | Decorator — caches inner provider per-scope |
+| `ServiceCollectionExtensions` | `AddClaimsActorProvider()`, `AddEntraActorProvider()`, `AddDevelopmentActorProvider()`, `AddCachingActorProvider<T>()` |
+
+### ClaimsActorOptions
+
+Configures how `ClaimsActorProvider` extracts actor identity from JWT claims.
+
+```csharp
+public class ClaimsActorOptions
+{
+    string ActorIdClaim { get; set; }     // default: "sub"
+    string PermissionsClaim { get; set; } // default: "permissions"
+}
+```
 
 ### EntraActorOptions
 

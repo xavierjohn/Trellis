@@ -14,7 +14,7 @@ Map Azure Entra ID v2.0 JWT claims to `Actor` using the **Trellis.Asp.Authorizat
 - [Customizing Mappings](#customizing-mappings)
 - [ActorAttributes Constants](#actorattributes-constants)
 - [Integration with Trellis.Mediator](#integration-with-trellismediator)
-- [Async Actor Provider](#async-actor-provider)
+- [Caching Actor Provider](#caching-actor-provider)
 - [Best Practices](#best-practices)
 
 ## Installation
@@ -199,23 +199,18 @@ public sealed record DeleteDocumentCommand(string DocumentId)
 
 The `AuthorizationBehavior` resolves `IActorProvider` → `EntraActorProvider` → `Actor` from JWT claims → permission check, all automatically.
 
-## Async Actor Provider
+## Caching Actor Provider
 
-When resolving an `Actor` requires asynchronous work — such as loading permissions from a database or calling an external authorization service — implement `IAsyncActorProvider` instead of `IActorProvider`.
-
-### When to Use
-
-| Provider | Use When |
-|----------|----------|
-| `IActorProvider` | Permissions come from JWT claims (synchronous, in-memory) |
-| `IAsyncActorProvider` | Permissions require a DB query, cache lookup, or external service call |
+When resolving an `Actor` requires asynchronous work — such as loading permissions from a database or calling an external authorization service — implement `IActorProvider` and use `AddCachingActorProvider<T>()` to wrap it with per-request caching.
 
 ### Implementation
 
 ```csharp
 using Trellis.Authorization;
 
-public class DbActorProvider(IPermissionStore store) : IAsyncActorProvider
+public class DbActorProvider(
+    IHttpContextAccessor httpContextAccessor,
+    IPermissionStore store) : IActorProvider
 {
     public async Task<Actor> GetCurrentActorAsync(CancellationToken ct = default)
     {
@@ -225,13 +220,13 @@ public class DbActorProvider(IPermissionStore store) : IAsyncActorProvider
     }
 }
 
-// DI registration
-services.AddScoped<IAsyncActorProvider, DbActorProvider>();
+// DI registration — wraps DbActorProvider with CachingActorProvider
+services.AddCachingActorProvider<DbActorProvider>();
 ```
 
 ### Behavior with Trellis.Mediator
 
-When both `IActorProvider` and `IAsyncActorProvider` are registered, mediator authorization pipeline behaviors **prefer the async provider**. This means you can register `EntraActorProvider` for basic claim mapping and layer an `IAsyncActorProvider` on top to enrich the actor with additional permissions — the async provider takes precedence automatically.
+`IActorProvider` has a single async method `GetCurrentActorAsync()`. The `AuthorizationBehavior` calls this method directly. When you need to layer additional permission resolution (e.g., database lookups) on top of claim-based mapping, implement a custom `IActorProvider` and register it with `AddCachingActorProvider<T>()` to avoid redundant async calls within the same request.
 
 ## Best Practices
 
@@ -240,4 +235,4 @@ When both `IActorProvider` and `IAsyncActorProvider` are registered, mediator au
 3. **Don't use `preferred_username` for authorization** — It can change when a user is renamed. Use it for display/audit only.
 4. **Consider `azpacr` for sensitive operations** — Require certificate-based client auth (`"2"`) for admin endpoints.
 5. **Leverage `acrs` for step-up auth** — Enforce Conditional Access authentication context for high-risk operations.
-6. **Use `IAsyncActorProvider` for DB-backed permissions** — Register as scoped to match the request lifetime.
+6. **Use `AddCachingActorProvider<T>()` for DB-backed permissions** — Wraps your provider with per-request caching and registers as scoped to match the request lifetime.
