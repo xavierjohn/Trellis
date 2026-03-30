@@ -180,6 +180,29 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     protected List<IDomainEvent> DomainEvents { get; } = [];
 
     /// <summary>
+    /// Gets the optimistic concurrency version of this aggregate.
+    /// </summary>
+    /// <value>
+    /// An integer that starts at 0 for new aggregates and is automatically incremented
+    /// each time the aggregate is persisted by the EF Core infrastructure.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// This property enables optimistic concurrency control. When EF Core saves an aggregate,
+    /// the generated SQL includes <c>WHERE Version = @originalVersion</c>. If another process
+    /// modified the aggregate since it was loaded, the update affects zero rows and EF Core
+    /// throws <c>DbUpdateConcurrencyException</c>, which Trellis maps to
+    /// <see cref="ConflictError"/> (HTTP 409).
+    /// </para>
+    /// <para>
+    /// The version is managed by <c>AggregateVersionConvention</c> (marks it as a concurrency token)
+    /// and <c>AggregateVersionInterceptor</c> (auto-increments on save). Domain code should not
+    /// modify this property directly.
+    /// </para>
+    /// </remarks>
+    public long Version { get; private set; }
+
+    /// <summary>
     /// Gets a value indicating whether the aggregate has uncommitted changes.
     /// </summary>
     /// <value>

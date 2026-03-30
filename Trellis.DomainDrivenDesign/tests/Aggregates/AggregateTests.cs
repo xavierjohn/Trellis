@@ -131,6 +131,32 @@ public class AggregateTests
 
     #endregion
 
+    #region Version Tests
+
+    [Fact]
+    public void NewAggregate_HasVersionZero()
+    {
+        // Arrange & Act
+        var aggregate = TestAggregate.Create("1");
+
+        // Assert
+        aggregate.Version.Should().Be(0);
+    }
+
+    [Fact]
+    public void Version_IsAccessibleViaIAggregate()
+    {
+        // Arrange
+#pragma warning disable CA1859 // Intentionally using interface type to verify contract
+        IAggregate aggregate = TestAggregate.Create("1");
+#pragma warning restore CA1859
+
+        // Assert
+        aggregate.Version.Should().Be(0);
+    }
+
+    #endregion
+
     #region IsChanged Tests
 
     [Fact]

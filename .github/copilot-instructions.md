@@ -555,6 +555,26 @@ When running PowerShell commands in the terminal:
 - Avoid long or complex scripts — they tend to get stuck or timeout
 - Use smaller, targeted file edits with the `replace_string_in_file` tool instead of large PowerShell scripts for file manipulation
 
+## Optimistic Concurrency
+
+`Aggregate<TId>` includes a `Version` property (`long`, starts at 0) that provides automatic optimistic concurrency control when persisted via EF Core.
+
+### How It Works
+
+1. **`AggregateVersionConvention`** — registered by `ApplyTrellisConventions`, marks `Version` as `IsConcurrencyToken()` on all `IAggregate` entity types
+2. **`AggregateVersionInterceptor`** — registered by `AddTrellisInterceptors()`, auto-increments `Version` on aggregate entries in `EntityState.Modified` before `SaveChanges`
+3. **EF Core generates** `UPDATE ... SET Version = @new WHERE Id = @id AND Version = @original`
+4. **Conflict detection** — if another process modified the aggregate, the `WHERE` clause matches zero rows → `DbUpdateConcurrencyException`
+5. **Error mapping** — `SaveChangesResultAsync` catches the exception → returns `Error.Conflict(...)` (`ConflictError`, HTTP 409)
+
+### No User Action Required
+
+Both `ApplyTrellisConventions` and `AddTrellisInterceptors()` register the convention and interceptor automatically. Aggregates get concurrency protection out of the box.
+
+### Edge Case: Child Entity Changes
+
+If a domain method only modifies child entities within the aggregate (without modifying any property on the aggregate root), EF Core's change tracker may leave the root in `Unchanged` state. The interceptor only increments `Version` on `Modified` entries. In this case, the aggregate root should also be modified by the domain method (Trellis's pattern of raising domain events and modifying aggregate state naturally handles this in most cases).
+
 ## Maybe\<T\> with EF Core
 
 `Maybe<T>` is a `readonly struct`. EF Core refuses to mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. This is a hard limitation in EF Core's metadata layer.

@@ -9,12 +9,14 @@ public static class DbContextOptionsBuilderExtensions
 {
     private static readonly MaybeQueryInterceptor s_maybeQueryInterceptor = new();
     private static readonly ScalarValueQueryInterceptor s_scalarValueQueryInterceptor = new();
+    private static readonly AggregateVersionInterceptor s_aggregateVersionInterceptor = new();
 
     /// <summary>
     /// Adds Trellis EF Core interceptors to the <see cref="DbContextOptionsBuilder"/>.
-    /// Registers the <see cref="MaybeQueryInterceptor"/> and <see cref="ScalarValueQueryInterceptor"/>
-    /// as singletons, enabling natural LINQ syntax with <see cref="Maybe{T}"/> properties and
-    /// <c>.Value</c> access on scalar value objects.
+    /// Registers the <see cref="MaybeQueryInterceptor"/>, <see cref="ScalarValueQueryInterceptor"/>,
+    /// and <see cref="AggregateVersionInterceptor"/> as singletons, enabling natural LINQ syntax
+    /// with <see cref="Maybe{T}"/> properties, <c>.Value</c> access on scalar value objects,
+    /// and automatic optimistic concurrency version increment on aggregate saves.
     /// </summary>
     /// <typeparam name="TContext">The DbContext type.</typeparam>
     /// <param name="optionsBuilder">The options builder.</param>
@@ -34,7 +36,7 @@ public static class DbContextOptionsBuilderExtensions
         this DbContextOptionsBuilder<TContext> optionsBuilder)
         where TContext : DbContext
     {
-        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor);
+        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateVersionInterceptor);
         return optionsBuilder;
     }
 
@@ -47,7 +49,7 @@ public static class DbContextOptionsBuilderExtensions
     public static DbContextOptionsBuilder AddTrellisInterceptors(
         this DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor);
+        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateVersionInterceptor);
         return optionsBuilder;
     }
 }

@@ -76,4 +76,24 @@ public interface IAggregate : IChangeTracking
     /// </para>
     /// </remarks>
     IReadOnlyList<IDomainEvent> UncommittedEvents();
+
+    /// <summary>
+    /// Gets the optimistic concurrency version of this aggregate.
+    /// </summary>
+    /// <value>
+    /// An integer that is automatically incremented each time the aggregate is persisted.
+    /// Used by the persistence layer to detect concurrent modifications.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// When two processes load the same aggregate, modify it, and attempt to save, the second save
+    /// will fail with a <see cref="ConflictError"/> because the version in the database no longer
+    /// matches the version loaded by the second process.
+    /// </para>
+    /// <para>
+    /// The version starts at 0 for new aggregates and is managed automatically by the
+    /// persistence infrastructure — domain code should not modify it directly.
+    /// </para>
+    /// </remarks>
+    long Version { get; }
 }
