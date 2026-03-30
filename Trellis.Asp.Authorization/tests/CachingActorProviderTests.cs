@@ -54,9 +54,9 @@ public class CachingActorProviderTests
         var accessor = new HttpContextAccessor { HttpContext = httpContext };
         var caching = new CachingActorProvider(inner, accessor);
 
-        #pragma warning disable xUnit1051 // Intentionally omitting token to test default behavior
+#pragma warning disable xUnit1051 // Intentionally omitting token to test default behavior
         await caching.GetCurrentActorAsync();
-        #pragma warning restore xUnit1051
+#pragma warning restore xUnit1051
 
         // Inner provider receives HttpContext.RequestAborted, not CancellationToken.None
         capturedToken.Should().Be(cts.Token);
@@ -70,9 +70,9 @@ public class CachingActorProviderTests
         var inner = new TokenCapturingProvider(actor, t => capturedToken = t);
         var caching = new CachingActorProvider(inner, s_nullAccessor);
 
-        #pragma warning disable xUnit1051 // Intentionally omitting token to test default behavior
+#pragma warning disable xUnit1051 // Intentionally omitting token to test default behavior
         await caching.GetCurrentActorAsync();
-        #pragma warning restore xUnit1051
+#pragma warning restore xUnit1051
 
         capturedToken.Should().Be(CancellationToken.None);
     }

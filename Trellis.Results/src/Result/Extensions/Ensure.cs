@@ -144,4 +144,66 @@ public static class EnsureExtensions
         return string.IsNullOrWhiteSpace(str) ? Result.Failure<string>(error) : Result.Success(str);
     }
 
+    /// <summary>
+    /// Ensures the value inside the result is not null, narrowing from <c>Result&lt;T?&gt;</c> to <c>Result&lt;T&gt;</c>.
+    /// Returns a failure if the value is null.
+    /// </summary>
+    /// <typeparam name="T">The reference type of the value.</typeparam>
+    /// <param name="result">The result containing a potentially null value.</param>
+    /// <param name="error">The error to return if the value is null.</param>
+    /// <returns>A success result with the non-null value if present; otherwise a failure with the specified error.</returns>
+    public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : class
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        if (result.IsFailure)
+        {
+            result.LogActivityStatus();
+            return Result.Failure<T>(result.Error);
+        }
+
+        if (result.Value is null)
+        {
+            var failure = Result.Failure<T>(error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        var success = Result.Success(result.Value);
+        success.LogActivityStatus();
+        return success;
+    }
+
+    /// <summary>
+    /// Ensures the value inside the result is not null for nullable value types,
+    /// narrowing from <c>Result&lt;T?&gt;</c> to <c>Result&lt;T&gt;</c>.
+    /// Returns a failure if the value is null.
+    /// </summary>
+    /// <typeparam name="T">The value type of the value.</typeparam>
+    /// <param name="result">The result containing a potentially null value type.</param>
+    /// <param name="error">The error to return if the value is null.</param>
+    /// <returns>A success result with the unwrapped value if present; otherwise a failure with the specified error.</returns>
+    public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : struct
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        if (result.IsFailure)
+        {
+            var failure = Result.Failure<T>(result.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        if (!result.Value.HasValue)
+        {
+            var failure = Result.Failure<T>(error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        var success = Result.Success(result.Value.Value);
+        success.LogActivityStatus();
+        return success;
+    }
+
 }

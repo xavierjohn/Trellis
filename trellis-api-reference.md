@@ -147,8 +147,16 @@ bool HasValue { get; }
 bool HasNoValue { get; }
 T GetValueOrThrow(string? errorMessage = null)
 T GetValueOrDefault(T defaultValue)
+T GetValueOrDefault(Func<T> defaultFactory)
 bool TryGetValue(out T value)
 Maybe<TResult> Map<TResult>(Func<T, TResult> selector) where TResult : notnull
+Maybe<TResult> Bind<TResult>(Func<T, Maybe<TResult>> selector) where TResult : notnull
+Maybe<T> Or(T fallback)
+Maybe<T> Or(Func<T> fallbackFactory)
+Maybe<T> Or(Maybe<T> fallback)
+Maybe<T> Or(Func<Maybe<T>> fallbackFactory)
+Maybe<T> Where(Func<T, bool> predicate)
+Maybe<T> Tap(Action<T> action)
 TResult Match<TResult>(Func<T, TResult> some, Func<TResult> none)
 implicit operator Maybe<T>(T value)  // T → Maybe<T> (implicit)
 // No implicit conversion from Maybe<T> → T (by design — use .Value, Match, or TryGetValue)
@@ -207,6 +215,24 @@ ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Error) where
 ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>) where T : struct
 ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Error) where T : class
 ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> valueTask, Func<Error>) where T : class
+```
+
+### Collection Helpers — Safe Enumerable → Maybe
+
+Extension methods on `IEnumerable<T>` for safely extracting elements as `Maybe<T>`, and filtering/unwrapping collections of `Maybe<T>`.
+
+```csharp
+// TryFirst — safe first element (no exception on empty)
+Maybe<T> TryFirst<T>(this IEnumerable<T>) where T : notnull
+Maybe<T> TryFirst<T>(this IEnumerable<T>, Func<T, bool> predicate) where T : notnull
+
+// TryLast — safe last element (no exception on empty)
+Maybe<T> TryLast<T>(this IEnumerable<T>) where T : notnull
+Maybe<T> TryLast<T>(this IEnumerable<T>, Func<T, bool> predicate) where T : notnull
+
+// Choose — filter and unwrap Maybe collections (like Seq.choose in F#)
+IEnumerable<T> Choose<T>(this IEnumerable<Maybe<T>>) where T : notnull
+IEnumerable<TResult> Choose<T, TResult>(this IEnumerable<Maybe<T>>, Func<T, TResult>)
 ```
 
 ---
@@ -351,6 +377,18 @@ Result<TOut> Map<TIn, TOut>(this Result<TIn>, Func<TIn, TOut>)
 // + 6 async variants (same pattern as Bind)
 ```
 
+### MapIf — Conditional Pure Transformation
+
+Transforms value only when a condition is met, otherwise passes through unchanged. Short-circuits on failure. Useful for optional transformations in pipelines without branching into `When`/`Unless`.
+
+```csharp
+// Static condition
+Result<T> MapIf<T>(this Result<T>, bool condition, Func<T, T> func)
+
+// Value-based predicate
+Result<T> MapIf<T>(this Result<T>, Func<T, bool> predicate, Func<T, T> func)
+```
+
 ### Ensure — Add Validation
 
 Validates value, returns failure if predicate fails. Short-circuits on prior failure.
@@ -391,6 +429,36 @@ var result = Result.Success(request)
         (r => r.Age >= 18, Error.Validation("Must be 18+", "age")),
         (r => r.Email.Contains('@'), Error.Validation("Invalid email", "email")));
 // Returns ONE ValidationError with all 3 field errors if all fail
+```
+
+### EnsureNotNull — Null-Guard + Type Narrowing
+
+Validates that a nullable value is not null, narrowing `Result<T?>` to `Result<T>`. Returns the supplied error on null. Supports both reference and value types.
+
+```csharp
+Result<T> EnsureNotNull<T>(this Result<T?>, Error error) where T : class
+Result<T> EnsureNotNull<T>(this Result<T?>, Error error) where T : struct
+```
+
+### Check — Validate Without Losing Pipeline Value
+
+Runs a validation function that returns a Result, but discards the inner value and keeps the original pipeline value on success. Useful for "fire a validation, keep the current value" patterns — like `Ensure`, but the validation itself is expressed as a `Result`-returning function.
+
+```csharp
+Result<T> Check<T, TK>(this Result<T>, Func<T, Result<TK>>)
+Result<T> Check<T>(this Result<T>, Func<T, Result<Unit>>)
+// Async: CheckAsync with Task/ValueTask Left/Right/Both variants
+```
+
+### BindZip — Sequential Tuple Accumulation
+
+Binds a function over the current value and zips the original value with the new result into a tuple. Enables sequential accumulation of values through a pipeline without nested closures. T4-generated overloads support growing tuples from 2 up to 9 elements.
+
+```csharp
+Result<(T1, T2)> BindZip<T1, T2>(this Result<T1>, Func<T1, Result<T2>>)
+// T4-generated: tuple continuation overloads (2 → 9 tuples)
+// e.g., Result<(T1, T2, T3)> BindZip<T1, T2, T3>(this Result<(T1, T2)>, Func<T1, T2, Result<T3>>)
+// Async: BindZipAsync with Task/ValueTask Left/Right/Both variants
 ```
 
 ### Tap — Side Effects on Success
@@ -643,6 +711,16 @@ Result<T> DebugWithStack<T>(this Result<T>, string? label = null, bool includeSt
 Result<T> DebugOnSuccess<T>(this Result<T>, Action<T>)
 Result<T> DebugOnFailure<T>(this Result<T>, Action<Error>)
 // + async variants
+```
+
+### GetValueOrDefault — Terminal Extraction
+
+Extracts the value from a successful Result or returns a default/fallback. Terminal operator — exits the ROP pipeline. Supports static defaults, lazy factories, and error-aware factories.
+
+```csharp
+TValue GetValueOrDefault<TValue>(this Result<TValue>, TValue defaultValue)
+TValue GetValueOrDefault<TValue>(this Result<TValue>, Func<TValue> defaultFactory)
+TValue GetValueOrDefault<TValue>(this Result<TValue>, Func<Error, TValue> defaultFactory)
 ```
 
 ## OpenTelemetry Tracing

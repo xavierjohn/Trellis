@@ -70,6 +70,11 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>TapTs.g.tt</DependentUpon>
     </Compile>
+    <Compile Update="Result\Extensions\BindZipTs.g.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>BindZipTs.g.tt</DependentUpon>
+    </Compile>
     <Compile Update="Result\Extensions\Ensure.Task.*.cs" DependentUpon="Ensure.Task.cs" />
   </ItemGroup>
 
@@ -105,6 +110,10 @@
     <None Update="Result\Extensions\TapTs.g.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>TapTs.g.cs</LastGenOutput>
+    </None>
+    <None Update="Result\Extensions\BindZipTs.g.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>BindZipTs.g.cs</LastGenOutput>
     </None>
   </ItemGroup>
 

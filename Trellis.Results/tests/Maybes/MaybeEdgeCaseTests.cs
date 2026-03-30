@@ -148,7 +148,7 @@ public class MaybeEdgeCaseTests
         Maybe<string> maybe = Maybe<string>.None;
 
         // Act
-        var value = maybe.GetValueOrDefault(null!);
+        var value = maybe.GetValueOrDefault(defaultValue: null!);
 
         // Assert
         value.Should().BeNull();

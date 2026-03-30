@@ -1,4 +1,4 @@
-# Why Maybe&lt;T&gt;?
+﻿# Why Maybe&lt;T&gt;?
 
 C# already has `Nullable<T>` for value types and nullable reference types (`T?`) for reference types. So why does Trellis include a `Maybe<T>` type?
 
@@ -207,7 +207,13 @@ var result = FirstName.TryCreate(request.FirstName)
 | Express "this primitive is optional" | `DateTime? CancelledAt` |
 | Return "not found" from a query | `Maybe<T>` if piped, `T?` if consumed directly |
 | Transform an optional value | `maybe.Map(x => x.Format())` |
+| Chain optional lookups | `maybe.Bind(x => GetRelated(x))` |
+| Filter an optional value | `maybe.Where(x => x.IsActive)` |
+| Fall back if absent | `maybe.Or(fallback)` |
+| Perform a side effect | `maybe.Tap(x => Log(x))` |
 | Pattern match on presence | `maybe.Match(x => ..., () => ...)` |
+| Safely get first/last from collection | `items.TryFirst(predicate)` |
+| Unwrap Some values from collection | `maybes.Choose()` |
 
 ## API Overview
 
@@ -230,6 +236,9 @@ if (maybe.TryGetValue(out var value))
     Console.WriteLine(value);
 
 var fallback = maybe.GetValueOrDefault(PhoneNumber.Create("000-0000"));
+
+// Lazy default — evaluated only when None
+var fallback2 = maybe.GetValueOrDefault(() => LoadDefaultPhone());
 ```
 
 ### Transforming
@@ -243,6 +252,57 @@ string display = maybePhone.Match(
     p => $"Phone: {p}",
     () => "No phone on file"
 );
+```
+
+### Chaining
+
+```csharp
+// Bind — chain optional lookups without nesting
+var email = GetUser(id)
+    .Bind(user => GetProfile(user))
+    .Map(profile => profile.Email);
+
+// Compose multiple optional steps
+Maybe<Address> address = GetOrder(orderId)
+    .Bind(order => order.Customer)
+    .Bind(customer => customer.ShippingAddress);
+```
+
+### Filtering
+
+```csharp
+// Where — returns None if predicate fails
+var activeUser = GetUser(id).Where(u => u.IsActive);
+
+// Combine with other operations
+var display = GetUser(id)
+    .Where(u => u.IsActive)
+    .Map(u => u.DisplayName);
+```
+
+### Fallbacks
+
+```csharp
+// Or — use first available value
+var name = preferredName.Or(legalName).Or("Unknown");
+
+// Or — lazy evaluation (factory only called when None)
+var config = cachedConfig.Or(() => LoadConfigFromDisk());
+
+// Or — chain Maybe values
+var phone = mobilePhone.Or(homePhone).Or(workPhone);
+
+// Or — lazy Maybe (factory only called when None)
+var user = cachedUser.Or(() => FindUserInDatabase(id));
+```
+
+### Side Effects
+
+```csharp
+// Tap — perform action if present, returns unchanged Maybe
+var user = GetUser(id)
+    .Tap(u => logger.LogInformation("Found user {Name}", u.Name))
+    .Map(u => u.Email);
 ```
 
 ### Bridging to Result
@@ -290,6 +350,26 @@ Maybe<Avatar> avatar = avatarService.GetByUserId(userId).ToMaybe();
 
 // Async variant
 Maybe<Avatar> avatar = await avatarService.GetByUserId(userId).ToMaybeAsync();
+```
+
+### Collection Extensions
+
+```csharp
+// TryFirst / TryLast — safe first-or-none, last-or-none
+Maybe<User> admin = users.TryFirst(u => u.IsAdmin);
+Maybe<Order> latest = orders.TryLast(o => o.IsCompleted);
+
+// Parameterless overloads
+Maybe<User> first = users.TryFirst();
+Maybe<User> last = users.TryLast();
+
+// Choose — unwrap Some values, discard None
+IEnumerable<string> emails = users
+    .Select(u => u.Email)       // IEnumerable<Maybe<string>>
+    .Choose();                   // IEnumerable<string> — only the Some values
+
+// Choose with selector
+IEnumerable<string> emails = users.Choose(u => u.Email);
 ```
 
 ## Next Steps

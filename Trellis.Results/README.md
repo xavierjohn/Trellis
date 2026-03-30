@@ -21,6 +21,11 @@ Railway Oriented Programming (ROP) is a functional approach to error handling th
   - [Recover](#recover)
   - [RecoverOnFailure](#recoveronfailure)
   - [Combine](#combine)
+  - [Check](#check)
+  - [BindZip](#bindzip)
+  - [MapIf](#mapif)
+  - [EnsureNotNull](#ensurenotnull)
+  - [GetValueOrDefault](#getvalueordefault)
 - [Advanced Features](#advanced-features)
   - [LINQ Query Syntax](#linq-query-syntax)
   - [Maybe LINQ Query Syntax](#maybe-linq-query-syntax)
@@ -29,6 +34,7 @@ Railway Oriented Programming (ROP) is a functional approach to error handling th
   - [Exception Capture](#exception-capture)
   - [Parallel Operations](#parallel-operations)
   - [Error Transformation](#error-transformation)
+  - [Collection Helpers](#collection-helpers)
 - [Common Patterns](#common-patterns)
 - [Debugging](#debugging)
 - [Best Practices](#best-practices)
@@ -143,6 +149,29 @@ string fallback = empty.Match(
     s => $"Hi, {s}!",
     () => "No name");
 // → "No name"
+```
+
+**Chaining & Filtering:**
+
+```csharp
+// Bind — flatMap for chaining optional lookups
+Maybe<Order> order = Maybe.From(userId)
+    .Bind(id => users.FindById(id))
+    .Bind(user => orders.FindLatest(user.Id));
+// None at any step → entire chain is None
+
+// Or — provide a fallback when None
+Maybe<string> name = GetNickname(userId).Or("Anonymous");
+// Lazy: .Or(() => LookupDefault(userId))
+// Maybe: .Or(GetDisplayName(userId))
+
+// Where — filter by predicate
+Maybe<int> even = Maybe.From(42).Where(x => x % 2 == 0);  // Some(42)
+Maybe<int> nope = Maybe.From(3).Where(x => x % 2 == 0);   // None
+
+// Tap — side effect without changing the Maybe
+Maybe<User> user = FindUser(id)
+    .Tap(u => Log.Info($"Found user {u.Name}"));
 ```
 
 ### Error Types
@@ -536,6 +565,80 @@ var result = EmailAddress.TryCreate(email)
     .Bind((e, f, l) => CreateProfile(e, f, l));
 ```
 
+### Check
+
+`Check` runs a validation function on success but preserves the original value. Like `Bind`, the function must return a `Result`, but on success the original value is kept.
+
+**Use when:** You need to validate a side condition without losing the current value.
+
+```csharp
+Result<Order> result = GetOrder(orderId)
+    .Check(order => ValidateInventory(order.ProductId))
+    .Check(order => ValidatePayment(order.PaymentInfo));
+// On success, result still contains the original Order
+// On failure, returns the first failing error
+```
+
+### BindZip
+
+`BindZip` sequentially accumulates values into tuples. Each step can depend on all previously accumulated values, and the results are combined into a growing tuple.
+
+**Use when:** You need sequential, dependent operations that each add a value (unlike `Combine`, which is parallel and independent).
+
+```csharp
+var result = GetUser(userId)
+    .BindZip(user => GetSubscription(user.SubscriptionId))
+    .BindZip((user, sub) => GetInvoices(user.Id, sub.Plan))
+    .Map((user, sub, invoices) => new Dashboard(user, sub, invoices));
+```
+
+**Compared to Combine:** `Combine` runs independent validations and collects all errors. `BindZip` is sequential — each step can use values from previous steps, and it short-circuits on the first failure.
+
+### MapIf
+
+`MapIf` conditionally transforms the value when a condition or predicate is met. If the condition is false, the original value passes through unchanged.
+
+**Use when:** You want to apply a transformation only under certain circumstances.
+
+```csharp
+// With a boolean condition
+var result = GetPrice(productId)
+    .MapIf(applyDiscount, price => price * 0.9m);
+
+// With a predicate
+var result = GetUser(userId)
+    .MapIf(user => user.IsTrialExpired, user => user with { Plan = Plan.Free });
+```
+
+### EnsureNotNull
+
+`EnsureNotNull` narrows `Result<T?>` to `Result<T>` by failing with the specified error when the value is null.
+
+**Use when:** An upstream operation returns a nullable value and you need to guarantee non-null from that point on.
+
+```csharp
+Result<User> result = FindUserByEmail(email)     // Result<User?>
+    .EnsureNotNull(Error.NotFound($"No user with email {email}"));
+// Success with non-null User, or Failure with NotFoundError
+```
+
+### GetValueOrDefault
+
+`GetValueOrDefault` is a terminal operator that extracts the success value or returns a fallback. This exits the `Result` pipeline.
+
+**Use when:** You need to unwrap the value at the end of a chain with a safe fallback.
+
+```csharp
+// Static default
+int retries = GetConfig("max_retries").Map(int.Parse).GetValueOrDefault(3);
+
+// Lazy factory (only called on failure)
+var user = GetUser(id).GetValueOrDefault(() => User.Guest);
+
+// Factory with error context
+var message = Translate(key).GetValueOrDefault(err => $"[{err.Code}] {key}");
+```
+
 ## Advanced Features
 
 ### LINQ Query Syntax
@@ -680,6 +783,30 @@ var apiResult = GetUserPoints(userId)
 
 // Success values pass through unchanged
 // Failure errors are replaced with the new error
+```
+
+### Collection Helpers
+
+LINQ-style queries that return `Maybe<T>` instead of throwing, plus utilities for working with sequences of optionals.
+
+**TryFirst / TryLast** — safe element access without exceptions:
+
+```csharp
+var first = users.TryFirst();                          // Maybe<User>
+var admin = users.TryFirst(u => u.Role == "admin");    // Maybe<User>
+var last  = orders.TryLast(o => o.Status == "open");   // Maybe<Order>
+
+// Compare with LINQ: users.First() throws if empty
+```
+
+**Choose** — filter and unwrap a sequence of `Maybe<T>`:
+
+```csharp
+IEnumerable<Maybe<int>> parsed = inputs.Select(s => TryParseInt(s));
+IEnumerable<int> valid = parsed.Choose();  // Only the values that exist
+
+// With projection
+IEnumerable<string> names = maybePeople.Choose(p => p.Name);
 ```
 
 ## Common Patterns

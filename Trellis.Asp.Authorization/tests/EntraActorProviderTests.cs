@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Authorization.Tests;
+﻿namespace Trellis.Asp.Authorization.Tests;
 
 using System.Net;
 using System.Security.Claims;

@@ -60,7 +60,7 @@ public readonly struct Maybe<T> :
     /// <returns>The underlying value of type <typeparamref name="T"/>.</returns>
     /// <exception cref="InvalidOperationException">Thrown when <see cref="HasValue"/> is false.</exception>
     /// <remarks>
-    /// Prefer <see cref="GetValueOrDefault"/> or <see cref="TryGetValue"/> to avoid exceptions.
+    /// Prefer <see cref="GetValueOrDefault(T)"/> or <see cref="TryGetValue"/> to avoid exceptions.
     /// </remarks>
     public T GetValueOrThrow(string? errorMessage = null)
     {
@@ -87,6 +87,22 @@ public readonly struct Maybe<T> :
     }
 
     /// <summary>
+    /// Gets the underlying value if present, otherwise evaluates and returns the result of the specified factory.
+    /// </summary>
+    /// <param name="defaultFactory">The factory to evaluate when <see cref="HasValue"/> is false.</param>
+    /// <returns>The underlying value or the result of <paramref name="defaultFactory"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="defaultFactory"/> is null.</exception>
+    public T GetValueOrDefault(Func<T> defaultFactory)
+    {
+        ArgumentNullException.ThrowIfNull(defaultFactory);
+
+        if (_isValueSet)
+            return _value!;
+
+        return defaultFactory();
+    }
+
+    /// <summary>
     /// Attempts to get the underlying value without throwing an exception.
     /// </summary>
     /// <param name="value">When this method returns true, contains the underlying value; otherwise, the default value for type <typeparamref name="T"/>.</param>
@@ -106,7 +122,7 @@ public readonly struct Maybe<T> :
     /// <value>The underlying value of type <typeparamref name="T"/>.</value>
     /// <exception cref="InvalidOperationException">Thrown when <see cref="HasValue"/> is false.</exception>
     /// <remarks>
-    /// Always check <see cref="HasValue"/> before accessing this property, or use <see cref="GetValueOrDefault"/> instead.
+    /// Always check <see cref="HasValue"/> before accessing this property, or use <see cref="GetValueOrDefault(T)"/> instead.
     /// </remarks>
     public T Value => GetValueOrThrow();
 
@@ -157,6 +173,100 @@ public readonly struct Maybe<T> :
     /// <returns>The result of the matched function.</returns>
     public TResult Match<TResult>(Func<T, TResult> some, Func<TResult> none) =>
         _isValueSet ? some(_value!) : none();
+
+    /// <summary>
+    /// Projects the value inside a <see cref="Maybe{T}"/> into a new <see cref="Maybe{TResult}"/> using the specified function.
+    /// If no value is present, returns <see cref="Maybe{TResult}.None"/>.
+    /// </summary>
+    /// <typeparam name="TResult">The type of the projected value.</typeparam>
+    /// <param name="selector">The function to apply to the value, returning a new Maybe.</param>
+    /// <returns>The result of the selector if this instance has a value; otherwise None.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="selector"/> is null.</exception>
+    public Maybe<TResult> Bind<TResult>(Func<T, Maybe<TResult>> selector)
+        where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        if (_isValueSet)
+            return selector(_value!);
+
+        return default;
+    }
+
+    /// <summary>
+    /// Returns this <see cref="Maybe{T}"/> if it has a value; otherwise returns a Maybe containing the specified fallback value.
+    /// </summary>
+    /// <param name="fallback">The fallback value to use when no value is present.</param>
+    /// <returns>This instance if it has a value; otherwise a Maybe containing <paramref name="fallback"/>.</returns>
+    public Maybe<T> Or(T fallback) =>
+        _isValueSet ? this : new(fallback);
+
+    /// <summary>
+    /// Returns this <see cref="Maybe{T}"/> if it has a value; otherwise evaluates the factory and returns a Maybe containing its result.
+    /// </summary>
+    /// <param name="fallbackFactory">The factory to evaluate when no value is present.</param>
+    /// <returns>This instance if it has a value; otherwise a Maybe containing the factory result.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fallbackFactory"/> is null.</exception>
+    public Maybe<T> Or(Func<T> fallbackFactory)
+    {
+        ArgumentNullException.ThrowIfNull(fallbackFactory);
+
+        return _isValueSet ? this : new(fallbackFactory());
+    }
+
+    /// <summary>
+    /// Returns this <see cref="Maybe{T}"/> if it has a value; otherwise returns the specified fallback Maybe.
+    /// </summary>
+    /// <param name="fallback">The fallback Maybe to return when no value is present.</param>
+    /// <returns>This instance if it has a value; otherwise <paramref name="fallback"/>.</returns>
+    public Maybe<T> Or(Maybe<T> fallback) =>
+        _isValueSet ? this : fallback;
+
+    /// <summary>
+    /// Returns this <see cref="Maybe{T}"/> if it has a value; otherwise evaluates the factory and returns its result.
+    /// </summary>
+    /// <param name="fallbackFactory">The factory to evaluate when no value is present.</param>
+    /// <returns>This instance if it has a value; otherwise the factory result.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fallbackFactory"/> is null.</exception>
+    public Maybe<T> Or(Func<Maybe<T>> fallbackFactory)
+    {
+        ArgumentNullException.ThrowIfNull(fallbackFactory);
+
+        return _isValueSet ? this : fallbackFactory();
+    }
+
+    /// <summary>
+    /// Filters this <see cref="Maybe{T}"/> by applying a predicate to the value.
+    /// Returns None if the predicate fails or if this instance has no value.
+    /// </summary>
+    /// <param name="predicate">The condition to test the value against.</param>
+    /// <returns>This instance if the predicate passes; otherwise None.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="predicate"/> is null.</exception>
+    public Maybe<T> Where(Func<T, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        if (_isValueSet && predicate(_value!))
+            return this;
+
+        return default;
+    }
+
+    /// <summary>
+    /// Executes a side effect on the value if present, then returns this <see cref="Maybe{T}"/> unchanged.
+    /// </summary>
+    /// <param name="action">The action to execute on the value.</param>
+    /// <returns>This instance unchanged.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="action"/> is null.</exception>
+    public Maybe<T> Tap(Action<T> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (_isValueSet)
+            action(_value!);
+
+        return this;
+    }
 
     /// <summary>
     /// Implicitly converts a value of type <typeparamref name="T"/> to a <see cref="Maybe{T}"/>.
