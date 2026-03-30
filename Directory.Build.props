@@ -36,7 +36,7 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Coverage">
-    <!-- Exclude generated regex state machines and other obj artifacts from coverage to keep metrics meaningful -->
+    <!-- Exclude T4-generated and source-generated files from coverage to keep metrics meaningful -->
     <ExcludeByFile>$(ExcludeByFile);**/*.g.cs;**/System.Text.RegularExpressions.Generator/**/*.cs</ExcludeByFile>
     <Exclude>$(Exclude);[System.Text.RegularExpressions.Generated.*]*</Exclude>
   </PropertyGroup>
