@@ -6,7 +6,7 @@ using System.Diagnostics;
 /// Extension methods for safely querying collections, returning <see cref="Maybe{T}"/> instead of throwing.
 /// </summary>
 [DebuggerStepThrough]
-public static class MaybeTryFirstExtensions
+public static class MaybeCollectionExtensions
 {
     /// <summary>
     /// Returns the first element of a sequence wrapped in a <see cref="Maybe{T}"/>,
