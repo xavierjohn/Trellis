@@ -44,8 +44,8 @@ public static class MaybeChooseExtensions
     {
         foreach (var item in source)
         {
-            if (item.HasValue)
-                yield return item.Value;
+            if (item.TryGetValue(out var value))
+                yield return value;
         }
     }
 
@@ -54,8 +54,8 @@ public static class MaybeChooseExtensions
     {
         foreach (var item in source)
         {
-            if (item.HasValue)
-                yield return selector(item.Value);
+            if (item.TryGetValue(out var value))
+                yield return selector(value);
         }
     }
 }
