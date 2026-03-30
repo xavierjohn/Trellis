@@ -2,7 +2,12 @@
 
 using Trellis.Testing;
 
-public class CheckTaskTests
+/// <summary>
+/// Tests for Check.Task.cs where BOTH input and function are async (Task).
+/// Also covers Check.Task.Left.cs (async input, sync function) and
+/// Check.Task.Right.cs (sync input, async function).
+/// </summary>
+public class Check_Task_Tests
 {
     #region Task Both — Task<Result<T>> + Func<T, Task<Result<TK>>>
 

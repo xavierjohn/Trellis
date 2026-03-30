@@ -2,7 +2,12 @@
 
 using Trellis.Testing;
 
-public class CheckValueTaskTests
+/// <summary>
+/// Tests for Check.ValueTask.cs where BOTH input and function are async (ValueTask).
+/// Also covers Check.ValueTask.Left.cs (async input, sync function) and
+/// Check.ValueTask.Right.cs (sync input, async function).
+/// </summary>
+public class Check_ValueTask_Tests
 {
     #region ValueTask Both — ValueTask<Result<T>> + Func<T, ValueTask<Result<TK>>>
 

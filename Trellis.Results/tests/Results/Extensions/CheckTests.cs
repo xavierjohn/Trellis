@@ -2,7 +2,10 @@
 
 using Trellis.Testing;
 
-public class CheckTests
+/// <summary>
+/// Tests for Check.cs — synchronous Check extensions for Result.
+/// </summary>
+public class Check_Tests
 {
     #region Check with Result<TK>
 
