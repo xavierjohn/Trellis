@@ -2316,7 +2316,7 @@ var result = await OrderId.TryCreate(request.OrderId)
     .BindAsync(id => _repository.GetByIdAsync(id, ct))
     .EnsureAsync(order => order.Status == OrderStatus.Draft, Error.Conflict("Order already submitted"))
     .BindAsync(order => order.Submit())
-    .BindAsync(order => _repository.SaveAsync(order, ct).MapAsync(_ => order))
+    .CheckAsync(order => _repository.SaveAsync(order, ct))
     .TapAsync(order => _eventBus.PublishAsync(order.UncommittedEvents(), ct));
 
 // Recovery
@@ -2334,14 +2334,14 @@ Complete example showing how to model optional fields with `Maybe<T>` in request
 public record CreateProfileRequest(
     string Email,
     string FirstName,
-    Maybe<string> MiddleName,    // optional
+    string? MiddleName,    // optional
     string LastName,
-    Maybe<Url> Website           // optional value object
+    Url? Website           // optional value object
 );
 
 // Validation with Optional
 var result = EmailAddress.TryCreate(dto.Email)
-    .Combine(Maybe.Optional(dto.MiddleName.AsNullable(), MiddleName.TryCreate))
+    .Combine(Maybe.Optional(dto.MiddleName, MiddleName.TryCreate))
     .Bind((email, middleName) => CreateProfile(email, middleName));
 
 // EF Core persistence — use partial Maybe<T> property (see §12 Maybe<T> Property Mapping)
@@ -2359,26 +2359,22 @@ Complete example showing how to map `Result<T>` to HTTP responses in both MVC co
 ```csharp
 // MVC Controller
 [HttpGet("{id}")]
-public async Task<ActionResult<OrderDto>> GetOrder(string id)
+public async Task<ActionResult<OrderDto>> GetOrder(OrderId id)
 {
-    return await OrderId.TryCreate(id)
-        .BindAsync(orderId => _service.GetOrderAsync(orderId))
-        .MapAsync(order => order.ToDto())
-        .ToActionResultAsync(this);
+    return await _service.GetOrderAsync(id)
+        .ToActionResultAsync(this, OrderDto.From);
 }
 
 [HttpPost]
 public async Task<ActionResult<OrderDto>> CreateOrder(CreateOrderRequest request)
 {
     return await _service.CreateOrderAsync(request)
-        .MapAsync(order => order.ToDto())
-        .ToCreatedAtActionResultAsync(this, nameof(GetOrder), dto => new { id = dto.Id });
+        .ToCreatedAtActionResultAsync(this, nameof(GetOrder), dto => new { id = dto.Id }, OrderDto.From);
 }
 
 // Minimal API
-app.MapGet("/orders/{id}", async (string id, IOrderService service) =>
-    await OrderId.TryCreate(id)
-        .BindAsync(orderId => service.GetOrderAsync(orderId))
+app.MapGet("/orders/{id}", async (OrderId id, IOrderService service) =>
+    await service.GetOrderAsync(id)
         .MapAsync(order => order.ToDto())
         .ToHttpResultAsync());
 ```
@@ -2411,8 +2407,8 @@ public async Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken canc
     await _dbContext.Orders
         .FirstOrDefaultResultAsync(o => o.Id == id, Error.NotFound($"Order {id} not found"), ct);
 
-public async Task<Result<Maybe<Order>>> FindByIdAsync(OrderId id, CancellationToken cancellationToken) =>
-    Result.Success(await _dbContext.Orders.FirstOrDefaultMaybeAsync(o => o.Id == id, ct));
+public async Task<Maybe<Order>> FindByIdAsync(OrderId id, CancellationToken cancellationToken) =>
+    await _dbContext.Orders.FirstOrDefaultMaybeAsync(o => o.Id == id, ct);
 
 public async Task<Result<Unit>> SaveAsync(Order order, CancellationToken cancellationToken)
 {
@@ -2435,7 +2431,8 @@ In LINQ queries, compare value objects to value objects — the value converter 
 var customer = await _dbContext.Customers
     .FirstOrDefaultResultAsync(c => c.Email == EmailAddress.Create("alice@example.com"), notFoundError, ct);
 
-// ❌ Wrong — .Value won't translate to SQL
+// ✅ Also correct (with ScalarValueQueryInterceptor registered via AddTrellisInterceptors)
+// The interceptor rewrites .Value access to the primitive for SQL translation
 var customer = await _dbContext.Customers
     .FirstOrDefaultResultAsync(c => c.Email.Value == "alice@example.com", notFoundError, ct);
 ```
@@ -2468,7 +2465,7 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
         await Order.TryCreate(command.CustomerId)
             .BindAsync(order => AddItemsAsync(order, command.Items, ct))
             .BindAsync(order => order.Submit())
-            .BindAsync(order => repo.SaveAsync(order, ct).MapAsync(_ => order));
+            .CheckAsync(order => repo.SaveAsync(order, ct));
 }
 ```
 
