@@ -21,7 +21,7 @@ public static partial class BindZipExtensionsAsync
     {
         ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);
-        using var activity = RopTrace.ActivitySource.StartActivity();
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsFailure)
