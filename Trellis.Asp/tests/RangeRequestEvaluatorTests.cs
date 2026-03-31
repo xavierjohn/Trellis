@@ -17,7 +17,7 @@ public class RangeRequestEvaluatorTests
 
         var outcome = RangeRequestEvaluator.Evaluate(request, 200);
 
-        outcome.Should().BeOfType<RangeOutcome.Full>();
+        outcome.Should().BeOfType<RangeOutcome.FullRepresentation>();
     }
 
     #endregion
@@ -37,7 +37,7 @@ public class RangeRequestEvaluatorTests
 
         var outcome = RangeRequestEvaluator.Evaluate(context.Request, 200);
 
-        outcome.Should().BeOfType<RangeOutcome.Full>();
+        outcome.Should().BeOfType<RangeOutcome.FullRepresentation>();
     }
 
     #endregion
@@ -146,7 +146,23 @@ public class RangeRequestEvaluatorTests
 
         var outcome = RangeRequestEvaluator.Evaluate(context.Request, 200);
 
-        outcome.Should().BeOfType<RangeOutcome.Full>();
+        outcome.Should().BeOfType<RangeOutcome.FullRepresentation>();
+    }
+
+    #endregion
+
+    #region Multi-range requests
+
+    [Fact]
+    public void Evaluate_MultipleRanges_ReturnsFull()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Headers.Range = "bytes=0-99, 200-299";
+
+        var outcome = RangeRequestEvaluator.Evaluate(context.Request, 500);
+
+        outcome.Should().BeOfType<RangeOutcome.FullRepresentation>();
     }
 
     #endregion

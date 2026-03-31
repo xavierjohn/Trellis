@@ -2,7 +2,7 @@
 
 > This document covers the `Trellis.Testing` package: FluentAssertions extensions, test builders,
 > fake repositories, actor providers, and testing patterns for Trellis applications.
-> For the core framework API, see `trellis-api-reference.md`.
+> For the core framework API, see the per-library `trellis-api-*.md` files (e.g., `trellis-api-results.md`, `trellis-api-ddd.md`).
 
 ---
 

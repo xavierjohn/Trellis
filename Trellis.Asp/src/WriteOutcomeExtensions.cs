@@ -25,20 +25,20 @@ public static class WriteOutcomeExtensions
                 var createdValue = map is not null ? (object?)map(created.Value) : created.Value;
                 return new CreatedResult(created.Location, createdValue);
 
-            case WriteOutcome<T>.Replaced replaced:
+            case WriteOutcome<T>.Updated replaced:
                 if (replaced.Metadata is not null)
                     ActionResultExtensions.ApplyMetadataHeaders(controller.Response, replaced.Metadata);
                 var replacedValue = map is not null ? (object?)map(replaced.Value) : replaced.Value;
                 return controller.Ok(replacedValue);
 
-            case WriteOutcome<T>.ReplacedNoContent noContent:
+            case WriteOutcome<T>.UpdatedNoContent noContent:
                 if (noContent.Metadata is not null)
                     ActionResultExtensions.ApplyMetadataHeaders(controller.Response, noContent.Metadata);
                 return controller.NoContent();
 
             case WriteOutcome<T>.Accepted accepted:
-                if (accepted.StatusMonitorUri is not null)
-                    controller.Response.Headers.Location = accepted.StatusMonitorUri;
+                if (accepted.MonitorUri is not null)
+                    controller.Response.Headers.Location = accepted.MonitorUri;
                 if (accepted.RetryAfter is not null)
                     controller.Response.Headers["Retry-After"] = accepted.RetryAfter.ToHeaderValue();
                 if (accepted.StatusBody is not null)

@@ -32,7 +32,7 @@ public class AcceptedResultTests : IDisposable
     }
 
     [Fact]
-    public void ToAcceptedActionResult_success_with_statusMonitorUri_sets_Location_header()
+    public void ToAcceptedActionResult_success_with_monitorUri_sets_Location_header()
     {
         // Arrange
         var controller = CreateControllerWithHttpContext();
@@ -41,7 +41,7 @@ public class AcceptedResultTests : IDisposable
         // Act
         var response = result.ToAcceptedActionResult<string, string>(
             controller,
-            statusMonitorUri: v => $"/status/{v}",
+            monitorUri: v => $"/status/{v}",
             map: v => v);
 
         // Assert

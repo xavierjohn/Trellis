@@ -14,14 +14,14 @@ public static class AcceptedResultExtensions
     public static ActionResult<TOut> ToAcceptedActionResult<TIn, TOut>(
         this Result<TIn> result,
         ControllerBase controller,
-        Func<TIn, string>? statusMonitorUri = null,
+        Func<TIn, string>? monitorUri = null,
         Func<TIn, TOut>? map = null)
     {
         if (result.IsFailure)
             return result.Error.ToActionResult<TOut>(controller);
 
-        if (statusMonitorUri is not null)
-            controller.Response.Headers.Location = statusMonitorUri(result.Value);
+        if (monitorUri is not null)
+            controller.Response.Headers.Location = monitorUri(result.Value);
 
         if (map is not null)
             return new ObjectResult(map(result.Value)) { StatusCode = 202 };
@@ -33,15 +33,15 @@ public static class AcceptedResultExtensions
     public static async Task<ActionResult<TOut>> ToAcceptedActionResultAsync<TIn, TOut>(
         this Task<Result<TIn>> resultTask,
         ControllerBase controller,
-        Func<TIn, string>? statusMonitorUri = null,
+        Func<TIn, string>? monitorUri = null,
         Func<TIn, TOut>? map = null) =>
-        (await resultTask.ConfigureAwait(false)).ToAcceptedActionResult(controller, statusMonitorUri, map);
+        (await resultTask.ConfigureAwait(false)).ToAcceptedActionResult(controller, monitorUri, map);
 
     /// <summary>Async ValueTask overload.</summary>
     public static async ValueTask<ActionResult<TOut>> ToAcceptedActionResultAsync<TIn, TOut>(
         this ValueTask<Result<TIn>> resultTask,
         ControllerBase controller,
-        Func<TIn, string>? statusMonitorUri = null,
+        Func<TIn, string>? monitorUri = null,
         Func<TIn, TOut>? map = null) =>
-        (await resultTask.ConfigureAwait(false)).ToAcceptedActionResult(controller, statusMonitorUri, map);
+        (await resultTask.ConfigureAwait(false)).ToAcceptedActionResult(controller, monitorUri, map);
 }

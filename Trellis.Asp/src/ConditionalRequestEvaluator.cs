@@ -10,7 +10,7 @@ using Trellis;
 public enum ConditionalDecision
 {
     /// <summary>Preconditions satisfied — proceed with the method.</summary>
-    Proceed,
+    PreconditionsSatisfied,
     /// <summary>Return 304 Not Modified (GET/HEAD only).</summary>
     NotModified,
     /// <summary>Return 412 Precondition Failed.</summary>
@@ -82,7 +82,7 @@ public static class ConditionalRequestEvaluator
             }
         }
 
-        return ConditionalDecision.Proceed;
+        return ConditionalDecision.PreconditionsSatisfied;
     }
 
     // If-Match uses strong comparison; wildcard matches any current entity

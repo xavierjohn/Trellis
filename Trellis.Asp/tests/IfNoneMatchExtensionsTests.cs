@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Trellis.Testing;
 
@@ -8,74 +8,74 @@ using Trellis.Testing;
 public class IfNoneMatchExtensionsTests
 {
     [Fact]
-    public void CheckIfNoneMatchForCreate_NullETags_ReturnsOriginalResult()
+    public void EnforceIfNoneMatchPrecondition_NullETags_ReturnsOriginalResult()
     {
         var result = Result.Success("value");
 
-        var actual = result.CheckIfNoneMatchForCreate(null);
+        var actual = result.EnforceIfNoneMatchPrecondition(null);
 
         actual.Should().BeSuccess();
         actual.Should().HaveValue("value");
     }
 
     [Fact]
-    public void CheckIfNoneMatchForCreate_WildcardOnSuccess_ReturnsPreconditionFailed()
+    public void EnforceIfNoneMatchPrecondition_WildcardOnSuccess_ReturnsPreconditionFailed()
     {
         var result = Result.Success("value");
 
-        var actual = result.CheckIfNoneMatchForCreate(["*"]);
+        var actual = result.EnforceIfNoneMatchPrecondition(["*"]);
 
         actual.Should().BeFailureOfType<PreconditionFailedError>();
     }
 
     [Fact]
-    public void CheckIfNoneMatchForCreate_WildcardOnFailure_PreservesOriginalError()
+    public void EnforceIfNoneMatchPrecondition_WildcardOnFailure_PreservesOriginalError()
     {
         var result = Result.Failure<string>(Error.NotFound("not found"));
 
-        var actual = result.CheckIfNoneMatchForCreate(["*"]);
+        var actual = result.EnforceIfNoneMatchPrecondition(["*"]);
 
         actual.Should().BeFailureOfType<NotFoundError>();
     }
 
     [Fact]
-    public void CheckIfNoneMatchForCreate_NonWildcardTags_ReturnsOriginalResult()
+    public void EnforceIfNoneMatchPrecondition_NonWildcardTags_ReturnsOriginalResult()
     {
         var result = Result.Success("value");
 
-        var actual = result.CheckIfNoneMatchForCreate(["abc123", "def456"]);
+        var actual = result.EnforceIfNoneMatchPrecondition(["abc123", "def456"]);
 
         actual.Should().BeSuccess();
         actual.Should().HaveValue("value");
     }
 
     [Fact]
-    public void CheckIfNoneMatchForCreate_EmptyArray_ReturnsOriginalResult()
+    public void EnforceIfNoneMatchPrecondition_EmptyArray_ReturnsOriginalResult()
     {
         var result = Result.Success("value");
 
-        var actual = result.CheckIfNoneMatchForCreate([]);
+        var actual = result.EnforceIfNoneMatchPrecondition([]);
 
         actual.Should().BeSuccess();
         actual.Should().HaveValue("value");
     }
 
     [Fact]
-    public async Task CheckIfNoneMatchForCreateAsync_Task_WildcardOnSuccess_ReturnsPreconditionFailed()
+    public async Task EnforceIfNoneMatchPreconditionAsync_Task_WildcardOnSuccess_ReturnsPreconditionFailed()
     {
         var resultTask = Task.FromResult(Result.Success("value"));
 
-        var actual = await resultTask.CheckIfNoneMatchForCreateAsync(["*"]);
+        var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync(["*"]);
 
         actual.Should().BeFailureOfType<PreconditionFailedError>();
     }
 
     [Fact]
-    public async Task CheckIfNoneMatchForCreateAsync_ValueTask_WildcardOnSuccess_ReturnsPreconditionFailed()
+    public async Task EnforceIfNoneMatchPreconditionAsync_ValueTask_WildcardOnSuccess_ReturnsPreconditionFailed()
     {
         var resultTask = new ValueTask<Result<string>>(Result.Success("value"));
 
-        var actual = await resultTask.CheckIfNoneMatchForCreateAsync(["*"]);
+        var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync(["*"]);
 
         actual.Should().BeFailureOfType<PreconditionFailedError>();
     }

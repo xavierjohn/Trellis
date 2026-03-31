@@ -10,7 +10,7 @@ public abstract record RangeOutcome
     private RangeOutcome() { }
 
     /// <summary>No Range header or range not applicable — serve full representation.</summary>
-    public sealed record Full : RangeOutcome;
+    public sealed record FullRepresentation : RangeOutcome;
 
     /// <summary>Range satisfiable — serve partial content (206).</summary>
     public sealed record PartialContent(long From, long To, long CompleteLength) : RangeOutcome;
@@ -35,20 +35,23 @@ public static class RangeRequestEvaluator
     {
         // RFC 9110 §14.2: Range is only applicable to GET
         if (!HttpMethods.IsGet(request.Method))
-            return new RangeOutcome.Full();
+            return new RangeOutcome.FullRepresentation();
 
         var rangeHeader = request.GetTypedHeaders().Range;
         if (rangeHeader is null)
-            return new RangeOutcome.Full();
+            return new RangeOutcome.FullRepresentation();
 
         // Only support bytes unit
         if (!string.Equals(rangeHeader.Unit.ToString(), "bytes", StringComparison.OrdinalIgnoreCase))
-            return new RangeOutcome.Full();
+            return new RangeOutcome.FullRepresentation();
 
         if (rangeHeader.Ranges is not { Count: > 0 })
-            return new RangeOutcome.Full();
+            return new RangeOutcome.FullRepresentation();
 
-        // Handle single range only (multi-range would need multipart/byteranges)
+        // Multi-range requests require multipart/byteranges (not supported) — ignore Range header
+        if (rangeHeader.Ranges.Count > 1)
+            return new RangeOutcome.FullRepresentation();
+
         var range = rangeHeader.Ranges.First();
 
         long from, to;
@@ -71,7 +74,7 @@ public static class RangeRequestEvaluator
         }
         else
         {
-            return new RangeOutcome.Full();
+            return new RangeOutcome.FullRepresentation();
         }
 
         // Satisfiability check

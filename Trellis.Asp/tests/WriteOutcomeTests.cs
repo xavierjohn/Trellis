@@ -67,7 +67,7 @@ public class WriteOutcomeTests
     {
         var controller = CreateControllerWithHttpContext();
         var metadata = RepresentationMetadata.WithStrongETag("etag2");
-        WriteOutcome<string> outcome = new WriteOutcome<string>.Replaced("updated", metadata);
+        WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated", metadata);
 
         var actionResult = outcome.ToActionResult<string, string>(controller);
 
@@ -80,7 +80,7 @@ public class WriteOutcomeTests
     public void Replaced_WithMap_TransformsValue()
     {
         var controller = CreateControllerWithHttpContext();
-        WriteOutcome<string> outcome = new WriteOutcome<string>.Replaced("hello");
+        WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("hello");
 
         var actionResult = outcome.ToActionResult(controller, (Func<string, string>)(s => s.ToUpperInvariant()));
 
@@ -95,7 +95,7 @@ public class WriteOutcomeTests
     public void ReplacedNoContent_Returns204()
     {
         var controller = CreateControllerWithHttpContext();
-        WriteOutcome<string> outcome = new WriteOutcome<string>.ReplacedNoContent();
+        WriteOutcome<string> outcome = new WriteOutcome<string>.UpdatedNoContent();
 
         var actionResult = outcome.ToActionResult<string, string>(controller);
 
@@ -108,7 +108,7 @@ public class WriteOutcomeTests
     {
         var controller = CreateControllerWithHttpContext();
         var metadata = RepresentationMetadata.WithStrongETag("etag3");
-        WriteOutcome<string> outcome = new WriteOutcome<string>.ReplacedNoContent(metadata);
+        WriteOutcome<string> outcome = new WriteOutcome<string>.UpdatedNoContent(metadata);
 
         outcome.ToActionResult<string, string>(controller);
 
@@ -123,7 +123,7 @@ public class WriteOutcomeTests
     public void Accepted_WithStatusMonitor_Returns202_WithLocation()
     {
         var controller = CreateControllerWithHttpContext();
-        WriteOutcome<string> outcome = new WriteOutcome<string>.Accepted(StatusMonitorUri: "/api/status/123");
+        WriteOutcome<string> outcome = new WriteOutcome<string>.Accepted(MonitorUri: "/api/status/123");
 
         var actionResult = outcome.ToActionResult<string, string>(controller);
 

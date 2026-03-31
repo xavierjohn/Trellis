@@ -311,7 +311,7 @@ public static class ActionResultExtensions
         {
             var partialResult = to - from + 1 != length;
             if (partialResult)
-                return new PartialObjectResult(from, to, length, result.Value);
+                return new PartialContentResult(from, to, length, result.Value);
 
             return controllerBase.Ok(result.Value);
         }
@@ -398,7 +398,7 @@ public static class ActionResultExtensions
 
             var partialResult = contentRange.To - contentRange.From + 1 != contentRange.Length;
             if (partialResult)
-                return new PartialObjectResult(contentRange, value);
+                return new PartialContentResult(contentRange, value);
 
             return controllerBase.Ok(value);
         }
@@ -608,7 +608,8 @@ public static class ActionResultExtensions
     /// <summary>
     /// Converts a Result to an ActionResult, applying representation metadata headers
     /// (ETag, Last-Modified, Vary, Content-Language, Content-Location, Accept-Ranges).
-    /// Handles If-None-Match → 304 Not Modified when metadata includes an ETag.
+    /// Evaluates all conditional request headers (If-Match, If-Unmodified-Since, If-None-Match,
+    /// If-Modified-Since) with correct RFC 9110 §13.2.2 precedence via <see cref="ConditionalRequestEvaluator"/>.
     /// </summary>
     public static ActionResult<TOut> ToActionResult<TIn, TOut>(
         this Result<TIn> result,
@@ -621,19 +622,14 @@ public static class ActionResultExtensions
 
         ApplyMetadataHeaders(controller.Response, metadata);
 
-        // Check If-None-Match for 304
-        if (metadata.ETag is not null)
+        return ConditionalRequestEvaluator.Evaluate(controller.Request, metadata) switch
         {
-            var request = controller.Request;
-            if (HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method))
-            {
-                var ifNoneMatch = request.GetTypedHeaders().IfNoneMatch;
-                if (ifNoneMatch is { Count: > 0 } && ETagHelper.IfNoneMatchMatches(ifNoneMatch, metadata.ETag.OpaqueTag))
-                    return new StatusCodeResult(StatusCodes.Status304NotModified);
-            }
-        }
-
-        return controller.Ok(map(result.Value));
+            ConditionalDecision.NotModified => new StatusCodeResult(StatusCodes.Status304NotModified),
+            ConditionalDecision.PreconditionFailed =>
+                Error.PreconditionFailed("A conditional request header evaluated to false.")
+                    .ToActionResult<TOut>(controller),
+            _ => controller.Ok(map(result.Value)),
+        };
     }
 
     /// <summary>Async Task overload of metadata-aware ToActionResult.</summary>

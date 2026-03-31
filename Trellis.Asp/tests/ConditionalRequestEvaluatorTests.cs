@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
@@ -19,7 +19,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed);
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
     }
 
     #endregion
@@ -36,7 +36,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed);
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed);
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed);
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed, "If-Match matched, so If-Unmodified-Since is skipped");
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied, "If-Match matched, so If-Unmodified-Since is skipped");
     }
 
     #endregion
@@ -203,7 +203,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed);
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed);
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed, "If-None-Match didn't match, so result is Proceed regardless of If-Modified-Since");
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied, "If-None-Match didn't match, so result is Proceed regardless of If-Modified-Since");
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed, "If-Modified-Since is ignored for unsafe methods");
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied, "If-Modified-Since is ignored for unsafe methods");
     }
 
     #endregion
@@ -341,7 +341,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed);
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
     }
 
     [Fact]
@@ -360,7 +360,7 @@ public class ConditionalRequestEvaluatorTests
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 
-        decision.Should().Be(ConditionalDecision.Proceed, "If-None-Match no-match overrides If-Modified-Since");
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied, "If-None-Match no-match overrides If-Modified-Since");
     }
 
     #endregion

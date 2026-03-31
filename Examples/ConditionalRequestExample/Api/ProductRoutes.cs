@@ -17,6 +17,7 @@ public record ProductResponse(Guid Id, string Name, decimal Price, string ETag)
 
 /// <summary>
 /// Demonstrates RFC 9110 with OPTIONAL If-Match — updates proceed without the header.
+/// Uses RepresentationMetadata for response headers and ConditionalRequestEvaluator for precondition checks.
 /// </summary>
 public static class OptionalETagRoutes
 {
@@ -24,7 +25,7 @@ public static class OptionalETagRoutes
     {
         var group = app.MapGroup("/optional/products");
 
-        // GET — returns ETag header; supports If-None-Match -> 304 Not Modified
+        // GET — returns ETag + Last-Modified headers; supports If-None-Match -> 304 Not Modified
         group.MapGet("/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
@@ -42,6 +43,7 @@ public static class OptionalETagRoutes
             .WithScalarValueValidation();
 
         // PUT — If-Match is OPTIONAL. Without it, update proceeds unconditionally.
+        // Uses typed EntityTagValue[] via ParseIfMatch.
         group.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
@@ -80,6 +82,7 @@ public static class RequiredETagRoutes
             .WithScalarValueValidation();
 
         // PUT — If-Match is REQUIRED. Without it -> 428 Precondition Required.
+        // Uses typed EntityTagValue[] via ParseIfMatch.
         group.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
