@@ -63,6 +63,17 @@ public class ETagHelperTests
         ETagHelper.ParseIfMatch(context.Request).Should().Equal("aaa", "bbb", "ccc");
     }
 
+    [Fact]
+    public void ParseIfMatch_MalformedHeader_ReturnsEmptyArray()
+    {
+        // Malformed If-Match (unquoted) must not be treated as "no header"
+        var context = new DefaultHttpContext();
+        context.Request.Headers.IfMatch = "abc";
+
+        ETagHelper.ParseIfMatch(context.Request).Should().BeEmpty(
+            "malformed If-Match must return empty array (→ 412), not null (→ unconditional)");
+    }
+
     #endregion
 
     #region IfNoneMatchMatches

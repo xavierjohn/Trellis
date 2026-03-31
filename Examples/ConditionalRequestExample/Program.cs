@@ -2,6 +2,7 @@
 using ConditionalRequestExample.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Trellis.Asp;
 using Trellis.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,7 +15,11 @@ builder.Services.AddDbContext<ProductDbContext>(options =>
     options.UseSqlite(connection)
            .AddTrellisInterceptors());
 
+builder.Services.AddScalarValueValidationForMinimalApi();
+
 var app = builder.Build();
+
+app.UseScalarValueValidation();
 
 // Create the schema on startup
 using (var scope = app.Services.CreateScope())

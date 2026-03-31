@@ -417,4 +417,32 @@ public static class HttpResultExtensions
     }
 
     #endregion
+
+    #region RFC 9110 — Created + ETag (Minimal API)
+
+    /// <summary>
+    /// Converts a <see cref="Result{TIn}"/> to a 201 Created Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// with a URI, ETag header, and a mapping function.
+    /// </summary>
+    public static Microsoft.AspNetCore.Http.IResult ToCreatedHttpResult<TIn, TOut>(
+        this Result<TIn> result,
+        HttpContext httpContext,
+        Func<TIn, string> uriSelector,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        if (result.IsSuccess)
+        {
+            var etag = etagSelector(result.Value);
+            if (!string.IsNullOrEmpty(etag))
+                httpContext.Response.Headers.ETag = $"\"{etag}\"";
+
+            return Results.Created(uriSelector(result.Value), map(result.Value));
+        }
+
+        return result.Error.ToHttpResult(options);
+    }
+
+    #endregion
 }

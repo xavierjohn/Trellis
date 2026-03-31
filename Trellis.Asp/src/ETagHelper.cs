@@ -93,9 +93,15 @@ public static class ETagHelper
     /// </remarks>
     public static string[]? ParseIfMatch(HttpRequest request)
     {
+        // Check if the raw header is present before attempting typed parsing.
+        // If the header exists but is malformed, return empty array (unsatisfiable precondition → 412)
+        // rather than null (which would mean "no header" → unconditional update).
+        if (!request.Headers.ContainsKey("If-Match"))
+            return null;
+
         var ifMatch = request.GetTypedHeaders().IfMatch;
         if (ifMatch is not { Count: > 0 })
-            return null;
+            return []; // Header present but unparseable → treat as unsatisfiable → 412
 
         var result = new List<string>();
         foreach (var tag in ifMatch)

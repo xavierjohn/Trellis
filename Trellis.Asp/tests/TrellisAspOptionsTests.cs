@@ -78,6 +78,24 @@ public class TrellisAspOptionsTests : IDisposable
     }
 
     [Fact]
+    public void GetStatusCode_PreconditionFailedError_returns_412()
+    {
+        var options = new TrellisAspOptions();
+        var error = Error.PreconditionFailed("Stale ETag");
+
+        options.GetStatusCode(error).Should().Be(StatusCodes.Status412PreconditionFailed);
+    }
+
+    [Fact]
+    public void GetStatusCode_PreconditionRequiredError_returns_428()
+    {
+        var options = new TrellisAspOptions();
+        var error = Error.PreconditionRequired("If-Match required");
+
+        options.GetStatusCode(error).Should().Be(StatusCodes.Status428PreconditionRequired);
+    }
+
+    [Fact]
     public void GetStatusCode_DomainError_returns_422()
     {
         var options = new TrellisAspOptions();

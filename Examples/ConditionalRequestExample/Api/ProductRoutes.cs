@@ -2,15 +2,17 @@
 using ConditionalRequestExample.Domain;
 using Trellis;
 using Trellis.Asp;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
 
 namespace ConditionalRequestExample.Api;
 
-public record CreateProductRequest(string? Name, decimal Price);
-public record UpdateProductRequest(decimal Price);
+public record CreateProductRequest(ProductName Name, MonetaryAmount Price);
+public record UpdateProductRequest(MonetaryAmount Price);
 public record ProductResponse(Guid Id, string Name, decimal Price, string ETag)
 {
     public static ProductResponse From(Product product) =>
-        new(product.Id.Value, product.Name.Value, product.Price, product.ETag);
+        new(product.Id.Value, product.Name.Value, product.Price.Value, product.ETag);
 }
 
 /// <summary>
@@ -22,50 +24,32 @@ public static class OptionalETagRoutes
     {
         var group = app.MapGroup("/optional/products");
 
-        group.MapGet("/{id:guid}", async (Guid id, ProductDbContext db, HttpContext httpContext) =>
-        {
-            var product = await db.Products.FindAsync(ProductId.Create(id));
-            var result = product is not null
-                ? Result.Success(product)
-                : Result.Failure<Product>(Error.NotFound($"Product {id} not found"));
+        // GET — returns ETag header; supports If-None-Match -> 304 Not Modified
+        group.MapGet("/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
+            db.Products
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From));
 
-            return result.ToHttpResult(httpContext, p => p.ETag, ProductResponse.From);
-        });
-
+        // POST — creates product, returns 201 Created + ETag
         group.MapPost("/", async (CreateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
-        {
-            var result = ProductName.TryCreate(request.Name, nameof(request.Name))
-                .Bind(name => Product.TryCreate(name, request.Price));
-
-            if (result.IsFailure)
-                return result.Error.ToHttpResult();
-
-            var product = result.Value;
-            db.Products.Add(product);
-            await db.SaveChangesAsync();
-
-            httpContext.Response.Headers.ETag = $"\"{product.ETag}\"";
-            return Results.Created($"/optional/products/{product.Id.Value}", ProductResponse.From(product));
-        });
+            await Product.TryCreate(request.Name, request.Price)
+                .Tap(product => db.Products.Add(product))
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .ToCreatedHttpResultAsync(httpContext,
+                    p => $"/optional/products/{p.Id.Value}",
+                    p => p.ETag,
+                    ProductResponse.From))
+            .WithScalarValueValidation();
 
         // PUT — If-Match is OPTIONAL. Without it, update proceeds unconditionally.
-        group.MapPut("/{id:guid}", async (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
-        {
-            var ifMatchETags = ETagHelper.ParseIfMatch(httpContext.Request);
-
-            var product = await db.Products.FindAsync(ProductId.Create(id));
-            if (product is null)
-                return Error.NotFound($"Product {id} not found").ToHttpResult();
-
-            var result = product.ToResult()
-                .OptionalETag(ifMatchETags)
-                .Bind(p => p.UpdatePrice(request.Price));
-
-            if (result.IsSuccess)
-                await db.SaveChangesAsync();
-
-            return result.ToHttpResult(httpContext, p => p.ETag, ProductResponse.From);
-        });
+        group.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
+            db.Products
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
+                .BindAsync(p => p.UpdatePrice(request.Price))
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+            .WithScalarValueValidation();
     }
 }
 
@@ -78,49 +62,31 @@ public static class RequiredETagRoutes
     {
         var group = app.MapGroup("/required/products");
 
-        group.MapGet("/{id:guid}", async (Guid id, ProductDbContext db, HttpContext httpContext) =>
-        {
-            var product = await db.Products.FindAsync(ProductId.Create(id));
-            var result = product is not null
-                ? Result.Success(product)
-                : Result.Failure<Product>(Error.NotFound($"Product {id} not found"));
+        // GET — returns ETag header; supports If-None-Match -> 304 Not Modified
+        group.MapGet("/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
+            db.Products
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From));
 
-            return result.ToHttpResult(httpContext, p => p.ETag, ProductResponse.From);
-        });
-
+        // POST — creates product, returns 201 Created + ETag
         group.MapPost("/", async (CreateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
-        {
-            var result = ProductName.TryCreate(request.Name, nameof(request.Name))
-                .Bind(name => Product.TryCreate(name, request.Price));
-
-            if (result.IsFailure)
-                return result.Error.ToHttpResult();
-
-            var product = result.Value;
-            db.Products.Add(product);
-            await db.SaveChangesAsync();
-
-            httpContext.Response.Headers.ETag = $"\"{product.ETag}\"";
-            return Results.Created($"/required/products/{product.Id.Value}", ProductResponse.From(product));
-        });
+            await Product.TryCreate(request.Name, request.Price)
+                .Tap(product => db.Products.Add(product))
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .ToCreatedHttpResultAsync(httpContext,
+                    p => $"/required/products/{p.Id.Value}",
+                    p => p.ETag,
+                    ProductResponse.From))
+            .WithScalarValueValidation();
 
         // PUT — If-Match is REQUIRED. Without it -> 428 Precondition Required.
-        group.MapPut("/{id:guid}", async (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
-        {
-            var ifMatchETags = ETagHelper.ParseIfMatch(httpContext.Request);
-
-            var product = await db.Products.FindAsync(ProductId.Create(id));
-            if (product is null)
-                return Error.NotFound($"Product {id} not found").ToHttpResult();
-
-            var result = product.ToResult()
-                .RequireETag(ifMatchETags)
-                .Bind(p => p.UpdatePrice(request.Price));
-
-            if (result.IsSuccess)
-                await db.SaveChangesAsync();
-
-            return result.ToHttpResult(httpContext, p => p.ETag, ProductResponse.From);
-        });
+        group.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
+            db.Products
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .RequireETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
+                .BindAsync(p => Task.FromResult(p.UpdatePrice(request.Price)))
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+            .WithScalarValueValidation();
     }
 }

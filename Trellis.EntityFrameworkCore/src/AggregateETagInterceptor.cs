@@ -125,14 +125,20 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
     {
         foreach (var navigation in entry.Navigations)
         {
-            if (navigation is CollectionEntry collection
-                && collection.CurrentValue is IEnumerable items)
+            if (navigation is CollectionEntry collection)
             {
-                foreach (var item in items)
+                // Detect relationship changes (adds/removes) on collection navigations
+                if (collection.IsModified)
+                    return true;
+
+                if (collection.CurrentValue is IEnumerable items)
                 {
-                    var childEntry = entry.Context.Entry(item);
-                    if (childEntry.State is EntityState.Modified or EntityState.Added or EntityState.Deleted)
-                        return true;
+                    foreach (var item in items)
+                    {
+                        var childEntry = entry.Context.Entry(item);
+                        if (childEntry.State is EntityState.Modified or EntityState.Added or EntityState.Deleted)
+                            return true;
+                    }
                 }
             }
             else if (navigation is ReferenceEntry { TargetEntry.State: EntityState.Modified

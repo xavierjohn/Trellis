@@ -143,12 +143,12 @@ var error = Error.PreconditionFailed("Resource has been modified. Please reload 
 
 // Automatically returned by OptionalETag/RequireETag when aggregate ETag doesn't match
 return await _repo.GetByIdAsync(id, ct)
-    .OptionalETag(command.IfMatchETag)  // returns PreconditionFailedError if stale
+    .OptionalETag(command.IfMatchETags)  // returns PreconditionFailedError if stale
     .BindAsync(agg => agg.Update(...));
 
 // RequireETag returns PreconditionRequiredError (428) when If-Match is missing
 return await _repo.GetByIdAsync(id, ct)
-    .RequireETag(command.IfMatchETag)   // returns PreconditionRequiredError if null
+    .RequireETag(command.IfMatchETags)   // returns PreconditionRequiredError if null
     .BindAsync(agg => agg.Update(...));
 ```
 
