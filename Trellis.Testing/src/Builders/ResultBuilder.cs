@@ -80,4 +80,40 @@ public static class ResultBuilder
     /// </summary>
     public static Result<T> BadRequest<T>(string detail) =>
         Result.Failure<T>(Error.BadRequest(detail));
+
+    /// <summary>
+    /// Creates a failed Result with a GoneError.
+    /// </summary>
+    public static Result<T> Gone<T>(string detail) =>
+        Result.Failure<T>(Error.Gone(detail));
+
+    /// <summary>
+    /// Creates a failed Result with a MethodNotAllowedError.
+    /// </summary>
+    public static Result<T> MethodNotAllowed<T>(string detail, IReadOnlyList<string> allowedMethods) =>
+        Result.Failure<T>(Error.MethodNotAllowed(detail, allowedMethods));
+
+    /// <summary>
+    /// Creates a failed Result with a NotAcceptableError.
+    /// </summary>
+    public static Result<T> NotAcceptable<T>(string detail) =>
+        Result.Failure<T>(Error.NotAcceptable(detail));
+
+    /// <summary>
+    /// Creates a failed Result with an UnsupportedMediaTypeError.
+    /// </summary>
+    public static Result<T> UnsupportedMediaType<T>(string detail) =>
+        Result.Failure<T>(Error.UnsupportedMediaType(detail));
+
+    /// <summary>
+    /// Creates a failed Result with a ContentTooLargeError.
+    /// </summary>
+    public static Result<T> ContentTooLarge<T>(string detail) =>
+        Result.Failure<T>(Error.ContentTooLarge(detail));
+
+    /// <summary>
+    /// Creates a failed Result with a RangeNotSatisfiableError.
+    /// </summary>
+    public static Result<T> RangeNotSatisfiable<T>(string detail, long completeLength) =>
+        Result.Failure<T>(Error.RangeNotSatisfiable(detail, completeLength));
 }

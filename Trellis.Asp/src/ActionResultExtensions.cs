@@ -238,6 +238,9 @@ public static class ActionResultExtensions
         if (error is ValidationError validation)
             return ValidationErrors<TValue>(string.IsNullOrEmpty(error.Detail) ? null : error.Detail, validation, error.Instance, controllerBase, statusCode);
 
+        if (controllerBase.HttpContext is not null)
+            EmitCompanionHeaders(error, controllerBase.Response);
+
         var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
         return (ActionResult<TValue>)controllerBase.Problem(detail, error.Instance, statusCode);
     }
@@ -555,6 +558,38 @@ public static class ActionResultExtensions
         return result.Error.ToActionResult<TOut>(controllerBase);
     }
 
+    internal static void EmitCompanionHeaders(Error error, Microsoft.AspNetCore.Http.HttpResponse response)
+    {
+        switch (error)
+        {
+            case MethodNotAllowedError mae:
+                response.Headers["Allow"] = string.Join(", ", mae.AllowedMethods);
+                break;
+
+            case UnauthorizedError { Challenges: { Count: > 0 } challenges }:
+                foreach (var challenge in challenges)
+                    response.Headers.Append("WWW-Authenticate", challenge.ToHeaderValue());
+
+                break;
+
+            case RateLimitError { RetryAfter: not null } rle:
+                response.Headers["Retry-After"] = rle.RetryAfter.ToHeaderValue();
+                break;
+
+            case ServiceUnavailableError { RetryAfter: not null } sue:
+                response.Headers["Retry-After"] = sue.RetryAfter.ToHeaderValue();
+                break;
+
+            case ContentTooLargeError { RetryAfter: not null } ctle:
+                response.Headers["Retry-After"] = ctle.RetryAfter.ToHeaderValue();
+                break;
+
+            case RangeNotSatisfiableError rnse:
+                response.Headers["Content-Range"] = $"{rnse.Unit} */{rnse.CompleteLength}";
+                break;
+        }
+    }
+
     private static ActionResult<TValue> ValidationErrors<TValue>(string? detail, ValidationError validation, string? instance, ControllerBase controllerBase, int statusCode)
     {
         ModelStateDictionary modelState = new();
@@ -661,6 +696,67 @@ public static class ActionResultExtensions
     {
         if (!string.IsNullOrEmpty(etag))
             controllerBase.Response.Headers.ETag = $"\"{etag}\"";
+    }
+
+    #endregion
+
+    #region RepresentationMetadata Support
+
+    /// <summary>
+    /// Converts a Result to an ActionResult, applying representation metadata headers
+    /// (ETag, Last-Modified, Vary, Content-Language, Content-Location, Accept-Ranges).
+    /// Handles If-None-Match → 304 Not Modified when metadata includes an ETag.
+    /// </summary>
+    public static ActionResult<TOut> ToActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controller,
+        RepresentationMetadata metadata,
+        Func<TIn, TOut> map)
+    {
+        if (result.IsFailure)
+            return result.Error.ToActionResult<TOut>(controller);
+
+        ApplyMetadataHeaders(controller.Response, metadata);
+
+        // Check If-None-Match for 304
+        if (metadata.ETag is not null)
+        {
+            var request = controller.Request;
+            if (HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method))
+            {
+                var ifNoneMatch = request.GetTypedHeaders().IfNoneMatch;
+                if (ifNoneMatch is { Count: > 0 } && ETagHelper.IfNoneMatchMatches(ifNoneMatch, metadata.ETag.OpaqueTag))
+                    return new StatusCodeResult(StatusCodes.Status304NotModified);
+            }
+        }
+
+        return controller.Ok(map(result.Value));
+    }
+
+    /// <summary>Async Task overload of metadata-aware ToActionResult.</summary>
+    public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
+
+    /// <summary>Async ValueTask overload of metadata-aware ToActionResult.</summary>
+    public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
+
+    internal static void ApplyMetadataHeaders(HttpResponse response, RepresentationMetadata metadata)
+    {
+        if (metadata.ETag is not null)
+            response.Headers.ETag = metadata.ETag.ToHeaderValue();
+        if (metadata.LastModified.HasValue)
+            response.Headers["Last-Modified"] = metadata.LastModified.Value.ToString("R");
+        if (metadata.Vary is { Count: > 0 })
+            response.Headers.Vary = string.Join(", ", metadata.Vary);
+        if (metadata.ContentLanguage is { Count: > 0 })
+            response.Headers.ContentLanguage = string.Join(", ", metadata.ContentLanguage);
+        if (metadata.ContentLocation is not null)
+            response.Headers["Content-Location"] = metadata.ContentLocation;
+        if (metadata.AcceptRanges is not null)
+            response.Headers["Accept-Ranges"] = metadata.AcceptRanges;
     }
 
     #endregion

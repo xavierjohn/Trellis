@@ -165,7 +165,7 @@ public class AggregateTests
         var aggregate = TestAggregate.Create("1");
         var result = Result.Success(aggregate);
 
-        result.OptionalETag(null).IsSuccess.Should().BeTrue();
+        result.OptionalETag((string[]?)null).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
@@ -217,8 +217,7 @@ public class AggregateTests
         aggregate.SetTestETag("abc123");
         var result = Result.Success(aggregate);
 
-        // Empty array = header present but all tags were weak
-        var ensured = result.OptionalETag([]);
+        var ensured = result.OptionalETag(Array.Empty<string>());
         ensured.IsSuccess.Should().BeFalse();
         ensured.Error.Should().BeOfType<PreconditionFailedError>();
     }
@@ -243,7 +242,7 @@ public class AggregateTests
         var aggregate = TestAggregate.Create("1");
         var result = Result.Success(aggregate);
 
-        var ensured = result.RequireETag(null);
+        var ensured = result.RequireETag((string[]?)null);
         ensured.IsSuccess.Should().BeFalse();
         ensured.Error.Should().BeOfType<PreconditionRequiredError>();
     }
@@ -275,7 +274,7 @@ public class AggregateTests
     {
         var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
 
-        var ensured = result.RequireETag(null);
+        var ensured = result.RequireETag((string[]?)null);
         ensured.IsSuccess.Should().BeFalse();
         ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionRequired");
     }
@@ -295,9 +294,112 @@ public class AggregateTests
     {
         var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
 
-        var ensured = result.OptionalETag([]);
+        var ensured = result.OptionalETag(Array.Empty<string>());
         ensured.IsSuccess.Should().BeFalse();
         ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by weak-tag PreconditionFailed");
+    }
+
+    #endregion
+
+    #region Typed EntityTagValue OptionalETag Tests
+
+    [Fact]
+    public void OptionalETag_TypedNull_SkipsValidation()
+    {
+        var aggregate = TestAggregate.Create("1");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag((EntityTagValue[]?)null).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionalETag_TypedMatchingStrongTag_ReturnsSuccess()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag([EntityTagValue.Strong("abc123")]).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionalETag_TypedWeakTagExcluded_ReturnsPreconditionFailed()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        // Weak tags should not match via strong comparison
+        var ensured = result.OptionalETag([EntityTagValue.Weak("abc123")]);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<PreconditionFailedError>();
+    }
+
+    [Fact]
+    public void OptionalETag_TypedWildcard_MatchesAny()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("anything");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag([EntityTagValue.Strong("*")]).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionalETag_TypedEmptyArray_ReturnsPreconditionFailed()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        var ensured = result.OptionalETag(Array.Empty<EntityTagValue>());
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<PreconditionFailedError>();
+    }
+
+    [Fact]
+    public void OptionalETag_TypedMultipleTags_MatchesAnyStrong()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("current");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag([EntityTagValue.Strong("stale"), EntityTagValue.Strong("current")]).IsSuccess.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Typed EntityTagValue RequireETag Tests
+
+    [Fact]
+    public void RequireETag_TypedNull_ReturnsPreconditionRequired()
+    {
+        var aggregate = TestAggregate.Create("1");
+        var result = Result.Success(aggregate);
+
+        var ensured = result.RequireETag((EntityTagValue[]?)null);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<PreconditionRequiredError>();
+    }
+
+    [Fact]
+    public void RequireETag_TypedMatchingStrongTag_ReturnsSuccess()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        result.RequireETag([EntityTagValue.Strong("abc123")]).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RequireETag_TypedFailedResult_PreservesOriginalError()
+    {
+        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+
+        var ensured = result.RequireETag((EntityTagValue[]?)null);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionRequired");
     }
 
     #endregion

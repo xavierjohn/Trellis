@@ -10,13 +10,15 @@ public static class DbContextOptionsBuilderExtensions
     private static readonly MaybeQueryInterceptor s_maybeQueryInterceptor = new();
     private static readonly ScalarValueQueryInterceptor s_scalarValueQueryInterceptor = new();
     private static readonly AggregateETagInterceptor s_aggregateETagInterceptor = new();
+    private static readonly LastModifiedInterceptor s_lastModifiedInterceptor = new();
 
     /// <summary>
     /// Adds Trellis EF Core interceptors to the <see cref="DbContextOptionsBuilder"/>.
     /// Registers the <see cref="MaybeQueryInterceptor"/>, <see cref="ScalarValueQueryInterceptor"/>,
-    /// and <see cref="AggregateETagInterceptor"/> as singletons, enabling natural LINQ syntax
-    /// with <see cref="Maybe{T}"/> properties, <c>.Value</c> access on scalar value objects,
-    /// and automatic optimistic concurrency ETag generation on aggregate saves.
+    /// <see cref="AggregateETagInterceptor"/>, and <see cref="LastModifiedInterceptor"/> as singletons,
+    /// enabling natural LINQ syntax with <see cref="Maybe{T}"/> properties, <c>.Value</c> access on
+    /// scalar value objects, automatic optimistic concurrency ETag generation on aggregate saves,
+    /// and automatic <see cref="ITrackLastModified.LastModified"/> timestamps.
     /// </summary>
     /// <typeparam name="TContext">The DbContext type.</typeparam>
     /// <param name="optionsBuilder">The options builder.</param>
@@ -36,7 +38,7 @@ public static class DbContextOptionsBuilderExtensions
         this DbContextOptionsBuilder<TContext> optionsBuilder)
         where TContext : DbContext
     {
-        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor);
+        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_lastModifiedInterceptor);
         return optionsBuilder;
     }
 
@@ -49,7 +51,7 @@ public static class DbContextOptionsBuilderExtensions
     public static DbContextOptionsBuilder AddTrellisInterceptors(
         this DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor);
+        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_lastModifiedInterceptor);
         return optionsBuilder;
     }
 }

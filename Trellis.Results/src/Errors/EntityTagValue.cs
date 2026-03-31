@@ -1,0 +1,119 @@
+﻿namespace Trellis;
+
+/// <summary>
+/// Represents an RFC 9110 §8.8.1 entity tag (ETag) value with explicit weak/strong semantics.
+/// </summary>
+/// <remarks>
+/// <para>
+/// An entity tag consists of an opaque quoted string, optionally prefixed with a weakness
+/// indicator (<c>W/</c>). Entity tags are used for conditional requests and cache validation.
+/// </para>
+/// <para>
+/// Create instances using <see cref="Strong"/> or <see cref="Weak"/> factory methods,
+/// or parse from header values using <see cref="TryParse"/>.
+/// Compare using <see cref="StrongEquals"/> or <see cref="WeakEquals"/> per RFC 9110 §8.8.3.2.
+/// Format for HTTP headers using <see cref="ToHeaderValue"/>.
+/// </para>
+/// </remarks>
+/// <example>
+/// <code>
+/// var strong = EntityTagValue.Strong("abc123");
+/// var weak = EntityTagValue.Weak("abc123");
+///
+/// // Parse from header
+/// var parsed = EntityTagValue.TryParse("W/\"abc123\"");
+///
+/// // RFC 9110 §8.8.3.2 comparison
+/// strong.StrongEquals(EntityTagValue.Strong("abc123")); // true
+/// strong.WeakEquals(weak); // true
+/// </code>
+/// </example>
+public sealed record EntityTagValue
+{
+    /// <summary>
+    /// Gets the raw opaque tag string without quotes or <c>W/</c> prefix.
+    /// </summary>
+    public string OpaqueTag { get; }
+
+    /// <summary>
+    /// Gets whether this is a weak entity tag.
+    /// </summary>
+    /// <value><c>true</c> if weak; <c>false</c> if strong.</value>
+    public bool IsWeak { get; }
+
+    private EntityTagValue(string opaqueTag, bool isWeak)
+    {
+        ArgumentNullException.ThrowIfNull(opaqueTag);
+        OpaqueTag = opaqueTag;
+        IsWeak = isWeak;
+    }
+
+    /// <summary>Creates a strong entity tag.</summary>
+    /// <param name="opaqueTag">The opaque tag string.</param>
+    /// <returns>A new strong <see cref="EntityTagValue"/>.</returns>
+    public static EntityTagValue Strong(string opaqueTag) => new(opaqueTag, false);
+
+    /// <summary>Creates a weak entity tag.</summary>
+    /// <param name="opaqueTag">The opaque tag string.</param>
+    /// <returns>A new weak <see cref="EntityTagValue"/>.</returns>
+    public static EntityTagValue Weak(string opaqueTag) => new(opaqueTag, true);
+
+    /// <summary>
+    /// Parses an entity tag from its HTTP header representation.
+    /// </summary>
+    /// <param name="headerValue">
+    /// The header value to parse. Expected formats: <c>"tag"</c> for strong or <c>W/"tag"</c> for weak.
+    /// </param>
+    /// <returns>
+    /// A <see cref="Result{TValue}"/> containing the parsed <see cref="EntityTagValue"/> on success,
+    /// or a <see cref="BadRequestError"/> on failure.
+    /// </returns>
+    /// <example>
+    /// <code>
+    /// var strong = EntityTagValue.TryParse("\"abc123\"");
+    /// var weak = EntityTagValue.TryParse("W/\"abc123\"");
+    /// </code>
+    /// </example>
+    public static Result<EntityTagValue> TryParse(string? headerValue)
+    {
+        if (string.IsNullOrWhiteSpace(headerValue))
+            return Error.BadRequest("ETag header value cannot be null or empty.", "etag.parse.error", null);
+
+        if (headerValue.StartsWith("W/\"", StringComparison.Ordinal) && headerValue.EndsWith('"') && headerValue.Length >= 4)
+            return new EntityTagValue(headerValue[3..^1], true);
+
+        if (headerValue.StartsWith('"') && headerValue.EndsWith('"') && headerValue.Length >= 2)
+            return new EntityTagValue(headerValue[1..^1], false);
+
+        return Error.BadRequest($"Invalid ETag format: '{headerValue}'. Expected '\"tag\"' or 'W/\"tag\"'.", "etag.parse.error", null);
+    }
+
+    /// <summary>
+    /// Performs a strong comparison per RFC 9110 §8.8.3.2.
+    /// Both tags must be strong and their opaque tags must match character-by-character.
+    /// </summary>
+    /// <param name="other">The entity tag to compare with.</param>
+    /// <returns><c>true</c> if both tags are strong and their opaque tags are equal; otherwise <c>false</c>.</returns>
+    public bool StrongEquals(EntityTagValue other) =>
+        !IsWeak && !other.IsWeak && OpaqueTag == other.OpaqueTag;
+
+    /// <summary>
+    /// Performs a weak comparison per RFC 9110 §8.8.3.2.
+    /// Only the opaque tags must match; the weakness indicator is ignored.
+    /// </summary>
+    /// <param name="other">The entity tag to compare with.</param>
+    /// <returns><c>true</c> if the opaque tags are equal regardless of strength; otherwise <c>false</c>.</returns>
+    public bool WeakEquals(EntityTagValue other) =>
+        OpaqueTag == other.OpaqueTag;
+
+    /// <summary>
+    /// Formats this entity tag for use in an HTTP header.
+    /// Returns <c>"tag"</c> for strong tags or <c>W/"tag"</c> for weak tags.
+    /// </summary>
+    /// <returns>The formatted HTTP header value.</returns>
+    public string ToHeaderValue() =>
+        IsWeak ? $"W/\"{OpaqueTag}\"" : $"\"{OpaqueTag}\"";
+
+    /// <inheritdoc />
+    public override string ToString() => ToHeaderValue();
+}

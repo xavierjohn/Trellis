@@ -263,4 +263,50 @@ public class TrellisAspOptionsTests : IDisposable
     }
 
     #endregion
+
+    #region New RFC 9110 Error Type Mappings
+
+    [Fact]
+    public void GetStatusCode_GoneError_returns_410()
+    {
+        var options = new TrellisAspOptions();
+        options.GetStatusCode(Error.Gone("Permanently removed")).Should().Be(StatusCodes.Status410Gone);
+    }
+
+    [Fact]
+    public void GetStatusCode_MethodNotAllowedError_returns_405()
+    {
+        var options = new TrellisAspOptions();
+        options.GetStatusCode(Error.MethodNotAllowed("Not allowed", ["GET"])).Should().Be(StatusCodes.Status405MethodNotAllowed);
+    }
+
+    [Fact]
+    public void GetStatusCode_NotAcceptableError_returns_406()
+    {
+        var options = new TrellisAspOptions();
+        options.GetStatusCode(Error.NotAcceptable("Not acceptable")).Should().Be(StatusCodes.Status406NotAcceptable);
+    }
+
+    [Fact]
+    public void GetStatusCode_UnsupportedMediaTypeError_returns_415()
+    {
+        var options = new TrellisAspOptions();
+        options.GetStatusCode(Error.UnsupportedMediaType("Unsupported")).Should().Be(StatusCodes.Status415UnsupportedMediaType);
+    }
+
+    [Fact]
+    public void GetStatusCode_ContentTooLargeError_returns_413()
+    {
+        var options = new TrellisAspOptions();
+        options.GetStatusCode(Error.ContentTooLarge("Too large")).Should().Be(StatusCodes.Status413RequestEntityTooLarge);
+    }
+
+    [Fact]
+    public void GetStatusCode_RangeNotSatisfiableError_returns_416()
+    {
+        var options = new TrellisAspOptions();
+        options.GetStatusCode(Error.RangeNotSatisfiable("Not satisfiable", 1024)).Should().Be(StatusCodes.Status416RangeNotSatisfiable);
+    }
+
+    #endregion
 }

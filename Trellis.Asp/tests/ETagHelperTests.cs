@@ -191,4 +191,105 @@ public class ETagHelperTests
     }
 
     #endregion
+
+    #region ParseIfNoneMatch
+
+    [Fact]
+    public void ParseIfNoneMatch_NoHeader_ReturnsNull()
+    {
+        var request = new DefaultHttpContext().Request;
+
+        ETagHelper.ParseIfNoneMatch(request).Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_StrongETag_ReturnsUnquotedValue()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "\"abc123\"";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("abc123");
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_WeakETag_ReturnsUnquotedValue()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "W/\"abc123\"";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("abc123");
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_Wildcard_ReturnsAsterisk()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "*";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("*");
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_MultipleETags_ReturnsAll()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "W/\"weak\", \"strong1\", \"strong2\"";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("weak", "strong1", "strong2");
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_MalformedHeader_ReturnsEmptyArray()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "abc";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region ParseIfModifiedSince
+
+    [Fact]
+    public void ParseIfModifiedSince_NoHeader_ReturnsNull()
+    {
+        var request = new DefaultHttpContext().Request;
+
+        ETagHelper.ParseIfModifiedSince(request).Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseIfModifiedSince_ValidDate_ReturnsDateTimeOffset()
+    {
+        var context = new DefaultHttpContext();
+        var date = new DateTimeOffset(2025, 6, 1, 12, 0, 0, TimeSpan.Zero);
+        context.Request.GetTypedHeaders().IfModifiedSince = date;
+
+        ETagHelper.ParseIfModifiedSince(context.Request).Should().Be(date);
+    }
+
+    #endregion
+
+    #region ParseIfUnmodifiedSince
+
+    [Fact]
+    public void ParseIfUnmodifiedSince_NoHeader_ReturnsNull()
+    {
+        var request = new DefaultHttpContext().Request;
+
+        ETagHelper.ParseIfUnmodifiedSince(request).Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseIfUnmodifiedSince_ValidDate_ReturnsDateTimeOffset()
+    {
+        var context = new DefaultHttpContext();
+        var date = new DateTimeOffset(2025, 6, 1, 12, 0, 0, TimeSpan.Zero);
+        context.Request.GetTypedHeaders().IfUnmodifiedSince = date;
+
+        ETagHelper.ParseIfUnmodifiedSince(context.Request).Should().Be(date);
+    }
+
+    #endregion
 }

@@ -116,4 +116,44 @@ public static class ETagHelper
 
         return [.. result]; // Empty array if all tags were weak
     }
+
+    /// <summary>
+    /// Parses the If-None-Match header from an HTTP request.
+    /// </summary>
+    /// <returns>null if absent; ["*"] if wildcard; array of unquoted tag values (both strong and weak).</returns>
+    public static string[]? ParseIfNoneMatch(HttpRequest request)
+    {
+        if (!request.Headers.ContainsKey("If-None-Match"))
+            return null;
+        var ifNoneMatch = request.GetTypedHeaders().IfNoneMatch;
+        if (ifNoneMatch is not { Count: > 0 })
+            return [];
+        var result = new List<string>();
+        foreach (var tag in ifNoneMatch)
+        {
+            if (tag == EntityTagHeaderValue.Any)
+                return ["*"];
+            result.Add(tag.Tag.ToString().Trim('"'));
+        }
+
+        return [.. result];
+    }
+
+    /// <summary>
+    /// Parses the If-Modified-Since header.
+    /// </summary>
+    public static DateTimeOffset? ParseIfModifiedSince(HttpRequest request)
+    {
+        var typed = request.GetTypedHeaders();
+        return typed.IfModifiedSince;
+    }
+
+    /// <summary>
+    /// Parses the If-Unmodified-Since header.
+    /// </summary>
+    public static DateTimeOffset? ParseIfUnmodifiedSince(HttpRequest request)
+    {
+        var typed = request.GetTypedHeaders();
+        return typed.IfUnmodifiedSince;
+    }
 }

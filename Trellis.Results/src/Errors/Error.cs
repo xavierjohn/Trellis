@@ -233,6 +233,17 @@ public class Error : IEquatable<Error>
         new(detail, "unauthorized.error", instance);
 
     /// <summary>
+    /// Creates an <see cref="UnauthorizedError"/> with authentication challenges for the <c>WWW-Authenticate</c> header.
+    /// </summary>
+    /// <param name="detail">Description of why authorization failed.</param>
+    /// <param name="challenges">The authentication challenges indicating supported authentication schemes.</param>
+    /// <param name="instance">Optional identifier for the unauthorized request.</param>
+    /// <returns>An <see cref="UnauthorizedError"/> with challenges.</returns>
+    /// <remarks>Use this when you need to inform the client which authentication schemes are supported.</remarks>
+    public static UnauthorizedError Unauthorized(string detail, IReadOnlyList<AuthenticationChallenge> challenges, string? instance = null) =>
+        new(detail, "unauthorized.error", challenges, instance);
+
+    /// <summary>
     /// Creates a <see cref="ForbiddenError"/> indicating the user lacks permission.
     /// </summary>
     /// <param name="detail">Description of why access is forbidden.</param>
@@ -296,6 +307,16 @@ public class Error : IEquatable<Error>
         new(detail, "rate.limit.error", instance);
 
     /// <summary>
+    /// Creates a <see cref="RateLimitError"/> with retry-after metadata.
+    /// </summary>
+    /// <param name="detail">Description of the rate limit violation.</param>
+    /// <param name="retryAfter">The retry-after value indicating when the client may retry.</param>
+    /// <param name="instance">Optional identifier for the client or resource being rate limited.</param>
+    /// <returns>A <see cref="RateLimitError"/> with retry-after metadata.</returns>
+    public static RateLimitError RateLimit(string detail, RetryAfterValue retryAfter, string? instance = null) =>
+        new(detail, "rate.limit.error", retryAfter, instance);
+
+    /// <summary>
     /// Creates a <see cref="ServiceUnavailableError"/> indicating temporary service unavailability.
     /// </summary>
     /// <param name="detail">Description of why the service is unavailable.</param>
@@ -314,6 +335,16 @@ public class Error : IEquatable<Error>
     /// </example>
     public static ServiceUnavailableError ServiceUnavailable(string detail, string? instance = null) =>
         new(detail, "service.unavailable.error", instance);
+
+    /// <summary>
+    /// Creates a <see cref="ServiceUnavailableError"/> with retry-after metadata.
+    /// </summary>
+    /// <param name="detail">Description of why the service is unavailable.</param>
+    /// <param name="retryAfter">The retry-after value indicating when the service may resume.</param>
+    /// <param name="instance">Optional identifier for the unavailable service or resource.</param>
+    /// <returns>A <see cref="ServiceUnavailableError"/> with retry-after metadata.</returns>
+    public static ServiceUnavailableError ServiceUnavailable(string detail, RetryAfterValue retryAfter, string? instance = null) =>
+        new(detail, "service.unavailable.error", retryAfter, instance);
 
     /// <summary>
     /// Creates a <see cref="BadRequestError"/> with a custom error code.
@@ -424,4 +455,137 @@ public class Error : IEquatable<Error>
     /// <returns>A <see cref="ServiceUnavailableError"/> with the specified code.</returns>
     public static ServiceUnavailableError ServiceUnavailable(string detail, string code, string? instance) =>
         new(detail, code, instance);
+
+    /// <summary>
+    /// Creates a <see cref="GoneError"/> indicating a resource has been permanently removed.
+    /// </summary>
+    /// <param name="detail">Description of why the resource is gone.</param>
+    /// <param name="instance">Optional identifier for the removed resource.</param>
+    /// <returns>A <see cref="GoneError"/>.</returns>
+    /// <remarks>
+    /// Use this instead of <see cref="NotFound(string, string?)"/> when the server knows the resource
+    /// previously existed and has been intentionally removed. Maps to HTTP 410 Gone.
+    /// </remarks>
+    public static GoneError Gone(string detail, string? instance = null) =>
+        new(detail, "gone.error", instance);
+
+    /// <summary>
+    /// Creates a <see cref="GoneError"/> with a custom error code.
+    /// </summary>
+    /// <param name="detail">Description of why the resource is gone.</param>
+    /// <param name="code">Custom error code to use instead of the default "gone.error".</param>
+    /// <param name="instance">Optional identifier for the removed resource.</param>
+    /// <returns>A <see cref="GoneError"/> with the specified code.</returns>
+    public static GoneError Gone(string detail, string code, string? instance) =>
+        new(detail, code, instance);
+
+    /// <summary>
+    /// Creates a <see cref="MethodNotAllowedError"/> indicating the HTTP method is not supported.
+    /// </summary>
+    /// <param name="detail">Description of why the method is not allowed.</param>
+    /// <param name="allowedMethods">The HTTP methods the target resource supports. Emitted as the <c>Allow</c> header.</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="MethodNotAllowedError"/>.</returns>
+    /// <remarks>
+    /// Per RFC 9110 §15.5.6, a 405 response MUST include an <c>Allow</c> header.
+    /// Maps to HTTP 405 Method Not Allowed.
+    /// </remarks>
+    public static MethodNotAllowedError MethodNotAllowed(string detail, IReadOnlyList<string> allowedMethods, string? instance = null) =>
+        new(detail, allowedMethods, "method.not.allowed.error", instance);
+
+    /// <summary>
+    /// Creates a <see cref="MethodNotAllowedError"/> with a custom error code.
+    /// </summary>
+    /// <param name="detail">Description of why the method is not allowed.</param>
+    /// <param name="allowedMethods">The HTTP methods the target resource supports.</param>
+    /// <param name="code">Custom error code to use instead of the default "method.not.allowed.error".</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="MethodNotAllowedError"/> with the specified code.</returns>
+    public static MethodNotAllowedError MethodNotAllowed(string detail, IReadOnlyList<string> allowedMethods, string code, string? instance) =>
+        new(detail, allowedMethods, code, instance);
+
+    /// <summary>
+    /// Creates a <see cref="NotAcceptableError"/> indicating no acceptable representation is available.
+    /// </summary>
+    /// <param name="detail">Description of why no acceptable representation is available.</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="NotAcceptableError"/>.</returns>
+    /// <remarks>Maps to HTTP 406 Not Acceptable.</remarks>
+    public static NotAcceptableError NotAcceptable(string detail, string? instance = null) =>
+        new(detail, "not.acceptable.error", instance);
+
+    /// <summary>
+    /// Creates a <see cref="NotAcceptableError"/> with a custom error code.
+    /// </summary>
+    /// <param name="detail">Description of why no acceptable representation is available.</param>
+    /// <param name="code">Custom error code to use instead of the default "not.acceptable.error".</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="NotAcceptableError"/> with the specified code.</returns>
+    public static NotAcceptableError NotAcceptable(string detail, string code, string? instance) =>
+        new(detail, code, instance);
+
+    /// <summary>
+    /// Creates an <see cref="UnsupportedMediaTypeError"/> indicating the content type is not supported.
+    /// </summary>
+    /// <param name="detail">Description of why the media type is not supported.</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>An <see cref="UnsupportedMediaTypeError"/>.</returns>
+    /// <remarks>Maps to HTTP 415 Unsupported Media Type.</remarks>
+    public static UnsupportedMediaTypeError UnsupportedMediaType(string detail, string? instance = null) =>
+        new(detail, "unsupported.media.type.error", instance);
+
+    /// <summary>
+    /// Creates an <see cref="UnsupportedMediaTypeError"/> with a custom error code.
+    /// </summary>
+    /// <param name="detail">Description of why the media type is not supported.</param>
+    /// <param name="code">Custom error code to use instead of the default "unsupported.media.type.error".</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>An <see cref="UnsupportedMediaTypeError"/> with the specified code.</returns>
+    public static UnsupportedMediaTypeError UnsupportedMediaType(string detail, string code, string? instance) =>
+        new(detail, code, instance);
+
+    /// <summary>
+    /// Creates a <see cref="ContentTooLargeError"/> indicating the request content is too large.
+    /// </summary>
+    /// <param name="detail">Description of why the content is too large.</param>
+    /// <param name="retryAfter">Optional retry-after value for temporary conditions.</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="ContentTooLargeError"/>.</returns>
+    /// <remarks>Maps to HTTP 413 Content Too Large.</remarks>
+    public static ContentTooLargeError ContentTooLarge(string detail, RetryAfterValue? retryAfter = null, string? instance = null) =>
+        new(detail, "content.too.large.error", retryAfter, instance);
+
+    /// <summary>
+    /// Creates a <see cref="ContentTooLargeError"/> with a custom error code.
+    /// </summary>
+    /// <param name="detail">Description of why the content is too large.</param>
+    /// <param name="code">Custom error code to use instead of the default "content.too.large.error".</param>
+    /// <param name="retryAfter">Optional retry-after value for temporary conditions.</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="ContentTooLargeError"/> with the specified code.</returns>
+    public static ContentTooLargeError ContentTooLarge(string detail, string code, RetryAfterValue? retryAfter = null, string? instance = null) =>
+        new(detail, code, retryAfter, instance);
+
+    /// <summary>
+    /// Creates a <see cref="RangeNotSatisfiableError"/> indicating the requested range cannot be served.
+    /// </summary>
+    /// <param name="detail">Description of why the range is not satisfiable.</param>
+    /// <param name="completeLength">The complete length of the representation for the <c>Content-Range</c> header.</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="RangeNotSatisfiableError"/>.</returns>
+    /// <remarks>Maps to HTTP 416 Range Not Satisfiable.</remarks>
+    public static RangeNotSatisfiableError RangeNotSatisfiable(string detail, long completeLength, string? instance = null) =>
+        new(detail, completeLength, "range.not.satisfiable.error", instance: instance);
+
+    /// <summary>
+    /// Creates a <see cref="RangeNotSatisfiableError"/> with a custom error code.
+    /// </summary>
+    /// <param name="detail">Description of why the range is not satisfiable.</param>
+    /// <param name="completeLength">The complete length of the representation.</param>
+    /// <param name="code">Custom error code to use instead of the default "range.not.satisfiable.error".</param>
+    /// <param name="unit">The range unit (defaults to "bytes").</param>
+    /// <param name="instance">Optional identifier for the resource.</param>
+    /// <returns>A <see cref="RangeNotSatisfiableError"/> with the specified code.</returns>
+    public static RangeNotSatisfiableError RangeNotSatisfiable(string detail, long completeLength, string code, string unit = "bytes", string? instance = null) =>
+        new(detail, completeLength, code, unit, instance);
 }
