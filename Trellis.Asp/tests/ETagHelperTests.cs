@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
+using Trellis;
 
 /// <summary>
 /// Tests for <see cref="ETagHelper"/> — RFC 9110 entity tag parsing and comparison.
@@ -19,21 +20,25 @@ public class ETagHelperTests
     }
 
     [Fact]
-    public void ParseIfMatch_StrongETag_ReturnsUnquotedValue()
+    public void ParseIfMatch_StrongETag_ReturnsEntityTagValue()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "\"abc123\"";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("abc123");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().ContainSingle()
+            .Which.Should().Be(EntityTagValue.Strong("abc123"));
     }
 
     [Fact]
-    public void ParseIfMatch_Wildcard_ReturnsAsterisk()
+    public void ParseIfMatch_Wildcard_ReturnsWildcardEntityTagValue()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "*";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("*");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().ContainSingle()
+            .Which.Should().Be(EntityTagValue.Strong("*"));
     }
 
     [Fact]
@@ -51,7 +56,8 @@ public class ETagHelperTests
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "W/\"weak\", \"strong1\", \"strong2\"";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("strong1", "strong2");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().Equal(EntityTagValue.Strong("strong1"), EntityTagValue.Strong("strong2"));
     }
 
     [Fact]
@@ -60,7 +66,8 @@ public class ETagHelperTests
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "\"aaa\", \"bbb\", \"ccc\"";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("aaa", "bbb", "ccc");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().Equal(EntityTagValue.Strong("aaa"), EntityTagValue.Strong("bbb"), EntityTagValue.Strong("ccc"));
     }
 
     [Fact]
