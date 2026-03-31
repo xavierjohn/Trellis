@@ -180,6 +180,36 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     protected List<IDomainEvent> DomainEvents { get; } = [];
 
     /// <summary>
+    /// Gets the entity tag (ETag) for optimistic concurrency per RFC 9110.
+    /// </summary>
+    /// <value>
+    /// An opaque string token that is automatically generated each time the aggregate
+    /// is persisted by the infrastructure layer.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// This property enables optimistic concurrency control via HTTP conditional requests:
+    /// <list type="bullet">
+    /// <item>GET responses include the <c>ETag</c> header (derived from this property)</item>
+    /// <item>PUT/PATCH/DELETE requests include <c>If-Match</c> header with the expected ETag</item>
+    /// <item>If the ETag doesn't match, the server returns 412 Precondition Failed</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// At the persistence layer, EF Core uses this as a concurrency token. The generated SQL
+    /// includes <c>WHERE ETag = @originalETag</c>. If another process modified the aggregate,
+    /// the update affects zero rows and EF Core throws <c>DbUpdateConcurrencyException</c>,
+    /// which Trellis maps to <see cref="ConflictError"/> (HTTP 409).
+    /// </para>
+    /// <para>
+    /// The ETag is managed by <c>AggregateETagConvention</c> (marks it as a concurrency token)
+    /// and <c>AggregateETagInterceptor</c> (generates a new value on save). Domain code should
+    /// not modify this property directly.
+    /// </para>
+    /// </remarks>
+    public string ETag { get; private set; } = string.Empty;
+
+    /// <summary>
     /// Gets a value indicating whether the aggregate has uncommitted changes.
     /// </summary>
     /// <value>

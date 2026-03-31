@@ -555,6 +555,53 @@ When running PowerShell commands in the terminal:
 - Avoid long or complex scripts — they tend to get stuck or timeout
 - Use smaller, targeted file edits with the `replace_string_in_file` tool instead of large PowerShell scripts for file manipulation
 
+## RFC 9110 — ETag-Based Optimistic Concurrency
+
+`Aggregate<TId>` includes a `string ETag` property that provides automatic optimistic concurrency control per RFC 9110 when persisted via EF Core.
+
+### How It Works
+
+1. **`AggregateETagConvention`** — registered by `ApplyTrellisConventions`, marks `ETag` as `IsConcurrencyToken()` on all `IAggregate` entity types
+2. **`AggregateETagInterceptor`** — registered by `AddTrellisInterceptors()`, generates a new GUID-based ETag on Added and Modified aggregate entries before save
+3. **EF Core generates** `UPDATE ... SET ETag = @new WHERE Id = @id AND ETag = @original`
+4. **Conflict detection** — if another process modified the aggregate, the `WHERE` clause matches zero rows → `DbUpdateConcurrencyException` → `ConflictError` (HTTP 409)
+
+### RFC 9110 Flow
+
+The ETag flows through HTTP conditional request headers:
+- **GET response** → `ETag: "abc123"` header (set by `ToETagActionResult` overloads)
+- **PUT/PATCH/DELETE request** → `If-Match: "abc123"` header (read by controller, passed to command)
+- **Handler** validates via `OptionalETag(command.IfMatchETags)` → returns `PreconditionFailedError` (HTTP 412) if stale
+- **GET request** → `If-None-Match: "abc123"` → returns 304 Not Modified if ETag matches
+
+### ETag Validation — Application Layer
+
+Commands can carry an optional `string[]? IfMatchETags` from the `If-Match` header. Two modes are available — the service owner chooses:
+
+```csharp
+// Optional — If-Match absent → unconditional update
+return await _repo.GetByIdAsync(command.OrderId, ct)
+    .OptionalETag(command.IfMatchETags)     // 412 if stale, skipped if null
+    .BindAsync(order => order.Submit())
+    .BindAsync(order => _repo.SaveAsync(order, ct));
+
+// Required — If-Match absent → 428 Precondition Required
+return await _repo.GetByIdAsync(command.OrderId, ct)
+    .RequireETag(command.IfMatchETags)      // 428 if null, 412 if stale
+    .BindAsync(order => order.Submit())
+    .BindAsync(order => _repo.SaveAsync(order, ct));
+```
+
+Both are pure string comparisons with zero HTTP dependency — they live in `Trellis.DomainDrivenDesign`.
+
+### Child Entity Changes
+
+When a domain method only modifies child entities within the aggregate (without modifying any property on the aggregate root), the `AggregateETagInterceptor` automatically detects this. It scans Unchanged aggregate roots for loaded navigations with Modified, Added, or Deleted child entries and promotes the root's ETag before save.
+
+### No User Configuration Required
+
+Both `ApplyTrellisConventions` and `AddTrellisInterceptors()` register the convention and interceptor automatically.
+
 ## Maybe\<T\> with EF Core
 
 `Maybe<T>` is a `readonly struct`. EF Core refuses to mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. This is a hard limitation in EF Core's metadata layer.

@@ -1,0 +1,102 @@
+﻿@host = http://localhost:62266
+
+### ══════════════════════════════════════════════
+### OPTIONAL If-Match (/optional/products)
+### Updates proceed even without If-Match header
+### ══════════════════════════════════════════════
+
+### 1. Create a product
+# @name createOptional
+POST {{host}}/optional/products
+Content-Type: application/json
+
+{
+  "name": "Widget",
+  "price": 29.99
+}
+
+### 2. Get the product — response includes ETag header
+GET {{host}}/optional/products/{{createOptional.response.body.id}}
+
+### 3. Conditional GET — If-None-Match → 304 Not Modified
+GET {{host}}/optional/products/{{createOptional.response.body.id}}
+If-None-Match: "{{createOptional.response.body.eTag}}"
+
+### 4. Update WITH If-Match → 200 OK + new ETag
+PUT {{host}}/optional/products/{{createOptional.response.body.id}}
+Content-Type: application/json
+If-Match: "{{createOptional.response.body.eTag}}"
+
+{
+  "price": 39.99
+}
+
+### 5. Update with STALE If-Match → 412 Precondition Failed
+PUT {{host}}/optional/products/{{createOptional.response.body.id}}
+Content-Type: application/json
+If-Match: "stale-etag-value"
+
+{
+  "price": 49.99
+}
+
+### 6. Update WITHOUT If-Match → 200 OK (unconditional, allowed)
+PUT {{host}}/optional/products/{{createOptional.response.body.id}}
+Content-Type: application/json
+
+{
+  "price": 59.99
+}
+
+### ══════════════════════════════════════════════
+### REQUIRED If-Match (/required/products)
+### Updates WITHOUT If-Match get 428
+### ══════════════════════════════════════════════
+
+### 7. Create a product
+# @name createRequired
+POST {{host}}/required/products
+Content-Type: application/json
+
+{
+  "name": "Gadget",
+  "price": 49.99
+}
+
+### 8. Get the product — response includes ETag header
+GET {{host}}/required/products/{{createRequired.response.body.id}}
+
+### 9. Update WITH If-Match → 200 OK + new ETag
+PUT {{host}}/required/products/{{createRequired.response.body.id}}
+Content-Type: application/json
+If-Match: "{{createRequired.response.body.eTag}}"
+
+{
+  "price": 59.99
+}
+
+### 10. Update WITHOUT If-Match → 428 Precondition Required
+PUT {{host}}/required/products/{{createRequired.response.body.id}}
+Content-Type: application/json
+
+{
+  "price": 69.99
+}
+
+### 11. Update with STALE If-Match → 412 Precondition Failed
+PUT {{host}}/required/products/{{createRequired.response.body.id}}
+Content-Type: application/json
+If-Match: "stale-etag-value"
+
+{
+  "price": 79.99
+}
+
+### 12. If-Match wildcard → 200 OK (matches any ETag)
+PUT {{host}}/required/products/{{createRequired.response.body.id}}
+Content-Type: application/json
+If-Match: *
+
+{
+  "price": 89.99
+}

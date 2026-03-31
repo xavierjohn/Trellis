@@ -156,4 +156,59 @@ public class ErrorTests
         var errorSting = validationError.ToString();
         errorSting.Should().Be($"Type: ValidationError, Code: validation.error, Detail: Too short., Instance: N/A{Environment.NewLine}password: Too short., Not complex., Make it complex.");
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("abc")]
+    public void Create_precondition_failed_error(string? instance)
+    {
+        // Arrange & Act
+        var error = Error.PreconditionFailed("message", "code", instance);
+
+        // Assert
+        error.Detail.Should().Be("message");
+        error.Code.Should().Be("code");
+        error.Should().BeOfType<PreconditionFailedError>();
+        error.Instance.Should().Be(instance);
+
+        error.ToString().Should().Be($"Type: PreconditionFailedError, Code: code, Detail: message, Instance: {instance ?? "N/A"}");
+    }
+
+    [Fact]
+    public void Create_precondition_failed_error_default()
+    {
+        // Arrange & Act
+        var error = Error.PreconditionFailed("Resource has been modified.");
+
+        // Assert
+        error.Detail.Should().Be("Resource has been modified.");
+        error.Code.Should().Be("precondition.failed.error");
+        error.Should().BeOfType<PreconditionFailedError>();
+        error.Instance.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("abc")]
+    public void Create_precondition_required_error(string? instance)
+    {
+        var error = Error.PreconditionRequired("message", "code", instance);
+
+        error.Detail.Should().Be("message");
+        error.Code.Should().Be("code");
+        error.Should().BeOfType<PreconditionRequiredError>();
+        error.Instance.Should().Be(instance);
+        error.ToString().Should().Be($"Type: PreconditionRequiredError, Code: code, Detail: message, Instance: {instance ?? "N/A"}");
+    }
+
+    [Fact]
+    public void Create_precondition_required_error_default()
+    {
+        var error = Error.PreconditionRequired("Precondition required.");
+
+        error.Detail.Should().Be("Precondition required.");
+        error.Code.Should().Be("precondition.required.error");
+        error.Should().BeOfType<PreconditionRequiredError>();
+        error.Instance.Should().BeNull();
+    }
 }

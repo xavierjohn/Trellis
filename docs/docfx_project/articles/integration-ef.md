@@ -1,4 +1,4 @@
-# Entity Framework Core Integration
+﻿# Entity Framework Core Integration
 
 **Level:** Intermediate 📚 | **Time:** 30-40 min | **Prerequisites:** [Basics](basics.md)
 
@@ -222,6 +222,49 @@ graph TB
     style RES_DOMAIN fill:#FFD700
     style RES_CONFLICT2 fill:#FFB6C6
 ```
+
+> **Note:** `DbUpdateConcurrencyException` maps to `ConflictError` (409) at the database layer. At the HTTP layer, use `OptionalETag`/`RequireETag` with the parsed `If-Match` header to return `PreconditionFailedError` (412) per RFC 9110 *before* the save attempt. If a race condition causes `DbUpdateConcurrencyException` after the ETag check passes, it surfaces as 409.
+
+### Automatic ETag Concurrency Token
+
+`Aggregate<TId>` includes a `string ETag` property that is automatically configured as a concurrency token by `ApplyTrellisConventions`. The `AggregateETagInterceptor` (registered by `AddTrellisInterceptors()`) generates a new GUID-based ETag on every save:
+
+```csharp
+// Aggregate — ETag is managed automatically, no manual configuration needed
+public class Order : Aggregate<OrderId>
+{
+    public CustomerName Customer { get; private set; } = null!;
+    public Money Total { get; private set; } = null!;
+    // ETag inherited from Aggregate<TId> — auto-generated on save
+}
+
+// DbContext — just call ApplyTrellisConventions (no manual ETag configuration)
+protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+    configurationBuilder.ApplyTrellisConventions(typeof(OrderId).Assembly);
+
+// DI — AddTrellisInterceptors registers the ETag interceptor
+services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString)
+           .AddTrellisInterceptors());  // Registers AggregateETagInterceptor
+
+// Repository — SaveChangesResultUnitAsync handles concurrency exceptions
+public async Task<Result<Unit>> SaveAsync(Order order, CancellationToken ct)
+{
+    var entry = _context.Entry(order);
+    if (entry.State == EntityState.Detached)
+        _context.Orders.Add(order);
+
+    return await _context.SaveChangesResultUnitAsync(ct);
+    // DbUpdateConcurrencyException → ConflictError (409)
+    // At HTTP layer with If-Match: → PreconditionFailedError (412)
+}
+```
+
+**ETag lifecycle:**
+1. New aggregate → ETag is `""` (empty string)
+2. First save (Added) → interceptor generates GUID ETag (e.g., `"a1b2c3d4e5f6..."`)
+3. Subsequent saves (Modified) → interceptor generates new GUID ETag
+4. Concurrent modification → EF Core's `WHERE ETag = @original` matches 0 rows → `ConflictError`
 
 ## Result vs Maybe Pattern
 
@@ -493,6 +536,7 @@ public async Task<Result<Unit>> SaveAsync(User user, CancellationToken ct)
     _context.Users.Update(user);
     return await _context.SaveChangesResultUnitAsync(ct);
     // Concurrency conflict → Error.Conflict
+    // At HTTP layer: If-Match header → OptionalETag → PreconditionFailedError (412)
     // Duplicate key → Error.Conflict
     // Foreign key violation → Error.Domain
     // Connection failure, timeout → exception propagates

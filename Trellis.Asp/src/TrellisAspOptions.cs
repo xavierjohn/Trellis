@@ -22,6 +22,8 @@ using Trellis;
 ///     <item><term><see cref="ForbiddenError"/></term><description>403 Forbidden</description></item>
 ///     <item><term><see cref="NotFoundError"/></term><description>404 Not Found</description></item>
 ///     <item><term><see cref="ConflictError"/></term><description>409 Conflict</description></item>
+///     <item><term><see cref="PreconditionFailedError"/></term><description>412 Precondition Failed</description></item>
+///     <item><term><see cref="PreconditionRequiredError"/></term><description>428 Precondition Required</description></item>
 ///     <item><term><see cref="DomainError"/></term><description>422 Unprocessable Entity</description></item>
 ///     <item><term><see cref="RateLimitError"/></term><description>429 Too Many Requests</description></item>
 ///     <item><term><see cref="UnexpectedError"/></term><description>500 Internal Server Error</description></item>
@@ -67,6 +69,8 @@ public sealed class TrellisAspOptions
         [typeof(ForbiddenError)] = StatusCodes.Status403Forbidden,
         [typeof(NotFoundError)] = StatusCodes.Status404NotFound,
         [typeof(ConflictError)] = StatusCodes.Status409Conflict,
+        [typeof(PreconditionFailedError)] = StatusCodes.Status412PreconditionFailed,
+        [typeof(PreconditionRequiredError)] = StatusCodes.Status428PreconditionRequired,
         [typeof(DomainError)] = StatusCodes.Status422UnprocessableEntity,
         [typeof(RateLimitError)] = StatusCodes.Status429TooManyRequests,
         [typeof(UnexpectedError)] = StatusCodes.Status500InternalServerError,

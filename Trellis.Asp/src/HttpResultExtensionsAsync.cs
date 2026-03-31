@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Asp;
 
+using Microsoft.AspNetCore.Http;
 using Trellis;
 
 /// <summary>
@@ -322,4 +323,66 @@ public static class HttpResultExtensionsAsync
         var result = await resultTask.ConfigureAwait(false);
         return result.ToCreatedAtRouteHttpResult(routeName, routeValues, map, options);
     }
+
+    #region RFC 9110 — ETag / If-None-Match Async Support (Minimal API)
+
+    /// <summary>
+    /// Async Task overload: converts result to Minimal API IResult with ETag header and If-None-Match (304) support.
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(httpContext, etagSelector, map, options);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to Minimal API IResult with ETag header and If-None-Match (304) support.
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(httpContext, etagSelector, map, options);
+    }
+
+    /// <summary>
+    /// Async Task overload: converts result to 201 Created Minimal API IResult with ETag header.
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToCreatedHttpResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        Func<TIn, string> uriSelector,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToCreatedHttpResult(httpContext, uriSelector, etagSelector, map, options);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to 201 Created Minimal API IResult with ETag header.
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToCreatedHttpResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        Func<TIn, string> uriSelector,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToCreatedHttpResult(httpContext, uriSelector, etagSelector, map, options);
+    }
+
+    #endregion
 }
