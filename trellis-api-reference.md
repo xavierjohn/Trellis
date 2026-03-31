@@ -1,4 +1,4 @@
-# Trellis — AI API Reference
+﻿# Trellis — AI API Reference
 
 > **Purpose**: Machine-readable reference for AI coding assistants. Covers every public type, method signature, and usage pattern in the Trellis library ecosystem.
 
@@ -278,19 +278,21 @@ BadRequestError Error.BadRequest(string detail, string code, string? instance = 
 
 ### Concrete Error Types
 
-Each error type maps to a specific HTTP status code. `ValidationError` → 400, `NotFoundError` → 404, `UnauthorizedError` → 401, `ForbiddenError` → 403, `ConflictError` → 409, `DomainError` → 422, `UnexpectedError` → 500.
+Each error type maps to a specific HTTP status code. `ValidationError` → 400, `NotFoundError` → 404, `UnauthorizedError` → 401, `ForbiddenError` → 403, `ConflictError` → 409, `PreconditionFailedError` → 412, `DomainError` → 422, `PreconditionRequiredError` → 428, `UnexpectedError` → 500.
 
 | Type | Default Code |
 |------|-------------|
 | `ValidationError` | `"validation.error"` |
 | `BadRequestError` | `"bad.request"` |
 | `ConflictError` | `"conflict.error"` |
+| `PreconditionFailedError` | `"precondition.failed.error"` |
 | `NotFoundError` | `"not.found"` |
 | `UnauthorizedError` | `"unauthorized.access"` |
 | `ForbiddenError` | `"forbidden.access"` |
-| `UnexpectedError` | `"unexpected.error"` |
 | `DomainError` | `"domain.error"` |
+| `PreconditionRequiredError` | `"precondition.required.error"` |
 | `RateLimitError` | `"rate.limit"` |
+| `UnexpectedError` | `"unexpected.error"` |
 | `ServiceUnavailableError` | `"service.unavailable"` |
 
 ### ValidationError (extends Error)
@@ -794,7 +796,7 @@ Marker interface for aggregates. Implemented by `Aggregate<TId>`.
 public interface IAggregate : IChangeTracking
 {
     IReadOnlyList<IDomainEvent> UncommittedEvents();
-    long Version { get; }  // optimistic concurrency version (starts at 0, auto-incremented on save)
+    string ETag { get; }  // optimistic concurrency token per RFC 9110 (opaque string, auto-generated on save)
 }
 ```
 
@@ -806,17 +808,34 @@ Consistency boundary that encapsulates domain state, enforces business rules thr
 protected Aggregate(TId id)
 protected List<IDomainEvent> DomainEvents { get; }
 bool IsChanged { get; }                    // true if DomainEvents.Count > 0
-long Version { get; private set; }          // optimistic concurrency token (auto-managed)
+string ETag { get; private set; }          // RFC 9110 entity tag (auto-generated on save)
 IReadOnlyList<IDomainEvent> UncommittedEvents()
 void AcceptChanges()                       // clears DomainEvents
 ```
 
-### Optimistic Concurrency
+### RFC 9110 Optimistic Concurrency
 
-`Version` provides automatic optimistic concurrency when used with EF Core:
-- `AggregateVersionConvention` (registered by `ApplyTrellisConventions`) marks `Version` as `IsConcurrencyToken()`
-- `AggregateVersionInterceptor` (registered by `AddTrellisInterceptors()`) auto-increments `Version` on Modified entries
-- EF Core generates `UPDATE ... WHERE Version = @original`; if stale, throws `DbUpdateConcurrencyException` → `ConflictError`
+`ETag` provides automatic optimistic concurrency per RFC 9110:
+- `AggregateETagConvention` (registered by `ApplyTrellisConventions`) marks `ETag` as `IsConcurrencyToken()`
+- `AggregateETagInterceptor` (registered by `AddTrellisInterceptors()`) generates a new GUID ETag on Added and Modified entries
+- EF Core generates `UPDATE ... WHERE ETag = @original`; if stale → `ConflictError`
+- `OptionalETag(expectedETag)` — skips if absent; returns `PreconditionFailedError` (412) on mismatch
+- `RequireETag(expectedETag)` — returns `PreconditionRequiredError` (428) if absent; `PreconditionFailedError` (412) on mismatch
+
+### OptionalETag / RequireETag Extensions
+
+```csharp
+// Optional — If-Match absent → unconditional update
+Result<T> OptionalETag<T>(this Result<T> result, string? expectedETag) where T : IAggregate
+// Required — If-Match absent → 428 Precondition Required
+Result<T> RequireETag<T>(this Result<T> result, string? expectedETag) where T : IAggregate
+// Async overloads
+Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>>, string? expectedETag)
+ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>>, string? expectedETag)
+Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>>, string? expectedETag)
+ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>>, string? expectedETag)
+// null/empty expectedETag → skips check (unconditional request)
+```
 
 ## IDomainEvent (interface)
 
@@ -1358,7 +1377,9 @@ const string MfaAuthenticated = "mfa";
 | `ForbiddenError` | 403 |
 | `NotFoundError` | 404 |
 | `ConflictError` | 409 |
+| `PreconditionFailedError` | 412 |
 | `DomainError` | 422 |
+| `PreconditionRequiredError` | 428 |
 | `RateLimitError` | 429 |
 | `UnexpectedError` | 500 |
 | `ServiceUnavailableError` | 503 |
@@ -1810,7 +1831,7 @@ IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 
 ### Value Converter Registration
 
-`ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types and `Money`. Also registers `AggregateVersionConvention` for optimistic concurrency. Call once — do NOT add manual `HasConversion` for Trellis types.
+`ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types and `Money`. Also registers `AggregateETagConvention` for optimistic concurrency. Call once — do NOT add manual `HasConversion` for Trellis types.
 
 ```csharp
 // In ConfigureConventions (NOT OnModelCreating)
@@ -1818,17 +1839,17 @@ configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 // Auto-registers converters for all IScalarValue and RequiredEnum types
 // Auto-maps Money properties as owned types (Amount + Currency columns)
 // MonetaryAmount maps to a single decimal column (scalar value object convention)
-// Auto-marks Aggregate<TId>.Version as IsConcurrencyToken()
+// Auto-marks Aggregate<TId>.ETag as IsConcurrencyToken()
 ```
 
-### Aggregate Version Convention and Interceptor
+### Aggregate ETag Convention and Interceptor
 
 Optimistic concurrency is automatic for all `Aggregate<TId>` entities:
 
-- **`AggregateVersionConvention`** (registered by `ApplyTrellisConventions`): marks `Version` as `IsConcurrencyToken()` on entities implementing `IAggregate`
-- **`AggregateVersionInterceptor`** (registered by `AddTrellisInterceptors()`): auto-increments `Version` on `EntityState.Modified` aggregate entries before `SaveChanges`
+- **`AggregateETagConvention`** (registered by `ApplyTrellisConventions`): marks `ETag` as `IsConcurrencyToken()` on entities implementing `IAggregate`
+- **`AggregateETagInterceptor`** (registered by `AddTrellisInterceptors()`): generates a new GUID-based ETag on `EntityState.Modified` aggregate entries before `SaveChanges`
 
-No additional configuration is needed. When two processes modify the same aggregate concurrently, the second `SaveChangesResultAsync` returns `ConflictError`.
+No additional configuration is needed. When two processes modify the same aggregate concurrently, the second `SaveChangesResultAsync` returns `ConflictError`. At the HTTP layer, use `OptionalETag` for `If-Match` validation → `PreconditionFailedError` (412).
 
 ### Money Property Convention
 

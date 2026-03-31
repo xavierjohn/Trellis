@@ -534,4 +534,66 @@ public static class ActionResultExtensionsAsync
         var result = await resultTask.ConfigureAwait(false);
         return result.ToCreatedAtActionResult(controllerBase, actionName, routeValues, map, controllerName);
     }
+
+    #region RFC 9110 — ETag / If-None-Match Async Support
+
+    /// <summary>
+    /// Async Task overload: converts result to ActionResult with mapping, ETag header, and If-None-Match (304) support.
+    /// </summary>
+    public static async Task<ActionResult<TOut>> ToETagActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        ControllerBase controllerBase,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToETagActionResult(controllerBase, etagSelector, map);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to ActionResult with mapping, ETag header, and If-None-Match (304) support.
+    /// </summary>
+    public static async ValueTask<ActionResult<TOut>> ToETagActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        ControllerBase controllerBase,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToETagActionResult(controllerBase, etagSelector, map);
+    }
+
+    /// <summary>
+    /// Async Task overload: converts result to 201 Created ActionResult with mapping, ETag header, and Location header.
+    /// </summary>
+    public static async Task<ActionResult<TOut>> ToCreatedAtETagActionResultAsync<TValue, TOut>(
+        this Task<Result<TValue>> resultTask,
+        ControllerBase controllerBase,
+        string actionName,
+        Func<TValue, object?> routeValues,
+        Func<TValue, string> etagSelector,
+        Func<TValue, TOut> map,
+        string? controllerName = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToCreatedAtETagActionResult(controllerBase, actionName, routeValues, etagSelector, map, controllerName);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to 201 Created ActionResult with mapping, ETag header, and Location header.
+    /// </summary>
+    public static async ValueTask<ActionResult<TOut>> ToCreatedAtETagActionResultAsync<TValue, TOut>(
+        this ValueTask<Result<TValue>> resultTask,
+        ControllerBase controllerBase,
+        string actionName,
+        Func<TValue, object?> routeValues,
+        Func<TValue, string> etagSelector,
+        Func<TValue, TOut> map,
+        string? controllerName = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToCreatedAtETagActionResult(controllerBase, actionName, routeValues, etagSelector, map, controllerName);
+    }
+
+    #endregion
 }

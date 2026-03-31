@@ -5,14 +5,14 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 /// <summary>
-/// Convention that automatically configures the <see cref="IAggregate.Version"/> property
+/// Convention that automatically configures the <see cref="IAggregate.ETag"/> property
 /// as a concurrency token on all aggregate entity types.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This convention enables optimistic concurrency control for all aggregates. When EF Core
+/// This convention enables optimistic concurrency control per RFC 9110. When EF Core
 /// generates an <c>UPDATE</c> or <c>DELETE</c> statement, it includes
-/// <c>WHERE Version = @originalVersion</c>. If another process modified the aggregate
+/// <c>WHERE ETag = @originalETag</c>. If another process modified the aggregate
 /// since it was loaded, the statement affects zero rows and EF Core throws
 /// <see cref="DbUpdateConcurrencyException"/>, which
 /// <see cref="DbContextExtensions.SaveChangesResultAsync(DbContext, CancellationToken)"/>
@@ -22,9 +22,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// Registered automatically by <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/>.
 /// </para>
 /// </remarks>
-internal sealed class AggregateVersionConvention : IModelFinalizingConvention
+internal sealed class AggregateETagConvention : IModelFinalizingConvention
 {
-    private const string VersionPropertyName = nameof(IAggregate.Version);
+    private const string ETagPropertyName = nameof(IAggregate.ETag);
 
     /// <inheritdoc />
     public void ProcessModelFinalizing(
@@ -36,11 +36,12 @@ internal sealed class AggregateVersionConvention : IModelFinalizingConvention
             if (!typeof(IAggregate).IsAssignableFrom(entityType.ClrType))
                 continue;
 
-            var property = entityType.FindProperty(VersionPropertyName);
+            var property = entityType.FindProperty(ETagPropertyName);
             if (property is null)
                 continue;
 
             property.Builder.IsConcurrencyToken(true);
+            property.Builder.HasMaxLength(50);
         }
     }
 }

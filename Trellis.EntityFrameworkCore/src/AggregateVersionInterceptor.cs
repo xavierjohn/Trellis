@@ -1,20 +1,22 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
+using System.Collections;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 /// <summary>
-/// Interceptor that automatically increments <see cref="IAggregate.Version"/>
-/// on modified aggregate entities before <see cref="DbContext.SaveChangesAsync(CancellationToken)"/> executes.
+/// Interceptor that automatically generates a new <see cref="IAggregate.ETag"/> value
+/// on new and modified aggregate entities before <see cref="DbContext.SaveChangesAsync(CancellationToken)"/> executes.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This interceptor works with <see cref="AggregateVersionConvention"/> to provide
-/// automatic optimistic concurrency control:
+/// This interceptor works with <see cref="AggregateETagConvention"/> to provide
+/// automatic optimistic concurrency control per RFC 9110:
 /// <list type="bullet">
-/// <item><see cref="AggregateVersionConvention"/> marks <c>Version</c> as a concurrency token</item>
-/// <item>This interceptor increments <c>Version</c> on modified aggregates before save</item>
-/// <item>EF Core generates <c>WHERE Version = @original</c> in the SQL</item>
+/// <item><see cref="AggregateETagConvention"/> marks <c>ETag</c> as a concurrency token</item>
+/// <item>This interceptor generates a new GUID-based ETag on added and modified aggregates before save</item>
+/// <item>EF Core generates <c>WHERE ETag = @original</c> in the SQL</item>
 /// <item>Concurrent modifications cause <see cref="DbUpdateConcurrencyException"/></item>
 /// </list>
 /// </para>
@@ -22,16 +24,16 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 /// Registered automatically by <see cref="DbContextOptionsBuilderExtensions.AddTrellisInterceptors"/>.
 /// </para>
 /// </remarks>
-internal sealed class AggregateVersionInterceptor : SaveChangesInterceptor
+internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
 {
-    private const string VersionPropertyName = nameof(IAggregate.Version);
+    private const string ETagPropertyName = nameof(IAggregate.ETag);
 
     /// <inheritdoc />
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData,
         InterceptionResult<int> result)
     {
-        IncrementVersions(eventData.Context);
+        GenerateETags(eventData.Context);
         return base.SavingChanges(eventData, result);
     }
 
@@ -41,14 +43,14 @@ internal sealed class AggregateVersionInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        IncrementVersions(eventData.Context);
+        GenerateETags(eventData.Context);
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
     /// <inheritdoc />
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
-        SyncVersionOriginalValues(eventData.Context);
+        SyncETagOriginalValues(eventData.Context);
         return base.SavedChanges(eventData, result);
     }
 
@@ -58,45 +60,97 @@ internal sealed class AggregateVersionInterceptor : SaveChangesInterceptor
         int result,
         CancellationToken cancellationToken = default)
     {
-        SyncVersionOriginalValues(eventData.Context);
+        SyncETagOriginalValues(eventData.Context);
         return base.SavedChangesAsync(eventData, result, cancellationToken);
     }
 
-    private static void IncrementVersions(DbContext? context)
+    private static void GenerateETags(DbContext? context)
     {
         if (context is null)
             return;
 
+        PromoteAggregatesWithModifiedDependents(context);
+
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            if (entry.State != EntityState.Modified)
+            if (entry.State is not (EntityState.Added or EntityState.Modified))
                 continue;
 
             if (entry.Entity is not IAggregate)
                 continue;
 
-            var versionProperty = entry.Properties
-                .FirstOrDefault(p => p.Metadata.Name == VersionPropertyName);
-            if (versionProperty is null)
+            var etagProperty = entry.Properties
+                .FirstOrDefault(p => p.Metadata.Name == ETagPropertyName);
+            if (etagProperty is null)
                 continue;
 
-            var currentVersion = (long)versionProperty.CurrentValue!;
-            var originalVersion = (long)versionProperty.OriginalValue!;
+            var currentETag = etagProperty.CurrentValue as string;
+            var originalETag = etagProperty.OriginalValue as string;
 
-            // Only increment once per save cycle. When acceptAllChangesOnSuccess is false,
-            // the entry stays Modified across multiple saves. Without this guard, each save
-            // would increment again, creating a mismatch with the database value.
-            if (currentVersion == originalVersion)
-                versionProperty.CurrentValue = currentVersion + 1;
+            // For Added entries: always generate an ETag.
+            // For Modified entries: only generate if not already changed in this save cycle
+            // (guards against double-generation with acceptAllChangesOnSuccess: false).
+            if (entry.State == EntityState.Added || currentETag == originalETag)
+                etagProperty.CurrentValue = Guid.NewGuid().ToString("N");
         }
     }
 
     /// <summary>
-    /// After a successful save, sync the Version property's OriginalValue to CurrentValue
+    /// Scans Unchanged aggregate roots for loaded navigations with Modified, Added, or Deleted
+    /// child entries. When found, marks the aggregate root's ETag property as modified so that
+    /// <see cref="GenerateETags"/> will generate a new value and EF Core will include it in the
+    /// UPDATE statement's WHERE clause.
+    /// </summary>
+    private static void PromoteAggregatesWithModifiedDependents(DbContext context)
+    {
+        foreach (var entry in context.ChangeTracker.Entries())
+        {
+            if (entry.State != EntityState.Unchanged)
+                continue;
+
+            if (entry.Entity is not IAggregate)
+                continue;
+
+            if (!HasModifiedDependents(entry))
+                continue;
+
+            var etagProperty = entry.Properties
+                .FirstOrDefault(p => p.Metadata.Name == ETagPropertyName);
+            if (etagProperty is not null)
+                etagProperty.IsModified = true;
+        }
+    }
+
+    private static bool HasModifiedDependents(EntityEntry entry)
+    {
+        foreach (var navigation in entry.Navigations)
+        {
+            if (navigation is CollectionEntry collection
+                && collection.CurrentValue is IEnumerable items)
+            {
+                foreach (var item in items)
+                {
+                    var childEntry = entry.Context.Entry(item);
+                    if (childEntry.State is EntityState.Modified or EntityState.Added or EntityState.Deleted)
+                        return true;
+                }
+            }
+            else if (navigation is ReferenceEntry { TargetEntry.State: EntityState.Modified
+                or EntityState.Added or EntityState.Deleted })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// After a successful save, sync the ETag property's OriginalValue to CurrentValue
     /// on aggregate entries that are still Modified (i.e., acceptAllChangesOnSuccess was false).
     /// This ensures subsequent saves generate the correct WHERE clause.
     /// </summary>
-    private static void SyncVersionOriginalValues(DbContext? context)
+    private static void SyncETagOriginalValues(DbContext? context)
     {
         if (context is null)
             return;
@@ -109,14 +163,12 @@ internal sealed class AggregateVersionInterceptor : SaveChangesInterceptor
             if (entry.Entity is not IAggregate)
                 continue;
 
-            var versionProperty = entry.Properties
-                .FirstOrDefault(p => p.Metadata.Name == VersionPropertyName);
-            if (versionProperty is null)
+            var etagProperty = entry.Properties
+                .FirstOrDefault(p => p.Metadata.Name == ETagPropertyName);
+            if (etagProperty is null)
                 continue;
 
-            // Entry is still Modified after save → acceptAllChangesOnSuccess was false.
-            // Sync OriginalValue so the next save's WHERE clause matches the DB value.
-            versionProperty.OriginalValue = versionProperty.CurrentValue;
+            etagProperty.OriginalValue = etagProperty.CurrentValue;
         }
     }
 }

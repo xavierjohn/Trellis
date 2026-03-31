@@ -78,22 +78,22 @@ public interface IAggregate : IChangeTracking
     IReadOnlyList<IDomainEvent> UncommittedEvents();
 
     /// <summary>
-    /// Gets the optimistic concurrency version of this aggregate.
+    /// Gets the entity tag (ETag) for optimistic concurrency per RFC 9110.
     /// </summary>
     /// <value>
-    /// An integer that is automatically incremented each time the aggregate is persisted.
-    /// Used by the persistence layer to detect concurrent modifications.
+    /// An opaque string token that changes each time the aggregate is persisted.
+    /// Used by the persistence layer to detect concurrent modifications and by the
+    /// HTTP layer for conditional requests (<c>ETag</c>/<c>If-Match</c> headers).
     /// </value>
     /// <remarks>
     /// <para>
-    /// When two processes load the same aggregate, modify it, and attempt to save, the second save
-    /// will fail with a <see cref="ConflictError"/> because the version in the database no longer
-    /// matches the version loaded by the second process.
-    /// </para>
-    /// <para>
-    /// The version starts at 0 for new aggregates and is managed automatically by the
-    /// persistence infrastructure — domain code should not modify it directly.
+    /// The ETag is managed automatically by the persistence infrastructure:
+    /// <list type="bullet">
+    /// <item>For SQL databases, the EF Core interceptor generates a new GUID on each save</item>
+    /// <item>For CosmosDB, the native <c>_etag</c> is used directly</item>
+    /// </list>
+    /// Domain code should not modify this property directly.
     /// </para>
     /// </remarks>
-    long Version { get; }
+    string ETag { get; }
 }

@@ -61,7 +61,7 @@ public static class ModelConfigurationBuilderExtensions
 
         configurationBuilder.Conventions.Add(static _ => new MaybeConvention());
         configurationBuilder.Conventions.Add(static _ => new MoneyConvention());
-        configurationBuilder.Conventions.Add(static _ => new AggregateVersionConvention());
+        configurationBuilder.Conventions.Add(static _ => new AggregateETagConvention());
 
         return configurationBuilder;
     }

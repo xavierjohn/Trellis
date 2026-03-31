@@ -32,6 +32,8 @@ Built-in error types map to HTTP status codes and common business scenarios:
 | `ForbiddenError` | 403 Forbidden | Insufficient permissions | User cannot access resource |
 | `NotFoundError` | 404 Not Found | Resource doesn't exist | User not found, order not found |
 | `ConflictError` | 409 Conflict | Resource state conflict | Duplicate email, concurrent update |
+| `PreconditionFailedError` | 412 Precondition Failed | ETag mismatch (RFC 9110) | If-Match header doesn't match current ETag |
+| `PreconditionRequiredError` | 428 Precondition Required | Missing If-Match (RFC 6585) | Mutating request without required If-Match header |
 | `DomainError` | 422 Unprocessable Entity | Business rule violation | Cannot withdraw more than balance |
 | `RateLimitError` | 429 Too Many Requests | Rate limit exceeded | Too many login attempts |
 | `UnexpectedError` | 500 Internal Server Error | System errors | Database connection failed |
@@ -54,6 +56,8 @@ public class Error
 Error.Validation(...)     // ValidationError
 Error.NotFound(...)       // NotFoundError
 Error.Conflict(...)       // ConflictError
+Error.PreconditionFailed(...)  // PreconditionFailedError
+Error.PreconditionRequired(...)  // PreconditionRequiredError
 Error.BadRequest(...)     // BadRequestError
 Error.Unauthorized(...)   // UnauthorizedError
 Error.Forbidden(...)      // ForbiddenError
@@ -129,6 +133,23 @@ var error = Error.Conflict($"Email {email} is already registered");
 
 // Concurrent update conflict
 var error = Error.Conflict("Resource was modified by another user");
+```
+
+### Precondition Failed Errors
+
+```csharp
+// RFC 9110 — If-Match ETag mismatch
+var error = Error.PreconditionFailed("Resource has been modified. Please reload and retry.");
+
+// Automatically returned by OptionalETag/RequireETag when aggregate ETag doesn't match
+return await _repo.GetByIdAsync(id, ct)
+    .OptionalETag(command.IfMatchETag)  // returns PreconditionFailedError if stale
+    .BindAsync(agg => agg.Update(...));
+
+// RequireETag returns PreconditionRequiredError (428) when If-Match is missing
+return await _repo.GetByIdAsync(id, ct)
+    .RequireETag(command.IfMatchETag)   // returns PreconditionRequiredError if null
+    .BindAsync(agg => agg.Update(...));
 ```
 
 ### Domain Errors

@@ -555,25 +555,52 @@ When running PowerShell commands in the terminal:
 - Avoid long or complex scripts — they tend to get stuck or timeout
 - Use smaller, targeted file edits with the `replace_string_in_file` tool instead of large PowerShell scripts for file manipulation
 
-## Optimistic Concurrency
+## RFC 9110 — ETag-Based Optimistic Concurrency
 
-`Aggregate<TId>` includes a `Version` property (`long`, starts at 0) that provides automatic optimistic concurrency control when persisted via EF Core.
+`Aggregate<TId>` includes a `string ETag` property that provides automatic optimistic concurrency control per RFC 9110 when persisted via EF Core.
 
 ### How It Works
 
-1. **`AggregateVersionConvention`** — registered by `ApplyTrellisConventions`, marks `Version` as `IsConcurrencyToken()` on all `IAggregate` entity types
-2. **`AggregateVersionInterceptor`** — registered by `AddTrellisInterceptors()`, auto-increments `Version` on aggregate entries in `EntityState.Modified` before `SaveChanges`
-3. **EF Core generates** `UPDATE ... SET Version = @new WHERE Id = @id AND Version = @original`
-4. **Conflict detection** — if another process modified the aggregate, the `WHERE` clause matches zero rows → `DbUpdateConcurrencyException`
-5. **Error mapping** — `SaveChangesResultAsync` catches the exception → returns `Error.Conflict(...)` (`ConflictError`, HTTP 409)
+1. **`AggregateETagConvention`** — registered by `ApplyTrellisConventions`, marks `ETag` as `IsConcurrencyToken()` on all `IAggregate` entity types
+2. **`AggregateETagInterceptor`** — registered by `AddTrellisInterceptors()`, generates a new GUID-based ETag on Added and Modified aggregate entries before save
+3. **EF Core generates** `UPDATE ... SET ETag = @new WHERE Id = @id AND ETag = @original`
+4. **Conflict detection** — if another process modified the aggregate, the `WHERE` clause matches zero rows → `DbUpdateConcurrencyException` → `ConflictError` (HTTP 409)
 
-### No User Action Required
+### RFC 9110 Flow
 
-Both `ApplyTrellisConventions` and `AddTrellisInterceptors()` register the convention and interceptor automatically. Aggregates get concurrency protection out of the box.
+The ETag flows through HTTP conditional request headers:
+- **GET response** → `ETag: "abc123"` header (set by `ToETagActionResult` overloads)
+- **PUT/PATCH/DELETE request** → `If-Match: "abc123"` header (read by controller, passed to command)
+- **Handler** validates via `OptionalETag(command.IfMatchETag)` → returns `PreconditionFailedError` (HTTP 412) if stale
+- **GET request** → `If-None-Match: "abc123"` → returns 304 Not Modified if ETag matches
 
-### Edge Case: Child Entity Changes
+### ETag Validation — Application Layer
 
-If a domain method only modifies child entities within the aggregate (without modifying any property on the aggregate root), EF Core's change tracker may leave the root in `Unchanged` state. The interceptor only increments `Version` on `Modified` entries. In this case, the aggregate root should also be modified by the domain method (Trellis's pattern of raising domain events and modifying aggregate state naturally handles this in most cases).
+Commands can carry an optional `string? IfMatchETag` from the `If-Match` header. Two modes are available — the service owner chooses:
+
+```csharp
+// Optional — If-Match absent → unconditional update
+return await _repo.GetByIdAsync(command.OrderId, ct)
+    .OptionalETag(command.IfMatchETag)     // 412 if stale, skipped if null
+    .BindAsync(order => order.Submit())
+    .BindAsync(order => _repo.SaveAsync(order, ct));
+
+// Required — If-Match absent → 428 Precondition Required
+return await _repo.GetByIdAsync(command.OrderId, ct)
+    .RequireETag(command.IfMatchETag)      // 428 if null, 412 if stale
+    .BindAsync(order => order.Submit())
+    .BindAsync(order => _repo.SaveAsync(order, ct));
+```
+
+Both are pure string comparisons with zero HTTP dependency — they live in `Trellis.DomainDrivenDesign`.
+
+### Child Entity Changes
+
+When a domain method only modifies child entities within the aggregate (without modifying any property on the aggregate root), the `AggregateETagInterceptor` automatically detects this. It scans Unchanged aggregate roots for loaded navigations with Modified, Added, or Deleted child entries and promotes the root's ETag before save.
+
+### No User Configuration Required
+
+Both `ApplyTrellisConventions` and `AddTrellisInterceptors()` register the convention and interceptor automatically.
 
 ## Maybe\<T\> with EF Core
 

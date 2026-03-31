@@ -380,4 +380,41 @@ public static class HttpResultExtensions
 
         return result.Error.ToHttpResult(options);
     }
+
+    #region RFC 9110 — ETag / If-None-Match Support (Minimal API)
+
+    /// <summary>
+    /// Converts a <see cref="Result{TIn}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/> with a mapping function,
+    /// sets the <c>ETag</c> response header, and returns 304 Not Modified for matching <c>If-None-Match</c>.
+    /// </summary>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TIn, TOut>(
+        this Result<TIn> result,
+        HttpContext httpContext,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        if (result.IsSuccess)
+        {
+            var etag = etagSelector(result.Value);
+
+            if (!string.IsNullOrEmpty(etag))
+                httpContext.Response.Headers.ETag = $"\"{etag}\"";
+
+            // RFC 9110 §13.1.2: If-None-Match for GET/HEAD → 304 Not Modified
+            if (httpContext.Request.Method is "GET" or "HEAD"
+                && !string.IsNullOrEmpty(etag)
+                && httpContext.Request.GetTypedHeaders().IfNoneMatch is { Count: > 0 } ifNoneMatch
+                && ETagHelper.IfNoneMatchMatches(ifNoneMatch, etag))
+            {
+                return Results.StatusCode(StatusCodes.Status304NotModified);
+            }
+
+            return Results.Ok(map(result.Value));
+        }
+
+        return result.Error.ToHttpResult(options);
+    }
+
+    #endregion
 }

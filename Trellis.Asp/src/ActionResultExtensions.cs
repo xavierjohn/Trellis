@@ -567,4 +567,101 @@ public static class ActionResultExtensions
         int? effectiveStatusCode = statusCode == StatusCodes.Status400BadRequest ? null : statusCode;
         return controllerBase.ValidationProblem(detail, instance, effectiveStatusCode, modelStateDictionary: modelState);
     }
+
+    #region RFC 9110 — ETag / If-None-Match Support
+
+    /// <summary>
+    /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> with a mapping function,
+    /// sets the <c>ETag</c> response header per RFC 9110, and returns 304 Not Modified when
+    /// the request's <c>If-None-Match</c> header matches the current ETag (GET/HEAD only).
+    /// </summary>
+    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
+    /// <typeparam name="TOut">The type of the value in the output ActionResult.</typeparam>
+    /// <param name="result">The result object to convert.</param>
+    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
+    /// <param name="map">Function that transforms the input value to the output type.</param>
+    /// <param name="etagSelector">Function that extracts the ETag value from the input.</param>
+    /// <returns>
+    /// <list type="bullet">
+    /// <item>200 OK with transformed value and ETag header if result is successful</item>
+    /// <item>304 Not Modified if If-None-Match matches (GET/HEAD only)</item>
+    /// <item>Appropriate error status code (400-599) if result is failure</item>
+    /// </list>
+    /// </returns>
+    /// <example>
+    /// <code>
+    /// [HttpGet("{id}")]
+    /// public async ValueTask&lt;ActionResult&lt;TodoResponse&gt;&gt; GetById(TodoId id, CancellationToken ct) =>
+    ///     await _sender.Send(new GetTodoByIdQuery(id), ct)
+    ///         .ToActionResultAsync(this, todo => todo.ETag, TodoResponse.From);
+    /// </code>
+    /// </example>
+    public static ActionResult<TOut> ToETagActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controllerBase,
+        Func<TIn, string> etagSelector,
+        Func<TIn, TOut> map)
+    {
+        if (result.IsSuccess)
+        {
+            var etag = etagSelector(result.Value);
+            return SuccessWithETag<TIn, TOut>(controllerBase, result.Value, map, etag);
+        }
+
+        return result.Error.ToActionResult<TOut>(controllerBase);
+    }
+
+    /// <summary>
+    /// Converts a <see cref="Result{TValue}"/> to a 201 Created <see cref="ActionResult{TOut}"/>
+    /// with Location header, ETag header, and a mapping function.
+    /// </summary>
+    public static ActionResult<TOut> ToCreatedAtETagActionResult<TValue, TOut>(
+        this Result<TValue> result,
+        ControllerBase controllerBase,
+        string actionName,
+        Func<TValue, object?> routeValues,
+        Func<TValue, string> etagSelector,
+        Func<TValue, TOut> map,
+        string? controllerName = null)
+    {
+        if (result.IsSuccess)
+        {
+            var etag = etagSelector(result.Value);
+            SetETagHeader(controllerBase, etag);
+            var value = map(result.Value);
+            return (ActionResult<TOut>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(result.Value), value);
+        }
+
+        return result.Error.ToActionResult<TOut>(controllerBase);
+    }
+
+    private static ActionResult<TOut> SuccessWithETag<TIn, TOut>(
+        ControllerBase controllerBase,
+        TIn value,
+        Func<TIn, TOut> map,
+        string etag)
+    {
+        SetETagHeader(controllerBase, etag);
+
+        // RFC 9110 §13.1.2: If-None-Match for GET/HEAD → 304 Not Modified
+        var request = controllerBase.HttpContext?.Request;
+        if (request is not null
+            && request.Method is "GET" or "HEAD"
+            && !string.IsNullOrEmpty(etag)
+            && request.GetTypedHeaders().IfNoneMatch is { Count: > 0 } ifNoneMatch
+            && ETagHelper.IfNoneMatchMatches(ifNoneMatch, etag))
+        {
+            return (ActionResult<TOut>)controllerBase.StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        return controllerBase.Ok(map(value));
+    }
+
+    private static void SetETagHeader(ControllerBase controllerBase, string etag)
+    {
+        if (!string.IsNullOrEmpty(etag))
+            controllerBase.Response.Headers.ETag = $"\"{etag}\"";
+    }
+
+    #endregion
 }

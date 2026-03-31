@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 
 /// <summary>
-/// Tests for optimistic concurrency support: <see cref="AggregateVersionConvention"/>
-/// and <see cref="AggregateVersionInterceptor"/>.
+/// Tests for optimistic concurrency support: <see cref="AggregateETagConvention"/>
+/// and <see cref="AggregateETagInterceptor"/>.
 /// </summary>
-public class AggregateVersionTests : IDisposable
+public class AggregateETagTests : IDisposable
 {
     private readonly ConcurrencyTestDbContext _context;
     private readonly SqliteConnection _connection;
 
-    public AggregateVersionTests() =>
+    public AggregateETagTests() =>
         (_context, _connection) = ConcurrencyTestDbContext.CreateInMemory();
 
     public void Dispose()
@@ -23,131 +23,131 @@ public class AggregateVersionTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    #region AggregateVersionConvention — concurrency token configuration
+    #region AggregateETagConvention — concurrency token configuration
 
     [Fact]
-    public void Convention_MarksVersionAsConcurrencyToken()
+    public void Convention_MarksETagAsConcurrencyToken()
     {
-        // Arrange
         var entityType = _context.Model.FindEntityType(typeof(TestAggregate))!;
-
-        // Act
-        var versionProperty = entityType.FindProperty(nameof(IAggregate.Version))!;
-
-        // Assert
-        versionProperty.IsConcurrencyToken.Should().BeTrue();
+        var etagProperty = entityType.FindProperty(nameof(IAggregate.ETag))!;
+        etagProperty.IsConcurrencyToken.Should().BeTrue();
     }
 
     [Fact]
     public void Convention_DoesNotAffectNonAggregateEntities()
     {
-        // Arrange — TestCustomer is not an aggregate
         var entityType = _context.Model.FindEntityType(typeof(TestCustomer))!;
-
-        // Act
-        var versionProperty = entityType.FindProperty(nameof(IAggregate.Version));
-
-        // Assert — no Version property on non-aggregate
-        versionProperty.Should().BeNull();
+        var etagProperty = entityType.FindProperty(nameof(IAggregate.ETag));
+        etagProperty.Should().BeNull();
     }
 
     #endregion
 
-    #region AggregateVersionInterceptor — auto-increment
+    #region AggregateETagInterceptor — auto-generation
 
     [Fact]
-    public async Task Interceptor_NewAggregate_VersionIsZero()
+    public async Task Interceptor_NewAggregate_GeneratesETag()
     {
-        // Arrange
         var ct = TestContext.Current.CancellationToken;
         var aggregate = TestAggregate.Create("agg-1", "Initial");
-        _context.TestAggregates.Add(aggregate);
+        aggregate.ETag.Should().BeEmpty("new aggregates start with empty ETag");
 
-        // Act
+        _context.TestAggregates.Add(aggregate);
         await _context.SaveChangesResultAsync(ct);
 
-        // Assert
-        aggregate.Version.Should().Be(0, "new aggregates start at version 0");
+        aggregate.ETag.Should().NotBeNullOrEmpty("ETag should be generated on first save");
     }
 
     [Fact]
-    public async Task Interceptor_ModifiedAggregate_VersionIncrements()
+    public async Task Interceptor_ModifiedAggregate_GeneratesNewETag()
     {
-        // Arrange
         var ct = TestContext.Current.CancellationToken;
         var aggregate = TestAggregate.Create("agg-2", "Initial");
         _context.TestAggregates.Add(aggregate);
         await _context.SaveChangesResultAsync(ct);
-        aggregate.Version.Should().Be(0);
+        var firstETag = aggregate.ETag;
+        firstETag.Should().NotBeNullOrEmpty();
 
-        // Act — modify and save
         aggregate.Rename("Updated");
         await _context.SaveChangesResultAsync(ct);
 
-        // Assert
-        aggregate.Version.Should().Be(1, "version should increment on first modification");
+        aggregate.ETag.Should().NotBe(firstETag, "ETag should change on modification");
     }
 
     [Fact]
-    public async Task Interceptor_MultipleModifications_VersionIncrementsEachTime()
+    public async Task Interceptor_MultipleModifications_GeneratesUniqueETags()
     {
-        // Arrange
         var ct = TestContext.Current.CancellationToken;
         var aggregate = TestAggregate.Create("agg-3", "V0");
         _context.TestAggregates.Add(aggregate);
         await _context.SaveChangesResultAsync(ct);
+        var etag0 = aggregate.ETag;
 
-        // Act — modify multiple times
         aggregate.Rename("V1");
         await _context.SaveChangesResultAsync(ct);
+        var etag1 = aggregate.ETag;
 
         aggregate.Rename("V2");
         await _context.SaveChangesResultAsync(ct);
+        var etag2 = aggregate.ETag;
 
-        aggregate.Rename("V3");
-        await _context.SaveChangesResultAsync(ct);
-
-        // Assert
-        aggregate.Version.Should().Be(3);
+        new[] { etag0, etag1, etag2 }.Should().OnlyHaveUniqueItems("each save should produce a unique ETag");
     }
 
     [Fact]
-    public async Task Interceptor_UnmodifiedAggregate_VersionStaysSame()
+    public async Task Interceptor_UnmodifiedAggregate_ETagStaysSame()
     {
-        // Arrange
         var ct = TestContext.Current.CancellationToken;
         var aggregate = TestAggregate.Create("agg-4", "Stable");
         _context.TestAggregates.Add(aggregate);
         await _context.SaveChangesResultAsync(ct);
+        var savedETag = aggregate.ETag;
 
-        // Act — save without modification (no-op save)
+        // No-op save — no modifications
         await _context.SaveChangesResultAsync(ct);
 
-        // Assert
-        aggregate.Version.Should().Be(0, "version should not change without modification");
+        aggregate.ETag.Should().Be(savedETag, "ETag should not change without modification");
     }
 
     [Fact]
-    public async Task Interceptor_AcceptAllChangesOnSuccessFalse_DoesNotDoubleIncrement()
+    public async Task Interceptor_AcceptAllChangesOnSuccessFalse_SupportsSubsequentSaves()
     {
-        // Arrange
         var ct = TestContext.Current.CancellationToken;
         var aggregate = TestAggregate.Create("agg-5", "Initial");
         _context.TestAggregates.Add(aggregate);
         await _context.SaveChangesResultAsync(ct);
+        var initialETag = aggregate.ETag;
 
-        // Act — modify, save with acceptAllChangesOnSuccess: false
         aggregate.Rename("Updated");
         var result1 = await _context.SaveChangesResultAsync(acceptAllChangesOnSuccess: false, ct);
         result1.IsSuccess.Should().BeTrue("first save should succeed");
-        aggregate.Version.Should().Be(1, "version should increment once");
+        var firstSaveETag = aggregate.ETag;
+        firstSaveETag.Should().NotBe(initialETag);
 
-        // Second save — the SavedChanges hook syncs OriginalValue so this works correctly.
-        // The interceptor increments Version from 1 to 2, and EF generates WHERE Version = 1.
         aggregate.Rename("Updated again");
         var result2 = await _context.SaveChangesResultAsync(ct);
         result2.IsSuccess.Should().BeTrue("second save should succeed — OriginalValue was synced by SavedChanges hook");
-        aggregate.Version.Should().Be(2, "version should increment again for the second modification");
+        aggregate.ETag.Should().NotBe(firstSaveETag, "ETag should change again");
+    }
+
+    #endregion
+
+    #region Child entity changes promote aggregate ETag
+
+    [Fact]
+    public async Task Interceptor_ChildEntityAdded_AggregateETagChanges()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var aggregate = TestAggregate.Create("child-1", "Parent");
+        _context.TestAggregates.Add(aggregate);
+        await _context.SaveChangesResultAsync(ct);
+        var savedETag = aggregate.ETag;
+
+        aggregate.AddChild("Child A");
+        var result = await _context.SaveChangesResultAsync(ct);
+
+        result.IsSuccess.Should().BeTrue();
+        aggregate.ETag.Should().NotBe(savedETag, "ETag should change when child entities are added");
     }
 
     #endregion
@@ -157,13 +157,11 @@ public class AggregateVersionTests : IDisposable
     [Fact]
     public async Task ConcurrencyConflict_SecondSave_ReturnsConflictError()
     {
-        // Arrange — create and save an aggregate
         var ct = TestContext.Current.CancellationToken;
         var aggregate = TestAggregate.Create("conflict-1", "Original");
         _context.TestAggregates.Add(aggregate);
         await _context.SaveChangesResultAsync(ct);
 
-        // Simulate another process modifying the same aggregate
         var (context2, disposable2) = ConcurrencyTestDbContext.CreateFromConnection(_connection);
         using (disposable2)
         {
@@ -172,11 +170,9 @@ public class AggregateVersionTests : IDisposable
             await context2.SaveChangesResultAsync(ct);
         }
 
-        // Act — try to save from the original context (stale version)
         aggregate.Rename("Modified by original process");
         var result = await _context.SaveChangesResultAsync(ct);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().BeOfType<ConflictError>();
     }
@@ -184,13 +180,11 @@ public class AggregateVersionTests : IDisposable
     [Fact]
     public async Task ConcurrencyConflict_SaveChangesResultUnitAsync_ReturnsConflictError()
     {
-        // Arrange — create and save an aggregate
         var ct = TestContext.Current.CancellationToken;
         var aggregate = TestAggregate.Create("conflict-2", "Original");
         _context.TestAggregates.Add(aggregate);
         await _context.SaveChangesResultUnitAsync(ct);
 
-        // Simulate another process modifying the same aggregate
         var (context2, disposable2) = ConcurrencyTestDbContext.CreateFromConnection(_connection);
         using (disposable2)
         {
@@ -199,11 +193,9 @@ public class AggregateVersionTests : IDisposable
             await context2.SaveChangesResultUnitAsync(ct);
         }
 
-        // Act — try to save from the original context (stale version)
         aggregate.Rename("Modified by original process");
         var result = await _context.SaveChangesResultUnitAsync(ct);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().BeOfType<ConflictError>();
     }
@@ -213,33 +205,40 @@ public class AggregateVersionTests : IDisposable
 
 #region Test Aggregate
 
-/// <summary>
-/// Minimal aggregate for concurrency tests.
-/// </summary>
 internal class TestAggregate : Aggregate<string>
 {
     public string Name { get; private set; }
+    private readonly List<TestChildEntity> _children = [];
+    public IReadOnlyList<TestChildEntity> Children => _children.AsReadOnly();
 
     private TestAggregate(string id, string name) : base(id) => Name = name;
 
-    private TestAggregate() : base(default!) => Name = null!; // EF Core materialization
+    private TestAggregate() : base(default!) => Name = null!;
 
     public static TestAggregate Create(string id, string name) => new(id, name);
 
     public void Rename(string name) => Name = name;
+
+    public void AddChild(string childName) =>
+        _children.Add(new TestChildEntity { Id = Guid.NewGuid().ToString(), Name = childName });
+}
+
+internal class TestChildEntity
+{
+    public string Id { get; set; } = null!;
+    public string Name { get; set; } = null!;
+    public string TestAggregateId { get; set; } = null!;
 }
 
 #endregion
 
 #region Test DbContext with interceptors
 
-/// <summary>
-/// DbContext that includes <see cref="AggregateVersionInterceptor"/> for concurrency tests.
-/// </summary>
 internal class ConcurrencyTestDbContext : DbContext
 {
     public DbSet<TestAggregate> TestAggregates => Set<TestAggregate>();
     public DbSet<TestCustomer> Customers => Set<TestCustomer>();
+    public DbSet<TestChildEntity> TestChildEntities => Set<TestChildEntity>();
 
     public ConcurrencyTestDbContext(DbContextOptions<ConcurrencyTestDbContext> options) : base(options)
     {
@@ -254,6 +253,13 @@ internal class ConcurrencyTestDbContext : DbContext
         {
             b.HasKey(a => a.Id);
             b.Property(a => a.Name).HasMaxLength(100).IsRequired();
+            b.HasMany(a => a.Children).WithOne().HasForeignKey(c => c.TestAggregateId);
+        });
+
+        modelBuilder.Entity<TestChildEntity>(b =>
+        {
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Name).HasMaxLength(100).IsRequired();
         });
 
         modelBuilder.Entity<TestCustomer>(b =>
@@ -281,9 +287,6 @@ internal class ConcurrencyTestDbContext : DbContext
         return (context, connection);
     }
 
-    /// <summary>
-    /// Creates a second context sharing the same SQLite connection (for concurrency conflict tests).
-    /// </summary>
     public static (ConcurrencyTestDbContext Context, IDisposable Noop) CreateFromConnection(SqliteConnection connection)
     {
         var options = new DbContextOptionsBuilder<ConcurrencyTestDbContext>()

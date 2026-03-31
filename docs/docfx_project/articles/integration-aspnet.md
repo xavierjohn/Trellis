@@ -1,4 +1,4 @@
-# ASP.NET Core Integration
+﻿# ASP.NET Core Integration
 
 **Level:** Intermediate | **Time:** 20-30 min | **Prerequisites:** [Basics](basics.md)
 
@@ -524,6 +524,8 @@ The package automatically maps error types to HTTP status codes:
 | `ForbiddenError` | 403 Forbidden | Insufficient permissions for action |
 | `NotFoundError` | 404 Not Found | User not found, resource doesn't exist |
 | `ConflictError` | 409 Conflict | Duplicate email, concurrent modification |
+| `PreconditionFailedError` | 412 Precondition Failed | ETag mismatch on conditional request |
+| `PreconditionRequiredError` | 428 Precondition Required | Missing required If-Match header |
 | `DomainError` | 422 Unprocessable Entity | Business rule violation |
 | `RateLimitError` | 429 Too Many Requests | API rate limit exceeded |
 | `UnexpectedError` | 500 Internal Server Error | Database connection failed |
@@ -532,10 +534,72 @@ The package automatically maps error types to HTTP status codes:
 
 **Key Features:**
 - ✅ **Automatic Status Codes** - No manual mapping required
-- ✅ **Problem Details (RFC 7807)** - Standard error response format
+- ✅ **Problem Details (RFC 9457)** - Standard error response format
 - ✅ **Validation Error Formatting** - Field-level errors
 - ✅ **Unit Type Support** - `Result<Unit>` returns 204 No Content
 - ✅ **Async Support** - Full async/await with `CancellationToken`
+- ✅ **RFC 9110 ETag Support** - Conditional requests via `If-Match`/`If-None-Match`
+
+### RFC 9110 — ETag Conditional Requests
+
+Trellis provides `ToETagActionResult` overloads that set the `ETag` response header, handle `If-None-Match` (304), and map `ConflictError` → 412 when `If-Match` was present.
+
+**GET with ETag and If-None-Match (304):**
+```csharp
+[HttpGet("{id}")]
+public async ValueTask<ActionResult<OrderResponse>> GetById(OrderId id, CancellationToken ct) =>
+    await _sender.Send(new GetOrderByIdQuery(id), ct)
+        .ToETagActionResultAsync(this, order => order.ETag, OrderResponse.From);
+    // Sets ETag response header: ETag: "a1b2c3d4..."
+    // If client sends If-None-Match: "a1b2c3d4..." → returns 304 Not Modified
+```
+
+**PUT with If-Match validation:**
+```csharp
+[HttpPut("{id}")]
+public async ValueTask<ActionResult<OrderResponse>> Update(
+    OrderId id,
+    [FromBody] UpdateOrderRequest request,
+    CancellationToken ct)
+{
+    var ifMatchETag = ETagHelper.ParseIfMatch(Request); // RFC 9110-compliant parsing
+    return await UpdateOrderCommand.TryCreate(id, request.Amount, ifMatchETag)
+        .BindAsync(command => _sender.Send(command, ct))
+        .ToETagActionResultAsync(this, order => order.ETag, OrderResponse.From);
+    // If ETag mismatch → 412 Precondition Failed
+    // If race condition (DbUpdateConcurrencyException + If-Match) → 412
+}
+```
+
+**Handler with OptionalETag (If-Match optional):**
+```csharp
+public async ValueTask<Result<Order>> Handle(UpdateOrderCommand command, CancellationToken ct) =>
+    await _repo.GetByIdAsync(command.OrderId, ct)
+        .OptionalETag(command.IfMatchETag)     // 412 if stale, skipped if null
+        .BindAsync(order => order.Update(command.Amount))
+        .CheckAsync(order => _repo.SaveAsync(order, ct));
+```
+
+**Handler with RequireETag (If-Match required — 428 if missing):**
+```csharp
+public async ValueTask<Result<Order>> Handle(UpdateOrderCommand command, CancellationToken ct) =>
+    await _repo.GetByIdAsync(command.OrderId, ct)
+        .RequireETag(command.IfMatchETag)      // 428 if null, 412 if stale
+        .BindAsync(order => order.Update(command.Amount))
+        .CheckAsync(order => _repo.SaveAsync(order, ct));
+```
+
+**POST with ETag on 201 Created:**
+```csharp
+[HttpPost]
+public async ValueTask<ActionResult<OrderResponse>> Create(
+    [FromBody] CreateOrderRequest request,
+    CancellationToken ct) =>
+    await _sender.Send(new CreateOrderCommand(request.CustomerId, request.Amount), ct)
+        .ToCreatedAtETagActionResultAsync(this, nameof(GetById),
+            r => new { id = r.Id }, r => r.ETag, OrderResponse.From);
+    // Returns 201 Created + Location header + ETag header
+```
 
 ### Example: Validation Error Response
 

@@ -183,6 +183,31 @@ public class Error : IEquatable<Error>
         new(detail, "conflict.error", instance);
 
     /// <summary>
+    /// Creates a <see cref="PreconditionFailedError"/> indicating a conditional request header
+    /// (e.g., <c>If-Match</c>) evaluated to false per RFC 9110 §13.1.1.
+    /// </summary>
+    /// <param name="detail">Description of the precondition failure.</param>
+    /// <param name="instance">Optional identifier for the affected resource.</param>
+    /// <returns>A <see cref="PreconditionFailedError"/>.</returns>
+    /// <example>
+    /// <code>
+    /// Error.PreconditionFailed("Resource has been modified. Please reload and retry.")
+    /// </code>
+    /// </example>
+    public static PreconditionFailedError PreconditionFailed(string detail, string? instance = null) =>
+        new(detail, "precondition.failed.error", instance);
+
+    /// <summary>
+    /// Creates a <see cref="PreconditionRequiredError"/> indicating the server requires
+    /// a conditional request header (e.g., <c>If-Match</c>) per RFC 6585 §3.
+    /// </summary>
+    /// <param name="detail">Description of the required precondition.</param>
+    /// <param name="instance">Optional identifier for the affected resource.</param>
+    /// <returns>A <see cref="PreconditionRequiredError"/>.</returns>
+    public static PreconditionRequiredError PreconditionRequired(string detail, string? instance = null) =>
+        new(detail, "precondition.required.error", instance);
+
+    /// <summary>
     /// Creates a <see cref="NotFoundError"/> indicating a requested resource was not found.
     /// </summary>
     /// <param name="detail">Description of what was not found.</param>
@@ -308,6 +333,22 @@ public class Error : IEquatable<Error>
     /// <param name="instance">Optional identifier for the conflicting resource.</param>
     /// <returns>A <see cref="ConflictError"/> with the specified code.</returns>
     public static ConflictError Conflict(string detail, string code, string? instance) =>
+        new(detail, code, instance);
+
+    /// <summary>
+    /// Creates a <see cref="PreconditionFailedError"/> with a custom error code.
+    /// </summary>
+    /// <param name="detail">Description of the precondition failure.</param>
+    /// <param name="code">Custom error code to use instead of the default "precondition.failed.error".</param>
+    /// <param name="instance">Optional identifier for the affected resource.</param>
+    /// <returns>A <see cref="PreconditionFailedError"/> with the specified code.</returns>
+    public static PreconditionFailedError PreconditionFailed(string detail, string code, string? instance) =>
+        new(detail, code, instance);
+
+    /// <summary>
+    /// Creates a <see cref="PreconditionRequiredError"/> with a custom error code.
+    /// </summary>
+    public static PreconditionRequiredError PreconditionRequired(string detail, string code, string? instance) =>
         new(detail, code, instance);
 
     /// <summary>

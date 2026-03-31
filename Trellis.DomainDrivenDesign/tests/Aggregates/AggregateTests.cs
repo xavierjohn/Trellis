@@ -131,20 +131,20 @@ public class AggregateTests
 
     #endregion
 
-    #region Version Tests
+    #region ETag Tests
 
     [Fact]
-    public void NewAggregate_HasVersionZero()
+    public void NewAggregate_HasEmptyETag()
     {
         // Arrange & Act
         var aggregate = TestAggregate.Create("1");
 
         // Assert
-        aggregate.Version.Should().Be(0);
+        aggregate.ETag.Should().BeEmpty();
     }
 
     [Fact]
-    public void Version_IsAccessibleViaIAggregate()
+    public void ETag_IsAccessibleViaIAggregate()
     {
         // Arrange
 #pragma warning disable CA1859 // Intentionally using interface type to verify contract
@@ -152,7 +152,122 @@ public class AggregateTests
 #pragma warning restore CA1859
 
         // Assert
-        aggregate.Version.Should().Be(0);
+        aggregate.ETag.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region OptionalETag Tests
+
+    [Fact]
+    public void OptionalETag_NullExpected_SkipsValidation()
+    {
+        var aggregate = TestAggregate.Create("1");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag(null).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionalETag_MatchingETag_ReturnsSuccess()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag(["abc123"]).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionalETag_MultipleETags_MatchesAny()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("current");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag(["stale", "current", "other"]).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionalETag_Wildcard_MatchesAny()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("anything");
+        var result = Result.Success(aggregate);
+
+        result.OptionalETag(["*"]).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionalETag_MismatchedETag_ReturnsPreconditionFailed()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        var ensured = result.OptionalETag(["stale-etag"]);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<PreconditionFailedError>();
+    }
+
+    [Fact]
+    public void OptionalETag_EmptyArray_WeakOnlyHeader_ReturnsPreconditionFailed()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        // Empty array = header present but all tags were weak
+        var ensured = result.OptionalETag([]);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<PreconditionFailedError>();
+    }
+
+    [Fact]
+    public void OptionalETag_FailedResult_SkipsValidation()
+    {
+        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+
+        var ensured = result.OptionalETag(["any-etag"]);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<NotFoundError>();
+    }
+
+    #endregion
+
+    #region RequireETag Tests
+
+    [Fact]
+    public void RequireETag_NullExpected_ReturnsPreconditionRequired()
+    {
+        var aggregate = TestAggregate.Create("1");
+        var result = Result.Success(aggregate);
+
+        var ensured = result.RequireETag(null);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<PreconditionRequiredError>();
+    }
+
+    [Fact]
+    public void RequireETag_MatchingETag_ReturnsSuccess()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        result.RequireETag(["abc123"]).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RequireETag_MismatchedETag_ReturnsPreconditionFailed()
+    {
+        var aggregate = TestAggregate.Create("1");
+        aggregate.SetTestETag("abc123");
+        var result = Result.Success(aggregate);
+
+        var ensured = result.RequireETag(["stale"]);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<PreconditionFailedError>();
     }
 
     #endregion
@@ -216,6 +331,10 @@ internal class TestAggregate : Aggregate<string>
         Name = $"{Name}_modified";
         DomainEvents.Add(new TestEvent(Id, DateTime.UtcNow));
     }
+
+    /// <summary>Test-only helper to simulate a persisted ETag.</summary>
+    public void SetTestETag(string etag) =>
+        typeof(Aggregate<string>).GetProperty(nameof(ETag))!.SetValue(this, etag);
 }
 
 #endregion
