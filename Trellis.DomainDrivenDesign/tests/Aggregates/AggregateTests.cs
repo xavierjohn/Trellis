@@ -270,6 +270,36 @@ public class AggregateTests
         ensured.Error.Should().BeOfType<PreconditionFailedError>();
     }
 
+    [Fact]
+    public void RequireETag_FailedResult_PreservesOriginalError()
+    {
+        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+
+        var ensured = result.RequireETag(null);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionRequired");
+    }
+
+    [Fact]
+    public void RequireETag_FailedResult_WithETags_PreservesOriginalError()
+    {
+        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+
+        var ensured = result.RequireETag(["any-etag"]);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionFailed");
+    }
+
+    [Fact]
+    public void OptionalETag_FailedResult_WithWeakOnlyHeader_PreservesOriginalError()
+    {
+        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+
+        var ensured = result.OptionalETag([]);
+        ensured.IsSuccess.Should().BeFalse();
+        ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by weak-tag PreconditionFailed");
+    }
+
     #endregion
 
     #region IsChanged Tests

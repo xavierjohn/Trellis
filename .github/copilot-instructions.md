@@ -571,23 +571,23 @@ When running PowerShell commands in the terminal:
 The ETag flows through HTTP conditional request headers:
 - **GET response** → `ETag: "abc123"` header (set by `ToETagActionResult` overloads)
 - **PUT/PATCH/DELETE request** → `If-Match: "abc123"` header (read by controller, passed to command)
-- **Handler** validates via `OptionalETag(command.IfMatchETag)` → returns `PreconditionFailedError` (HTTP 412) if stale
+- **Handler** validates via `OptionalETag(command.IfMatchETags)` → returns `PreconditionFailedError` (HTTP 412) if stale
 - **GET request** → `If-None-Match: "abc123"` → returns 304 Not Modified if ETag matches
 
 ### ETag Validation — Application Layer
 
-Commands can carry an optional `string? IfMatchETag` from the `If-Match` header. Two modes are available — the service owner chooses:
+Commands can carry an optional `string[]? IfMatchETags` from the `If-Match` header. Two modes are available — the service owner chooses:
 
 ```csharp
 // Optional — If-Match absent → unconditional update
 return await _repo.GetByIdAsync(command.OrderId, ct)
-    .OptionalETag(command.IfMatchETag)     // 412 if stale, skipped if null
+    .OptionalETag(command.IfMatchETags)     // 412 if stale, skipped if null
     .BindAsync(order => order.Submit())
     .BindAsync(order => _repo.SaveAsync(order, ct));
 
 // Required — If-Match absent → 428 Precondition Required
 return await _repo.GetByIdAsync(command.OrderId, ct)
-    .RequireETag(command.IfMatchETag)      // 428 if null, 412 if stale
+    .RequireETag(command.IfMatchETags)      // 428 if null, 412 if stale
     .BindAsync(order => order.Submit())
     .BindAsync(order => _repo.SaveAsync(order, ct));
 ```

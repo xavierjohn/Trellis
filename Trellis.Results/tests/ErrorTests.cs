@@ -186,4 +186,29 @@ public class ErrorTests
         error.Should().BeOfType<PreconditionFailedError>();
         error.Instance.Should().BeNull();
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("abc")]
+    public void Create_precondition_required_error(string? instance)
+    {
+        var error = Error.PreconditionRequired("message", "code", instance);
+
+        error.Detail.Should().Be("message");
+        error.Code.Should().Be("code");
+        error.Should().BeOfType<PreconditionRequiredError>();
+        error.Instance.Should().Be(instance);
+        error.ToString().Should().Be($"Type: PreconditionRequiredError, Code: code, Detail: message, Instance: {instance ?? "N/A"}");
+    }
+
+    [Fact]
+    public void Create_precondition_required_error_default()
+    {
+        var error = Error.PreconditionRequired("Precondition required.");
+
+        error.Detail.Should().Be("Precondition required.");
+        error.Code.Should().Be("precondition.required.error");
+        error.Should().BeOfType<PreconditionRequiredError>();
+        error.Instance.Should().BeNull();
+    }
 }

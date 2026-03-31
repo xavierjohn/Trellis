@@ -66,10 +66,15 @@ public static class AggregateETagExtensions
     /// </code>
     /// </example>
     public static Result<T> RequireETag<T>(this Result<T> result, string[]? expectedETags)
-        where T : IAggregate =>
-        expectedETags is null
+        where T : IAggregate
+    {
+        if (result.IsFailure)
+            return result;
+
+        return expectedETags is null
             ? Result.Failure<T>(Error.PreconditionRequired("This operation requires an If-Match header."))
             : MatchETag(result, expectedETags);
+    }
 
     /// <summary>Async Task overload of <see cref="OptionalETag{T}"/>.</summary>
     public static async Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>> resultTask, string[]? expectedETags)
@@ -94,6 +99,10 @@ public static class AggregateETagExtensions
     private static Result<T> MatchETag<T>(Result<T> result, string[] expectedETags)
         where T : IAggregate
     {
+        // Preserve any existing failure; ETag validation never overrides an existing error
+        if (result.IsFailure)
+            return result;
+
         // Empty array = header present but all tags were weak (unsatisfiable)
         if (expectedETags.Length == 0)
             return Result.Failure<T>(Error.PreconditionFailed(

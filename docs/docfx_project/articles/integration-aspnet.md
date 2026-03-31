@@ -542,7 +542,7 @@ The package automatically maps error types to HTTP status codes:
 
 ### RFC 9110 — ETag Conditional Requests
 
-Trellis provides `ToETagActionResult` overloads that set the `ETag` response header, handle `If-None-Match` (304), and map `ConflictError` → 412 when `If-Match` was present.
+Trellis provides `ToETagActionResult` overloads that set the `ETag` response header, and handle `If-None-Match` (304). Use `OptionalETag`/`RequireETag` in handlers to validate `If-Match` → 412 before saving.
 
 **GET with ETag and If-None-Match (304):**
 ```csharp
@@ -562,12 +562,12 @@ public async ValueTask<ActionResult<OrderResponse>> Update(
     [FromBody] UpdateOrderRequest request,
     CancellationToken ct)
 {
-    var ifMatchETag = ETagHelper.ParseIfMatch(Request); // RFC 9110-compliant parsing
-    return await UpdateOrderCommand.TryCreate(id, request.Amount, ifMatchETag)
+    var ifMatchETags = ETagHelper.ParseIfMatch(Request); // RFC 9110-compliant parsing
+    return await UpdateOrderCommand.TryCreate(id, request.Amount, ifMatchETags)
         .BindAsync(command => _sender.Send(command, ct))
         .ToETagActionResultAsync(this, order => order.ETag, OrderResponse.From);
     // If ETag mismatch → 412 Precondition Failed
-    // If race condition (DbUpdateConcurrencyException + If-Match) → 412
+    // If race condition (DbUpdateConcurrencyException) → 409 Conflict
 }
 ```
 
@@ -575,7 +575,7 @@ public async ValueTask<ActionResult<OrderResponse>> Update(
 ```csharp
 public async ValueTask<Result<Order>> Handle(UpdateOrderCommand command, CancellationToken ct) =>
     await _repo.GetByIdAsync(command.OrderId, ct)
-        .OptionalETag(command.IfMatchETag)     // 412 if stale, skipped if null
+        .OptionalETag(command.IfMatchETags)     // 412 if stale, skipped if null
         .BindAsync(order => order.Update(command.Amount))
         .CheckAsync(order => _repo.SaveAsync(order, ct));
 ```
@@ -584,7 +584,7 @@ public async ValueTask<Result<Order>> Handle(UpdateOrderCommand command, Cancell
 ```csharp
 public async ValueTask<Result<Order>> Handle(UpdateOrderCommand command, CancellationToken ct) =>
     await _repo.GetByIdAsync(command.OrderId, ct)
-        .RequireETag(command.IfMatchETag)      // 428 if null, 412 if stale
+        .RequireETag(command.IfMatchETags)      // 428 if null, 412 if stale
         .BindAsync(order => order.Update(command.Amount))
         .CheckAsync(order => _repo.SaveAsync(order, ct));
 ```

@@ -348,6 +348,10 @@ public class Error : IEquatable<Error>
     /// <summary>
     /// Creates a <see cref="PreconditionRequiredError"/> with a custom error code.
     /// </summary>
+    /// <param name="detail">Description of the required precondition.</param>
+    /// <param name="code">Custom error code to use instead of the default "precondition.required.error".</param>
+    /// <param name="instance">Optional identifier for the affected resource.</param>
+    /// <returns>A <see cref="PreconditionRequiredError"/> with the specified code.</returns>
     public static PreconditionRequiredError PreconditionRequired(string detail, string code, string? instance) =>
         new(detail, code, instance);
 

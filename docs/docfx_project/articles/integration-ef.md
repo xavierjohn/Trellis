@@ -223,7 +223,7 @@ graph TB
     style RES_CONFLICT2 fill:#FFB6C6
 ```
 
-> **Note:** `DbUpdateConcurrencyException` maps to `ConflictError` (409) at the database layer. At the HTTP layer, use `OptionalETag` with the `If-Match` header to return `PreconditionFailedError` (412) per RFC 9110. The `ToETagActionResult` methods automatically map `ConflictError` → 412 when an `If-Match` header was present on the request.
+> **Note:** `DbUpdateConcurrencyException` maps to `ConflictError` (409) at the database layer. At the HTTP layer, use `OptionalETag`/`RequireETag` with the parsed `If-Match` header to return `PreconditionFailedError` (412) per RFC 9110 *before* the save attempt. If a race condition causes `DbUpdateConcurrencyException` after the ETag check passes, it surfaces as 409.
 
 ### Automatic ETag Concurrency Token
 

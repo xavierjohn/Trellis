@@ -819,22 +819,22 @@ void AcceptChanges()                       // clears DomainEvents
 - `AggregateETagConvention` (registered by `ApplyTrellisConventions`) marks `ETag` as `IsConcurrencyToken()`
 - `AggregateETagInterceptor` (registered by `AddTrellisInterceptors()`) generates a new GUID ETag on Added and Modified entries
 - EF Core generates `UPDATE ... WHERE ETag = @original`; if stale → `ConflictError`
-- `OptionalETag(expectedETag)` — skips if absent; returns `PreconditionFailedError` (412) on mismatch
-- `RequireETag(expectedETag)` — returns `PreconditionRequiredError` (428) if absent; `PreconditionFailedError` (412) on mismatch
+- `OptionalETag(expectedETags)` — skips if absent; returns `PreconditionFailedError` (412) on mismatch
+- `RequireETag(expectedETags)` — returns `PreconditionRequiredError` (428) if absent; `PreconditionFailedError` (412) on mismatch
 
 ### OptionalETag / RequireETag Extensions
 
 ```csharp
 // Optional — If-Match absent → unconditional update
-Result<T> OptionalETag<T>(this Result<T> result, string? expectedETag) where T : IAggregate
+Result<T> OptionalETag<T>(this Result<T> result, string[]? expectedETags) where T : IAggregate
 // Required — If-Match absent → 428 Precondition Required
-Result<T> RequireETag<T>(this Result<T> result, string? expectedETag) where T : IAggregate
+Result<T> RequireETag<T>(this Result<T> result, string[]? expectedETags) where T : IAggregate
 // Async overloads
-Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>>, string? expectedETag)
-ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>>, string? expectedETag)
-Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>>, string? expectedETag)
-ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>>, string? expectedETag)
-// null/empty expectedETag → skips check (unconditional request)
+Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>>, string[]? expectedETags)
+ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>>, string[]? expectedETags)
+Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>>, string[]? expectedETags)
+ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>>, string[]? expectedETags)
+// null → no header (unconditional); ["*"] → wildcard; ["a","b"] → match any; [] → weak-only (unsatisfiable → 412)
 ```
 
 ## IDomainEvent (interface)

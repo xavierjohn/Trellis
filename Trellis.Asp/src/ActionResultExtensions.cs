@@ -593,7 +593,7 @@ public static class ActionResultExtensions
     /// [HttpGet("{id}")]
     /// public async ValueTask&lt;ActionResult&lt;TodoResponse&gt;&gt; GetById(TodoId id, CancellationToken ct) =>
     ///     await _sender.Send(new GetTodoByIdQuery(id), ct)
-    ///         .ToActionResultAsync(this, todo => todo.ETag, TodoResponse.From);
+    ///         .ToETagActionResultAsync(this, todo => todo.ETag, TodoResponse.From);
     /// </code>
     /// </example>
     public static ActionResult<TOut> ToETagActionResult<TIn, TOut>(
