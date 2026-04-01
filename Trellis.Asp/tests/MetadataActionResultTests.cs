@@ -8,6 +8,7 @@ using Trellis;
 /// <summary>
 /// Tests for RepresentationMetadata-aware ToActionResult overloads.
 /// </summary>
+[Collection("TrellisAspOptionsState")]
 public class MetadataActionResultTests : IDisposable
 {
     public MetadataActionResultTests() => TrellisAspOptions.ResetCurrent();

@@ -7,6 +7,7 @@ using Trellis;
 /// Tests for Minimal API ETag-aware ToHttpResult overloads:
 /// ETag header setting, If-None-Match → 304, and failure passthrough.
 /// </summary>
+[Collection("TrellisAspOptionsState")]
 public class ETagHttpResultTests : IDisposable
 {
     public ETagHttpResultTests() => TrellisAspOptions.ResetCurrent();
