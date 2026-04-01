@@ -33,6 +33,8 @@ public static class RangeRequestEvaluator
     /// <returns>A <see cref="RangeOutcome"/> indicating how to respond.</returns>
     public static RangeOutcome Evaluate(HttpRequest request, long completeLength)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(completeLength);
+
         // RFC 9110 §14.2: Range is only applicable to GET
         if (!HttpMethods.IsGet(request.Method))
             return new RangeOutcome.FullRepresentation();

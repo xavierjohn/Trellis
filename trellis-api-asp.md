@@ -19,6 +19,12 @@
 | `PreconditionRequiredError` | 428 |
 | `RateLimitError` | 429 |
 | `UnexpectedError` | 500 |
+| `MethodNotAllowedError` | 405 |
+| `NotAcceptableError` | 406 |
+| `GoneError` | 410 |
+| `ContentTooLargeError` | 413 |
+| `UnsupportedMediaTypeError` | 415 |
+| `RangeNotSatisfiableError` | 416 |
 | `ServiceUnavailableError` | 503 |
 
 Customizable via `TrellisAspOptions.MapError<TError>(int statusCode)`.
@@ -86,7 +92,7 @@ HTTP 206 Partial Content response for paginated results. Automatically sets `Con
 ```csharp
 PartialContentResult(long rangeStart, long rangeEnd, long totalLength, object? value)
 PartialContentResult(ContentRangeHeaderValue contentRange, object? value)
-ContentRangeHeaderValue ContentRange { get; }
+ContentRangeHeaderValue ContentRangeHeaderValue { get; }
 ```
 
 ## Maybe\<T\> Support Types

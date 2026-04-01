@@ -53,14 +53,14 @@ void AcceptChanges()                       // clears DomainEvents
 
 ```csharp
 // Optional — If-Match absent → unconditional update
-Result<T> OptionalETag<T>(this Result<T> result, string[]? expectedETags) where T : IAggregate
+Result<T> OptionalETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate
 // Required — If-Match absent → 428 Precondition Required
-Result<T> RequireETag<T>(this Result<T> result, string[]? expectedETags) where T : IAggregate
+Result<T> RequireETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate
 // Async overloads
-Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>>, string[]? expectedETags)
-ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>>, string[]? expectedETags)
-Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>>, string[]? expectedETags)
-ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>>, string[]? expectedETags)
+Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>>, EntityTagValue[]? expectedETags)
+ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>>, EntityTagValue[]? expectedETags)
+Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>>, EntityTagValue[]? expectedETags)
+ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>>, EntityTagValue[]? expectedETags)
 // null → no header (unconditional); ["*"] → wildcard; ["a","b"] → match any; [] → weak-only (unsatisfiable → 412)
 ```
 

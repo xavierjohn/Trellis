@@ -44,8 +44,32 @@ public sealed record EntityTagValue
     private EntityTagValue(string opaqueTag, bool isWeak)
     {
         ArgumentNullException.ThrowIfNull(opaqueTag);
+        ValidateOpaqueTag(opaqueTag);
         OpaqueTag = opaqueTag;
         IsWeak = isWeak;
+    }
+
+    private static bool HasInvalidOpaqueTagChars(string opaqueTag)
+    {
+        foreach (var c in opaqueTag)
+        {
+            if (c is '"' or '\\' or (< '\x21' and not '\t'))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void ValidateOpaqueTag(string opaqueTag)
+    {
+        foreach (var c in opaqueTag)
+        {
+            if (c is '"' or '\\' or (< '\x21' and not '\t'))
+                throw new ArgumentException(
+                    $"Invalid character in opaque tag: U+{(int)c:X4}. " +
+                    "Opaque tags must not contain double quotes, backslashes, or control characters (RFC 9110 §8.8.3).",
+                    nameof(opaqueTag));
+        }
     }
 
     /// <summary>Creates a strong entity tag.</summary>
@@ -80,12 +104,22 @@ public sealed record EntityTagValue
             return Error.BadRequest("ETag header value cannot be null or empty.", "etag.parse.error", null);
 
         if (headerValue.StartsWith("W/\"", StringComparison.Ordinal) && headerValue.EndsWith('"') && headerValue.Length >= 4)
-            return new EntityTagValue(headerValue[3..^1], true);
+        {
+            var tag = headerValue[3..^1];
+            if (HasInvalidOpaqueTagChars(tag))
+                return Error.BadRequest("Invalid ETag format.", "etag.parse.error", null);
+            return new EntityTagValue(tag, true);
+        }
 
         if (headerValue.StartsWith('"') && headerValue.EndsWith('"') && headerValue.Length >= 2)
-            return new EntityTagValue(headerValue[1..^1], false);
+        {
+            var tag = headerValue[1..^1];
+            if (HasInvalidOpaqueTagChars(tag))
+                return Error.BadRequest("Invalid ETag format.", "etag.parse.error", null);
+            return new EntityTagValue(tag, false);
+        }
 
-        return Error.BadRequest($"Invalid ETag format: '{headerValue}'. Expected '\"tag\"' or 'W/\"tag\"'.", "etag.parse.error", null);
+        return Error.BadRequest("Invalid ETag format.", "etag.parse.error", null);
     }
 
     /// <summary>

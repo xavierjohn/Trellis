@@ -159,7 +159,7 @@ public sealed class AuthenticationChallenge
 
             sb.Append(kvp.Key);
             sb.Append("=\"");
-            sb.Append(kvp.Value);
+            sb.Append(kvp.Value.Replace("\\", "\\\\").Replace("\"", "\\\""));
             sb.Append('"');
             first = false;
         }

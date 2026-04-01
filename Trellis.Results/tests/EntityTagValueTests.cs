@@ -229,4 +229,45 @@ public class EntityTagValueTests
     }
 
     #endregion
+
+    #region Opaque Tag Validation
+
+    [Theory]
+    [InlineData("abc123")]
+    [InlineData("v1.2.3")]
+    [InlineData("!#$%&'()*+,-./:;<=>?@[]^_`{|}~")]
+    [InlineData("")]
+    public void Strong_with_valid_characters_succeeds(string opaqueTag)
+    {
+        var tag = EntityTagValue.Strong(opaqueTag);
+
+        tag.OpaqueTag.Should().Be(opaqueTag);
+    }
+
+    [Fact]
+    public void Strong_with_double_quote_throws_ArgumentException()
+    {
+        var act = () => EntityTagValue.Strong("abc\"def");
+
+        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+    }
+
+    [Fact]
+    public void Strong_with_backslash_throws_ArgumentException()
+    {
+        var act = () => EntityTagValue.Strong("abc\\def");
+
+        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+    }
+
+    [Fact]
+    public void Strong_with_control_character_throws_ArgumentException()
+    {
+        var controlChar = (char)0x01;
+        var act = () => EntityTagValue.Strong($"abc{controlChar}def");
+
+        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+    }
+
+    #endregion
 }
