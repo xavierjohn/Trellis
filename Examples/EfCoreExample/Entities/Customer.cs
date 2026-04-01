@@ -12,7 +12,6 @@ public class Customer : Entity<CustomerId>
 {
     public CustomerName Name { get; private set; } = null!;
     public EmailAddress Email { get; private set; } = null!;
-    public DateTime CreatedAt { get; private set; }
 
     // EF Core requires parameterless constructor
     private Customer() : base(CustomerId.NewUniqueV4()) { }
@@ -21,7 +20,6 @@ public class Customer : Entity<CustomerId>
     {
         Name = name;
         Email = email;
-        CreatedAt = DateTime.UtcNow;
     }
 
     /// <summary>

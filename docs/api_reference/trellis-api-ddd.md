@@ -4,12 +4,26 @@
 
 **Package:** `Trellis.DomainDrivenDesign` | **Namespace:** `Trellis`
 
-## Entity\<TId\> (abstract class, where TId : notnull)
+## IEntity (interface)
 
-Identity-based equality. Two entities are equal iff same type and same non-default ID.
+Marker interface for entities that track creation and modification timestamps. Implemented by `Entity<TId>`. Used by `EntityTimestampInterceptor` (in `Trellis.EntityFrameworkCore`) to automatically set timestamps on `SaveChanges`.
+
+```csharp
+public interface IEntity
+{
+    DateTimeOffset CreatedAt { get; set; }
+    DateTimeOffset LastModified { get; set; }
+}
+```
+
+## Entity\<TId\> (abstract class, where TId : notnull, implements IEntity)
+
+Identity-based equality. Two entities are equal iff same type and same non-default ID. Implements `IEntity` to provide automatic `CreatedAt` and `LastModified` timestamps.
 
 ```csharp
 public TId Id { get; init; }
+public DateTimeOffset CreatedAt { get; set; }
+public DateTimeOffset LastModified { get; set; }
 protected Entity(TId id)
 // Operators: ==, !=
 // Overrides: Equals, GetHashCode
@@ -133,20 +147,5 @@ Specification<T> Or(Specification<T> other)
 Specification<T> Not()
 implicit operator Expression<Func<T, bool>>(Specification<T> spec)
 ```
-
----
-
-## ITrackLastModified (interface)
-
-Marker interface for entities that track their last modification timestamp. Implemented on aggregates or entities to enable `Last-Modified` response headers and `If-Modified-Since` / `If-Unmodified-Since` conditional request evaluation.
-
-```csharp
-public interface ITrackLastModified
-{
-    DateTimeOffset LastModified { get; set; }
-}
-```
-
-The `LastModified` property is auto-set by `LastModifiedInterceptor` (in `Trellis.EntityFrameworkCore`) on every `SaveChanges` call for entities implementing this interface.
 
 ---

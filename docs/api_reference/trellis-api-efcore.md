@@ -56,19 +56,20 @@ Optimistic concurrency is automatic for all `Aggregate<TId>` entities:
 
 No additional configuration is needed. When two processes modify the same aggregate concurrently, the second `SaveChangesResultAsync` returns `ConflictError`. At the HTTP layer, use `OptionalETag` for `If-Match` validation → `PreconditionFailedError` (412).
 
-### LastModifiedInterceptor
+### EntityTimestampInterceptor
 
-Automatically sets `ITrackLastModified.LastModified` on every `SaveChanges` call for entities implementing the `ITrackLastModified` interface (from `Trellis.DomainDrivenDesign`). Registered by `AddTrellisInterceptors()`.
+Automatically sets `IEntity.CreatedAt` and `IEntity.LastModified` on every `SaveChanges` call for entities implementing the `IEntity` interface (from `Trellis.DomainDrivenDesign`). Registered by `AddTrellisInterceptors()`.
 
 ```csharp
-public sealed class LastModifiedInterceptor : SaveChangesInterceptor
+public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
 {
-    public LastModifiedInterceptor(TimeProvider? timeProvider = null)
+    public EntityTimestampInterceptor(TimeProvider? timeProvider = null)
 }
 ```
 
 - Uses `TimeProvider.GetUtcNow()` if provided, otherwise `DateTimeOffset.UtcNow`
 - Pass a custom `TimeProvider` via `AddTrellisInterceptors(timeProvider)` for deterministic testing
+- Sets `CreatedAt` on `EntityState.Added` entries
 - Sets `LastModified` on both `EntityState.Added` and `EntityState.Modified` entries
 
 ### Money Property Convention
@@ -188,7 +189,7 @@ var overdue = await context.Orders
 
 ### AddTrellisInterceptors
 
-Registers the `MaybeQueryInterceptor`, `ScalarValueQueryInterceptor`, `AggregateETagInterceptor`, and `LastModifiedInterceptor` as singletons, enabling natural LINQ syntax with `Maybe<T>` properties and natural value object operations (comparisons, string methods, properties) without `.Value`.
+Registers the `MaybeQueryInterceptor`, `ScalarValueQueryInterceptor`, `AggregateETagInterceptor`, and `EntityTimestampInterceptor` as singletons, enabling natural LINQ syntax with `Maybe<T>` properties and natural value object operations (comparisons, string methods, properties) without `.Value`.
 
 ```csharp
 // Generic overload
@@ -197,7 +198,7 @@ DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(this DbContex
 // Non-generic overload
 DbContextOptionsBuilder AddTrellisInterceptors(this DbContextOptionsBuilder optionsBuilder)
 
-// Generic overload with TimeProvider (for testable LastModifiedInterceptor)
+// Generic overload with TimeProvider (for testable EntityTimestampInterceptor)
 DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(
     this DbContextOptionsBuilder<TContext> optionsBuilder,
     TimeProvider? timeProvider)

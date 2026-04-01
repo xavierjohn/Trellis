@@ -34,7 +34,6 @@ public class BankAccount : Aggregate<AccountId>
     public Money DailyWithdrawalLimit { get; }
     public Money OverdraftLimit { get; }
     public AccountStatus Status { get; private set; }
-    public DateTime CreatedAt { get; }
     public IReadOnlyList<Transaction> Transactions => _transactions.AsReadOnly();
 
     private BankAccount(
@@ -50,7 +49,6 @@ public class BankAccount : Aggregate<AccountId>
         DailyWithdrawalLimit = dailyWithdrawalLimit;
         OverdraftLimit = overdraftLimit;
         Status = AccountStatus.Active;
-        CreatedAt = DateTime.UtcNow;
 
         // Raise domain event for account creation
         DomainEvents.Add(new AccountOpened(

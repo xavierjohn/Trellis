@@ -20,6 +20,25 @@ public class AggregateTests
     [Fact]
     public void Aggregate_implements_IAggregate() => typeof(IAggregate).IsAssignableFrom(typeof(Aggregate<string>)).Should().BeTrue();
 
+    [Fact]
+    public void Aggregate_implements_IEntity() => typeof(IEntity).IsAssignableFrom(typeof(Aggregate<string>)).Should().BeTrue();
+
+    [Fact]
+    public void Aggregate_InheritsTimestamps()
+    {
+        // Arrange
+        var aggregate = TestAggregate.Create("agg-1");
+        var timestamp = new DateTimeOffset(2025, 3, 15, 8, 0, 0, TimeSpan.Zero);
+
+        // Act
+        aggregate.CreatedAt = timestamp;
+        aggregate.LastModified = timestamp;
+
+        // Assert
+        aggregate.CreatedAt.Should().Be(timestamp);
+        aggregate.LastModified.Should().Be(timestamp);
+    }
+
     #endregion
 
     #region Domain Events Tests

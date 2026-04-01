@@ -5,18 +5,18 @@ using Microsoft.EntityFrameworkCore;
 using Trellis;
 
 /// <summary>
-/// Tests for <see cref="LastModifiedInterceptor"/>.
+/// Tests for <see cref="EntityTimestampInterceptor"/>.
 /// </summary>
-public class LastModifiedInterceptorTests : IDisposable
+public class EntityTimestampInterceptorTests : IDisposable
 {
-    private readonly LastModifiedTestDbContext _context;
+    private readonly TimestampTestDbContext _context;
     private readonly SqliteConnection _connection;
     private readonly FakeTimeProvider _timeProvider;
 
-    public LastModifiedInterceptorTests()
+    public EntityTimestampInterceptorTests()
     {
         _timeProvider = new FakeTimeProvider(new DateTimeOffset(2025, 1, 15, 12, 0, 0, TimeSpan.Zero));
-        (_context, _connection) = LastModifiedTestDbContext.CreateInMemory(_timeProvider);
+        (_context, _connection) = TimestampTestDbContext.CreateInMemory(_timeProvider);
     }
 
     public void Dispose()
@@ -27,45 +27,49 @@ public class LastModifiedInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task NewEntity_GetsLastModifiedSet()
+    public async Task NewEntity_GetsCreatedAtAndLastModifiedSet()
     {
         var ct = TestContext.Current.CancellationToken;
-        var entity = new TrackableEntity { Id = "e-1", Name = "Test" };
+        var entity = new TimestampTestEntity { Id = "e-1", Name = "Test" };
+        entity.CreatedAt.Should().Be(default(DateTimeOffset));
         entity.LastModified.Should().Be(default(DateTimeOffset));
 
-        _context.TrackableEntities.Add(entity);
+        _context.TimestampEntities.Add(entity);
         await _context.SaveChangesAsync(ct);
 
+        entity.CreatedAt.Should().Be(_timeProvider.GetUtcNow());
         entity.LastModified.Should().Be(_timeProvider.GetUtcNow());
     }
 
     [Fact]
-    public async Task ModifiedEntity_GetsLastModifiedUpdated()
+    public async Task ModifiedEntity_OnlyLastModifiedUpdated_CreatedAtPreserved()
     {
         var ct = TestContext.Current.CancellationToken;
-        var entity = new TrackableEntity { Id = "e-2", Name = "Original" };
-        _context.TrackableEntities.Add(entity);
+        var entity = new TimestampTestEntity { Id = "e-2", Name = "Original" };
+        _context.TimestampEntities.Add(entity);
         await _context.SaveChangesAsync(ct);
-        var firstTimestamp = entity.LastModified;
+        var originalCreatedAt = entity.CreatedAt;
+        var firstLastModified = entity.LastModified;
 
         _timeProvider.SetUtcNow(new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero));
         entity.Name = "Updated";
         await _context.SaveChangesAsync(ct);
 
+        entity.CreatedAt.Should().Be(originalCreatedAt, "CreatedAt must not change on modification");
         entity.LastModified.Should().Be(_timeProvider.GetUtcNow());
-        entity.LastModified.Should().NotBe(firstTimestamp);
+        entity.LastModified.Should().NotBe(firstLastModified);
     }
 
     [Fact]
-    public async Task NonTrackableEntity_NotAffected()
+    public async Task NonEntity_NotAffected()
     {
         var ct = TestContext.Current.CancellationToken;
-        var entity = new NonTrackableEntity { Id = "n-1", Name = "Test" };
+        var entity = new NonEntityPoco { Id = "n-1", Name = "Test" };
 
-        _context.NonTrackableEntities.Add(entity);
+        _context.NonEntityPocos.Add(entity);
         await _context.SaveChangesAsync(ct);
 
-        var loaded = await _context.NonTrackableEntities.FindAsync([entity.Id], ct);
+        var loaded = await _context.NonEntityPocos.FindAsync([entity.Id], ct);
         loaded.Should().NotBeNull();
         loaded!.Name.Should().Be("Test");
     }
@@ -75,25 +79,38 @@ public class LastModifiedInterceptorTests : IDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var expected = new DateTimeOffset(2025, 1, 15, 12, 0, 0, TimeSpan.Zero);
-        var entity = new TrackableEntity { Id = "e-3", Name = "Deterministic" };
+        var entity = new TimestampTestEntity { Id = "e-3", Name = "Deterministic" };
 
-        _context.TrackableEntities.Add(entity);
+        _context.TimestampEntities.Add(entity);
         await _context.SaveChangesAsync(ct);
 
+        entity.CreatedAt.Should().Be(expected, "interceptor should use the injected TimeProvider");
         entity.LastModified.Should().Be(expected, "interceptor should use the injected TimeProvider");
+    }
+
+    [Fact]
+    public async Task CreatedAtAndLastModified_AreEqual_OnFirstSave()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var entity = new TimestampTestEntity { Id = "e-4", Name = "New" };
+
+        _context.TimestampEntities.Add(entity);
+        await _context.SaveChangesAsync(ct);
+
+        entity.CreatedAt.Should().Be(entity.LastModified);
     }
 }
 
 #region Test entities
 
-internal class TrackableEntity : ITrackLastModified
+internal class TimestampTestEntity : Entity<string>, IEntity
 {
-    public string Id { get; set; } = null!;
     public string Name { get; set; } = null!;
-    public DateTimeOffset LastModified { get; set; }
+
+    public TimestampTestEntity() : base(string.Empty) { }
 }
 
-internal class NonTrackableEntity
+internal class NonEntityPoco
 {
     public string Id { get; set; } = null!;
     public string Name { get; set; } = null!;
@@ -103,45 +120,46 @@ internal class NonTrackableEntity
 
 #region Test DbContext
 
-internal class LastModifiedTestDbContext : DbContext
+internal class TimestampTestDbContext : DbContext
 {
-    public DbSet<TrackableEntity> TrackableEntities => Set<TrackableEntity>();
-    public DbSet<NonTrackableEntity> NonTrackableEntities => Set<NonTrackableEntity>();
+    public DbSet<TimestampTestEntity> TimestampEntities => Set<TimestampTestEntity>();
+    public DbSet<NonEntityPoco> NonEntityPocos => Set<NonEntityPoco>();
 
-    public LastModifiedTestDbContext(DbContextOptions<LastModifiedTestDbContext> options) : base(options)
+    public TimestampTestDbContext(DbContextOptions<TimestampTestDbContext> options) : base(options)
     {
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<TrackableEntity>(b =>
+        modelBuilder.Entity<TimestampTestEntity>(b =>
         {
             b.HasKey(e => e.Id);
             b.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            b.Property(e => e.CreatedAt).IsRequired();
             b.Property(e => e.LastModified).IsRequired();
         });
 
-        modelBuilder.Entity<NonTrackableEntity>(b =>
+        modelBuilder.Entity<NonEntityPoco>(b =>
         {
             b.HasKey(e => e.Id);
             b.Property(e => e.Name).HasMaxLength(100).IsRequired();
         });
     }
 
-    public static (LastModifiedTestDbContext Context, SqliteConnection Connection) CreateInMemory(
+    public static (TimestampTestDbContext Context, SqliteConnection Connection) CreateInMemory(
         TimeProvider timeProvider)
     {
         var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
 
-        var interceptor = new LastModifiedInterceptor(timeProvider);
+        var interceptor = new EntityTimestampInterceptor(timeProvider);
 
-        var options = new DbContextOptionsBuilder<LastModifiedTestDbContext>()
+        var options = new DbContextOptionsBuilder<TimestampTestDbContext>()
             .UseSqlite(connection)
             .AddInterceptors(interceptor)
             .Options;
 
-        var context = new LastModifiedTestDbContext(options);
+        var context = new TimestampTestDbContext(options);
         context.Database.EnsureCreated();
 
         return (context, connection);

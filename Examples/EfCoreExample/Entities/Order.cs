@@ -21,7 +21,6 @@ public class Order : Aggregate<OrderId>
     public OrderState State { get; private set; } = null!;
 
     public decimal Total => _lines.Sum(l => l.LineTotal);
-    public DateTime CreatedAt { get; private set; }
     public DateTime? ConfirmedAt { get; private set; }
     public DateTime? ShippedAt { get; private set; }
     public DateTime? DeliveredAt { get; private set; }
@@ -34,7 +33,6 @@ public class Order : Aggregate<OrderId>
     {
         CustomerId = customerId;
         State = OrderState.Draft;
-        CreatedAt = DateTime.UtcNow;
     }
 
     /// <summary>

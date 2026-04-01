@@ -45,7 +45,6 @@
 ///     private Order(OrderId id, CustomerId customerId) : base(id)
 ///     {
 ///         CustomerId = customerId;
-///         CreatedAt = DateTime.UtcNow;
 ///         DomainEvents.Add(new OrderCreated(id, customerId, DateTime.UtcNow));
 ///     }
 ///     

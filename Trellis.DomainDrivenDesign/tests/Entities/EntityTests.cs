@@ -279,6 +279,99 @@ public class EntityTests
     }
 
     #endregion
+
+    #region IEntity Interface Tests
+
+    [Fact]
+    public void Entity_ImplementsIEntity()
+    {
+        // Arrange
+        var entity = TestEntity.Create("123");
+
+        // Act & Assert
+        entity.Should().BeAssignableTo<IEntity>();
+    }
+
+    [Fact]
+    public void Entity_CreatedAt_DefaultsToDefault()
+    {
+        // Arrange & Act
+        var entity = TestEntity.Create("123");
+
+        // Assert
+        entity.CreatedAt.Should().Be(default(DateTimeOffset));
+    }
+
+    [Fact]
+    public void Entity_LastModified_DefaultsToDefault()
+    {
+        // Arrange & Act
+        var entity = TestEntity.Create("123");
+
+        // Assert
+        entity.LastModified.Should().Be(default(DateTimeOffset));
+    }
+
+    [Fact]
+    public void Entity_CreatedAt_CanBeSet()
+    {
+        // Arrange
+        var entity = TestEntity.Create("123");
+        var timestamp = new DateTimeOffset(2025, 6, 15, 10, 30, 0, TimeSpan.Zero);
+
+        // Act
+        entity.CreatedAt = timestamp;
+
+        // Assert
+        entity.CreatedAt.Should().Be(timestamp);
+    }
+
+    [Fact]
+    public void Entity_LastModified_CanBeSet()
+    {
+        // Arrange
+        var entity = TestEntity.Create("123");
+        var timestamp = new DateTimeOffset(2025, 6, 15, 10, 30, 0, TimeSpan.Zero);
+
+        // Act
+        entity.LastModified = timestamp;
+
+        // Assert
+        entity.LastModified.Should().Be(timestamp);
+    }
+
+    [Fact]
+    public void Entity_Timestamps_AccessibleViaIEntity()
+    {
+        // Arrange
+        var entity = TestEntity.Create("123");
+        var created = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var modified = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero);
+        entity.CreatedAt = created;
+        entity.LastModified = modified;
+
+        // Assert — accessible through IEntity cast
+        ((IEntity)entity).CreatedAt.Should().Be(created);
+        ((IEntity)entity).LastModified.Should().Be(modified);
+    }
+
+    [Fact]
+    public void Entity_Timestamps_SettableViaIEntity()
+    {
+        // Arrange
+        var entity = TestEntity.Create("123");
+        var timestamp = new DateTimeOffset(2025, 3, 15, 8, 0, 0, TimeSpan.Zero);
+
+        // Act — simulates what the EF Core interceptor does
+        ((IEntity)entity).CreatedAt = timestamp;
+        ((IEntity)entity).LastModified = timestamp;
+
+        // Assert
+        entity.CreatedAt.Should().Be(timestamp);
+        entity.LastModified.Should().Be(timestamp);
+    }
+
+    #endregion
 }
 
 #region Test Entities
