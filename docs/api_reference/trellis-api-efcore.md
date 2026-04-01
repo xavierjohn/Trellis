@@ -69,7 +69,7 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
 
 - Always uses `_timeProvider.GetUtcNow()` for timestamps; when no `TimeProvider` is supplied, `_timeProvider` defaults to `TimeProvider.System`
 - Pass a custom `TimeProvider` via `AddTrellisInterceptors(timeProvider)` to override `TimeProvider.System` for deterministic testing
-- Sets `CreatedAt` on `EntityState.Added` entries
+- Sets `CreatedAt` on `EntityState.Added` entries only when `CreatedAt` is still its default value, preserving any pre-set timestamps
 - Sets `LastModified` on both `EntityState.Added` and `EntityState.Modified` entries
 
 ### Money Property Convention
