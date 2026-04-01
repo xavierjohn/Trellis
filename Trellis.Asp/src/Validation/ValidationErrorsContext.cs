@@ -146,6 +146,14 @@ public static class ValidationErrorsContext
             }
         }
 
+        public bool HasErrorForField(string fieldName)
+        {
+            lock (_lock)
+            {
+                return _fieldErrors.ContainsKey(fieldName);
+            }
+        }
+
         public void AddError(string fieldName, string errorMessage)
         {
             lock (_lock)
