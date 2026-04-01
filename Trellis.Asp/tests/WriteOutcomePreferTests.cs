@@ -35,6 +35,7 @@ public class WriteOutcomePreferTests
 
         actionResult.Should().BeOfType<NoContentResult>();
         controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=minimal");
+        controller.Response.Headers.Vary.ToString().Should().Contain("Prefer");
     }
 
     [Fact]
@@ -64,6 +65,7 @@ public class WriteOutcomePreferTests
         actionResult.Should().BeOfType<OkObjectResult>();
         actionResult.As<OkObjectResult>().Value.Should().Be("updated");
         controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=representation");
+        controller.Response.Headers.Vary.ToString().Should().Contain("Prefer");
     }
 
     #endregion

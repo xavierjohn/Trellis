@@ -72,9 +72,10 @@ public class PreferHeaderTests
     }
 
     [Fact]
-    public void Parse_ReturnRepresentation_CaseInsensitive()
+    public void Parse_ReturnRepresentation_CaseInsensitiveTokenName_CaseSensitiveValue()
     {
-        var request = CreateRequest("Return=Representation");
+        // RFC 7240 §2: token names are case-insensitive, values are case-sensitive
+        var request = CreateRequest("Return=representation");
 
         var prefer = PreferHeader.Parse(request);
 
@@ -82,13 +83,35 @@ public class PreferHeaderTests
     }
 
     [Fact]
-    public void Parse_ReturnMinimal_CaseInsensitive()
+    public void Parse_ReturnMinimal_CaseInsensitiveTokenName_CaseSensitiveValue()
     {
-        var request = CreateRequest("RETURN=MINIMAL");
+        var request = CreateRequest("RETURN=minimal");
 
         var prefer = PreferHeader.Parse(request);
 
         prefer.ReturnMinimal.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Parse_ReturnRepresentation_WrongCase_Value_Ignored()
+    {
+        // RFC 7240 §2: values are case-sensitive — "Representation" != "representation"
+        var request = CreateRequest("return=Representation");
+
+        var prefer = PreferHeader.Parse(request);
+
+        prefer.ReturnRepresentation.Should().BeFalse();
+        prefer.ReturnMinimal.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Parse_ReturnMinimal_WrongCase_Value_Ignored()
+    {
+        var request = CreateRequest("return=MINIMAL");
+
+        var prefer = PreferHeader.Parse(request);
+
+        prefer.ReturnMinimal.Should().BeFalse();
     }
 
     #endregion

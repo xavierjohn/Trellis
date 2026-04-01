@@ -94,12 +94,16 @@ public static class WriteOutcomeExtensions
         {
             if (replaced.Metadata is not null)
                 ActionResultExtensions.ApplyMetadataHeaders(controller.Response, replaced.Metadata);
+            controller.Response.Headers.Append("Vary", "Prefer");
             controller.Response.Headers["Preference-Applied"] = "return=minimal";
             return controller.NoContent();
         }
 
         if (outcome is WriteOutcome<T>.Updated && prefer.ReturnRepresentation)
+        {
+            controller.Response.Headers.Append("Vary", "Prefer");
             controller.Response.Headers["Preference-Applied"] = "return=representation";
+        }
 
         return outcome.ToActionResult(controller, map);
     }

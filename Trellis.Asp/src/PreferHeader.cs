@@ -125,12 +125,12 @@ public sealed class PreferHeader
             }
             else if (name.Equals("return", StringComparison.OrdinalIgnoreCase))
             {
-                // RFC 7240 §2: first occurrence wins
+                // RFC 7240 §2: values are case-sensitive
                 if (!returnSeen)
                 {
-                    if (value.Equals("representation", StringComparison.OrdinalIgnoreCase))
+                    if (value.SequenceEqual("representation"))
                         returnRepresentation = true;
-                    else if (value.Equals("minimal", StringComparison.OrdinalIgnoreCase))
+                    else if (value.SequenceEqual("minimal"))
                         returnMinimal = true;
                     returnSeen = true;
                 }
@@ -147,12 +147,12 @@ public sealed class PreferHeader
             }
             else if (name.Equals("handling", StringComparison.OrdinalIgnoreCase))
             {
-                // RFC 7240 §2: first occurrence wins
+                // RFC 7240 §2: values are case-sensitive
                 if (!handlingSeen)
                 {
-                    if (value.Equals("strict", StringComparison.OrdinalIgnoreCase))
+                    if (value.SequenceEqual("strict"))
                         handlingStrict = true;
-                    else if (value.Equals("lenient", StringComparison.OrdinalIgnoreCase))
+                    else if (value.SequenceEqual("lenient"))
                         handlingLenient = true;
                     handlingSeen = true;
                 }
