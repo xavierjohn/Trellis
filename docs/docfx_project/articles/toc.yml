@@ -64,6 +64,10 @@
     href: integration-fluentvalidation.md
   - name: Entity Framework Core
     href: integration-ef.md
+  - name: Mediator Pipeline
+    href: integration-mediator.md
+  - name: Testing
+    href: integration-testing.md
   - name: Observability & Monitoring
     href: integration-observability.md
 - name: Architecture
