@@ -225,13 +225,47 @@ Discriminated union for write operation results. Each variant maps to the correc
 ### WriteOutcomeExtensions
 
 ```csharp
+// Standard mapping (server decides response shape)
 public static ActionResult ToActionResult<T, TOut>(
     this WriteOutcome<T> outcome,
     ControllerBase controller,
     Func<T, TOut>? map = null)
+
+// RFC 7240 Prefer-aware mapping (client can request return=minimal or return=representation)
+public static ActionResult ToActionResult<T, TOut>(
+    this WriteOutcome<T> outcome,
+    ControllerBase controller,
+    HttpRequest request,
+    Func<T, TOut>? map = null)
 ```
 
 Maps each variant to the correct HTTP response: `Created` → 201 + `Location`, `Updated` → 200, `UpdatedNoContent` → 204, `Accepted`/`AcceptedNoContent` → 202 + optional `Location` and `Retry-After` headers. Applies `RepresentationMetadata` headers when present.
+
+The `HttpRequest` overload parses the RFC 7240 `Prefer` header and adjusts the `Updated` response:
+- `Prefer: return=minimal` → `Updated` returns 204 No Content (instead of 200 + body)
+- `Prefer: return=representation` → `Updated` returns 200 OK + body (default behavior, explicitly acknowledged)
+- Emits `Preference-Applied` response header when a `return` preference is honored
+- `Created`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent` are not affected by the `return` preference
+
+### PreferHeader
+
+```csharp
+public static PreferHeader Parse(HttpRequest request)
+```
+
+Parses the RFC 7240 `Prefer` request header. Exposes standard preference tokens as boolean/nullable properties:
+
+| Property | Preference Token | Description |
+|----------|-----------------|-------------|
+| `ReturnRepresentation` | `return=representation` | Client prefers full resource body |
+| `ReturnMinimal` | `return=minimal` | Client prefers minimal response (204) |
+| `RespondAsync` | `respond-async` | Client prefers asynchronous processing |
+| `Wait` | `wait=N` | Max seconds before preferring async |
+| `HandlingStrict` | `handling=strict` | Reject requests with any issues |
+| `HandlingLenient` | `handling=lenient` | Process requests despite minor issues |
+| `HasPreferences` | — | Whether any preference was specified |
+
+Per RFC 7240 §2: unrecognized preferences are silently ignored; duplicate preferences use first-wins semantics.
 
 ---
 

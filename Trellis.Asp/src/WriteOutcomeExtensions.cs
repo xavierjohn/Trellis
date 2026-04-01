@@ -55,4 +55,52 @@ public static class WriteOutcomeExtensions
                 throw new InvalidOperationException($"Unknown WriteOutcome type: {outcome.GetType().Name}");
         }
     }
+
+    /// <summary>
+    /// Converts a <see cref="WriteOutcome{T}"/> to an <see cref="ActionResult"/> with correct HTTP status codes and headers,
+    /// honoring the RFC 7240 <c>Prefer</c> request header.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When the <c>Prefer: return=minimal</c> header is present and the outcome is <see cref="WriteOutcome{T}.Updated"/>,
+    /// returns 204 No Content instead of 200 OK with body. When <c>Prefer: return=representation</c> is present,
+    /// returns 200 OK with body (the default behavior for Updated).
+    /// </para>
+    /// <para>
+    /// The <c>Preference-Applied</c> response header is emitted when a <c>return</c> preference is honored.
+    /// </para>
+    /// <para>
+    /// Other outcomes (<see cref="WriteOutcome{T}.Created"/>, <see cref="WriteOutcome{T}.UpdatedNoContent"/>,
+    /// <see cref="WriteOutcome{T}.Accepted"/>, <see cref="WriteOutcome{T}.AcceptedNoContent"/>) are not
+    /// affected by the <c>return</c> preference.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="T">The domain type contained in the outcome.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="outcome">The write outcome to convert.</param>
+    /// <param name="controller">The controller context used to create the ActionResult.</param>
+    /// <param name="request">The HTTP request to read the <c>Prefer</c> header from.</param>
+    /// <param name="map">Optional function to transform the domain value to a response DTO.</param>
+    /// <returns>An <see cref="ActionResult"/> with appropriate status code, headers, and optional body.</returns>
+    public static ActionResult ToActionResult<T, TOut>(
+        this WriteOutcome<T> outcome,
+        ControllerBase controller,
+        HttpRequest request,
+        Func<T, TOut>? map = null)
+    {
+        var prefer = PreferHeader.Parse(request);
+
+        if (outcome is WriteOutcome<T>.Updated replaced && prefer.ReturnMinimal)
+        {
+            if (replaced.Metadata is not null)
+                ActionResultExtensions.ApplyMetadataHeaders(controller.Response, replaced.Metadata);
+            controller.Response.Headers["Preference-Applied"] = "return=minimal";
+            return controller.NoContent();
+        }
+
+        if (outcome is WriteOutcome<T>.Updated && prefer.ReturnRepresentation)
+            controller.Response.Headers["Preference-Applied"] = "return=representation";
+
+        return outcome.ToActionResult(controller, map);
+    }
 }

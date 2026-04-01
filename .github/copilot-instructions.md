@@ -594,6 +594,39 @@ return await _repo.GetByIdAsync(command.OrderId, ct)
 
 Both are pure string comparisons with zero HTTP dependency — they live in `Trellis.DomainDrivenDesign`.
 
+## RFC 7240 — Prefer Header
+
+`PreferHeader` parses the RFC 7240 `Prefer` request header. `WriteOutcomeExtensions` has a Prefer-aware overload that adjusts responses based on client preference.
+
+### Supported Preferences
+
+| Token | Property | Effect on WriteOutcome |
+|-------|----------|----------------------|
+| `return=representation` | `ReturnRepresentation` | `Updated` → 200 OK + body (default) |
+| `return=minimal` | `ReturnMinimal` | `Updated` → 204 No Content |
+| `respond-async` | `RespondAsync` | Available for custom logic |
+| `wait=N` | `Wait` | Available for custom logic |
+| `handling=strict` | `HandlingStrict` | Available for custom logic |
+| `handling=lenient` | `HandlingLenient` | Available for custom logic |
+
+### Usage in Controllers
+
+```csharp
+// Pass Request to enable Prefer header support
+var actionResult = outcome.ToActionResult(this, Request, OrderResponse.From);
+// Prefer: return=minimal → Updated returns 204 + Preference-Applied header
+// Prefer: return=representation → Updated returns 200 + body + Preference-Applied header
+// No Prefer header → Updated returns 200 + body (default behavior)
+```
+
+### Design Rules
+
+- `Created` always returns 201 + Location (RFC 9110 §9.3.3 requires Location for resource creation)
+- `UpdatedNoContent` always returns 204 (server explicitly chose no body)
+- `Accepted`/`AcceptedNoContent` are not affected by `return` preference
+- `Preference-Applied` header is only emitted when a `return` preference is honored
+- Unrecognized preferences are silently ignored per RFC 7240 §2
+
 ### Child Entity Changes
 
 When a domain method only modifies child entities within the aggregate (without modifying any property on the aggregate root), the `AggregateETagInterceptor` automatically detects this. It scans Unchanged aggregate roots for loaded navigations with Modified, Added, or Deleted child entries and promotes the root's ETag before save.

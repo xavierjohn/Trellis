@@ -372,6 +372,29 @@ userApi.MapGet("/{id}", async (
 | UnexpectedError | 500 Internal Server Error | Unexpected error |
 | ServiceUnavailableError | 503 Service Unavailable | Service unavailable |
 
+### RFC 7240 — Prefer Header
+
+The `WriteOutcomeExtensions` support the RFC 7240 `Prefer` request header, allowing clients to influence response behavior on write operations:
+
+```csharp
+// In a controller — pass the request to enable Prefer header support
+var actionResult = outcome.ToActionResult(this, Request, dto => new ItemDto(dto));
+```
+
+When a client sends `Prefer: return=minimal`, an `Updated` outcome returns 204 No Content instead of 200 OK with body. The `Preference-Applied` response header confirms which preference was honored.
+
+```
+PUT /api/items/1 HTTP/1.1
+Prefer: return=minimal
+If-Match: "abc123"
+
+HTTP/1.1 204 No Content
+ETag: "def456"
+Preference-Applied: return=minimal
+```
+
+Use `PreferHeader.Parse(request)` to read preferences directly for custom logic.
+
 ## Advanced Topics
 
 ### Property-Aware Error Messages

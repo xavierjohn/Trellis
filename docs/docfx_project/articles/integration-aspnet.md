@@ -601,6 +601,59 @@ public async ValueTask<ActionResult<OrderResponse>> Create(
     // Returns 201 Created + Location header + ETag header
 ```
 
+### RFC 7240 — Prefer Header
+
+Trellis supports the RFC 7240 `Prefer` request header on write operations via `WriteOutcomeExtensions`. When the Prefer-aware overload is used, clients can influence response behavior:
+
+```csharp
+// Controller endpoint using WriteOutcome with Prefer support
+[HttpPut("{id}")]
+public async ValueTask<ActionResult> Update(
+    OrderId id, [FromBody] UpdateOrderRequest request, CancellationToken ct)
+{
+    var ifMatchETags = ETagHelper.ParseIfMatch(Request);
+    return await UpdateOrderCommand.TryCreate(id, request.Amount, ifMatchETags)
+        .BindAsync(command => _sender.Send(command, ct))
+        .MapAsync(order => (WriteOutcome<Order>)new WriteOutcome<Order>.Updated(order,
+            RepresentationMetadata.WithStrongETag(order.ETag)))
+        .MatchAsync(
+            outcome => outcome.ToActionResult(this, Request, OrderResponse.From),
+            error => error.ToActionResult<OrderResponse>(this));
+}
+```
+
+**Client sends `Prefer: return=minimal`** → `Updated` returns 204 No Content:
+```http
+PUT /api/orders/123 HTTP/1.1
+If-Match: "abc123"
+Prefer: return=minimal
+
+HTTP/1.1 204 No Content
+ETag: "def456"
+Preference-Applied: return=minimal
+```
+
+**Client sends `Prefer: return=representation`** (or no Prefer header) → `Updated` returns 200 OK with body:
+```http
+PUT /api/orders/123 HTTP/1.1
+If-Match: "abc123"
+Prefer: return=representation
+
+HTTP/1.1 200 OK
+ETag: "def456"
+Preference-Applied: return=representation
+Content-Type: application/json
+
+{ "id": "123", "amount": 99.99 }
+```
+
+Use `PreferHeader.Parse(request)` directly for custom logic:
+```csharp
+var prefer = PreferHeader.Parse(Request);
+if (prefer.RespondAsync)
+    // Return 202 Accepted with status monitor URI
+```
+
 ### Example: Validation Error Response
 
 **Request:**

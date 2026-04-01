@@ -15,8 +15,9 @@ using Trellis;
 /// <see cref="IEntity.LastModified"/> is set on every save (<c>EntityState.Added</c> or <c>EntityState.Modified</c>).
 /// </para>
 /// <para>
-/// For aggregate roots, <see cref="IEntity.LastModified"/> is also updated when child entities
-/// are added, modified, or deleted — mirroring the promotion logic of <see cref="AggregateETagInterceptor"/>.
+/// For aggregate roots, <see cref="IEntity.LastModified"/> is also updated when changes are
+/// detected in loaded child entities (tracked navigation properties) that are added, modified,
+/// or deleted — mirroring the promotion logic of <see cref="AggregateETagInterceptor"/>.
 /// </para>
 /// <para>
 /// Registered automatically by
