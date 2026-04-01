@@ -270,4 +270,55 @@ public class EntityTagValueTests
     }
 
     #endregion
+
+    #region Wildcard
+
+    [Fact]
+    public void Wildcard_creates_wildcard_entity_tag()
+    {
+        var tag = EntityTagValue.Wildcard();
+
+        tag.OpaqueTag.Should().Be("*");
+        tag.IsWeak.Should().BeFalse();
+        tag.IsWildcard.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Wildcard_ToHeaderValue_returns_unquoted_asterisk()
+    {
+        var tag = EntityTagValue.Wildcard();
+
+        tag.ToHeaderValue().Should().Be("*");
+    }
+
+    [Fact]
+    public void Wildcard_is_distinct_from_Strong_star()
+    {
+        var wildcard = EntityTagValue.Wildcard();
+        var literal = EntityTagValue.Strong("*");
+
+        wildcard.Should().NotBe(literal);
+        wildcard.IsWildcard.Should().BeTrue();
+        literal.IsWildcard.Should().BeFalse();
+        literal.ToHeaderValue().Should().Be("\"*\"");
+    }
+
+    [Fact]
+    public void Strong_star_is_not_wildcard()
+    {
+        var tag = EntityTagValue.Strong("*");
+
+        tag.OpaqueTag.Should().Be("*");
+        tag.IsWeak.Should().BeFalse();
+        tag.IsWildcard.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Strong_and_Weak_are_not_wildcard()
+    {
+        EntityTagValue.Strong("abc").IsWildcard.Should().BeFalse();
+        EntityTagValue.Weak("abc").IsWildcard.Should().BeFalse();
+    }
+
+    #endregion
 }

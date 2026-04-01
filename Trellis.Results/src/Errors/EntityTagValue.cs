@@ -41,12 +41,20 @@ public sealed record EntityTagValue
     /// <value><c>true</c> if weak; <c>false</c> if strong.</value>
     public bool IsWeak { get; }
 
-    private EntityTagValue(string opaqueTag, bool isWeak)
+    /// <summary>
+    /// Gets whether this instance represents the RFC 9110 wildcard <c>*</c> token
+    /// (as opposed to a literal ETag with opaque-tag <c>*</c>).
+    /// </summary>
+    public bool IsWildcard { get; }
+
+    private EntityTagValue(string opaqueTag, bool isWeak, bool isWildcard = false)
     {
         ArgumentNullException.ThrowIfNull(opaqueTag);
-        ValidateOpaqueTag(opaqueTag);
+        if (!isWildcard)
+            ValidateOpaqueTag(opaqueTag);
         OpaqueTag = opaqueTag;
         IsWeak = isWeak;
+        IsWildcard = isWildcard;
     }
 
     private static bool HasInvalidOpaqueTagChars(string opaqueTag)
@@ -81,6 +89,13 @@ public sealed record EntityTagValue
     /// <param name="opaqueTag">The opaque tag string.</param>
     /// <returns>A new weak <see cref="EntityTagValue"/>.</returns>
     public static EntityTagValue Weak(string opaqueTag) => new(opaqueTag, true);
+
+    /// <summary>
+    /// Creates the RFC 9110 wildcard entity tag (<c>*</c>), which matches any current entity.
+    /// This is semantically distinct from <c>Strong("*")</c>, which is a literal ETag with opaque-tag <c>*</c>.
+    /// </summary>
+    /// <returns>A wildcard <see cref="EntityTagValue"/>.</returns>
+    public static EntityTagValue Wildcard() => new("*", false, isWildcard: true);
 
     /// <summary>
     /// Parses an entity tag from its HTTP header representation.
@@ -142,11 +157,11 @@ public sealed record EntityTagValue
 
     /// <summary>
     /// Formats this entity tag for use in an HTTP header.
-    /// Returns <c>"tag"</c> for strong tags or <c>W/"tag"</c> for weak tags.
+    /// Returns <c>*</c> for the wildcard, <c>"tag"</c> for strong tags, or <c>W/"tag"</c> for weak tags.
     /// </summary>
     /// <returns>The formatted HTTP header value.</returns>
     public string ToHeaderValue() =>
-        IsWeak ? $"W/\"{OpaqueTag}\"" : $"\"{OpaqueTag}\"";
+        IsWildcard ? "*" : IsWeak ? $"W/\"{OpaqueTag}\"" : $"\"{OpaqueTag}\"";
 
     /// <inheritdoc />
     public override string ToString() => ToHeaderValue();

@@ -38,7 +38,7 @@ public class ETagHelperTests
 
         var result = ETagHelper.ParseIfMatch(context.Request);
         result.Should().ContainSingle()
-            .Which.Should().Be(EntityTagValue.Strong("*"));
+            .Which.IsWildcard.Should().BeTrue();
     }
 
     [Fact]

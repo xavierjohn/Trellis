@@ -198,7 +198,7 @@ public class AggregateTests
         aggregate.SetTestETag("anything");
         var result = Result.Success(aggregate);
 
-        result.OptionalETag([EntityTagValue.Strong("*")]).IsSuccess.Should().BeTrue();
+        result.OptionalETag([EntityTagValue.Wildcard()]).IsSuccess.Should().BeTrue();
     }
 
     [Fact]

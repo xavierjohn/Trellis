@@ -135,7 +135,7 @@ public static class ETagHelper
         foreach (var tag in ifMatch)
         {
             if (tag == EntityTagHeaderValue.Any)
-                return [EntityTagValue.Strong("*")];
+                return [EntityTagValue.Wildcard()];
 
             // RFC 9110 §13.1.1: If-Match uses strong comparison — skip weak tags
             if (!tag.IsWeak)

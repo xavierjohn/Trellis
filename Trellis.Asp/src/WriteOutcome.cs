@@ -18,6 +18,9 @@ public abstract record WriteOutcome<T>
     /// <summary>Resource was replaced/updated with no body — maps to 204 No Content.</summary>
     public sealed record UpdatedNoContent(RepresentationMetadata? Metadata = null) : WriteOutcome<T>;
 
-    /// <summary>Request accepted for async processing — maps to 202 Accepted.</summary>
-    public sealed record Accepted(T? StatusBody = default, string? MonitorUri = null, RetryAfterValue? RetryAfter = null) : WriteOutcome<T>;
+    /// <summary>Request accepted for async processing — maps to 202 Accepted with a status body.</summary>
+    public sealed record Accepted(T StatusBody, string? MonitorUri = null, RetryAfterValue? RetryAfter = null) : WriteOutcome<T>;
+
+    /// <summary>Request accepted for async processing — maps to 202 Accepted with no body.</summary>
+    public sealed record AcceptedNoContent(string? MonitorUri = null, RetryAfterValue? RetryAfter = null) : WriteOutcome<T>;
 }

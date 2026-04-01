@@ -123,7 +123,7 @@ public class WriteOutcomeTests
     public void Accepted_WithStatusMonitor_Returns202_WithLocation()
     {
         var controller = CreateControllerWithHttpContext();
-        WriteOutcome<string> outcome = new WriteOutcome<string>.Accepted(MonitorUri: "/api/status/123");
+        WriteOutcome<string> outcome = new WriteOutcome<string>.AcceptedNoContent(MonitorUri: "/api/status/123");
 
         var actionResult = outcome.ToActionResult<string, string>(controller);
 
@@ -136,7 +136,7 @@ public class WriteOutcomeTests
     public void Accepted_WithRetryAfter_Returns202_WithRetryAfterHeader()
     {
         var controller = CreateControllerWithHttpContext();
-        WriteOutcome<string> outcome = new WriteOutcome<string>.Accepted(RetryAfter: RetryAfterValue.FromSeconds(60));
+        WriteOutcome<string> outcome = new WriteOutcome<string>.AcceptedNoContent(RetryAfter: RetryAfterValue.FromSeconds(60));
 
         var actionResult = outcome.ToActionResult<string, string>(controller);
 

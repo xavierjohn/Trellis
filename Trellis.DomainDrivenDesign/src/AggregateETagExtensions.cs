@@ -66,7 +66,7 @@ public static class AggregateETagExtensions
             return Result.Failure<T>(Error.PreconditionFailed("If-Match header contains only weak ETags. Strong comparison is required."));
 
         // Wildcard check
-        if (expectedETags.Length == 1 && expectedETags[0].OpaqueTag == "*" && !expectedETags[0].IsWeak)
+        if (expectedETags.Any(tag => tag.IsWildcard))
             return result;
 
         // Strong comparison: both must be strong and opaque-tags match

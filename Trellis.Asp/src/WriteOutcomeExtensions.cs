@@ -41,12 +41,14 @@ public static class WriteOutcomeExtensions
                     controller.Response.Headers.Location = accepted.MonitorUri;
                 if (accepted.RetryAfter is not null)
                     controller.Response.Headers["Retry-After"] = accepted.RetryAfter.ToHeaderValue();
-                if (accepted.StatusBody is not null)
-                {
-                    var body = map is not null ? (object?)map(accepted.StatusBody) : accepted.StatusBody;
-                    return new ObjectResult(body) { StatusCode = StatusCodes.Status202Accepted };
-                }
+                var body = map is not null ? (object?)map(accepted.StatusBody) : accepted.StatusBody;
+                return new ObjectResult(body) { StatusCode = StatusCodes.Status202Accepted };
 
+            case WriteOutcome<T>.AcceptedNoContent acceptedNoContent:
+                if (acceptedNoContent.MonitorUri is not null)
+                    controller.Response.Headers.Location = acceptedNoContent.MonitorUri;
+                if (acceptedNoContent.RetryAfter is not null)
+                    controller.Response.Headers["Retry-After"] = acceptedNoContent.RetryAfter.ToHeaderValue();
                 return new StatusCodeResult(StatusCodes.Status202Accepted);
 
             default:
