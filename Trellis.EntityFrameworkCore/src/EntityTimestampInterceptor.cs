@@ -1,6 +1,8 @@
-namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.EntityFrameworkCore;
 
+using System.Collections;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Trellis;
 
@@ -10,8 +12,13 @@ using Trellis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="IEntity.CreatedAt"/> is set once when the entity is first added (<c>EntityState.Added</c>).
+/// <see cref="IEntity.CreatedAt"/> is set once when the entity is first added (<c>EntityState.Added</c>)
+/// and only if it has not already been set (preserves caller-supplied historical values for data migration).
 /// <see cref="IEntity.LastModified"/> is set on every save (<c>EntityState.Added</c> or <c>EntityState.Modified</c>).
+/// </para>
+/// <para>
+/// For aggregate roots, <see cref="IEntity.LastModified"/> is also updated when child entities
+/// are added, modified, or deleted — mirroring the promotion logic of <see cref="AggregateETagInterceptor"/>.
 /// </para>
 /// <para>
 /// Registered automatically by
@@ -50,6 +57,7 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
     private void SetTimestamps(DbContext? context)
     {
         if (context is null) return;
+
         var now = _timeProvider.GetUtcNow();
         foreach (var entry in context.ChangeTracker.Entries())
         {
@@ -58,13 +66,53 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
 
             if (entry.State == EntityState.Added)
             {
-                entity.CreatedAt = now;
+                if (entity.CreatedAt == default)
+                    entity.CreatedAt = now;
                 entity.LastModified = now;
             }
             else if (entry.State == EntityState.Modified)
             {
                 entity.LastModified = now;
             }
+            else if (entry.State == EntityState.Unchanged
+                     && entry.Entity is IAggregate
+                     && HasModifiedDependents(entry))
+            {
+                entity.LastModified = now;
+                var prop = entry.Properties
+                    .FirstOrDefault(p => p.Metadata.Name == nameof(IEntity.LastModified));
+                if (prop is not null)
+                    prop.IsModified = true;
+            }
         }
+    }
+
+    private static bool HasModifiedDependents(EntityEntry entry)
+    {
+        foreach (var navigation in entry.Navigations)
+        {
+            if (navigation is CollectionEntry collection)
+            {
+                if (collection.IsModified)
+                    return true;
+
+                if (collection.CurrentValue is IEnumerable items)
+                {
+                    foreach (var item in items)
+                    {
+                        var childEntry = entry.Context.Entry(item);
+                        if (childEntry.State is EntityState.Modified or EntityState.Added or EntityState.Deleted)
+                            return true;
+                    }
+                }
+            }
+            else if (navigation is ReferenceEntry { TargetEntry.State: EntityState.Modified
+                or EntityState.Added or EntityState.Deleted })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

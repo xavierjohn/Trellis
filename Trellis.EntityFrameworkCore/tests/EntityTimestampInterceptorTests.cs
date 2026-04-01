@@ -99,6 +99,21 @@ public class EntityTimestampInterceptorTests : IDisposable
 
         entity.CreatedAt.Should().Be(entity.LastModified);
     }
+
+    [Fact]
+    public async Task NewEntity_WithPreSetCreatedAt_PreservesHistoricalTimestamp()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var historical = new DateTimeOffset(2020, 5, 1, 0, 0, 0, TimeSpan.Zero);
+        var entity = new TimestampTestEntity { Id = "e-5", Name = "Migrated" };
+        entity.CreatedAt = historical;
+
+        _context.TimestampEntities.Add(entity);
+        await _context.SaveChangesAsync(ct);
+
+        entity.CreatedAt.Should().Be(historical, "pre-set CreatedAt must be preserved for data migration");
+        entity.LastModified.Should().Be(_timeProvider.GetUtcNow(), "LastModified should still be set to now");
+    }
 }
 
 #region Test entities
