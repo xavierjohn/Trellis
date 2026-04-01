@@ -74,20 +74,22 @@ public static class ETagHelper
     /// <summary>
     /// Parses the If-None-Match header from an HTTP request.
     /// </summary>
-    /// <returns>null if absent; ["*"] if wildcard; array of unquoted tag values (both strong and weak).</returns>
-    public static string[]? ParseIfNoneMatch(HttpRequest request)
+    /// <returns>null if absent; a wildcard <see cref="EntityTagValue"/> if wildcard; array of entity tag values (both strong and weak).</returns>
+    public static EntityTagValue[]? ParseIfNoneMatch(HttpRequest request)
     {
         if (!request.Headers.ContainsKey("If-None-Match"))
             return null;
         var ifNoneMatch = request.GetTypedHeaders().IfNoneMatch;
         if (ifNoneMatch is not { Count: > 0 })
             return [];
-        var result = new List<string>();
+        var result = new List<EntityTagValue>();
         foreach (var tag in ifNoneMatch)
         {
             if (tag == EntityTagHeaderValue.Any)
-                return ["*"];
-            result.Add(tag.Tag.ToString().Trim('"'));
+                return [EntityTagValue.Wildcard()];
+            // If-None-Match includes both strong and weak tags (weak comparison)
+            var opaqueTag = tag.Tag.ToString().Trim('"');
+            result.Add(tag.IsWeak ? EntityTagValue.Weak(opaqueTag) : EntityTagValue.Strong(opaqueTag));
         }
 
         return [.. result];

@@ -210,30 +210,33 @@ public class ETagHelperTests
     }
 
     [Fact]
-    public void ParseIfNoneMatch_StrongETag_ReturnsUnquotedValue()
+    public void ParseIfNoneMatch_StrongETag_ReturnsEntityTagValue()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers["If-None-Match"] = "\"abc123\"";
 
-        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("abc123");
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().ContainSingle()
+            .Which.Should().Be(EntityTagValue.Strong("abc123"));
     }
 
     [Fact]
-    public void ParseIfNoneMatch_WeakETag_ReturnsUnquotedValue()
+    public void ParseIfNoneMatch_WeakETag_ReturnsWeakEntityTagValue()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers["If-None-Match"] = "W/\"abc123\"";
 
-        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("abc123");
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().ContainSingle()
+            .Which.Should().Be(EntityTagValue.Weak("abc123"));
     }
 
     [Fact]
-    public void ParseIfNoneMatch_Wildcard_ReturnsAsterisk()
+    public void ParseIfNoneMatch_Wildcard_ReturnsWildcardEntityTagValue()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers["If-None-Match"] = "*";
 
-        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("*");
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().ContainSingle()
+            .Which.IsWildcard.Should().BeTrue();
     }
 
     [Fact]
@@ -242,7 +245,8 @@ public class ETagHelperTests
         var context = new DefaultHttpContext();
         context.Request.Headers["If-None-Match"] = "W/\"weak\", \"strong1\", \"strong2\"";
 
-        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal("weak", "strong1", "strong2");
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal(
+            EntityTagValue.Weak("weak"), EntityTagValue.Strong("strong1"), EntityTagValue.Strong("strong2"));
     }
 
     [Fact]

@@ -88,13 +88,17 @@ public static class ConditionalRequestEvaluator
     // If-Match uses strong comparison; wildcard matches any current entity
     private static bool EvaluateIfMatch(IList<EntityTagHeaderValue> ifMatch, RepresentationMetadata metadata)
     {
+        foreach (var tag in ifMatch)
+        {
+            if (tag == EntityTagHeaderValue.Any)
+                return true; // Wildcard matches any current entity — no ETag needed
+        }
+
         if (metadata.ETag is null || metadata.ETag.IsWeak)
             return false; // No strong ETag to compare
 
         foreach (var tag in ifMatch)
         {
-            if (tag == EntityTagHeaderValue.Any)
-                return true;
             if (tag.IsWeak)
                 continue; // Strong comparison excludes weak tags
             if (string.Equals(tag.Tag.ToString().Trim('"'), metadata.ETag.OpaqueTag, StringComparison.Ordinal))
@@ -107,13 +111,17 @@ public static class ConditionalRequestEvaluator
     // If-None-Match uses weak comparison; wildcard matches any current entity
     private static bool EvaluateIfNoneMatch(IList<EntityTagHeaderValue> ifNoneMatch, RepresentationMetadata metadata)
     {
+        foreach (var tag in ifNoneMatch)
+        {
+            if (tag == EntityTagHeaderValue.Any)
+                return true; // Wildcard matches any current entity
+        }
+
         if (metadata.ETag is null)
             return false;
 
         foreach (var tag in ifNoneMatch)
         {
-            if (tag == EntityTagHeaderValue.Any)
-                return true;
             // Weak comparison: opaque-tags match regardless of weakness
             if (string.Equals(tag.Tag.ToString().Trim('"'), metadata.ETag.OpaqueTag, StringComparison.Ordinal))
                 return true;

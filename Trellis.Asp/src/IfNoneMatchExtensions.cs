@@ -1,7 +1,5 @@
 ﻿namespace Trellis.Asp;
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.Net.Http.Headers;
 using Trellis;
 
 /// <summary>

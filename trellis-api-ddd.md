@@ -61,7 +61,7 @@ Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>>, EntityTagValue[]? exp
 ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>>, EntityTagValue[]? expectedETags)
 Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>>, EntityTagValue[]? expectedETags)
 ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>>, EntityTagValue[]? expectedETags)
-// null → no header (unconditional); ["*"] → wildcard; ["a","b"] → match any; [] → weak-only (unsatisfiable → 412)
+// null → no header (unconditional); [EntityTagValue.Wildcard()] → wildcard; [EntityTagValue.Strong("a")] → match any; [] → weak-only (unsatisfiable → 412)
 ```
 
 ## IDomainEvent (interface)

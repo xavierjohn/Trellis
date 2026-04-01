@@ -108,6 +108,20 @@ public class ConditionalRequestEvaluatorTests
         decision.Should().Be(ConditionalDecision.PreconditionFailed);
     }
 
+    [Fact]
+    public void Evaluate_IfMatch_WildcardWithNoETag_ReturnsProceed()
+    {
+        // RFC 9110 §13.1.1: "*" matches any current entity — no ETag needed
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Put;
+        context.Request.Headers.IfMatch = "*";
+        var metadata = RepresentationMetadata.Create().Build();
+
+        var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
+
+        decision.Should().Be(ConditionalDecision.PreconditionsSatisfied);
+    }
+
     #endregion
 
     #region If-Unmodified-Since (Step 2)
@@ -243,6 +257,34 @@ public class ConditionalRequestEvaluatorTests
         context.Request.Method = HttpMethods.Put;
         context.Request.Headers["If-None-Match"] = "*";
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
+
+        var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
+
+        decision.Should().Be(ConditionalDecision.PreconditionFailed);
+    }
+
+    [Fact]
+    public void Evaluate_IfNoneMatch_WildcardWithNoETag_ReturnsNotModifiedForGet()
+    {
+        // RFC 9110 §13.1.2: "*" matches any current entity — no ETag needed
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Headers["If-None-Match"] = "*";
+        var metadata = RepresentationMetadata.Create().Build();
+
+        var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
+
+        decision.Should().Be(ConditionalDecision.NotModified);
+    }
+
+    [Fact]
+    public void Evaluate_IfNoneMatch_WildcardWithNoETag_ReturnsPreconditionFailedForPut()
+    {
+        // RFC 9110 §13.1.2: "*" matches any current entity — no ETag needed
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Put;
+        context.Request.Headers["If-None-Match"] = "*";
+        var metadata = RepresentationMetadata.Create().Build();
 
         var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata);
 

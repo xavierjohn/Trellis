@@ -253,11 +253,12 @@ public class EntityTagValueTests
     }
 
     [Fact]
-    public void Strong_with_backslash_throws_ArgumentException()
+    public void Strong_with_backslash_succeeds()
     {
-        var act = () => EntityTagValue.Strong("abc\\def");
+        // RFC 9110 §8.8.1: backslash (0x5C) is in the valid range %x23-7E
+        var tag = EntityTagValue.Strong("abc\\def");
 
-        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+        tag.OpaqueTag.Should().Be("abc\\def");
     }
 
     [Fact]
@@ -265,6 +266,24 @@ public class EntityTagValueTests
     {
         var controlChar = (char)0x01;
         var act = () => EntityTagValue.Strong($"abc{controlChar}def");
+
+        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+    }
+
+    [Fact]
+    public void Strong_with_htab_throws_ArgumentException()
+    {
+        // RFC 9110 §8.8.1: HTAB (0x09) is not a valid etagc character
+        var act = () => EntityTagValue.Strong("abc\tdef");
+
+        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+    }
+
+    [Fact]
+    public void Strong_with_del_throws_ArgumentException()
+    {
+        // RFC 9110 §8.8.1: DEL (0x7F) is not a valid etagc character
+        var act = () => EntityTagValue.Strong("abc\u007Fdef");
 
         act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
     }

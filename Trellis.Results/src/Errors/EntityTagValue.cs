@@ -61,7 +61,8 @@ public sealed record EntityTagValue
     {
         foreach (var c in opaqueTag)
         {
-            if (c is '"' or '\\' or (< '\x21' and not '\t'))
+            // RFC 9110 §8.8.1: etagc = %x21 / %x23-7E / obs-text (0x80-FF)
+            if (c is < '\x21' or '"' or '\x7F')
                 return true;
         }
 
@@ -72,7 +73,8 @@ public sealed record EntityTagValue
     {
         foreach (var c in opaqueTag)
         {
-            if (c is '"' or '\\' or (< '\x21' and not '\t'))
+            // RFC 9110 §8.8.1: etagc = %x21 / %x23-7E / obs-text (0x80-FF)
+            if (c is < '\x21' or '"' or '\x7F')
                 throw new ArgumentException(
                     $"Invalid character in opaque tag: U+{(int)c:X4}. " +
                     "Opaque tags must not contain double quotes, backslashes, or control characters (RFC 9110 §8.8.3).",

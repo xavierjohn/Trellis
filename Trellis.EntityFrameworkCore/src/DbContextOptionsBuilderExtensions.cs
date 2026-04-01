@@ -54,4 +54,39 @@ public static class DbContextOptionsBuilderExtensions
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_lastModifiedInterceptor);
         return optionsBuilder;
     }
+
+    /// <summary>
+    /// Adds Trellis EF Core interceptors to the <see cref="DbContextOptionsBuilder"/> with a custom <see cref="TimeProvider"/>.
+    /// </summary>
+    /// <typeparam name="TContext">The DbContext type.</typeparam>
+    /// <param name="optionsBuilder">The options builder.</param>
+    /// <param name="timeProvider">
+    /// The time provider to use for <see cref="LastModifiedInterceptor"/> timestamps.
+    /// Defaults to <see cref="TimeProvider.System"/> if <c>null</c>.
+    /// </param>
+    /// <returns>The same builder for chaining.</returns>
+    public static DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(
+        this DbContextOptionsBuilder<TContext> optionsBuilder, TimeProvider? timeProvider)
+        where TContext : DbContext
+    {
+        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new LastModifiedInterceptor(timeProvider));
+        return optionsBuilder;
+    }
+
+    /// <summary>
+    /// Adds Trellis EF Core interceptors to the <see cref="DbContextOptionsBuilder"/> with a custom <see cref="TimeProvider"/>.
+    /// Non-generic overload for use with <c>DbContextOptionsBuilder</c> directly.
+    /// </summary>
+    /// <param name="optionsBuilder">The options builder.</param>
+    /// <param name="timeProvider">
+    /// The time provider to use for <see cref="LastModifiedInterceptor"/> timestamps.
+    /// Defaults to <see cref="TimeProvider.System"/> if <c>null</c>.
+    /// </param>
+    /// <returns>The same builder for chaining.</returns>
+    public static DbContextOptionsBuilder AddTrellisInterceptors(
+        this DbContextOptionsBuilder optionsBuilder, TimeProvider? timeProvider)
+    {
+        optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new LastModifiedInterceptor(timeProvider));
+        return optionsBuilder;
+    }
 }

@@ -153,8 +153,8 @@ public sealed class RepresentationMetadata
             new(
                 _eTag,
                 _lastModified,
-                _vary is { Count: > 0 } ? _vary.AsReadOnly() : null,
-                _contentLanguage is { Count: > 0 } ? _contentLanguage.AsReadOnly() : null,
+                _vary is { Count: > 0 } ? (IReadOnlyList<string>)[.. _vary] : null,
+                _contentLanguage is { Count: > 0 } ? (IReadOnlyList<string>)[.. _contentLanguage] : null,
                 _contentLocation,
                 _acceptRanges);
     }
