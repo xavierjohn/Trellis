@@ -126,7 +126,7 @@ public class MetadataActionResultTests : IDisposable
     }
 
     [Fact]
-    public void Success_WithETag_MatchingIfNoneMatch_OnPOST_Returns412()
+    public void Success_WithETag_MatchingIfNoneMatch_OnPOST_ReturnsOk()
     {
         var controller = CreateControllerWithHttpContext("POST", "\"abc123\"");
         var result = Result.Success("hello");
@@ -134,8 +134,9 @@ public class MetadataActionResultTests : IDisposable
 
         var response = result.ToActionResult(controller, metadata, s => s);
 
-        response.Result.Should().BeOfType<ObjectResult>();
-        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status412PreconditionFailed);
+        // Conditional evaluation is skipped for unsafe methods — preconditions
+        // are checked before the write via OptionalETag/RequireETag, not in the response mapper.
+        response.Result.Should().BeOfType<OkObjectResult>();
     }
 
     #endregion
@@ -143,7 +144,7 @@ public class MetadataActionResultTests : IDisposable
     #region If-Match → 412 Precondition Failed
 
     [Fact]
-    public void Success_WithETag_NonMatchingIfMatch_Returns412()
+    public void Success_WithETag_NonMatchingIfMatch_OnPUT_ReturnsOk()
     {
         var controller = CreateControllerWithHttpContext("PUT", ifMatch: "\"different\"");
         var result = Result.Success("hello");
@@ -151,8 +152,8 @@ public class MetadataActionResultTests : IDisposable
 
         var response = result.ToActionResult(controller, metadata, s => s);
 
-        response.Result.Should().BeOfType<ObjectResult>();
-        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status412PreconditionFailed);
+        // Conditional evaluation skipped for unsafe methods
+        response.Result.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]
@@ -172,7 +173,7 @@ public class MetadataActionResultTests : IDisposable
     #region If-Unmodified-Since → 412 Precondition Failed
 
     [Fact]
-    public void Success_WithLastModified_AfterIfUnmodifiedSince_Returns412()
+    public void Success_WithLastModified_AfterIfUnmodifiedSince_OnPUT_ReturnsOk()
     {
         var lastModified = new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var controller = CreateControllerWithHttpContext("PUT",
@@ -184,8 +185,8 @@ public class MetadataActionResultTests : IDisposable
 
         var response = result.ToActionResult(controller, metadata, s => s);
 
-        response.Result.Should().BeOfType<ObjectResult>();
-        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status412PreconditionFailed);
+        // Conditional evaluation skipped for unsafe methods
+        response.Result.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]

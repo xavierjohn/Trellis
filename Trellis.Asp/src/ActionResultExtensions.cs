@@ -616,14 +616,23 @@ public static class ActionResultExtensions
 
         ApplyMetadataHeaders(controller.Response, metadata);
 
-        return ConditionalRequestEvaluator.Evaluate(controller.Request, metadata) switch
+        // Only evaluate conditional headers for safe methods (GET/HEAD).
+        // For unsafe methods, the precondition was already checked before the write
+        // (via OptionalETag/RequireETag), and the response ETag is the NEW value.
+        var method = controller.Request.Method;
+        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
         {
-            ConditionalDecision.NotModified => new StatusCodeResult(StatusCodes.Status304NotModified),
-            ConditionalDecision.PreconditionFailed =>
-                Error.PreconditionFailed("A conditional request header evaluated to false.")
-                    .ToActionResult<TOut>(controller),
-            _ => controller.Ok(map(result.Value)),
-        };
+            return ConditionalRequestEvaluator.Evaluate(controller.Request, metadata) switch
+            {
+                ConditionalDecision.NotModified => new StatusCodeResult(StatusCodes.Status304NotModified),
+                ConditionalDecision.PreconditionFailed =>
+                    Error.PreconditionFailed("A conditional request header evaluated to false.")
+                        .ToActionResult<TOut>(controller),
+                _ => controller.Ok(map(result.Value)),
+            };
+        }
+
+        return controller.Ok(map(result.Value));
     }
 
     /// <summary>Async Task overload of metadata-aware ToActionResult.</summary>
