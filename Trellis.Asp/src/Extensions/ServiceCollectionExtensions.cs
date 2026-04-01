@@ -132,13 +132,21 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Modifies type info to inject property names into ValidationErrorsContext before deserialization.
+    /// Modifies type info to inject property names into ValidationErrorsContext before deserialization
+    /// and adds post-deserialization checks for missing non-nullable scalar value object properties.
     /// </summary>
     [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyType comes from JSON serialization infrastructure which preserves type information")]
     private static void ModifyTypeInfo(JsonTypeInfo typeInfo)
     {
         if (typeInfo.Kind != JsonTypeInfoKind.Object)
             return;
+
+        // Track non-nullable scalar VO properties for post-deserialization null checks.
+        // When a JSON property is missing entirely, STJ never invokes the converter —
+        // the property silently defaults to null. This is especially misleading for
+        // positional records where constructor parameters look required but are still
+        // nullable reference types at the CLR level.
+        List<(string Name, Func<object, object?> Get)>? requiredScalarProperties = null;
 
         foreach (var property in typeInfo.Properties)
         {
@@ -171,8 +179,43 @@ public static class ServiceCollectionExtensions
             var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
             if (wrappedScalarConverter is not null)
                 property.CustomConverter = wrappedScalarConverter;
+
+            // Track non-nullable scalar VO properties for missing-property detection
+            if (!property.IsGetNullable && property.Get is not null)
+            {
+                requiredScalarProperties ??= [];
+                requiredScalarProperties.Add((property.Name, property.Get));
+            }
+        }
+
+        // Add post-deserialization callback to detect missing required scalar VO properties
+        if (requiredScalarProperties is not null)
+        {
+            typeInfo.OnDeserialized = obj =>
+            {
+                foreach (var (name, get) in requiredScalarProperties)
+                {
+                    if (get(obj) is not null)
+                        continue;
+
+                    // Only add an error if the converter didn't already report one
+                    // (explicit null tokens are handled by ValidatingJsonConverter)
+                    if (ValidationErrorsContext.Current is not null
+                        && !HasExistingErrorForField(name))
+                    {
+                        ValidationErrorsContext.AddError(name, $"{name} is required.");
+                    }
+                }
+            };
         }
     }
+
+    /// <summary>
+    /// Checks whether a validation error has already been collected for the given field name.
+    /// Used to avoid double-reporting when an explicit JSON null was already caught by the converter.
+    /// </summary>
+    private static bool HasExistingErrorForField(string fieldName) =>
+        ValidationErrorsContext.Current?.HasErrorForField(fieldName) ?? false;
 
     [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyType comes from JSON serialization infrastructure which preserves type information")]
     [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "PropertyType comes from JSON serialization infrastructure which preserves type information")]
