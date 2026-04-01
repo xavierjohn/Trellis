@@ -32,60 +32,6 @@ public class CompanionHeaderTests : IDisposable
     }
 
     [Fact]
-    public void UnauthorizedError_with_Bearer_challenge_emits_WWWAuthenticate_header()
-    {
-        // Arrange
-        var controller = CreateControllerWithHttpContext();
-        var challenge = AuthenticationChallenge.Bearer(realm: "api");
-        var error = Error.Unauthorized("Token required", [challenge]);
-        var result = Result.Failure<string>(error);
-
-        // Act
-        var response = result.ToActionResult(controller);
-
-        // Assert
-        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
-        controller.Response.Headers["WWW-Authenticate"].ToString().Should().Be("Bearer realm=\"api\"");
-    }
-
-    [Fact]
-    public void UnauthorizedError_with_multiple_challenges_emits_multiple_WWWAuthenticate_headers()
-    {
-        // Arrange
-        var controller = CreateControllerWithHttpContext();
-        var bearer = AuthenticationChallenge.Bearer(realm: "api");
-        var basic = AuthenticationChallenge.Basic(realm: "api");
-        var error = Error.Unauthorized("Authenticate", [bearer, basic]);
-        var result = Result.Failure<string>(error);
-
-        // Act
-        var response = result.ToActionResult(controller);
-
-        // Assert
-        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
-        var values = controller.Response.Headers["WWW-Authenticate"];
-        values.Count.Should().Be(2);
-        values[0].Should().Be("Bearer realm=\"api\"");
-        values[1].Should().Be("Basic realm=\"api\"");
-    }
-
-    [Fact]
-    public void UnauthorizedError_without_challenges_does_not_emit_WWWAuthenticate_header()
-    {
-        // Arrange
-        var controller = CreateControllerWithHttpContext();
-        var error = Error.Unauthorized("Not authenticated");
-        var result = Result.Failure<string>(error);
-
-        // Act
-        var response = result.ToActionResult(controller);
-
-        // Assert
-        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
-        controller.Response.Headers.ContainsKey("WWW-Authenticate").Should().BeFalse();
-    }
-
-    [Fact]
     public void RateLimitError_with_RetryAfter_emits_RetryAfter_header()
     {
         // Arrange

@@ -457,7 +457,6 @@ public static class HttpResultExtensions
     private static bool HasCompanionHeaders(Error error) => error switch
     {
         MethodNotAllowedError => true,
-        UnauthorizedError { Challenges: { Count: > 0 } } => true,
         RateLimitError { RetryAfter: not null } => true,
         ServiceUnavailableError { RetryAfter: not null } => true,
         ContentTooLargeError { RetryAfter: not null } => true,

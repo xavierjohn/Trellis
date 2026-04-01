@@ -233,17 +233,6 @@ public class Error : IEquatable<Error>
         new(detail, "unauthorized.error", instance);
 
     /// <summary>
-    /// Creates an <see cref="UnauthorizedError"/> with authentication challenges for the <c>WWW-Authenticate</c> header.
-    /// </summary>
-    /// <param name="detail">Description of why authorization failed.</param>
-    /// <param name="challenges">The authentication challenges indicating supported authentication schemes.</param>
-    /// <param name="instance">Optional identifier for the unauthorized request.</param>
-    /// <returns>An <see cref="UnauthorizedError"/> with challenges.</returns>
-    /// <remarks>Use this when you need to inform the client which authentication schemes are supported.</remarks>
-    public static UnauthorizedError Unauthorized(string detail, IReadOnlyList<AuthenticationChallenge> challenges, string? instance = null) =>
-        new(detail, "unauthorized.error", challenges, instance);
-
-    /// <summary>
     /// Creates a <see cref="ForbiddenError"/> indicating the user lacks permission.
     /// </summary>
     /// <param name="detail">Description of why access is forbidden.</param>

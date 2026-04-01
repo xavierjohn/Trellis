@@ -56,6 +56,21 @@ Optimistic concurrency is automatic for all `Aggregate<TId>` entities:
 
 No additional configuration is needed. When two processes modify the same aggregate concurrently, the second `SaveChangesResultAsync` returns `ConflictError`. At the HTTP layer, use `OptionalETag` for `If-Match` validation → `PreconditionFailedError` (412).
 
+### LastModifiedInterceptor
+
+Automatically sets `ITrackLastModified.LastModified` on every `SaveChanges` call for entities implementing the `ITrackLastModified` interface (from `Trellis.DomainDrivenDesign`). Registered by `AddTrellisInterceptors()`.
+
+```csharp
+public sealed class LastModifiedInterceptor : SaveChangesInterceptor
+{
+    public LastModifiedInterceptor(TimeProvider? timeProvider = null)
+}
+```
+
+- Uses `TimeProvider.GetUtcNow()` if provided, otherwise `DateTimeOffset.UtcNow`
+- Pass a custom `TimeProvider` via `AddTrellisInterceptors(timeProvider)` for deterministic testing
+- Sets `LastModified` on both `EntityState.Added` and `EntityState.Modified` entries
+
 ### Money Property Convention
 
 `Money` properties on entities are automatically mapped as owned types — no `OwnsOne` configuration needed. This includes `Money` properties declared on owned entity types (e.g., items inside `OwnsMany` collections). Column naming convention:
@@ -173,7 +188,7 @@ var overdue = await context.Orders
 
 ### AddTrellisInterceptors
 
-Registers the `MaybeQueryInterceptor` and `ScalarValueQueryInterceptor` as singletons, enabling natural LINQ syntax with `Maybe<T>` properties and natural value object operations (comparisons, string methods, properties) without `.Value`.
+Registers the `MaybeQueryInterceptor`, `ScalarValueQueryInterceptor`, `AggregateETagInterceptor`, and `LastModifiedInterceptor` as singletons, enabling natural LINQ syntax with `Maybe<T>` properties and natural value object operations (comparisons, string methods, properties) without `.Value`.
 
 ```csharp
 // Generic overload
@@ -182,10 +197,25 @@ DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(this DbContex
 // Non-generic overload
 DbContextOptionsBuilder AddTrellisInterceptors(this DbContextOptionsBuilder optionsBuilder)
 
+// Generic overload with TimeProvider (for testable LastModifiedInterceptor)
+DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(
+    this DbContextOptionsBuilder<TContext> optionsBuilder,
+    TimeProvider? timeProvider)
+
+// Non-generic overload with TimeProvider
+DbContextOptionsBuilder AddTrellisInterceptors(
+    this DbContextOptionsBuilder optionsBuilder,
+    TimeProvider? timeProvider)
+
 // Usage
 services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString)
            .AddTrellisInterceptors());
+
+// With custom TimeProvider for testing
+services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(connectionString)
+           .AddTrellisInterceptors(fakeTimeProvider));
 ```
 
 ### ScalarValueQueryInterceptor

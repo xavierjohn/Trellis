@@ -135,3 +135,18 @@ implicit operator Expression<Func<T, bool>>(Specification<T> spec)
 ```
 
 ---
+
+## ITrackLastModified (interface)
+
+Marker interface for entities that track their last modification timestamp. Implemented on aggregates or entities to enable `Last-Modified` response headers and `If-Modified-Since` / `If-Unmodified-Since` conditional request evaluation.
+
+```csharp
+public interface ITrackLastModified
+{
+    DateTimeOffset LastModified { get; set; }
+}
+```
+
+The `LastModified` property is auto-set by `LastModifiedInterceptor` (in `Trellis.EntityFrameworkCore`) on every `SaveChanges` call for entities implementing this interface.
+
+---

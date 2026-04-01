@@ -238,7 +238,15 @@ ForbiddenError Error.Forbidden(string detail, string? instance = null)
 UnexpectedError Error.Unexpected(string detail, string? instance = null)
 DomainError Error.Domain(string detail, string? instance = null)
 RateLimitError Error.RateLimit(string detail, string? instance = null)
+RateLimitError Error.RateLimit(string detail, RetryAfterValue retryAfter, string? instance = null)
 ServiceUnavailableError Error.ServiceUnavailable(string detail, string? instance = null)
+ServiceUnavailableError Error.ServiceUnavailable(string detail, RetryAfterValue retryAfter, string? instance = null)
+GoneError Error.Gone(string detail, string? instance = null)
+MethodNotAllowedError Error.MethodNotAllowed(string detail, IReadOnlyList<string> allowedMethods, string? instance = null)
+NotAcceptableError Error.NotAcceptable(string detail, string? instance = null)
+UnsupportedMediaTypeError Error.UnsupportedMediaType(string detail, string? instance = null)
+ContentTooLargeError Error.ContentTooLarge(string detail, RetryAfterValue? retryAfter = null, string? instance = null)
+RangeNotSatisfiableError Error.RangeNotSatisfiable(string detail, long completeLength, string? instance = null)
 
 // Custom code factories (same types with additional code parameter)
 BadRequestError Error.BadRequest(string detail, string code, string? instance = null)
@@ -247,7 +255,7 @@ BadRequestError Error.BadRequest(string detail, string code, string? instance = 
 
 ### Concrete Error Types
 
-Each error type maps to a specific HTTP status code. `ValidationError` → 400, `NotFoundError` → 404, `UnauthorizedError` → 401, `ForbiddenError` → 403, `ConflictError` → 409, `PreconditionFailedError` → 412, `DomainError` → 422, `PreconditionRequiredError` → 428, `UnexpectedError` → 500.
+Each error type maps to a specific HTTP status code. `ValidationError` → 400, `NotFoundError` → 404, `UnauthorizedError` → 401, `ForbiddenError` → 403, `MethodNotAllowedError` → 405, `NotAcceptableError` → 406, `ConflictError` → 409, `GoneError` → 410, `PreconditionFailedError` → 412, `ContentTooLargeError` → 413, `UnsupportedMediaTypeError` → 415, `RangeNotSatisfiableError` → 416, `DomainError` → 422, `PreconditionRequiredError` → 428, `RateLimitError` → 429, `UnexpectedError` → 500, `ServiceUnavailableError` → 503.
 
 | Type | Default Code |
 |------|-------------|
@@ -263,6 +271,12 @@ Each error type maps to a specific HTTP status code. `ValidationError` → 400, 
 | `RateLimitError` | `"rate.limit"` |
 | `UnexpectedError` | `"unexpected.error"` |
 | `ServiceUnavailableError` | `"service.unavailable"` |
+| `GoneError` | `"gone.error"` |
+| `MethodNotAllowedError` | `"method.not.allowed"` |
+| `NotAcceptableError` | `"not.acceptable"` |
+| `UnsupportedMediaTypeError` | `"unsupported.media.type"` |
+| `ContentTooLargeError` | `"content.too.large"` |
+| `RangeNotSatisfiableError` | `"range.not.satisfiable"` |
 
 ### ValidationError (extends Error)
 
@@ -739,5 +753,238 @@ public static class PrimitiveValueObjectTrace
 |---------|------------------------|
 | Value object `TryCreate` | `Result<T>` constructor (activity IS `Activity.Current`) |
 | ROP extensions (Bind, Map, Tap, etc.) | `result.LogActivityStatus()` (child activity ≠ `Activity.Current`) |
+
+---
+
+## EntityTagValue (sealed record)
+
+Represents an RFC 9110 §8.8.1 entity tag (ETag) with explicit weak/strong semantics. Validates opaque tags against the `etagc` production — rejects `"`, control characters, and DEL.
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `OpaqueTag` | `string` | Raw opaque tag string without quotes or `W/` prefix |
+| `IsWeak` | `bool` | `true` if weak entity tag; `false` if strong |
+| `IsWildcard` | `bool` | `true` if this is the RFC 9110 wildcard `*` token (semantically distinct from `Strong("*")`) |
+
+### Factory Methods
+
+```csharp
+static EntityTagValue Strong(string opaqueTag)
+static EntityTagValue Weak(string opaqueTag)
+static EntityTagValue Wildcard()
+static Result<EntityTagValue> TryParse(string? headerValue)
+// Parses "tag" (strong), W/"tag" (weak). Returns BadRequestError on invalid format.
+```
+
+### Comparison (RFC 9110 §8.8.3.2)
+
+```csharp
+bool StrongEquals(EntityTagValue other)   // both must be strong + opaque tags match
+bool WeakEquals(EntityTagValue other)     // opaque tags match regardless of strength
+```
+
+### Formatting
+
+```csharp
+string ToHeaderValue()  // * for wildcard, "tag" for strong, W/"tag" for weak
+string ToString()       // delegates to ToHeaderValue()
+```
+
+### Example
+
+```csharp
+var strong = EntityTagValue.Strong("abc123");
+var weak = EntityTagValue.Weak("abc123");
+var parsed = EntityTagValue.TryParse("W/\"abc123\"");
+
+strong.StrongEquals(EntityTagValue.Strong("abc123")); // true
+strong.WeakEquals(weak); // true — opaque tags match
+```
+
+---
+
+## RetryAfterValue (sealed class)
+
+Represents an RFC 9110 §10.2.3 `Retry-After` value — either a delay in seconds or an absolute HTTP-date. Implements `IEquatable<RetryAfterValue>`.
+
+### Factory Methods
+
+```csharp
+static RetryAfterValue FromSeconds(int seconds)      // seconds must be non-negative
+static RetryAfterValue FromDate(DateTimeOffset date)
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `IsDelaySeconds` | `bool` | `true` when value is a delay in seconds |
+| `IsDate` | `bool` | `true` when value is an absolute date |
+| `DelaySeconds` | `int` | Delay seconds (throws `InvalidOperationException` if `IsDate`) |
+| `Date` | `DateTimeOffset` | Absolute date (throws `InvalidOperationException` if `IsDelaySeconds`) |
+
+### Formatting
+
+```csharp
+string ToHeaderValue()  // decimal seconds or IMF-fixdate format
+string ToString()       // delegates to ToHeaderValue()
+```
+
+### Example
+
+```csharp
+var delay = RetryAfterValue.FromSeconds(60);
+var date = RetryAfterValue.FromDate(DateTimeOffset.UtcNow.AddMinutes(5));
+Error.RateLimit("Too many requests.", retryAfter: delay);
+```
+
+---
+
+## RepresentationMetadata (sealed class)
+
+Carries HTTP representation metadata (RFC 9110 §8) through Trellis response mappers. Used to emit `ETag`, `Last-Modified`, `Vary`, `Content-Language`, `Content-Location`, and `Accept-Ranges` response headers consistently across MVC and Minimal API responses (200, 201, 206, 304).
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ETag` | `EntityTagValue?` | Entity tag validator |
+| `LastModified` | `DateTimeOffset?` | Last modification date |
+| `Vary` | `IReadOnlyList<string>?` | Vary header field names |
+| `ContentLanguage` | `IReadOnlyList<string>?` | Content-Language values |
+| `ContentLocation` | `string?` | Content-Location URI |
+| `AcceptRanges` | `string?` | Accept-Ranges value (e.g., `"bytes"` or `"none"`) |
+
+### Convenience Factories
+
+```csharp
+static RepresentationMetadata WithETag(EntityTagValue eTag)
+static RepresentationMetadata WithStrongETag(string opaqueTag)
+```
+
+### Builder
+
+```csharp
+static Builder Create()
+
+// Builder methods (all return Builder for chaining):
+Builder SetETag(EntityTagValue eTag)
+Builder SetStrongETag(string opaqueTag)
+Builder SetWeakETag(string opaqueTag)
+Builder SetLastModified(DateTimeOffset lastModified)
+Builder AddVary(params string[] fieldNames)               // deduplicates case-insensitively
+Builder AddContentLanguage(params string[] languages)     // deduplicates case-insensitively
+Builder SetContentLocation(string uri)
+Builder SetAcceptRanges(string value)
+RepresentationMetadata Build()
+```
+
+### Example
+
+```csharp
+var meta = RepresentationMetadata.Create()
+    .SetStrongETag(order.ETag)
+    .SetLastModified(order.LastModified)
+    .AddVary("Accept", "Accept-Language")
+    .Build();
+```
+
+---
+
+## New Error Types (RFC 9110)
+
+### GoneError (410)
+
+Resource is permanently gone.
+
+```csharp
+public sealed class GoneError : Error
+// Factory:
+static GoneError Error.Gone(string detail, string? instance = null)
+static GoneError Error.Gone(string detail, string code, string? instance)
+```
+
+### MethodNotAllowedError (405)
+
+Request method not supported. Emits `Allow` response header automatically.
+
+```csharp
+public sealed class MethodNotAllowedError : Error
+IReadOnlyList<string> AllowedMethods { get; }
+// Factory:
+static MethodNotAllowedError Error.MethodNotAllowed(string detail, IReadOnlyList<string> allowedMethods, string? instance = null)
+static MethodNotAllowedError Error.MethodNotAllowed(string detail, IReadOnlyList<string> allowedMethods, string code, string? instance)
+```
+
+### NotAcceptableError (406)
+
+No acceptable representation available.
+
+```csharp
+public sealed class NotAcceptableError : Error
+// Factory:
+static NotAcceptableError Error.NotAcceptable(string detail, string? instance = null)
+static NotAcceptableError Error.NotAcceptable(string detail, string code, string? instance)
+```
+
+### UnsupportedMediaTypeError (415)
+
+Request payload in unsupported format.
+
+```csharp
+public sealed class UnsupportedMediaTypeError : Error
+// Factory:
+static UnsupportedMediaTypeError Error.UnsupportedMediaType(string detail, string? instance = null)
+static UnsupportedMediaTypeError Error.UnsupportedMediaType(string detail, string code, string? instance)
+```
+
+### ContentTooLargeError (413)
+
+Request payload exceeds limit. Optional `RetryAfter` emits `Retry-After` header automatically.
+
+```csharp
+public sealed class ContentTooLargeError : Error
+RetryAfterValue? RetryAfter { get; }
+// Factory:
+static ContentTooLargeError Error.ContentTooLarge(string detail, RetryAfterValue? retryAfter = null, string? instance = null)
+static ContentTooLargeError Error.ContentTooLarge(string detail, string code, RetryAfterValue? retryAfter = null, string? instance = null)
+```
+
+### RangeNotSatisfiableError (416)
+
+Requested range cannot be satisfied. Emits `Content-Range: {unit} */{completeLength}` header automatically.
+
+```csharp
+public sealed class RangeNotSatisfiableError : Error
+long CompleteLength { get; }
+string Unit { get; }
+// Factory:
+static RangeNotSatisfiableError Error.RangeNotSatisfiable(string detail, long completeLength, string? instance = null)
+static RangeNotSatisfiableError Error.RangeNotSatisfiable(string detail, long completeLength, string code, string unit = "bytes", string? instance = null)
+```
+
+### Updated: RateLimitError (429)
+
+Now supports optional `RetryAfter`. When present, emits `Retry-After` header automatically.
+
+```csharp
+public sealed class RateLimitError : Error
+RetryAfterValue? RetryAfter { get; }
+// Factory (new overload):
+static RateLimitError Error.RateLimit(string detail, RetryAfterValue retryAfter, string? instance = null)
+```
+
+### Updated: ServiceUnavailableError (503)
+
+Now supports optional `RetryAfter`. When present, emits `Retry-After` header automatically.
+
+```csharp
+public sealed class ServiceUnavailableError : Error
+RetryAfterValue? RetryAfter { get; }
+// Factory (new overload):
+static ServiceUnavailableError Error.ServiceUnavailable(string detail, RetryAfterValue retryAfter, string? instance = null)
+```
 
 ---

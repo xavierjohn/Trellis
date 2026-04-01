@@ -27,12 +27,6 @@
 public sealed class UnauthorizedError : Error
 {
     /// <summary>
-    /// Gets the authentication challenges to include in the <c>WWW-Authenticate</c> header.
-    /// </summary>
-    /// <value>A list of <see cref="AuthenticationChallenge"/> instances, or <c>null</c> if no challenges are specified.</value>
-    public IReadOnlyList<AuthenticationChallenge>? Challenges { get; }
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="UnauthorizedError"/> class.
     /// </summary>
     /// <param name="detail">Description of why authorization failed.</param>
@@ -41,14 +35,4 @@ public sealed class UnauthorizedError : Error
     public UnauthorizedError(string detail, string code, string? instance = null) : base(detail, code, instance)
     {
     }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UnauthorizedError"/> class with authentication challenges.
-    /// </summary>
-    /// <param name="detail">Description of why authorization failed.</param>
-    /// <param name="code">The error code identifying this type of unauthorized error.</param>
-    /// <param name="challenges">The authentication challenges for the <c>WWW-Authenticate</c> header.</param>
-    /// <param name="instance">Optional identifier for the unauthorized request.</param>
-    public UnauthorizedError(string detail, string code, IReadOnlyList<AuthenticationChallenge> challenges, string? instance = null)
-        : base(detail, code, instance) => Challenges = challenges;
 }

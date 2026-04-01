@@ -566,12 +566,6 @@ public static class ActionResultExtensions
                 response.Headers["Allow"] = string.Join(", ", mae.AllowedMethods);
                 break;
 
-            case UnauthorizedError { Challenges: { Count: > 0 } challenges }:
-                foreach (var challenge in challenges)
-                    response.Headers.Append("WWW-Authenticate", challenge.ToHeaderValue());
-
-                break;
-
             case RateLimitError { RetryAfter: not null } rle:
                 response.Headers["Retry-After"] = rle.RetryAfter.ToHeaderValue();
                 break;

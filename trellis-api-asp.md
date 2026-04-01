@@ -150,3 +150,180 @@ public partial class AppJsonSerializerContext : JsonSerializerContext { }
 Benefits: Native AOT compatible, no reflection, trimming-safe, faster startup.
 
 ---
+
+## ConditionalRequestEvaluator
+
+Evaluates RFC 9110 §13.2.2 conditional request preconditions with correct precedence order. Returns a `ConditionalDecision` indicating how the server should respond.
+
+### ConditionalDecision Enum
+
+| Value | Description |
+|-------|-------------|
+| `PreconditionsSatisfied` | All preconditions passed — serve the representation |
+| `NotModified` | `If-None-Match` / `If-Modified-Since` matched — respond 304 |
+| `PreconditionFailed` | `If-Match` / `If-Unmodified-Since` failed — respond 412 |
+
+```csharp
+public static ConditionalDecision Evaluate(HttpRequest request, RepresentationMetadata metadata)
+```
+
+Evaluates in RFC 9110 §13.2.2 precedence: `If-Match` → `If-Unmodified-Since` → `If-None-Match` → `If-Modified-Since`.
+
+---
+
+## ETagHelper
+
+Static helpers for parsing conditional request headers into `EntityTagValue` instances.
+
+```csharp
+public static class ETagHelper
+{
+    // Existing:
+    static bool IfNoneMatchMatches(IList<EntityTagHeaderValue> ifNoneMatchHeader, string currentETag)
+    static bool IfMatchSatisfied(IList<EntityTagHeaderValue> ifMatchHeader, string currentETag)
+
+    // New — parse headers into EntityTagValue arrays:
+    static EntityTagValue[]? ParseIfMatch(HttpRequest request)
+    static EntityTagValue[]? ParseIfNoneMatch(HttpRequest request)
+    static DateTimeOffset? ParseIfModifiedSince(HttpRequest request)
+    static DateTimeOffset? ParseIfUnmodifiedSince(HttpRequest request)
+}
+```
+
+---
+
+## RangeRequestEvaluator
+
+Evaluates HTTP Range requests per RFC 9110 §14.2. Returns a discriminated union describing the outcome.
+
+### RangeOutcome Union
+
+| Type | Properties | Description |
+|------|-----------|-------------|
+| `FullRepresentation` | — | No Range header or unsatisfiable → serve full response |
+| `PartialContent` | `long From`, `long To`, `long CompleteLength` | Satisfiable range → serve 206 |
+| `NotSatisfiable` | `long CompleteLength` | Range syntactically valid but out of bounds → 416 |
+
+```csharp
+public static RangeOutcome Evaluate(HttpRequest request, long completeLength)
+```
+
+---
+
+## WriteOutcome\<T\>
+
+Discriminated union for write operation results. Each variant maps to the correct HTTP status code and headers.
+
+| Variant | HTTP Status | Properties |
+|---------|-------------|------------|
+| `Created` | 201 | `T Value`, `string Location`, `RepresentationMetadata? Metadata` |
+| `Updated` | 200 | `T Value`, `RepresentationMetadata? Metadata` |
+| `UpdatedNoContent` | 204 | `RepresentationMetadata? Metadata` |
+| `Accepted` | 202 | `T StatusBody`, `string? MonitorUri`, `RetryAfterValue? RetryAfter` |
+| `AcceptedNoContent` | 202 | `string? MonitorUri`, `RetryAfterValue? RetryAfter` |
+
+### WriteOutcomeExtensions
+
+```csharp
+public static ActionResult ToActionResult<T, TOut>(
+    this WriteOutcome<T> outcome,
+    ControllerBase controller,
+    Func<T, TOut>? map = null)
+```
+
+Maps each variant to the correct HTTP response: `Created` → 201 + `Location`, `Updated` → 200, `UpdatedNoContent` → 204, `Accepted`/`AcceptedNoContent` → 202 + optional `Location` and `Retry-After` headers. Applies `RepresentationMetadata` headers when present.
+
+---
+
+## Metadata-Aware Response Mappers
+
+Overloads of `ToActionResult` that accept `RepresentationMetadata` — emit all metadata headers (`ETag`, `Last-Modified`, `Vary`, `Content-Language`, `Content-Location`, `Accept-Ranges`) and evaluate conditional requests per RFC 9110 §13.2.2.
+
+```csharp
+public static ActionResult<TOut> ToActionResult<TIn, TOut>(
+    this Result<TIn> result,
+    ControllerBase controller,
+    RepresentationMetadata metadata,
+    Func<TIn, TOut> map)
+
+// Async overloads:
+Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+    this Task<Result<TIn>> resultTask, ControllerBase controller,
+    RepresentationMetadata metadata, Func<TIn, TOut> map)
+
+ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+    this ValueTask<Result<TIn>> resultTask, ControllerBase controller,
+    RepresentationMetadata metadata, Func<TIn, TOut> map)
+```
+
+When `ConditionalRequestEvaluator` returns `NotModified` → 304, `PreconditionFailed` → 412.
+
+---
+
+## Companion Header Emission
+
+Error responses automatically emit companion headers based on error type. This is handled internally by `EmitCompanionHeaders`:
+
+| Error Type | Header Emitted |
+|-----------|----------------|
+| `MethodNotAllowedError` | `Allow: GET, POST, ...` (from `AllowedMethods`) |
+| `RateLimitError` (with `RetryAfter`) | `Retry-After: 60` or `Retry-After: <date>` |
+| `ServiceUnavailableError` (with `RetryAfter`) | `Retry-After: 60` or `Retry-After: <date>` |
+| `ContentTooLargeError` (with `RetryAfter`) | `Retry-After: 60` or `Retry-After: <date>` |
+| `RangeNotSatisfiableError` | `Content-Range: bytes */1234` |
+
+---
+
+## IfNoneMatchExtensions
+
+Enforces `If-None-Match` preconditions on `Result<T>` pipeline values.
+
+```csharp
+public static Result<T> EnforceIfNoneMatchPrecondition<T>(
+    this Result<T> result, string[]? ifNoneMatchETags)
+
+// Async overloads:
+Task<Result<T>> EnforceIfNoneMatchPreconditionAsync<T>(
+    this Task<Result<T>> resultTask, string[]? ifNoneMatchETags)
+ValueTask<Result<T>> EnforceIfNoneMatchPreconditionAsync<T>(
+    this ValueTask<Result<T>> resultTask, string[]? ifNoneMatchETags)
+```
+
+---
+
+## RedirectResultExtensions
+
+Extension methods for producing redirect responses.
+
+```csharp
+public static ActionResult ToMovedPermanently(this ControllerBase controller, string uri)      // 301
+public static ActionResult ToFound(this ControllerBase controller, string uri)                  // 302
+public static ActionResult ToSeeOther<TValue>(this Result<TValue> result,
+    ControllerBase controller, Func<TValue, string> uriSelector)                                // 303
+public static ActionResult ToTemporaryRedirect(this ControllerBase controller, string uri)      // 307
+public static ActionResult ToPermanentRedirect(this ControllerBase controller, string uri)      // 308
+```
+
+---
+
+## IRepresentationValidator\<T\>
+
+Interface for generating entity tags from domain objects. Used to produce ETags for conditional request evaluation.
+
+```csharp
+public interface IRepresentationValidator<in T>
+{
+    EntityTagValue GenerateETag(T value, string? variantKey = null);
+}
+```
+
+### AggregateRepresentationValidator\<T\>
+
+Default implementation for aggregates — uses the aggregate's built-in `ETag` property. When a `variantKey` is provided, combines it with the ETag using a SHA-256 hash.
+
+```csharp
+public sealed class AggregateRepresentationValidator<T> : IRepresentationValidator<T>
+    where T : IAggregate
+```
+
+---
