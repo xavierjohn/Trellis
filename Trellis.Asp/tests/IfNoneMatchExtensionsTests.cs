@@ -23,7 +23,7 @@ public class IfNoneMatchExtensionsTests
     {
         var result = Result.Success("value");
 
-        var actual = result.EnforceIfNoneMatchPrecondition(["*"]);
+        var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
 
         actual.Should().BeFailureOfType<PreconditionFailedError>();
     }
@@ -33,7 +33,7 @@ public class IfNoneMatchExtensionsTests
     {
         var result = Result.Failure<string>(Error.NotFound("not found"));
 
-        var actual = result.EnforceIfNoneMatchPrecondition(["*"]);
+        var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
 
         actual.Should().BeFailureOfType<NotFoundError>();
     }
@@ -43,7 +43,7 @@ public class IfNoneMatchExtensionsTests
     {
         var result = Result.Success("value");
 
-        var actual = result.EnforceIfNoneMatchPrecondition(["abc123", "def456"]);
+        var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Strong("abc123"), EntityTagValue.Strong("def456")]);
 
         actual.Should().BeSuccess();
         actual.Should().HaveValue("value");
@@ -65,7 +65,7 @@ public class IfNoneMatchExtensionsTests
     {
         var resultTask = Task.FromResult(Result.Success("value"));
 
-        var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync(["*"]);
+        var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync([EntityTagValue.Wildcard()]);
 
         actual.Should().BeFailureOfType<PreconditionFailedError>();
     }
@@ -75,7 +75,7 @@ public class IfNoneMatchExtensionsTests
     {
         var resultTask = new ValueTask<Result<string>>(Result.Success("value"));
 
-        var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync(["*"]);
+        var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync([EntityTagValue.Wildcard()]);
 
         actual.Should().BeFailureOfType<PreconditionFailedError>();
     }
