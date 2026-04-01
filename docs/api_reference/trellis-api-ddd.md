@@ -6,7 +6,7 @@
 
 ## IEntity (interface)
 
-Marker interface for entities that track creation and modification timestamps. Implemented by `Entity<TId>`. Used by `EntityTimestampInterceptor` (in `Trellis.EntityFrameworkCore`) to automatically set timestamps on `SaveChanges`.
+Non-generic interface for entities that track creation and modification timestamps. Implemented by `Entity<TId>`. Used by `EntityTimestampInterceptor` (in `Trellis.EntityFrameworkCore`) to automatically set timestamps on `SaveChanges`.
 
 ```csharp
 public interface IEntity

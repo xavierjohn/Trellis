@@ -114,6 +114,35 @@ public class EntityTimestampInterceptorTests : IDisposable
         entity.CreatedAt.Should().Be(historical, "pre-set CreatedAt must be preserved for data migration");
         entity.LastModified.Should().Be(_timeProvider.GetUtcNow(), "LastModified should still be set to now");
     }
+
+    [Fact]
+    public async Task UnchangedAggregate_WithModifiedChild_GetsLastModifiedUpdated()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        // Arrange: create aggregate with a child and save
+        var aggregate = new TimestampTestAggregate { Name = "Root" };
+        var child = new TimestampTestChild { Name = "Child" };
+        aggregate.Children.Add(child);
+
+        _context.TimestampAggregates.Add(aggregate);
+        await _context.SaveChangesAsync(ct);
+        var originalLastModified = aggregate.LastModified;
+
+        _context.Entry(aggregate).State.Should().Be(EntityState.Unchanged);
+
+        // Advance time
+        _timeProvider.SetUtcNow(new DateTimeOffset(2025, 7, 1, 0, 0, 0, TimeSpan.Zero));
+
+        // Act: modify only the child — aggregate root stays Unchanged
+        child.Name = "Updated Child";
+        await _context.SaveChangesAsync(ct);
+
+        // Assert: aggregate root's LastModified was promoted
+        aggregate.LastModified.Should().Be(_timeProvider.GetUtcNow());
+        aggregate.LastModified.Should().NotBe(originalLastModified);
+        aggregate.CreatedAt.Should().NotBe(default(DateTimeOffset), "CreatedAt should remain from first save");
+    }
 }
 
 #region Test entities
@@ -123,6 +152,22 @@ internal class TimestampTestEntity : Entity<string>, IEntity
     public string Name { get; set; } = null!;
 
     public TimestampTestEntity() : base(string.Empty) { }
+}
+
+internal class TimestampTestAggregate : Aggregate<string>, IEntity
+{
+    public string Name { get; set; } = null!;
+    public List<TimestampTestChild> Children { get; set; } = [];
+
+    public TimestampTestAggregate() : base(Guid.NewGuid().ToString("N")) { }
+}
+
+internal class TimestampTestChild : Entity<string>, IEntity
+{
+    public string Name { get; set; } = null!;
+    public string AggregateId { get; set; } = null!;
+
+    public TimestampTestChild() : base(Guid.NewGuid().ToString("N")) { }
 }
 
 internal class NonEntityPoco
@@ -138,6 +183,8 @@ internal class NonEntityPoco
 internal class TimestampTestDbContext : DbContext
 {
     public DbSet<TimestampTestEntity> TimestampEntities => Set<TimestampTestEntity>();
+    public DbSet<TimestampTestAggregate> TimestampAggregates => Set<TimestampTestAggregate>();
+    public DbSet<TimestampTestChild> TimestampChildren => Set<TimestampTestChild>();
     public DbSet<NonEntityPoco> NonEntityPocos => Set<NonEntityPoco>();
 
     public TimestampTestDbContext(DbContextOptions<TimestampTestDbContext> options) : base(options)
@@ -147,6 +194,26 @@ internal class TimestampTestDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TimestampTestEntity>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            b.Property(e => e.CreatedAt).IsRequired();
+            b.Property(e => e.LastModified).IsRequired();
+        });
+
+        modelBuilder.Entity<TimestampTestAggregate>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            b.Property(e => e.ETag).HasMaxLength(50);
+            b.Property(e => e.CreatedAt).IsRequired();
+            b.Property(e => e.LastModified).IsRequired();
+            b.HasMany(e => e.Children)
+                .WithOne()
+                .HasForeignKey(c => c.AggregateId);
+        });
+
+        modelBuilder.Entity<TimestampTestChild>(b =>
         {
             b.HasKey(e => e.Id);
             b.Property(e => e.Name).HasMaxLength(100).IsRequired();
