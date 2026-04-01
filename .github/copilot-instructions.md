@@ -253,8 +253,8 @@ Before considering work complete, verify:
 1. **Build succeeds** — `dotnet build` with zero errors and zero warnings
 2. **All tests pass** — `dotnet test` with zero failures
 2. **Documentation updated:**
-   - `trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-results.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`, etc.)
-   - `trellis-api-testing-reference.md` — if test helpers were added or changed
+   - `docs/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-results.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`, etc.)
+   - `docs/api_reference/trellis-api-testing-reference.md` — if test helpers were added or changed
    - Package `README.md` — if the package's public surface changed
    - Docfx articles in `docs/docfx_project/articles/` — if relevant articles exist for the feature area
 3. **Do NOT commit without explicit approval** — stage changes and present the diff for review
@@ -372,7 +372,7 @@ When adding or modifying a package, verify these documentation artifacts:
 | Article TOC | `docs/docfx_project/articles/toc.yml` | Add entry under the appropriate section (e.g., Integration Guides) |
 | `NUGET_README.md` | `Trellis.{Package}/NUGET_README.md` | Create or update — this is the NuGet.org package description |
 | `README.md` | `Trellis.{Package}/README.md` | Create or update — this is the GitHub-facing documentation |
-| `trellis-api-*.md` | `trellis-api-{library}.md` (repo root) | Update the per-library AI API reference file (e.g., `trellis-api-results.md`, `trellis-api-efcore.md`) with any new or changed public types, methods, or extension methods — these documents are consumed by AI coding assistants |
+| `trellis-api-*.md` | `docs/api_reference/trellis-api-{library}.md` | Update the per-library AI API reference file (e.g., `trellis-api-results.md`, `trellis-api-efcore.md`) with any new or changed public types, methods, or extension methods — these documents are consumed by AI coding assistants |
 
 ```csharp
 /// <summary>
