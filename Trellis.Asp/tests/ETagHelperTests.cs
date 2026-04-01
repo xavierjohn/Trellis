@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
+using Trellis;
 
 /// <summary>
 /// Tests for <see cref="ETagHelper"/> — RFC 9110 entity tag parsing and comparison.
@@ -19,21 +20,25 @@ public class ETagHelperTests
     }
 
     [Fact]
-    public void ParseIfMatch_StrongETag_ReturnsUnquotedValue()
+    public void ParseIfMatch_StrongETag_ReturnsEntityTagValue()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "\"abc123\"";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("abc123");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().ContainSingle()
+            .Which.Should().Be(EntityTagValue.Strong("abc123"));
     }
 
     [Fact]
-    public void ParseIfMatch_Wildcard_ReturnsAsterisk()
+    public void ParseIfMatch_Wildcard_ReturnsWildcardEntityTagValue()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "*";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("*");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().ContainSingle()
+            .Which.IsWildcard.Should().BeTrue();
     }
 
     [Fact]
@@ -51,7 +56,8 @@ public class ETagHelperTests
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "W/\"weak\", \"strong1\", \"strong2\"";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("strong1", "strong2");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().Equal(EntityTagValue.Strong("strong1"), EntityTagValue.Strong("strong2"));
     }
 
     [Fact]
@@ -60,7 +66,8 @@ public class ETagHelperTests
         var context = new DefaultHttpContext();
         context.Request.Headers.IfMatch = "\"aaa\", \"bbb\", \"ccc\"";
 
-        ETagHelper.ParseIfMatch(context.Request).Should().Equal("aaa", "bbb", "ccc");
+        var result = ETagHelper.ParseIfMatch(context.Request);
+        result.Should().Equal(EntityTagValue.Strong("aaa"), EntityTagValue.Strong("bbb"), EntityTagValue.Strong("ccc"));
     }
 
     [Fact]
@@ -188,6 +195,111 @@ public class ETagHelperTests
         var result = ETagHelper.IfMatchSatisfied(tags, "");
 
         result.Should().BeFalse("resource with no ETag cannot satisfy If-Match");
+    }
+
+    #endregion
+
+    #region ParseIfNoneMatch
+
+    [Fact]
+    public void ParseIfNoneMatch_NoHeader_ReturnsNull()
+    {
+        var request = new DefaultHttpContext().Request;
+
+        ETagHelper.ParseIfNoneMatch(request).Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_StrongETag_ReturnsEntityTagValue()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "\"abc123\"";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().ContainSingle()
+            .Which.Should().Be(EntityTagValue.Strong("abc123"));
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_WeakETag_ReturnsWeakEntityTagValue()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "W/\"abc123\"";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().ContainSingle()
+            .Which.Should().Be(EntityTagValue.Weak("abc123"));
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_Wildcard_ReturnsWildcardEntityTagValue()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "*";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().ContainSingle()
+            .Which.IsWildcard.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_MultipleETags_ReturnsAll()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "W/\"weak\", \"strong1\", \"strong2\"";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().Equal(
+            EntityTagValue.Weak("weak"), EntityTagValue.Strong("strong1"), EntityTagValue.Strong("strong2"));
+    }
+
+    [Fact]
+    public void ParseIfNoneMatch_MalformedHeader_ReturnsEmptyArray()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["If-None-Match"] = "abc";
+
+        ETagHelper.ParseIfNoneMatch(context.Request).Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region ParseIfModifiedSince
+
+    [Fact]
+    public void ParseIfModifiedSince_NoHeader_ReturnsNull()
+    {
+        var request = new DefaultHttpContext().Request;
+
+        ETagHelper.ParseIfModifiedSince(request).Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseIfModifiedSince_ValidDate_ReturnsDateTimeOffset()
+    {
+        var context = new DefaultHttpContext();
+        var date = new DateTimeOffset(2025, 6, 1, 12, 0, 0, TimeSpan.Zero);
+        context.Request.GetTypedHeaders().IfModifiedSince = date;
+
+        ETagHelper.ParseIfModifiedSince(context.Request).Should().Be(date);
+    }
+
+    #endregion
+
+    #region ParseIfUnmodifiedSince
+
+    [Fact]
+    public void ParseIfUnmodifiedSince_NoHeader_ReturnsNull()
+    {
+        var request = new DefaultHttpContext().Request;
+
+        ETagHelper.ParseIfUnmodifiedSince(request).Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseIfUnmodifiedSince_ValidDate_ReturnsDateTimeOffset()
+    {
+        var context = new DefaultHttpContext();
+        var date = new DateTimeOffset(2025, 6, 1, 12, 0, 0, TimeSpan.Zero);
+        context.Request.GetTypedHeaders().IfUnmodifiedSince = date;
+
+        ETagHelper.ParseIfUnmodifiedSince(context.Request).Should().Be(date);
     }
 
     #endregion

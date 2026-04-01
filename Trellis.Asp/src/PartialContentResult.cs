@@ -30,7 +30,7 @@ using Trellis;
 /// </para>
 /// </remarks>
 /// <example>
-/// Using PartialObjectResult directly in a controller:
+/// Using PartialContentResult directly in a controller:
 /// <code>
 /// [HttpGet]
 /// public IActionResult GetUsers([FromQuery] int page = 0, [FromQuery] int pageSize = 25)
@@ -47,7 +47,7 @@ using Trellis;
 ///     }
 ///     
 ///     // Partial result - return 206 Partial Content
-///     return new PartialObjectResult(from, to, totalCount, users);
+///     return new PartialContentResult(from, to, totalCount, users);
 /// }
 /// 
 /// // Response headers:
@@ -72,16 +72,16 @@ using Trellis;
 ///         .Map(x => x.Users)
 ///         .ToActionResult(this, from, to, totalCount);
 ///     
-///     // Automatically returns PartialObjectResult when appropriate
+///     // Automatically returns PartialContentResult when appropriate
 /// }
 /// </code>
 /// </example>
-public class PartialObjectResult : ObjectResult
+public class PartialContentResult : ObjectResult
 {
     private readonly ContentRangeHeaderValue _contentRangeHeaderValue;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="PartialObjectResult"/> class with explicit range values.
+    /// Initializes a new instance of the <see cref="PartialContentResult"/> class with explicit range values.
     /// </summary>
     /// <param name="rangeStart">The starting index of the range (zero-indexed, inclusive).</param>
     /// <param name="rangeEnd">The ending index of the range (zero-indexed, inclusive).</param>
@@ -105,15 +105,15 @@ public class PartialObjectResult : ObjectResult
     /// <example>
     /// <code>
     /// // Return items 0-24 out of 100 total
-    /// return new PartialObjectResult(0, 24, 100, users);
+    /// return new PartialContentResult(0, 24, 100, users);
     /// // Content-Range: items 0-24/100
     /// 
     /// // Return items 25-49, total unknown
-    /// return new PartialObjectResult(25, 49, null, users);
+    /// return new PartialContentResult(25, 49, null, users);
     /// // Content-Range: items 25-49/*
     /// </code>
     /// </example>
-    public PartialObjectResult(long rangeStart, long rangeEnd, long? totalLength, object? value)
+    public PartialContentResult(long rangeStart, long rangeEnd, long? totalLength, object? value)
         : base(value)
     {
         _contentRangeHeaderValue = totalLength == null
@@ -123,7 +123,7 @@ public class PartialObjectResult : ObjectResult
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="PartialObjectResult"/> class with a pre-configured <see cref="ContentRangeHeaderValue"/>.
+    /// Initializes a new instance of the <see cref="PartialContentResult"/> class with a pre-configured <see cref="ContentRangeHeaderValue"/>.
     /// </summary>
     /// <param name="contentRangeHeaderValue">The Content-Range header value to use in the response.</param>
     /// <param name="value">The partial data to include in the response body.</param>
@@ -148,7 +148,7 @@ public class PartialObjectResult : ObjectResult
     /// {
     ///     Unit = "bytes"
     /// };
-    /// return new PartialObjectResult(contentRange, fileBytes);
+    /// return new PartialContentResult(contentRange, fileBytes);
     /// // Content-Range: bytes 0-1023/2048
     /// </code>
     /// </example>
@@ -163,10 +163,10 @@ public class PartialObjectResult : ObjectResult
     /// {
     ///     Unit = "items"
     /// };
-    /// return new PartialObjectResult(contentRange, pagedResult.Items);
+    /// return new PartialContentResult(contentRange, pagedResult.Items);
     /// </code>
     /// </example>
-    public PartialObjectResult(ContentRangeHeaderValue contentRangeHeaderValue, object? value)
+    public PartialContentResult(ContentRangeHeaderValue contentRangeHeaderValue, object? value)
         : base(value)
     {
         _contentRangeHeaderValue = contentRangeHeaderValue;

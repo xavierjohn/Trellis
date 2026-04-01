@@ -276,17 +276,25 @@ public static class HttpResultExtensions
     {
         var statusCode = (options ?? TrellisAspOptions.Default).GetStatusCode(error);
 
+        Microsoft.AspNetCore.Http.IResult inner;
         if (error is ValidationError validationError)
         {
             Dictionary<string, string[]> errors = validationError.FieldErrors
                 .GroupBy(x => x.FieldName)
                 .ToDictionary(x => x.Key, x => x.SelectMany(y => y.Details).ToArray());
 
-            return Results.ValidationProblem(errors, validationError.Detail, validationError.Instance, statusCode);
+            inner = Results.ValidationProblem(errors, validationError.Detail, validationError.Instance, statusCode);
+        }
+        else
+        {
+            var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
+            inner = Results.Problem(detail, error.Instance, statusCode);
         }
 
-        var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
-        return Results.Problem(detail, error.Instance, statusCode);
+        if (HasCompanionHeaders(error))
+            return new CompanionHeaderResult(error, inner);
+
+        return inner;
     }
 
     /// <summary>
@@ -445,4 +453,27 @@ public static class HttpResultExtensions
     }
 
     #endregion
+
+    private static bool HasCompanionHeaders(Error error) => error switch
+    {
+        MethodNotAllowedError => true,
+        RateLimitError { RetryAfter: not null } => true,
+        ServiceUnavailableError { RetryAfter: not null } => true,
+        ContentTooLargeError { RetryAfter: not null } => true,
+        RangeNotSatisfiableError => true,
+        _ => false,
+    };
+
+    /// <summary>
+    /// An <see cref="Microsoft.AspNetCore.Http.IResult"/> wrapper that writes RFC-required companion headers
+    /// before delegating to the inner result.
+    /// </summary>
+    private sealed class CompanionHeaderResult(Error error, Microsoft.AspNetCore.Http.IResult inner) : Microsoft.AspNetCore.Http.IResult
+    {
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            ActionResultExtensions.EmitCompanionHeaders(error, httpContext.Response);
+            await inner.ExecuteAsync(httpContext).ConfigureAwait(false);
+        }
+    }
 }

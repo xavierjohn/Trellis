@@ -20,6 +20,12 @@
 public sealed class ServiceUnavailableError : Error
 {
     /// <summary>
+    /// Gets the optional retry-after value indicating when the service may resume.
+    /// When present, Trellis response mappers emit the <c>Retry-After</c> header.
+    /// </summary>
+    public RetryAfterValue? RetryAfter { get; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ServiceUnavailableError"/> class.
     /// </summary>
     /// <param name="detail">Description of why the service is unavailable.</param>
@@ -28,4 +34,14 @@ public sealed class ServiceUnavailableError : Error
     public ServiceUnavailableError(string detail, string code, string? instance = null) : base(detail, code, instance)
     {
     }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ServiceUnavailableError"/> class with retry-after metadata.
+    /// </summary>
+    /// <param name="detail">Description of why the service is unavailable.</param>
+    /// <param name="code">The error code identifying this type of service unavailable error.</param>
+    /// <param name="retryAfter">The retry-after value indicating when the service may resume.</param>
+    /// <param name="instance">Optional identifier for the unavailable service or resource.</param>
+    public ServiceUnavailableError(string detail, string code, RetryAfterValue retryAfter, string? instance = null)
+        : base(detail, code, instance) => RetryAfter = retryAfter;
 }

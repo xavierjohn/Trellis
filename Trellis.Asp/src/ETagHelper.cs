@@ -72,30 +72,60 @@ public static class ETagHelper
     }
 
     /// <summary>
-    /// Parses the <c>If-Match</c> header from an HTTP request per RFC 9110 §13.1.1
-    /// and returns all strong ETag values for use with <c>OptionalETag</c>/<c>RequireETag</c>.
+    /// Parses the If-None-Match header from an HTTP request.
+    /// </summary>
+    /// <returns>null if absent; a wildcard <see cref="EntityTagValue"/> if wildcard; array of entity tag values (both strong and weak).</returns>
+    public static EntityTagValue[]? ParseIfNoneMatch(HttpRequest request)
+    {
+        if (!request.Headers.ContainsKey("If-None-Match"))
+            return null;
+        var ifNoneMatch = request.GetTypedHeaders().IfNoneMatch;
+        if (ifNoneMatch is not { Count: > 0 })
+            return [];
+        var result = new List<EntityTagValue>();
+        foreach (var tag in ifNoneMatch)
+        {
+            if (tag == EntityTagHeaderValue.Any)
+                return [EntityTagValue.Wildcard()];
+            // If-None-Match includes both strong and weak tags (weak comparison)
+            var opaqueTag = tag.Tag.ToString().Trim('"');
+            result.Add(tag.IsWeak ? EntityTagValue.Weak(opaqueTag) : EntityTagValue.Strong(opaqueTag));
+        }
+
+        return [.. result];
+    }
+
+    /// <summary>
+    /// Parses the If-Modified-Since header.
+    /// </summary>
+    public static DateTimeOffset? ParseIfModifiedSince(HttpRequest request)
+    {
+        var typed = request.GetTypedHeaders();
+        return typed.IfModifiedSince;
+    }
+
+    /// <summary>
+    /// Parses the If-Unmodified-Since header.
+    /// </summary>
+    public static DateTimeOffset? ParseIfUnmodifiedSince(HttpRequest request)
+    {
+        var typed = request.GetTypedHeaders();
+        return typed.IfUnmodifiedSince;
+    }
+
+    /// <summary>
+    /// Parses the <c>If-Match</c> header from an HTTP request and returns
+    /// <see cref="EntityTagValue"/> instances for use with
+    /// <c>OptionalETag</c>/<c>RequireETag</c>.
     /// </summary>
     /// <param name="request">The HTTP request containing the If-Match header.</param>
     /// <returns>
     /// <c>null</c> if no If-Match header is present;
-    /// <c>["*"]</c> if the wildcard was specified (matches any entity);
-    /// an array of unquoted strong ETag values (weak tags are excluded per §13.1.1);
-    /// an empty array if the header is present but contains only weak tags (unsatisfiable precondition).
+    /// an array of <see cref="EntityTagValue"/> instances (weak tags excluded per §13.1.1);
+    /// an empty array if the header is present but contains only weak tags.
     /// </returns>
-    /// <remarks>
-    /// Use this in controllers instead of manually parsing the header:
-    /// <code>
-    /// var ifMatchETags = ETagHelper.ParseIfMatch(Request);
-    /// await UpdateCommand.TryCreate(id, title, ifMatchETags)
-    ///     .BindAsync(cmd => _sender.Send(cmd, ct))
-    ///     .ToETagActionResultAsync(this, e => e.ETag, TodoResponse.From);
-    /// </code>
-    /// </remarks>
-    public static string[]? ParseIfMatch(HttpRequest request)
+    public static EntityTagValue[]? ParseIfMatch(HttpRequest request)
     {
-        // Check if the raw header is present before attempting typed parsing.
-        // If the header exists but is malformed, return empty array (unsatisfiable precondition → 412)
-        // rather than null (which would mean "no header" → unconditional update).
         if (!request.Headers.ContainsKey("If-Match"))
             return null;
 
@@ -103,15 +133,15 @@ public static class ETagHelper
         if (ifMatch is not { Count: > 0 })
             return []; // Header present but unparseable → treat as unsatisfiable → 412
 
-        var result = new List<string>();
+        var result = new List<EntityTagValue>();
         foreach (var tag in ifMatch)
         {
             if (tag == EntityTagHeaderValue.Any)
-                return ["*"];
+                return [EntityTagValue.Wildcard()];
 
             // RFC 9110 §13.1.1: If-Match uses strong comparison — skip weak tags
             if (!tag.IsWeak)
-                result.Add(tag.Tag.ToString().Trim('"'));
+                result.Add(EntityTagValue.Strong(tag.Tag.ToString().Trim('"')));
         }
 
         return [.. result]; // Empty array if all tags were weak

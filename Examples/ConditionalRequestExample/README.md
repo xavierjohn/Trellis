@@ -14,8 +14,12 @@ This example covers the full [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) 
 
 - `Aggregate<TId>.ETag` — built-in concurrency token
 - `AggregateETagConvention` + `AggregateETagInterceptor` — automatic ETag management via `ApplyTrellisConventions` / `AddTrellisInterceptors`
-- `OptionalETag(ifMatchETag)` — validates the `If-Match` precondition
+- `ETagHelper.ParseIfMatch(request)` — parses `If-Match` header into typed `EntityTagValue[]?`
+- `OptionalETag(EntityTagValue[]?)` — validates the `If-Match` precondition (skips if absent)
+- `RequireETag(EntityTagValue[]?)` — validates the `If-Match` precondition (428 if absent)
 - `ToHttpResult(httpContext, etagSelector, map)` — sets the `ETag` header and handles `If-None-Match → 304`
+- `ConditionalRequestEvaluator.Evaluate(request, metadata)` — unified RFC §13.2.2 precondition evaluator
+- `RepresentationMetadata` — carries ETag, Last-Modified, Vary, Content-Language through response mappers
 
 ## Run
 

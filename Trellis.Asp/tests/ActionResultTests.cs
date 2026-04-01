@@ -69,7 +69,7 @@ public class ActionResultTests : IDisposable
             static r => "Replaced");
 
         // Assert
-        var partialResult = response.Result.As<PartialObjectResult>();
+        var partialResult = response.Result.As<PartialContentResult>();
         partialResult.Value.Should().Be("Replaced");
         partialResult.StatusCode.Should().Be(StatusCodes.Status206PartialContent);
         partialResult.ContentRangeHeaderValue.From.Should().Be(4);
@@ -301,7 +301,7 @@ public class ActionResultTests : IDisposable
         var response = result.ToActionResult(controller, 0, 4, 10);
 
         // Assert
-        var partialResult = response.Result.As<PartialObjectResult>();
+        var partialResult = response.Result.As<PartialContentResult>();
         partialResult.StatusCode.Should().Be(StatusCodes.Status206PartialContent);
         partialResult.Value.Should().Be("Test");
     }

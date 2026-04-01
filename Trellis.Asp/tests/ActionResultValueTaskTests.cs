@@ -59,7 +59,7 @@ public class ActionResultValueTaskTests
         var response = await result.ToActionResultAsync(controller, 4, 10, 15);
 
         // Assert
-        var partialResult = response.Result.As<PartialObjectResult>();
+        var partialResult = response.Result.As<PartialContentResult>();
         partialResult.Value.Should().Be("Test");
         partialResult.StatusCode.Should().Be(StatusCodes.Status206PartialContent);
         partialResult.ContentRangeHeaderValue.From.Should().Be(4);
@@ -82,7 +82,7 @@ public class ActionResultValueTaskTests
             r => r);
 
         // Assert
-        var partialResult = response.Result.As<PartialObjectResult>();
+        var partialResult = response.Result.As<PartialContentResult>();
         partialResult.Value.Should().Be("Test");
         partialResult.StatusCode.Should().Be(StatusCodes.Status206PartialContent);
         partialResult.ContentRangeHeaderValue.From.Should().Be(4);

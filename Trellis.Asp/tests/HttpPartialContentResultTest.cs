@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-public class HttpPartialObjectResultTest
+public class HttpPartialContentResultTest
 {
     public static TheoryData<object> ValuesData =>
         [
@@ -30,7 +30,7 @@ public class HttpPartialObjectResultTest
     {
         // Arrange & Act
         var contentRangeHeaderValue = new ContentRangeHeaderValue(1, 3, 10);
-        var result = new PartialObjectResult(contentRangeHeaderValue, value);
+        var result = new PartialContentResult(contentRangeHeaderValue, value);
 
         // Assert
         result.StatusCode.Should().Be(StatusCodes.Status206PartialContent);
@@ -43,7 +43,7 @@ public class HttpPartialObjectResultTest
     public async Task SetContentRangeHeader(int rangeStart, int rangeEnd, int? totalLength, string expected)
     {
         // Arrange
-        var result = new PartialObjectResult(rangeStart, rangeEnd, totalLength, "Hello There");
+        var result = new PartialContentResult(rangeStart, rangeEnd, totalLength, "Hello There");
 
         var httpContext = new DefaultHttpContext
         {

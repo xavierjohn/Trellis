@@ -21,7 +21,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 /// </list>
 /// </para>
 /// <para>
-/// Registered automatically by <see cref="DbContextOptionsBuilderExtensions.AddTrellisInterceptors"/>.
+/// Registered automatically by <see cref="DbContextOptionsBuilderExtensions.AddTrellisInterceptors(DbContextOptionsBuilder)"/>.
 /// </para>
 /// </remarks>
 internal sealed class AggregateETagInterceptor : SaveChangesInterceptor

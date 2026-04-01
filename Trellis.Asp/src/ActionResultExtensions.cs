@@ -238,6 +238,9 @@ public static class ActionResultExtensions
         if (error is ValidationError validation)
             return ValidationErrors<TValue>(string.IsNullOrEmpty(error.Detail) ? null : error.Detail, validation, error.Instance, controllerBase, statusCode);
 
+        if (controllerBase.HttpContext is not null)
+            EmitCompanionHeaders(error, controllerBase.Response);
+
         var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
         return (ActionResult<TValue>)controllerBase.Problem(detail, error.Instance, statusCode);
     }
@@ -308,7 +311,7 @@ public static class ActionResultExtensions
         {
             var partialResult = to - from + 1 != length;
             if (partialResult)
-                return new PartialObjectResult(from, to, length, result.Value);
+                return new PartialContentResult(from, to, length, result.Value);
 
             return controllerBase.Ok(result.Value);
         }
@@ -395,7 +398,7 @@ public static class ActionResultExtensions
 
             var partialResult = contentRange.To - contentRange.From + 1 != contentRange.Length;
             if (partialResult)
-                return new PartialObjectResult(contentRange, value);
+                return new PartialContentResult(contentRange, value);
 
             return controllerBase.Ok(value);
         }
@@ -555,6 +558,32 @@ public static class ActionResultExtensions
         return result.Error.ToActionResult<TOut>(controllerBase);
     }
 
+    internal static void EmitCompanionHeaders(Error error, Microsoft.AspNetCore.Http.HttpResponse response)
+    {
+        switch (error)
+        {
+            case MethodNotAllowedError mae:
+                response.Headers["Allow"] = string.Join(", ", mae.AllowedMethods);
+                break;
+
+            case RateLimitError { RetryAfter: not null } rle:
+                response.Headers["Retry-After"] = rle.RetryAfter.ToHeaderValue();
+                break;
+
+            case ServiceUnavailableError { RetryAfter: not null } sue:
+                response.Headers["Retry-After"] = sue.RetryAfter.ToHeaderValue();
+                break;
+
+            case ContentTooLargeError { RetryAfter: not null } ctle:
+                response.Headers["Retry-After"] = ctle.RetryAfter.ToHeaderValue();
+                break;
+
+            case RangeNotSatisfiableError rnse:
+                response.Headers["Content-Range"] = $"{rnse.Unit} */{rnse.CompleteLength}";
+                break;
+        }
+    }
+
     private static ActionResult<TValue> ValidationErrors<TValue>(string? detail, ValidationError validation, string? instance, ControllerBase controllerBase, int statusCode)
     {
         ModelStateDictionary modelState = new();
@@ -568,99 +597,68 @@ public static class ActionResultExtensions
         return controllerBase.ValidationProblem(detail, instance, effectiveStatusCode, modelStateDictionary: modelState);
     }
 
-    #region RFC 9110 — ETag / If-None-Match Support
+    #region RepresentationMetadata Support
 
     /// <summary>
-    /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> with a mapping function,
-    /// sets the <c>ETag</c> response header per RFC 9110, and returns 304 Not Modified when
-    /// the request's <c>If-None-Match</c> header matches the current ETag (GET/HEAD only).
+    /// Converts a Result to an ActionResult, applying representation metadata headers
+    /// (ETag, Last-Modified, Vary, Content-Language, Content-Location, Accept-Ranges).
+    /// Evaluates all conditional request headers (If-Match, If-Unmodified-Since, If-None-Match,
+    /// If-Modified-Since) with correct RFC 9110 §13.2.2 precedence via <see cref="ConditionalRequestEvaluator"/>.
     /// </summary>
-    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
-    /// <typeparam name="TOut">The type of the value in the output ActionResult.</typeparam>
-    /// <param name="result">The result object to convert.</param>
-    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
-    /// <param name="map">Function that transforms the input value to the output type.</param>
-    /// <param name="etagSelector">Function that extracts the ETag value from the input.</param>
-    /// <returns>
-    /// <list type="bullet">
-    /// <item>200 OK with transformed value and ETag header if result is successful</item>
-    /// <item>304 Not Modified if If-None-Match matches (GET/HEAD only)</item>
-    /// <item>Appropriate error status code (400-599) if result is failure</item>
-    /// </list>
-    /// </returns>
-    /// <example>
-    /// <code>
-    /// [HttpGet("{id}")]
-    /// public async ValueTask&lt;ActionResult&lt;TodoResponse&gt;&gt; GetById(TodoId id, CancellationToken ct) =>
-    ///     await _sender.Send(new GetTodoByIdQuery(id), ct)
-    ///         .ToETagActionResultAsync(this, todo => todo.ETag, TodoResponse.From);
-    /// </code>
-    /// </example>
-    public static ActionResult<TOut> ToETagActionResult<TIn, TOut>(
+    public static ActionResult<TOut> ToActionResult<TIn, TOut>(
         this Result<TIn> result,
-        ControllerBase controllerBase,
-        Func<TIn, string> etagSelector,
+        ControllerBase controller,
+        RepresentationMetadata metadata,
         Func<TIn, TOut> map)
     {
-        if (result.IsSuccess)
+        if (result.IsFailure)
+            return result.Error.ToActionResult<TOut>(controller);
+
+        ApplyMetadataHeaders(controller.Response, metadata);
+
+        // Only evaluate conditional headers for safe methods (GET/HEAD).
+        // For unsafe methods, the precondition was already checked before the write
+        // (via OptionalETag/RequireETag), and the response ETag is the NEW value.
+        var method = controller.Request.Method;
+        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
         {
-            var etag = etagSelector(result.Value);
-            return SuccessWithETag<TIn, TOut>(controllerBase, result.Value, map, etag);
+            return ConditionalRequestEvaluator.Evaluate(controller.Request, metadata) switch
+            {
+                ConditionalDecision.NotModified => new StatusCodeResult(StatusCodes.Status304NotModified),
+                ConditionalDecision.PreconditionFailed =>
+                    Error.PreconditionFailed("A conditional request header evaluated to false.")
+                        .ToActionResult<TOut>(controller),
+                _ => controller.Ok(map(result.Value)),
+            };
         }
 
-        return result.Error.ToActionResult<TOut>(controllerBase);
+        return controller.Ok(map(result.Value));
     }
 
-    /// <summary>
-    /// Converts a <see cref="Result{TValue}"/> to a 201 Created <see cref="ActionResult{TOut}"/>
-    /// with Location header, ETag header, and a mapping function.
-    /// </summary>
-    public static ActionResult<TOut> ToCreatedAtETagActionResult<TValue, TOut>(
-        this Result<TValue> result,
-        ControllerBase controllerBase,
-        string actionName,
-        Func<TValue, object?> routeValues,
-        Func<TValue, string> etagSelector,
-        Func<TValue, TOut> map,
-        string? controllerName = null)
+    /// <summary>Async Task overload of metadata-aware ToActionResult.</summary>
+    public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
+
+    /// <summary>Async ValueTask overload of metadata-aware ToActionResult.</summary>
+    public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
+
+    internal static void ApplyMetadataHeaders(HttpResponse response, RepresentationMetadata metadata)
     {
-        if (result.IsSuccess)
-        {
-            var etag = etagSelector(result.Value);
-            SetETagHeader(controllerBase, etag);
-            var value = map(result.Value);
-            return (ActionResult<TOut>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(result.Value), value);
-        }
-
-        return result.Error.ToActionResult<TOut>(controllerBase);
-    }
-
-    private static ActionResult<TOut> SuccessWithETag<TIn, TOut>(
-        ControllerBase controllerBase,
-        TIn value,
-        Func<TIn, TOut> map,
-        string etag)
-    {
-        SetETagHeader(controllerBase, etag);
-
-        // RFC 9110 §13.1.2: If-None-Match for GET/HEAD → 304 Not Modified
-        var request = controllerBase.HttpContext?.Request;
-        if (request is not null
-            && request.Method is "GET" or "HEAD"
-            && !string.IsNullOrEmpty(etag)
-            && request.GetTypedHeaders().IfNoneMatch is { Count: > 0 } ifNoneMatch
-            && ETagHelper.IfNoneMatchMatches(ifNoneMatch, etag))
-        {
-            return (ActionResult<TOut>)controllerBase.StatusCode(StatusCodes.Status304NotModified);
-        }
-
-        return controllerBase.Ok(map(value));
-    }
-
-    private static void SetETagHeader(ControllerBase controllerBase, string etag)
-    {
-        if (!string.IsNullOrEmpty(etag))
-            controllerBase.Response.Headers.ETag = $"\"{etag}\"";
+        if (metadata.ETag is not null)
+            response.Headers.ETag = metadata.ETag.ToHeaderValue();
+        if (metadata.LastModified.HasValue)
+            response.Headers["Last-Modified"] = metadata.LastModified.Value.ToString("R");
+        if (metadata.Vary is { Count: > 0 })
+            response.Headers.Vary = string.Join(", ", metadata.Vary);
+        if (metadata.ContentLanguage is { Count: > 0 })
+            response.Headers.ContentLanguage = string.Join(", ", metadata.ContentLanguage);
+        if (metadata.ContentLocation is not null)
+            response.Headers["Content-Location"] = metadata.ContentLocation;
+        if (metadata.AcceptRanges is not null)
+            response.Headers["Accept-Ranges"] = metadata.AcceptRanges;
     }
 
     #endregion

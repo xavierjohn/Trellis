@@ -176,7 +176,7 @@ For context: a single database query is ~1,000,000 ns. ROP overhead is 0.0016% o
 Trellis ships with two files that make AI coding assistants effective immediately:
 
 - **`.github/copilot-instructions.md`** — conventions, patterns, and implementation rules. AI assistants (GitHub Copilot, Cursor, etc.) consume this automatically when they open a Trellis project.
-- **`trellis-api-reference.md`** — complete API surface covering every public type, method, and extension method.
+- **`trellis-api-*.md`** — per-library API reference files (e.g., `trellis-api-results.md`, `trellis-api-ddd.md`, `trellis-api-efcore.md`) covering every public type, method, and extension method.
 
 The **[Trellis ASP Template](https://www.nuget.org/packages/Trellis.AspTemplate)** scaffolds a full clean-architecture solution with both files included:
 
