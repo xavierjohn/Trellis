@@ -41,6 +41,7 @@ public sealed class RangeNotSatisfiableError : Error
     public RangeNotSatisfiableError(string detail, long completeLength, string code, string unit = "bytes", string? instance = null)
         : base(detail, code, instance)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(completeLength);
         ArgumentNullException.ThrowIfNull(unit);
         CompleteLength = completeLength;
         Unit = unit;

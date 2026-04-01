@@ -142,20 +142,18 @@ public sealed record EntityTagValue
     /// <summary>
     /// Performs a strong comparison per RFC 9110 §8.8.3.2.
     /// Both tags must be strong and their opaque tags must match character-by-character.
+    /// Wildcards never match in entity tag comparison — they are a precondition token, not a tag.
     /// </summary>
-    /// <param name="other">The entity tag to compare with.</param>
-    /// <returns><c>true</c> if both tags are strong and their opaque tags are equal; otherwise <c>false</c>.</returns>
     public bool StrongEquals(EntityTagValue other) =>
-        !IsWeak && !other.IsWeak && OpaqueTag == other.OpaqueTag;
+        !IsWildcard && !other.IsWildcard && !IsWeak && !other.IsWeak && OpaqueTag == other.OpaqueTag;
 
     /// <summary>
     /// Performs a weak comparison per RFC 9110 §8.8.3.2.
     /// Only the opaque tags must match; the weakness indicator is ignored.
+    /// Wildcards never match in entity tag comparison — they are a precondition token, not a tag.
     /// </summary>
-    /// <param name="other">The entity tag to compare with.</param>
-    /// <returns><c>true</c> if the opaque tags are equal regardless of strength; otherwise <c>false</c>.</returns>
     public bool WeakEquals(EntityTagValue other) =>
-        OpaqueTag == other.OpaqueTag;
+        !IsWildcard && !other.IsWildcard && OpaqueTag == other.OpaqueTag;
 
     /// <summary>
     /// Formats this entity tag for use in an HTTP header.

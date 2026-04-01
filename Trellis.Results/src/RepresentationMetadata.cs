@@ -34,6 +34,8 @@ public sealed class RepresentationMetadata
         string? contentLocation,
         string? acceptRanges)
     {
+        if (eTag is { IsWildcard: true })
+            throw new ArgumentException("Wildcard entity tags cannot be used in representation metadata. Use a specific ETag value.", nameof(eTag));
         ETag = eTag;
         LastModified = lastModified;
         Vary = vary;
@@ -112,7 +114,7 @@ public sealed class RepresentationMetadata
         {
             _vary ??= [];
             foreach (var name in fieldNames)
-                if (!_vary.Contains(name, StringComparer.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(name) && !_vary.Contains(name, StringComparer.OrdinalIgnoreCase))
                     _vary.Add(name);
             return this;
         }
@@ -124,7 +126,7 @@ public sealed class RepresentationMetadata
         {
             _contentLanguage ??= [];
             foreach (var lang in languages)
-                if (!_contentLanguage.Contains(lang, StringComparer.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(lang) && !_contentLanguage.Contains(lang, StringComparer.OrdinalIgnoreCase))
                     _contentLanguage.Add(lang);
             return this;
         }

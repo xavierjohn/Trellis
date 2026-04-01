@@ -36,6 +36,6 @@ public sealed class MethodNotAllowedError : Error
         : base(detail, code, instance)
     {
         ArgumentNullException.ThrowIfNull(allowedMethods);
-        AllowedMethods = allowedMethods;
+        AllowedMethods = [.. allowedMethods];
     }
 }
