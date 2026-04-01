@@ -46,7 +46,7 @@ AuthorizationBehavior     ← checks IAuthorize.RequiredPermissions → Error.Fo
 ResourceAuthorizationBehavior  ← loads resource, calls IAuthorizeResource<T>.Authorize
   │
   ▼
-ValidationBehavior        ← calls IValidate.Validate() → ValidationError
+ValidationBehavior        ← calls IValidate.Validate(), short-circuits on failure
   │
   ▼
 Handler                   ← your business logic
@@ -59,7 +59,7 @@ Handler                   ← your business logic
 | `LoggingBehavior` | *(all messages)* | *(never)* |
 | `AuthorizationBehavior` | `IAuthorize` | `Error.Forbidden` |
 | `ResourceAuthorizationBehavior` | `IAuthorizeResource<TResource>` | `Error.Forbidden` or `Error.NotFound` |
-| `ValidationBehavior` | `IValidate` | `ValidationError` |
+| `ValidationBehavior` | `IValidate` | Failure from `Validate()` (commonly `ValidationError`) |
 
 Behaviors are **constraint-based** — if your command does not implement `IAuthorize`, the `AuthorizationBehavior` is skipped entirely. You opt in per command/query.
 
@@ -93,7 +93,8 @@ services.AddResourceAuthorization(
 ```
 
 ```csharp
-// AOT-compatible: explicit per-command registration
+// Alternative: explicit per-command registration
+// Note: AddResourceLoaders uses assembly scanning and is not AOT / trimming friendly.
 services.AddResourceAuthorization<CancelOrderCommand, Order, Result<Order>>();
 services.AddResourceLoaders(typeof(CancelOrderResourceLoader).Assembly);
 ```

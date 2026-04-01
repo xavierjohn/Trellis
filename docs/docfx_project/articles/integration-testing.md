@@ -123,7 +123,8 @@ var missing = await repo.GetByIdAsync(OrderId.NewUniqueV4());
 missing.Should().BeFailureOfType<NotFoundError>();
 
 // Delete
-await repo.DeleteAsync(order.Id);
+var deleteResult = await repo.DeleteAsync(order.Id);
+deleteResult.Should().BeSuccess();
 ```
 
 ### Domain Event Inspection
@@ -133,7 +134,8 @@ await repo.DeleteAsync(order.Id);
 ```csharp
 var repo = new FakeRepository<Order, OrderId>();
 var order = Order.Create(customerId, lineItems);
-await repo.SaveAsync(order);
+var saveResult = await repo.SaveAsync(order);
+saveResult.Should().BeSuccess();
 
 repo.PublishedEvents.Should().ContainSingle()
     .Which.Should().BeOfType<OrderCreatedEvent>();
@@ -158,7 +160,8 @@ var repo = new FakeRepository<Customer, CustomerId>()
     .WithUniqueConstraint(c => c.Email);
 
 var customer1 = Customer.Create("Alice", email);
-await repo.SaveAsync(customer1);  // succeeds
+var firstSaveResult = await repo.SaveAsync(customer1);
+firstSaveResult.Should().BeSuccess();
 
 var customer2 = Customer.Create("Bob", email);  // same email
 var result = await repo.SaveAsync(customer2);
@@ -231,11 +234,13 @@ await using (actorProvider.WithActor("user-1", "Read"))
 [Fact]
 public async Task CancelOrder_ByOwner_Succeeds()
 {
-    var actorProvider = new TestActorProvider("owner-1", "Orders.Cancel");
     var repo = new FakeRepository<Order, OrderId>();
+    var actorProvider = new TestActorProvider("owner-1", "Orders.Cancel");
+    var handler = new CancelOrderHandler(repo, actorProvider);
     var order = Order.Create(CustomerId.NewUniqueV4());
     // assume order.CreatedByActorId == "owner-1"
-    await repo.SaveAsync(order);
+    var saveResult = await repo.SaveAsync(order);
+    saveResult.Should().BeSuccess();
 
     var handler = new CancelOrderHandler(repo);
     var result = await handler.Handle(
