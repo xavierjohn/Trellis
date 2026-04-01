@@ -106,7 +106,8 @@ var repo = new FakeRepository<Order, OrderId>();
 
 // Save an aggregate
 var order = Order.Create(customerId, lineItems);
-await repo.SaveAsync(order);
+var saveResult = await repo.SaveAsync(order);
+saveResult.Should().BeSuccess();
 
 // Retrieve by ID — returns Result<Order>
 var result = await repo.GetByIdAsync(order.Id);
@@ -301,15 +302,33 @@ Swaps the EF Core database provider in `WebApplicationFactory` tests. Removes al
 ```csharp
 using Trellis.Testing;
 
-// In your test fixture
-public class OrderApiTests : IClassFixture<WebApplicationFactory<Program>>
+// Custom WebApplicationFactory that swaps the DB provider
+public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        _connection.Open();
         builder.ConfigureServices(services =>
             services.ReplaceDbProvider<AppDbContext>(options =>
                 options.UseSqlite(_connection).AddTrellisInterceptors()));
     }
+
+    protected override void Dispose(bool disposing)
+    {
+        _connection.Dispose();
+        base.Dispose(disposing);
+    }
+}
+
+// Test class consumes the custom factory
+public class OrderApiTests : IClassFixture<TestWebApplicationFactory>
+{
+    private readonly TestWebApplicationFactory _factory;
+
+    public OrderApiTests(TestWebApplicationFactory factory) =>
+        _factory = factory;
 }
 ```
 

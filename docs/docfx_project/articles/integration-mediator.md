@@ -85,8 +85,11 @@ Resource authorization requires an additional registration step because each com
 
 ```csharp
 // Recommended: assembly scanning — discovers IResourceLoader<,> implementations
-// and registers ResourceAuthorizationBehavior for each IAuthorizeResource<T> command
-services.AddResourceAuthorization(typeof(CancelOrderCommand).Assembly);
+// and registers ResourceAuthorizationBehavior for each IAuthorizeResource<T> command.
+// Pass all assemblies containing commands and resource loaders.
+services.AddResourceAuthorization(
+    typeof(CancelOrderCommand).Assembly,
+    typeof(CancelOrderResourceLoader).Assembly);
 ```
 
 ```csharp
@@ -105,6 +108,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddMediator();
 builder.Services.AddTrellisBehaviors();
+
+// Pass all assemblies containing commands and resource loaders
 builder.Services.AddResourceAuthorization(typeof(Program).Assembly);
 
 // Actor provider for authorization behaviors
@@ -367,8 +372,8 @@ public sealed class EditDocumentHandler(IDocumentRepository repository)
     public async ValueTask<Result<Document>> Handle(
         EditDocumentCommand command, CancellationToken cancellationToken)
         => await repository.GetByIdAsync(command.DocumentId, cancellationToken)
-            .BindAsync((doc, ct) => Task.FromResult(doc.Edit(command.Name, command.Content)), cancellationToken)
-            .TapAsync((doc, ct) => repository.SaveAsync(doc, ct), cancellationToken);
+            .BindAsync(doc => Task.FromResult(doc.Edit(command.Name, command.Content)))
+            .TapAsync(doc => repository.SaveAsync(doc, cancellationToken));
 }
 ```
 
