@@ -33,7 +33,6 @@ public class Order : Aggregate<OrderId>
     public IReadOnlyList<OrderLine> Lines => _lines.AsReadOnly();
     public Money Total { get; private set; }
     public OrderStatus Status { get; private set; }
-    public DateTime CreatedAt { get; }
     public DateTime? ConfirmedAt { get; private set; }
     public string? PaymentTransactionId { get; private set; }
 
@@ -42,7 +41,6 @@ public class Order : Aggregate<OrderId>
         CustomerId = customerId;
         Total = Money.Create(0, "USD");
         Status = OrderStatus.Draft;
-        CreatedAt = DateTime.UtcNow;
 
         // Raise domain event for order creation
         DomainEvents.Add(new OrderCreated(Id, customerId, DateTime.UtcNow));

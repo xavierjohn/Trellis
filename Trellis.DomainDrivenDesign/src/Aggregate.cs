@@ -48,8 +48,10 @@ using System.Text.Json.Serialization;
 ///     public CustomerId CustomerId { get; private set; }
 ///     public OrderStatus Status { get; private set; }
 ///     public Money Total { get; private set; }
-///     public DateTime CreatedAt { get; }
 ///     public DateTime? SubmittedAt { get; private set; }
+///     
+///     // CreatedAt and LastModified are inherited from Entity&lt;TId&gt;
+///     // and automatically managed by EntityTimestampInterceptor.
 ///     
 ///     // Internal entities are protected and accessed through methods
 ///     public IReadOnlyList<OrderLine> Lines => _lines.AsReadOnly();
@@ -60,7 +62,6 @@ using System.Text.Json.Serialization;
 ///         CustomerId = customerId;
 ///         Status = OrderStatus.Draft;
 ///         Total = Money.Zero;
-///         CreatedAt = DateTime.UtcNow;
 ///     }
 ///     
 ///     public static Result<Order> Create(CustomerId customerId) =>

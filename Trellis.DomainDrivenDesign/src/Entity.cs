@@ -48,15 +48,15 @@
 /// {
 ///     public string Name { get; private set; }
 ///     public EmailAddress Email { get; private set; }
-///     public DateTime CreatedAt { get; }
-///     public DateTime? UpdatedAt { get; private set; }
+///     
+///     // CreatedAt and LastModified are inherited from Entity&lt;TId&gt;
+///     // and automatically managed by EntityTimestampInterceptor.
 ///     
 ///     private Customer(CustomerId id, string name, EmailAddress email)
 ///         : base(id)
 ///     {
 ///         Name = name;
 ///         Email = email;
-///         CreatedAt = DateTime.UtcNow;
 ///     }
 ///     
 ///     public static Result&lt;Customer&gt; TryCreate(string name, EmailAddress email) =>
@@ -66,11 +66,7 @@
 ///     
 ///     public Result&lt;Customer&gt; UpdateEmail(EmailAddress newEmail) =>
 ///         newEmail.ToResult()
-///             .Tap(e =>
-///             {
-///                 Email = e;
-///                 UpdatedAt = DateTime.UtcNow;
-///             })
+///             .Tap(e => Email = e)
 ///             .Map(_ => this);
 /// }
 /// 
@@ -86,7 +82,7 @@
 /// customer1 == sameCustomer; // true - same identity
 /// </code>
 /// </example>
-public abstract class Entity<TId>
+public abstract class Entity<TId> : IEntity
     where TId : notnull
 {
     /// <summary>
@@ -106,6 +102,26 @@ public abstract class Entity<TId>
     /// </list>
     /// </remarks>
     public TId Id { get; init; }
+
+    /// <summary>
+    /// Gets or sets the UTC timestamp when this entity was first persisted.
+    /// Automatically managed by <c>EntityTimestampInterceptor</c>.
+    /// </summary>
+    /// <value>
+    /// Defaults to <c>default(DateTimeOffset)</c> for unsaved entities.
+    /// Set once on first save; not updated on subsequent modifications.
+    /// </value>
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the UTC timestamp of the most recent modification.
+    /// Automatically managed by <c>EntityTimestampInterceptor</c>.
+    /// </summary>
+    /// <value>
+    /// Defaults to <c>default(DateTimeOffset)</c> for unsaved entities.
+    /// Updated on every save (add or modify).
+    /// </value>
+    public DateTimeOffset LastModified { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Entity{TId}"/> class with the specified identifier.

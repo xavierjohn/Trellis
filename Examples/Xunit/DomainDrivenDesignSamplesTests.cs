@@ -82,15 +82,12 @@ public class DomainDrivenDesignSamplesTests
     {
         public string Name { get; private set; }
         public EmailAddress Email { get; private set; }
-        public DateTime CreatedAt { get; }
-        public DateTime? UpdatedAt { get; private set; }
 
         private Customer(CustomerId id, string name, EmailAddress email)
             : base(id)
         {
             Name = name;
             Email = email;
-            CreatedAt = DateTime.UtcNow;
         }
 
         public static Result<Customer> TryCreate(string name, EmailAddress email) =>
@@ -112,20 +109,12 @@ public class DomainDrivenDesignSamplesTests
             newName.ToResult()
                 .Ensure(n => !string.IsNullOrWhiteSpace(n),
                        Error.Validation("Name cannot be empty"))
-                .Tap(n =>
-                {
-                    Name = n;
-                    UpdatedAt = DateTime.UtcNow;
-                })
+                .Tap(n => Name = n)
                 .Map(_ => this);
 
         public Result<Customer> UpdateEmail(EmailAddress newEmail) =>
             newEmail.ToResult()
-                .Tap(e =>
-                {
-                    Email = e;
-                    UpdatedAt = DateTime.UtcNow;
-                })
+                .Tap(e => Email = e)
                 .Map(_ => this);
     }
 
@@ -142,8 +131,6 @@ public class DomainDrivenDesignSamplesTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be("John Doe");
         result.Value.Email.Should().Be(email);
-        result.Value.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        result.Value.UpdatedAt.Should().BeNull();
     }
 
     [Fact]
@@ -188,7 +175,6 @@ public class DomainDrivenDesignSamplesTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be("John Smith");
-        result.Value.UpdatedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -205,7 +191,6 @@ public class DomainDrivenDesignSamplesTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Email.Should().Be(newEmail);
-        result.Value.UpdatedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -645,7 +630,6 @@ public class DomainDrivenDesignSamplesTests
         public IReadOnlyList<OrderLine> Lines => _lines.AsReadOnly();
         public Money Total { get; private set; }
         public OrderStatus Status { get; private set; }
-        public DateTime CreatedAt { get; }
         public DateTime? SubmittedAt { get; private set; }
         public DateTime? ShippedAt { get; private set; }
         public DateTime? CancelledAt { get; private set; }
@@ -654,7 +638,6 @@ public class DomainDrivenDesignSamplesTests
         {
             CustomerId = customerId;
             Status = OrderStatus.Draft;
-            CreatedAt = DateTime.UtcNow;
             Total = Money.Create(0m, "USD");
 
             DomainEvents.Add(new OrderCreated(id, customerId, DateTime.UtcNow));

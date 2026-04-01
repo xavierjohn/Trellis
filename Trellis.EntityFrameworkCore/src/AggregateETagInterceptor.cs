@@ -1,6 +1,5 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
-using System.Collections;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -111,7 +110,7 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
             if (entry.Entity is not IAggregate)
                 continue;
 
-            if (!HasModifiedDependents(entry))
+            if (!ChangeTrackerHelper.HasModifiedDependents(entry))
                 continue;
 
             var etagProperty = entry.Properties
@@ -119,36 +118,6 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
             if (etagProperty is not null)
                 etagProperty.IsModified = true;
         }
-    }
-
-    private static bool HasModifiedDependents(EntityEntry entry)
-    {
-        foreach (var navigation in entry.Navigations)
-        {
-            if (navigation is CollectionEntry collection)
-            {
-                // Detect relationship changes (adds/removes) on collection navigations
-                if (collection.IsModified)
-                    return true;
-
-                if (collection.CurrentValue is IEnumerable items)
-                {
-                    foreach (var item in items)
-                    {
-                        var childEntry = entry.Context.Entry(item);
-                        if (childEntry.State is EntityState.Modified or EntityState.Added or EntityState.Deleted)
-                            return true;
-                    }
-                }
-            }
-            else if (navigation is ReferenceEntry { TargetEntry.State: EntityState.Modified
-                or EntityState.Added or EntityState.Deleted })
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
