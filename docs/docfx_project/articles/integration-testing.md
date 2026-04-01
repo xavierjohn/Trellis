@@ -362,12 +362,12 @@ using Trellis.Testing.Builders;
 ResultBuilder.Success(value);
 ResultBuilder.Failure<T>(error);
 ResultBuilder.NotFound<T>("Order not found");
-ResultBuilder.NotFound<T>("Order", "123");       // "Order '123' not found"
+ResultBuilder.NotFound<T>("Order", "123");       // Detail: "Order 123 not found", Instance: "123"
 ResultBuilder.Validation<T>("Invalid", "field");
 ResultBuilder.Unauthorized<T>();
 ResultBuilder.Forbidden<T>();
 ResultBuilder.Conflict<T>("Email already exists");
-ResultBuilder.Unexpected<T>();
+ResultBuilder.Unexpected<T>("Unexpected error");
 ```
 
 ### ValidationErrorBuilder
