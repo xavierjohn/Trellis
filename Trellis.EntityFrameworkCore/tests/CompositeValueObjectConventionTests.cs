@@ -448,6 +448,80 @@ public partial class CompositeValueObjectConventionTests : IDisposable
 
     #endregion
 
+    #region Maybe<composite VO> with non-nullable value-type properties
+
+    [Fact]
+    public void MaybeDateRange_WithValueTypeProperties_ModelBuildsSuccessfully()
+    {
+        // DateRange has DateTime (non-nullable value type) properties.
+        // IsRequired(false) throws on value types, so the convention must
+        // fall back to the separate-table strategy.
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<DateRangeDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new DateRangeDbContext(options);
+        context.Database.EnsureCreated();
+
+        var entityType = context.Model.FindEntityType(typeof(MaybeDateRangeEntity))!;
+        var nav = entityType.FindNavigation("_availability");
+        nav.Should().NotBeNull();
+        nav!.TargetEntityType.IsOwned().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MaybeDateRange_WithValue_RoundTripWorks()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<DateRangeDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new DateRangeDbContext(options);
+        context.Database.EnsureCreated();
+
+        var ct = TestContext.Current.CancellationToken;
+        var range = TestDateRange.Create(new DateTime(2026, 1, 1), new DateTime(2026, 12, 31), "FY2026");
+        var entity = new MaybeDateRangeEntity
+        {
+            Id = 1,
+            Availability = Maybe.From(range)
+        };
+
+        context.Entities.Add(entity);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Entities.FindAsync([1], ct);
+        loaded.Should().NotBeNull();
+        loaded!.Availability.HasValue.Should().BeTrue();
+        loaded.Availability.Value.Label.Should().Be("FY2026");
+    }
+
+    #endregion
+
+    #region Open generic ValueObject subclasses excluded from scanning
+
+    [Fact]
+    public void OpenGenericValueObject_NotRegisteredAsOwned() =>
+        // GenericRange<T> : ValueObject is an open generic — it must not be
+        // registered as an owned type (EF Core can't map open generics).
+        TrellisTypeScanner.IsCompositeValueObject(typeof(GenericRange<>))
+            .Should().BeFalse();
+
+    [Fact]
+    public void ClosedGenericValueObject_IsRegisteredAsOwned() =>
+        // GenericRange<int> is a concrete closed generic — it should be detected.
+        TrellisTypeScanner.IsCompositeValueObject(typeof(GenericRange<int>))
+            .Should().BeTrue();
+
+    #endregion
+
     #region Explicit OwnsOne overrides convention
 
     [Fact]
@@ -598,6 +672,37 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             modelBuilder.Entity<EntityWithMixedOwned>(b =>
                 b.OwnsOne(e => e.Metadata));
+    }
+
+    private partial class MaybeDateRangeEntity
+    {
+        public int Id { get; set; }
+        public partial Maybe<TestDateRange> Availability { get; set; }
+    }
+
+    private class DateRangeDbContext : DbContext
+    {
+        public DbSet<MaybeDateRangeEntity> Entities => Set<MaybeDateRangeEntity>();
+
+        public DateRangeDbContext(DbContextOptions<DateRangeDbContext> options) : base(options) { }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestDateRange).Assembly);
+    }
+
+    /// <summary>
+    /// Open generic ValueObject for testing that the scanner excludes open generics.
+    /// </summary>
+    private class GenericRange<T> : ValueObject where T : IComparable<T>, IComparable
+    {
+        public T From { get; private set; } = default!;
+        public T To { get; private set; } = default!;
+
+        protected override IEnumerable<IComparable?> GetEqualityComponents()
+        {
+            yield return From;
+            yield return To;
+        }
     }
 
     #endregion

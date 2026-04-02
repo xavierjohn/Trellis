@@ -48,6 +48,8 @@ internal static class TrellisTypeScanner
     /// </summary>
     internal static bool IsCompositeValueObject(Type type) =>
         !type.IsAbstract
+        && !type.ContainsGenericParameters
+        && !type.IsGenericTypeDefinition
         && s_valueObjectType.IsAssignableFrom(type)
         && FindValueObject(type) is null;
 }

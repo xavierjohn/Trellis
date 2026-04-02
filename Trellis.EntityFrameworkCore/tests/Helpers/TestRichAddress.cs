@@ -8,7 +8,7 @@ public class TestRichAddress : ValueObject
 {
     public string Street { get; private set; }
     public string City { get; private set; }
-    public TestCustomerName State { get; private set; }
+    public TestStateCode State { get; private set; }
     public string ZipCode { get; private set; }
 
     // ReSharper disable once UnusedMember.Local — used by EF Core for materialization
@@ -20,7 +20,7 @@ public class TestRichAddress : ValueObject
         ZipCode = null!;
     }
 
-    public TestRichAddress(string street, string city, TestCustomerName state, string zipCode)
+    public TestRichAddress(string street, string city, TestStateCode state, string zipCode)
     {
         Street = street;
         City = city;
@@ -29,7 +29,7 @@ public class TestRichAddress : ValueObject
     }
 
     public static TestRichAddress Create(string street, string city, string state, string zipCode) =>
-        new(street, city, TestCustomerName.Create(state), zipCode);
+        new(street, city, TestStateCode.Create(state), zipCode);
 
     protected override IEnumerable<IComparable?> GetEqualityComponents()
     {

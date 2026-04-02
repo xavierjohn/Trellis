@@ -93,16 +93,17 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
 
                 // EF Core validation rejects optional dependents with nested owned types in
                 // table-splitting because all-null columns make entity existence ambiguous.
-                // Split to a separate table when nested owned navigations are present.
-                // In a separate table, the row's existence indicates presence — no need to
-                // mark columns nullable or prefix names; MoneyConvention handles nested Money normally.
+                // Also, IsRequired(false) throws on non-nullable value-type properties.
+                // In both cases, split to a separate table where the row's existence
+                // indicates presence — no need to mark columns nullable.
                 var hasNestedOwned = navigation.TargetEntityType.GetDeclaredNavigations()
                     .Any(n => n.TargetEntityType.IsOwned());
-                if (hasNestedOwned)
+                var hasNonNullableValueType = navigation.TargetEntityType.GetDeclaredProperties()
+                    .Any(p => !p.IsShadowProperty() && p.ClrType.IsValueType && Nullable.GetUnderlyingType(p.ClrType) is null);
+                if (hasNestedOwned || hasNonNullableValueType)
                 {
-                    // Use {OwnerTypeName}_{PropertyName} to avoid table name collisions
-                    // when multiple entities have Maybe<T> properties with the same name.
-                    var tableName = $"{entityType.ClrType.Name}_{maybePropertyName}";
+                    var ownerTypeName = entityType.ClrType?.Name ?? entityType.Name;
+                    var tableName = $"{ownerTypeName}_{maybePropertyName}";
                     navigation.TargetEntityType.Builder.HasAnnotation(
                         RelationalAnnotationNames.TableName, tableName);
                     continue;
