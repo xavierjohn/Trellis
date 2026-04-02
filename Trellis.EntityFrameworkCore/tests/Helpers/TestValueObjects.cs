@@ -45,3 +45,8 @@ public partial class TestGiftWrap : RequiredBool<TestGiftWrap>;
 /// Test value object: strongly-typed date.
 /// </summary>
 public partial class TestOrderDate : RequiredDateTime<TestOrderDate>;
+
+/// <summary>
+/// Test value object: strongly-typed US state code (e.g., "CA", "NY").
+/// </summary>
+public partial class TestStateCode : RequiredString<TestStateCode>;

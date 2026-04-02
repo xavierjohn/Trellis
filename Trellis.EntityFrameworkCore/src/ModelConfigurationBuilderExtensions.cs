@@ -41,6 +41,7 @@ public static class ModelConfigurationBuilderExtensions
     {
         var primitivesAssembly = typeof(RequiredEnum<>).Assembly;
         var allAssemblies = new HashSet<Assembly>(assemblies) { primitivesAssembly };
+        var compositeTypes = new HashSet<Type>();
 
         foreach (var assembly in allAssemblies)
         {
@@ -50,16 +51,21 @@ public static class ModelConfigurationBuilderExtensions
                     continue;
 
                 var valueObject = TrellisTypeScanner.FindValueObject(type);
-                if (valueObject is null)
-                    continue;
-
-                var converterType = typeof(TrellisScalarConverter<,>)
-                    .MakeGenericType(type, valueObject.Value.ProviderType);
-                configurationBuilder.Properties(type).HaveConversion(converterType);
+                if (valueObject is not null)
+                {
+                    var converterType = typeof(TrellisScalarConverter<,>)
+                        .MakeGenericType(type, valueObject.Value.ProviderType);
+                    configurationBuilder.Properties(type).HaveConversion(converterType);
+                }
+                else if (TrellisTypeScanner.IsCompositeValueObject(type))
+                {
+                    compositeTypes.Add(type);
+                }
             }
         }
 
         configurationBuilder.Conventions.Add(static _ => new MaybeConvention());
+        configurationBuilder.Conventions.Add(_ => new CompositeValueObjectConvention(compositeTypes));
         configurationBuilder.Conventions.Add(static _ => new MoneyConvention());
         configurationBuilder.Conventions.Add(static _ => new AggregateETagConvention());
 

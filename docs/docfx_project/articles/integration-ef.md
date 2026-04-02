@@ -13,6 +13,7 @@ Integrate Railway-Oriented Programming with Entity Framework Core for type-safe 
 - [Query Extensions](#query-extensions)
 - [Handling Database Exceptions](#handling-database-exceptions)
 - [Money Property Convention](#money-property-convention)
+- [Composite Value Object Convention](#composite-value-object-convention)
 - [Maybe\<T\> Property Convention](#maybe-property-convention)
 - [GUID V7 for Entity IDs](#guid-v7-for-entity-ids)
 
@@ -108,6 +109,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 | `RequiredEnum<T>` | `string` | `v.Value` ↔ symbolic value lookup via `T.TryFromName(str).Value` |
 | `EmailAddress` | `string(254)` | `v.Value` ↔ `EmailAddress.Create(str)` |
 | Custom `ScalarValueObject<T,P>` | `P` | `v.Value` ↔ `T.Create(p)` |
+| Custom composite `ValueObject` | Owned type (one column per property) | Auto-registered as owned entity |
 
 ### 🔧 Manual HasConversion (Without Package)
 
@@ -899,6 +901,65 @@ Column naming follows the same convention: `FinePaid` (nullable `decimal(18,3)`)
 
 > [!WARNING]
 > `ExecuteUpdate` helpers (`SetMaybeValue`/`SetMaybeNone`) do not support `Maybe<Money>`. Use tracked entity updates (load, modify, `SaveChangesAsync`) instead.
+
+## Composite Value Object Convention
+
+Any type extending `ValueObject` that does not implement `IScalarValue` is automatically registered as an EF Core owned type by `ApplyTrellisConventions`. No `OwnsOne` configuration needed.
+
+### Entity Declaration
+
+```csharp
+public class Address : ValueObject
+{
+    public string Street { get; private set; }
+    public string City { get; private set; }
+    public string State { get; private set; }
+    public string ZipCode { get; private set; }
+
+    private Address() { Street = City = State = ZipCode = null!; } // EF Core materialization
+    public Address(string street, string city, string state, string zipCode)
+    { Street = street; City = city; State = state; ZipCode = zipCode; }
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    { yield return Street; yield return City; yield return State; yield return ZipCode; }
+}
+```
+
+### Required and Optional Properties
+
+```csharp
+public partial class Customer : Aggregate<CustomerId>
+{
+    public Address ShippingAddress { get; set; } = null!;           // required (4 NOT NULL columns)
+    public partial Maybe<Address> BillingAddress { get; set; }      // optional (4 nullable columns)
+}
+```
+
+Required composite VO properties produce NOT NULL columns. `Maybe<T>` composite VO properties produce nullable columns with the original property name as column prefix.
+
+### How It Works
+
+The `CompositeValueObjectConvention` (registered by `ApplyTrellisConventions`) scans provided assemblies for `ValueObject` subclasses that are not `IScalarValue`, then:
+
+1. **Model initialization** — calls `modelBuilder.Owned(type)` for each discovered composite VO
+2. **Model finalization** — for `Maybe<T>` navigations, marks all owned columns as nullable and fixes column naming to use the original property name prefix
+
+`Money` retains its specialized column naming (e.g., `Price` + `PriceCurrency`) via `MoneyConvention`, which runs after and overrides the generic convention.
+
+### Explicit Override
+
+Explicit `OwnsOne` in `OnModelCreating` takes precedence:
+
+```csharp
+modelBuilder.Entity<Customer>(b => b.OwnsOne(c => c.ShippingAddress, a =>
+{
+    a.Property(x => x.Street).HasColumnName("addr_street");
+    a.Property(x => x.City).HasColumnName("addr_city");
+}));
+```
+
+> [!NOTE]
+> Composite value objects with nested owned types (e.g., `Maybe<Address>` where `Address` has a `Money` property) are supported. The convention maps the optional dependent to a **separate table** (`{OwnerType}_{PropertyName}`) instead of inlining nullable columns into the owner. All columns remain NOT NULL; optionality is expressed by row presence/absence. You can override the table name with explicit `OwnsOne` and `ToTable()` configuration.
 
 ## <a id="maybe-property-convention"></a>Maybe\<T\> Property Convention
 
