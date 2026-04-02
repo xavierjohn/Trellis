@@ -19,8 +19,8 @@ using Microsoft.AspNetCore.Http;
 /// </list>
 /// </para>
 /// <para>
-/// Per RFC 7240 §2, unrecognized preference tokens are silently ignored.
-/// If a preference appears more than once, only the first instance is considered.
+/// Per RFC 7240 §2, unrecognized or malformed preference tokens are silently ignored.
+/// If a preference appears more than once, the first recognized (valid) occurrence is honored.
 /// </para>
 /// </remarks>
 /// <example>
@@ -50,7 +50,7 @@ public sealed class PreferHeader
     /// <summary>Gets whether the client prefers <c>handling=lenient</c>.</summary>
     public bool HandlingLenient { get; }
 
-    /// <summary>Gets whether any preference was specified in the request.</summary>
+    /// <summary>Gets whether any recognized standard preference was specified in the request.</summary>
     public bool HasPreferences { get; }
 
     private PreferHeader(

@@ -110,8 +110,17 @@ public static class WriteOutcomeExtensions
 
     private static void AppendVaryPrefer(HttpResponse response)
     {
+        // Vary may be a single comma-separated string (e.g., "Accept, Accept-Encoding")
+        // or multiple StringValues entries. Check both forms for "Prefer".
         var existing = response.Headers.Vary;
-        if (existing.Count == 0 || !existing.Any(v => string.Equals(v, "Prefer", StringComparison.OrdinalIgnoreCase)))
-            response.Headers.Append("Vary", "Prefer");
+        foreach (var entry in existing)
+        {
+            if (entry is null) continue;
+            foreach (var part in entry.Split(',', StringSplitOptions.TrimEntries))
+                if (string.Equals(part, "Prefer", StringComparison.OrdinalIgnoreCase))
+                    return;
+        }
+
+        response.Headers.Append("Vary", "Prefer");
     }
 }
