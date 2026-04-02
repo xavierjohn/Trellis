@@ -99,13 +99,19 @@ public static class WriteOutcomeExtensions
             return controller.NoContent();
         }
 
-        if (outcome is WriteOutcome<T>.Updated && prefer.ReturnRepresentation)
+        var result = outcome.ToActionResult(controller, map);
+
+        // RFC 7240 §2: Vary: Prefer MUST be included on responses that can vary based on
+        // the Prefer header, regardless of whether the client actually sent Prefer.
+        // Must run after ToActionResult so ApplyMetadataHeaders doesn't overwrite it.
+        if (outcome is WriteOutcome<T>.Updated)
         {
             AppendVaryPrefer(controller.Response);
-            controller.Response.Headers["Preference-Applied"] = "return=representation";
+            if (prefer.ReturnRepresentation)
+                controller.Response.Headers["Preference-Applied"] = "return=representation";
         }
 
-        return outcome.ToActionResult(controller, map);
+        return result;
     }
 
     private static void AppendVaryPrefer(HttpResponse response)
@@ -123,4 +129,84 @@ public static class WriteOutcomeExtensions
 
         response.Headers.Append("Vary", "Prefer");
     }
+
+    #region ToUpdatedActionResult — Convenience extensions for Result<T> update responses with Prefer support
+
+    /// <summary>
+    /// Converts a successful <see cref="Result{TIn}"/> to an updated response, honoring RFC 7240 <c>Prefer</c>.
+    /// Returns 200 OK with body by default, or 204 No Content when <c>Prefer: return=minimal</c> is present.
+    /// On failure, returns the appropriate error response.
+    /// </summary>
+    /// <typeparam name="TIn">The domain type in the result.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="result">The result from the update operation.</param>
+    /// <param name="controller">The controller context.</param>
+    /// <param name="metadata">Optional representation metadata (ETag, Last-Modified, etc.).</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <returns>An ActionResult with appropriate status code and headers.</returns>
+    public static ActionResult<TOut> ToUpdatedActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controller,
+        RepresentationMetadata? metadata,
+        Func<TIn, TOut> map)
+    {
+        if (result.IsFailure)
+            return result.Error.ToActionResult<TOut>(controller);
+
+        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
+        return outcome.ToActionResult(controller, controller.Request, map);
+    }
+
+    /// <summary>
+    /// Converts a successful <see cref="Result{TIn}"/> to an updated response with dynamic metadata,
+    /// honoring RFC 7240 <c>Prefer</c>.
+    /// </summary>
+    /// <typeparam name="TIn">The domain type in the result.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="result">The result from the update operation.</param>
+    /// <param name="controller">The controller context.</param>
+    /// <param name="metadataSelector">Function to build metadata from the domain value (e.g., extract ETag).</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <returns>An ActionResult with appropriate status code and headers.</returns>
+    public static ActionResult<TOut> ToUpdatedActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controller,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map)
+    {
+        if (result.IsFailure)
+            return result.Error.ToActionResult<TOut>(controller);
+
+        var metadata = metadataSelector(result.Value);
+        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
+        return outcome.ToActionResult(controller, controller.Request, map);
+    }
+
+    /// <summary>
+    /// Async Task variant of <see cref="ToUpdatedActionResult{TIn,TOut}(Result{TIn}, ControllerBase, Func{TIn, RepresentationMetadata}, Func{TIn, TOut})"/>.
+    /// </summary>
+    public static async Task<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        ControllerBase controller,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedActionResult(controller, metadataSelector, map);
+    }
+
+    /// <summary>
+    /// Async ValueTask variant of <see cref="ToUpdatedActionResult{TIn,TOut}(Result{TIn}, ControllerBase, Func{TIn, RepresentationMetadata}, Func{TIn, TOut})"/>.
+    /// </summary>
+    public static async ValueTask<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        ControllerBase controller,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedActionResult(controller, metadataSelector, map);
+    }
+
+    #endregion
 }

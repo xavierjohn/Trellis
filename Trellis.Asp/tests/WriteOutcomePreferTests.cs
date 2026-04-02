@@ -70,6 +70,29 @@ public class WriteOutcomePreferTests
 
     #endregion
 
+    #region Updated + return=representation + metadata Vary — no overwrite
+
+    [Fact]
+    public void Updated_ReturnRepresentation_WithMetadataVary_PreservesPreferInVary()
+    {
+        // Regression: ApplyMetadataHeaders was overwriting Vary, losing "Prefer"
+        var (controller, _) = CreateControllerWithPrefer("return=representation");
+        var metadata = RepresentationMetadata.Create()
+            .SetStrongETag("etag4")
+            .AddVary("Accept")
+            .Build();
+        WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated", metadata);
+
+        outcome.ToActionResult<string, string>(controller, controller.Request);
+
+        var vary = controller.Response.Headers.Vary.ToString();
+        vary.Should().Contain("Accept");
+        vary.Should().Contain("Prefer");
+        controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=representation");
+    }
+
+    #endregion
+
     #region Updated + no Prefer → 200 (default)
 
     [Fact]
@@ -83,6 +106,8 @@ public class WriteOutcomePreferTests
         actionResult.Should().BeOfType<OkObjectResult>();
         actionResult.As<OkObjectResult>().Value.Should().Be("updated");
         controller.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
+        // RFC 7240 §2: Vary: Prefer MUST be included even when Prefer was not sent
+        controller.Response.Headers.Vary.ToString().Should().Contain("Prefer");
     }
 
     #endregion
@@ -183,6 +208,81 @@ public class WriteOutcomePreferTests
         outcome.ToActionResult<string, string>(controller, controller.Request);
 
         controller.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
+    }
+
+    #endregion
+
+    #region Result<T>.ToUpdatedActionResult convenience extension
+
+    [Fact]
+    public void ToUpdatedActionResult_Success_NoPrefer_Returns200WithBody()
+    {
+        var (controller, _) = CreateControllerWithPrefer();
+        var result = Result.Success("updated-value");
+        var metadata = RepresentationMetadata.WithStrongETag("etag1");
+
+        var actionResult = result.ToUpdatedActionResult(controller, metadata, (string s) => s.ToUpperInvariant());
+
+        actionResult.Result.Should().BeOfType<OkObjectResult>();
+        actionResult.Result.As<OkObjectResult>().Value.Should().Be("UPDATED-VALUE");
+        controller.Response.Headers.ETag.ToString().Should().Be("\"etag1\"");
+    }
+
+    [Fact]
+    public void ToUpdatedActionResult_Success_ReturnMinimal_Returns204()
+    {
+        var (controller, _) = CreateControllerWithPrefer("return=minimal");
+        var result = Result.Success("updated-value");
+        var metadata = RepresentationMetadata.WithStrongETag("etag2");
+
+        var actionResult = result.ToUpdatedActionResult(controller, metadata, (string s) => s.ToUpperInvariant());
+
+        actionResult.Result.Should().BeOfType<NoContentResult>();
+        controller.Response.Headers.ETag.ToString().Should().Be("\"etag2\"");
+        controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=minimal");
+        controller.Response.Headers.Vary.ToString().Should().Contain("Prefer");
+    }
+
+    [Fact]
+    public void ToUpdatedActionResult_Success_ReturnRepresentation_Returns200()
+    {
+        var (controller, _) = CreateControllerWithPrefer("return=representation");
+        var result = Result.Success("updated-value");
+        var metadata = RepresentationMetadata.WithStrongETag("etag3");
+
+        var actionResult = result.ToUpdatedActionResult(controller, metadata, (string s) => s.ToUpperInvariant());
+
+        actionResult.Result.Should().BeOfType<OkObjectResult>();
+        actionResult.Result.As<OkObjectResult>().Value.Should().Be("UPDATED-VALUE");
+        controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=representation");
+    }
+
+    [Fact]
+    public void ToUpdatedActionResult_Failure_ReturnsError()
+    {
+        var (controller, _) = CreateControllerWithPrefer("return=minimal");
+        var result = Result.Failure<string>(Error.NotFound("not found"));
+
+        var actionResult = result.ToUpdatedActionResult(controller, (RepresentationMetadata?)null, (string s) => s);
+
+        actionResult.Result.Should().BeOfType<ObjectResult>();
+        actionResult.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status404NotFound);
+    }
+
+    [Fact]
+    public void ToUpdatedActionResult_MetadataSelector_Success_ReturnMinimal_Returns204()
+    {
+        var (controller, _) = CreateControllerWithPrefer("return=minimal");
+        var result = Result.Success("updated-value");
+
+        var actionResult = result.ToUpdatedActionResult(
+            controller,
+            _ => RepresentationMetadata.WithStrongETag("dynamic-etag"),
+            (string s) => s.ToUpperInvariant());
+
+        actionResult.Result.Should().BeOfType<NoContentResult>();
+        controller.Response.Headers.ETag.ToString().Should().Be("\"dynamic-etag\"");
+        controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=minimal");
     }
 
     #endregion

@@ -606,20 +606,15 @@ public async ValueTask<ActionResult<OrderResponse>> Create(
 Trellis supports the RFC 7240 `Prefer` request header on write operations via `WriteOutcomeExtensions`. When the Prefer-aware overload is used, clients can influence response behavior:
 
 ```csharp
-// Controller endpoint using WriteOutcome with Prefer support
+// Controller endpoint using Prefer-aware update convenience method
 [HttpPut("{id}")]
-public async ValueTask<ActionResult> Update(
-    OrderId id, [FromBody] UpdateOrderRequest request, CancellationToken ct)
-{
-    var ifMatchETags = ETagHelper.ParseIfMatch(Request);
-    return await UpdateOrderCommand.TryCreate(id, request.Amount, ifMatchETags)
+public ValueTask<ActionResult<OrderResponse>> Update(
+    OrderId id, [FromBody] UpdateOrderRequest request, CancellationToken ct) =>
+    UpdateOrderCommand.TryCreate(id, request.Amount, ETagHelper.ParseIfMatch(Request))
         .BindAsync(command => _sender.Send(command, ct))
-        .MapAsync(order => (WriteOutcome<Order>)new WriteOutcome<Order>.Updated(order,
-            RepresentationMetadata.WithStrongETag(order.ETag)))
-        .MatchAsync(
-            outcome => outcome.ToActionResult(this, Request, OrderResponse.From),
-            error => error.ToActionResult<OrderResponse>(this));
-}
+        .ToUpdatedActionResultAsync(this,
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
+            OrderResponse.From);
 ```
 
 **Client sends `Prefer: return=minimal`** → `Updated` returns 204 No Content:

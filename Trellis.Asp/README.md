@@ -374,14 +374,22 @@ userApi.MapGet("/{id}", async (
 
 ### RFC 7240 — Prefer Header
 
-The `WriteOutcomeExtensions` support the RFC 7240 `Prefer` request header, allowing clients to influence response behavior on write operations:
+The `WriteOutcomeExtensions` support the RFC 7240 `Prefer` request header, allowing clients to influence response behavior on write operations.
+
+Use `ToUpdatedActionResultAsync` for a clean one-liner on update endpoints:
 
 ```csharp
-// In a controller — pass the request to enable Prefer header support
-var actionResult = outcome.ToActionResult(this, Request, dto => new ItemDto(dto));
+[HttpPut("{id}")]
+public ValueTask<ActionResult<OrderResponse>> Update(
+    OrderId id, [FromBody] UpdateOrderRequest request, CancellationToken ct) =>
+    UpdateOrderCommand.TryCreate(id, request.Amount, ETagHelper.ParseIfMatch(Request))
+        .BindAsync(command => _sender.Send(command, ct))
+        .ToUpdatedActionResultAsync(this,
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
+            OrderResponse.From);
 ```
 
-When a client sends `Prefer: return=minimal`, an `Updated` outcome returns 204 No Content instead of 200 OK with body. The `Preference-Applied` response header confirms which preference was honored.
+When a client sends `Prefer: return=minimal`, the response is 204 No Content instead of 200 OK with body:
 
 ```
 PUT /api/items/1 HTTP/1.1
