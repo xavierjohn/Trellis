@@ -391,6 +391,7 @@ If-Match: "abc123"
 HTTP/1.1 204 No Content
 ETag: "def456"
 Preference-Applied: return=minimal
+Vary: Prefer
 ```
 
 Use `PreferHeader.Parse(request)` to read preferences directly for custom logic.

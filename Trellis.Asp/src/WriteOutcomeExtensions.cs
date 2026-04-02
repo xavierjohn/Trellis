@@ -94,17 +94,24 @@ public static class WriteOutcomeExtensions
         {
             if (replaced.Metadata is not null)
                 ActionResultExtensions.ApplyMetadataHeaders(controller.Response, replaced.Metadata);
-            controller.Response.Headers.Append("Vary", "Prefer");
+            AppendVaryPrefer(controller.Response);
             controller.Response.Headers["Preference-Applied"] = "return=minimal";
             return controller.NoContent();
         }
 
         if (outcome is WriteOutcome<T>.Updated && prefer.ReturnRepresentation)
         {
-            controller.Response.Headers.Append("Vary", "Prefer");
+            AppendVaryPrefer(controller.Response);
             controller.Response.Headers["Preference-Applied"] = "return=representation";
         }
 
         return outcome.ToActionResult(controller, map);
+    }
+
+    private static void AppendVaryPrefer(HttpResponse response)
+    {
+        var existing = response.Headers.Vary;
+        if (existing.Count == 0 || !existing.Any(v => string.Equals(v, "Prefer", StringComparison.OrdinalIgnoreCase)))
+            response.Headers.Append("Vary", "Prefer");
     }
 }

@@ -244,7 +244,7 @@ Maps each variant to the correct HTTP response: `Created` → 201 + `Location`, 
 The `HttpRequest` overload parses the RFC 7240 `Prefer` header and adjusts the `Updated` response:
 - `Prefer: return=minimal` → `Updated` returns 204 No Content (instead of 200 + body)
 - `Prefer: return=representation` → `Updated` returns 200 OK + body (default behavior, explicitly acknowledged)
-- Emits `Preference-Applied` response header when a `return` preference is honored
+- Emits `Preference-Applied` and `Vary: Prefer` response headers when a `return` preference is honored
 - `Created`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent` are not affected by the `return` preference
 
 ### PreferHeader

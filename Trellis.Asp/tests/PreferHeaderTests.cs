@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 
@@ -331,17 +331,61 @@ public class PreferHeaderTests
 
     #endregion
 
-    #region Parse — Duplicate wait (First Wins)
+    #region Parse — Quoted-String Values (RFC 7240 word = token / quoted-string)
 
     [Fact]
-    public void Parse_DuplicateWait_FirstWins()
+    public void Parse_ReturnMinimal_QuotedString_ParsesCorrectly()
     {
-        // RFC 7240 §2: first occurrence wins for all preferences
-        var request = CreateRequest("wait=10, wait=1");
+        var request = CreateRequest("return=\"minimal\"");
 
         var prefer = PreferHeader.Parse(request);
 
-        prefer.Wait.Should().Be(10);
+        prefer.ReturnMinimal.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Parse_HandlingStrict_QuotedString_ParsesCorrectly()
+    {
+        var request = CreateRequest("handling=\"strict\"");
+
+        var prefer = PreferHeader.Parse(request);
+
+        prefer.HandlingStrict.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Parse — Invalid Value Then Valid Duplicate
+
+    [Fact]
+    public void Parse_ReturnInvalid_ThenValid_SecondWins()
+    {
+        // Invalid value should not mark "seen", so valid duplicate is honored
+        var request = CreateRequest("return=bogus, return=minimal");
+
+        var prefer = PreferHeader.Parse(request);
+
+        prefer.ReturnMinimal.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Parse_WaitInvalid_ThenValid_SecondWins()
+    {
+        var request = CreateRequest("wait=abc, wait=30");
+
+        var prefer = PreferHeader.Parse(request);
+
+        prefer.Wait.Should().Be(30);
+    }
+
+    [Fact]
+    public void Parse_HandlingInvalid_ThenValid_SecondWins()
+    {
+        var request = CreateRequest("handling=bogus, handling=lenient");
+
+        var prefer = PreferHeader.Parse(request);
+
+        prefer.HandlingLenient.Should().BeTrue();
     }
 
     #endregion

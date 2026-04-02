@@ -1,4 +1,4 @@
-namespace Trellis.Asp;
+﻿namespace Trellis.Asp;
 
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
@@ -117,6 +117,10 @@ public sealed class PreferHeader
             {
                 name = token[..equalsIndex].TrimEnd();
                 value = token[(equalsIndex + 1)..].TrimStart();
+
+                // RFC 7240: word = token / quoted-string — unquote if needed
+                if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+                    value = value[1..^1];
             }
 
             if (name.Equals("respond-async", StringComparison.OrdinalIgnoreCase))
@@ -125,36 +129,45 @@ public sealed class PreferHeader
             }
             else if (name.Equals("return", StringComparison.OrdinalIgnoreCase))
             {
-                // RFC 7240 §2: values are case-sensitive
+                // RFC 7240 §2: values are case-sensitive; only mark seen on recognized values
                 if (!returnSeen)
                 {
                     if (value.SequenceEqual("representation"))
+                    {
                         returnRepresentation = true;
+                        returnSeen = true;
+                    }
                     else if (value.SequenceEqual("minimal"))
+                    {
                         returnMinimal = true;
-                    returnSeen = true;
+                        returnSeen = true;
+                    }
                 }
             }
             else if (name.Equals("wait", StringComparison.OrdinalIgnoreCase))
             {
-                // RFC 7240 §2: first occurrence wins
-                if (!waitSeen)
+                // RFC 7240 §2: first recognized occurrence wins
+                if (!waitSeen && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds))
                 {
-                    if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds))
-                        wait = seconds;
+                    wait = seconds;
                     waitSeen = true;
                 }
             }
             else if (name.Equals("handling", StringComparison.OrdinalIgnoreCase))
             {
-                // RFC 7240 §2: values are case-sensitive
+                // RFC 7240 §2: values are case-sensitive; only mark seen on recognized values
                 if (!handlingSeen)
                 {
                     if (value.SequenceEqual("strict"))
+                    {
                         handlingStrict = true;
+                        handlingSeen = true;
+                    }
                     else if (value.SequenceEqual("lenient"))
+                    {
                         handlingLenient = true;
-                    handlingSeen = true;
+                        handlingSeen = true;
+                    }
                 }
             }
             // Per RFC 7240 §2: unknown preferences are silently ignored

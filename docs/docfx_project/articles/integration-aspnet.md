@@ -631,6 +631,7 @@ Prefer: return=minimal
 HTTP/1.1 204 No Content
 ETag: "def456"
 Preference-Applied: return=minimal
+Vary: Prefer
 ```
 
 **Client sends `Prefer: return=representation`** (or no Prefer header) → `Updated` returns 200 OK with body:
@@ -642,6 +643,7 @@ Prefer: return=representation
 HTTP/1.1 200 OK
 ETag: "def456"
 Preference-Applied: return=representation
+Vary: Prefer
 Content-Type: application/json
 
 { "id": "123", "amount": 99.99 }
