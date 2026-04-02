@@ -225,13 +225,84 @@ Discriminated union for write operation results. Each variant maps to the correc
 ### WriteOutcomeExtensions
 
 ```csharp
+// Standard mapping (server decides response shape)
 public static ActionResult ToActionResult<T, TOut>(
     this WriteOutcome<T> outcome,
     ControllerBase controller,
     Func<T, TOut>? map = null)
+
+// RFC 7240 Prefer-aware mapping (client can request return=minimal or return=representation)
+public static ActionResult ToActionResult<T, TOut>(
+    this WriteOutcome<T> outcome,
+    ControllerBase controller,
+    HttpRequest request,
+    Func<T, TOut>? map = null)
 ```
 
 Maps each variant to the correct HTTP response: `Created` → 201 + `Location`, `Updated` → 200, `UpdatedNoContent` → 204, `Accepted`/`AcceptedNoContent` → 202 + optional `Location` and `Retry-After` headers. Applies `RepresentationMetadata` headers when present.
+
+The `HttpRequest` overload parses the RFC 7240 `Prefer` header and adjusts the `Updated` response:
+- `Prefer: return=minimal` → `Updated` returns 204 No Content (instead of 200 + body)
+- `Prefer: return=representation` → `Updated` returns 200 OK + body (default behavior, explicitly acknowledged)
+- Emits `Preference-Applied` and `Vary: Prefer` response headers when a `return` preference is honored
+- `Created`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent` are not affected by the `return` preference
+
+### ToUpdatedActionResult / ToUpdatedActionResultAsync
+
+Convenience extensions on `Result<T>` for update endpoints. Combines Prefer header handling, metadata, and error mapping in one call:
+
+```csharp
+// With metadata selector (most common — ETag from domain object)
+public static ActionResult<TOut> ToUpdatedActionResult<TIn, TOut>(
+    this Result<TIn> result,
+    ControllerBase controller,
+    Func<TIn, RepresentationMetadata> metadataSelector,
+    Func<TIn, TOut> map)
+
+// Async variants:
+Task<ActionResult<TOut>> ToUpdatedActionResultAsync(...)
+ValueTask<ActionResult<TOut>> ToUpdatedActionResultAsync(...)
+
+// With static metadata
+public static ActionResult<TOut> ToUpdatedActionResult<TIn, TOut>(
+    this Result<TIn> result,
+    ControllerBase controller,
+    RepresentationMetadata? metadata,
+    Func<TIn, TOut> map)
+```
+
+Usage — replaces manual `WriteOutcome` construction, casting, and `MatchAsync`:
+
+```csharp
+[HttpPut("{id}")]
+public ValueTask<ActionResult<OrderResponse>> Update(
+    OrderId id, [FromBody] UpdateOrderRequest request, CancellationToken ct) =>
+    UpdateOrderCommand.TryCreate(id, request.Amount, ETagHelper.ParseIfMatch(Request))
+        .BindAsync(command => _sender.Send(command, ct))
+        .ToUpdatedActionResultAsync(this,
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
+            OrderResponse.From);
+```
+
+### PreferHeader
+
+```csharp
+public static PreferHeader Parse(HttpRequest request)
+```
+
+Parses the RFC 7240 `Prefer` request header. Exposes standard preference tokens as boolean/nullable properties:
+
+| Property | Preference Token | Description |
+|----------|-----------------|-------------|
+| `ReturnRepresentation` | `return=representation` | Client prefers full resource body |
+| `ReturnMinimal` | `return=minimal` | Client prefers minimal response (204) |
+| `RespondAsync` | `respond-async` | Client prefers asynchronous processing |
+| `Wait` | `wait=N` | Max seconds before preferring async |
+| `HandlingStrict` | `handling=strict` | Reject requests with any issues |
+| `HandlingLenient` | `handling=lenient` | Process requests despite minor issues |
+| `HasPreferences` | — | Whether any preference was specified |
+
+Per RFC 7240 §2: unrecognized preferences are silently ignored; duplicate preferences use first-wins semantics.
 
 ---
 
