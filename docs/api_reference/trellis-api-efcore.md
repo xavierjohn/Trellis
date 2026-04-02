@@ -122,7 +122,7 @@ modelBuilder.Entity<Customer>(b =>
 });
 ```
 
-The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name. When `T` is a composite owned type (e.g., `Money`, `Address`, or any custom `ValueObject`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column, and `CompositeValueObjectConvention` marks all columns nullable.
+The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name. When `T` is a composite owned type (e.g., `Money`, `Address`, or any custom `ValueObject`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column. For table-split composites (no nested owned types), `CompositeValueObjectConvention` marks all columns nullable; for composites with nested owned navigations, the convention maps the dependent to a separate table with NOT NULL columns — optionality is expressed by row presence/absence.
 
 Backing field naming: `Phone` → `_phone`, `SubmittedAt` → `_submittedAt`, `AlternateEmail` → `_alternateEmail`.
 

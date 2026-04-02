@@ -959,7 +959,7 @@ modelBuilder.Entity<Customer>(b => b.OwnsOne(c => c.ShippingAddress, a =>
 ```
 
 > [!NOTE]
-> Composite value objects containing nested composite value objects (e.g., `Address` with a `Money` property) are not fully supported with `Maybe<T>`. Use `T?` with explicit `OwnsOne` configuration for nested composite scenarios.
+> Composite value objects with nested owned types (e.g., `Maybe<Address>` where `Address` has a `Money` property) are supported. The convention maps the optional dependent to a **separate table** (`{OwnerType}_{PropertyName}`) instead of inlining nullable columns into the owner. All columns remain NOT NULL; optionality is expressed by row presence/absence. You can override the table name with explicit `OwnsOne` and `ToTable()` configuration.
 
 ## <a id="maybe-property-convention"></a>Maybe\<T\> Property Convention
 

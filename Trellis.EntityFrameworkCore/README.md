@@ -135,7 +135,7 @@ Column naming uses EF Core's default owned-type convention. `Money` retains its 
 Explicit `OwnsOne` in `OnModelCreating` takes precedence over the convention for custom column names or settings.
 
 > [!NOTE]
-> Composite value objects containing nested composite value objects (e.g., `Address` with a `Money` property) are not fully supported with `Maybe<T>`. Use `T?` with explicit `OwnsOne` configuration for nested composite scenarios.
+> Optional composite value objects with nested owned types (e.g., `Maybe<Address>` where `Address` has a `Money` property) are supported. The convention maps these to a **separate table** (`{OwnerType}_{PropertyName}`) instead of nullable columns on the owner. All columns remain NOT NULL; optionality is expressed by row presence/absence. Explicit `OwnsOne` with `ToTable()` can override the table name.
 
 ## Money Property Convention
 

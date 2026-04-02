@@ -349,7 +349,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     }
 
     [Fact]
-    public void MaybeNestedComposite_NestedMoneyColumnsAreNullable()
+    public void MaybeNestedComposite_ColumnsAreNotNullable_InSeparateTable()
     {
         var entityType = Context.Model.FindEntityType(typeof(MaybeNestedCompositeEntity))!;
         var addressNav = entityType.FindNavigation("_destination");
@@ -378,7 +378,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         var addressType = addressNav.TargetEntityType;
 
         // Should be in its own table, not table-split with the owner
-        addressType.GetTableName().Should().Be("Destination");
+        addressType.GetTableName().Should().Be("MaybeNestedCompositeEntity_Destination");
     }
 
     [Fact]

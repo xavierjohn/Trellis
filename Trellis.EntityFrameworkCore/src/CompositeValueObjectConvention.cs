@@ -18,10 +18,20 @@ using Trellis.Primitives;
 /// without requiring explicit <c>OwnsOne</c> configuration.
 /// </para>
 /// <para>
-/// For composite value objects used with <see cref="Maybe{T}"/>, the convention also
-/// marks all owned-type columns as nullable and fixes column naming to use the original
-/// property name as prefix (instead of the source-generated <c>_camelCase</c> backing field name).
+/// For composite value objects used with <see cref="Maybe{T}"/>, two storage strategies are used:
 /// </para>
+/// <list type="bullet">
+/// <item>
+/// <b>Table-splitting</b> (no nested owned navigations): all owned-type columns are marked nullable
+/// and column names use the original property name as prefix. Optionality is expressed via all-null columns.
+/// </item>
+/// <item>
+/// <b>Separate table</b> (nested owned navigations present): the owned type is mapped to its own table
+/// named <c>{OwnerTypeName}_{PropertyName}</c>. Columns remain NOT NULL; optionality is expressed by
+/// the presence or absence of a row. This avoids EF Core's restriction on optional dependents with
+/// nested owned types in table-splitting.
+/// </item>
+/// </list>
 /// <para>
 /// <see cref="Money"/> is a composite value object but has its own dedicated
 /// <see cref="MoneyConvention"/> with specialized column naming and precision.
@@ -90,8 +100,11 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
                     .Any(n => n.TargetEntityType.IsOwned());
                 if (hasNestedOwned)
                 {
+                    // Use {OwnerTypeName}_{PropertyName} to avoid table name collisions
+                    // when multiple entities have Maybe<T> properties with the same name.
+                    var tableName = $"{entityType.ClrType.Name}_{maybePropertyName}";
                     navigation.TargetEntityType.Builder.HasAnnotation(
-                        RelationalAnnotationNames.TableName, maybePropertyName);
+                        RelationalAnnotationNames.TableName, tableName);
                     continue;
                 }
 
