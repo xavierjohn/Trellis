@@ -8,6 +8,7 @@ Thin integration layer that eliminates repetitive EF Core boilerplate when using
 
 - [Installation](#installation)
 - [Convention-Based Value Converters](#convention-based-value-converters)
+- [Composite Value Object Convention](#composite-value-object-convention)
 - [Money Property Convention](#money-property-convention)
 - [Maybe\<T\> Property Convention](#maybetproperty-convention)
 - [Result-Returning SaveChanges](#result-returning-savechanges)
@@ -76,8 +77,9 @@ public class AppDbContext : DbContext
 | `IScalarValue<TSelf, TPrimitive>` | `TPrimitive` (string, Guid, int, decimal) | `Value` → DB, `Create()` ← DB |
 | `RequiredEnum<TSelf>` | `string` | `Value` → DB, `TryFromName()` ← DB |
 | `Money` | Structured owned type: `decimal(18,3)` + `nvarchar(3)` | Auto-mapped as owned entity (Amount + Currency columns) |
+| Custom composite `ValueObject` | Structured owned type: one column per property | Auto-mapped as owned entity (no `OwnsOne` needed) |
 
-This covers converter-based scalar/symbolic types (`RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredEnum<T>`, `EmailAddress`, and any custom `ScalarValueObject<TSelf, T>`) plus `Money` as a structured owned type.
+This covers converter-based scalar/symbolic types (`RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredEnum<T>`, `EmailAddress`, and any custom `ScalarValueObject<TSelf, T>`) plus `Money` and other composite `ValueObject` types as structured owned types.
 
 ### Multiple Assemblies
 
@@ -89,6 +91,51 @@ configurationBuilder.ApplyTrellisConventions(
     typeof(SharedTypes).Assembly);    // Another assembly
 // Trellis.Primitives is always included automatically
 ```
+
+## Composite Value Object Convention
+
+Composite value objects — types extending `ValueObject` but not implementing `IScalarValue` — are automatically registered as EF Core owned types. No `OwnsOne` configuration needed.
+
+```csharp
+public class Address : ValueObject
+{
+    public string Street { get; private set; }
+    public string City { get; private set; }
+    public string State { get; private set; }
+    public string ZipCode { get; private set; }
+
+    private Address() { Street = City = State = ZipCode = null!; } // EF Core
+    public Address(string street, string city, string state, string zipCode)
+    { Street = street; City = city; State = state; ZipCode = zipCode; }
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    { yield return Street; yield return City; yield return State; yield return ZipCode; }
+}
+
+public class Customer
+{
+    public CustomerId Id { get; set; } = null!;
+    public Address ShippingAddress { get; set; } = null!;     // required (4 NOT NULL columns)
+    public Address BillingAddress { get; set; } = null!;      // required (4 NOT NULL columns)
+}
+```
+
+`Maybe<T>` is also supported for optional composite value objects:
+
+```csharp
+public partial class Customer
+{
+    public Address ShippingAddress { get; set; } = null!;           // required
+    public partial Maybe<Address> BillingAddress { get; set; }      // optional (4 nullable columns)
+}
+```
+
+Column naming uses EF Core's default owned-type convention. `Money` retains its specialized column naming via `MoneyConvention`.
+
+Explicit `OwnsOne` in `OnModelCreating` takes precedence over the convention for custom column names or settings.
+
+> [!NOTE]
+> Composite value objects containing nested composite value objects (e.g., `Address` with a `Money` property) are not fully supported with `Maybe<T>`. Use `T?` with explicit `OwnsOne` configuration for nested composite scenarios.
 
 ## Money Property Convention
 
@@ -324,6 +371,7 @@ The scanner checks each type in the provided assemblies:
 
 1. **Symbolic value objects** such as `RequiredEnum<TSelf>` — detected from the base type and mapped with a string provider plus `TryFromName()` reconstruction
 2. **Scalar value objects** implementing `IScalarValue<TSelf, TPrimitive>` — interface-based detection where the `TPrimitive` type argument determines the database column type
+3. **Composite value objects** extending `ValueObject` without `IScalarValue` — registered as owned types via `CompositeValueObjectConvention`
 
 ### Expression Tree Converters
 

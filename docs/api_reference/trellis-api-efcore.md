@@ -36,13 +36,14 @@ IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 
 ### Value Converter Registration
 
-`ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types and `Money`. Also registers `AggregateETagConvention` for optimistic concurrency. Call once — do NOT add manual `HasConversion` for Trellis types.
+`ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types, `Money`, and composite `ValueObject` types. Also registers `AggregateETagConvention` for optimistic concurrency. Call once — do NOT add manual `HasConversion` for Trellis types.
 
 ```csharp
 // In ConfigureConventions (NOT OnModelCreating)
 configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 // Auto-registers converters for all IScalarValue and RequiredEnum types
 // Auto-maps Money properties as owned types (Amount + Currency columns)
+// Auto-maps composite ValueObject types as owned types (e.g., Address → Street, City, State, ZipCode columns)
 // MonetaryAmount maps to a single decimal column (scalar value object convention)
 // Auto-marks Aggregate<TId>.ETag as IsConcurrencyToken()
 ```
@@ -85,6 +86,20 @@ Explicit `OwnsOne` configuration takes precedence over the convention.
 
 `Maybe<Money>` properties are also supported — `MaybeConvention` creates an optional ownership navigation with nullable Amount/Currency columns. No manual `OwnsOne` needed.
 
+### Composite Value Object Convention
+
+Any `ValueObject` subclass that does not implement `IScalarValue` is automatically registered as an EF Core owned type by `CompositeValueObjectConvention`. This covers user-defined types like `Address`, `DateRange`, `GeoCoordinate`, etc.
+
+```csharp
+public partial class Customer : Aggregate<CustomerId>
+{
+    public Address ShippingAddress { get; set; } = null!;           // required owned type
+    public partial Maybe<Address> BillingAddress { get; set; }      // optional owned type (nullable columns)
+}
+```
+
+For `Maybe<T>` composites, columns are marked nullable and named `{PropertyName}_{OwnedPropertyName}`. For required composites, EF Core's default owned-type column naming applies. `Money` retains its specialized naming via `MoneyConvention`. Explicit `OwnsOne` takes precedence.
+
 ### Maybe\<T\> Property Mapping
 
 `Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. Use C# 13 `partial` properties with the `Trellis.EntityFrameworkCore.Generator` source generator:
@@ -107,7 +122,7 @@ modelBuilder.Entity<Customer>(b =>
 });
 ```
 
-The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name. When `T` is a composite owned type (e.g., `Money`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column.
+The source generator emits a private `_camelCase` backing field and getter/setter for each `partial Maybe<T>` property. The `MaybeConvention` (registered by `ApplyTrellisConventions`) auto-discovers `Maybe<T>` properties, ignores the struct property, maps the backing field as nullable, and sets the column name to the property name. When `T` is a composite owned type (e.g., `Money`, `Address`, or any custom `ValueObject`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column, and `CompositeValueObjectConvention` marks all columns nullable.
 
 Backing field naming: `Phone` → `_phone`, `SubmittedAt` → `_submittedAt`, `AlternateEmail` → `_alternateEmail`.
 

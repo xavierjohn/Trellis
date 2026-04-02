@@ -15,6 +15,7 @@ internal static class TrellisTypeScanner
 {
     private static readonly Type s_scalarValueType = typeof(IScalarValue<,>);
     private static readonly Type s_requiredEnumType = typeof(RequiredEnum<>);
+    private static readonly Type s_valueObjectType = typeof(ValueObject);
 
     /// <summary>
     /// Returns the provider type and category for the specified Trellis value object,
@@ -39,4 +40,14 @@ internal static class TrellisTypeScanner
 
         return null;
     }
+
+    /// <summary>
+    /// Returns <see langword="true"/> if the type is a concrete composite value object —
+    /// extends <see cref="ValueObject"/> but does not implement <c>IScalarValue</c>
+    /// or extend <c>RequiredEnum</c>.
+    /// </summary>
+    internal static bool IsCompositeValueObject(Type type) =>
+        !type.IsAbstract
+        && s_valueObjectType.IsAssignableFrom(type)
+        && FindValueObject(type) is null;
 }
