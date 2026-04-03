@@ -69,7 +69,7 @@ app.MapGet("/", () => Results.Ok(new WelcomeResponse(
     Name: "FunctionalDDD Sample Minimal API (AOT)",
     Version: "2.0.0",
     Description: "Demonstrates full Trellis Framework with ROP, EF Core, RFC 9110, authorization, and AOT source generation",
-    Documentation: "See SampleApi.http for complete API examples"
+    Documentation: "See OrderApi.http for complete API examples"
 ))).WithName("Welcome");
 
 app.UseUserRoute();

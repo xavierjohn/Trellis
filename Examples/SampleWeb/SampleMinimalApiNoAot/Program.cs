@@ -100,7 +100,7 @@ app.MapGet("/", () => Results.Ok(new
         dashboard = "GET /dashboard - ParallelAsync/WhenAllAsync concurrent data fetch",
         authorization = "Set X-Test-Actor header: {\"id\":\"user1\",\"permissions\":[\"orders:write\"]}"
     },
-    documentation = "See SampleApi.http for complete API examples"
+    documentation = "See OrderApi.http for complete API examples"
 })).WithName("Welcome");
 #pragma warning restore CA1861
 

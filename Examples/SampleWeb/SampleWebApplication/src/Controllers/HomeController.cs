@@ -47,7 +47,7 @@ public class HomeController : ControllerBase
             Dashboard: "GET /dashboard - ParallelAsync/WhenAllAsync concurrent data fetch",
             Authorization: "Set X-Test-Actor header: {\"id\":\"user1\",\"permissions\":[\"orders:write\"]}"
         ),
-        Documentation: "See SampleApi.http for complete API examples"
+        Documentation: "See OrderApi.http for complete API examples"
     ));
 }
 

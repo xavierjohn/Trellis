@@ -1,4 +1,4 @@
-﻿# Sample Web Applications
+# Sample Web Applications
 
 This folder contains three sample implementations demonstrating different ASP.NET Core patterns with Trellis. All three implementations expose identical endpoints and functionality but use different approaches.
 
@@ -32,9 +32,9 @@ cd SampleWebApplication/src
 dotnet run
 ```
 
-### 2. Test with SampleApi.http
+### 2. Test with OrderApi.http
 
-Open `SampleApi.http` in Visual Studio or VS Code with REST Client extension.
+Open `OrderApi.http` in Visual Studio or VS Code with REST Client extension.
 
 Switch between implementations by uncommenting the desired `@host` variable:
 
@@ -142,12 +142,12 @@ builder.Services.AddSwaggerGen();
 ## 📖 Documentation
 
 - **[Examples Guide](../EXAMPLES-GUIDE.md)** - Detailed comparison and when to use each
-- **[SampleApi.http](SampleApi.http)** - Complete HTTP request collection
+- **[OrderApi.http](OrderApi.http)** - Complete HTTP request collection
 - **[Main README](../../README.md)** - Library overview and features
 
 ## 🧪 Testing
 
-Run all requests in `SampleApi.http` against each port to verify:
+Run all requests in `OrderApi.http` against each port to verify:
 
 1. ✅ **Identical validation behavior**
 2. ✅ **Same error responses**
@@ -159,7 +159,7 @@ This proves that all three approaches work identically - choose based on your de
 ## 💡 Pro Tips
 
 1. **Start with SampleMinimalApiNoAot (5002)** - Simplest to understand
-2. **Use SampleApi.http** - All test cases pre-written
+2. **Use OrderApi.http** - All test cases pre-written
 3. **Run multiple samples** - Compare behavior side-by-side
 4. **Check Swagger** - SampleWebApplication (5003) has Swagger UI
 
