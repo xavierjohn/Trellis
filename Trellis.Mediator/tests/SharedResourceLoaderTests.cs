@@ -104,6 +104,24 @@ public class SharedResourceLoaderTests
 
     #endregion
 
+    #region Mismatched TId is NOT auto-bridged
+
+    [Fact]
+    public void Scanning_DoesNotBridgeWhenTIdDoesNotMatchSharedLoader()
+    {
+        var services = new ServiceCollection();
+
+        services.AddResourceAuthorization(typeof(MismatchedIdCommand).Assembly);
+
+        // SharedResourceLoaderById<SharedOrder, string> exists but command uses int as TId
+        var descriptor = services.SingleOrDefault(
+            d => d.ServiceType == typeof(IResourceLoader<MismatchedIdCommand, SharedOrder>));
+
+        descriptor.Should().BeNull();
+    }
+
+    #endregion
+
     #region Adapter resolves and delegates correctly
 
     [Fact]
@@ -213,6 +231,15 @@ public class SharedResourceLoaderTests
     {
         public Task<Result<SharedOrder>> LoadAsync(ExplicitLoaderCommand message, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Success(new SharedOrder(message.OrderId, "explicit-owner")));
+    }
+
+    // -- Command with mismatched TId (shared loader uses string, command uses int)
+
+    public sealed record MismatchedIdCommand(int OrderNumber)
+        : ICommand<Result<Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, int>
+    {
+        public int GetResourceId() => OrderNumber;
+        public IResult Authorize(Actor actor, SharedOrder order) => Result.Success();
     }
 
     #endregion

@@ -182,7 +182,7 @@ public static class ServiceCollectionExtensions
 
         // Track explicit loader registrations and shared loader availability
         var explicitLoaders = new HashSet<Type>();
-        var sharedLoaderTypes = new Dictionary<Type, Type>(); // TResource -> SharedResourceLoaderById<TResource, TId> impl type
+        var sharedLoaderTypes = new HashSet<Type>(); // closed SharedResourceLoaderById<TResource, TId> base types
         var commandsNeedingBridging = new List<(Type commandType, Type tResource, Type tResponse, Type identifyIface)>();
 
         foreach (var assembly in assemblies)
@@ -207,9 +207,8 @@ public static class ServiceCollectionExtensions
                 {
                     if (baseType.IsGenericType && baseType.GetGenericTypeDefinition() == sharedLoaderDef)
                     {
-                        var tResource = baseType.GetGenericArguments()[0];
                         services.AddScoped(baseType, type);
-                        sharedLoaderTypes[tResource] = baseType;
+                        sharedLoaderTypes.Add(baseType);
                         break;
                     }
 
@@ -270,11 +269,12 @@ public static class ServiceCollectionExtensions
             if (explicitLoaders.Contains(closedLoader))
                 continue;
 
-            // Only bridge if a SharedResourceLoaderById<TResource, TId> was discovered
-            if (!sharedLoaderTypes.ContainsKey(tResource))
+            // Only bridge if a SharedResourceLoaderById<TResource, TId> with matching TId was discovered
+            var tId = identifyIface.GetGenericArguments()[1];
+            var closedSharedLoader = sharedLoaderDef.MakeGenericType(tResource, tId);
+            if (!sharedLoaderTypes.Contains(closedSharedLoader))
                 continue;
 
-            var tId = identifyIface.GetGenericArguments()[1];
             var closedAdapter = adapterDef.MakeGenericType(commandType, tResource, tId);
             services.AddScoped(closedLoader, closedAdapter);
         }
