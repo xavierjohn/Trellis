@@ -8,6 +8,8 @@ using Xunit;
 public class WrongAttributeNamespaceAnalyzerTests
 {
     private const string StubSource = """
+        using System;
+
         namespace System.ComponentModel.DataAnnotations
         {
             [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter)]

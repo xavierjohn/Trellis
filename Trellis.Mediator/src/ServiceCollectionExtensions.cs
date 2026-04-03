@@ -205,7 +205,7 @@ public static class ServiceCollectionExtensions
                 {
                     if (baseType.IsGenericType && baseType.GetGenericTypeDefinition() == sharedLoaderDef)
                     {
-                        services.AddScoped(baseType, type);
+                        services.TryAddScoped(baseType, type);
                         sharedLoaderTypes.Add(baseType);
                         break;
                     }

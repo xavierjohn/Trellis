@@ -87,7 +87,8 @@ public class Money : ValueObject
             return Result.Failure<Money>(
                 Error.Validation($"Cannot add {other.Currency} to {Currency}.", "currency"));
 
-        return TryCreate(Amount + other.Amount, Currency);
+        try { return TryCreate(Amount + other.Amount, Currency); }
+        catch (OverflowException) { return Result.Failure<Money>(Error.Validation("Addition would overflow.", "amount")); }
     }
 
     /// <summary>
@@ -252,7 +253,7 @@ public class Money : ValueObject
     /// </summary>
     /// <param name="values">The monetary values to sum.</param>
     /// <returns>
-    /// Success with the total, or failure if the collection is empty or contains mixed currencies.
+    /// Success with the total, or failure if the collection is empty, contains mixed currencies, or overflows.
     /// </returns>
     public static Result<Money> Sum(IEnumerable<Money> values)
     {
@@ -261,7 +262,7 @@ public class Money : ValueObject
         using var enumerator = values.GetEnumerator();
 
         if (!enumerator.MoveNext())
-            return Result.Failure<Money>(Error.Validation("Cannot sum an empty collection.", "values"));
+            return Result.Failure<Money>(Error.Validation("Cannot sum an empty collection.", nameof(values)));
 
         var total = enumerator.Current;
 
