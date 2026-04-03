@@ -199,14 +199,15 @@ Before considering work complete, verify:
 
 1. **Build succeeds** — `dotnet build` with zero errors and zero warnings
 2. **All tests pass** — `dotnet test` with zero failures
-2. **Documentation updated:**
+3. **Documentation updated:**
    - `docs/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-results.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`, etc.)
    - `docs/api_reference/trellis-api-testing-reference.md` — if test helpers were added or changed
    - Package `README.md` — if the package's public surface changed
    - Docfx articles in `docs/docfx_project/articles/` — if relevant articles exist for the feature area
-3. **Do NOT commit without explicit approval** — stage changes and present the diff for review
-4. **Do NOT push branches** — the repository owner will push when ready
-5. **Do NOT create or merge pull requests** — present changes locally for review
+4. **PR summary prepared** — when asked for a PR summary, format it as GitHub-flavored Markdown with a short title line suitable for the PR title, followed by a body with headings, bullet lists, tables, and code blocks as appropriate
+5. **Do NOT commit without explicit approval** — stage changes and present the diff for review
+6. **Do NOT push branches** — the repository owner will push when ready
+7. **Do NOT create or merge pull requests** — present changes locally for review
 
 ## Test Organization
 
