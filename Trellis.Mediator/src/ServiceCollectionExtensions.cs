@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Trellis.Authorization;
 
 /// <summary>
@@ -180,8 +181,7 @@ public static class ServiceCollectionExtensions
             typeof(global::Mediator.IRequest<>),
         ];
 
-        // Track explicit loader registrations and shared loader availability
-        var explicitLoaders = new HashSet<Type>();
+        // Track shared loader availability and commands needing bridging
         var sharedLoaderTypes = new HashSet<Type>(); // closed SharedResourceLoaderById<TResource, TId> base types
         var commandsNeedingBridging = new List<(Type commandType, Type tResource, Type tResponse, Type identifyIface)>();
 
@@ -192,13 +192,11 @@ public static class ServiceCollectionExtensions
                     continue;
 
                 // Register IResourceLoader<,> implementations as scoped
+                // TryAdd ensures pre-registered loaders are not overridden
                 foreach (var iface in type.GetInterfaces())
                 {
                     if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderDef)
-                    {
-                        services.AddScoped(iface, type);
-                        explicitLoaders.Add(iface);
-                    }
+                        services.TryAddScoped(iface, type);
                 }
 
                 // Discover SharedResourceLoaderById<TResource, TId> implementations
@@ -260,16 +258,10 @@ public static class ServiceCollectionExtensions
             }
 
         // Register SharedResourceLoaderAdapter for commands that need bridging
-        // (only if no explicit loader was found for that command/resource pair)
+        // (TryAdd ensures pre-registered or scanned loaders take priority)
         foreach (var (commandType, tResource, _, identifyIface) in commandsNeedingBridging)
         {
             var closedLoader = loaderDef.MakeGenericType(commandType, tResource);
-
-            // Explicit IResourceLoader<TMessage, TResource> takes priority —
-            // check both scanned loaders AND pre-existing registrations in DI
-            if (explicitLoaders.Contains(closedLoader)
-                || services.Any(d => d.ServiceType == closedLoader))
-                continue;
 
             // Only bridge if a SharedResourceLoaderById<TResource, TId> with matching TId was discovered
             var tId = identifyIface.GetGenericArguments()[1];
@@ -278,7 +270,7 @@ public static class ServiceCollectionExtensions
                 continue;
 
             var closedAdapter = adapterDef.MakeGenericType(commandType, tResource, tId);
-            services.AddScoped(closedLoader, closedAdapter);
+            services.TryAdd(ServiceDescriptor.Scoped(closedLoader, closedAdapter));
         }
 
         return services;
@@ -323,7 +315,7 @@ public static class ServiceCollectionExtensions
             foreach (var iface in type.GetInterfaces())
             {
                 if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderInterface)
-                    services.AddScoped(iface, type);
+                    services.TryAddScoped(iface, type);
             }
         }
 
@@ -360,7 +352,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services)
         where TMessage : IAuthorizeResource<TResource>, IIdentifyResource<TResource, TId>
     {
-        services.AddScoped<IResourceLoader<TMessage, TResource>,
+        services.TryAddScoped<IResourceLoader<TMessage, TResource>,
             SharedResourceLoaderAdapter<TMessage, TResource, TId>>();
         return services;
     }

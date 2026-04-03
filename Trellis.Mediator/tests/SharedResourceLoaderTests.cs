@@ -72,58 +72,45 @@ public class SharedResourceLoaderTests
     #region Pre-registered loader takes priority over shared adapter
 
     [Fact]
-    public void Scanning_PreRegisteredFactoryLoaderPreventsAdapterRegistration()
+    public void Scanning_DoesNotOverridePreRegisteredLoader()
     {
         var services = new ServiceCollection();
 
-        // Simulate a factory-registered loader that scanning can't discover
-        // (e.g., from a different assembly or registered by a third-party library)
-        var closedLoaderType = typeof(IResourceLoader<,>)
-            .MakeGenericType(typeof(SharedCancelCommand), typeof(SharedOrder));
-        ((IServiceCollection)services).Add(new ServiceDescriptor(closedLoaderType, sp =>
-            new TestSharedOrderInlineLoader(), ServiceLifetime.Scoped));
-
-        // Remove any explicit loaders from services so explicitLoaders won't catch it
-        // Then add just the shared loader and commands
-        services.AddScoped<SharedResourceLoaderById<SharedOrder, string>, TestSharedOrderLoader>();
-
-        // Manually trigger the bridging check — the adapter should not be added
-        // because a registration for the same service type already exists
-        services.AddSharedResourceLoader<SharedCancelCommand, SharedOrder, string>();
-
-        // Count registrations — should have the factory + the AddSharedResourceLoader adapter
-        var descriptors = services
-            .Where(d => d.ServiceType == closedLoaderType)
-            .ToList();
-
-        // Two registrations is fine (factory + adapter); the key test is that
-        // services.Any would have prevented scanning from adding an adapter.
-        // The real integration test is below.
-        descriptors.Count.Should().BeGreaterThanOrEqualTo(1);
-    }
-
-    [Fact]
-    public async Task Scanning_FactoryRegisteredLoaderIsUsedWhenPresent()
-    {
-        var services = new ServiceCollection();
-
-        // Pre-register a factory loader returning a specific owner
+        // Pre-register a factory loader BEFORE scanning
         services.AddScoped<IResourceLoader<SharedReturnCommand, SharedOrder>>(
             _ => new TestSharedOrderInlineLoader());
 
         services.AddResourceAuthorization(typeof(SharedCancelCommand).Assembly);
 
-        await using var sp = services.BuildServiceProvider();
-        using var scope = sp.CreateScope();
+        // Scanning should NOT add another registration for the same service type
+        // (neither the scanned concrete type nor the adapter)
+        var descriptors = services
+            .Where(d => d.ServiceType == typeof(IResourceLoader<SharedReturnCommand, SharedOrder>))
+            .ToList();
 
-        var loader = scope.ServiceProvider
-            .GetRequiredService<IResourceLoader<SharedReturnCommand, SharedOrder>>();
+        descriptors.Should().ContainSingle();
+        descriptors[0].ImplementationFactory.Should().NotBeNull("the pre-registered factory should be the only registration");
+    }
 
-        var result = await loader.LoadAsync(
-            new SharedReturnCommand("test-1"), CancellationToken.None);
+    [Fact]
+    public void AddSharedResourceLoader_DoesNotOverrideExistingLoader()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<SharedResourceLoaderById<SharedOrder, string>, TestSharedOrderLoader>();
 
-        // The resolved loader should work (regardless of whether it's the factory or scanned one)
-        result.IsSuccess.Should().BeTrue();
+        // Pre-register an explicit loader
+        services.AddScoped<IResourceLoader<SharedReturnCommand, SharedOrder>>(
+            _ => new TestSharedOrderInlineLoader());
+
+        // AddSharedResourceLoader should not override it
+        services.AddSharedResourceLoader<SharedReturnCommand, SharedOrder, string>();
+
+        var descriptors = services
+            .Where(d => d.ServiceType == typeof(IResourceLoader<SharedReturnCommand, SharedOrder>))
+            .ToList();
+
+        descriptors.Should().ContainSingle();
+        descriptors[0].ImplementationFactory.Should().NotBeNull("the pre-registered factory should be the only registration");
     }
 
     #endregion
