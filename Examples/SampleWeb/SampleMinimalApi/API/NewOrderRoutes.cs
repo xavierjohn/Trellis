@@ -30,8 +30,13 @@ public static class NewOrderRoutes
 
         // POST /orders — create order
         // Demonstrates: Combine, Bind, CheckAsync with EF Core
+        // Note: A production system would also call Product.ReserveStock() to enforce inventory
+        // limits and release stock on cancellation. Omitted here to keep the sample focused on ROP patterns.
         orderApi.MapPost("/", async (CreateOrderRequest request, AppDbContext db, HttpContext httpContext) =>
         {
+            if (request.Lines is null || request.Lines.Length == 0)
+                return Error.Validation("Order must have at least one line item.", "lines").ToHttpResult();
+
             var customerIdResult = CustomerId.TryCreate(request.CustomerId);
             if (customerIdResult.IsFailure)
                 return customerIdResult.Error.ToHttpResult();
@@ -98,6 +103,7 @@ public static class NewOrderRoutes
             // Note: Save before external calls ensures DB consistency. If payment/notification
             // fails after save, the order is confirmed but the caller gets an error.
             // Production systems should use an outbox pattern for guaranteed delivery.
+            // The payment reference should also be stored on the order for refund support.
             var result = await db.Orders.Include(o => o.Lines)
                 .FirstOrDefaultResultAsync(o => o.Id == id,
                     Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
@@ -131,7 +137,8 @@ public static class NewOrderRoutes
                 return authResult.Error.ToHttpResult();
 
             // Step 2: Fetch → Cancel → Save → Notify
-            // Note: Same save-first pattern as confirm. See confirm comment for tradeoff explanation.
+            // Note: Same save-first pattern as confirm. A production system would also call
+            // RefundPaymentAsync here if the order was previously confirmed with payment.
             var result = await db.Orders.Include(o => o.Lines)
                 .FirstOrDefaultResultAsync(o => o.Id == id,
                     Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
