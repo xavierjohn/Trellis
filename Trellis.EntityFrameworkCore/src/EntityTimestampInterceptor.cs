@@ -40,6 +40,9 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
     /// <summary>
     /// Sets timestamps on tracked entities before saving.
     /// </summary>
+    /// <param name="eventData">The event data associated with the current save operation.</param>
+    /// <param name="result">The current interception result.</param>
+    /// <returns>The interception result.</returns>
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -50,6 +53,10 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
     /// <summary>
     /// Sets timestamps on tracked entities before saving asynchronously.
     /// </summary>
+    /// <param name="eventData">The event data associated with the current save operation.</param>
+    /// <param name="result">The current interception result.</param>
+    /// <param name="cancellationToken">A token used to cancel the asynchronous save operation.</param>
+    /// <returns>The result of the asynchronous interception operation.</returns>
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {

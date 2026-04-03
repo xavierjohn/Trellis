@@ -263,10 +263,12 @@ public static class ServiceCollectionExtensions
         {
             var closedLoader = loaderDef.MakeGenericType(commandType, tResource);
 
-            // Only bridge if a SharedResourceLoaderById<TResource, TId> with matching TId was discovered
+            // Only bridge if a SharedResourceLoaderById<TResource, TId> with matching TId exists
+            // (either discovered via scanning or pre-registered in DI)
             var tId = identifyIface.GetGenericArguments()[1];
             var closedSharedLoader = sharedLoaderDef.MakeGenericType(tResource, tId);
-            if (!sharedLoaderTypes.Contains(closedSharedLoader))
+            if (!sharedLoaderTypes.Contains(closedSharedLoader)
+                && !services.Any(d => d.ServiceType == closedSharedLoader))
                 continue;
 
             var closedAdapter = adapterDef.MakeGenericType(commandType, tResource, tId);

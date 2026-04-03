@@ -296,6 +296,17 @@ public class MoneyTests
         validation.FieldErrors[0].Details[0].Should().Be("Divisor must be positive.");
     }
 
+    [Fact]
+    public void Add_Overflow_ReturnsFailure()
+    {
+        var a = Money.Create(decimal.MaxValue, "USD");
+        var b = Money.Create(1m, "USD");
+
+        var result = a.Add(b);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
     #endregion
 
     #region Allocation Tests
