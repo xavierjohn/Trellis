@@ -375,4 +375,52 @@ public class MonetaryAmountTests
     }
 
     #endregion
+
+    #region Sum Tests
+
+    [Fact]
+    public void Sum_SingleItem_ReturnsThatItem()
+    {
+        var items = new[] { MonetaryAmount.Create(10.00m) };
+
+        var result = MonetaryAmount.Sum(items);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(10.00m);
+    }
+
+    [Fact]
+    public void Sum_MultipleItems_ReturnsTotal()
+    {
+        var items = new[]
+        {
+            MonetaryAmount.Create(10.00m),
+            MonetaryAmount.Create(20.50m),
+            MonetaryAmount.Create(5.25m),
+        };
+
+        var result = MonetaryAmount.Sum(items);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(35.75m);
+    }
+
+    [Fact]
+    public void Sum_EmptyCollection_ReturnsZero()
+    {
+        var result = MonetaryAmount.Sum(Array.Empty<MonetaryAmount>());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(0m);
+    }
+
+    [Fact]
+    public void Sum_NullCollection_ThrowsArgumentNull()
+    {
+        var act = () => MonetaryAmount.Sum(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
 }

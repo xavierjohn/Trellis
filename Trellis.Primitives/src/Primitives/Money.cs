@@ -87,7 +87,8 @@ public class Money : ValueObject
             return Result.Failure<Money>(
                 Error.Validation($"Cannot add {other.Currency} to {Currency}.", "currency"));
 
-        return TryCreate(Amount + other.Amount, Currency);
+        try { return TryCreate(Amount + other.Amount, Currency); }
+        catch (OverflowException) { return Result.Failure<Money>(Error.Validation("Addition would overflow.", "amount")); }
     }
 
     /// <summary>
@@ -246,4 +247,45 @@ public class Money : ValueObject
         "TND" => 3, // Tunisian Dinar has 3 decimal places
         _ => 2      // Most currencies have 2 decimal places
     };
+
+    /// <summary>
+    /// Sums a collection of <see cref="Money"/> values. All values must share the same currency.
+    /// </summary>
+    /// <param name="values">The monetary values to sum.</param>
+    /// <returns>
+    /// Success with the total, or failure if the collection is empty, contains mixed currencies, or overflows.
+    /// </returns>
+    public static Result<Money> Sum(IEnumerable<Money> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        using var enumerator = values.GetEnumerator();
+
+        if (!enumerator.MoveNext())
+            return Result.Failure<Money>(Error.Validation("Cannot sum an empty collection.", nameof(values)));
+
+        var first = enumerator.Current;
+        var currency = first.Currency;
+        var totalAmount = first.Amount;
+
+        try
+        {
+            while (enumerator.MoveNext())
+            {
+                var current = enumerator.Current;
+
+                if (!currency.Equals(current.Currency))
+                    return Result.Failure<Money>(
+                        Error.Validation($"Cannot add {current.Currency} to {currency}.", "currency"));
+
+                totalAmount += current.Amount;
+            }
+        }
+        catch (OverflowException)
+        {
+            return Result.Failure<Money>(Error.Validation("Addition would overflow.", "amount"));
+        }
+
+        return TryCreate(totalAmount, currency.Value);
+    }
 }

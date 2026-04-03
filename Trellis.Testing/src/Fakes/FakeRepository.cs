@@ -61,14 +61,14 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A Result containing Maybe with the aggregate or None.</returns>
-    public Task<Result<Maybe<TAggregate>>> FindByIdAsync(TId id, CancellationToken cancellationToken = default)
+    /// <returns>Maybe with the aggregate or None.</returns>
+    public Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
         var maybe = _store.TryGetValue(id, out var aggregate)
             ? Maybe.From(aggregate)
             : Maybe<TAggregate>.None;
 
-        return Task.FromResult(Result.Success(maybe));
+        return Task.FromResult(maybe);
     }
 
     /// <summary>

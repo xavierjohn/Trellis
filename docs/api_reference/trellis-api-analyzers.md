@@ -29,6 +29,7 @@ Roslyn analyzers and code fixes for correct `Result<T>`, `Maybe<T>`, and ROP pip
 | `TRLS019` | Error | Combine chain exceeds maximum supported tuple size (9) |
 | `TRLS020` | Warning | Use `SaveChangesResultAsync` instead of `SaveChangesAsync` |
 | `TRLS021` | Warning | `HasIndex` references a `Maybe<T>` property — prefer `HasTrellisIndex` or use the backing field name |
+| `TRLS022` | Warning | Wrong `[StringLength]` or `[Range]` attribute namespace — using `System.ComponentModel.DataAnnotations` instead of `Trellis` |
 
 Source generator diagnostics use a separate `TRLSGEN` prefix (see trellis-api-primitives.md and trellis-api-efcore.md).
 

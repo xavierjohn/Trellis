@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Trellis.Authorization;
 
 /// <summary>
@@ -119,7 +120,7 @@ public static class ServiceCollectionExtensions
     /// <see cref="IAuthorizeResource{TResource}"/> and automatically registers the
     /// <see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> for each.
     /// Also scans and registers all <see cref="IResourceLoader{TMessage, TResource}"/> implementations
-    /// as scoped services.
+    /// and <see cref="SharedResourceLoaderById{TResource, TId}"/> implementations as scoped services.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="assemblies">The assemblies to scan. Pass both the Application assembly
@@ -139,6 +140,13 @@ public static class ServiceCollectionExtensions
     /// This method also scans for <see cref="IResourceLoader{TMessage, TResource}"/>
     /// implementations and registers them as scoped services, so you don't need to call
     /// <see cref="AddResourceLoaders"/> separately.
+    /// </para>
+    /// <para>
+    /// When a command implements <see cref="IIdentifyResource{TResource, TId}"/> and no explicit
+    /// <see cref="IResourceLoader{TMessage, TResource}"/> is found, a
+    /// <see cref="SharedResourceLoaderAdapter{TMessage, TResource, TId}"/> is automatically
+    /// registered, bridging to the <see cref="SharedResourceLoaderById{TResource, TId}"/>.
+    /// Explicit loaders always take priority.
     /// </para>
     /// </remarks>
     /// <example>
@@ -160,6 +168,9 @@ public static class ServiceCollectionExtensions
 
         var authorizeResourceDef = typeof(IAuthorizeResource<>);
         var loaderDef = typeof(IResourceLoader<,>);
+        var sharedLoaderDef = typeof(SharedResourceLoaderById<,>);
+        var identifyResourceDef = typeof(IIdentifyResource<,>);
+        var adapterDef = typeof(SharedResourceLoaderAdapter<,,>);
         var behaviorDef = typeof(ResourceAuthorizationBehavior<,,>);
         var pipelineDef = typeof(IPipelineBehavior<,>);
 
@@ -170,6 +181,10 @@ public static class ServiceCollectionExtensions
             typeof(global::Mediator.IRequest<>),
         ];
 
+        // Track shared loader availability and commands needing bridging
+        var sharedLoaderTypes = new HashSet<Type>(); // closed SharedResourceLoaderById<TResource, TId> base types
+        var commandsNeedingBridging = new List<(Type commandType, Type tResource, Type tResponse, Type identifyIface)>();
+
         foreach (var assembly in assemblies)
             foreach (var type in GetLoadableTypes(assembly))
             {
@@ -177,10 +192,25 @@ public static class ServiceCollectionExtensions
                     continue;
 
                 // Register IResourceLoader<,> implementations as scoped
+                // TryAdd ensures pre-registered loaders are not overridden
                 foreach (var iface in type.GetInterfaces())
                 {
                     if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderDef)
-                        services.AddScoped(iface, type);
+                        services.TryAddScoped(iface, type);
+                }
+
+                // Discover SharedResourceLoaderById<TResource, TId> implementations
+                var baseType = type.BaseType;
+                while (baseType is not null)
+                {
+                    if (baseType.IsGenericType && baseType.GetGenericTypeDefinition() == sharedLoaderDef)
+                    {
+                        services.TryAddScoped(baseType, type);
+                        sharedLoaderTypes.Add(baseType);
+                        break;
+                    }
+
+                    baseType = baseType.BaseType;
                 }
 
                 // Register ResourceAuthorizationBehavior for IAuthorizeResource<TResource> commands
@@ -189,7 +219,7 @@ public static class ServiceCollectionExtensions
                 if (authIface is null)
                     continue;
 
-                var tResource = authIface.GetGenericArguments()[0];
+                var commandResource = authIface.GetGenericArguments()[0];
 
                 // Find TResponse from ICommand<TResponse>, IQuery<TResponse>, or IRequest<TResponse>
                 var tResponse = type.GetInterfaces()
@@ -209,12 +239,41 @@ public static class ServiceCollectionExtensions
 
                 // Register ResourceAuthorizationBehavior<TMessage, TResource, TResponse>
                 // as IPipelineBehavior<TMessage, TResponse>
-                var closedBehavior = behaviorDef.MakeGenericType(type, tResource, tResponse);
+                var closedBehavior = behaviorDef.MakeGenericType(type, commandResource, tResponse);
                 var closedPipeline = pipelineDef.MakeGenericType(type, tResponse);
                 InsertResourceAuthorizationBehavior(
                     services,
                     ServiceDescriptor.Scoped(closedPipeline, closedBehavior));
+
+                // Check for IIdentifyResource<TResource, TId> for shared loader bridging
+                var identifyIface = type.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType
+                        && i.GetGenericTypeDefinition() == identifyResourceDef
+                        && i.GetGenericArguments()[0] == commandResource);
+
+                if (identifyIface is not null)
+                {
+                    commandsNeedingBridging.Add((type, commandResource, tResponse, identifyIface));
+                }
             }
+
+        // Register SharedResourceLoaderAdapter for commands that need bridging
+        // (TryAdd ensures pre-registered or scanned loaders take priority)
+        foreach (var (commandType, tResource, _, identifyIface) in commandsNeedingBridging)
+        {
+            var closedLoader = loaderDef.MakeGenericType(commandType, tResource);
+
+            // Only bridge if a SharedResourceLoaderById<TResource, TId> with matching TId exists
+            // (either discovered via scanning or pre-registered in DI)
+            var tId = identifyIface.GetGenericArguments()[1];
+            var closedSharedLoader = sharedLoaderDef.MakeGenericType(tResource, tId);
+            if (!sharedLoaderTypes.Contains(closedSharedLoader)
+                && !services.Any(d => d.ServiceType == closedSharedLoader))
+                continue;
+
+            var closedAdapter = adapterDef.MakeGenericType(commandType, tResource, tId);
+            services.TryAdd(ServiceDescriptor.Scoped(closedLoader, closedAdapter));
+        }
 
         return services;
     }
@@ -258,10 +317,45 @@ public static class ServiceCollectionExtensions
             foreach (var iface in type.GetInterfaces())
             {
                 if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderInterface)
-                    services.AddScoped(iface, type);
+                    services.TryAddScoped(iface, type);
             }
         }
 
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a <see cref="SharedResourceLoaderAdapter{TMessage, TResource, TId}"/> for a specific
+    /// command, bridging to a <see cref="SharedResourceLoaderById{TResource, TId}"/>.
+    /// Use this for AOT/trimming scenarios where assembly scanning is not available.
+    /// </summary>
+    /// <typeparam name="TMessage">
+    /// The command type implementing <see cref="IAuthorizeResource{TResource}"/>
+    /// and <see cref="IIdentifyResource{TResource, TId}"/>.
+    /// </typeparam>
+    /// <typeparam name="TResource">The resource type.</typeparam>
+    /// <typeparam name="TId">The identifier type.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// The <see cref="SharedResourceLoaderById{TResource, TId}"/> implementation must be registered
+    /// separately (e.g., <c>services.AddScoped&lt;SharedResourceLoaderById&lt;Order, OrderId&gt;, OrderResourceLoader&gt;()</c>).
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// services.AddScoped&lt;SharedResourceLoaderById&lt;Order, OrderId&gt;, OrderResourceLoader&gt;();
+    /// services.AddSharedResourceLoader&lt;CancelOrderCommand, Order, OrderId&gt;();
+    /// services.AddSharedResourceLoader&lt;ReturnOrderCommand, Order, OrderId&gt;();
+    /// </code>
+    /// </example>
+    public static IServiceCollection AddSharedResourceLoader<TMessage, TResource, TId>(
+        this IServiceCollection services)
+        where TMessage : IAuthorizeResource<TResource>, IIdentifyResource<TResource, TId>
+    {
+        services.TryAddScoped<IResourceLoader<TMessage, TResource>,
+            SharedResourceLoaderAdapter<TMessage, TResource, TId>>();
         return services;
     }
 

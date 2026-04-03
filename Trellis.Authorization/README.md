@@ -28,7 +28,9 @@ dotnet add package Trellis.Authorization
 | `IAuthorize` | Marker interface for static permission requirements (`RequiredPermissions`) |
 | `IAuthorizeResource<TResource>` | Resource-based authorization that receives a loaded resource (`Authorize(Actor, TResource)`) |
 | `IResourceLoader<TMessage, TResource>` | Loads the resource for `IAuthorizeResource<TResource>` — register as scoped in DI |
-| `ResourceLoaderById<TMessage, TResource, TId>` | Convenience base for the common extract-ID-and-load pattern |
+| `ResourceLoaderById<TMessage, TResource, TId>` | Convenience base for the common extract-ID-and-load pattern (one per command) |
+| `SharedResourceLoaderById<TResource, TId>` | Shared loader — one per resource type, serves all commands via `IIdentifyResource` |
+| `IIdentifyResource<TResource, TId>` | Marker on commands declaring the resource ID, enabling shared loader bridging |
 
 ## Usage
 
