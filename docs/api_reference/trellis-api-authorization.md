@@ -33,17 +33,24 @@ string? GetAttribute(string key)
 - **`IAuthorize`** — Declares required permissions; checked by authorization pipeline behavior.
 - **`IAuthorizeResource<TResource>`** — Resource-based authorization; receives the loaded resource and actor.
 - **`IResourceLoader<TMessage, TResource>`** — Loads the resource for resource-based authorization checks.
-- **`ResourceLoaderById<TMessage, TResource, TId>`** — Base class for the common "extract ID from message, load by ID" pattern.
+- **`ResourceLoaderById<TMessage, TResource, TId>`** — Base class for the common "extract ID from message, load by ID" pattern (one per command).
+- **`SharedResourceLoaderById<TResource, TId>`** — Shared loader — one per resource type, serves all commands that implement `IIdentifyResource`.
+- **`IIdentifyResource<TResource, TId>`** — Interface on commands declaring the resource ID, enabling automatic bridging to a shared loader.
 
 ```csharp
 interface IActorProvider { Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default); }
 interface IAuthorize { IReadOnlyList<string> RequiredPermissions { get; } }
 interface IAuthorizeResource<TResource> { IResult Authorize(Actor actor, TResource resource); }
 interface IResourceLoader<TMessage, TResource> { Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken cancellationToken); }
+interface IIdentifyResource<TResource, out TId> { TId GetResourceId(); }
 abstract class ResourceLoaderById<TMessage, TResource, TId> : IResourceLoader<TMessage, TResource>
 {
     protected abstract TId GetId(TMessage message);
     protected abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
+}
+abstract class SharedResourceLoaderById<TResource, TId>
+{
+    public abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
 }
 ```
 

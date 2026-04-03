@@ -37,7 +37,9 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
     public EntityTimestampInterceptor(TimeProvider? timeProvider = null) =>
         _timeProvider = timeProvider ?? TimeProvider.System;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Sets timestamps on tracked entities before saving.
+    /// </summary>
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -45,7 +47,9 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
         return base.SavingChanges(eventData, result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Sets timestamps on tracked entities before saving asynchronously.
+    /// </summary>
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {

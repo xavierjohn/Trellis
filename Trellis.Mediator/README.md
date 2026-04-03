@@ -72,22 +72,31 @@ public sealed record DeleteOrderCommand(OrderId OrderId)
 
 // Resource-based check with loaded resource
 public sealed record CancelOrderCommand(OrderId OrderId)
-    : ICommand<Result<Order>>, IAuthorizeResource<Order>
+    : ICommand<Result<Order>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
 {
+    public OrderId GetResourceId() => OrderId;
     public IResult Authorize(Actor actor, Order order) =>
         actor.Id == order.OwnerId || actor.HasPermission("Orders.CancelAny")
             ? Result.Success()
             : Result.Failure(Error.Forbidden("Only the order owner or admins can cancel"));
 }
 
-// Resource loader registered in DI
-public sealed class CancelOrderResourceLoader(IOrderRepository repo)
-    : ResourceLoaderById<CancelOrderCommand, Order, OrderId>
+// Shared loader — ONE class serves ALL commands authorizing against Order
+public sealed class OrderResourceLoader(IOrderRepository repo)
+    : SharedResourceLoaderById<Order, OrderId>
 {
-    protected override OrderId GetId(CancelOrderCommand message) => message.OrderId;
-    protected override Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
+    public override Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
         repo.GetByIdAsync(id, ct);
 }
+
+// Per-command ResourceLoaderById still works for complex cases:
+// public sealed class CancelOrderResourceLoader(IOrderRepository repo)
+//     : ResourceLoaderById<CancelOrderCommand, Order, OrderId>
+// {
+//     protected override OrderId GetId(CancelOrderCommand message) => message.OrderId;
+//     protected override Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
+//         repo.GetByIdAsync(id, ct);
+// }
 ```
 
 ### 4. Implement IActorProvider in your API layer
