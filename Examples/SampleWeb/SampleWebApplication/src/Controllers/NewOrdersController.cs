@@ -70,12 +70,9 @@ public class NewOrdersController(
             .FirstOrDefaultResultAsync(o => o.Id == id,
                 Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)));
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<OrderResponse>(this);
-
-        var order = result.Value;
-        var metadata = RepresentationMetadata.WithStrongETag(order.ETag);
-        return result.ToActionResult(this, metadata, OrderResponse.From);
+        return result.ToActionResult(this,
+            RepresentationMetadata.WithStrongETag(result.IsSuccess ? result.Value.ETag : string.Empty),
+            OrderResponse.From);
     }
 
     // POST /orders/{id}/confirm — confirm with async ROP + auth
@@ -108,11 +105,9 @@ public class NewOrdersController(
             .CheckAsync(order =>
                 notificationService.SendOrderConfirmationAsync(order.Id, order.CustomerId, ct));
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<OrderResponse>(this);
-
-        var metadata = RepresentationMetadata.WithStrongETag(result.Value.ETag);
-        return result.ToActionResult(this, metadata, OrderResponse.From);
+        return result.ToActionResult(this,
+            RepresentationMetadata.WithStrongETag(result.IsSuccess ? result.Value.ETag : string.Empty),
+            OrderResponse.From);
     }
 
     // POST /orders/{id}/cancel — cancel with RecoverOnFailureAsync
@@ -143,11 +138,9 @@ public class NewOrdersController(
                 _ => Result.Failure<Order>(
                     Error.Unexpected("Cancellation failed. Please try again.")));
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<OrderResponse>(this);
-
-        var metadata = RepresentationMetadata.WithStrongETag(result.Value.ETag);
-        return result.ToActionResult(this, metadata, OrderResponse.From);
+        return result.ToActionResult(this,
+            RepresentationMetadata.WithStrongETag(result.IsSuccess ? result.Value.ETag : string.Empty),
+            OrderResponse.From);
     }
 
     // POST /orders/{id}/receipt — redirect after POST
