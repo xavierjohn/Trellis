@@ -279,7 +279,8 @@ public class SharedResourceLoaderTests
             Task.FromResult(Result.Success(new SharedOrder(message.OrderId, "explicit-owner")));
     }
 
-    // -- Inline loader for pre-registration tests (not discoverable by scanning)
+    // -- Loader for pre-registration tests (scanning will also discover this via Assembly.GetTypes(),
+    //    but TryAddScoped ensures the pre-registered factory wins)
 
     private sealed class TestSharedOrderInlineLoader : IResourceLoader<SharedReturnCommand, SharedOrder>
     {
