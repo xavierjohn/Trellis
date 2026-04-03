@@ -10,8 +10,8 @@ using Trellis.Asp;
 using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
 
-public record CreateOrderRequest(Guid CustomerId, OrderLineRequest[] Lines);
-public record OrderLineRequest(Guid ProductId, int Quantity);
+public record CreateOrderRequest(CustomerId CustomerId, OrderLineRequest[] Lines);
+public record OrderLineRequest(ProductId ProductId, int Quantity);
 
 public record OrderResponse(Guid Id, Guid CustomerId, string State, decimal Total, string ETag,
     DateTimeOffset CreatedAt, DateTimeOffset? ConfirmedAt, OrderLineResponse[] Lines)
@@ -32,44 +32,32 @@ public class NewOrdersController(
     IActorProvider actorProvider) : ControllerBase
 {
     // POST /orders — create order
-    // Demonstrates: Combine, Bind, CheckAsync with EF Core
+    // Demonstrates: Ensure, Bind, TraverseAsync, CheckAsync with EF Core
     // Note: A production system would also call Product.ReserveStock() to enforce inventory
     // limits and release stock on cancellation. Omitted here to keep the sample focused on ROP patterns.
     [HttpPost]
     public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] CreateOrderRequest request)
     {
-        if (request.Lines is null || request.Lines.Length == 0)
-            return Error.Validation("Order must have at least one line item.", "lines").ToActionResult<OrderResponse>(this);
+        var result = await Result.Ensure(
+                request.Lines is { Length: > 0 },
+                Error.Validation("Order must have at least one line item.", "lines"))
+            .Bind(_ => Order.TryCreate(request.CustomerId))
+            .BindAsync(order =>
+                request.Lines.TraverseAsync(line =>
+                    db.Products
+                        .FirstOrDefaultResultAsync(p => p.Id == line.ProductId,
+                            Error.NotFound($"Product {line.ProductId} not found.", "productId"))
+                        .BindAsync(product => order.AddLine(product, line.Quantity)))
+                .MapAsync(_ => order))
+            .TapAsync(order => { db.Orders.Add(order); return Task.CompletedTask; })
+            .CheckAsync(_ => db.SaveChangesResultUnitAsync());
 
-        var customerIdResult = CustomerId.TryCreate(request.CustomerId);
-        if (customerIdResult.IsFailure)
-            return customerIdResult.Error.ToActionResult<OrderResponse>(this);
+        if (result.IsFailure)
+            return result.Error.ToActionResult<OrderResponse>(this);
 
-        var orderResult = Order.TryCreate(customerIdResult.Value);
-        if (orderResult.IsFailure)
-            return orderResult.Error.ToActionResult<OrderResponse>(this);
-
-        var order = orderResult.Value;
-        foreach (var line in request.Lines)
-        {
-            var product = await db.Products.FindAsync(ProductId.Create(line.ProductId));
-            if (product is null)
-                return Error.NotFound($"Product {line.ProductId} not found.", "productId")
-                    .ToActionResult<OrderResponse>(this);
-
-            var addResult = order.AddLine(product, line.Quantity);
-            if (addResult.IsFailure)
-                return addResult.Error.ToActionResult<OrderResponse>(this);
-        }
-
-        db.Orders.Add(order);
-        var saveResult = await db.SaveChangesResultUnitAsync();
-        if (saveResult.IsFailure)
-            return saveResult.Error.ToActionResult<OrderResponse>(this);
-
-        var response = OrderResponse.From(order);
-        Response.Headers.ETag = $"\"{order.ETag}\"";
-        return CreatedAtAction(nameof(GetOrder), new { id = order.Id.Value }, response);
+        var response = OrderResponse.From(result.Value);
+        Response.Headers.ETag = $"\"{result.Value.ETag}\"";
+        return CreatedAtAction(nameof(GetOrder), new { id = result.Value.Id.Value }, response);
     }
 
     // GET /orders/{id} — conditional GET with ETag
@@ -151,7 +139,7 @@ public class NewOrdersController(
             .CheckAsync(order =>
                 notificationService.SendOrderCancellationAsync(order.Id, order.CustomerId, ct))
             .RecoverOnFailureAsync(
-                error => error.Code == "unexpected",
+                error => error.Code == "unexpected.error",
                 _ => Result.Failure<Order>(
                     Error.Unexpected("Cancellation failed. Please try again.")));
 

@@ -88,7 +88,7 @@ public static class ProductRoutes
             .WithScalarValueValidation();
 
         // POST /products — create with ETag + Location
-        // Demonstrates: 201 Created, If-None-Match:* → 412 (create-if-absent)
+        // Demonstrates: 201 Created + ETag + Location
         productApi.MapPost("/", async (CreateProductRequest request, AppDbContext db, HttpContext httpContext) =>
             await ProductName.TryCreate(request.Name)
                 .Combine(MonetaryAmount.TryCreate(request.Price))

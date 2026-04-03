@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -83,7 +83,7 @@ app.MapGet("/", () => Results.Ok(new
         {
             list = "GET /products?page=0&pageSize=25&inStock=true&minPrice=50&maxPrice=200 - Paginated (RFC 9110 §14: 206 Partial Content)",
             getById = "GET /products/{id} - Conditional GET (If-None-Match → 304 Not Modified)",
-            create = "POST /products - Create with ETag + Location (If-None-Match:* → 412)",
+            create = "POST /products - Create with ETag + Location",
             update = "PUT /products/{id} - Update with If-Match (Prefer: return=minimal → 204)",
             delete = "DELETE /products/{id} - Delete (204 No Content)",
             legacyRedirect = "GET /products/legacy/{id} - 301 Moved Permanently redirect"
