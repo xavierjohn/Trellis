@@ -265,8 +265,10 @@ public static class ServiceCollectionExtensions
         {
             var closedLoader = loaderDef.MakeGenericType(commandType, tResource);
 
-            // Explicit IResourceLoader<TMessage, TResource> takes priority
-            if (explicitLoaders.Contains(closedLoader))
+            // Explicit IResourceLoader<TMessage, TResource> takes priority —
+            // check both scanned loaders AND pre-existing registrations in DI
+            if (explicitLoaders.Contains(closedLoader)
+                || services.Any(d => d.ServiceType == closedLoader))
                 continue;
 
             // Only bridge if a SharedResourceLoaderById<TResource, TId> with matching TId was discovered
@@ -356,7 +358,7 @@ public static class ServiceCollectionExtensions
     /// </example>
     public static IServiceCollection AddSharedResourceLoader<TMessage, TResource, TId>(
         this IServiceCollection services)
-        where TMessage : IIdentifyResource<TResource, TId>
+        where TMessage : IAuthorizeResource<TResource>, IIdentifyResource<TResource, TId>
     {
         services.AddScoped<IResourceLoader<TMessage, TResource>,
             SharedResourceLoaderAdapter<TMessage, TResource, TId>>();

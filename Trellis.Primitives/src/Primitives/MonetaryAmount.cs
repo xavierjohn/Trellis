@@ -173,7 +173,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// </summary>
     /// <param name="values">The monetary amounts to sum.</param>
     /// <returns>
-    /// Success with the total, or failure if the collection is empty or addition overflows.
+    /// Success with the total, or <see cref="Zero"/> if the collection is empty. Failure if addition overflows.
     /// </returns>
     public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)
     {
