@@ -347,7 +347,7 @@ All have `TryCreate` → `Result<T>` and `Create` → `T` (throws). All implemen
 | `LanguageCode` | `string` | 2 letters, ISO 639-1, lowercase | — |
 | `Age` | `int` | 0–150 inclusive | — |
 | `Percentage` | `decimal` | 0–100 inclusive | `Zero`, `Full`, `AsFraction()`, `Of(decimal)`, `FromFraction(decimal, fieldName?)`, `TryCreate(decimal?)` |
-| `MonetaryAmount` | `decimal` | Non-negative, rounds to 2 dp | `Zero`, `Add`, `Subtract`, `Multiply(int)`, `Multiply(decimal)` |
+| `MonetaryAmount` | `decimal` | Non-negative, rounds to 2 dp | `Zero`, `Add`, `Subtract`, `Multiply(int)`, `Multiply(decimal)`, `Sum(IEnumerable)` |
 | `Money` | multi-value | Amount ≥ 0, valid currency code | See below |
 
 ### MonetaryAmount (extends ScalarValueObject)
@@ -367,6 +367,9 @@ Result<MonetaryAmount> Add(MonetaryAmount other)
 Result<MonetaryAmount> Subtract(MonetaryAmount other)
 Result<MonetaryAmount> Multiply(int quantity)
 Result<MonetaryAmount> Multiply(decimal multiplier)
+
+// Accumulation
+static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)
 ```
 
 ### Money (extends ValueObject, NOT ScalarValueObject)
@@ -395,6 +398,9 @@ bool IsGreaterThan(Money other)
 bool IsGreaterThanOrEqual(Money other)
 bool IsLessThan(Money other)
 bool IsLessThanOrEqual(Money other)
+
+// Accumulation
+static Result<Money> Sum(IEnumerable<Money> values)
 ```
 
 ---

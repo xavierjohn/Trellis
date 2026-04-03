@@ -12,7 +12,7 @@ CQRS pattern: define a command/query record implementing `ICommand<T>`/`IQuery<T
 
 Exception → Tracing → Logging → Authorization → ResourceAuthorization (actor-only) → Validation
 
-Resource-based authorization with a loaded resource (`IAuthorizeResource<TResource>`) is auto-discovered via `AddResourceAuthorization(Assembly)`, or registered explicitly per-command via `AddResourceAuthorization<TMessage, TResource, TResponse>()` for AOT scenarios.
+Resource-based authorization with a loaded resource (`IAuthorizeResource<TResource>`) is auto-discovered via `AddResourceAuthorization(Assembly)`, or registered explicitly per-command via `AddResourceAuthorization<TMessage, TResource, TResponse>()` for AOT scenarios. Shared resource loaders (`SharedResourceLoaderById<TResource, TId>`) are also auto-discovered and bridged to commands implementing `IIdentifyResource<TResource, TId>`.
 
 ### Behaviors
 
@@ -47,17 +47,22 @@ Use `ActivitySourceName` to register the activity source with OpenTelemetry: `bu
 
 ### Registration
 
-`AddTrellisBehaviors()` registers all pipeline behaviors. `AddResourceAuthorization(params Assembly[])` scans assemblies for `IResourceLoader` implementations.
+`AddTrellisBehaviors()` registers all pipeline behaviors. `AddResourceAuthorization(params Assembly[])` scans assemblies for `IResourceLoader`, `SharedResourceLoaderById`, and `IIdentifyResource` implementations. Pre-registered loaders (via `TryAdd` semantics) are never overridden.
 
 ```csharp
 services.AddTrellisBehaviors();
 
-// Recommended: scan-register both IAuthorizeResource<T> behaviors and IResourceLoader<,> implementations
+// Recommended: scan-register behaviors, loaders, and shared loaders
 services.AddResourceAuthorization(typeof(CancelOrderCommand).Assembly);
 
 // OR: explicit per-command registration (AOT-compatible)
 services.AddResourceAuthorization<CancelOrderCommand, Order, Result<Order>>();
 services.AddResourceLoaders(typeof(CancelOrderResourceLoader).Assembly);
+
+// Shared resource loader (AOT-compatible) — one loader serves all commands for that resource
+services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
+services.AddSharedResourceLoader<CancelOrderCommand, Order, OrderId>();
+services.AddSharedResourceLoader<ReturnOrderCommand, Order, OrderId>();
 ```
 
 ---
