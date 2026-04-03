@@ -1,5 +1,6 @@
 namespace SampleMinimalApi.API;
 
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
 using SampleUserLibrary;
@@ -78,12 +79,13 @@ public static class ProductRoutes
         });
 
         // GET /products/{id} — conditional GET with ETag
-        // Demonstrates: If-None-Match → 304, RepresentationMetadata, ConditionalRequestEvaluator
-        productApi.MapGet("/{id:guid}", (Guid id, AppDbContext db, HttpContext httpContext) =>
+        // Demonstrates: If-None-Match → 304, RepresentationMetadata, strongly-typed route binding
+        productApi.MapGet("/{id}", (ProductId id, AppDbContext db, HttpContext httpContext) =>
             db.Products
-                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id),
-                    Error.NotFound("Product not found.", id.ToString()))
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From));
+                .FirstOrDefaultResultAsync(p => p.Id == id,
+                    Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
+                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+            .WithScalarValueValidation();
 
         // POST /products — create with ETag + Location
         // Demonstrates: 201 Created, If-None-Match:* → 412 (create-if-absent)
@@ -101,34 +103,37 @@ public static class ProductRoutes
 
         // PUT /products/{id} — update with If-Match + Prefer header
         // Demonstrates: OptionalETagAsync → 412/428, Prefer: return=minimal → 204
-        productApi.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, AppDbContext db, HttpContext httpContext) =>
+        productApi.MapPut("/{id}", (ProductId id, UpdateProductRequest request, AppDbContext db, HttpContext httpContext) =>
             db.Products
-                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id),
-                    Error.NotFound("Product not found.", id.ToString()))
+                .FirstOrDefaultResultAsync(p => p.Id == id,
+                    Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
                 .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
-                .BindAsync(p => Task.FromResult(
+                .BindAsync(p =>
                     MonetaryAmount.TryCreate(request.Price)
-                        .Bind(price => p.UpdatePrice(price))))
+                        .Bind(price => p.UpdatePrice(price)))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
                 .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
             .WithScalarValueValidation();
 
         // DELETE /products/{id}
-        productApi.MapDelete("/{id:guid}", async (Guid id, AppDbContext db) =>
+        productApi.MapDelete("/{id}", async (ProductId id, AppDbContext db) =>
         {
-            var product = await db.Products.FindAsync(ProductId.Create(id));
+            var product = await db.Products.FindAsync(id);
             if (product is null)
-                return Error.NotFound("Product not found.", id.ToString()).ToHttpResult();
+                return Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)).ToHttpResult();
 
             db.Products.Remove(product);
-            await db.SaveChangesAsync();
-            return Results.NoContent();
-        });
+            var saveResult = await db.SaveChangesResultUnitAsync();
+            return saveResult.Match(
+                _ => Results.NoContent(),
+                error => error.ToHttpResult());
+        }).WithScalarValueValidation();
 
         // GET /products/legacy/{id} — redirect demo
         // Demonstrates: RFC 9110 §15.4.2 — 301 Moved Permanently
-        productApi.MapGet("/legacy/{id:guid}", (Guid id) =>
-            Results.Redirect($"/products/{id}", permanent: true));
+        productApi.MapGet("/legacy/{id}", (ProductId id) =>
+            Results.Redirect($"/products/{id.Value}", permanent: true))
+            .WithScalarValueValidation();
     }
 }
 

@@ -28,6 +28,10 @@ builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlite("DataSource=SampleMvc;Mode=Memory;Cache=Shared")
            .AddTrellisInterceptors(), ServiceLifetime.Scoped);
 
+// Dispose SQLite connection on shutdown
+builder.Services.AddSingleton(connection);
+builder.Services.AddHostedService<SqliteConnectionDisposer>();
+
 // Authorization — DevelopmentActorProvider reads actor from X-Test-Actor header
 builder.Services.AddDevelopmentActorProvider();
 builder.Services.AddAuthorization();
@@ -62,3 +66,10 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+/// <summary>Disposes the in-memory SQLite connection on application shutdown.</summary>
+internal sealed class SqliteConnectionDisposer(SqliteConnection connection) : IHostedService
+{
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StopAsync(CancellationToken cancellationToken) { connection.Dispose(); return Task.CompletedTask; }
+}

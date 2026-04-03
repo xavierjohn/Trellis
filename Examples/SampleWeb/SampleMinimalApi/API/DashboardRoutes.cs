@@ -11,17 +11,26 @@ public static class DashboardRoutes
     public static void UseDashboardRoute(this WebApplication app) =>
         // GET /dashboard — concurrent data fetching
         // Demonstrates: ParallelAsync / WhenAllAsync for performance
-        // Uses IDbContextFactory to create separate contexts per parallel task (DbContext is not thread-safe)
+        // Uses IDbContextFactory for separate contexts per parallel task (DbContext is not thread-safe)
+        // Uses Result.TryAsync to convert EF Core exceptions into Result failures
         app.MapGet("/dashboard", async (IDbContextFactory<AppDbContext> dbFactory) =>
         {
             var result = await Result.ParallelAsync(
-                    async () => { await using var db = dbFactory.CreateDbContext(); return Result.Success(await db.Products.CountAsync()); },
-                    async () => { await using var db = dbFactory.CreateDbContext(); return Result.Success(await db.Orders.CountAsync()); },
                     async () =>
                     {
                         await using var db = dbFactory.CreateDbContext();
-                        return Result.Success(
-                            await db.Orders
+                        return await Result.TryAsync(() => db.Products.CountAsync());
+                    },
+                    async () =>
+                    {
+                        await using var db = dbFactory.CreateDbContext();
+                        return await Result.TryAsync(() => db.Orders.CountAsync());
+                    },
+                    async () =>
+                    {
+                        await using var db = dbFactory.CreateDbContext();
+                        return await Result.TryAsync(() =>
+                            db.Orders
                                 .Where(o => o.State == SampleUserLibrary.OrderState.Confirmed
                                          || o.State == SampleUserLibrary.OrderState.Shipped
                                          || o.State == SampleUserLibrary.OrderState.Delivered)

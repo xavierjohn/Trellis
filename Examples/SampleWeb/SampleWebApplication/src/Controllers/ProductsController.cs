@@ -1,6 +1,7 @@
 namespace SampleWebApplication.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
 using SampleUserLibrary;
@@ -76,13 +77,13 @@ public class ProductsController(AppDbContext db) : ControllerBase
     }
 
     // GET /products/{id} — conditional GET with ETag
-    // Demonstrates: If-None-Match → 304, RepresentationMetadata, ConditionalRequestEvaluator
-    [HttpGet("{id:guid}", Name = nameof(GetProduct))]
-    public async Task<ActionResult<ProductResponse>> GetProduct(Guid id)
+    // Demonstrates: If-None-Match → 304, RepresentationMetadata, strongly-typed route binding
+    [HttpGet("{id}", Name = nameof(GetProduct))]
+    public async Task<ActionResult<ProductResponse>> GetProduct(ProductId id)
     {
         var result = await db.Products
-            .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id),
-                Error.NotFound("Product not found.", id.ToString()));
+            .FirstOrDefaultResultAsync(p => p.Id == id,
+                Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)));
 
         if (result.IsFailure)
             return result.Error.ToActionResult<ProductResponse>(this);
@@ -114,16 +115,16 @@ public class ProductsController(AppDbContext db) : ControllerBase
 
     // PUT /products/{id} — update with If-Match + Prefer header
     // Demonstrates: OptionalETagAsync → 412/428, Prefer: return=minimal → 204
-    [HttpPut("{id:guid}")]
-    public async Task<ActionResult<ProductResponse>> Update(Guid id, [FromBody] UpdateProductRequest request)
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ProductResponse>> Update(ProductId id, [FromBody] UpdateProductRequest request)
     {
         var result = await db.Products
-            .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id),
-                Error.NotFound("Product not found.", id.ToString()))
+            .FirstOrDefaultResultAsync(p => p.Id == id,
+                Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
             .OptionalETagAsync(ETagHelper.ParseIfMatch(Request))
-            .BindAsync(p => Task.FromResult(
+            .BindAsync(p =>
                 MonetaryAmount.TryCreate(request.Price)
-                    .Bind(price => p.UpdatePrice(price))))
+                    .Bind(price => p.UpdatePrice(price)))
             .CheckAsync(_ => db.SaveChangesResultUnitAsync());
 
         return result.ToUpdatedActionResult(
@@ -133,21 +134,23 @@ public class ProductsController(AppDbContext db) : ControllerBase
     }
 
     // DELETE /products/{id}
-    [HttpDelete("{id:guid}")]
-    public async Task<ActionResult<Unit>> Delete(Guid id)
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<Unit>> Delete(ProductId id)
     {
-        var product = await db.Products.FindAsync(ProductId.Create(id));
+        var product = await db.Products.FindAsync(id);
         if (product is null)
-            return Error.NotFound("Product not found.", id.ToString()).ToActionResult<Unit>(this);
+            return Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)).ToActionResult<Unit>(this);
 
         db.Products.Remove(product);
-        await db.SaveChangesAsync();
-        return new ActionResult<Unit>(new NoContentResult());
+        var saveResult = await db.SaveChangesResultUnitAsync();
+        return saveResult.Match(
+            _ => (ActionResult<Unit>)new NoContentResult(),
+            error => error.ToActionResult<Unit>(this));
     }
 
     // GET /products/legacy/{id} — redirect demo
     // Demonstrates: RFC 9110 §15.4.2 — 301 Moved Permanently
-    [HttpGet("legacy/{id:guid}")]
-    public ActionResult LegacyRedirect(Guid id) =>
-        RedirectPermanent($"/products/{id}");
+    [HttpGet("legacy/{id}")]
+    public ActionResult LegacyRedirect(ProductId id) =>
+        RedirectPermanent($"/products/{id.Value}");
 }

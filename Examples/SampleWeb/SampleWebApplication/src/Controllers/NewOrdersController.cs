@@ -1,6 +1,7 @@
 namespace SampleWebApplication.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
 using SampleUserLibrary;
@@ -67,14 +68,14 @@ public class NewOrdersController(
     }
 
     // GET /orders/{id} — conditional GET with ETag
-    // Demonstrates: RepresentationMetadata, If-None-Match → 304
-    [HttpGet("{id:guid}", Name = nameof(GetOrder))]
-    public async Task<ActionResult<OrderResponse>> GetOrder(Guid id)
+    // Demonstrates: RepresentationMetadata, If-None-Match → 304, strongly-typed route binding
+    [HttpGet("{id}", Name = nameof(GetOrder))]
+    public async Task<ActionResult<OrderResponse>> GetOrder(OrderId id)
     {
         var result = await db.Orders
             .Include(o => o.Lines)
-            .FirstOrDefaultResultAsync(o => o.Id == OrderId.Create(id),
-                Error.NotFound("Order not found.", id.ToString()));
+            .FirstOrDefaultResultAsync(o => o.Id == id,
+                Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)));
 
         if (result.IsFailure)
             return result.Error.ToActionResult<OrderResponse>(this);
@@ -87,8 +88,8 @@ public class NewOrdersController(
     // POST /orders/{id}/confirm — confirm with async ROP + auth
     // Demonstrates: Ensure (auth), BindAsync (fetch), Bind (confirm),
     //               BindAsync (payment), TapAsync (notify), CheckAsync (save)
-    [HttpPost("{id:guid}/confirm")]
-    public async Task<ActionResult<OrderResponse>> Confirm(Guid id, CancellationToken ct)
+    [HttpPost("{id}/confirm")]
+    public async Task<ActionResult<OrderResponse>> Confirm(OrderId id, CancellationToken ct)
     {
         // Step 1: Authorize
         var actor = await actorProvider.GetCurrentActorAsync(ct);
@@ -103,8 +104,8 @@ public class NewOrdersController(
         // fails after save, the order is confirmed but the caller gets an error.
         // Production systems should use an outbox pattern for guaranteed delivery.
         var result = await db.Orders.Include(o => o.Lines)
-            .FirstOrDefaultResultAsync(o => o.Id == OrderId.Create(id),
-                Error.NotFound("Order not found.", id.ToString()), ct)
+            .FirstOrDefaultResultAsync(o => o.Id == id,
+                Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
             .BindAsync(order => order.Confirm())
             .CheckAsync(_ => db.SaveChangesResultUnitAsync())
             .BindAsync(order =>
@@ -122,8 +123,8 @@ public class NewOrdersController(
 
     // POST /orders/{id}/cancel — cancel with RecoverOnFailureAsync
     // Demonstrates: RecoverOnFailureAsync for cleanup on unexpected errors
-    [HttpPost("{id:guid}/cancel")]
-    public async Task<ActionResult<OrderResponse>> Cancel(Guid id, CancellationToken ct)
+    [HttpPost("{id}/cancel")]
+    public async Task<ActionResult<OrderResponse>> Cancel(OrderId id, CancellationToken ct)
     {
         // Step 1: Authorize
         var actor = await actorProvider.GetCurrentActorAsync(ct);
@@ -136,16 +137,16 @@ public class NewOrdersController(
         // Step 2: Fetch → Cancel → Save → Notify
         // Note: Same save-first pattern as confirm. See confirm comment for tradeoff explanation.
         var result = await db.Orders.Include(o => o.Lines)
-            .FirstOrDefaultResultAsync(o => o.Id == OrderId.Create(id),
-                Error.NotFound("Order not found.", id.ToString()), ct)
+            .FirstOrDefaultResultAsync(o => o.Id == id,
+                Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
             .BindAsync(order => order.Cancel())
             .CheckAsync(_ => db.SaveChangesResultUnitAsync())
             .TapAsync(order =>
                 notificationService.SendOrderCancellationAsync(order.Id, order.CustomerId, ct))
             .RecoverOnFailureAsync(
                 error => error.Code == "unexpected",
-                _ => Task.FromResult(
-                    Result.Failure<Order>(Error.Unexpected("Cancellation failed. Please try again."))));
+                _ => Result.Failure<Order>(
+                    Error.Unexpected("Cancellation failed. Please try again.")));
 
         if (result.IsFailure)
             return result.Error.ToActionResult<OrderResponse>(this);
@@ -156,10 +157,10 @@ public class NewOrdersController(
 
     // POST /orders/{id}/receipt — redirect after POST
     // Demonstrates: RFC 9110 §15.4.4 — 303 See Other (redirect to GET after POST)
-    [HttpPost("{id:guid}/receipt")]
-    public ActionResult Receipt(Guid id)
+    [HttpPost("{id}/receipt")]
+    public ActionResult Receipt(OrderId id)
     {
-        Response.Headers.Location = $"/orders/{id}";
+        Response.Headers.Location = $"/orders/{id.Value}";
         return StatusCode(303);
     }
 }
