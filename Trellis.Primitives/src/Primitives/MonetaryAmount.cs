@@ -167,4 +167,29 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 
     /// <summary>Returns the amount as an invariant-culture decimal string.</summary>
     public override string ToString() => Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Sums a collection of <see cref="MonetaryAmount"/> values.
+    /// </summary>
+    /// <param name="values">The monetary amounts to sum.</param>
+    /// <returns>
+    /// Success with the total, or failure if the collection is empty or addition overflows.
+    /// </returns>
+    public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        var total = Zero;
+
+        foreach (var value in values)
+        {
+            var addResult = total.Add(value);
+            if (addResult.IsFailure)
+                return addResult;
+
+            total = addResult.Value;
+        }
+
+        return Result.Success(total);
+    }
 }

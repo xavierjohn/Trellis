@@ -246,4 +246,34 @@ public class Money : ValueObject
         "TND" => 3, // Tunisian Dinar has 3 decimal places
         _ => 2      // Most currencies have 2 decimal places
     };
+
+    /// <summary>
+    /// Sums a collection of <see cref="Money"/> values. All values must share the same currency.
+    /// </summary>
+    /// <param name="values">The monetary values to sum.</param>
+    /// <returns>
+    /// Success with the total, or failure if the collection is empty or contains mixed currencies.
+    /// </returns>
+    public static Result<Money> Sum(IEnumerable<Money> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        using var enumerator = values.GetEnumerator();
+
+        if (!enumerator.MoveNext())
+            return Result.Failure<Money>(Error.Validation("Cannot sum an empty collection.", "values"));
+
+        var total = enumerator.Current;
+
+        while (enumerator.MoveNext())
+        {
+            var addResult = total.Add(enumerator.Current);
+            if (addResult.IsFailure)
+                return addResult;
+
+            total = addResult.Value;
+        }
+
+        return Result.Success(total);
+    }
 }

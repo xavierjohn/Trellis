@@ -646,4 +646,66 @@ public class MoneyTests
     }
 
     #endregion
+
+    #region Sum Tests
+
+    [Fact]
+    public void Sum_SingleItem_ReturnsThatItem()
+    {
+        var items = new[] { Money.Create(10.00m, "USD") };
+
+        var result = Money.Sum(items);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Amount.Should().Be(10.00m);
+    }
+
+    [Fact]
+    public void Sum_MultipleItems_SameCurrency_ReturnsTotal()
+    {
+        var items = new[]
+        {
+            Money.Create(10.00m, "USD"),
+            Money.Create(20.50m, "USD"),
+            Money.Create(5.25m, "USD"),
+        };
+
+        var result = Money.Sum(items);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Amount.Should().Be(35.75m);
+        result.Value.Currency.Should().Be(CurrencyCode.Create("USD"));
+    }
+
+    [Fact]
+    public void Sum_MixedCurrencies_ReturnsFailure()
+    {
+        var items = new[]
+        {
+            Money.Create(10.00m, "USD"),
+            Money.Create(20.00m, "EUR"),
+        };
+
+        var result = Money.Sum(items);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Sum_EmptyCollection_ReturnsFailure()
+    {
+        var result = Money.Sum(Array.Empty<Money>());
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Sum_NullCollection_ThrowsArgumentNull()
+    {
+        var act = () => Money.Sum(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
 }
