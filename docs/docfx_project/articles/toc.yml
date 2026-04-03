@@ -78,6 +78,8 @@
   items:
   - name: Trellis for AI Code Generation
     href: ai-code-generation.md
+  - name: "Study: With vs Without Trellis"
+    href: with-vs-without-trellis.md
 - name: Reference
   items:
   - name: Analyzer Rules
