@@ -264,17 +264,28 @@ public class Money : ValueObject
         if (!enumerator.MoveNext())
             return Result.Failure<Money>(Error.Validation("Cannot sum an empty collection.", nameof(values)));
 
-        var total = enumerator.Current;
+        var first = enumerator.Current;
+        var currency = first.Currency;
+        var totalAmount = first.Amount;
 
-        while (enumerator.MoveNext())
+        try
         {
-            var addResult = total.Add(enumerator.Current);
-            if (addResult.IsFailure)
-                return addResult;
+            while (enumerator.MoveNext())
+            {
+                var current = enumerator.Current;
 
-            total = addResult.Value;
+                if (!currency.Equals(current.Currency))
+                    return Result.Failure<Money>(
+                        Error.Validation($"Cannot add {current.Currency} to {currency}.", "currency"));
+
+                totalAmount += current.Amount;
+            }
+        }
+        catch (OverflowException)
+        {
+            return Result.Failure<Money>(Error.Validation("Addition would overflow.", "amount"));
         }
 
-        return Result.Success(total);
+        return TryCreate(totalAmount, currency.Value);
     }
 }
