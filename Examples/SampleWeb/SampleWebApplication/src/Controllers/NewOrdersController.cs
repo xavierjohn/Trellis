@@ -92,7 +92,7 @@ public class NewOrdersController(
 
     // POST /orders/{id}/confirm — confirm with async ROP + auth
     // Demonstrates: Ensure (auth), BindAsync (fetch), Bind (confirm),
-    //               BindAsync (payment), TapAsync (notify), CheckAsync (save)
+    //               BindAsync (payment), CheckAsync (notify)
     [HttpPost("{id}/confirm")]
     public async Task<ActionResult<OrderResponse>> Confirm(OrderId id, CancellationToken ct)
     {
@@ -117,7 +117,7 @@ public class NewOrdersController(
             .BindAsync(order =>
                 paymentService.ProcessPaymentAsync(order.Id, order.Total, ct)
                     .MapAsync(_ => order))
-            .TapAsync(order =>
+            .CheckAsync(order =>
                 notificationService.SendOrderConfirmationAsync(order.Id, order.CustomerId, ct));
 
         if (result.IsFailure)
@@ -148,7 +148,7 @@ public class NewOrdersController(
                 Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
             .BindAsync(order => order.Cancel())
             .CheckAsync(_ => db.SaveChangesResultUnitAsync())
-            .TapAsync(order =>
+            .CheckAsync(order =>
                 notificationService.SendOrderCancellationAsync(order.Id, order.CustomerId, ct))
             .RecoverOnFailureAsync(
                 error => error.Code == "unexpected",

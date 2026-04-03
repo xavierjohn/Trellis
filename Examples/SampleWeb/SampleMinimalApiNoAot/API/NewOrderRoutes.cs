@@ -81,7 +81,7 @@ public static class NewOrderRoutes
 
         // POST /orders/{id}/confirm — confirm with async ROP + auth
         // Demonstrates: Ensure (auth), BindAsync (fetch), Bind (confirm),
-        //               BindAsync (payment), TapAsync (notify), CheckAsync (save)
+        //               BindAsync (payment), CheckAsync (notify)
         orderApi.MapPost("/{id}/confirm", async (
             OrderId id,
             IPaymentService paymentService,
@@ -112,7 +112,7 @@ public static class NewOrderRoutes
                 .BindAsync(order =>
                     paymentService.ProcessPaymentAsync(order.Id, order.Total, ct)
                         .MapAsync(_ => order))
-                .TapAsync(order =>
+                .CheckAsync(order =>
                     notificationService.SendOrderConfirmationAsync(order.Id, order.CustomerId, ct));
 
             return result.ToHttpResult(httpContext, o => o.ETag, OrderResponse.From);
@@ -144,7 +144,7 @@ public static class NewOrderRoutes
                     Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
                 .BindAsync(order => order.Cancel())
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
-                .TapAsync(order =>
+                .CheckAsync(order =>
                     notificationService.SendOrderCancellationAsync(order.Id, order.CustomerId, ct))
                 .RecoverOnFailureAsync(
                     error => error.Code == "unexpected",
