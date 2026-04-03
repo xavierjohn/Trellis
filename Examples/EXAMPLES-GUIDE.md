@@ -130,8 +130,19 @@ Shared library with value objects used by all examples.
 | **Model Binding** | ⚠️ JSON only | ⚠️ JSON only | ✅ All sources |
 | **Action Filters** | ⚠️ Endpoint filters | ⚠️ Endpoint filters | ✅ Action filters |
 | **Native AOT** | ❌ | ✅ | ❌ |
-| **Maybe<T> Optional Props** | ✅ | ✅ | ✅ |
+| **Maybe&lt;T&gt; Optional Props** | ✅ | ✅ | ✅ |
 | **Startup Overhead** | +50μs | 0μs | +50μs |
+| **EF Core Persistence** | ✅ | ✅ | ✅ |
+| **ETag / Conditional Requests** | ✅ | ✅ | ✅ |
+| **Pagination (206 + Content-Range)** | ✅ | ✅ | ✅ |
+| **Prefer Header (RFC 7240)** | ✅ | ✅ | ✅ |
+| **Async ROP Chains** | ✅ | ✅ | ✅ |
+| **ParallelAsync / WhenAllAsync** | ✅ | ✅ | ✅ |
+| **RecoverOnFailureAsync** | ✅ | ✅ | ✅ |
+| **Authorization (Actor)** | ✅ | ✅ | ✅ |
+| **Specification Pattern** | ✅ | ✅ | ✅ |
+| **Aggregate State Machine** | ✅ | ✅ | ✅ |
+| **RFC 9110 Redirects** | ✅ | ✅ | ✅ |
 
 ## Decision Tree
 

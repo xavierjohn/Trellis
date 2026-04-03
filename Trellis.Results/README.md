@@ -312,6 +312,19 @@ var result = await GetUserAsync("123")
     .BindAsync(user => GetLastOrderAsync(user));
 ```
 
+**Mixing sync and async in chains:**
+
+`BindAsync` also accepts a **synchronous** `Func<T, Result<R>>`, so you can freely mix sync and async operations in the same chain without `Task.FromResult()` wrappers:
+
+```csharp
+// Confirm() returns Result<Order> (sync), GetPaymentAsync returns Task<Result<Payment>> (async)
+var result = await GetOrderAsync(orderId)          // Task<Result<Order>>
+    .BindAsync(order => order.Confirm())           // sync Result<Order> — no wrapper needed
+    .BindAsync(order => GetPaymentAsync(order));   // async Task<Result<Payment>>
+```
+
+This applies to all `*Async` extension methods (`BindAsync`, `MapAsync`, `TapAsync`, `EnsureAsync`, `CheckAsync`) — each accepts both sync and async functions on `Task<Result<T>>`.
+
 **Async with CancellationToken:**
 
 ```csharp

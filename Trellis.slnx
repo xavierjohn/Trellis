@@ -49,6 +49,7 @@
     <File Path="Examples/SampleWeb/MoneyApi.http" />
     <File Path="Examples/SampleWeb/OrderApi.http" />
     <File Path="Examples/SampleWeb/UserApi.http" />
+    <Project Path="Examples/SampleWeb/SampleDataAccess/SampleDataAccess.csproj" />
     <Project Path="Examples/SampleWeb/SampleMinimalApi/SampleMinimalApi.csproj" />
     <Project Path="Examples/SampleWeb/SampleMinimalApiNoAot/SampleMinimalApiNoAot.csproj" />
     <Project Path="Examples/SampleWeb/SampleUserLibrary/SampleUserLibrary.csproj" />

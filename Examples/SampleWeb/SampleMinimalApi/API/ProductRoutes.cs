@@ -1,0 +1,154 @@
+namespace SampleMinimalApi.API;
+
+using Microsoft.EntityFrameworkCore;
+using SampleDataAccess;
+using SampleUserLibrary;
+using Trellis;
+using Trellis.Asp;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+public record ProductResponse(Guid Id, string Name, decimal Price, int Stock, string ETag)
+{
+    public static ProductResponse From(Product p) =>
+        new(p.Id.Value, p.Name.Value, p.Price.Value, p.StockQuantity, p.ETag);
+}
+
+public record CreateProductRequest(string Name, decimal Price, int Stock);
+public record UpdateProductRequest(decimal Price);
+
+public static class ProductRoutes
+{
+    public static void UseProductRoute(this WebApplication app)
+    {
+        var productApi = app.MapGroup("/products");
+
+        // GET /products — paginated list with Specification filtering
+        // Demonstrates: PartialContentResult (206), Content-Range header, Specification pattern
+        productApi.MapGet("/", async (
+            AppDbContext db,
+            HttpContext httpContext,
+            int? page,
+            int? pageSize,
+            decimal? minPrice,
+            decimal? maxPrice,
+            bool? inStock) =>
+        {
+            var pgSize = Math.Clamp(pageSize ?? 25, 1, 100);
+            var pgNum = Math.Max(page ?? 0, 0);
+
+            IQueryable<Product> query = db.Products;
+
+            // Apply Specification-based filtering
+            if (inStock == true)
+                query = query.Where(new InStockSpecification());
+
+            if (minPrice.HasValue || maxPrice.HasValue)
+            {
+                var spec = new PriceRangeSpecification(
+                    minPrice ?? 0m,
+                    maxPrice ?? decimal.MaxValue);
+                query = query.Where(spec);
+            }
+
+            var totalCount = await query.CountAsync();
+            var from = pgNum * pgSize;
+
+            // Handle page beyond data
+            if (from >= totalCount && totalCount > 0)
+                return Results.Ok(Array.Empty<ProductResponse>());
+
+            var products = await query
+                .OrderBy(p => p.Name)
+                .Skip(from)
+                .Take(pgSize)
+                .ToListAsync();
+
+            var items = products.Select(ProductResponse.From).ToArray();
+
+            // RFC 9110 §14: Return 206 Partial Content when not all items fit,
+            // or 200 OK when the response contains the complete set.
+            if (products.Count > 0 && products.Count < totalCount)
+            {
+                var to = from + products.Count - 1;
+                return Results.Extensions.PartialContent(from, to, totalCount, items);
+            }
+
+            return Results.Ok(items);
+        });
+
+        // GET /products/{id} — conditional GET with ETag
+        // Demonstrates: If-None-Match → 304, RepresentationMetadata, ConditionalRequestEvaluator
+        productApi.MapGet("/{id:guid}", (Guid id, AppDbContext db, HttpContext httpContext) =>
+            db.Products
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id),
+                    Error.NotFound("Product not found.", id.ToString()))
+                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From));
+
+        // POST /products — create with ETag + Location
+        // Demonstrates: 201 Created, If-None-Match:* → 412 (create-if-absent)
+        productApi.MapPost("/", async (CreateProductRequest request, AppDbContext db, HttpContext httpContext) =>
+            await ProductName.TryCreate(request.Name)
+                .Combine(MonetaryAmount.TryCreate(request.Price))
+                .Bind((name, price) => Product.TryCreate(name, price, request.Stock))
+                .Tap(product => db.Products.Add(product))
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .ToCreatedHttpResultAsync(httpContext,
+                    p => $"/products/{p.Id.Value}",
+                    p => p.ETag,
+                    ProductResponse.From))
+            .WithScalarValueValidation();
+
+        // PUT /products/{id} — update with If-Match + Prefer header
+        // Demonstrates: OptionalETagAsync → 412/428, Prefer: return=minimal → 204
+        productApi.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, AppDbContext db, HttpContext httpContext) =>
+            db.Products
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id),
+                    Error.NotFound("Product not found.", id.ToString()))
+                .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
+                .BindAsync(p => Task.FromResult(
+                    MonetaryAmount.TryCreate(request.Price)
+                        .Bind(price => p.UpdatePrice(price))))
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+            .WithScalarValueValidation();
+
+        // DELETE /products/{id}
+        productApi.MapDelete("/{id:guid}", async (Guid id, AppDbContext db) =>
+        {
+            var product = await db.Products.FindAsync(ProductId.Create(id));
+            if (product is null)
+                return Error.NotFound("Product not found.", id.ToString()).ToHttpResult();
+
+            db.Products.Remove(product);
+            await db.SaveChangesAsync();
+            return Results.NoContent();
+        });
+
+        // GET /products/legacy/{id} — redirect demo
+        // Demonstrates: RFC 9110 §15.4.2 — 301 Moved Permanently
+        productApi.MapGet("/legacy/{id:guid}", (Guid id) =>
+            Results.Redirect($"/products/{id}", permanent: true));
+    }
+}
+
+/// <summary>
+/// Minimal API helper for 206 Partial Content responses.
+/// </summary>
+internal static class PartialContentExtensions
+{
+    public static Microsoft.AspNetCore.Http.IResult PartialContent<T>(
+        this IResultExtensions _, long from, long to, long total, T value) =>
+        new PartialContentHttpResult<T>(from, to, total, value);
+
+    private sealed class PartialContentHttpResult<T>(long from, long to, long total, T value)
+        : Microsoft.AspNetCore.Http.IResult
+    {
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.StatusCode = 206;
+            httpContext.Response.Headers["Content-Range"] = $"items {from}-{to}/{total}";
+            await httpContext.Response.WriteAsJsonAsync(value);
+        }
+    }
+}

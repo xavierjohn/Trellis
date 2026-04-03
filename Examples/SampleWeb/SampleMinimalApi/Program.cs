@@ -1,15 +1,38 @@
 ﻿using System.Text.Json.Serialization;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using SampleDataAccess;
 using SampleMinimalApi.API;
 using SampleUserLibrary;
 using Trellis;
 using Trellis.Asp;
+using Trellis.Asp.Authorization;
+using Trellis.EntityFrameworkCore;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default));
 builder.Services.AddScalarValueValidationForMinimalApi();
+
+// EF Core with in-memory SQLite (shared-cache for thread-safe parallel queries)
+var connection = new SqliteConnection("DataSource=SampleAot;Mode=Memory;Cache=Shared");
+connection.Open();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(connection)
+           .AddTrellisInterceptors());
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
+    options.UseSqlite("DataSource=SampleAot;Mode=Memory;Cache=Shared")
+           .AddTrellisInterceptors(), ServiceLifetime.Scoped);
+
+// Authorization— DevelopmentActorProvider reads actor from X-Test-Actor header
+builder.Services.AddDevelopmentActorProvider();
+builder.Services.AddAuthorization();
+
+// Register domain services
+builder.Services.AddSingleton<IPaymentService, FakePaymentService>();
+builder.Services.AddSingleton<INotificationService, FakeNotificationService>();
 
 Action<ResourceBuilder> configureResource = r => r.AddService(
     serviceName: "SampleMinimalApi",
@@ -24,46 +47,40 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+// Create schema and seed data
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+    await DatabaseSeeder.SeedAsync(db);
+}
+
 app.UseScalarValueValidation();
+app.UseAuthorization();
 
 // Welcome endpoint with API information
 app.MapGet("/", () => Results.Ok(new WelcomeResponse(
-    Name: "FunctionalDDD Sample Minimal API",
-    Version: "1.0.0",
-    Description: "Demonstrates FunctionalDDD Railway Oriented Programming with Minimal APIs, AOT, and source generation",
-    Endpoints: new EndpointsInfo(
-        Users: new UserEndpoints(
-            Register: "POST /users/register - Register user with manual validation (Result.Combine)",
-            RegisterCreated: "POST /users/registerCreated - Register user returning 201 Created",
-            RegisterAutoValidation: "POST /users/RegisterWithAutoValidation - Register with auto-validation (Maybe<Url> for optional website)",
-            Errors: [
-                "GET /users/notfound/{id} - Returns 404 Not Found",
-                "GET /users/conflict/{id} - Returns 409 Conflict",
-                "GET /users/forbidden/{id} - Returns 403 Forbidden",
-                "GET /users/unauthorized/{id} - Returns 401 Unauthorized",
-                "GET /users/unexpected/{id} - Returns 500 Internal Server Error"
-            ]
-        )
-    ),
+    Name: "FunctionalDDD Sample Minimal API (AOT)",
+    Version: "2.0.0",
+    Description: "Demonstrates full Trellis Framework with ROP, EF Core, RFC 9110, authorization, and AOT source generation",
     Documentation: "See SampleApi.http for complete API examples"
 ))).WithName("Welcome");
 
 app.UseUserRoute();
 app.UseMoneyRoute();
 app.UseOrderRoute();
+app.UseProductRoute();
+app.UseNewOrderRoute();
+app.UseDashboardRoute();
 app.Run();
 
 #pragma warning disable CA1050 // Declare types in namespaces
 public record SharedNameTypeResponse(string FirstName, string LastName, string Email, string Message);
-public record WelcomeResponse(string Name, string Version, string Description, EndpointsInfo Endpoints, string Documentation);
-public record EndpointsInfo(UserEndpoints Users);
-public record UserEndpoints(string Register, string RegisterCreated, string RegisterAutoValidation, string[] Errors);
+public record WelcomeResponse(string Name, string Version, string Description, string Documentation);
 #pragma warning restore CA1050 // Declare types in namespaces
 
 [GenerateScalarValueConverters]
 [JsonSerializable(typeof(WelcomeResponse))]
-[JsonSerializable(typeof(EndpointsInfo))]
-[JsonSerializable(typeof(UserEndpoints))]
 [JsonSerializable(typeof(RegisterUserRequest))]
 [JsonSerializable(typeof(RegisterUserDto))]
 [JsonSerializable(typeof(RegisterWithNameDto))]
@@ -94,6 +111,16 @@ public record UserEndpoints(string Register, string RegisterCreated, string Regi
 [JsonSerializable(typeof(SampleMinimalApi.API.CustomerInfo))]
 [JsonSerializable(typeof(SampleMinimalApi.API.CreateOrderResponse))]
 [JsonSerializable(typeof(SampleMinimalApi.API.FilterOrdersResponse))]
+[JsonSerializable(typeof(SampleMinimalApi.API.ProductResponse))]
+[JsonSerializable(typeof(SampleMinimalApi.API.ProductResponse[]))]
+[JsonSerializable(typeof(SampleMinimalApi.API.CreateProductRequest))]
+[JsonSerializable(typeof(SampleMinimalApi.API.UpdateProductRequest))]
+[JsonSerializable(typeof(SampleMinimalApi.API.OrderResponse))]
+[JsonSerializable(typeof(SampleMinimalApi.API.OrderLineResponse))]
+[JsonSerializable(typeof(SampleMinimalApi.API.CreateOrderRequest))]
+[JsonSerializable(typeof(SampleMinimalApi.API.OrderLineRequest))]
+[JsonSerializable(typeof(SampleMinimalApi.API.DashboardResponse))]
+[JsonSerializable(typeof(Product[]))]
 [JsonSerializable(typeof(Error))]
 [JsonSerializable(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails))]
 [JsonSerializable(typeof(Microsoft.AspNetCore.Http.HttpResults.ValidationProblem))]

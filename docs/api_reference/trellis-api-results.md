@@ -331,10 +331,12 @@ Error Combine(this Error? thisError, Error otherError)
 
 All extension methods follow a consistent async pattern:
 - **Sync**: `Method(this Result<T>, ...)` → `Result<TOut>`
-- **Task Left-only**: `MethodAsync(this Task<Result<T>>, sync_predicate)` → `Task<Result<TOut>>`
-- **Task Right-only**: `MethodAsync(this Result<T>, async_predicate)` → `Task<Result<TOut>>`
-- **Task Both**: `MethodAsync(this Task<Result<T>>, async_predicate)` → `Task<Result<TOut>>`
+- **Task Left-only**: `MethodAsync(this Task<Result<T>>, sync_func)` → `Task<Result<TOut>>` — sync function on async input (mix sync+async in chains)
+- **Task Right-only**: `MethodAsync(this Result<T>, async_func)` → `Task<Result<TOut>>`
+- **Task Both**: `MethodAsync(this Task<Result<T>>, async_func)` → `Task<Result<TOut>>`
 - **ValueTask**: Same three patterns with `ValueTask<Result<T>>`
+
+The "Task Left-only" variant is key for mixed chains — it lets you call sync domain methods (e.g., `order.Confirm()`) in an async pipeline without `Task.FromResult()` wrappers.
 
 ### Bind — FlatMap / Chain
 
@@ -351,6 +353,14 @@ Task<Result<TOut>> BindAsync<TIn, TOut>(this Result<TIn>, Func<TIn, Task<Result<
 ValueTask<Result<TOut>> BindAsync<TIn, TOut>(this ValueTask<Result<TIn>>, Func<TIn, ValueTask<Result<TOut>>>)
 ValueTask<Result<TOut>> BindAsync<TIn, TOut>(this ValueTask<Result<TIn>>, Func<TIn, Result<TOut>>)
 ValueTask<Result<TOut>> BindAsync<TIn, TOut>(this Result<TIn>, Func<TIn, ValueTask<Result<TOut>>>)
+```
+
+**Mixing sync and async in chains:** The "Task Left-only" overload (line 2 above) accepts a sync `Func<TIn, Result<TOut>>` on `Task<Result<TIn>>`, so sync and async operations chain naturally — no `Task.FromResult()` wrapper needed:
+
+```csharp
+var result = await GetOrderAsync(orderId)      // Task<Result<Order>>
+    .BindAsync(order => order.Confirm())       // sync — uses Task Left-only overload
+    .BindAsync(order => ChargeAsync(order));   // async — uses Task Both overload
 ```
 
 ### Map — Transform Value

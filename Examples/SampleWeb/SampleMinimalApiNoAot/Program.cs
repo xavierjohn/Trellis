@@ -1,15 +1,38 @@
-﻿using OpenTelemetry.Resources;
+﻿using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using SampleDataAccess;
 using SampleMinimalApiNoAot.API;
 using SampleUserLibrary;
 using Trellis;
 using Trellis.Asp;
+using Trellis.Asp.Authorization;
+using Trellis.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // NO JsonSerializerContext - uses standard JSON serialization with reflection fallback
 // This demonstrates that the library works perfectly without source generation!
 builder.Services.AddScalarValueValidationForMinimalApi();
+
+// EF Core with in-memory SQLite (shared-cache for thread-safe parallel queries)
+var connection = new SqliteConnection("DataSource=SampleNoAot;Mode=Memory;Cache=Shared");
+connection.Open();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(connection)
+           .AddTrellisInterceptors());
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
+    options.UseSqlite("DataSource=SampleNoAot;Mode=Memory;Cache=Shared")
+           .AddTrellisInterceptors(), ServiceLifetime.Scoped);
+
+// Authorization — DevelopmentActorProvider reads actor from X-Test-Actor header
+builder.Services.AddDevelopmentActorProvider();
+builder.Services.AddAuthorization();
+
+// Register domain services
+builder.Services.AddSingleton<IPaymentService, FakePaymentService>();
+builder.Services.AddSingleton<INotificationService, FakeNotificationService>();
 
 Action<ResourceBuilder> configureResource = r => r.AddService(
     serviceName: "SampleMinimalApiNoAot",
@@ -24,39 +47,53 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+// Create schema and seed data
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+    await DatabaseSeeder.SeedAsync(db);
+}
+
 app.UseScalarValueValidation();
+app.UseAuthorization();
 
 // Welcome endpoint with API information
 #pragma warning disable CA1861 // Prefer 'static readonly' fields - one-time startup configuration
 app.MapGet("/", () => Results.Ok(new
 {
     name = "FunctionalDDD Sample Minimal API (No AOT)",
-    version = "1.0.0",
-    description = "Demonstrates FunctionalDDD Railway Oriented Programming with Minimal APIs and reflection fallback (no source generation)",
+    version = "2.0.0",
+    description = "Demonstrates full Trellis Framework with ROP, EF Core, RFC 9110, and authorization",
     endpoints = new
     {
         users = new
         {
             register = "POST /users/register - Register user with manual validation (Result.Combine)",
             registerCreated = "POST /users/registerCreated - Register user returning 201 Created",
-            registerAutoValidation = "POST /users/RegisterWithAutoValidation - Register with auto-validation (Maybe<Url> for optional website)",
-            errors = new string[]
-            {
-                "GET /users/notfound/{id} - Returns 404 Not Found",
-                "GET /users/conflict/{id} - Returns 409 Conflict",
-                "GET /users/forbidden/{id} - Returns 403 Forbidden",
-                "GET /users/unauthorized/{id} - Returns 401 Unauthorized",
-                "GET /users/unexpected/{id} - Returns 500 Internal Server Error"
-            }
+            registerAutoValidation = "POST /users/RegisterWithAutoValidation - Auto-validation (Maybe<Url>)"
+        },
+        products = new
+        {
+            list = "GET /products?page=0&pageSize=25&inStock=true&minPrice=50&maxPrice=200 - Paginated (RFC 9110 §14: 206 Partial Content)",
+            getById = "GET /products/{id} - Conditional GET (If-None-Match → 304 Not Modified)",
+            create = "POST /products - Create with ETag + Location (If-None-Match:* → 412)",
+            update = "PUT /products/{id} - Update with If-Match (Prefer: return=minimal → 204)",
+            delete = "DELETE /products/{id} - Delete (204 No Content)",
+            legacyRedirect = "GET /products/legacy/{id} - 301 Moved Permanently redirect"
         },
         orders = new
         {
-            getStates = "GET /orders/states - Get all order states (RequiredEnum demo)",
-            getStateByName = "GET /orders/states/{state} - Get state by name (model binding)",
-            updateOrder = "POST /orders/update - Update order with RequiredEnum and optional Maybe assignedTo",
-            createOrder = "POST /orders/create - Create order with multiple value objects",
-            filterOrders = "GET /orders/filter?state=Draft - Filter orders by state (query string)"
-        }
+            create = "POST /orders - Create order (async BindAsync chain)",
+            getById = "GET /orders/{id} - Get with ETag conditional GET",
+            confirm = "POST /orders/{id}/confirm - Confirm (EnsureAsync + BindAsync + TapAsync + auth)",
+            cancel = "POST /orders/{id}/cancel - Cancel (RecoverOnFailureAsync cleanup)",
+            receipt = "POST /orders/{id}/receipt - 303 See Other redirect",
+            states = "GET /orders/states - All order states (RequiredEnum demo)",
+            stateByName = "GET /orders/states/{state} - State model binding"
+        },
+        dashboard = "GET /dashboard - ParallelAsync/WhenAllAsync concurrent data fetch",
+        authorization = "Set X-Test-Actor header: {\"id\":\"user1\",\"permissions\":[\"orders:write\"]}"
     },
     documentation = "See SampleApi.http for complete API examples"
 })).WithName("Welcome");
@@ -65,6 +102,9 @@ app.MapGet("/", () => Results.Ok(new
 app.UseUserRoute();
 app.UseMoneyRoute();
 app.UseOrderRoute();
+app.UseProductRoute();
+app.UseNewOrderRoute();
+app.UseDashboardRoute();
 app.Run();
 
 #pragma warning disable CA1050 // Declare types in namespaces
