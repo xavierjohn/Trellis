@@ -3,6 +3,7 @@ namespace SampleDataAccess;
 using Microsoft.EntityFrameworkCore;
 using SampleUserLibrary;
 using Trellis;
+using Trellis.EntityFrameworkCore;
 using Trellis.Primitives;
 
 /// <summary>
@@ -32,6 +33,6 @@ public static class DatabaseSeeder
             result.Tap(product => context.Products.Add(product));
         }
 
-        await context.SaveChangesAsync();
+        await context.SaveChangesResultUnitAsync();
     }
 }

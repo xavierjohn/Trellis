@@ -3,6 +3,7 @@ namespace SampleMinimalApiNoAot.API;
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
 using Trellis;
+using Trellis.Asp;
 
 public record DashboardResponse(int ProductCount, int OrderCount, decimal TotalRevenue);
 
@@ -10,12 +11,10 @@ public static class DashboardRoutes
 {
     public static void UseDashboardRoute(this WebApplication app) =>
         // GET /dashboard — concurrent data fetching
-        // Demonstrates: ParallelAsync / WhenAllAsync for performance
+        // Demonstrates: ParallelAsync / WhenAllAsync / Result.TryAsync / ToHttpResultAsync
         // Uses IDbContextFactory for separate contexts per parallel task (DbContext is not thread-safe)
-        // Uses Result.TryAsync to convert EF Core exceptions into Result failures
-        app.MapGet("/dashboard", async (IDbContextFactory<AppDbContext> dbFactory) =>
-        {
-            var result = await Result.ParallelAsync(
+        app.MapGet("/dashboard", (IDbContextFactory<AppDbContext> dbFactory) =>
+            Result.ParallelAsync(
                     async () =>
                     {
                         await using var db = dbFactory.CreateDbContext();
@@ -39,10 +38,6 @@ public static class DashboardRoutes
                     })
                 .WhenAllAsync()
                 .MapAsync((productCount, orderCount, revenue) =>
-                    new DashboardResponse(productCount, orderCount, revenue));
-
-            return result.Match(
-                onSuccess: dashboard => Results.Ok(dashboard),
-                onFailure: error => Results.Problem(error.Detail));
-        });
+                    new DashboardResponse(productCount, orderCount, revenue))
+                .ToHttpResultAsync());
 }

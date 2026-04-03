@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
 using SampleUserLibrary;
@@ -33,8 +33,8 @@ builder.Services.AddSingleton(connection);
 builder.Services.AddHostedService<SqliteConnectionDisposer>();
 
 // Authorization — DevelopmentActorProvider reads actor from X-Test-Actor header
-if (builder.Environment.IsDevelopment())
-    builder.Services.AddDevelopmentActorProvider();
+// Authorization — DevelopmentActorProvider for samples (reads X-Test-Actor header)
+builder.Services.AddDevelopmentActorProvider();
 
 builder.Services.AddAuthorization();
 

@@ -101,7 +101,7 @@ public static class NewOrderRoutes
                     notificationService.SendOrderConfirmationAsync(order.Id, order.CustomerId, ct));
 
             return result.ToHttpResult(httpContext, o => o.ETag, OrderResponse.From);
-        });
+        }).WithScalarValueValidation();
 
         // POST /orders/{id}/cancel — cancel with RecoverOnFailureAsync
         // Demonstrates: RecoverOnFailureAsync for cleanup on unexpected errors
@@ -137,9 +137,9 @@ public static class NewOrderRoutes
                         Error.Unexpected("Cancellation failed. Please try again.")));
 
             return result.ToHttpResult(httpContext, o => o.ETag, OrderResponse.From);
-        });
+        }).WithScalarValueValidation();
 
-        // POST /orders/{id}/receipt — redirect after POST
+        // POST /orders/{id}/receipt— redirect after POST
         // Demonstrates: RFC 9110 §15.4.4 — 303 See Other (redirect to GET after POST)
         orderApi.MapPost("/{id}/receipt", (OrderId id, HttpContext httpContext) =>
         {
