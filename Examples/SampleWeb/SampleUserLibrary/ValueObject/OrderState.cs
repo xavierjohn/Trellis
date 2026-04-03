@@ -43,8 +43,10 @@ public partial class OrderState : RequiredEnum<OrderState>
         if (CanTransitionTo(newState))
             return newState;
 
-        return Error.Validation(
-            $"Cannot transition from '{this}' to '{newState}'. Allowed: {string.Join(", ", AllowedTransitions)}",
-            "state");
+        var allowed = AllowedTransitions;
+        var msg = allowed.Count > 0
+            ? $"Cannot transition from '{this}' to '{newState}'. Allowed: {string.Join(", ", allowed)}"
+            : $"Cannot transition from '{this}' — this is a terminal state.";
+        return Error.Validation(msg, "state");
     }
 }

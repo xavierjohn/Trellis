@@ -1,4 +1,4 @@
-﻿namespace SampleWebApplication.Controllers;
+namespace SampleWebApplication.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -38,7 +38,7 @@ public class HomeController : ControllerBase
             Orders: new OrderEndpoints(
                 Create: "POST /orders - Create order (async BindAsync chain)",
                 GetById: "GET /orders/{id} - Get with ETag conditional GET",
-                Confirm: "POST /orders/{id}/confirm - Confirm (EnsureAsync + BindAsync + TapAsync + auth)",
+                Confirm: "POST /orders/{id}/confirm - Confirm (Ensure + BindAsync + CheckAsync + auth)",
                 Cancel: "POST /orders/{id}/cancel - Cancel (RecoverOnFailureAsync cleanup)",
                 Receipt: "POST /orders/{id}/receipt - 303 See Other redirect",
                 States: "GET /orders/states - All order states (RequiredEnum demo)",

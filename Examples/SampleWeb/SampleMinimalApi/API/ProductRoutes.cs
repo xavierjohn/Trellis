@@ -90,7 +90,7 @@ public static class ProductRoutes
         // Demonstrates: 201 Created + ETag + Location
         productApi.MapPost("/", async (CreateProductRequest request, AppDbContext db, HttpContext httpContext) =>
             await ProductName.TryCreate(request.Name)
-                .Combine(MonetaryAmount.TryCreate(request.Price))
+                .Combine(MonetaryAmount.TryCreate(request.Price, "price"))
                 .Bind((name, price) => Product.TryCreate(name, price, request.Stock))
                 .Tap(product => db.Products.Add(product))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
@@ -108,7 +108,7 @@ public static class ProductRoutes
                     Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
                 .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p =>
-                    MonetaryAmount.TryCreate(request.Price)
+                    MonetaryAmount.TryCreate(request.Price, "price")
                         .Bind(price => p.UpdatePrice(price)))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
                 .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))

@@ -91,7 +91,7 @@ app.MapGet("/", () => Results.Ok(new
         {
             create = "POST /orders - Create order (async BindAsync chain)",
             getById = "GET /orders/{id} - Get with ETag conditional GET",
-            confirm = "POST /orders/{id}/confirm - Confirm (EnsureAsync + BindAsync + TapAsync + auth)",
+            confirm = "POST /orders/{id}/confirm - Confirm (Ensure + BindAsync + CheckAsync + auth)",
             cancel = "POST /orders/{id}/cancel - Cancel (RecoverOnFailureAsync cleanup)",
             receipt = "POST /orders/{id}/receipt - 303 See Other redirect",
             states = "GET /orders/states - All order states (RequiredEnum demo)",

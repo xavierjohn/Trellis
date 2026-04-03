@@ -99,7 +99,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     public async Task<ActionResult<ProductResponse>> Create([FromBody] CreateProductRequest request)
     {
         var result = await ProductName.TryCreate(request.Name)
-            .Combine(MonetaryAmount.TryCreate(request.Price))
+            .Combine(MonetaryAmount.TryCreate(request.Price, "price"))
             .Bind((name, price) => Product.TryCreate(name, price, request.Stock))
             .Tap(product => db.Products.Add(product))
             .CheckAsync(_ => db.SaveChangesResultUnitAsync());
@@ -123,7 +123,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
                 Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
             .OptionalETagAsync(ETagHelper.ParseIfMatch(Request))
             .BindAsync(p =>
-                MonetaryAmount.TryCreate(request.Price)
+                MonetaryAmount.TryCreate(request.Price, "price")
                     .Bind(price => p.UpdatePrice(price)))
             .CheckAsync(_ => db.SaveChangesResultUnitAsync());
 
