@@ -31,7 +31,6 @@ builder.Services.AddSingleton(connection);
 builder.Services.AddHostedService<SqliteConnectionDisposer>();
 
 // Authorization — DevelopmentActorProvider reads actor from X-Test-Actor header
-// Authorization — DevelopmentActorProvider for samples (reads X-Test-Actor header)
 builder.Services.AddDevelopmentActorProvider();
 
 builder.Services.AddAuthorization();

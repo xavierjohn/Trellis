@@ -28,7 +28,6 @@ public static class ProductRoutes
         // Demonstrates: PartialContentResult (206), Content-Range header, Specification pattern
         productApi.MapGet("/", async (
             AppDbContext db,
-            HttpContext httpContext,
             int? page,
             int? pageSize,
             decimal? minPrice,

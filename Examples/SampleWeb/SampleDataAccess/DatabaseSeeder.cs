@@ -30,9 +30,11 @@ public static class DatabaseSeeder
 
         foreach (var result in products)
         {
-            result.Tap(product => context.Products.Add(product));
+            result.Tap(product => context.Products.Add(product))
+                  .TapOnFailure(error => throw new InvalidOperationException($"Seed data failed: {error.Detail}"));
         }
 
-        await context.SaveChangesResultUnitAsync();
+        (await context.SaveChangesResultUnitAsync())
+            .TapOnFailure(error => throw new InvalidOperationException($"Seed save failed: {error.Detail}"));
     }
 }
