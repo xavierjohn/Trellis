@@ -92,7 +92,7 @@ var repo = new FakeRepository<Order, OrderId>();
 // CRUD operations
 await repo.SaveAsync(order);
 var result = await repo.GetByIdAsync(orderId);        // Result<Order> (NotFound if missing)
-var maybe = await repo.FindByIdAsync(orderId);        // Result<Maybe<Order>>
+var maybe = await repo.FindByIdAsync(orderId);        // Maybe<Order>
 await repo.DeleteAsync(orderId);
 
 // Seeding test data

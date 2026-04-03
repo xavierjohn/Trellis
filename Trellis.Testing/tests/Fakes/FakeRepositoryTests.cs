@@ -137,12 +137,11 @@ public class FakeRepositoryTests
         await repository.SaveAsync(aggregate, TestContext.Current.CancellationToken);
 
         // Act
-        var result = await repository.FindByIdAsync("1", TestContext.Current.CancellationToken);
+        var maybe = await repository.FindByIdAsync("1", TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.HasValue.Should().BeTrue();
-        result.Value.Value.Name.Should().Be("Test");
+        maybe.HasValue.Should().BeTrue();
+        maybe.Value.Name.Should().Be("Test");
     }
 
     [Fact]
@@ -152,11 +151,10 @@ public class FakeRepositoryTests
         var repository = new FakeRepository<TestAggregate, string>();
 
         // Act
-        var result = await repository.FindByIdAsync("nonexistent", TestContext.Current.CancellationToken);
+        var maybe = await repository.FindByIdAsync("nonexistent", TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeSuccess();
-        result.Value.HasNoValue.Should().BeTrue();
+        maybe.HasNoValue.Should().BeTrue();
     }
 
     #endregion

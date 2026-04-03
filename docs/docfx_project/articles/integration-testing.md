@@ -113,10 +113,9 @@ saveResult.Should().BeSuccess();
 var result = await repo.GetByIdAsync(order.Id);
 result.Should().BeSuccess();
 
-// Find by ID — returns Result<Maybe<Order>>
+// Find by ID — returns Maybe<Order>
 var maybe = await repo.FindByIdAsync(order.Id);
-maybe.Should().BeSuccess()
-    .Which.Should().HaveValue();
+maybe.Should().HaveValue();
 
 // Not found
 var missing = await repo.GetByIdAsync(OrderId.NewUniqueV4());
