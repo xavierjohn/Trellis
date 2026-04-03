@@ -310,4 +310,20 @@ public static class DiagnosticDescriptors
                  "Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex(\"Status\", \"_submittedAt\").",
         helpLinkUri: HelpLinkBase + "TRLS021");
 
+    /// <summary>
+    /// TRLS022: Wrong attribute namespace — System.ComponentModel.DataAnnotations instead of Trellis.
+    /// </summary>
+    public static readonly DiagnosticDescriptor WrongAttributeNamespace = new(
+        id: "TRLS022",
+        title: "Wrong [StringLength] or [Range] attribute namespace",
+        messageFormat: "'{0}' uses System.ComponentModel.DataAnnotations.{1} which the Trellis source generator ignores. Use Trellis.{1} instead.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. " +
+                 "Using the wrong namespace compiles silently but the Trellis source generator ignores them, " +
+                 "resulting in value objects without the expected validation constraints. " +
+                 "Use the Trellis versions (namespace Trellis) instead.",
+        helpLinkUri: HelpLinkBase + "TRLS022");
+
 }
