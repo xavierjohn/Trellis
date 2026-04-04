@@ -47,9 +47,9 @@ public static class UnwrapExtensions
     /// <exception cref="UnwrapFailedException">Thrown when the Maybe is None.</exception>
     public static T Unwrap<T>(this Maybe<T> maybe) where T : notnull =>
         maybe.HasValue
-#pragma warning disable TRLS003 // Guarded by HasValue check above
+#pragma warning disable TRLS006 // Guarded by HasValue check above
             ? maybe.Value
-#pragma warning restore TRLS003
+#pragma warning restore TRLS006
             : throw new UnwrapFailedException(
                 $"Called Unwrap() on a None Maybe<{typeof(T).Name}>.");
 
