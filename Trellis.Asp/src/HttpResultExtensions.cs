@@ -479,8 +479,8 @@ public static class HttpResultExtensions
     {
         if (result.IsSuccess)
         {
-            // Guard: invalid or empty range → return 200 OK (no Content-Range)
-            if (to < from || totalLength <= 0)
+            // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
+            if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
                 return Results.Ok(result.Value);
 
             // Clamp to against totalLength to prevent ContentRangeHeaderValue from throwing
