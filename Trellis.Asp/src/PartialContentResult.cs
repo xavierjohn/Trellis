@@ -63,14 +63,12 @@ using Trellis;
 ///     [FromQuery] int page = 0,
 ///     [FromQuery] int pageSize = 25)
 /// {
-///     var from = page * pageSize;
-///     var to = from + pageSize - 1;
-///     
 ///     return _userService
-///         .GetPagedUsers(from, pageSize)
-///         .Map(result => (result.Users, result.TotalCount))
-///         .Map(x => x.Users)
-///         .ToActionResult(this, from, to, totalCount);
+///         .GetPagedUsers(page, pageSize)
+///         .ToActionResult(
+///             this,
+///             funcRange: r => new ContentRangeHeaderValue(r.From, r.To, r.TotalCount) { Unit = "items" },
+///             funcValue: r => r.Users.Select(u => new UserDto(u)));
 ///     
 ///     // Automatically returns PartialContentResult when appropriate
 /// }
