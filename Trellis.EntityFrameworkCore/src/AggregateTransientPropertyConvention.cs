@@ -9,14 +9,14 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="Aggregate{TId}"/> inherits <see cref="System.ComponentModel.IChangeTracking"/>
-/// which declares <see cref="System.ComponentModel.IChangeTracking.IsChanged"/>.
-/// This property reflects in-memory state (uncommitted domain events) and must not be
-/// persisted to the database. While EF Core currently skips expression-bodied read-only
-/// properties by convention, this convention provides an explicit, version-safe guarantee
-/// that transient properties are never mapped — even if a derived aggregate hides the
-/// inherited member with <c>new bool IsChanged { get; set; }</c>, which EF Core could
-/// otherwise convention-map.
+/// Aggregate types implement <see cref="IAggregate"/>, and <see cref="IAggregate"/>
+/// inherits <see cref="System.ComponentModel.IChangeTracking"/>, which declares
+/// <see cref="System.ComponentModel.IChangeTracking.IsChanged"/>. This property reflects
+/// in-memory state (uncommitted domain events) and must not be persisted to the database.
+/// While EF Core currently skips expression-bodied read-only properties by convention,
+/// this convention provides an explicit, version-safe guarantee that transient properties
+/// are never mapped — even if a derived aggregate hides the inherited member with
+/// <c>new bool IsChanged { get; set; }</c>, which EF Core could otherwise convention-map.
 /// </para>
 /// <para>
 /// Registered automatically by <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/>.
