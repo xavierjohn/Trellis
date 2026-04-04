@@ -50,7 +50,7 @@ public static class NewOrderRoutes
 
             return result.ToCreatedHttpResult(httpContext,
                 o => $"/orders/{o.Id.Value}",
-                o => o.ETag,
+                o => RepresentationMetadata.WithStrongETag(o.ETag),
                 OrderResponse.From);
         }).WithScalarValueValidation();
 
@@ -61,7 +61,7 @@ public static class NewOrderRoutes
                 .Include(o => o.Lines)
                 .FirstOrDefaultResultAsync(o => o.Id == id,
                     Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)))
-                .ToHttpResultAsync(httpContext, o => o.ETag, OrderResponse.From))
+                .ToHttpResultAsync(httpContext, o => RepresentationMetadata.WithStrongETag(o.ETag), OrderResponse.From))
             .WithScalarValueValidation();
 
         // POST /orders/{id}/confirm — confirm with async ROP + auth
@@ -100,7 +100,7 @@ public static class NewOrderRoutes
                 .CheckAsync(order =>
                     notificationService.SendOrderConfirmationAsync(order.Id, order.CustomerId, ct));
 
-            return result.ToHttpResult(httpContext, o => o.ETag, OrderResponse.From);
+            return result.ToHttpResult(httpContext, o => RepresentationMetadata.WithStrongETag(o.ETag), OrderResponse.From);
         }).WithScalarValueValidation();
 
         // POST /orders/{id}/cancel — cancel with RecoverOnFailureAsync
@@ -136,7 +136,7 @@ public static class NewOrderRoutes
                     _ => Result.Failure<Order>(
                         Error.Unexpected("Cancellation failed. Please try again.")));
 
-            return result.ToHttpResult(httpContext, o => o.ETag, OrderResponse.From);
+            return result.ToHttpResult(httpContext, o => RepresentationMetadata.WithStrongETag(o.ETag), OrderResponse.From);
         }).WithScalarValueValidation();
 
         // POST /orders/{id}/receipt— redirect after POST

@@ -77,7 +77,7 @@ public static class ProductRoutes
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == id,
                     Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+                .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From))
             .WithScalarValueValidation();
 
         // POST /products — create with ETag + Location
@@ -90,7 +90,7 @@ public static class ProductRoutes
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
                 .ToCreatedHttpResultAsync(httpContext,
                     p => $"/products/{p.Id.Value}",
-                    p => p.ETag,
+                    p => RepresentationMetadata.WithStrongETag(p.ETag),
                     ProductResponse.From))
             .WithScalarValueValidation();
 

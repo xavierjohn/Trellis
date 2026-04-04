@@ -389,33 +389,36 @@ public static class HttpResultExtensions
         return result.Error.ToHttpResult(options);
     }
 
-    #region RFC 9110 — ETag / If-None-Match Support (Minimal API)
+    #region RFC 9110 — Metadata-Aware Response (Minimal API)
 
     /// <summary>
-    /// Converts a <see cref="Result{TIn}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/> with a mapping function,
-    /// sets the <c>ETag</c> response header, and returns 304 Not Modified for matching <c>If-None-Match</c>.
+    /// Converts a <see cref="Result{TIn}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/> with
+    /// representation metadata headers (ETag, Last-Modified, Vary, etc.) and conditional request evaluation.
+    /// For GET/HEAD, evaluates <c>If-None-Match</c>/<c>If-Modified-Since</c> → 304, and <c>If-Match</c>/<c>If-Unmodified-Since</c> → 412.
     /// </summary>
     public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TIn, TOut>(
         this Result<TIn> result,
         HttpContext httpContext,
-        Func<TIn, string> etagSelector,
+        Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
         TrellisAspOptions? options = null)
     {
         if (result.IsSuccess)
         {
-            var etag = etagSelector(result.Value);
+            var metadata = metadataSelector(result.Value);
+            ActionResultExtensions.ApplyMetadataHeaders(httpContext.Response, metadata);
 
-            if (!string.IsNullOrEmpty(etag))
-                httpContext.Response.Headers.ETag = $"\"{etag}\"";
-
-            // RFC 9110 §13.1.2: If-None-Match for GET/HEAD → 304 Not Modified
-            if (httpContext.Request.Method is "GET" or "HEAD"
-                && !string.IsNullOrEmpty(etag)
-                && httpContext.Request.GetTypedHeaders().IfNoneMatch is { Count: > 0 } ifNoneMatch
-                && ETagHelper.IfNoneMatchMatches(ifNoneMatch, etag))
+            var method = httpContext.Request.Method;
+            if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
             {
-                return Results.StatusCode(StatusCodes.Status304NotModified);
+                return ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata) switch
+                {
+                    ConditionalDecision.NotModified => Results.StatusCode(StatusCodes.Status304NotModified),
+                    ConditionalDecision.PreconditionFailed =>
+                        Error.PreconditionFailed("A conditional request header evaluated to false.")
+                            .ToHttpResult(options),
+                    _ => Results.Ok(map(result.Value)),
+                };
             }
 
             return Results.Ok(map(result.Value));
@@ -426,25 +429,24 @@ public static class HttpResultExtensions
 
     #endregion
 
-    #region RFC 9110 — Created + ETag (Minimal API)
+    #region RFC 9110 — Created + Metadata (Minimal API)
 
     /// <summary>
     /// Converts a <see cref="Result{TIn}"/> to a 201 Created Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
-    /// with a URI, ETag header, and a mapping function.
+    /// with a URI, representation metadata headers, and a mapping function.
     /// </summary>
     public static Microsoft.AspNetCore.Http.IResult ToCreatedHttpResult<TIn, TOut>(
         this Result<TIn> result,
         HttpContext httpContext,
         Func<TIn, string> uriSelector,
-        Func<TIn, string> etagSelector,
+        Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
         TrellisAspOptions? options = null)
     {
         if (result.IsSuccess)
         {
-            var etag = etagSelector(result.Value);
-            if (!string.IsNullOrEmpty(etag))
-                httpContext.Response.Headers.ETag = $"\"{etag}\"";
+            var metadata = metadataSelector(result.Value);
+            ActionResultExtensions.ApplyMetadataHeaders(httpContext.Response, metadata);
 
             return Results.Created(uriSelector(result.Value), map(result.Value));
         }

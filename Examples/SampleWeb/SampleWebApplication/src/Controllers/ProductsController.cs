@@ -1,5 +1,6 @@
 namespace SampleWebApplication.Controllers;
 
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
@@ -70,7 +71,9 @@ public class ProductsController(AppDbContext db) : ControllerBase
         {
             var to = from + products.Count - 1;
             return Result.Success(items)
-                .ToActionResult(this, from, to, totalCount);
+                .ToActionResult(this,
+                    _ => new ContentRangeHeaderValue(from, to, totalCount) { Unit = "items" },
+                    static r => r);
         }
 
         return Ok(items);

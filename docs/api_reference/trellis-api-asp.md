@@ -60,9 +60,10 @@ ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, Controller
 ActionResult<TOut> ToCreatedAtActionResult<TValue, TOut>(this Result<TValue> result, ControllerBase controller,
     string actionName, Func<TValue, object?> routeValues, Func<TValue, TOut> map, string? controllerName = null)
 // + async variants for Task<Result<T>> and ValueTask<Result<T>>
-// + partial content (206) variant with ContentRangeHeaderValue
 
-// Metadata selector — derives RepresentationMetadata from domain value (ETag, Last-Modified, etc.)
+// Metadata — static or selector (ETag, Last-Modified, Vary, conditional request evaluation)
+ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller,
+    RepresentationMetadata metadata, Func<TIn, TOut> map)
 ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller,
     Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)
 // + async variants (Task + ValueTask)
@@ -85,6 +86,15 @@ IResult ToCreatedAtRouteHttpResult<TValue, TOut>(this Result<TValue> result,
     string routeName, Func<TValue, RouteValueDictionary> routeValues, Func<TValue, TOut> map,
     TrellisAspOptions? options = null)
 
+// Metadata-aware — applies headers, evaluates conditional requests (304/412) for GET/HEAD
+IResult ToHttpResult<TIn, TOut>(this Result<TIn> result, HttpContext httpContext,
+    Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)
+
+// Created with metadata
+IResult ToCreatedHttpResult<TIn, TOut>(this Result<TIn> result, HttpContext httpContext,
+    Func<TIn, string> uriSelector, Func<TIn, RepresentationMetadata> metadataSelector,
+    Func<TIn, TOut> map, TrellisAspOptions? options = null)
+
 // Pagination — 206 Partial Content or 200 OK
 IResult ToHttpResult<TValue>(this Result<TValue> result,
     long from, long to, long totalLength, TrellisAspOptions? options = null)
@@ -97,7 +107,7 @@ IResult ToUpdatedHttpResult<TIn, TOut>(this Result<TIn> result, HttpContext http
 IResult ToUpdatedHttpResult<TIn, TOut>(this Result<TIn> result, HttpContext httpContext,
     Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)
 
-// + async variants for all pagination and updated overloads
+// + async variants for all metadata, created, pagination, and updated overloads
 
 // Error direct conversion
 IResult ToHttpResult(this Error error, TrellisAspOptions? options = null)
@@ -253,17 +263,10 @@ Discriminated union for write operation results. Each variant maps to the correc
 ### WriteOutcomeExtensions
 
 ```csharp
-// Standard mapping — MVC (server decides response shape)
+// MVC — always Prefer-aware (reads Prefer from controller.Request)
 public static ActionResult ToActionResult<T, TOut>(
     this WriteOutcome<T> outcome,
     ControllerBase controller,
-    Func<T, TOut>? map = null)
-
-// RFC 7240 Prefer-aware mapping — MVC
-public static ActionResult ToActionResult<T, TOut>(
-    this WriteOutcome<T> outcome,
-    ControllerBase controller,
-    HttpRequest request,
     Func<T, TOut>? map = null)
 
 // RFC 7240 Prefer-aware mapping — Minimal API
@@ -420,21 +423,6 @@ Task<Result<T>> EnforceIfNoneMatchPreconditionAsync<T>(
     this Task<Result<T>> resultTask, string[]? ifNoneMatchETags)
 ValueTask<Result<T>> EnforceIfNoneMatchPreconditionAsync<T>(
     this ValueTask<Result<T>> resultTask, string[]? ifNoneMatchETags)
-```
-
----
-
-## RedirectResultExtensions
-
-Extension methods for producing redirect responses.
-
-```csharp
-public static ActionResult ToMovedPermanently(this ControllerBase controller, string uri)      // 301
-public static ActionResult ToFound(this ControllerBase controller, string uri)                  // 302
-public static ActionResult ToSeeOther<TValue>(this Result<TValue> result,
-    ControllerBase controller, Func<TValue, string> uriSelector)                                // 303
-public static ActionResult ToTemporaryRedirect(this ControllerBase controller, string uri)      // 307
-public static ActionResult ToPermanentRedirect(this ControllerBase controller, string uri)      // 308
 ```
 
 ---
