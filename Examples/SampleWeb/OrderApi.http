@@ -1,121 +1,179 @@
 ﻿###############################################################################
-# FunctionalDDD RequiredEnum (Order API) Tests
+# FunctionalDDD Order API Tests
 # 
-# This file tests RequiredEnum functionality across all three sample implementations:
-# 1. SampleMinimalApi (Port 5001) - Minimal API with AOT and source generation
+# Tests across all three sample implementations:
+# 1. SampleMinimalApi (Port 5001) - Minimal API with source generation
 # 2. SampleMinimalApiNoAot (Port 5002) - Minimal API with reflection fallback
 # 3. SampleWebApplication (Port 5003) - MVC Controllers
 #
-# To switch between implementations, use the environment selector in Visual Studio
-# or your IDE. Available environments: MinimalApi, MinimalApiNoAot, WebApplication
-#
-# RequiredEnum demonstrates:
-# - Enum value objects with rich behavior (properties, methods)
-# - Automatic JSON validation via IScalarValue<T, string>
-# - Model binding from route and query string parameters
-# - Validation error collection with multiple fields
+# To switch between implementations, use the environment selector.
+# Available environments: MinimalApi, MinimalApiNoAot, WebApplication
 ###############################################################################
 
 ###############################################################################
-# Get All Order States
-# Returns all defined OrderState enum members with their properties
+# Products — CRUD with RFC 9110 (ETags, Pagination, Specifications)
 ###############################################################################
 
-### Get All States - Success (200 OK)
-GET {{host}}/orders/states
+### List products — paginated (200 OK or 206 Partial Content + Content-Range)
+GET {{host}}/products?page=0&pageSize=3
 Accept: application/json
 
-###############################################################################
-# Get Order State by Name (Route Binding)
-# Tests model binding of RequiredEnum from route parameter
-###############################################################################
-
-### Get State - Draft (200 OK)
-GET {{host}}/orders/states/Draft
+### List products — Specification filtering (inStock + price range)
+GET {{host}}/products?inStock=true&minPrice=50&maxPrice=200
 Accept: application/json
 
-### Get State - Confirmed (200 OK)
-GET {{host}}/orders/states/Confirmed
+### Get product by ID (returns ETag + Last-Modified headers)
+# Copy a product ID from the list response above
+GET {{host}}/products/{{productId}}
 Accept: application/json
 
-### Get State - Shipped (200 OK)
-GET {{host}}/orders/states/Shipped
+### Conditional GET — If-None-Match → 304 Not Modified
+# Copy the ETag from the GET response above
+GET {{host}}/products/{{productId}}
 Accept: application/json
+If-None-Match: "{{etag}}"
 
-### Get State - Delivered (200 OK)
-GET {{host}}/orders/states/Delivered
-Accept: application/json
-
-### Get State - Cancelled (200 OK)
-GET {{host}}/orders/states/Cancelled
-Accept: application/json
-
-### Get State - Case Insensitive (200 OK)
-# RequiredEnum supports case-insensitive matching
-GET {{host}}/orders/states/DRAFT
-Accept: application/json
-
-### Get State - Invalid State (400 Bad Request)
-# Tests validation error for invalid enum value
-GET {{host}}/orders/states/InvalidState
-Accept: application/json
-
-### Get State - Empty (404 Not Found)
-# Empty route parameter results in 404
-GET {{host}}/orders/states/
-Accept: application/json
-
-###############################################################################
-# Filter Orders by State (Query String Binding)
-# Tests model binding of RequiredEnum from query string
-###############################################################################
-
-### Filter - No State (200 OK)
-# Optional parameter - returns message when not provided
-GET {{host}}/orders/filter
-Accept: application/json
-
-### Filter - Draft (200 OK)
-GET {{host}}/orders/filter?state=Draft
-Accept: application/json
-
-### Filter - Shipped (200 OK)
-GET {{host}}/orders/filter?state=Shipped
-Accept: application/json
-
-### Filter - Case Insensitive (200 OK)
-GET {{host}}/orders/filter?state=CONFIRMED
-Accept: application/json
-
-### Filter - Invalid State (400 Bad Request)
-GET {{host}}/orders/filter?state=BadState
-Accept: application/json
-
-###############################################################################
-# Update Order (JSON Body Validation)
-# Tests RequiredEnum validation during JSON deserialization
-###############################################################################
-
-### Update Order - Draft (200 OK)
-POST {{host}}/orders/update
+### Create product (201 Created + ETag + Location)
+POST {{host}}/products
 Content-Type: application/json
 Accept: application/json
 
 {
-    "state": "Draft",
-    "notes": "Initial draft order"
+  "name": "Ergonomic Keyboard",
+  "price": 129.99,
+  "stock": 40
+}
+
+### Update product — optimistic concurrency with If-Match
+# Copy the ETag from the create or GET response
+PUT {{host}}/products/{{productId}}
+Content-Type: application/json
+Accept: application/json
+If-Match: "{{etag}}"
+
+{
+  "price": 119.99
+}
+
+### Delete product (204 No Content)
+DELETE {{host}}/products/{{productId}}
+
+### Legacy redirect (301 Moved Permanently → /products/{id})
+GET {{host}}/products/legacy/{{productId}}
+Accept: application/json
+
+### Create product — validation error (400 Bad Request)
+POST {{host}}/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "",
+  "price": -10,
+  "stock": -5
 }
 
 ###############################################################################
-# Maybe<T> — Optional Value Object in JSON Body
-# The "assignedTo" field uses Maybe<FirstName> for domain-level optionality.
-# - Omitted or null → Maybe.None (no error, field not required)
-# - Present & valid → Maybe with value (auto-validated as FirstName)
-# - Present & invalid → 400 Bad Request (validation error)
+# Orders — Async ROP Chains, Authorization, State Machine
 ###############################################################################
 
-### Update Order - With AssignedTo (200 OK)
-# "assignedTo" present and valid → Maybe<FirstName> with value
+### Create order (Ensure → Bind → TraverseAsync → CheckAsync)
+# Use product IDs from the list response
+POST {{host}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "customerId": "11111111-1111-1111-1111-111111111111",
+  "lines": [
+    { "productId": "{{productId1}}", "quantity": 2 },
+    { "productId": "{{productId2}}", "quantity": 1 }
+  ]
+}
+
+### Get order by ID (conditional GET with ETag)
+GET {{host}}/orders/{{orderId}}
+Accept: application/json
+
+### Confirm order (BindAsync → CheckAsync → payment → notify + auth)
+# Set X-Test-Actor header for DevelopmentActorProvider
+POST {{host}}/orders/{{orderId}}/confirm
+X-Test-Actor: {"id":"user1","permissions":["orders:write"]}
+
+### Confirm order — missing permission (403 Forbidden)
+POST {{host}}/orders/{{orderId}}/confirm
+X-Test-Actor: {"id":"user2","permissions":["orders:read"]}
+
+### Cancel order (RecoverOnFailureAsync demo)
+POST {{host}}/orders/{{orderId}}/cancel
+X-Test-Actor: {"id":"user1","permissions":["orders:write"]}
+
+### Receipt redirect (303 See Other → GET /orders/{id})
+POST {{host}}/orders/{{orderId}}/receipt
+
+### Create order — validation errors (400 Bad Request)
+POST {{host}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "customerId": "not-a-guid",
+  "lines": [
+    { "productId": "also-not-a-guid", "quantity": 1 }
+  ]
+}
+
+### Create order — empty lines (400 Bad Request)
+POST {{host}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "customerId": "11111111-1111-1111-1111-111111111111",
+  "lines": []
+}
+
+###############################################################################
+# Dashboard — ParallelAsync / WhenAllAsync
+###############################################################################
+
+### Get dashboard (concurrent product count + order count + revenue)
+GET {{host}}/dashboard
+Accept: application/json
+
+###############################################################################
+# Order States — RequiredEnum with rich behavior
+###############################################################################
+
+### Get all order states
+GET {{host}}/orders/states
+Accept: application/json
+
+### Get state by name (route binding)
+GET {{host}}/orders/states/Draft
+Accept: application/json
+
+### Get state — case insensitive
+GET {{host}}/orders/states/CONFIRMED
+Accept: application/json
+
+### Get state — invalid (400 Bad Request)
+GET {{host}}/orders/states/InvalidState
+Accept: application/json
+
+### Filter orders by state (query string binding)
+GET {{host}}/orders/filter?state=Draft
+Accept: application/json
+
+### Filter — invalid state (400 Bad Request)
+GET {{host}}/orders/filter?state=BadState
+Accept: application/json
+
+###############################################################################
+# Order Update — RequiredEnum + Maybe<T> in JSON body
+###############################################################################
+
+### Update order — with Maybe<FirstName> assignedTo
 POST {{host}}/orders/update
 Content-Type: application/json
 Accept: application/json
@@ -126,19 +184,17 @@ Accept: application/json
     "notes": "Assigned to Alice for processing"
 }
 
-### Update Order - AssignedTo Omitted (200 OK)
-# "assignedTo" not present in JSON → Maybe.None (not an error)
+### Update order — assignedTo omitted (Maybe.None, no error)
 POST {{host}}/orders/update
 Content-Type: application/json
 Accept: application/json
 
 {
     "state": "Shipped",
-    "notes": "No agent assigned — field omitted entirely"
+    "notes": "No agent assigned — field omitted"
 }
 
-### Update Order - AssignedTo Null (200 OK)
-# "assignedTo" explicitly set to null → Maybe.None (not an error)
+### Update order — assignedTo null (Maybe.None, no error)
 POST {{host}}/orders/update
 Content-Type: application/json
 Accept: application/json
@@ -146,11 +202,10 @@ Accept: application/json
 {
     "state": "Delivered",
     "assignedTo": null,
-    "notes": "No agent assigned — field explicitly null"
+    "notes": "No agent assigned — explicitly null"
 }
 
-### Update Order - AssignedTo Invalid (400 Bad Request)
-# "assignedTo" present but empty string → FirstName validation fails
+### Update order — assignedTo invalid (400 Bad Request)
 POST {{host}}/orders/update
 Content-Type: application/json
 Accept: application/json
@@ -161,58 +216,7 @@ Accept: application/json
     "notes": "Empty assignedTo should fail validation"
 }
 
-### Update Order - Both State and AssignedTo Invalid (400 Bad Request)
-# Both fields invalid → errors collected for both
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "state": "InvalidState",
-    "assignedTo": ""
-}
-
-### Update Order - Confirmed (200 OK)
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "state": "Confirmed",
-    "notes": "Order has been confirmed by customer"
-}
-
-### Update Order - Shipped (200 OK)
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "state": "Shipped",
-    "notes": "Shipped via FedEx tracking #123456"
-}
-
-### Update Order - Case Insensitive (200 OK)
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "state": "DELIVERED",
-    "notes": "Delivered to front door"
-}
-
-### Update Order - Without Notes (200 OK)
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "state": "Cancelled"
-}
-
-### Update Order - Invalid State (400 Bad Request)
-# Returns validation error with all valid state options
+### Update order — invalid state (400 Bad Request)
 POST {{host}}/orders/update
 Content-Type: application/json
 Accept: application/json
@@ -222,42 +226,11 @@ Accept: application/json
     "notes": "This should fail"
 }
 
-### Update Order - Empty State (400 Bad Request)
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "state": "",
-    "notes": "Empty state should fail"
-}
-
-### Update Order - Null State (400 Bad Request)
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "state": null,
-    "notes": "Null state should fail"
-}
-
-### Update Order - Missing State (400 Bad Request)
-POST {{host}}/orders/update
-Content-Type: application/json
-Accept: application/json
-
-{
-    "notes": "Missing state field should fail"
-}
-
 ###############################################################################
-# Create Order (Multiple Value Objects with RequiredEnum)
-# Tests validation of RequiredEnum combined with other value objects
+# Create Order (auto-validation of multiple value objects)
 ###############################################################################
 
-### Create Order - Success (200 OK)
-# All fields valid: FirstName, LastName, EmailAddress, and OrderState
+### Create order with RequiredEnum + value objects (200 OK)
 POST {{host}}/orders/create
 Content-Type: application/json
 Accept: application/json
@@ -269,47 +242,7 @@ Accept: application/json
     "initialState": "Draft"
 }
 
-### Create Order - Confirmed State (200 OK)
-POST {{host}}/orders/create
-Content-Type: application/json
-Accept: application/json
-
-{
-    "customerFirstName": "Jane",
-    "customerLastName": "Smith",
-    "customerEmail": "jane.smith@company.com",
-    "initialState": "Confirmed"
-}
-
-### Create Order - Invalid State Only (400 Bad Request)
-# Only OrderState validation fails
-POST {{host}}/orders/create
-Content-Type: application/json
-Accept: application/json
-
-{
-    "customerFirstName": "John",
-    "customerLastName": "Doe",
-    "customerEmail": "john@example.com",
-    "initialState": "BadState"
-}
-
-### Create Order - Invalid Email Only (400 Bad Request)
-# Only EmailAddress validation fails
-POST {{host}}/orders/create
-Content-Type: application/json
-Accept: application/json
-
-{
-    "customerFirstName": "John",
-    "customerLastName": "Doe",
-    "customerEmail": "not-an-email",
-    "initialState": "Draft"
-}
-
-### Create Order - Multiple Errors (400 Bad Request)
-# All fields invalid - errors collected together
-# Expected: firstName, lastName, email, and initialState errors
+### Create order — all fields invalid (400 Bad Request, errors collected)
 POST {{host}}/orders/create
 Content-Type: application/json
 Accept: application/json
@@ -320,41 +253,3 @@ Accept: application/json
     "customerEmail": "invalid-email",
     "initialState": "InvalidState"
 }
-
-### Create Order - Missing All Fields (400 Bad Request)
-POST {{host}}/orders/create
-Content-Type: application/json
-Accept: application/json
-
-{
-}
-
-###############################################################################
-# RequiredEnum Behavior Tests
-# Tests that OrderState properties and behavior work correctly
-###############################################################################
-
-### Verify Draft Properties
-# canModify: true, canCancel: true
-GET {{host}}/orders/states/Draft
-Accept: application/json
-
-### Verify Confirmed Properties
-# canModify: false, canCancel: true
-GET {{host}}/orders/states/Confirmed
-Accept: application/json
-
-### Verify Shipped Properties
-# canModify: false, canCancel: false
-GET {{host}}/orders/states/Shipped
-Accept: application/json
-
-### Verify Delivered Properties
-# canModify: false, canCancel: false (terminal state)
-GET {{host}}/orders/states/Delivered
-Accept: application/json
-
-### Verify Cancelled Properties
-# canModify: false, canCancel: false (terminal state)
-GET {{host}}/orders/states/Cancelled
-Accept: application/json

@@ -13,7 +13,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
+    <ProjectReference Include="..\..\..\Trellis.Asp.Authorization\src\Trellis.Asp.Authorization.csproj" />
     <ProjectReference Include="..\SampleUserLibrary\SampleUserLibrary.csproj" />
+    <ProjectReference Include="..\SampleDataAccess\SampleDataAccess.csproj" />
     <!-- NO AspSourceGenerator reference - this sample uses reflection fallback -->
   </ItemGroup>
 
