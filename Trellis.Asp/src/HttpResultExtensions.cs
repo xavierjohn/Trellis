@@ -519,8 +519,8 @@ public static class HttpResultExtensions
             if (contentRange.From is null || contentRange.To is null || contentRange.Length is null)
                 return Results.Ok(value);
 
-            var partialResult = contentRange.To - contentRange.From + 1 != contentRange.Length;
-            if (partialResult)
+            var isCompleteRange = contentRange.From == 0 && contentRange.To == contentRange.Length - 1;
+            if (!isCompleteRange)
                 return new PartialContentHttpResult(contentRange, Results.Ok(value));
 
             return Results.Ok(value);

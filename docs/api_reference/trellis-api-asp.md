@@ -348,6 +348,17 @@ productApi.MapPut("/{id}", (ProductId id, UpdateProductRequest request, AppDbCon
 
 Usage in MVC:
 
+```csharp
+[HttpPut("{id}")]
+public ValueTask<ActionResult<OrderResponse>> Update(
+    OrderId id, [FromBody] UpdateOrderRequest request, CancellationToken ct) =>
+    UpdateOrderCommand.TryCreate(id, request.Amount, ETagHelper.ParseIfMatch(Request))
+        .BindAsync(command => _sender.Send(command, ct))
+        .ToUpdatedActionResultAsync(this,
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
+            OrderResponse.From);
+```
+
 ### PreferHeader
 
 ```csharp
