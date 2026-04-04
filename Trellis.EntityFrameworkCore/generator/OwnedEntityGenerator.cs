@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -203,7 +202,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         foreach (var propName in info.ReferencePropertyNames)
         {
             sb.Append(bodyIndent);
-            sb.Append(propName);
+            sb.Append(EscapeIdentifier(propName));
             sb.AppendLine(" = null!;");
         }
 
@@ -336,4 +335,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         type.TypeParameters.Length > 0
             ? $"{type.Name}<{string.Join(", ", type.TypeParameters.Select(tp => tp.Name))}>"
             : type.Name;
+
+    private static string EscapeIdentifier(string name) =>
+        SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None ? "@" + name : name;
 }
