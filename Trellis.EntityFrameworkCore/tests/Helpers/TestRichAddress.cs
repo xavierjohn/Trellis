@@ -3,22 +3,15 @@ namespace Trellis.EntityFrameworkCore.Tests.Helpers;
 /// <summary>
 /// Test composite value object containing a scalar value object property.
 /// Used to verify that scalar VO converters apply correctly inside auto-owned composite types.
+/// Uses [OwnedEntity] to auto-generate the private parameterless constructor.
 /// </summary>
-public class TestRichAddress : ValueObject
+[OwnedEntity]
+public partial class TestRichAddress : ValueObject
 {
     public string Street { get; private set; }
     public string City { get; private set; }
     public TestStateCode State { get; private set; }
     public string ZipCode { get; private set; }
-
-    // ReSharper disable once UnusedMember.Local — used by EF Core for materialization
-    private TestRichAddress()
-    {
-        Street = null!;
-        City = null!;
-        State = null!;
-        ZipCode = null!;
-    }
 
     public TestRichAddress(string street, string city, TestStateCode state, string zipCode)
     {

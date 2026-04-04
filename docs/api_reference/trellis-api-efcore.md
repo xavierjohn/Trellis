@@ -99,6 +99,37 @@ Explicit `OwnsOne` configuration takes precedence over the convention.
 
 Any `ValueObject` subclass that does not implement `IScalarValue` is automatically registered as an EF Core owned type by `CompositeValueObjectConvention`. This covers user-defined types like `Address`, `DateRange`, `GeoCoordinate`, etc.
 
+Composite value objects need a private parameterless constructor for EF Core materialization. Use the `[OwnedEntity]` attribute on a `partial` class to auto-generate it:
+
+```csharp
+[OwnedEntity]
+public partial class Address : ValueObject
+{
+    public string Street { get; private set; }
+    public string City { get; private set; }
+    public string State { get; private set; }
+
+    public Address(string street, string city, string state)
+    {
+        Street = street;
+        City = city;
+        State = state;
+    }
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return Street;
+        yield return City;
+        yield return State;
+    }
+}
+// Generator emits: private Address() { Street = null!; City = null!; State = null!; }
+```
+
+**Diagnostics:**
+- `TRLSGEN101` (Error) — `[OwnedEntity]` on a non-`partial` type
+- `TRLSGEN102` (Warning) — `[OwnedEntity]` on a type that already has a parameterless constructor
+
 ```csharp
 public partial class Customer : Aggregate<CustomerId>
 {
