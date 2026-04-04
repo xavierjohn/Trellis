@@ -1,6 +1,4 @@
-﻿#pragma warning disable TRLS003 // Unsafe access to Result.Value — Unwrap performs its own guard check
-
-namespace Trellis.Testing;
+﻿namespace Trellis.Testing;
 
 /// <summary>
 /// Provides <c>Unwrap()</c> extension methods for extracting values from <see cref="Result{T}"/>
@@ -32,7 +30,9 @@ public static class UnwrapExtensions
     /// <exception cref="UnwrapFailedException">Thrown when the result is a failure.</exception>
     public static T Unwrap<T>(this Result<T> result) =>
         result.IsSuccess
+#pragma warning disable TRLS003 // Guarded by IsSuccess check above
             ? result.Value
+#pragma warning restore TRLS003
             : throw new UnwrapFailedException(
                 $"Called Unwrap() on a failed Result<{typeof(T).Name}>. " +
                 $"Error: [{result.Error.Code}] {result.Error.Detail}");
@@ -47,7 +47,9 @@ public static class UnwrapExtensions
     /// <exception cref="UnwrapFailedException">Thrown when the Maybe is None.</exception>
     public static T Unwrap<T>(this Maybe<T> maybe) where T : notnull =>
         maybe.HasValue
+#pragma warning disable TRLS003 // Guarded by HasValue check above
             ? maybe.Value
+#pragma warning restore TRLS003
             : throw new UnwrapFailedException(
                 $"Called Unwrap() on a None Maybe<{typeof(T).Name}>.");
 

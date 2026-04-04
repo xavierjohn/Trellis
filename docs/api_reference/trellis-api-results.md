@@ -741,9 +741,9 @@ Each has sync + Task (3 variants) + ValueTask (3 variants) async overloads.
 Pipeline inspection extensions that emit values and errors to OpenTelemetry activity spans. Use during development to trace intermediate values in ROP chains. Guarded by `#if DEBUG` at compile time and `ResultDebugSettings.EnableDebugTracing` at runtime.
 
 ```csharp
-Result<T> Debug<T>(this Result<T>, string? label = null)
-Result<T> DebugDetailed<T>(this Result<T>, string? label = null)
-Result<T> DebugWithStack<T>(this Result<T>, string? label = null, bool includeStack = true)
+Result<T> Debug<T>(this Result<T>, string message = "")
+Result<T> DebugDetailed<T>(this Result<T>, string message = "")
+Result<T> DebugWithStack<T>(this Result<T>, string message = "", bool includeStackTrace = true)
 Result<T> DebugOnSuccess<T>(this Result<T>, Action<T>)
 Result<T> DebugOnFailure<T>(this Result<T>, Action<Error>)
 // + async variants

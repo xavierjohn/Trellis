@@ -333,89 +333,92 @@ public class Error : IEquatable<Error>
     // and format them to invariant-culture strings for the instance field.
     // ──────────────────────────────────────────────────────────────────
 
+    private static string? FormatInstance<TInstance>(TInstance instance) where TInstance : IFormattable =>
+        instance is null ? null : FormatInstance(instance);
+
     /// <inheritdoc cref="BadRequest(string, string?)"/>
     /// <param name="detail">Description of why the request is bad.</param>
     /// <param name="instance">A formattable identifier (e.g., a scalar value object or primitive) for the bad request.</param>
     public static BadRequestError BadRequest<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "bad.request.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "bad.request.error", FormatInstance(instance));
 
     /// <inheritdoc cref="Conflict(string, string?)"/>
     /// <param name="detail">Description of the conflict.</param>
     /// <param name="instance">A formattable identifier for the conflicting resource.</param>
     public static ConflictError Conflict<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "conflict.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "conflict.error", FormatInstance(instance));
 
     /// <inheritdoc cref="PreconditionFailed(string, string?)"/>
     /// <param name="detail">Description of the precondition failure.</param>
     /// <param name="instance">A formattable identifier for the affected resource.</param>
     public static PreconditionFailedError PreconditionFailed<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "precondition.failed.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "precondition.failed.error", FormatInstance(instance));
 
     /// <inheritdoc cref="PreconditionRequired(string, string?)"/>
     /// <param name="detail">Description of the required precondition.</param>
     /// <param name="instance">A formattable identifier for the affected resource.</param>
     public static PreconditionRequiredError PreconditionRequired<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "precondition.required.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "precondition.required.error", FormatInstance(instance));
 
     /// <inheritdoc cref="NotFound(string, string?)"/>
     /// <param name="detail">Description of what was not found.</param>
     /// <param name="instance">A formattable identifier for the missing resource.</param>
     public static NotFoundError NotFound<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "not.found.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "not.found.error", FormatInstance(instance));
 
     /// <inheritdoc cref="Unauthorized(string, string?)"/>
     /// <param name="detail">Description of why authorization failed.</param>
     /// <param name="instance">A formattable identifier for the unauthorized request.</param>
     public static UnauthorizedError Unauthorized<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "unauthorized.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "unauthorized.error", FormatInstance(instance));
 
     /// <inheritdoc cref="Forbidden(string, string?)"/>
     /// <param name="detail">Description of why access is forbidden.</param>
     /// <param name="instance">A formattable identifier for the forbidden resource.</param>
     public static ForbiddenError Forbidden<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "forbidden.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "forbidden.error", FormatInstance(instance));
 
     /// <inheritdoc cref="Unexpected(string, string?)"/>
     /// <param name="detail">Description of what went wrong.</param>
     /// <param name="instance">A formattable identifier for the operation that failed.</param>
     public static UnexpectedError Unexpected<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "unexpected.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "unexpected.error", FormatInstance(instance));
 
     /// <inheritdoc cref="Domain(string, string?)"/>
     /// <param name="detail">Description of the business rule that was violated.</param>
     /// <param name="instance">A formattable identifier for the entity or operation.</param>
     public static DomainError Domain<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "domain.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "domain.error", FormatInstance(instance));
 
     /// <inheritdoc cref="RateLimit(string, string?)"/>
     /// <param name="detail">Description of the rate limit violation.</param>
     /// <param name="instance">A formattable identifier for the client or resource being rate limited.</param>
     public static RateLimitError RateLimit<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "rate.limit.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "rate.limit.error", FormatInstance(instance));
 
     /// <inheritdoc cref="ServiceUnavailable(string, string?)"/>
     /// <param name="detail">Description of why the service is unavailable.</param>
     /// <param name="instance">A formattable identifier for the unavailable service or resource.</param>
     public static ServiceUnavailableError ServiceUnavailable<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "service.unavailable.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "service.unavailable.error", FormatInstance(instance));
 
     /// <inheritdoc cref="Gone(string, string?)"/>
     /// <param name="detail">Description of why the resource is gone.</param>
     /// <param name="instance">A formattable identifier for the removed resource.</param>
     public static GoneError Gone<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "gone.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "gone.error", FormatInstance(instance));
 
     /// <inheritdoc cref="NotAcceptable(string, string?)"/>
     /// <param name="detail">Description of why no acceptable representation is available.</param>
     /// <param name="instance">A formattable identifier for the resource.</param>
     public static NotAcceptableError NotAcceptable<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "not.acceptable.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "not.acceptable.error", FormatInstance(instance));
 
     /// <inheritdoc cref="UnsupportedMediaType(string, string?)"/>
     /// <param name="detail">Description of why the media type is not supported.</param>
     /// <param name="instance">A formattable identifier for the resource.</param>
     public static UnsupportedMediaTypeError UnsupportedMediaType<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "unsupported.media.type.error", instance.ToString(null, CultureInfo.InvariantCulture));
+        new(detail, "unsupported.media.type.error", FormatInstance(instance));
 
     /// <summary>
     /// Creates a <see cref="ServiceUnavailableError"/> with retry-after metadata.
