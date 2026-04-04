@@ -70,8 +70,11 @@ public class NewOrdersController(
             .FirstOrDefaultResultAsync(o => o.Id == id,
                 Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)));
 
+        if (result.IsFailure)
+            return result.Error.ToActionResult<OrderResponse>(this);
+
         return result.ToActionResult(this,
-            RepresentationMetadata.WithStrongETag(result.IsSuccess ? result.Value.ETag : string.Empty),
+            RepresentationMetadata.WithStrongETag(result.Value.ETag),
             OrderResponse.From);
     }
 
@@ -105,12 +108,15 @@ public class NewOrdersController(
             .CheckAsync(order =>
                 notificationService.SendOrderConfirmationAsync(order.Id, order.CustomerId, ct));
 
+        if (result.IsFailure)
+            return result.Error.ToActionResult<OrderResponse>(this);
+
         return result.ToActionResult(this,
-            RepresentationMetadata.WithStrongETag(result.IsSuccess ? result.Value.ETag : string.Empty),
+            RepresentationMetadata.WithStrongETag(result.Value.ETag),
             OrderResponse.From);
     }
 
-    // POST /orders/{id}/cancel — cancel with RecoverOnFailureAsync
+    // POST /orders/{id}/cancel— cancel with RecoverOnFailureAsync
     // Demonstrates: RecoverOnFailureAsync for cleanup on unexpected errors
     [HttpPost("{id}/cancel")]
     public async Task<ActionResult<OrderResponse>> Cancel(OrderId id, CancellationToken ct)
@@ -138,12 +144,15 @@ public class NewOrdersController(
                 _ => Result.Failure<Order>(
                     Error.Unexpected("Cancellation failed. Please try again.")));
 
+        if (result.IsFailure)
+            return result.Error.ToActionResult<OrderResponse>(this);
+
         return result.ToActionResult(this,
-            RepresentationMetadata.WithStrongETag(result.IsSuccess ? result.Value.ETag : string.Empty),
+            RepresentationMetadata.WithStrongETag(result.Value.ETag),
             OrderResponse.From);
     }
 
-    // POST /orders/{id}/receipt — redirect after POST
+    // POST /orders/{id}/receipt— redirect after POST
     // Demonstrates: RFC 9110 §15.4.4 — 303 See Other (redirect to GET after POST)
     [HttpPost("{id}/receipt")]
     public ActionResult Receipt(OrderId id)

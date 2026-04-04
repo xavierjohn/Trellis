@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;

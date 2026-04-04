@@ -1,4 +1,4 @@
-# Trellis Examples Guide
+﻿# Trellis Examples Guide
 
 This directory contains working examples demonstrating different aspects of the Trellis library.
 
