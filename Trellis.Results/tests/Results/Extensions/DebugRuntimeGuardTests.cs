@@ -1,6 +1,5 @@
 ﻿namespace Trellis.Results.Tests.Results.Extensions;
 
-using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
 
 /// <summary>
@@ -8,6 +7,7 @@ using Trellis.Results.Tests.Helpers;
 /// Runs in a dedicated non-parallel collection because it mutates a global static flag.
 /// </summary>
 [Collection("DebugSettingsTests")]
+[CollectionDefinition("DebugSettingsTests", DisableParallelization = true)]
 public class DebugRuntimeGuardTests
 {
 #if DEBUG
