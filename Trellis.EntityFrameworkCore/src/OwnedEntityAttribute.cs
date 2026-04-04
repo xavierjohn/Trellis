@@ -11,7 +11,7 @@
 /// The source generator emits a private parameterless constructor that initializes all
 /// reference-type properties with <c>null!</c> to satisfy the compiler's nullability analysis.
 /// </para>
-/// <para>Properties must use <c>private set;</c> for EF Core to populate them during materialization.</para>
+/// <para>Properties should be settable (for example, with <c>private set;</c>) so EF Core can populate them during materialization.</para>
 /// </remarks>
 /// <example>
 /// <code><![CDATA[

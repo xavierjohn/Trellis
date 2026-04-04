@@ -128,6 +128,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
             location: typeDecl.Identifier.GetLocation(),
             @namespace: @namespace,
             typeName: FormatTypeName(symbol),
+            constructorName: symbol.Name,
             typeAccessibility: AccessibilityToString(symbol.DeclaredAccessibility),
             isRecord: isRecord,
             isPartial: isPartial,
@@ -194,7 +195,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         // Private parameterless constructor
         sb.Append(memberIndent);
         sb.Append("private ");
-        sb.Append(info.TypeName);
+        sb.Append(info.ConstructorName);
         sb.AppendLine("()");
         sb.Append(memberIndent);
         sb.AppendLine("{");
@@ -246,6 +247,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
             Location location,
             string @namespace,
             string typeName,
+            string constructorName,
             string typeAccessibility,
             bool isRecord,
             bool isPartial,
@@ -257,6 +259,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
             Location = location;
             Namespace = @namespace;
             TypeName = typeName;
+            ConstructorName = constructorName;
             TypeAccessibility = typeAccessibility;
             IsRecord = isRecord;
             IsPartial = isPartial;
@@ -269,6 +272,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         public Location Location { get; }
         public string Namespace { get; }
         public string TypeName { get; }
+        public string ConstructorName { get; }
         public string TypeAccessibility { get; }
         public bool IsRecord { get; }
         public bool IsPartial { get; }
@@ -284,6 +288,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
 
             return Namespace == other.Namespace
                 && TypeName == other.TypeName
+                && ConstructorName == other.ConstructorName
                 && TypeAccessibility == other.TypeAccessibility
                 && IsRecord == other.IsRecord
                 && IsPartial == other.IsPartial
@@ -302,6 +307,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
                 var hash = 17;
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(Namespace);
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypeName);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ConstructorName);
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypeAccessibility);
                 hash = (hash * 31) + IsRecord.GetHashCode();
                 hash = (hash * 31) + IsPartial.GetHashCode();
