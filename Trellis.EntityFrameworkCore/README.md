@@ -267,9 +267,9 @@ If a `Maybe<T>` property is not declared `partial`, the generator emits diagnost
 `ApplyTrellisConventions` registers two conventions for `Aggregate<TId>` types:
 
 - **`AggregateETagConvention`** — marks `ETag` as `IsConcurrencyToken()` with `MaxLength(50)` for optimistic concurrency
-- **`AggregateTransientPropertyConvention`** — auto-ignores transient base-class properties (`IsChanged`) that reflect in-memory state and must not be persisted
+- **`AggregateTransientPropertyConvention`** — auto-ignores the transient `IsChanged` base-class property that reflects in-memory state and must not be persisted
 
-No manual `builder.Ignore(o => o.IsChanged)` is needed in `OnModelCreating`. The convention handles all aggregate types automatically, including derived aggregates that override `IsChanged`.
+No manual `builder.Ignore(o => o.IsChanged)` is needed in `OnModelCreating`. The convention handles `IsChanged` automatically for all aggregate types, including derived aggregates that hide it via `new`.
 
 ## Result-Returning SaveChanges
 

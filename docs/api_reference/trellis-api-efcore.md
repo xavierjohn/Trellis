@@ -64,7 +64,7 @@ No additional configuration is needed. When two processes modify the same aggreg
 
 - **`IsChanged`** (from `IChangeTracking`): reflects in-memory state (uncommitted domain events), not persisted
 
-No `builder.Ignore(o => o.IsChanged)` needed in `OnModelCreating`. The convention handles this automatically for all aggregate types, including derived aggregates that override `IsChanged`.
+No `builder.Ignore(o => o.IsChanged)` needed in `OnModelCreating`. The convention handles this automatically for all aggregate types, including derived aggregates that hide `IsChanged` via `new`.
 
 ### EntityTimestampInterceptor
 

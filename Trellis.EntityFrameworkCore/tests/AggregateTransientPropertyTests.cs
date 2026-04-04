@@ -70,13 +70,13 @@ public class AggregateTransientPropertyTests : IDisposable
     }
 
     [Fact]
-    public void Convention_DerivedAggregateWithSettableIsChanged_StillIgnored()
+    public void Convention_DerivedAggregateWithHiddenSettableIsChanged_StillIgnored()
     {
-        var entityType = _context.Model.FindEntityType(typeof(SettableIsChangedAggregate))!;
+        var entityType = _context.Model.FindEntityType(typeof(HiddenSettableIsChangedAggregate))!;
         var isChangedProperty = entityType.FindProperty(nameof(IAggregate.IsChanged));
 
         isChangedProperty.Should().BeNull(
-            "even when a derived aggregate overrides IsChanged with a setter, the convention should ignore it");
+            "even when a derived aggregate hides IsChanged with a settable property via 'new', the convention should ignore it");
     }
 
     #endregion
@@ -102,17 +102,17 @@ public class AggregateTransientPropertyTests : IDisposable
     }
 
     [Fact]
-    public async Task RoundTrip_SettableIsChangedAggregate_SavesAndLoadsCorrectly()
+    public async Task RoundTrip_HiddenSettableIsChangedAggregate_SavesAndLoadsCorrectly()
     {
         var ct = TestContext.Current.CancellationToken;
-        var aggregate = SettableIsChangedAggregate.Create("settable-1", "Test");
+        var aggregate = HiddenSettableIsChangedAggregate.Create("settable-1", "Test");
 
-        _context.SettableAggregates.Add(aggregate);
+        _context.HiddenSettableAggregates.Add(aggregate);
         await _context.SaveChangesResultAsync(ct);
 
         _context.ChangeTracker.Clear();
 
-        var loaded = await _context.SettableAggregates.FindAsync(["settable-1"], ct);
+        var loaded = await _context.HiddenSettableAggregates.FindAsync(["settable-1"], ct);
 
         loaded.Should().NotBeNull();
         loaded!.Title.Should().Be("Test");
@@ -124,25 +124,21 @@ public class AggregateTransientPropertyTests : IDisposable
 #region Test types
 
 /// <summary>
-/// Aggregate that overrides <see cref="IAggregate.IsChanged"/> with a settable property.
-/// Without the convention, EF Core would attempt to map this as a database column.
+/// Aggregate that hides the inherited <c>IsChanged</c> with a settable property via <c>new</c>.
+/// Without the convention, EF Core would convention-map this as a database column.
 /// </summary>
-internal class SettableIsChangedAggregate : Aggregate<string>
+internal class HiddenSettableIsChangedAggregate : Aggregate<string>
 {
     public string Title { get; private set; } = null!;
 
-    private bool _isChanged;
-    public override bool IsChanged => _isChanged || base.IsChanged;
+    public new bool IsChanged { get; set; }
 
-    // Simulates a setter-like mutator that could trick EF Core into mapping the property
-    public void MarkChanged() => _isChanged = true;
+    private HiddenSettableIsChangedAggregate() : base(default!) { }
 
-    private SettableIsChangedAggregate() : base(default!) { }
-
-    public static SettableIsChangedAggregate Create(string id, string title) =>
+    public static HiddenSettableIsChangedAggregate Create(string id, string title) =>
         new(id, title);
 
-    private SettableIsChangedAggregate(string id, string title) : base(id) =>
+    private HiddenSettableIsChangedAggregate(string id, string title) : base(id) =>
         Title = title;
 }
 
@@ -154,7 +150,7 @@ internal class TransientPropertyTestDbContext : DbContext
 {
     public DbSet<TestAggregate> TestAggregates => Set<TestAggregate>();
     public DbSet<TestCustomer> Customers => Set<TestCustomer>();
-    public DbSet<SettableIsChangedAggregate> SettableAggregates => Set<SettableIsChangedAggregate>();
+    public DbSet<HiddenSettableIsChangedAggregate> HiddenSettableAggregates => Set<HiddenSettableIsChangedAggregate>();
 
     public TransientPropertyTestDbContext(DbContextOptions<TransientPropertyTestDbContext> options) : base(options)
     {
@@ -171,7 +167,7 @@ internal class TransientPropertyTestDbContext : DbContext
             b.Property(a => a.Name).HasMaxLength(100).IsRequired();
         });
 
-        modelBuilder.Entity<SettableIsChangedAggregate>(b =>
+        modelBuilder.Entity<HiddenSettableIsChangedAggregate>(b =>
         {
             b.HasKey(a => a.Id);
             b.Property(a => a.Title).HasMaxLength(100).IsRequired();

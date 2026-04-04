@@ -14,8 +14,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// This property reflects in-memory state (uncommitted domain events) and must not be
 /// persisted to the database. While EF Core currently skips expression-bodied read-only
 /// properties by convention, this convention provides an explicit, version-safe guarantee
-/// that transient properties are never mapped — even if a derived aggregate overrides them
-/// with a settable property.
+/// that transient properties are never mapped — even if a derived aggregate hides the
+/// inherited member with <c>new bool IsChanged { get; set; }</c>, which EF Core could
+/// otherwise convention-map.
 /// </para>
 /// <para>
 /// Registered automatically by <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/>.
