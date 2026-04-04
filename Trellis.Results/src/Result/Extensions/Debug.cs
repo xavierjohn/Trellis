@@ -48,6 +48,9 @@ public static class ResultDebugExtensions
     public static Result<TValue> Debug<TValue>(this Result<TValue> result, string message = "")
     {
 #if DEBUG
+        if (!ResultDebugSettings.EnableDebugTracing)
+            return result;
+
         var activityName = string.IsNullOrEmpty(message) ? "Debug" : $"Debug: {message}";
         using var activity = RopTrace.ActivitySource.StartActivity(activityName, ActivityKind.Internal);
 
@@ -90,6 +93,9 @@ public static class ResultDebugExtensions
     public static Result<TValue> DebugDetailed<TValue>(this Result<TValue> result, string message = "")
     {
 #if DEBUG
+        if (!ResultDebugSettings.EnableDebugTracing)
+            return result;
+
         var activityName = string.IsNullOrEmpty(message) ? "Debug (Detailed)" : $"Debug: {message} (Detailed)";
         using var activity = RopTrace.ActivitySource.StartActivity(activityName, ActivityKind.Internal);
 
@@ -154,6 +160,9 @@ public static class ResultDebugExtensions
     public static Result<TValue> DebugWithStack<TValue>(this Result<TValue> result, string message = "", bool includeStackTrace = true)
     {
 #if DEBUG
+        if (!ResultDebugSettings.EnableDebugTracing)
+            return result;
+
         var activityName = string.IsNullOrEmpty(message) ? "Debug (with stack)" : $"Debug: {message} (with stack)";
         using var activity = RopTrace.ActivitySource.StartActivity(activityName, ActivityKind.Internal);
 
@@ -229,7 +238,7 @@ public static class ResultDebugExtensions
         ArgumentNullException.ThrowIfNull(action);
 
 #if DEBUG
-        if (result.IsSuccess)
+        if (ResultDebugSettings.EnableDebugTracing && result.IsSuccess)
         {
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnSuccess", ActivityKind.Internal);
             if (activity != null)
@@ -269,7 +278,7 @@ public static class ResultDebugExtensions
         ArgumentNullException.ThrowIfNull(action);
 
 #if DEBUG
-        if (result.IsFailure)
+        if (ResultDebugSettings.EnableDebugTracing && result.IsFailure)
         {
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnFailure", ActivityKind.Internal);
             if (activity != null)
@@ -386,7 +395,7 @@ public static class ResultDebugExtensionsAsync
 
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
-        if (result.IsSuccess)
+        if (ResultDebugSettings.EnableDebugTracing && result.IsSuccess)
         {
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnSuccess", ActivityKind.Internal);
             if (activity != null)
@@ -412,7 +421,7 @@ public static class ResultDebugExtensionsAsync
 
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
-        if (result.IsFailure)
+        if (ResultDebugSettings.EnableDebugTracing && result.IsFailure)
         {
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnFailure", ActivityKind.Internal);
             if (activity != null)

@@ -507,4 +507,110 @@ public class DebugTests : TestBase
 #endif
 
     #endregion
+
+    #region ResultDebugSettings.EnableDebugTracing runtime guard
+
+#if DEBUG
+    [Fact]
+    public void Debug_RuntimeGuardDisabled_DoesNotEmitActivity()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var originalValue = ResultDebugSettings.EnableDebugTracing;
+        try
+        {
+            ResultDebugSettings.EnableDebugTracing = false;
+
+            var result = Result.Success("Test");
+            result.Debug("should be suppressed");
+
+            activityTest.CapturedActivities.Should().BeEmpty("no activity should be emitted when runtime guard is disabled");
+        }
+        finally
+        {
+            ResultDebugSettings.EnableDebugTracing = originalValue;
+        }
+    }
+
+    [Fact]
+    public void Debug_RuntimeGuardEnabled_EmitsActivity()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var originalValue = ResultDebugSettings.EnableDebugTracing;
+        try
+        {
+            ResultDebugSettings.EnableDebugTracing = true;
+
+            var result = Result.Success("Test");
+            result.Debug("should emit");
+
+            activityTest.CapturedActivities.Should().NotBeEmpty("activity should be emitted when runtime guard is enabled");
+        }
+        finally
+        {
+            ResultDebugSettings.EnableDebugTracing = originalValue;
+        }
+    }
+
+    [Fact]
+    public void DebugDetailed_RuntimeGuardDisabled_DoesNotEmitActivity()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var originalValue = ResultDebugSettings.EnableDebugTracing;
+        try
+        {
+            ResultDebugSettings.EnableDebugTracing = false;
+
+            var result = Result.Success("Test");
+            result.DebugDetailed("should be suppressed");
+
+            activityTest.CapturedActivities.Should().BeEmpty();
+        }
+        finally
+        {
+            ResultDebugSettings.EnableDebugTracing = originalValue;
+        }
+    }
+
+    [Fact]
+    public void DebugOnSuccess_RuntimeGuardDisabled_ActionNotInvoked()
+    {
+        var originalValue = ResultDebugSettings.EnableDebugTracing;
+        try
+        {
+            ResultDebugSettings.EnableDebugTracing = false;
+            var actionInvoked = false;
+
+            var result = Result.Success("Test");
+            result.DebugOnSuccess(_ => actionInvoked = true);
+
+            actionInvoked.Should().BeFalse("action should not be invoked when runtime guard is disabled");
+        }
+        finally
+        {
+            ResultDebugSettings.EnableDebugTracing = originalValue;
+        }
+    }
+
+    [Fact]
+    public void DebugOnFailure_RuntimeGuardDisabled_ActionNotInvoked()
+    {
+        var originalValue = ResultDebugSettings.EnableDebugTracing;
+        try
+        {
+            ResultDebugSettings.EnableDebugTracing = false;
+            var actionInvoked = false;
+
+            var result = Result.Failure<string>(Error.Unexpected("test"));
+            result.DebugOnFailure(_ => actionInvoked = true);
+
+            actionInvoked.Should().BeFalse("action should not be invoked when runtime guard is disabled");
+        }
+        finally
+        {
+            ResultDebugSettings.EnableDebugTracing = originalValue;
+        }
+    }
+#endif
+
+    #endregion
 }

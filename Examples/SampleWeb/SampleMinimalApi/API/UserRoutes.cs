@@ -4,7 +4,6 @@ using Trellis.Primitives;
 
 namespace SampleMinimalApi.API;
 
-using System.Globalization;
 using SampleUserLibrary;
 using Trellis;
 
@@ -43,23 +42,23 @@ public static class UserRoutes
                     routeValues: user => new RouteValueDictionary { { "name", user.FirstName } }));
 
         userApi.MapGet("/notfound/{id}", (int id) =>
-            Result.Failure(Error.NotFound("User not found", id.ToString(CultureInfo.InvariantCulture)))
+            Result.Failure(Error.NotFound("User not found", id))
             .ToHttpResult());
 
         userApi.MapGet("/conflict/{id}", (int id) =>
-            Result.Failure(Error.Conflict("Record has changed.", id.ToString(CultureInfo.InvariantCulture)))
+            Result.Failure(Error.Conflict("Record has changed.", id))
             .ToHttpResult());
 
         userApi.MapGet("/forbidden/{id}", (int id) =>
-            Result.Failure(Error.Forbidden("You do not have access.", id.ToString(CultureInfo.InvariantCulture)))
+            Result.Failure(Error.Forbidden("You do not have access.", id))
             .ToHttpResult());
 
         userApi.MapGet("/unauthorized/{id}", (int id) =>
-            Result.Failure(Error.Unauthorized("You have not been authorized.", id.ToString(CultureInfo.InvariantCulture)))
+            Result.Failure(Error.Unauthorized("You have not been authorized.", id))
             .ToHttpResult());
 
         userApi.MapGet("/unexpected/{id}", (int id) =>
-            Result.Failure(Error.Unexpected("Internal server error.", id.ToString(CultureInfo.InvariantCulture)))
+            Result.Failure(Error.Unexpected("Internal server error.", id))
             .ToHttpResult());
 
         // Auto-validating routes using value object DTOs

@@ -2,7 +2,6 @@ namespace SampleWebApplication.Controllers;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
 using SampleUserLibrary;
@@ -86,7 +85,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     {
         var result = await db.Products
             .FirstOrDefaultResultAsync(p => p.Id == id,
-                Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)));
+                Error.NotFound("Product not found.", id));
 
         if (result.IsFailure)
             return result.Error.ToActionResult<ProductResponse>(this);
@@ -123,7 +122,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     {
         var result = await db.Products
             .FirstOrDefaultResultAsync(p => p.Id == id,
-                Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
+                Error.NotFound("Product not found.", id))
             .OptionalETagAsync(ETagHelper.ParseIfMatch(Request))
             .BindAsync(p =>
                 MonetaryAmount.TryCreate(request.Price, "price")
@@ -142,7 +141,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     {
         var product = await db.Products.FindAsync(id);
         if (product is null)
-            return Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)).ToActionResult<Unit>(this);
+            return Error.NotFound("Product not found.", id).ToActionResult<Unit>(this);
 
         db.Products.Remove(product);
         var saveResult = await db.SaveChangesResultUnitAsync();

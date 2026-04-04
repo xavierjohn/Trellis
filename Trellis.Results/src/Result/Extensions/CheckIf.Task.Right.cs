@@ -1,0 +1,72 @@
+﻿namespace Trellis;
+
+/// <summary>
+/// Async CheckIf extensions where only the RIGHT (check function) is async (Task), input is sync.
+/// </summary>
+public static partial class CheckIfExtensionsAsync
+{
+    /// <summary>
+    /// Conditionally runs an async validation function when the boolean condition is true.
+    /// Only the check function is async; the input is sync.
+    /// </summary>
+    public static async Task<Result<T>> CheckIfAsync<T, TK>(this Result<T> result, bool condition, Func<T, Task<Result<TK>>> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
+
+        if (result.IsFailure || !condition)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = await func(result.Value).ConfigureAwait(false);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Failure<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <inheritdoc cref="CheckIfAsync{T,TK}(Result{T}, bool, Func{T, Task{Result{TK}}})"/>
+    public static Task<Result<T>> CheckIfAsync<T>(this Result<T> result, bool condition, Func<T, Task<Result<Unit>>> func)
+        => CheckIfAsync<T, Unit>(result, condition, func);
+
+    /// <summary>
+    /// Conditionally runs an async validation function when the predicate returns true.
+    /// Only the check function is async; the input is sync.
+    /// </summary>
+    public static async Task<Result<T>> CheckIfAsync<T, TK>(this Result<T> result, Func<T, bool> predicate, Func<T, Task<Result<TK>>> func)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
+
+        if (result.IsFailure || !predicate(result.Value))
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = await func(result.Value).ConfigureAwait(false);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Failure<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <inheritdoc cref="CheckIfAsync{T,TK}(Result{T}, Func{T, bool}, Func{T, Task{Result{TK}}})"/>
+    public static Task<Result<T>> CheckIfAsync<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Task<Result<Unit>>> func)
+        => CheckIfAsync<T, Unit>(result, predicate, func);
+}

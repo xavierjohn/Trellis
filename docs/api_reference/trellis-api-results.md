@@ -248,9 +248,29 @@ UnsupportedMediaTypeError Error.UnsupportedMediaType(string detail, string? inst
 ContentTooLargeError Error.ContentTooLarge(string detail, RetryAfterValue? retryAfter = null, string? instance = null)
 RangeNotSatisfiableError Error.RangeNotSatisfiable(string detail, long completeLength, string? instance = null)
 
+// IFormattable instance overloads — accept scalar value objects, Guid, int, DateTime, etc.
+// Formats the instance to an invariant-culture string automatically.
+BadRequestError Error.BadRequest<TInstance>(string detail, TInstance instance) where TInstance : IFormattable
+ConflictError Error.Conflict<TInstance>(string detail, TInstance instance) where TInstance : IFormattable
+NotFoundError Error.NotFound<TInstance>(string detail, TInstance instance) where TInstance : IFormattable
+// ... same pattern for all non-Validation types that accept instance
+
 // Custom code factories (same types with additional code parameter)
 BadRequestError Error.BadRequest(string detail, string code, string? instance = null)
 // ... same pattern for all non-Validation types
+```
+
+**IFormattable instance usage** — pass scalar value object IDs directly without `.ToString()`:
+```csharp
+// Before — manual formatting required:
+Error.NotFound("Order not found.", orderId.ToString(CultureInfo.InvariantCulture))
+
+// After — just pass the value object:
+Error.NotFound("Order not found.", orderId)
+
+// Also works with primitives:
+Error.NotFound("Item not found.", 42)
+Error.Conflict("Duplicate key.", someGuid)
 ```
 
 ### Concrete Error Types
@@ -443,6 +463,27 @@ Runs a validation function that returns a Result, but discards the inner value a
 Result<T> Check<T, TK>(this Result<T>, Func<T, Result<TK>>)
 Result<T> Check<T>(this Result<T>, Func<T, Result<Unit>>)
 // Async: CheckAsync with Task/ValueTask Left/Right/Both variants
+```
+
+### CheckIf — Conditional Validation
+
+Combines conditional behavior with Check semantics. The validation function is only invoked when the condition (bool or predicate) is true; otherwise the original result passes through unchanged. Supports both a static `bool condition` and a `Func<T, bool> predicate` that inspects the success value.
+
+```csharp
+Result<T> CheckIf<T, TK>(this Result<T>, bool condition, Func<T, Result<TK>>)
+Result<T> CheckIf<T, TK>(this Result<T>, Func<T, bool> predicate, Func<T, Result<TK>>)
+Result<T> CheckIf<T>(this Result<T>, bool condition, Func<T, Result<Unit>>)
+Result<T> CheckIf<T>(this Result<T>, Func<T, bool> predicate, Func<T, Result<Unit>>)
+// Async: CheckIfAsync with Task/ValueTask Left/Right/Both variants
+```
+
+**Usage:**
+```csharp
+// Bool condition — skip expensive validation when feature flag is off
+result.CheckIf(featureFlags.StrictMode, order => ValidateInventory(order))
+
+// Predicate condition — only validate high-value orders
+result.CheckIf(order => order.Total > 1000m, order => RunFraudCheck(order))
 ```
 
 ### BindZip — Sequential Tuple Accumulation
@@ -697,7 +738,7 @@ Each has sync + Task (3 variants) + ValueTask (3 variants) async overloads.
 
 ### Debug — Pipeline Inspection
 
-Pipeline inspection extensions that emit values and errors to OpenTelemetry activity spans. Use during development to trace intermediate values in ROP chains. Guarded by `#if DEBUG`.
+Pipeline inspection extensions that emit values and errors to OpenTelemetry activity spans. Use during development to trace intermediate values in ROP chains. Guarded by `#if DEBUG` at compile time and `ResultDebugSettings.EnableDebugTracing` at runtime.
 
 ```csharp
 Result<T> Debug<T>(this Result<T>, string? label = null)
@@ -708,6 +749,12 @@ Result<T> DebugOnFailure<T>(this Result<T>, Action<Error>)
 // + async variants
 ```
 
+**Runtime guard** — `ResultDebugSettings.EnableDebugTracing` (default `true` in DEBUG, `false` in RELEASE):
+```csharp
+// Disable debug tracing at runtime (e.g., in integration tests or staging)
+ResultDebugSettings.EnableDebugTracing = false;
+```
+
 ### GetValueOrDefault — Terminal Extraction
 
 Extracts the value from a successful Result or returns a default/fallback. Terminal operator — exits the ROP pipeline. Supports static defaults, lazy factories, and error-aware factories.
@@ -716,6 +763,27 @@ Extracts the value from a successful Result or returns a default/fallback. Termi
 TValue GetValueOrDefault<TValue>(this Result<TValue>, TValue defaultValue)
 TValue GetValueOrDefault<TValue>(this Result<TValue>, Func<TValue> defaultFactory)
 TValue GetValueOrDefault<TValue>(this Result<TValue>, Func<Error, TValue> defaultFactory)
+```
+
+### Discard — Intentional Result Ignoring
+
+Explicitly discards a Result, signaling the caller intentionally ignores the outcome. Returns `void`, so it suppresses TRLS001 without pragma directives. Use for best-effort or fire-and-forget operations.
+
+```csharp
+void Discard<T>(this Result<T>)
+Task DiscardAsync<T>(this Task<Result<T>>)
+ValueTask DiscardAsync<T>(this ValueTask<Result<T>>)
+```
+
+**Usage:**
+```csharp
+// Best-effort stock release — failure is acceptable
+releaseStock(item, quantity).Discard();
+
+// Async pipeline with intentional discard
+await GetCustomerAsync(id)
+    .BindAsync(c => c.SendWelcomeEmail())
+    .DiscardAsync();
 ```
 
 ## OpenTelemetry Tracing
