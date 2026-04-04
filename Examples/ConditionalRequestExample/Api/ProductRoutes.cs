@@ -29,7 +29,7 @@ public static class OptionalETagRoutes
         group.MapGet("/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From));
+                .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From));
 
         // POST — creates product, returns 201 Created + ETag
         group.MapPost("/", async (CreateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
@@ -38,7 +38,7 @@ public static class OptionalETagRoutes
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
                 .ToCreatedHttpResultAsync(httpContext,
                     p => $"/optional/products/{p.Id.Value}",
-                    p => p.ETag,
+                    p => RepresentationMetadata.WithStrongETag(p.ETag),
                     ProductResponse.From))
             .WithScalarValueValidation();
 
@@ -50,7 +50,7 @@ public static class OptionalETagRoutes
                 .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p => p.UpdatePrice(request.Price))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+                .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From))
             .WithScalarValueValidation();
     }
 }
@@ -68,7 +68,7 @@ public static class RequiredETagRoutes
         group.MapGet("/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From));
+                .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From));
 
         // POST — creates product, returns 201 Created + ETag
         group.MapPost("/", async (CreateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
@@ -77,7 +77,7 @@ public static class RequiredETagRoutes
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
                 .ToCreatedHttpResultAsync(httpContext,
                     p => $"/required/products/{p.Id.Value}",
-                    p => p.ETag,
+                    p => RepresentationMetadata.WithStrongETag(p.ETag),
                     ProductResponse.From))
             .WithScalarValueValidation();
 
@@ -89,7 +89,7 @@ public static class RequiredETagRoutes
                 .RequireETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p => Task.FromResult(p.UpdatePrice(request.Price)))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+                .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From))
             .WithScalarValueValidation();
     }
 }

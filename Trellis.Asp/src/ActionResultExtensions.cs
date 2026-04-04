@@ -246,81 +246,6 @@ public static class ActionResultExtensions
     }
 
     /// <summary>
-    /// Converts a <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/> with support for partial content responses (HTTP 206).
-    /// </summary>
-    /// <typeparam name="TValue">The type of the value contained in the result.</typeparam>
-    /// <param name="result">The result object to convert.</param>
-    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
-    /// <param name="from">The starting index of the range (inclusive, 0-based).</param>
-    /// <param name="to">The ending index of the range (inclusive, 0-based).</param>
-    /// <param name="length">The total number of items available.</param>
-    /// <returns>
-    /// <list type="bullet">
-    /// <item>206 Partial Content with Content-Range header if the range is a subset of the total</item>
-    /// <item>200 OK if the range represents the complete set</item>
-    /// <item>Appropriate error status code if result is failure</item>
-    /// </list>
-    /// </returns>
-    /// <remarks>
-    /// <para>
-    /// This method is useful for implementing pagination or range requests where clients
-    /// request a subset of a larger collection. The Content-Range header indicates:
-    /// <list type="bullet">
-    /// <item>Which items are included in this response</item>
-    /// <item>The total number of items available</item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// The Content-Range header format is: <c>items {from}-{to}/{length}</c>
-    /// Example: <c>Content-Range: items 0-24/100</c>
-    /// </para>
-    /// </remarks>
-    /// <example>
-    /// Paginated list endpoint:
-    /// <code>
-    /// [HttpGet]
-    /// public ActionResult&lt;IEnumerable&lt;UserDto&gt;&gt; GetUsers(
-    ///     [FromQuery] int page = 0,
-    ///     [FromQuery] int pageSize = 25)
-    /// {
-    ///     var from = page * pageSize;
-    ///     var to = from + pageSize - 1;
-    ///     
-    ///     return _userService
-    ///         .GetUsersAsync(from, pageSize)
-    ///         .Map(result => (
-    ///             Users: result.Items,
-    ///             TotalCount: result.TotalCount
-    ///         ))
-    ///         .Map(x => x.Users)
-    ///         .ToActionResult(this, from, to, totalCount);
-    /// }
-    /// 
-    /// // Response for page 0 (25 items out of 100):
-    /// // Status: 206 Partial Content
-    /// // Content-Range: items 0-24/100
-    /// 
-    /// // Response for single page (all items):
-    /// // Status: 200 OK
-    /// // No Content-Range header
-    /// </code>
-    /// </example>
-    public static ActionResult<TValue> ToActionResult<TValue>(this Result<TValue> result, ControllerBase controllerBase, long from, long to, long length)
-    {
-        if (result.IsSuccess)
-        {
-            var partialResult = to - from + 1 != length;
-            if (partialResult)
-                return new PartialContentResult(from, to, length, result.Value);
-
-            return controllerBase.Ok(result.Value);
-        }
-
-        var error = result.Error;
-        return error.ToActionResult<TValue>(controllerBase);
-    }
-
-    /// <summary>
     /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> with support for partial content responses,
     /// using custom functions to extract range information and transform the value.
     /// </summary>
@@ -644,6 +569,45 @@ public static class ActionResultExtensions
     public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
         this ValueTask<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
         (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
+
+    /// <summary>
+    /// Converts a Result to an ActionResult, applying dynamically-computed representation metadata headers
+    /// (ETag, Last-Modified, Vary, Content-Language, Content-Location, Accept-Ranges).
+    /// Evaluates all conditional request headers with correct RFC 9110 §13.2.2 precedence.
+    /// </summary>
+    /// <typeparam name="TIn">The domain type in the result.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="result">The result to convert.</param>
+    /// <param name="controller">The controller context.</param>
+    /// <param name="metadataSelector">Function to extract metadata from the domain value (e.g., build ETag from aggregate).</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <returns>An ActionResult with metadata headers and conditional request evaluation.</returns>
+    /// <remarks>
+    /// Use this overload when the metadata depends on the success value (e.g., ETag derived from an aggregate).
+    /// The selector is not invoked when the result is a failure.
+    /// </remarks>
+    public static ActionResult<TOut> ToActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controller,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map)
+    {
+        if (result.IsFailure)
+            return result.Error.ToActionResult<TOut>(controller);
+
+        var metadata = metadataSelector(result.Value);
+        return result.ToActionResult(controller, metadata, map);
+    }
+
+    /// <summary>Async Task overload of metadata-selector-aware ToActionResult.</summary>
+    public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadataSelector, map);
+
+    /// <summary>Async ValueTask overload of metadata-selector-aware ToActionResult.</summary>
+    public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadataSelector, map);
 
     internal static void ApplyMetadataHeaders(HttpResponse response, RepresentationMetadata metadata)
     {

@@ -31,7 +31,7 @@ public class WriteOutcomePreferTests
         var metadata = RepresentationMetadata.WithStrongETag("etag1");
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated", metadata);
 
-        var actionResult = outcome.ToActionResult<string, string>(controller, controller.Request);
+        var actionResult = outcome.ToActionResult<string, string>(controller);
 
         actionResult.Should().BeOfType<NoContentResult>();
         controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=minimal");
@@ -45,7 +45,7 @@ public class WriteOutcomePreferTests
         var metadata = RepresentationMetadata.WithStrongETag("etag2");
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated", metadata);
 
-        outcome.ToActionResult<string, string>(controller, controller.Request);
+        outcome.ToActionResult<string, string>(controller);
 
         controller.Response.Headers.ETag.ToString().Should().Be("\"etag2\"");
     }
@@ -60,7 +60,7 @@ public class WriteOutcomePreferTests
         var (controller, _) = CreateControllerWithPrefer("return=representation");
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated");
 
-        var actionResult = outcome.ToActionResult<string, string>(controller, controller.Request);
+        var actionResult = outcome.ToActionResult<string, string>(controller);
 
         actionResult.Should().BeOfType<OkObjectResult>();
         actionResult.As<OkObjectResult>().Value.Should().Be("updated");
@@ -83,7 +83,7 @@ public class WriteOutcomePreferTests
             .Build();
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated", metadata);
 
-        outcome.ToActionResult<string, string>(controller, controller.Request);
+        outcome.ToActionResult<string, string>(controller);
 
         var vary = controller.Response.Headers.Vary.ToString();
         vary.Should().Contain("Accept");
@@ -101,7 +101,7 @@ public class WriteOutcomePreferTests
         var (controller, _) = CreateControllerWithPrefer();
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated");
 
-        var actionResult = outcome.ToActionResult<string, string>(controller, controller.Request);
+        var actionResult = outcome.ToActionResult<string, string>(controller);
 
         actionResult.Should().BeOfType<OkObjectResult>();
         actionResult.As<OkObjectResult>().Value.Should().Be("updated");
@@ -121,7 +121,7 @@ public class WriteOutcomePreferTests
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("hello");
         var mapInvoked = false;
 
-        outcome.ToActionResult(controller, controller.Request, (Func<string, string>)(s =>
+        outcome.ToActionResult(controller, (Func<string, string>)(s =>
         {
             mapInvoked = true;
             return s.ToUpperInvariant();
@@ -142,7 +142,7 @@ public class WriteOutcomePreferTests
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
         WriteOutcome<string> outcome = new WriteOutcome<string>.Created("item", "/api/items/1");
 
-        var actionResult = outcome.ToActionResult<string, string>(controller, controller.Request);
+        var actionResult = outcome.ToActionResult<string, string>(controller);
 
         actionResult.Should().BeOfType<CreatedResult>();
         actionResult.As<CreatedResult>().StatusCode.Should().Be(StatusCodes.Status201Created);
@@ -160,7 +160,7 @@ public class WriteOutcomePreferTests
         var (controller, _) = CreateControllerWithPrefer("return=representation");
         WriteOutcome<string> outcome = new WriteOutcome<string>.UpdatedNoContent();
 
-        var actionResult = outcome.ToActionResult<string, string>(controller, controller.Request);
+        var actionResult = outcome.ToActionResult<string, string>(controller);
 
         actionResult.Should().BeOfType<NoContentResult>();
         controller.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
@@ -176,7 +176,7 @@ public class WriteOutcomePreferTests
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
         WriteOutcome<string> outcome = new WriteOutcome<string>.Accepted(StatusBody: "processing");
 
-        var actionResult = outcome.ToActionResult<string, string>(controller, controller.Request);
+        var actionResult = outcome.ToActionResult<string, string>(controller);
 
         actionResult.Should().BeOfType<ObjectResult>();
         actionResult.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status202Accepted);
@@ -193,7 +193,7 @@ public class WriteOutcomePreferTests
         var (controller, _) = CreateControllerWithPrefer();
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated");
 
-        outcome.ToActionResult<string, string>(controller, controller.Request);
+        outcome.ToActionResult<string, string>(controller);
 
         controller.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
     }
@@ -205,7 +205,7 @@ public class WriteOutcomePreferTests
         var (controller, _) = CreateControllerWithPrefer("respond-async");
         WriteOutcome<string> outcome = new WriteOutcome<string>.Updated("updated");
 
-        outcome.ToActionResult<string, string>(controller, controller.Request);
+        outcome.ToActionResult<string, string>(controller);
 
         controller.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
     }

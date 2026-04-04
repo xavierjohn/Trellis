@@ -35,7 +35,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext();
         var result = Result.Success("hello");
 
-        result.ToHttpResult(httpContext, _ => "abc123", s => s);
+        result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
         httpContext.Response.Headers.ETag.ToString().Should().Be("\"abc123\"");
     }
@@ -46,7 +46,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext();
         var result = Result.Success("hello");
 
-        result.ToHttpResult(httpContext, _ => "", s => s);
+        result.ToHttpResult(httpContext, _ => RepresentationMetadata.Create().Build(), s => s);
 
         httpContext.Response.Headers.ETag.ToString().Should().BeEmpty();
     }
@@ -57,7 +57,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext();
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "etag", s => s.ToUpperInvariant());
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("etag"), s => s.ToUpperInvariant());
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Ok<string>>();
     }
@@ -68,7 +68,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext();
         var result = Result.Failure<string>(Error.NotFound("gone"));
 
-        var response = result.ToHttpResult(httpContext, _ => "etag", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 
         // Problem Details result for 404
         response.Should().NotBeNull();
@@ -84,7 +84,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("GET", "\"abc123\"");
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "abc123", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.StatusCodeHttpResult>();
         httpContext.Response.Headers.ETag.ToString().Should().Be("\"abc123\"");
@@ -96,7 +96,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("HEAD", "\"abc123\"");
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "abc123", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.StatusCodeHttpResult>();
     }
@@ -107,7 +107,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("GET", "\"other\"");
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "abc123", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Ok<string>>();
     }
@@ -119,7 +119,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("PUT", "\"abc123\"");
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "abc123", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Ok<string>>();
     }
@@ -130,7 +130,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("GET", "*");
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "any-etag", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("any-etag"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.StatusCodeHttpResult>();
     }
@@ -142,7 +142,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("GET", "W/\"abc123\"");
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "abc123", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.StatusCodeHttpResult>();
     }
@@ -153,7 +153,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("GET");
         var result = Result.Success("hello");
 
-        var response = result.ToHttpResult(httpContext, _ => "abc123", s => s);
+        var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Ok<string>>();
     }
@@ -168,7 +168,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("POST");
         var result = Result.Success("hello");
 
-        result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => "etag-created", s => s);
+        result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag-created"), s => s);
 
         httpContext.Response.Headers.ETag.ToString().Should().Be("\"etag-created\"");
     }
@@ -179,7 +179,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("POST");
         var result = Result.Success("hello");
 
-        var response = result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => "etag", s => s);
+        var response = result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Created<string>>();
     }
@@ -190,7 +190,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("POST");
         var result = Result.Failure<string>(Error.Validation("bad", "field"));
 
-        var response = result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => "etag", s => s);
+        var response = result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 
         response.Should().NotBeNull();
     }
@@ -205,7 +205,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext();
         var resultTask = Task.FromResult(Result.Success("hello"));
 
-        var response = await resultTask.ToHttpResultAsync(httpContext, _ => "etag-async", s => s);
+        var response = await resultTask.ToHttpResultAsync(httpContext, _ => RepresentationMetadata.WithStrongETag("etag-async"), s => s);
 
         httpContext.Response.Headers.ETag.ToString().Should().Be("\"etag-async\"");
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Ok<string>>();
@@ -217,7 +217,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("GET", "\"match\"");
         var resultTask = Task.FromResult(Result.Success("hello"));
 
-        var response = await resultTask.ToHttpResultAsync(httpContext, _ => "match", s => s);
+        var response = await resultTask.ToHttpResultAsync(httpContext, _ => RepresentationMetadata.WithStrongETag("match"), s => s);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.StatusCodeHttpResult>();
     }
@@ -228,7 +228,7 @@ public class ETagHttpResultTests : IDisposable
         var httpContext = CreateHttpContext("POST");
         var resultTask = Task.FromResult(Result.Success("hello"));
 
-        await resultTask.ToCreatedHttpResultAsync(httpContext, _ => "/items/1", _ => "etag-cr", s => s);
+        await resultTask.ToCreatedHttpResultAsync(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag-cr"), s => s);
 
         httpContext.Response.Headers.ETag.ToString().Should().Be("\"etag-cr\"");
     }

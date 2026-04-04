@@ -324,64 +324,182 @@ public static class HttpResultExtensionsAsync
         return result.ToCreatedAtRouteHttpResult(routeName, routeValues, map, options);
     }
 
-    #region RFC 9110 — ETag / If-None-Match Async Support (Minimal API)
+    #region RFC 9110 — Metadata-Aware Response Async (Minimal API)
 
     /// <summary>
-    /// Async Task overload: converts result to Minimal API IResult with ETag header and If-None-Match (304) support.
+    /// Async Task overload: converts result to Minimal API IResult with metadata headers and conditional request evaluation.
     /// </summary>
     public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
         this Task<Result<TIn>> resultTask,
         HttpContext httpContext,
-        Func<TIn, string> etagSelector,
+        Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
         TrellisAspOptions? options = null)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.ToHttpResult(httpContext, etagSelector, map, options);
+        return result.ToHttpResult(httpContext, metadataSelector, map, options);
     }
 
     /// <summary>
-    /// Async ValueTask overload: converts result to Minimal API IResult with ETag header and If-None-Match (304) support.
+    /// Async ValueTask overload: converts result to Minimal API IResult with metadata headers and conditional request evaluation.
     /// </summary>
     public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
         this ValueTask<Result<TIn>> resultTask,
         HttpContext httpContext,
-        Func<TIn, string> etagSelector,
+        Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
         TrellisAspOptions? options = null)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.ToHttpResult(httpContext, etagSelector, map, options);
+        return result.ToHttpResult(httpContext, metadataSelector, map, options);
     }
 
     /// <summary>
-    /// Async Task overload: converts result to 201 Created Minimal API IResult with ETag header.
+    /// Async Task overload: converts result to 201 Created Minimal API IResult with metadata headers.
     /// </summary>
     public static async Task<Microsoft.AspNetCore.Http.IResult> ToCreatedHttpResultAsync<TIn, TOut>(
         this Task<Result<TIn>> resultTask,
         HttpContext httpContext,
         Func<TIn, string> uriSelector,
-        Func<TIn, string> etagSelector,
+        Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
         TrellisAspOptions? options = null)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.ToCreatedHttpResult(httpContext, uriSelector, etagSelector, map, options);
+        return result.ToCreatedHttpResult(httpContext, uriSelector, metadataSelector, map, options);
     }
 
     /// <summary>
-    /// Async ValueTask overload: converts result to 201 Created Minimal API IResult with ETag header.
+    /// Async ValueTask overload: converts result to 201 Created Minimal API IResult with metadata headers.
     /// </summary>
     public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToCreatedHttpResultAsync<TIn, TOut>(
         this ValueTask<Result<TIn>> resultTask,
         HttpContext httpContext,
         Func<TIn, string> uriSelector,
-        Func<TIn, string> etagSelector,
+        Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
         TrellisAspOptions? options = null)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.ToCreatedHttpResult(httpContext, uriSelector, etagSelector, map, options);
+        return result.ToCreatedHttpResult(httpContext, uriSelector, metadataSelector, map, options);
+    }
+
+    #endregion
+
+    #region RFC 9110 — Partial Content / Pagination Async (Minimal API)
+
+    /// <summary>
+    /// Async Task overload: converts result to 206 Partial Content or 200 OK with range parameters.
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TValue>(
+        this Task<Result<TValue>> resultTask,
+        long from,
+        long to,
+        long totalLength,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(from, to, totalLength, options);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to 206 Partial Content or 200 OK with range parameters.
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TValue>(
+        this ValueTask<Result<TValue>> resultTask,
+        long from,
+        long to,
+        long totalLength,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(from, to, totalLength, options);
+    }
+
+    /// <summary>
+    /// Async Task overload: converts result to 206 Partial Content or 200 OK with lambda-based Content-Range.
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        Func<TIn, System.Net.Http.Headers.ContentRangeHeaderValue> funcRange,
+        Func<TIn, TOut> funcValue,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(funcRange, funcValue, options);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to 206 Partial Content or 200 OK with lambda-based Content-Range.
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        Func<TIn, System.Net.Http.Headers.ContentRangeHeaderValue> funcRange,
+        Func<TIn, TOut> funcValue,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(funcRange, funcValue, options);
+    }
+
+    #endregion
+
+    #region RFC 7240 — ToUpdatedHttpResult Async (Minimal API)
+
+    /// <summary>
+    /// Async Task overload: converts result to an updated Minimal API response with Prefer support.
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToUpdatedHttpResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        RepresentationMetadata? metadata,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedHttpResult(httpContext, metadata, map, options);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to an updated Minimal API response with Prefer support.
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToUpdatedHttpResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        RepresentationMetadata? metadata,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedHttpResult(httpContext, metadata, map, options);
+    }
+
+    /// <summary>
+    /// Async Task overload: converts result to an updated Minimal API response with dynamic metadata and Prefer support.
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToUpdatedHttpResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedHttpResult(httpContext, metadataSelector, map, options);
+    }
+
+    /// <summary>
+    /// Async ValueTask overload: converts result to an updated Minimal API response with dynamic metadata and Prefer support.
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToUpdatedHttpResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        HttpContext httpContext,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedHttpResult(httpContext, metadataSelector, map, options);
     }
 
     #endregion

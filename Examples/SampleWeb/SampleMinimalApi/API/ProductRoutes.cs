@@ -67,14 +67,12 @@ public static class ProductRoutes
             var items = products.Select(ProductResponse.From).ToArray();
 
             // RFC 9110 §14: Return 206 Partial Content when not all items fit,
-            // or 200 OK when the response contains the complete set.
-            if (products.Count > 0 && products.Count < totalCount)
-            {
-                var to = from + products.Count - 1;
-                return Results.Extensions.PartialContent(from, to, totalCount, items);
-            }
+            // or 200 OK when the response contains the complete set or empty page.
+            if (items.Length == 0)
+                return Results.Ok(items);
 
-            return Results.Ok(items);
+            var to = from + items.Length - 1;
+            return Result.Success(items).ToHttpResult(from, to, totalCount);
         });
 
         // GET /products/{id} — conditional GET with ETag
@@ -83,7 +81,7 @@ public static class ProductRoutes
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == id,
                     Error.NotFound("Product not found.", id.ToString(CultureInfo.InvariantCulture)))
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+                .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From))
             .WithScalarValueValidation();
 
         // POST /products — create with ETag + Location
@@ -96,7 +94,7 @@ public static class ProductRoutes
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
                 .ToCreatedHttpResultAsync(httpContext,
                     p => $"/products/{p.Id.Value}",
-                    p => p.ETag,
+                    p => RepresentationMetadata.WithStrongETag(p.ETag),
                     ProductResponse.From))
             .WithScalarValueValidation();
 
@@ -111,7 +109,9 @@ public static class ProductRoutes
                     MonetaryAmount.TryCreate(request.Price, "price")
                         .Bind(price => p.UpdatePrice(price)))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
-                .ToHttpResultAsync(httpContext, p => p.ETag, ProductResponse.From))
+                .ToUpdatedHttpResultAsync(httpContext,
+                    p => RepresentationMetadata.WithStrongETag(p.ETag),
+                    ProductResponse.From))
             .WithScalarValueValidation();
 
         // DELETE /products/{id}
@@ -136,23 +136,3 @@ public static class ProductRoutes
     }
 }
 
-/// <summary>
-/// Minimal API helper for 206 Partial Content responses.
-/// </summary>
-internal static class PartialContentExtensions
-{
-    public static Microsoft.AspNetCore.Http.IResult PartialContent<T>(
-        this IResultExtensions _, long from, long to, long total, T value) =>
-        new PartialContentHttpResult<T>(from, to, total, value);
-
-    private sealed class PartialContentHttpResult<T>(long from, long to, long total, T value)
-        : Microsoft.AspNetCore.Http.IResult
-    {
-        public async Task ExecuteAsync(HttpContext httpContext)
-        {
-            httpContext.Response.StatusCode = 206;
-            httpContext.Response.Headers["Content-Range"] = $"items {from}-{to}/{total}";
-            await httpContext.Response.WriteAsJsonAsync(value);
-        }
-    }
-}
