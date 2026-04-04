@@ -645,6 +645,45 @@ public static class ActionResultExtensions
         this ValueTask<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
         (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
 
+    /// <summary>
+    /// Converts a Result to an ActionResult, applying dynamically-computed representation metadata headers
+    /// (ETag, Last-Modified, Vary, Content-Language, Content-Location, Accept-Ranges).
+    /// Evaluates all conditional request headers with correct RFC 9110 §13.2.2 precedence.
+    /// </summary>
+    /// <typeparam name="TIn">The domain type in the result.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="result">The result to convert.</param>
+    /// <param name="controller">The controller context.</param>
+    /// <param name="metadataSelector">Function to extract metadata from the domain value (e.g., build ETag from aggregate).</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <returns>An ActionResult with metadata headers and conditional request evaluation.</returns>
+    /// <remarks>
+    /// Use this overload when the metadata depends on the success value (e.g., ETag derived from an aggregate).
+    /// The selector is not invoked when the result is a failure.
+    /// </remarks>
+    public static ActionResult<TOut> ToActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controller,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map)
+    {
+        if (result.IsFailure)
+            return result.Error.ToActionResult<TOut>(controller);
+
+        var metadata = metadataSelector(result.Value);
+        return result.ToActionResult(controller, metadata, map);
+    }
+
+    /// <summary>Async Task overload of metadata-selector-aware ToActionResult.</summary>
+    public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadataSelector, map);
+
+    /// <summary>Async ValueTask overload of metadata-selector-aware ToActionResult.</summary>
+    public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map) =>
+        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadataSelector, map);
+
     internal static void ApplyMetadataHeaders(HttpResponse response, RepresentationMetadata metadata)
     {
         if (metadata.ETag is not null)

@@ -86,9 +86,9 @@ public class ActionResultTests : IDisposable
         var result = Result.Failure<string>(Error.NotFound("Can't find it"));
 
         // Act
-        var response = result.ToActionResult<string, string>(controller,
-            static r => throw new InvalidOperationException(),
-            static r => throw new InvalidOperationException());
+        Func<string, ContentRangeHeaderValue> rangeFunc = static r => throw new InvalidOperationException();
+        Func<string, string> mapFunc = static r => throw new InvalidOperationException();
+        var response = result.ToActionResult(controller, rangeFunc, mapFunc);
 
         // Assert
         response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status404NotFound);

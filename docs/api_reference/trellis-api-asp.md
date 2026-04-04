@@ -62,6 +62,11 @@ ActionResult<TOut> ToCreatedAtActionResult<TValue, TOut>(this Result<TValue> res
 // + async variants for Task<Result<T>> and ValueTask<Result<T>>
 // + partial content (206) variant with ContentRangeHeaderValue
 
+// Metadata selector — derives RepresentationMetadata from domain value (ETag, Last-Modified, etc.)
+ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller,
+    Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)
+// + async variants (Task + ValueTask)
+
 // Error direct conversion
 ActionResult<TValue> ToActionResult<TValue>(this Error error, ControllerBase controller)
 ```
@@ -79,19 +84,42 @@ IResult ToCreatedAtRouteHttpResult<T>(this Result<T> result,
 IResult ToCreatedAtRouteHttpResult<TValue, TOut>(this Result<TValue> result,
     string routeName, Func<TValue, RouteValueDictionary> routeValues, Func<TValue, TOut> map,
     TrellisAspOptions? options = null)
-// + async variants
+
+// Pagination — 206 Partial Content or 200 OK
+IResult ToHttpResult<TValue>(this Result<TValue> result,
+    long from, long to, long totalLength, TrellisAspOptions? options = null)
+IResult ToHttpResult<TIn, TOut>(this Result<TIn> result,
+    Func<TIn, ContentRangeHeaderValue> funcRange, Func<TIn, TOut> funcValue, TrellisAspOptions? options = null)
+
+// RFC 7240 Prefer-aware update response
+IResult ToUpdatedHttpResult<TIn, TOut>(this Result<TIn> result, HttpContext httpContext,
+    RepresentationMetadata? metadata, Func<TIn, TOut> map, TrellisAspOptions? options = null)
+IResult ToUpdatedHttpResult<TIn, TOut>(this Result<TIn> result, HttpContext httpContext,
+    Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)
+
+// + async variants for all pagination and updated overloads
 
 // Error direct conversion
 IResult ToHttpResult(this Error error, TrellisAspOptions? options = null)
 ```
 
-## PartialContentResult — HTTP 206 Partial Content
+## PartialContentResult — HTTP 206 Partial Content (MVC)
 
-HTTP 206 Partial Content response for paginated results. Automatically sets `Content-Range` headers per RFC 9110.
+HTTP 206 Partial Content response for paginated results in MVC controllers. Automatically sets `Content-Range` headers per RFC 9110.
 
 ```csharp
 PartialContentResult(long rangeStart, long rangeEnd, long totalLength, object? value)
 PartialContentResult(ContentRangeHeaderValue contentRange, object? value)
+ContentRangeHeaderValue ContentRangeHeaderValue { get; }
+```
+
+## PartialContentHttpResult — HTTP 206 Partial Content (Minimal API)
+
+HTTP 206 Partial Content response for paginated results in Minimal APIs. Sets status code 206 and `Content-Range` header, delegates body writing to an inner `IResult`.
+
+```csharp
+PartialContentHttpResult(long rangeStart, long rangeEnd, long? totalLength, IResult inner)
+PartialContentHttpResult(ContentRangeHeaderValue contentRangeHeaderValue, IResult inner)
 ContentRangeHeaderValue ContentRangeHeaderValue { get; }
 ```
 
@@ -225,29 +253,36 @@ Discriminated union for write operation results. Each variant maps to the correc
 ### WriteOutcomeExtensions
 
 ```csharp
-// Standard mapping (server decides response shape)
+// Standard mapping — MVC (server decides response shape)
 public static ActionResult ToActionResult<T, TOut>(
     this WriteOutcome<T> outcome,
     ControllerBase controller,
     Func<T, TOut>? map = null)
 
-// RFC 7240 Prefer-aware mapping (client can request return=minimal or return=representation)
+// RFC 7240 Prefer-aware mapping — MVC
 public static ActionResult ToActionResult<T, TOut>(
     this WriteOutcome<T> outcome,
     ControllerBase controller,
     HttpRequest request,
     Func<T, TOut>? map = null)
+
+// RFC 7240 Prefer-aware mapping — Minimal API
+public static IResult ToHttpResult<T, TOut>(
+    this WriteOutcome<T> outcome,
+    HttpContext httpContext,
+    Func<T, TOut>? map = null,
+    TrellisAspOptions? options = null)
 ```
 
 Maps each variant to the correct HTTP response: `Created` → 201 + `Location`, `Updated` → 200, `UpdatedNoContent` → 204, `Accepted`/`AcceptedNoContent` → 202 + optional `Location` and `Retry-After` headers. Applies `RepresentationMetadata` headers when present.
 
-The `HttpRequest` overload parses the RFC 7240 `Prefer` header and adjusts the `Updated` response:
+The Prefer-aware overloads parse the RFC 7240 `Prefer` header and adjust the `Updated` response:
 - `Prefer: return=minimal` → `Updated` returns 204 No Content (instead of 200 + body)
 - `Prefer: return=representation` → `Updated` returns 200 OK + body (default behavior, explicitly acknowledged)
 - Emits `Preference-Applied` and `Vary: Prefer` response headers when a `return` preference is honored
 - `Created`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent` are not affected by the `return` preference
 
-### ToUpdatedActionResult / ToUpdatedActionResultAsync
+### ToUpdatedActionResult / ToUpdatedActionResultAsync (MVC)
 
 Convenience extensions on `Result<T>` for update endpoints. Combines Prefer header handling, metadata, and error mapping in one call:
 
@@ -271,18 +306,45 @@ public static ActionResult<TOut> ToUpdatedActionResult<TIn, TOut>(
     Func<TIn, TOut> map)
 ```
 
-Usage — replaces manual `WriteOutcome` construction, casting, and `MatchAsync`:
+### ToUpdatedHttpResult / ToUpdatedHttpResultAsync (Minimal API)
+
+Minimal API equivalents of `ToUpdatedActionResult`. Combines Prefer header handling, metadata, and error mapping:
 
 ```csharp
-[HttpPut("{id}")]
-public ValueTask<ActionResult<OrderResponse>> Update(
-    OrderId id, [FromBody] UpdateOrderRequest request, CancellationToken ct) =>
-    UpdateOrderCommand.TryCreate(id, request.Amount, ETagHelper.ParseIfMatch(Request))
-        .BindAsync(command => _sender.Send(command, ct))
-        .ToUpdatedActionResultAsync(this,
-            order => RepresentationMetadata.WithStrongETag(order.ETag),
-            OrderResponse.From);
+// With metadata selector
+public static IResult ToUpdatedHttpResult<TIn, TOut>(
+    this Result<TIn> result,
+    HttpContext httpContext,
+    Func<TIn, RepresentationMetadata> metadataSelector,
+    Func<TIn, TOut> map,
+    TrellisAspOptions? options = null)
+
+// With static metadata
+public static IResult ToUpdatedHttpResult<TIn, TOut>(
+    this Result<TIn> result,
+    HttpContext httpContext,
+    RepresentationMetadata? metadata,
+    Func<TIn, TOut> map,
+    TrellisAspOptions? options = null)
+
+// Async variants (Task + ValueTask) for both overloads
 ```
+
+Usage in Minimal API:
+
+```csharp
+productApi.MapPut("/{id}", (ProductId id, UpdateProductRequest request, AppDbContext db, HttpContext httpContext) =>
+    db.Products
+        .FirstOrDefaultResultAsync(p => p.Id == id, Error.NotFound("Product not found."))
+        .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
+        .BindAsync(p => MonetaryAmount.TryCreate(request.Price, "price").Bind(price => p.UpdatePrice(price)))
+        .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+        .ToUpdatedHttpResultAsync(httpContext,
+            p => RepresentationMetadata.WithStrongETag(p.ETag),
+            ProductResponse.From));
+```
+
+Usage in MVC:
 
 ### PreferHeader
 

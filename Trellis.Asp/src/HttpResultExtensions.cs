@@ -454,6 +454,135 @@ public static class HttpResultExtensions
 
     #endregion
 
+    #region RFC 9110 — Partial Content / Pagination (Minimal API)
+
+    /// <summary>
+    /// Converts a <see cref="Result{TValue}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// that returns 206 Partial Content with a <c>Content-Range</c> header when the result represents a subset,
+    /// or 200 OK when it represents the complete set.
+    /// </summary>
+    /// <typeparam name="TValue">The type of the value contained in the result.</typeparam>
+    /// <param name="result">The result object to convert.</param>
+    /// <param name="from">The starting index of the range (zero-indexed, inclusive).</param>
+    /// <param name="to">The ending index of the range (zero-indexed, inclusive).</param>
+    /// <param name="totalLength">The total number of items available.</param>
+    /// <param name="options">Optional custom error-to-status-code mappings.</param>
+    /// <returns>206 Partial Content when the range is a subset, 200 OK when complete, or an error response.</returns>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TValue>(
+        this Result<TValue> result,
+        long from,
+        long to,
+        long totalLength,
+        TrellisAspOptions? options = null)
+    {
+        if (result.IsSuccess)
+        {
+            var partialResult = to - from + 1 != totalLength;
+            if (partialResult)
+                return new PartialContentHttpResult(from, to, totalLength, Results.Ok(result.Value));
+
+            return Results.Ok(result.Value);
+        }
+
+        return result.Error.ToHttpResult(options);
+    }
+
+    /// <summary>
+    /// Converts a <see cref="Result{TIn}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// that returns 206 Partial Content when the lambda-provided <see cref="System.Net.Http.Headers.ContentRangeHeaderValue"/>
+    /// indicates a partial range, or 200 OK when the response contains the complete set.
+    /// </summary>
+    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
+    /// <typeparam name="TOut">The type of the value in the response body.</typeparam>
+    /// <param name="result">The result object to convert.</param>
+    /// <param name="funcRange">A function that extracts the Content-Range information from the result value.</param>
+    /// <param name="funcValue">A function that maps the result value to the response body.</param>
+    /// <param name="options">Optional custom error-to-status-code mappings.</param>
+    /// <returns>206 Partial Content when partial, 200 OK when complete, or an error response.</returns>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TIn, TOut>(
+        this Result<TIn> result,
+        Func<TIn, System.Net.Http.Headers.ContentRangeHeaderValue> funcRange,
+        Func<TIn, TOut> funcValue,
+        TrellisAspOptions? options = null)
+    {
+        if (result.IsSuccess)
+        {
+            var contentRange = funcRange(result.Value);
+            var value = funcValue(result.Value);
+
+            if (contentRange.From is null || contentRange.To is null || contentRange.Length is null)
+                return Results.Ok(value);
+
+            var partialResult = contentRange.To - contentRange.From + 1 != contentRange.Length;
+            if (partialResult)
+                return new PartialContentHttpResult(contentRange, Results.Ok(value));
+
+            return Results.Ok(value);
+        }
+
+        return result.Error.ToHttpResult(options);
+    }
+
+    #endregion
+
+    #region RFC 7240 — ToUpdatedHttpResult / Prefer Support (Minimal API)
+
+    /// <summary>
+    /// Converts a successful <see cref="Result{TIn}"/> to an updated response for Minimal APIs,
+    /// honoring RFC 7240 <c>Prefer</c>. Returns 200 OK with body by default, or 204 No Content
+    /// when <c>Prefer: return=minimal</c> is present. On failure, returns the appropriate error response.
+    /// </summary>
+    /// <typeparam name="TIn">The domain type in the result.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="result">The result from the update operation.</param>
+    /// <param name="httpContext">The HTTP context (used to read Prefer header and set response headers).</param>
+    /// <param name="metadata">Optional representation metadata (ETag, Last-Modified, etc.).</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <param name="options">Optional custom error-to-status-code mappings.</param>
+    /// <returns>An IResult with appropriate status code and headers.</returns>
+    public static Microsoft.AspNetCore.Http.IResult ToUpdatedHttpResult<TIn, TOut>(
+        this Result<TIn> result,
+        HttpContext httpContext,
+        RepresentationMetadata? metadata,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        if (result.IsFailure)
+            return result.Error.ToHttpResult(options);
+
+        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
+        return outcome.ToHttpResult<TIn, TOut>(httpContext, map, options);
+    }
+
+    /// <summary>
+    /// Converts a successful <see cref="Result{TIn}"/> to an updated response for Minimal APIs with dynamic metadata,
+    /// honoring RFC 7240 <c>Prefer</c>.
+    /// </summary>
+    /// <typeparam name="TIn">The domain type in the result.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="result">The result from the update operation.</param>
+    /// <param name="httpContext">The HTTP context (used to read Prefer header and set response headers).</param>
+    /// <param name="metadataSelector">Function to build metadata from the domain value (e.g., extract ETag).</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <param name="options">Optional custom error-to-status-code mappings.</param>
+    /// <returns>An IResult with appropriate status code and headers.</returns>
+    public static Microsoft.AspNetCore.Http.IResult ToUpdatedHttpResult<TIn, TOut>(
+        this Result<TIn> result,
+        HttpContext httpContext,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        if (result.IsFailure)
+            return result.Error.ToHttpResult(options);
+
+        var metadata = metadataSelector(result.Value);
+        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
+        return outcome.ToHttpResult<TIn, TOut>(httpContext, map, options);
+    }
+
+    #endregion
+
     private static bool HasCompanionHeaders(Error error) => error switch
     {
         MethodNotAllowedError => true,

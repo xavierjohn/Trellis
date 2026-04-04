@@ -209,4 +209,124 @@ public static class WriteOutcomeExtensions
     }
 
     #endregion
+
+    #region WriteOutcome → Minimal API IResult (Prefer-aware)
+
+    /// <summary>
+    /// Converts a <see cref="WriteOutcome{T}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// with correct HTTP status codes and headers, honoring the RFC 7240 <c>Prefer</c> request header.
+    /// The domain value is serialized directly without transformation.
+    /// </summary>
+    /// <typeparam name="T">The domain type contained in the outcome.</typeparam>
+    /// <param name="outcome">The write outcome to convert.</param>
+    /// <param name="httpContext">The HTTP context (used to read Prefer header and set response headers).</param>
+    /// <param name="options">Optional custom error-to-status-code mappings.</param>
+    /// <returns>An <see cref="Microsoft.AspNetCore.Http.IResult"/> with appropriate status code, headers, and optional body.</returns>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<T>(
+        this WriteOutcome<T> outcome,
+        HttpContext httpContext,
+        TrellisAspOptions? options = null)
+        => outcome.ToHttpResult<T, T>(httpContext, null, options);
+
+    /// <summary>
+    /// Converts a <see cref="WriteOutcome{T}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// with correct HTTP status codes and headers, honoring the RFC 7240 <c>Prefer</c> request header.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When the <c>Prefer: return=minimal</c> header is present and the outcome is <see cref="WriteOutcome{T}.Updated"/>,
+    /// returns 204 No Content instead of 200 OK with body. When <c>Prefer: return=representation</c> is present,
+    /// returns 200 OK with body (the default behavior for Updated).
+    /// </para>
+    /// <para>
+    /// The <c>Preference-Applied</c> response header is emitted when a <c>return</c> preference is honored.
+    /// Other outcomes (<see cref="WriteOutcome{T}.Created"/>, <see cref="WriteOutcome{T}.UpdatedNoContent"/>,
+    /// <see cref="WriteOutcome{T}.Accepted"/>, <see cref="WriteOutcome{T}.AcceptedNoContent"/>) are not
+    /// affected by the <c>return</c> preference.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="T">The domain type contained in the outcome.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="outcome">The write outcome to convert.</param>
+    /// <param name="httpContext">The HTTP context (used to read Prefer header and set response headers).</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <param name="options">Optional custom error-to-status-code mappings.</param>
+    /// <returns>An <see cref="Microsoft.AspNetCore.Http.IResult"/> with appropriate status code, headers, and optional body.</returns>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<T, TOut>(
+        this WriteOutcome<T> outcome,
+        HttpContext httpContext,
+        Func<T, TOut>? map,
+        TrellisAspOptions? options = null)
+    {
+        var response = httpContext.Response;
+        var prefer = PreferHeader.Parse(httpContext.Request);
+
+        switch (outcome)
+        {
+            case WriteOutcome<T>.Created created:
+                if (created.Metadata is not null)
+                    ActionResultExtensions.ApplyMetadataHeaders(response, created.Metadata);
+                if (map is not null)
+                    return Results.Created(created.Location, map(created.Value));
+                return Results.Created(created.Location, created.Value);
+
+            case WriteOutcome<T>.Updated replaced:
+                if (replaced.Metadata is not null)
+                    ActionResultExtensions.ApplyMetadataHeaders(response, replaced.Metadata);
+
+                if (prefer.ReturnMinimal)
+                {
+                    AppendVaryPrefer(response);
+                    response.Headers["Preference-Applied"] = "return=minimal";
+                    return Results.NoContent();
+                }
+
+                AppendVaryPrefer(response);
+                if (prefer.ReturnRepresentation)
+                    response.Headers["Preference-Applied"] = "return=representation";
+
+                if (map is not null)
+                    return Results.Ok(map(replaced.Value));
+                return Results.Ok(replaced.Value);
+
+            case WriteOutcome<T>.UpdatedNoContent noContent:
+                if (noContent.Metadata is not null)
+                    ActionResultExtensions.ApplyMetadataHeaders(response, noContent.Metadata);
+                return Results.NoContent();
+
+            case WriteOutcome<T>.Accepted accepted:
+                if (accepted.MonitorUri is not null)
+                    response.Headers.Location = accepted.MonitorUri;
+                if (accepted.RetryAfter is not null)
+                    response.Headers["Retry-After"] = accepted.RetryAfter.ToHeaderValue();
+                if (map is not null)
+                    return new StatusCodeWithBodyResult(StatusCodes.Status202Accepted, Results.Ok(map(accepted.StatusBody)));
+                return new StatusCodeWithBodyResult(StatusCodes.Status202Accepted, Results.Ok(accepted.StatusBody));
+
+            case WriteOutcome<T>.AcceptedNoContent acceptedNoContent:
+                if (acceptedNoContent.MonitorUri is not null)
+                    response.Headers.Location = acceptedNoContent.MonitorUri;
+                if (acceptedNoContent.RetryAfter is not null)
+                    response.Headers["Retry-After"] = acceptedNoContent.RetryAfter.ToHeaderValue();
+                return Results.StatusCode(StatusCodes.Status202Accepted);
+
+            default:
+                throw new InvalidOperationException($"Unknown WriteOutcome type: {outcome.GetType().Name}");
+        }
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Wraps an inner <see cref="Microsoft.AspNetCore.Http.IResult"/> and overrides the response status code.
+    /// </summary>
+    private sealed class StatusCodeWithBodyResult(int statusCode, Microsoft.AspNetCore.Http.IResult inner) : Microsoft.AspNetCore.Http.IResult
+    {
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.StatusCode = statusCode;
+            await inner.ExecuteAsync(httpContext).ConfigureAwait(false);
+            httpContext.Response.StatusCode = statusCode;
+        }
+    }
 }
