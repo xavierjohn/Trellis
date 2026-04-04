@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <!-- PublishAot disabled: Trellis.EntityFrameworkCore's TrellisScalarConverter does not yet implement
-         MaterializeScalar/MaterializeSymbolic required by EF Core's compiled model for NativeAOT.
-         See backlog item. The source generator and JsonSerializerContext are kept for AOT-ready JSON. -->
+    <PublishAot>true</PublishAot>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.EntityFrameworkCore.GeneratedInterceptors</InterceptorsNamespaces>
     <RootNamespace>SampleMinimalApi</RootNamespace>
   </PropertyGroup>

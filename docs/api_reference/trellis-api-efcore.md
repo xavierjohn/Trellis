@@ -49,6 +49,15 @@ configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 // Auto-ignores Aggregate<TId>.IsChanged (transient property, not persisted)
 ```
 
+### NativeAOT Compiled Model Support
+
+`TrellisScalarConverter<TModel, TProvider>` is fully compatible with EF Core's compiled model generator (`dotnet ef dbcontext optimize`). The `MaterializeScalar` and `MaterializeSymbolic` methods are public static, allowing the generated code to reference them directly without reflection. This enables `PublishAot=true` for applications using Trellis value objects with EF Core.
+
+```bash
+# Generate compiled model for NativeAOT publishing
+dotnet ef dbcontext optimize --output-dir CompiledModels --namespace MyApp.CompiledModels
+```
+
 ### Aggregate ETag Convention and Interceptor
 
 Optimistic concurrency is automatic for all `Aggregate<TId>` entities:

@@ -69,9 +69,11 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
     private static Expression<Func<TProvider, TModel>> BuildScalarToModelExpression()
     {
         var param = Expression.Parameter(typeof(TProvider), "v");
-        var materializeMethod = typeof(TrellisScalarConverter<TModel, TProvider>)
-            .GetMethod(nameof(MaterializeScalar), BindingFlags.NonPublic | BindingFlags.Static)!;
-        var body = Expression.Call(materializeMethod, param);
+        var body = Expression.Call(
+            typeof(TrellisScalarConverter<TModel, TProvider>),
+            nameof(MaterializeScalar),
+            Type.EmptyTypes,
+            param);
         return Expression.Lambda<Func<TProvider, TModel>>(body, param);
     }
 
@@ -82,9 +84,11 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
                 $"Symbolic value object {typeof(TModel).Name} must use a string provider type.");
 
         var param = Expression.Parameter(typeof(TProvider), "v");
-        var materializeMethod = typeof(TrellisScalarConverter<TModel, TProvider>)
-            .GetMethod(nameof(MaterializeSymbolic), BindingFlags.NonPublic | BindingFlags.Static)!;
-        var body = Expression.Call(materializeMethod, param);
+        var body = Expression.Call(
+            typeof(TrellisScalarConverter<TModel, TProvider>),
+            nameof(MaterializeSymbolic),
+            Type.EmptyTypes,
+            param);
         return Expression.Lambda<Func<TProvider, TModel>>(body, param);
     }
 
@@ -123,7 +127,15 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
         return Expression.Lambda<Func<string, Result<TModel>>>(body, param).Compile();
     }
 
-    private static TModel MaterializeScalar(TProvider value)
+    /// <summary>
+    /// Materializes a scalar value object from a database provider value.
+    /// Public to enable EF Core compiled model code generation for NativeAOT.
+    /// </summary>
+    /// <param name="value">The database provider value to materialize.</param>
+    /// <returns>The materialized Trellis value object.</returns>
+    /// <exception cref="TrellisPersistenceMappingException">Thrown when the value fails validation.</exception>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required for EF Core compiled model NativeAOT code generation")]
+    public static TModel MaterializeScalar(TProvider value)
     {
         try
         {
@@ -145,7 +157,15 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
         }
     }
 
-    private static TModel MaterializeSymbolic(TProvider value)
+    /// <summary>
+    /// Materializes a symbolic value object from a database provider value (string name).
+    /// Public to enable EF Core compiled model code generation for NativeAOT.
+    /// </summary>
+    /// <param name="value">The database provider value (symbolic name) to materialize.</param>
+    /// <returns>The materialized Trellis symbolic value object.</returns>
+    /// <exception cref="TrellisPersistenceMappingException">Thrown when the value fails validation or is null.</exception>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required for EF Core compiled model NativeAOT code generation")]
+    public static TModel MaterializeSymbolic(TProvider value)
     {
         try
         {
