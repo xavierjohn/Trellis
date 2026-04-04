@@ -114,7 +114,6 @@ public partial class Address : ValueObject
     { yield return Street; yield return City; yield return State; yield return ZipCode; }
 }
 // Generator emits: private Address() { Street = null!; City = null!; State = null!; ZipCode = null!; }
-}
 
 public class Customer
 {

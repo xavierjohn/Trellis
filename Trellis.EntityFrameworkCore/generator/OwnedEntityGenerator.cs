@@ -114,7 +114,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         INamedTypeSymbol? parent = symbol.ContainingType;
         while (parent is not null)
         {
-            nestingParents.Insert(0, $"{AccessibilityToString(parent.DeclaredAccessibility)} partial {TypeKindKeyword(parent)} {FormatTypeName(parent)}");
+            nestingParents.Insert(0, BuildContainingTypeDeclaration(parent));
             parent = parent.ContainingType;
         }
 
@@ -338,4 +338,25 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
 
     private static string EscapeIdentifier(string name) =>
         SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None ? "@" + name : name;
+
+    private static string BuildContainingTypeDeclaration(INamedTypeSymbol containingType)
+    {
+        var parts = new List<string> { AccessibilityToString(containingType.DeclaredAccessibility) };
+
+        if (containingType.IsStatic)
+            parts.Add("static");
+        else
+        {
+            if (containingType.IsAbstract && containingType.TypeKind == TypeKind.Class)
+                parts.Add("abstract");
+            if (containingType.IsSealed && containingType.TypeKind == TypeKind.Class)
+                parts.Add("sealed");
+        }
+
+        parts.Add("partial");
+        parts.Add(TypeKindKeyword(containingType));
+        parts.Add(FormatTypeName(containingType));
+
+        return string.Join(" ", parts);
+    }
 }
