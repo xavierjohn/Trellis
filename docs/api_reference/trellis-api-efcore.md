@@ -36,7 +36,7 @@ IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification)
 
 ### Value Converter Registration
 
-`ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types, `Money`, and composite `ValueObject` types. Also registers `AggregateETagConvention` for optimistic concurrency. Call once — do NOT add manual `HasConversion` for Trellis types.
+`ApplyTrellisConventions()` in `ConfigureConventions` registers value converters for all `IScalarValue` types, `Money`, and composite `ValueObject` types. Also registers `AggregateETagConvention` for optimistic concurrency and `AggregateTransientPropertyConvention` to auto-ignore transient base-class properties. Call once — do NOT add manual `HasConversion` for Trellis types.
 
 ```csharp
 // In ConfigureConventions (NOT OnModelCreating)
@@ -46,6 +46,7 @@ configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
 // Auto-maps composite ValueObject types as owned types (e.g., Address → Street, City, State, ZipCode columns)
 // MonetaryAmount maps to a single decimal column (scalar value object convention)
 // Auto-marks Aggregate<TId>.ETag as IsConcurrencyToken()
+// Auto-ignores Aggregate<TId>.IsChanged (transient property, not persisted)
 ```
 
 ### Aggregate ETag Convention and Interceptor
@@ -56,6 +57,14 @@ Optimistic concurrency is automatic for all `Aggregate<TId>` entities:
 - **`AggregateETagInterceptor`** (registered by `AddTrellisInterceptors()`): generates a new GUID-based ETag on `EntityState.Modified` aggregate entries before `SaveChanges`
 
 No additional configuration is needed. When two processes modify the same aggregate concurrently, the second `SaveChangesResultAsync` returns `ConflictError`. At the HTTP layer, use `OptionalETag` for `If-Match` validation → `PreconditionFailedError` (412).
+
+### Aggregate Transient Property Convention
+
+`AggregateTransientPropertyConvention` (registered by `ApplyTrellisConventions`) automatically excludes transient base-class properties from the EF Core model for all `Aggregate<TId>` entities:
+
+- **`IsChanged`** (from `IChangeTracking`): reflects in-memory state (uncommitted domain events), not persisted
+
+No `builder.Ignore(o => o.IsChanged)` needed in `OnModelCreating`. The convention handles this automatically for all aggregate types, including derived aggregates that override `IsChanged`.
 
 ### EntityTimestampInterceptor
 

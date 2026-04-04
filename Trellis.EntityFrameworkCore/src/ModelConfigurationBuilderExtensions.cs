@@ -68,6 +68,7 @@ public static class ModelConfigurationBuilderExtensions
         configurationBuilder.Conventions.Add(_ => new CompositeValueObjectConvention(compositeTypes));
         configurationBuilder.Conventions.Add(static _ => new MoneyConvention());
         configurationBuilder.Conventions.Add(static _ => new AggregateETagConvention());
+        configurationBuilder.Conventions.Add(static _ => new AggregateTransientPropertyConvention());
 
         return configurationBuilder;
     }

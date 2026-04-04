@@ -79,6 +79,8 @@ public class AppDbContext : DbContext
 - Scans your assemblies for types implementing `IScalarValue<TSelf, TPrimitive>` (e.g., `RequiredGuid<T>`, `RequiredString<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, custom `ScalarValueObject<,>` subclasses)
 - Scans for `RequiredEnum<T>` types and stores them as strings (using `Value` / `TryFromName`)
 - Always includes the `Trellis.Primitives` assembly (for `EmailAddress`, `Url`, `PhoneNumber`, etc.)
+- Registers `AggregateETagConvention` — marks `ETag` as a concurrency token on aggregate types
+- Registers `AggregateTransientPropertyConvention` — auto-ignores `IsChanged` on aggregate types (no manual `builder.Ignore` needed)
 
 ### Manual Override
 

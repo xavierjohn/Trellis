@@ -262,6 +262,15 @@ var debugView = context.ToMaybeMappingDebugString();
 
 If a `Maybe<T>` property is not declared `partial`, the generator emits diagnostic `TRLSGEN100`.
 
+## Aggregate Conventions
+
+`ApplyTrellisConventions` registers two conventions for `Aggregate<TId>` types:
+
+- **`AggregateETagConvention`** — marks `ETag` as `IsConcurrencyToken()` with `MaxLength(50)` for optimistic concurrency
+- **`AggregateTransientPropertyConvention`** — auto-ignores transient base-class properties (`IsChanged`) that reflect in-memory state and must not be persisted
+
+No manual `builder.Ignore(o => o.IsChanged)` is needed in `OnModelCreating`. The convention handles all aggregate types automatically, including derived aggregates that override `IsChanged`.
+
 ## Result-Returning SaveChanges
 
 Wraps `SaveChangesAsync` to return `Result<int>` instead of throwing on database conflicts:
