@@ -910,22 +910,27 @@ Any type extending `ValueObject` that does not implement `IScalarValue` is autom
 
 ### Entity Declaration
 
+Use the `[OwnedEntity]` attribute on a `partial` class to auto-generate the private parameterless constructor required by EF Core:
+
 ```csharp
-public class Address : ValueObject
+[OwnedEntity]
+public partial class Address : ValueObject
 {
     public string Street { get; private set; }
     public string City { get; private set; }
     public string State { get; private set; }
     public string ZipCode { get; private set; }
 
-    private Address() { Street = City = State = ZipCode = null!; } // EF Core materialization
     public Address(string street, string city, string state, string zipCode)
     { Street = street; City = city; State = state; ZipCode = zipCode; }
 
     protected override IEnumerable<IComparable?> GetEqualityComponents()
     { yield return Street; yield return City; yield return State; yield return ZipCode; }
 }
+// Generator emits: private Address() { Street = null!; City = null!; State = null!; ZipCode = null!; }
 ```
+
+> **Diagnostics:** `TRLSGEN101` (error) if the type is not `partial`; `TRLSGEN102` (warning) if it already has a parameterless constructor.
 
 ### Required and Optional Properties
 
