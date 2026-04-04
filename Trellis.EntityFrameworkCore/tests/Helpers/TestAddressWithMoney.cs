@@ -5,20 +5,14 @@ using Trellis.Primitives;
 /// <summary>
 /// Test composite value object containing a nested <see cref="Money"/> composite value object.
 /// Used to verify that <c>Maybe&lt;T&gt;</c> optionality propagates to nested owned types.
+/// Uses [OwnedEntity] to auto-generate the private parameterless constructor.
 /// </summary>
-public class TestAddressWithMoney : ValueObject
+[OwnedEntity]
+public partial class TestAddressWithMoney : ValueObject
 {
     public string Street { get; private set; }
     public string City { get; private set; }
     public Money DeliveryFee { get; private set; }
-
-    // ReSharper disable once UnusedMember.Local — used by EF Core for materialization
-    private TestAddressWithMoney()
-    {
-        Street = null!;
-        City = null!;
-        DeliveryFee = null!;
-    }
 
     public TestAddressWithMoney(string street, string city, Money deliveryFee)
     {

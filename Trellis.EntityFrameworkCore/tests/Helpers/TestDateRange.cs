@@ -4,16 +4,14 @@ namespace Trellis.EntityFrameworkCore.Tests.Helpers;
 /// Test composite value object with a non-nullable value-type property (<see cref="DateTime"/>).
 /// Used to verify the convention handles value-type properties that cannot be marked nullable
 /// via <c>IsRequired(false)</c>.
+/// Uses [OwnedEntity] to auto-generate the private parameterless constructor.
 /// </summary>
-public class TestDateRange : ValueObject
+[OwnedEntity]
+public partial class TestDateRange : ValueObject
 {
     public DateTime Start { get; private set; }
     public DateTime End { get; private set; }
     public string Label { get; private set; }
-
-    // ReSharper disable once UnusedMember.Local — used by EF Core for materialization
-    private TestDateRange() =>
-        Label = null!;
 
     public TestDateRange(DateTime start, DateTime end, string label)
     {
