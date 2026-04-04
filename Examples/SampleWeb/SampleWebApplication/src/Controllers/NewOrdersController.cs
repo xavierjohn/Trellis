@@ -1,7 +1,6 @@
 namespace SampleWebApplication.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
 using SampleUserLibrary;
@@ -46,7 +45,7 @@ public class NewOrdersController(
                 request.Lines.TraverseAsync(line =>
                     db.Products
                         .FirstOrDefaultResultAsync(p => p.Id == line.ProductId,
-                            Error.NotFound("Product not found.", line.ProductId.ToString(CultureInfo.InvariantCulture)))
+                            Error.NotFound("Product not found.", line.ProductId))
                         .BindAsync(product => order.AddLine(product, line.Quantity)))
                 .MapAsync(_ => order))
             .TapAsync(order => { db.Orders.Add(order); return Task.CompletedTask; })
@@ -68,7 +67,7 @@ public class NewOrdersController(
         var result = await db.Orders
             .Include(o => o.Lines)
             .FirstOrDefaultResultAsync(o => o.Id == id,
-                Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)));
+                Error.NotFound("Order not found.", id));
 
         if (result.IsFailure)
             return result.Error.ToActionResult<OrderResponse>(this);
@@ -99,7 +98,7 @@ public class NewOrdersController(
         // The payment reference should also be stored on the order for refund support.
         var result = await db.Orders.Include(o => o.Lines)
             .FirstOrDefaultResultAsync(o => o.Id == id,
-                Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
+                Error.NotFound("Order not found.", id), ct)
             .BindAsync(order => order.Confirm())
             .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
             .BindAsync(order =>
@@ -134,7 +133,7 @@ public class NewOrdersController(
         // RefundPaymentAsync here if the order was previously confirmed with payment.
         var result = await db.Orders.Include(o => o.Lines)
             .FirstOrDefaultResultAsync(o => o.Id == id,
-                Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
+                Error.NotFound("Order not found.", id), ct)
             .BindAsync(order => order.Cancel())
             .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
             .CheckAsync(order =>

@@ -38,6 +38,38 @@ maybe.Should().HaveValueEquivalentTo(expected)
 🔴 **Do NOT use** `.HasValue.Should().BeTrue()` or `.HasNoValue.Should().BeTrue()` — these bypass
 Trellis.Testing's assertion messages. Always use `.Should().HaveValue()` / `.Should().BeNone()`.
 
+## Unwrap — Test Value Extraction
+
+Extracts values from `Result<T>` or `Maybe<T>` in test code without triggering TRLS003. Throws `UnwrapFailedException` with descriptive error details on failure/none.
+
+```csharp
+// Result<T>
+T Unwrap<T>(this Result<T>)
+Task<T> UnwrapAsync<T>(this Task<Result<T>>)
+ValueTask<T> UnwrapAsync<T>(this ValueTask<Result<T>>)
+
+// Maybe<T>
+T Unwrap<T>(this Maybe<T>)
+```
+
+**Usage — typical test pattern:**
+```csharp
+result.Should().BeSuccess();
+var value = result.Unwrap(); // No TRLS003 warning
+
+// Or in async tests:
+var value = await resultTask.UnwrapAsync();
+```
+
+**Exception on failure:**
+```csharp
+var result = Result.Failure<int>(Error.NotFound("Item not found."));
+result.Unwrap(); // throws UnwrapFailedException:
+                 // "Called Unwrap() on a failed Result<Int32>. Error: [not.found.error] Item not found."
+```
+
+🔴 **Do NOT use in production code.** Use `Match`, `GetValueOrDefault`, or ROP operations instead.
+
 ## Error Assertions
 
 ```csharp
@@ -224,10 +256,10 @@ var result = Customer.TryCreate(firstName, lastName, email, phone, address);
 result.Should().BeSuccess()
     .Which.Email.Should().Be(email);
 
-// ✅ Also correct — assert then access .Value (TRLS003 still fires but assertion guarantees safety)
+// ✅ Also correct — assert then use Unwrap() to extract value without TRLS003
 var result = Order.TryCreate(customerId, lineItems);
 result.Should().BeSuccess();
-var order = result.Value;    // safe after assertion, suppress TRLS003 if needed
+var order = result.Unwrap();    // safe after assertion, no TRLS003 warning
 
 // ✅ Correct — failure assertions
 var result = order.Submit();
@@ -259,7 +291,7 @@ public void CreateOrder_EmptySubmit_ReturnsFailure()
     var orderResult = Order.TryCreate(CustomerId.NewUniqueV4());
     orderResult.Should().BeSuccess();
 
-    var order = orderResult.Value;
+    var order = orderResult.Unwrap();
     var result = order.Submit();
 
     result.Should().BeFailure()

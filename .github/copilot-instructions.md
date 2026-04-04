@@ -204,7 +204,16 @@ Before considering work complete, verify:
    - `docs/api_reference/trellis-api-testing-reference.md` — if test helpers were added or changed
    - Package `README.md` — if the package's public surface changed
    - Docfx articles in `docs/docfx_project/articles/` — if relevant articles exist for the feature area
-4. **PR summary prepared** — when asked for a PR summary, format it as GitHub-flavored Markdown with a short title line suitable for the PR title, followed by a body with headings, bullet lists, tables, and code blocks as appropriate
+4. **PR summary prepared** — when asked for a PR summary, output it in a copy-paste-ready format:
+   - First line: `**Title:** <short PR title>` — a concise one-liner suitable for the GitHub PR title field
+   - Then a blank line followed by the PR body wrapped in a markdown code block:
+     ````
+     ```markdown
+     <full PR body in GitHub-flavored Markdown>
+     ```
+     ````
+   - The body should use headings, bullet lists, tables, and code blocks as appropriate
+   - This format lets the user copy the title directly and paste the body into the GitHub PR description field
 5. **Do NOT commit without explicit approval** — stage changes and present the diff for review
 6. **Do NOT push branches** — the repository owner will push when ready
 7. **Do NOT create or merge pull requests** — present changes locally for review

@@ -95,14 +95,14 @@ public class FraudDetectionService
         await Task.Delay(200, cancellationToken); // Simulate MFA verification
 
         if (string.IsNullOrWhiteSpace(verificationCode))
-            return Error.Unauthorized("Verification code required for this transaction", customerId.ToString(CultureInfo.InvariantCulture));
+            return Error.Unauthorized("Verification code required for this transaction", customerId);
 
         if (verificationCode.Length != 6 || !verificationCode.All(char.IsDigit))
             return Error.Validation("Invalid verification code format", nameof(verificationCode));
 
         // Simulate verification check
         if (verificationCode == "000000")
-            return Error.Unauthorized("Invalid verification code", customerId.ToString(CultureInfo.InvariantCulture));
+            return Error.Unauthorized("Invalid verification code", customerId);
 
         Console.WriteLine($"? Customer {customerId} identity verified");
         return Result.Success();

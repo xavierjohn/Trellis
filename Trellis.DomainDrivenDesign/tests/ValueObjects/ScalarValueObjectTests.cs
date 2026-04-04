@@ -363,4 +363,39 @@ public class ScalarValueObjectTests
     }
 
     #endregion
+
+    #region IFormattable — Error factory integration
+
+    [Fact]
+    public void CustomerId_AsErrorInstance_FormatsToInvariantGuidString()
+    {
+        var guid = Guid.Parse("01234567-89ab-cdef-0123-456789abcdef");
+        var customerId = new CustomerId(guid);
+
+        var error = Error.NotFound("Customer not found.", customerId);
+
+        error.Instance.Should().Be("01234567-89ab-cdef-0123-456789abcdef");
+    }
+
+    [Fact]
+    public void Quantity_AsErrorInstance_FormatsToInvariantString()
+    {
+        var quantity = new Quantity(42);
+
+        var error = Error.Domain("Insufficient quantity.", quantity);
+
+        error.Instance.Should().Be("42");
+    }
+
+    [Fact]
+    public void MoneySimple_AsErrorInstance_FormatsToInvariantDecimalString()
+    {
+        var money = new MoneySimple(1234.56m);
+
+        var error = Error.Conflict("Amount mismatch.", money);
+
+        error.Instance.Should().Be("1234.56");
+    }
+
+    #endregion
 }

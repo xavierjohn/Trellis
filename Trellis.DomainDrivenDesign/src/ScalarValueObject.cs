@@ -15,6 +15,7 @@
 /// <item>Validation: Encapsulates validation rules for the wrapped value</item>
 /// <item>Implicit conversion: Allows transparent usage as the underlying type</item>
 /// <item>IConvertible support: Enables conversion to other types when needed</item>
+/// <item>IFormattable support: Enables culture-aware formatting, including use with <see cref="Error"/> factory instance parameters</item>
 /// </list>
 /// </para>
 /// <para>
@@ -27,7 +28,8 @@
 /// </list>
 /// </para>
 /// <para>
-/// The class implements <see cref="IConvertible"/> to allow conversion operations,
+/// The class implements <see cref="IConvertible"/> to allow conversion operations
+/// and <see cref="IFormattable"/> to enable culture-aware formatting,
 /// and provides an implicit operator to seamlessly convert to the underlying type.
 /// </para>
 /// </remarks>
@@ -118,7 +120,7 @@
 /// }
 /// ]]></code>
 /// </example>
-public abstract class ScalarValueObject<TSelf, T> : ValueObject, IConvertible
+public abstract class ScalarValueObject<TSelf, T> : ValueObject, IConvertible, IFormattable
 where TSelf : ScalarValueObject<TSelf, T>, IScalarValue<TSelf, T>
 where T : IComparable
 {
@@ -328,6 +330,19 @@ where T : IComparable
     /// <param name="provider">An <see cref="IFormatProvider"/> for culture-specific formatting.</param>
     /// <returns>The wrapped value converted to a <see cref="string"/>, or an empty string if null.</returns>
     public string ToString(IFormatProvider? provider) => Convert.ToString(Value, provider) ?? string.Empty;
+
+    /// <summary>
+    /// Formats the wrapped value using the specified format and provider.
+    /// Delegates to the underlying value's <see cref="IFormattable"/> implementation if available;
+    /// otherwise falls back to <see cref="IConvertible.ToString(IFormatProvider)"/>.
+    /// </summary>
+    /// <param name="format">A format string, or null for the default format.</param>
+    /// <param name="formatProvider">An <see cref="IFormatProvider"/> for culture-specific formatting, or null for the current culture.</param>
+    /// <returns>The formatted string representation of the wrapped value.</returns>
+    public string ToString(string? format, IFormatProvider? formatProvider) =>
+        Value is IFormattable formattable
+            ? formattable.ToString(format, formatProvider)
+            : Convert.ToString(Value, formatProvider) ?? string.Empty;
 
     /// <summary>
     /// Converts the wrapped value to the specified type.

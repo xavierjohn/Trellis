@@ -44,7 +44,21 @@ customer.UpdateEmail(newEmail)
 
 ## When to Suppress Warnings
 
-Do not suppress this warning. If you truly want to ignore the result, make it explicit:
+Do not suppress this warning. If you truly want to ignore the result, use `Discard()` to make the intent explicit:
+
+```csharp
+customer.UpdateEmail(newEmail).Discard(); // Explicit — intentionally ignoring the outcome
+```
+
+For async pipelines, use `DiscardAsync()`:
+
+```csharp
+await GetCustomerAsync(id)
+    .BindAsync(c => c.UpdateEmail(newEmail))
+    .DiscardAsync(); // Explicit — best-effort operation
+```
+
+Alternatively, you can use the discard operator:
 
 ```csharp
 _ = customer.UpdateEmail(newEmail); // Explicit discard
