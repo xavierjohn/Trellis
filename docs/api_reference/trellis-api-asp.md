@@ -273,8 +273,7 @@ public static ActionResult ToActionResult<T, TOut>(
 public static IResult ToHttpResult<T, TOut>(
     this WriteOutcome<T> outcome,
     HttpContext httpContext,
-    Func<T, TOut>? map = null,
-    TrellisAspOptions? options = null)
+    Func<T, TOut>? map = null)
 ```
 
 Maps each variant to the correct HTTP response: `Created` → 201 + `Location`, `Updated` → 200, `UpdatedNoContent` → 204, `Accepted`/`AcceptedNoContent` → 202 + optional `Location` and `Retry-After` headers. Applies `RepresentationMetadata` headers when present.
@@ -282,7 +281,7 @@ Maps each variant to the correct HTTP response: `Created` → 201 + `Location`, 
 The Prefer-aware overloads parse the RFC 7240 `Prefer` header and adjust the `Updated` response:
 - `Prefer: return=minimal` → `Updated` returns 204 No Content (instead of 200 + body)
 - `Prefer: return=representation` → `Updated` returns 200 OK + body (default behavior, explicitly acknowledged)
-- Emits `Preference-Applied` and `Vary: Prefer` response headers when a `return` preference is honored
+- Always emits `Vary: Prefer` for `Updated` responses; emits `Preference-Applied` only when a `return` preference is honored
 - `Created`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent` are not affected by the `return` preference
 
 ### ToUpdatedActionResult / ToUpdatedActionResultAsync (MVC)

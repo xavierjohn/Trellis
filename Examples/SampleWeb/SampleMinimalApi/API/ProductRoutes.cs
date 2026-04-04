@@ -67,9 +67,11 @@ public static class ProductRoutes
             var items = products.Select(ProductResponse.From).ToArray();
 
             // RFC 9110 §14: Return 206 Partial Content when not all items fit,
-            // or 200 OK when the response contains the complete set.
-            // ToHttpResult handles empty pages (items.Length == 0) gracefully as 200 OK.
-            var to = items.Length > 0 ? from + items.Length - 1 : from;
+            // or 200 OK when the response contains the complete set or empty page.
+            if (items.Length == 0)
+                return Results.Ok(items);
+
+            var to = from + items.Length - 1;
             return Result.Success(items).ToHttpResult(from, to, totalCount);
         });
 
