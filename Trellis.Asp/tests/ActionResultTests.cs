@@ -95,22 +95,6 @@ public class ActionResultTests : IDisposable
     }
 
     [Fact]
-    public void ToPartialOrOkActionResult_will_return_Okay_status_code_when_results_are_complete()
-    {
-        // Arrange
-        var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success("Test");
-
-        // Act
-        var response = result.ToActionResult(controller, 0, 9, 10);
-
-        // Assert
-        var okObjResult = response.Result.As<OkObjectResult>();
-        okObjResult.Value.Should().Be("Test");
-        okObjResult.StatusCode.Should().Be(StatusCodes.Status200OK);
-    }
-
-    [Fact]
     public void Will_return_NoContent_for_Unit_success()
     {
         // Arrange
@@ -289,39 +273,6 @@ public class ActionResultTests : IDisposable
     #endregion
 
     #region Partial Content Tests
-
-    [Fact]
-    public void ToActionResult_with_range_returns_PartialContent_when_subset()
-    {
-        // Arrange
-        var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success("Test");
-
-        // Act
-        var response = result.ToActionResult(controller, 0, 4, 10);
-
-        // Assert
-        var partialResult = response.Result.As<PartialContentResult>();
-        partialResult.StatusCode.Should().Be(StatusCodes.Status206PartialContent);
-        partialResult.Value.Should().Be("Test");
-    }
-
-    [Fact]
-    public void ToActionResult_with_range_returns_failure_for_error()
-    {
-        // Arrange
-        var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.NotFound("Not found");
-        var result = Result.Failure<string>(error);
-
-        // Act
-        var response = result.ToActionResult(controller, 0, 4, 10);
-
-        // Assert
-        response.Result.Should().BeOfType<ObjectResult>();
-        var objectResult = response.Result.As<ObjectResult>();
-        objectResult.StatusCode.Should().Be(StatusCodes.Status404NotFound);
-    }
 
     [Fact]
     public void ToActionResult_with_funcRange_returns_Ok_when_complete()

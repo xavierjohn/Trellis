@@ -65,11 +65,15 @@ public sealed class PartialContentHttpResult : IResult
     /// <inheritdoc />
     public async Task ExecuteAsync(HttpContext httpContext)
     {
-        // Set 206 status and Content-Range header, then delegate body writing to the inner result.
-        // The inner result (e.g., Results.Ok) would normally set 200, but we override it.
-        httpContext.Response.StatusCode = StatusCodes.Status206PartialContent;
+        // Use OnStarting to override the status code set by the inner result (e.g., Ok sets 200).
+        // OnStarting callbacks run just before headers are flushed to the wire — LIFO order.
+        httpContext.Response.OnStarting(static state =>
+        {
+            ((HttpResponse)state).StatusCode = StatusCodes.Status206PartialContent;
+            return Task.CompletedTask;
+        }, httpContext.Response);
+
         httpContext.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.ContentRange] = _contentRangeHeaderValue.ToString();
         await _inner.ExecuteAsync(httpContext).ConfigureAwait(false);
-        httpContext.Response.StatusCode = StatusCodes.Status206PartialContent;
     }
 }

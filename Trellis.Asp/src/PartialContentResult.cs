@@ -25,7 +25,7 @@ using Trellis;
 /// <example>Content-Range: items 0-24/100</example>
 /// </para>
 /// <para>
-/// This class is typically used by <see cref="ActionResultExtensions.ToActionResult{TValue}(Result{TValue}, ControllerBase, long, long, long)"/>
+/// This class is typically used by <see cref="ActionResultExtensions"/> partial content overloads
 /// and should rarely be instantiated directly in controller code.
 /// </para>
 /// </remarks>
