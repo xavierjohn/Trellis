@@ -12,6 +12,12 @@ public static partial class CheckIfExtensionsAsync
     /// Conditionally runs an async validation function when the boolean condition is true.
     /// Both the input and the check function are async.
     /// </summary>
+    /// <typeparam name="T">Type of the original result value.</typeparam>
+    /// <typeparam name="TK">Type of the check function's result value (discarded on success).</typeparam>
+    /// <param name="resultTask">The task containing the result to check.</param>
+    /// <param name="condition">The condition that must be true for the check to run.</param>
+    /// <param name="func">The async validation function that returns a Result.</param>
+    /// <returns>The original result if the condition is false or the check passes; otherwise the check's failure.</returns>
     public static async Task<Result<T>> CheckIfAsync<T, TK>(this Task<Result<T>> resultTask, bool condition, Func<T, Task<Result<TK>>> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
@@ -46,6 +52,12 @@ public static partial class CheckIfExtensionsAsync
     /// Conditionally runs an async validation function when the predicate returns true.
     /// Both the input and the check function are async.
     /// </summary>
+    /// <typeparam name="T">Type of the original result value.</typeparam>
+    /// <typeparam name="TK">Type of the check function's result value (discarded on success).</typeparam>
+    /// <param name="resultTask">The task containing the result to check.</param>
+    /// <param name="predicate">The predicate to evaluate against the success value.</param>
+    /// <param name="func">The async validation function that returns a Result.</param>
+    /// <returns>The original result if the predicate returns false or the check passes; otherwise the check's failure.</returns>
     public static async Task<Result<T>> CheckIfAsync<T, TK>(this Task<Result<T>> resultTask, Func<T, bool> predicate, Func<T, Task<Result<TK>>> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);

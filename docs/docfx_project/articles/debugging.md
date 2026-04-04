@@ -243,7 +243,12 @@ public void GetActiveUser_Should_Fail_For_Inactive_User()
 
 ### Built-in Debug Extension Methods
 
-The library includes debug extension methods that are **automatically excluded from RELEASE builds** (no performance impact in production):
+The library includes debug extension methods that are **automatically excluded from RELEASE builds** (no performance impact in production). In DEBUG builds, you can also disable them at runtime via `ResultDebugSettings.EnableDebugTracing`:
+
+```csharp
+// Disable debug tracing at runtime (e.g., in integration tests or staging environments)
+ResultDebugSettings.EnableDebugTracing = false;
+```
 
 ```csharp
 // Basic debug output - prints success/failure and value/error

@@ -13,8 +13,9 @@ using Trellis.Primitives;
 public class SpecificationTests : IAsyncLifetime
 {
     private static readonly string SqlServerConnectionString =
-        Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION")
-        ?? "Server=(localdb)\\MSSQLLocalDB;Database=TrellisSpecTests;Trusted_Connection=True;TrustServerCertificate=True";
+        string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION"))
+            ? "Server=(localdb)\\MSSQLLocalDB;Database=TrellisSpecTests;Trusted_Connection=True;TrustServerCertificate=True"
+            : Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION")!;
 
     private SqliteConnection _sqliteConnection = null!;
     private ScalarValueTestDbContext _sqliteContext = null!;
