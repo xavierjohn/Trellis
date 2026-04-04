@@ -483,9 +483,12 @@ public static class HttpResultExtensions
             if (to < from || totalLength <= 0)
                 return Results.Ok(result.Value);
 
-            var partialResult = to - from + 1 != totalLength;
-            if (partialResult)
-                return new PartialContentHttpResult(from, to, totalLength, Results.Ok(result.Value));
+            // Clamp to against totalLength to prevent ContentRangeHeaderValue from throwing
+            var clampedTo = Math.Min(to, totalLength - 1);
+
+            var isCompleteRange = from == 0 && clampedTo == totalLength - 1;
+            if (!isCompleteRange)
+                return new PartialContentHttpResult(from, clampedTo, totalLength, Results.Ok(result.Value));
 
             return Results.Ok(result.Value);
         }
@@ -516,8 +519,11 @@ public static class HttpResultExtensions
             var contentRange = funcRange(result.Value);
             var value = funcValue(result.Value);
 
-            if (contentRange.From is null || contentRange.To is null || contentRange.Length is null)
+            if (contentRange.From is null || contentRange.To is null)
                 return Results.Ok(value);
+
+            if (contentRange.Length is null)
+                return new PartialContentHttpResult(contentRange, Results.Ok(value));
 
             var isCompleteRange = contentRange.From == 0 && contentRange.To == contentRange.Length - 1;
             if (!isCompleteRange)

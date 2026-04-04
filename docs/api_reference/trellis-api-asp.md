@@ -118,7 +118,7 @@ IResult ToHttpResult(this Error error, TrellisAspOptions? options = null)
 HTTP 206 Partial Content response for paginated results in MVC controllers. Automatically sets `Content-Range` headers per RFC 9110.
 
 ```csharp
-PartialContentResult(long rangeStart, long rangeEnd, long totalLength, object? value)
+PartialContentResult(long rangeStart, long rangeEnd, long? totalLength, object? value)
 PartialContentResult(ContentRangeHeaderValue contentRange, object? value)
 ContentRangeHeaderValue ContentRangeHeaderValue { get; }
 ```
