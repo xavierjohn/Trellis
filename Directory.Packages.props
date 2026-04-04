@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <!-- Runtime -->
   <ItemGroup>
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />

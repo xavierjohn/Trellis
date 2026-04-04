@@ -42,7 +42,7 @@ public static class NewOrderRoutes
                     request.Lines.TraverseAsync(line =>
                         db.Products
                             .FirstOrDefaultResultAsync(p => p.Id == line.ProductId,
-                                Error.NotFound($"Product {line.ProductId} not found.", "productId"))
+                                Error.NotFound("Product not found.", line.ProductId.ToString(CultureInfo.InvariantCulture)))
                             .BindAsync(product => order.AddLine(product, line.Quantity)))
                     .MapAsync(_ => order))
                 .TapAsync(order => { db.Orders.Add(order); return Task.CompletedTask; })
