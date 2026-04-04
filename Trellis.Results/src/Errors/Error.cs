@@ -334,7 +334,7 @@ public class Error : IEquatable<Error>
     // ──────────────────────────────────────────────────────────────────
 
     private static string? FormatInstance<TInstance>(TInstance instance) where TInstance : IFormattable =>
-        instance is null ? null : FormatInstance(instance);
+        instance is null ? null : instance.ToString(null, CultureInfo.InvariantCulture);
 
     /// <inheritdoc cref="BadRequest(string, string?)"/>
     /// <param name="detail">Description of why the request is bad.</param>
