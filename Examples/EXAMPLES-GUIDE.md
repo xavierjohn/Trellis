@@ -1,4 +1,4 @@
-﻿# Trellis Examples Guide
+# Trellis Examples Guide
 
 This directory contains working examples demonstrating different aspects of the Trellis library.
 
@@ -129,7 +129,7 @@ Shared library with value objects used by all examples.
 | **Result Conversion** | ✅ | ✅ | ✅ |
 | **Model Binding** | ⚠️ JSON only | ⚠️ JSON only | ✅ All sources |
 | **Action Filters** | ⚠️ Endpoint filters | ⚠️ Endpoint filters | ✅ Action filters |
-| **Native AOT** | ❌ | ✅ | ❌ |
+| **Native AOT** | ❌ | ⚠️ Blocked by EF Core | ❌ |
 | **Maybe&lt;T&gt; Optional Props** | ✅ | ✅ | ✅ |
 | **Startup Overhead** | +50μs | 0μs | +50μs |
 | **EF Core Persistence** | ✅ | ✅ | ✅ |

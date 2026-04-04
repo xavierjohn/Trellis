@@ -93,7 +93,7 @@ public static class NewOrderRoutes
                 .FirstOrDefaultResultAsync(o => o.Id == id,
                     Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
                 .BindAsync(order => order.Confirm())
-                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
                 .BindAsync(order =>
                     paymentService.ProcessPaymentAsync(order.Id, order.Total, ct)
                         .MapAsync(_ => order))
@@ -128,7 +128,7 @@ public static class NewOrderRoutes
                 .FirstOrDefaultResultAsync(o => o.Id == id,
                     Error.NotFound("Order not found.", id.ToString(CultureInfo.InvariantCulture)), ct)
                 .BindAsync(order => order.Cancel())
-                .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
                 .CheckAsync(order =>
                     notificationService.SendOrderCancellationAsync(order.Id, order.CustomerId, ct))
                 .RecoverOnFailureAsync(

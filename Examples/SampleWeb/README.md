@@ -1,4 +1,4 @@
-# Sample Web Applications
+﻿# Sample Web Applications
 
 This folder contains three sample implementations demonstrating different ASP.NET Core patterns with Trellis. All three implementations expose identical endpoints and functionality but use different approaches.
 

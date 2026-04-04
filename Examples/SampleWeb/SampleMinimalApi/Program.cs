@@ -66,9 +66,9 @@ app.UseAuthorization();
 
 // Welcome endpoint with API information
 app.MapGet("/", () => Results.Ok(new WelcomeResponse(
-    Name: "FunctionalDDD Sample Minimal API (AOT)",
+    Name: "FunctionalDDD Sample Minimal API (Source Generated)",
     Version: "2.0.0",
-    Description: "Demonstrates full Trellis Framework with ROP, EF Core, RFC 9110, authorization, and AOT source generation",
+    Description: "Demonstrates full Trellis Framework with ROP, EF Core, RFC 9110, authorization, and source-generated JSON converters",
     Documentation: "See OrderApi.http for complete API examples"
 ))).WithName("Welcome");
 
