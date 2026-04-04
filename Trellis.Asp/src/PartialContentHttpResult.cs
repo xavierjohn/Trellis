@@ -65,8 +65,8 @@ public sealed class PartialContentHttpResult : IResult
     /// <inheritdoc />
     public async Task ExecuteAsync(HttpContext httpContext)
     {
-        // Use OnStarting to override the status code set by the inner result (e.g., Ok sets 200).
-        // OnStarting callbacks run just before headers are flushed to the wire — LIFO order.
+        // OnStarting overrides the status code set by the inner result (e.g., Ok sets 200)
+        // just before headers are flushed in production (Kestrel).
         httpContext.Response.OnStarting(static state =>
         {
             ((HttpResponse)state).StatusCode = StatusCodes.Status206PartialContent;
@@ -75,5 +75,10 @@ public sealed class PartialContentHttpResult : IResult
 
         httpContext.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.ContentRange] = _contentRangeHeaderValue.ToString();
         await _inner.ExecuteAsync(httpContext).ConfigureAwait(false);
+
+        // In test environments (DefaultHttpContext), OnStarting may not fire.
+        // Override the status code directly when the response hasn't started yet.
+        if (!httpContext.Response.HasStarted)
+            httpContext.Response.StatusCode = StatusCodes.Status206PartialContent;
     }
 }

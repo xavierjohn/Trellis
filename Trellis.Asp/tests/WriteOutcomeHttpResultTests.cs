@@ -232,6 +232,31 @@ public class WriteOutcomeHttpResultTests : IDisposable
         httpContext.Response.Headers["Retry-After"].ToString().Should().Be("30");
     }
 
+    [Fact]
+    public void WriteOutcome_Accepted_WithBody_Returns202()
+    {
+        var httpContext = CreateHttpContext();
+        WriteOutcome<string> outcome = new WriteOutcome<string>.Accepted("processing", "/api/status/1");
+
+        var result = outcome.ToHttpResult(httpContext);
+
+        result.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Accepted<string>>();
+        result.As<Microsoft.AspNetCore.Http.HttpResults.Accepted<string>>().StatusCode.Should().Be(StatusCodes.Status202Accepted);
+        result.As<Microsoft.AspNetCore.Http.HttpResults.Accepted<string>>().Value.Should().Be("processing");
+    }
+
+    [Fact]
+    public void WriteOutcome_Accepted_WithBody_AndMap_Returns202WithMappedValue()
+    {
+        var httpContext = CreateHttpContext();
+        WriteOutcome<string> outcome = new WriteOutcome<string>.Accepted("processing", "/api/status/1");
+
+        var result = outcome.ToHttpResult(httpContext, (Func<string, string>)(s => s.ToUpperInvariant()));
+
+        result.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Accepted<string>>();
+        result.As<Microsoft.AspNetCore.Http.HttpResults.Accepted<string>>().Value.Should().Be("PROCESSING");
+    }
+
     #endregion
 
     #region ToUpdatedHttpResult — static metadata

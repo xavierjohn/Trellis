@@ -201,13 +201,11 @@ public static class WriteOutcomeExtensions
     /// <typeparam name="T">The domain type contained in the outcome.</typeparam>
     /// <param name="outcome">The write outcome to convert.</param>
     /// <param name="httpContext">The HTTP context (used to read Prefer header and set response headers).</param>
-    /// <param name="options">Optional custom error-to-status-code mappings.</param>
     /// <returns>An <see cref="Microsoft.AspNetCore.Http.IResult"/> with appropriate status code, headers, and optional body.</returns>
     public static Microsoft.AspNetCore.Http.IResult ToHttpResult<T>(
         this WriteOutcome<T> outcome,
-        HttpContext httpContext,
-        TrellisAspOptions? options = null)
-        => outcome.ToHttpResult<T, T>(httpContext, null, options);
+        HttpContext httpContext)
+        => outcome.ToHttpResult<T, T>(httpContext, null);
 
     /// <summary>
     /// Converts a <see cref="WriteOutcome{T}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
@@ -231,13 +229,11 @@ public static class WriteOutcomeExtensions
     /// <param name="outcome">The write outcome to convert.</param>
     /// <param name="httpContext">The HTTP context (used to read Prefer header and set response headers).</param>
     /// <param name="map">Function to transform the domain value to a response DTO.</param>
-    /// <param name="options">Optional custom error-to-status-code mappings.</param>
     /// <returns>An <see cref="Microsoft.AspNetCore.Http.IResult"/> with appropriate status code, headers, and optional body.</returns>
     public static Microsoft.AspNetCore.Http.IResult ToHttpResult<T, TOut>(
         this WriteOutcome<T> outcome,
         HttpContext httpContext,
-        Func<T, TOut>? map,
-        TrellisAspOptions? options = null)
+        Func<T, TOut>? map)
     {
         var response = httpContext.Response;
         var prefer = PreferHeader.Parse(httpContext.Request);
@@ -276,18 +272,11 @@ public static class WriteOutcomeExtensions
                 return Results.NoContent();
 
             case WriteOutcome<T>.Accepted accepted:
-                if (accepted.MonitorUri is not null)
-                    response.Headers.Location = accepted.MonitorUri;
                 if (accepted.RetryAfter is not null)
                     response.Headers["Retry-After"] = accepted.RetryAfter.ToHeaderValue();
-                response.OnStarting(static state =>
-                {
-                    ((HttpResponse)state).StatusCode = StatusCodes.Status202Accepted;
-                    return Task.CompletedTask;
-                }, response);
                 if (map is not null)
-                    return Results.Ok(map(accepted.StatusBody));
-                return Results.Ok(accepted.StatusBody);
+                    return Results.Accepted(accepted.MonitorUri, map(accepted.StatusBody));
+                return Results.Accepted(accepted.MonitorUri, accepted.StatusBody);
 
             case WriteOutcome<T>.AcceptedNoContent acceptedNoContent:
                 if (acceptedNoContent.MonitorUri is not null)

@@ -2,6 +2,7 @@
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 
 /// <summary>
@@ -19,18 +20,35 @@ public class HttpPaginationTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    #region PartialContentHttpResult — constructor and properties
+    #region PartialContentHttpResult — constructor and execution
 
     [Fact]
-    public void PartialContentHttpResult_SetsStatusCode206()
+    public async Task PartialContentHttpResult_ExecuteAsync_SetsStatusCode206()
     {
         var inner = Results.Ok("data");
         var sut = new PartialContentHttpResult(0, 1, 10, inner);
         var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        httpContext.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
 
-        // Verify status and header are set even without full pipeline
-        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status200OK); // default before execution
-        sut.ContentRangeHeaderValue.ToString().Should().Be("items 0-1/10");
+        await sut.ExecuteAsync(httpContext);
+
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status206PartialContent);
+    }
+
+    [Fact]
+    public async Task PartialContentHttpResult_ExecuteAsync_SetsContentRangeHeader()
+    {
+        var inner = Results.Ok("data");
+        var sut = new PartialContentHttpResult(0, 1, 10, inner);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        httpContext.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
+
+        await sut.ExecuteAsync(httpContext);
+
+        httpContext.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.ContentRange]
+            .ToString().Should().Be("items 0-1/10");
     }
 
     [Fact]
@@ -97,6 +115,26 @@ public class HttpPaginationTests : IDisposable
         var response = result.ToHttpResult(0, 2, 10);
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+    }
+
+    [Fact]
+    public void ToHttpResult_EmptyRange_ToLessThanFrom_Returns200()
+    {
+        var result = Result.Success("data");
+
+        var response = result.ToHttpResult(5, 4, 10);
+
+        response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Ok<string>>();
+    }
+
+    [Fact]
+    public void ToHttpResult_ZeroTotalLength_Returns200()
+    {
+        var result = Result.Success("data");
+
+        var response = result.ToHttpResult(0, 0, 0);
+
+        response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.Ok<string>>();
     }
 
     #endregion

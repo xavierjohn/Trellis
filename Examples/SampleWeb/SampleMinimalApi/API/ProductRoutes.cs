@@ -68,7 +68,9 @@ public static class ProductRoutes
 
             // RFC 9110 §14: Return 206 Partial Content when not all items fit,
             // or 200 OK when the response contains the complete set.
-            return Result.Success(items).ToHttpResult(from, from + items.Length - 1, totalCount);
+            // ToHttpResult handles empty pages (items.Length == 0) gracefully as 200 OK.
+            var to = items.Length > 0 ? from + items.Length - 1 : from;
+            return Result.Success(items).ToHttpResult(from, to, totalCount);
         });
 
         // GET /products/{id} — conditional GET with ETag

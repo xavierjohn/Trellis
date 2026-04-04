@@ -479,6 +479,10 @@ public static class HttpResultExtensions
     {
         if (result.IsSuccess)
         {
+            // Guard: invalid or empty range → return 200 OK (no Content-Range)
+            if (to < from || totalLength <= 0)
+                return Results.Ok(result.Value);
+
             var partialResult = to - from + 1 != totalLength;
             if (partialResult)
                 return new PartialContentHttpResult(from, to, totalLength, Results.Ok(result.Value));
@@ -553,7 +557,7 @@ public static class HttpResultExtensions
             return result.Error.ToHttpResult(options);
 
         var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
-        return outcome.ToHttpResult<TIn, TOut>(httpContext, map, options);
+        return outcome.ToHttpResult<TIn, TOut>(httpContext, map);
     }
 
     /// <summary>
@@ -580,7 +584,7 @@ public static class HttpResultExtensions
 
         var metadata = metadataSelector(result.Value);
         var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
-        return outcome.ToHttpResult<TIn, TOut>(httpContext, map, options);
+        return outcome.ToHttpResult<TIn, TOut>(httpContext, map);
     }
 
     #endregion
