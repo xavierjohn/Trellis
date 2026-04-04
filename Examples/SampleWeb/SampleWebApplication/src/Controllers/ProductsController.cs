@@ -34,7 +34,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
         [FromQuery] bool? inStock)
     {
         var pgSize = Math.Clamp(pageSize ?? 25, 1, 100);
-        var pgNum = Math.Max(page ?? 0, 0);
+        var pgNum = Math.Clamp(page ?? 0, 0, 10000);
 
         IQueryable<Product> query = db.Products;
 
