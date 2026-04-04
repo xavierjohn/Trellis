@@ -333,8 +333,13 @@ public class Error : IEquatable<Error>
     // and format them to invariant-culture strings for the instance field.
     // ──────────────────────────────────────────────────────────────────
 
-    private static string? FormatInstance<TInstance>(TInstance instance) where TInstance : IFormattable =>
-        instance is null ? null : instance.ToString(null, CultureInfo.InvariantCulture);
+    private static string? FormatInstance<TInstance>(TInstance instance) where TInstance : IFormattable
+    {
+        if (typeof(TInstance).IsValueType)
+            return instance.ToString(null, CultureInfo.InvariantCulture);
+
+        return instance is null ? null : instance.ToString(null, CultureInfo.InvariantCulture);
+    }
 
     /// <inheritdoc cref="BadRequest(string, string?)"/>
     /// <param name="detail">Description of why the request is bad.</param>

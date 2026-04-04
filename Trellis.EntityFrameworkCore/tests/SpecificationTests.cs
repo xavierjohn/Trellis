@@ -12,10 +12,15 @@ using Trellis.Primitives;
 /// </summary>
 public class SpecificationTests : IAsyncLifetime
 {
-    private static readonly string SqlServerConnectionString =
-        string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION"))
+    private static readonly string SqlServerConnectionString = GetSqlServerConnectionString();
+
+    private static string GetSqlServerConnectionString()
+    {
+        var envValue = Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION");
+        return string.IsNullOrWhiteSpace(envValue)
             ? "Server=(localdb)\\MSSQLLocalDB;Database=TrellisSpecTests;Trusted_Connection=True;TrustServerCertificate=True"
-            : Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION")!;
+            : envValue;
+    }
 
     private SqliteConnection _sqliteConnection = null!;
     private ScalarValueTestDbContext _sqliteContext = null!;
