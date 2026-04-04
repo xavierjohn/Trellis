@@ -1,5 +1,6 @@
 ﻿namespace Trellis.EntityFrameworkCore.Generator;
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -50,7 +51,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         var candidates = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 OwnedEntityAttributeName,
-                predicate: static (node, _) => node is ClassDeclarationSyntax,
+                predicate: static (node, _) => node is TypeDeclarationSyntax,
                 transform: static (ctx, ct) => GetOwnedEntityInfo(ctx, ct))
             .Where(static info => info is not null);
 
@@ -61,12 +62,13 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
     private static OwnedEntityInfo? GetOwnedEntityInfo(
         GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
     {
-        var classDecl = (ClassDeclarationSyntax)ctx.TargetNode;
+        var typeDecl = (TypeDeclarationSyntax)ctx.TargetNode;
         var symbol = ctx.TargetSymbol as INamedTypeSymbol;
         if (symbol is null)
             return null;
 
-        var isPartial = classDecl.Modifiers.Any(SyntaxKind.PartialKeyword);
+        var isRecord = typeDecl is RecordDeclarationSyntax;
+        var isPartial = typeDecl.Modifiers.Any(SyntaxKind.PartialKeyword);
 
         // Check if the type already has a parameterless constructor
         var hasParameterlessCtor = symbol.Constructors
@@ -74,6 +76,9 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
 
         // Collect properties that need null! initialization (reference-type with setter)
         var referenceProps = new List<string>();
+        var compilation = ctx.SemanticModel.Compilation;
+        var valueObjectSymbol = compilation.GetTypeByMetadataName("Trellis.ValueObject");
+        var objectSymbol = compilation.ObjectType;
         var currentType = symbol;
         while (currentType is not null)
         {
@@ -86,11 +91,11 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
                     && prop.Type.IsReferenceType
                     && prop.DeclaredAccessibility != Accessibility.Private
                     // Skip properties from ValueObject/object base
-                    && prop.ContainingType.Name != "ValueObject"
-                    && prop.ContainingType.Name != "Object"
+                    && !SymbolEqualityComparer.Default.Equals(prop.ContainingType, valueObjectSymbol)
+                    && !SymbolEqualityComparer.Default.Equals(prop.ContainingType, objectSymbol)
                     // For inherited properties, setter must be accessible from derived type
-                    && (prop.ContainingType.Equals(symbol, SymbolEqualityComparer.Default)
-                        || prop.SetMethod.DeclaredAccessibility != Accessibility.Private))
+                    && (SymbolEqualityComparer.Default.Equals(prop.ContainingType, symbol)
+                        || compilation.IsSymbolAccessibleWithin(prop.SetMethod, symbol)))
                 {
                     referenceProps.Add(prop.Name);
                 }
@@ -98,7 +103,9 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
 
             // Walk up to base type but stop at ValueObject
             var baseType = currentType.BaseType;
-            if (baseType is null || baseType.Name == "ValueObject" || baseType.Name == "Object")
+            if (baseType is null
+                || SymbolEqualityComparer.Default.Equals(baseType, valueObjectSymbol)
+                || SymbolEqualityComparer.Default.Equals(baseType, objectSymbol))
                 break;
             currentType = baseType;
         }
@@ -119,10 +126,11 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         var typePath = BuildTypePath(symbol);
 
         return new OwnedEntityInfo(
-            location: classDecl.Identifier.GetLocation(),
+            location: typeDecl.Identifier.GetLocation(),
             @namespace: @namespace,
             typeName: FormatTypeName(symbol),
             typeAccessibility: AccessibilityToString(symbol.DeclaredAccessibility),
+            isRecord: isRecord,
             isPartial: isPartial,
             hasParameterlessCtor: hasParameterlessCtor,
             referencePropertyNames: referenceProps.Distinct().ToArray(),
@@ -176,7 +184,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
 
         sb.Append(indent);
         sb.Append(info.TypeAccessibility);
-        sb.Append(" partial class ");
+        sb.Append(info.IsRecord ? " partial record class " : " partial class ");
         sb.AppendLine(info.TypeName);
         sb.Append(indent);
         sb.AppendLine("{");
@@ -233,13 +241,14 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
     private static string TypeKindKeyword(INamedTypeSymbol type) =>
         type.IsRecord ? "record class" : type.TypeKind == TypeKind.Struct ? "struct" : "class";
 
-    private sealed class OwnedEntityInfo
+    private sealed class OwnedEntityInfo : IEquatable<OwnedEntityInfo>
     {
         public OwnedEntityInfo(
             Location location,
             string @namespace,
             string typeName,
             string typeAccessibility,
+            bool isRecord,
             bool isPartial,
             bool hasParameterlessCtor,
             string[] referencePropertyNames,
@@ -250,6 +259,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
             Namespace = @namespace;
             TypeName = typeName;
             TypeAccessibility = typeAccessibility;
+            IsRecord = isRecord;
             IsPartial = isPartial;
             HasParameterlessCtor = hasParameterlessCtor;
             ReferencePropertyNames = referencePropertyNames;
@@ -261,11 +271,46 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         public string Namespace { get; }
         public string TypeName { get; }
         public string TypeAccessibility { get; }
+        public bool IsRecord { get; }
         public bool IsPartial { get; }
         public bool HasParameterlessCtor { get; }
         public string[] ReferencePropertyNames { get; }
         public string[] NestingParents { get; }
         public string TypePath { get; }
+
+        public bool Equals(OwnedEntityInfo? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
+
+            return Namespace == other.Namespace
+                && TypeName == other.TypeName
+                && TypeAccessibility == other.TypeAccessibility
+                && IsRecord == other.IsRecord
+                && IsPartial == other.IsPartial
+                && HasParameterlessCtor == other.HasParameterlessCtor
+                && TypePath == other.TypePath
+                && ReferencePropertyNames.SequenceEqual(other.ReferencePropertyNames)
+                && NestingParents.SequenceEqual(other.NestingParents);
+        }
+
+        public override bool Equals(object? obj) => Equals(obj as OwnedEntityInfo);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hash = 17;
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(Namespace);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypeName);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypeAccessibility);
+                hash = (hash * 31) + IsRecord.GetHashCode();
+                hash = (hash * 31) + IsPartial.GetHashCode();
+                hash = (hash * 31) + HasParameterlessCtor.GetHashCode();
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
+                return hash;
+            }
+        }
     }
 
     private static string BuildTypePath(INamedTypeSymbol type)
@@ -275,7 +320,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
 
         while (current is not null)
         {
-            typeNames.Push(current.Name);
+            typeNames.Push(current.MetadataName);
             current = current.ContainingType;
         }
 
