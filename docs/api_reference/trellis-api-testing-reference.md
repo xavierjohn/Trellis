@@ -127,6 +127,11 @@ var result = await repo.GetByIdAsync(orderId);        // Result<Order> (NotFound
 var maybe = await repo.FindByIdAsync(orderId);        // Maybe<Order>
 await repo.DeleteAsync(orderId);
 
+// Query helpers — use in test repository adapters for custom query methods
+var customer = await repo.FindAsync(c => c.Email == email);          // Maybe<T> (first match or None)
+var orders = await repo.WhereAsync(o => o.CustomerId == customerId); // IReadOnlyList<T>
+var overdue = await repo.WhereAsync(new OverdueOrderSpec(cutoff));   // IReadOnlyList<T> via Specification
+
 // Seeding test data
 var order = Order.Create(...);
 await repo.SaveAsync(order);                           // Now GetByIdAsync will return it
