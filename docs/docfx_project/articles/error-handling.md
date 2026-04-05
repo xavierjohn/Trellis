@@ -1,754 +1,436 @@
-﻿# Error Handling
+# Error Handling
 
-This guide covers error types, discriminated matching, and transformation patterns in Railway Oriented Programming.
+Errors are where Trellis becomes practical. They let you keep business rules, validation, and HTTP concerns explicit **without** falling back to exceptions for normal control flow.
+
+> [!TIP]
+> In Trellis, an error is data. That means you can log it, transform it, combine it, test it, and map it to HTTP responses predictably.
+
+## Start Here: the Everyday Flow
+
+Most applications need the same shape:
+
+1. Do work in a `Result<T>` pipeline
+2. Return a specific `Error` when something goes wrong
+3. Convert that error at the boundary
 
 ```csharp
 using Trellis;
-using System.Collections.Immutable;
+
+public record User(string Id, string Email);
+
+static Result<User> GetUser(string id) =>
+    id == "42"
+        ? Result.Success(new User("42", "ada@example.com"))
+        : Result.Failure<User>(Error.NotFound($"User {id} not found", id));
+
+var response = GetUser("42").MatchError(
+    onSuccess: user => $"200 OK: {user.Email}",
+    onNotFound: error => $"404 Not Found: {error.Detail}",
+    onError: error => $"500 Internal Server Error: {error.Code}"
+);
 ```
 
-## Table of Contents
+That is the core mental model for this article.
 
-- [Error Types](#error-types)
-- [Creating Errors](#creating-errors)
-- [Discriminated Error Matching](#discriminated-error-matching)
-- [Error Side Effects](#error-side-effects)
-- [Error Transformation](#error-transformation)
-- [Aggregate Errors](#aggregate-errors)
-- [ValidationError Fluent API](#validationerror-fluent-api)
-- [Async Error Handling](#async-error-handling)
-- [Custom Error Types](#custom-error-types)
-- [Error Equality](#error-equality)
+## Why Trellis Uses Explicit Errors
 
-## Error Types
+The problem with raw exceptions is that they mix two very different things:
 
-Built-in error types map to HTTP status codes and common business scenarios:
+- **expected failures** like validation, not found, or conflict
+- **unexpected failures** like I/O faults or bugs
 
-| Error Type | HTTP Status | Use Case | Example |
-|------------|-------------|----------|---------|
-| `ValidationError` | 400 Bad Request | Input validation failures | Invalid email format, required field missing |
-| `BadRequestError` | 400 Bad Request | General request errors | Malformed request |
-| `UnauthorizedError` | 401 Unauthorized | Authentication required | Missing token, invalid credentials |
-| `ForbiddenError` | 403 Forbidden | Insufficient permissions | User cannot access resource |
-| `NotFoundError` | 404 Not Found | Resource doesn't exist | User not found, order not found |
-| `ConflictError` | 409 Conflict | Resource state conflict | Duplicate email, concurrent update |
-| `PreconditionFailedError` | 412 Precondition Failed | ETag mismatch (RFC 9110) | If-Match header doesn't match current ETag |
-| `PreconditionRequiredError` | 428 Precondition Required | Missing If-Match (RFC 6585) | Mutating request without required If-Match header |
-| `DomainError` | 422 Unprocessable Entity | Business rule violation | Cannot withdraw more than balance |
-| `RateLimitError` | 429 Too Many Requests | Rate limit exceeded | Too many login attempts |
-| `UnexpectedError` | 500 Internal Server Error | System errors | Database connection failed |
-| `ServiceUnavailableError` | 503 Service Unavailable | Service temporarily down | Service under maintenance |
-| `AggregateError` | Varies | Multiple errors combined | Multiple validation failures or mixed error types |
+Trellis separates those concerns:
 
-### Error Structure
+- use `Error` values for **expected** failures
+- use `Result.Try(...)` / `Result.TryAsync(...)` to convert **unexpected** exceptions into failures when needed
 
-All errors share a common structure:
+> [!NOTE]
+> Default error codes end in `.error`. Examples: `validation.error`, `not.found.error`, `domain.error`.
+
+## Built-in Error Types
+
+Start with the most specific error you can. That makes your pipelines easier to read and your API mapping more precise.
+
+| Error type | Factory method | Default code | Typical HTTP status | Use when... |
+| --- | --- | --- | --- | --- |
+| `ValidationError` | `Error.Validation(...)` | `validation.error` | 400 | Input is invalid |
+| `BadRequestError` | `Error.BadRequest(...)` | `bad.request.error` | 400 | The request itself is malformed |
+| `UnauthorizedError` | `Error.Unauthorized(...)` | `unauthorized.error` | 401 | Authentication is missing or invalid |
+| `ForbiddenError` | `Error.Forbidden(...)` | `forbidden.error` | 403 | The caller is authenticated but not allowed |
+| `NotFoundError` | `Error.NotFound(...)` | `not.found.error` | 404 | A resource does not exist |
+| `ConflictError` | `Error.Conflict(...)` | `conflict.error` | 409 | Current state prevents the operation |
+| `GoneError` | `Error.Gone(...)` | `gone.error` | 410 | The resource existed before and is now intentionally removed |
+| `PreconditionFailedError` | `Error.PreconditionFailed(...)` | `precondition.failed.error` | 412 | An `If-Match` or similar condition failed |
+| `ContentTooLargeError` | `Error.ContentTooLarge(...)` | `content.too.large.error` | 413 | The request body is too large |
+| `UnsupportedMediaTypeError` | `Error.UnsupportedMediaType(...)` | `unsupported.media.type.error` | 415 | The content type is not supported |
+| `RangeNotSatisfiableError` | `Error.RangeNotSatisfiable(...)` | `range.not.satisfiable.error` | 416 | The requested range cannot be served |
+| `DomainError` | `Error.Domain(...)` | `domain.error` | commonly 422 | A business rule was violated |
+| `MethodNotAllowedError` | `Error.MethodNotAllowed(...)` | `method.not.allowed.error` | 405 | The HTTP method is not supported |
+| `NotAcceptableError` | `Error.NotAcceptable(...)` | `not.acceptable.error` | 406 | No acceptable representation can be produced |
+| `RateLimitError` | `Error.RateLimit(...)` | `rate.limit.error` | 429 | A quota or rate limit was exceeded |
+| `ServiceUnavailableError` | `Error.ServiceUnavailable(...)` | `service.unavailable.error` | 503 | A dependency or service is temporarily unavailable |
+| `UnexpectedError` | `Error.Unexpected(...)` | `unexpected.error` | 500 | Something unexpected happened |
+| `AggregateError` | constructor / `Combine(...)` | `aggregate.error` | varies | Multiple errors were collected |
+
+> [!TIP]
+> `DomainError` is usually a better fit than `ValidationError` when the input is structurally valid but violates a business rule.
+
+## The Error Shape
+
+Every Trellis error has the same three core pieces:
 
 ```csharp
-public class Error
-{
-    public string Code { get; }        // Machine-readable error code
-    public string Detail { get; }      // Human-readable error description
-    public string? Instance { get; }   // Optional resource identifier
-}
+using Trellis;
 
-// Factory methods create specific error types:
-Error.Validation(...)     // ValidationError
-Error.NotFound(...)       // NotFoundError
-Error.Conflict(...)       // ConflictError
-Error.PreconditionFailed(...)  // PreconditionFailedError
-Error.PreconditionRequired(...)  // PreconditionRequiredError
-Error.BadRequest(...)     // BadRequestError
-Error.Unauthorized(...)   // UnauthorizedError
-Error.Forbidden(...)      // ForbiddenError
-Error.Unexpected(...)     // UnexpectedError
-Error.Domain(...)         // DomainError
-Error.RateLimit(...)      // RateLimitError
-Error.ServiceUnavailable(...) // ServiceUnavailableError
+var error = Error.NotFound("User 42 not found", "42");
+
+Console.WriteLine(error.Code);     // not.found.error
+Console.WriteLine(error.Detail);   // User 42 not found
+Console.WriteLine(error.Instance); // 42
 ```
 
-## Creating Errors
+- `Code` is for machines
+- `Detail` is for humans
+- `Instance` is optional context, usually a resource identifier
 
-### Validation Errors
+## Creating the Common Errors
+
+### Validation: input is wrong
+
+Use this when the caller can fix the request.
 
 ```csharp
-// Simple validation error for a single field
+using Trellis;
+
 var error = Error.Validation("Email is required", "email");
+```
 
-// Results in:
-// Code: "validation.error"
-// Detail: "Email is required"
-// FieldErrors: [{ FieldName: "email", Details: ["Email is required"] }]
+For multi-field validation, `ValidationError` has a fluent builder:
 
-// Multiple validation errors using fluent API (see ValidationError Fluent API section)
+```csharp
+using Trellis;
+
 var error = ValidationError.For("email", "Email is required")
     .And("password", "Password must be at least 8 characters")
+    .And("password", "Password must contain a number")
     .And("age", "Must be 18 or older");
-
-// Multiple errors for the same field
-var error = Error.Validation("Invalid email format", "email");
-var error2 = Error.Validation("Email domain not allowed", "email");
-var combined = error.Combine(error2);
-// Results in single ValidationError with multiple details for "email" field
 ```
 
-### Not Found Errors
+### Not found: the thing is missing
 
 ```csharp
-// Simple not found
-var error = Error.NotFound($"User {userId} not found");
-// Code: "not.found.error"
-// Detail: "User {userId} not found"
-// Instance: null
+using Trellis;
 
-// With instance identifier
-var error = Error.NotFound(
-    $"User with ID {userId} does not exist",
-    userId.ToString()
-);
-// Code: "not.found.error"
-// Detail: "User with ID {userId} does not exist"
-// Instance: "{userId}"
+var error = Error.NotFound("Order 123 was not found", "123");
 ```
 
-### Authorization Errors
+### Conflict: the state says no
 
 ```csharp
-// Unauthorized (authentication required - user not logged in)
-var error = Error.Unauthorized("Authentication token missing");
-// Code: "unauthorized.error"
-// Maps to HTTP 401
+using Trellis;
 
-// Forbidden (insufficient permissions - user logged in but lacks access)
-var error = Error.Forbidden("User does not have permission to delete orders");
-// Code: "forbidden.error"
-// Maps to HTTP 403
+var error = Error.Conflict("Email address is already in use");
 ```
 
-### Conflict Errors
+### Domain: the request is valid, but the rule is broken
 
 ```csharp
-// Resource conflict
-var error = Error.Conflict($"Email {email} is already registered");
+using Trellis;
 
-// Concurrent update conflict
-var error = Error.Conflict("Resource was modified by another user");
+var error = Error.Domain("Cannot cancel an order after shipment has started");
 ```
 
-### Precondition Failed Errors
+### Authorization: unauthenticated vs unauthorized
 
 ```csharp
-// RFC 9110 — If-Match ETag mismatch
-var error = Error.PreconditionFailed("Resource has been modified. Please reload and retry.");
+using Trellis;
 
-// Automatically returned by OptionalETag/RequireETag when aggregate ETag doesn't match
-return await _repo.GetByIdAsync(id, ct)
-    .OptionalETag(command.IfMatchETags)  // returns PreconditionFailedError if stale
-    .BindAsync(agg => agg.Update(...));
-
-// RequireETag returns PreconditionRequiredError (428) when If-Match is missing
-return await _repo.GetByIdAsync(id, ct)
-    .RequireETag(command.IfMatchETags)   // returns PreconditionRequiredError if null
-    .BindAsync(agg => agg.Update(...));
+var unauthorized = Error.Unauthorized("Authentication token is missing");
+var forbidden = Error.Forbidden("Administrator role is required");
 ```
 
-### Domain Errors
+### Operational HTTP errors
+
+These are useful when your boundary needs more precise HTTP semantics.
 
 ```csharp
-// Business rule violations
-var error = Error.Domain("Cannot withdraw more than account balance");
+using Trellis;
 
-// With instance identifier
-var error = Error.Domain(
-    "Order quantity exceeds available inventory",
-    orderId.ToString()
-);
+var gone = Error.Gone("Document 42 was permanently removed", "42");
+var unsupportedMediaType = Error.UnsupportedMediaType("Only application/json is supported");
+var tooLarge = Error.ContentTooLarge("Upload exceeds the 10 MB limit");
+var notAcceptable = Error.NotAcceptable("The requested response format is not available");
+var methodNotAllowed = Error.MethodNotAllowed(
+    "PATCH is not supported for this endpoint",
+    ["GET", "POST"]);
+var rangeNotSatisfiable = Error.RangeNotSatisfiable(
+    "Requested range exceeds file length",
+    completeLength: 4096);
 ```
 
-### Rate Limit Errors
+### Rate limit and service availability
 
 ```csharp
-// Rate limit exceeded
-var error = Error.RateLimit("Too many login attempts. Try again in 60 seconds");
+using Trellis;
 
-// With retry information
-var error = Error.RateLimit("API rate limit exceeded. Retry after 60 seconds");
+var rateLimit = Error.RateLimit("Too many login attempts. Try again later.");
+var unavailable = Error.ServiceUnavailable("Payment gateway is temporarily unavailable.");
 ```
 
-### Service Unavailable Errors
+### Unexpected failures
+
+Use this when something truly unexpected escapes normal domain flow.
 
 ```csharp
-// Temporary service unavailability
-var error = Error.ServiceUnavailable("Payment service is temporarily unavailable");
+using Trellis;
 
-// With maintenance window
-var error = Error.ServiceUnavailable("System under maintenance until 2:00 AM UTC");
-```
-
-### Unexpected Errors
-
-```csharp
-// System errors
 var error = Error.Unexpected("Database connection failed");
-
-// From exception
-try
-{
-    // risky operation
-}
-catch (Exception ex)
-{
-    return Result.Failure<Data>(
-        Error.Unexpected($"Unexpected error: {ex.Message}")
-    );
-}
-
-// Or use Result.Try to automatically convert exceptions
-var result = Result.Try(() => RiskyOperation());
 ```
 
-## Discriminated Error Matching
+## Matching Errors at the Boundary
 
-The `MatchError` method allows you to handle different error types with specific logic:
+The problem at the edge of your system is simple: you need one place where Trellis errors become HTTP responses, UI messages, or log entries.
 
-### Basic Error Matching
+### `MatchError`: return a value
 
 ```csharp
-var httpResult = ProcessOrder(order)
-    .MatchError(
-        onValidation: validationErr => 
-            Results.BadRequest(new { 
-                errors = validationErr.FieldErrors
-                    .ToDictionary(f => f.FieldName, f => f.Details.ToArray())
-            }),
-        onNotFound: notFoundErr => 
-            Results.NotFound(new { message = notFoundErr.Detail }),
-        onConflict: conflictErr => 
-            Results.Conflict(new { message = conflictErr.Detail }),
-        onSuccess: order => 
-            Results.Ok(order)
-    );
+using Trellis;
+
+public record User(string Id, string Email);
+
+static Result<User> LoadUser(string id) =>
+    id == "42"
+        ? Result.Success(new User(id, "ada@example.com"))
+        : Result.Failure<User>(Error.NotFound($"User {id} not found", id));
+
+var message = LoadUser("42").MatchError(
+    onSuccess: user => $"Found {user.Email}",
+    onValidation: error => $"Bad input: {error.Detail}",
+    onNotFound: error => $"Missing: {error.Detail}",
+    onError: error => $"Fallback: {error.Code}"
+);
 ```
 
-### Complete Error Matching
-
-Handle all error types explicitly:
+### `SwitchError`: perform side effects only
 
 ```csharp
-return await ProcessTransactionAsync(transaction)
-    .MatchError(
-        onValidation: err => 
-            Results.BadRequest(new { 
-                message = err.Detail,
-                errors = err.FieldErrors
-                    .ToDictionary(f => f.FieldName, f => f.Details.ToArray())
-            }),
-        onBadRequest: err =>
-            Results.BadRequest(new { message = err.Detail }),
-        onNotFound: err => 
-            Results.NotFound(new { message = err.Detail }),
-        onUnauthorized: err => 
-            Results.Unauthorized(),
-        onForbidden: err => 
-            Results.StatusCode(403),
-        onConflict: err => 
-            Results.Conflict(new { message = err.Detail }),
-        onDomain: err =>
-            Results.UnprocessableEntity(new { message = err.Detail }),
-        onRateLimit: err =>
-            Results.StatusCode(429),
-        onServiceUnavailable: err =>
-            Results.StatusCode(503),
-        onUnexpected: err => 
-            Results.StatusCode(500),
-        onSuccess: transaction => 
-            Results.Ok(new { transactionId = transaction.Id })
-    );
+using Trellis;
+
+Result<string> result = Result.Failure<string>(Error.Conflict("Email address is already in use"));
+
+result.SwitchError(
+    onConflict: error => Console.WriteLine($"Conflict: {error.Detail}"),
+    onSuccess: value => Console.WriteLine($"Saved {value}"),
+    onError: error => Console.WriteLine($"Unexpected: {error.Code}")
+);
 ```
 
-### Partial Error Matching
+> [!NOTE]
+> `MatchError` and `SwitchError` have dedicated handlers for the most common error families: validation, not found, conflict, bad request, unauthorized, forbidden, domain, rate limit, service unavailable, unexpected, and aggregate. Other error types fall through to `onError`.
 
-You don't need to handle every error type - provide an `onError` fallback for unhandled types:
+## Side Effects Without Breaking the Pipeline
+
+Sometimes you want to log, increment metrics, or notify another system **without** changing the result.
+
+### `TapOnFailure`
 
 ```csharp
-var result = CreateUser(userData)
-    .MatchError(
-        onValidation: err => Results.BadRequest(err.FieldErrors),
-        onConflict: err => Results.Conflict(err.Detail),
-        onError: err => Results.StatusCode(500), // Fallback for all other error types
-        onSuccess: user => Results.Created($"/users/{user.Id}", user)
-    );
+using Trellis;
+
+var result = Result.Failure<string>(Error.ServiceUnavailable("Search is temporarily offline"))
+    .TapOnFailure(error => Console.WriteLine($"Log: {error.Code} - {error.Detail}"));
 ```
 
-**Note:** If you don't provide handlers for some error types and no `onError` fallback, `MatchError` will throw `InvalidOperationException` when it encounters an unhandled error type.
-
-### Switch Error Matching (Side Effects Only)
-
-Use `SwitchError` when you only need side effects without returning a value:
+### `TapOnFailureAsync`
 
 ```csharp
-ProcessOrder(order)
-    .SwitchError(
-        onValidation: err => _logger.LogWarning("Validation failed: {Errors}", err.FieldErrors),
-        onNotFound: err => _logger.LogWarning("Order not found: {Detail}", err.Detail),
-        onConflict: err => _logger.LogWarning("Order conflict: {Detail}", err.Detail),
-        onSuccess: order => _logger.LogInformation("Order processed: {OrderId}", order.Id)
-    );
+using Trellis;
+
+var result = await Result.Failure<string>(Error.RateLimit("Too many requests"))
+    .TapOnFailureAsync(error =>
+    {
+        Console.WriteLine($"Audit: {error.Code}");
+        return Task.CompletedTask;
+    });
 ```
 
-## Error Side Effects
+## Transforming Errors
 
-### TapOnFailure - Execute Side Effects on Failure
+As results move across layers, you may want to translate infrastructure failures into domain-friendly ones.
 
-Use `TapOnFailure` to perform side effects (like logging) when an error occurs without changing the result:
-
-```csharp
-var result = ProcessOrder(order)
-    .TapOnFailure(error => _logger.LogError("Order processing failed: {Error}", error.Detail))
-    .TapOnFailure(error => _metrics.RecordFailure(error.Code))
-    .TapOnFailure(error => _notificationService.NotifyAdmin(error));
-
-// TapError only executes on failure
-// On success, TapError is skipped
-```
-
-### Combined Tap and TapError
+### `MapOnFailure`
 
 ```csharp
-var result = ProcessPayment(order)
-    .Tap(payment => _logger.LogInformation("Payment succeeded: {Id}", payment.Id))
-    .TapOnFailure(error => _logger.LogError("Payment failed: {Error}", error.Detail))
-    .TapOnFailure(error => SendFailureNotification(error))
-    .Tap(payment => SendSuccessEmail(payment));
-```
+using Trellis;
 
-### Async TapError
-
-```csharp
-var result = await ProcessOrderAsync(order)
-    .TapOnFailureAsync(async error => 
-        await _auditLog.LogFailureAsync(error, cancellationToken))
-    .TapOnFailureAsync(async error => 
-        await _notificationService.NotifyAsync(error, cancellationToken),
-        cancellationToken);
-```
-
-## Error Transformation
-
-Transform errors as they flow through your pipeline:
-
-### MapOnFailure - Transform Error Types
-
-```csharp
-var result = GetUserFromExternalApi(userId)
+var result = Result.Failure<string>(Error.Unexpected("Timeout while calling CRM"))
     .MapOnFailure(error => error switch
     {
-        NotFoundError => Error.NotFound(
-            "User not found in our system",
-            userId
-        ),
-        UnexpectedError => Error.ServiceUnavailable(
-            "External service is temporarily unavailable"
-        ),
+        UnexpectedError => Error.ServiceUnavailable("Customer service is temporarily unavailable"),
         _ => error
     });
 ```
 
-### Add Context to Errors
+### `RecoverOnFailure`
+
+Use recovery when a fallback path is legitimate, not when you are hiding a bug.
 
 ```csharp
-var result = ProcessPayment(order)
-    .MapOnFailure(error => Error.Unexpected(
-        $"Payment processing failed for order {order.Id}: {error.Detail}",
-        $"order-{order.Id}"
-    ));
+using Trellis;
+
+static Result<string> GetFromCache() =>
+    Result.Failure<string>(Error.NotFound("Cache miss"));
+
+static Result<string> GetFromDatabase() =>
+    Result.Success("Ada Lovelace");
+
+var result = GetFromCache()
+    .RecoverOnFailure(error => GetFromDatabase());
 ```
 
-### RecoverOnFailure - Error Recovery
+## Combining and Aggregating Errors
+
+Real workflows often validate several things at once. The question is: how do you keep **all** the useful failures?
+
+### Validation errors merge automatically
 
 ```csharp
-var result = GetUserFromCache(userId)
-    .RecoverOnFailure(cacheError => 
-        GetUserFromDatabase(userId)
-            .MapOnFailure(dbError => Error.NotFound(
-                $"User {userId} not found. Cache: {cacheError.Detail}, DB: {dbError.Detail}",
-                userId
-            ))
-    );
+using Trellis;
+
+var email = Error.Validation("Email is required", "email");
+var password = Error.Validation("Password is required", "password");
+var age = Error.Validation("Must be 18 or older", "age");
+
+var combined = email.Combine(password).Combine(age);
 ```
 
-## Aggregate Errors
+The result is a **single** `ValidationError` with all field messages.
 
-When combining multiple Results, errors are intelligently aggregated based on their types:
-
-### Validation Error Merging
-
-When combining multiple `ValidationError` instances, they are **merged** into a single `ValidationError` with all field errors:
+### Mixed error types produce `AggregateError`
 
 ```csharp
-var emailError = Error.Validation("Email is required", "email");
-var passwordError = Error.Validation("Password is required", "password");
-var ageError = Error.Validation("Must be 18 or older", "age");
+using Trellis;
 
-var result = emailError.Combine(passwordError).Combine(ageError);
+var validation = Error.Validation("Email is invalid", "email");
+var conflict = Error.Conflict("Email address is already in use");
 
-// Result: Single ValidationError with 3 field errors
-// FieldErrors:
-//   - email: ["Email is required"]
-//   - password: ["Password is required"]
-//   - age: ["Must be 18 or older"]
+var combined = validation.Combine(conflict);
 ```
 
-### Mixed Error Types Create AggregateError
+The result is an `AggregateError` because the failures are different kinds of problems.
 
-When combining `ValidationError` with other error types (or combining different non-validation error types), an `AggregateError` is created:
+### Extract only the validation pieces
 
 ```csharp
-var validationError = Error.Validation("Invalid email", "email");
-var notFoundError = Error.NotFound("User not found");
-var conflictError = Error.Conflict("Email already exists");
+using Trellis;
 
-var result = validationError.Combine(notFoundError).Combine(conflictError);
+var combinedError = Error.Validation("Email is invalid", "email")
+    .Combine(Error.Conflict("Email address is already in use"));
 
-// Result: AggregateError containing 3 separate errors
-// Errors:
-//   - ValidationError: Invalid email (email field)
-//   - NotFoundError: User not found
-//   - ConflictError: Email already exists
+var combinedResult = Result.Failure<string>(combinedError);
+
+var validationOnly = combinedResult.FlattenValidationErrors();
 ```
 
-### Automatic Aggregation with Combine
-
-```csharp
-var result = EmailAddress.TryCreate(email)
-    .Combine(FirstName.TryCreate(firstName))
-    .Combine(LastName.TryCreate(lastName));
-
-// If all succeed: Result<(EmailAddress, FirstName, LastName)>
-// If any fail with ValidationError: Single merged ValidationError
-// If failures include non-validation errors: AggregateError
-
-// Handling aggregated errors
-if (result.IsFailure)
-{
-    if (result.Error is ValidationError validation)
-    {
-        // All errors were validation errors - merged into one
-        foreach (var fieldError in validation.FieldErrors)
-        {
-            Console.WriteLine($"{fieldError.FieldName}: {string.Join(", ", fieldError.Details)}");
-        }
-    }
-    else if (result.Error is AggregateError aggregate)
-    {
-        // Mixed error types or multiple non-validation errors
-        foreach (var error in aggregate.Errors)
-        {
-            Console.WriteLine($"{error.GetType().Name}: {error.Detail}");
-        }
-    }
-    else
-    {
-        // Single error type
-        Console.WriteLine($"{result.Error.Detail}");
-    }
-}
-```
-
-### Extracting Validation Errors from AggregateError
-
-Use `FlattenValidationErrors()` to extract a merged `ValidationError` from an `AggregateError`. This is useful when you know the aggregate contains validation errors and you want to present them as a single set of field-level errors:
-
-```csharp
-// After Combine produces an AggregateError
-var combined = result1.Combine(result2);
-
-// Extract all validation errors
-var validationError = combined.FlattenValidationErrors();
-```
-
-### Handling AggregateError in MatchError
-
-The `onAggregate` handler in `MatchError` and `SwitchError` lets you handle `AggregateError` specifically, separating it from the generic `onError` fallback:
-
-```csharp
-combined.MatchError(
-    onValidation: err => /* field-level errors */,
-    onAggregate: err => /* unwrap err.Errors */,
-    onError: err => /* fallback */
-);
-```
-
-### Manual Error Aggregation
-
-```csharp
-var errors = new List<Error>();
-
-if (string.IsNullOrEmpty(email))
-    errors.Add(Error.Validation("Email is required", "email"));
-
-if (age < 18)
-    errors.Add(Error.Validation("Must be 18 or older", "age"));
-
-if (errors.Any())
-{
-    // Combine all errors into one
-    var combinedError = errors.Aggregate((acc, err) => acc.Combine(err));
-    return Result.Failure<User>(combinedError);
-}
-
-return Result.Success(new User(email, age));
-```
-
-## ValidationError Fluent API
-
-`ValidationError` provides a fluent API for building multi-field validation errors:
-
-### Building Multi-Field Validation Errors
-
-```csharp
-// Start with one field, then chain with And()
-var error = ValidationError.For("email", "Email is required")
-    .And("password", "Password must be at least 8 characters")
-    .And("password", "Password must contain a number")  // Same field, multiple errors
-    .And("age", "Must be 18 or older");
-
-// Results in single ValidationError with field errors:
-// - email: ["Email is required"]
-// - password: ["Password must be at least 8 characters", "Password must contain a number"]
-// - age: ["Must be 18 or older"]
-```
-
-### Adding Multiple Messages to One Field
-
-```csharp
-// Add multiple validation messages for a single field at once
-var error = ValidationError.For("email", "Email is required")
-    .And("password", 
-        "Must be at least 8 characters",
-        "Must contain a number",
-        "Must contain a special character");
-
-// Results in:
-// - email: ["Email is required"]
-// - password: ["Must be at least 8 characters", "Must contain a number", "Must contain a special character"]
-```
-
-### Merging Validation Errors
-
-```csharp
-var emailValidation = ValidationError.For("email", "Invalid format");
-var passwordValidation = ValidationError.For("password", "Too short")
-    .And("password", "Not complex enough");
-
-var merged = emailValidation.Merge(passwordValidation);
-
-// Results in single ValidationError:
-// - email: ["Invalid format"]
-// - password: ["Too short", "Not complex enough"]
-```
-
-### Using Combine for Automatic Merging
-
-```csharp
-// Combine automatically merges ValidationErrors
-var error1 = Error.Validation("Email required", "email");
-var error2 = Error.Validation("Password required", "password");
-var error3 = Error.Validation("Password too short", "password");
-
-var combined = error1.Combine(error2).Combine(error3);
-
-// Results in single ValidationError:
-// - email: ["Email required"]
-// - password: ["Password required", "Password too short"]
-```
+`FlattenValidationErrors()` is useful when you want field-level feedback even after aggregation.
 
 ## Async Error Handling
 
-Handle errors in async workflows with full cancellation support:
+When your pipeline is async, the goal is the same: keep the failure explicit and deal with it once.
 
-### Async MatchError
+### `MatchErrorAsync`
 
 ```csharp
-return await ProcessOrderAsync(orderId, cancellationToken)
-    .MatchErrorAsync(
-        onValidation: async (err, ct) =>
-        {
-            await LogValidationFailureAsync(err, ct);
-            return Results.BadRequest(err.FieldErrors);
-        },
-        onNotFound: async (err, ct) =>
-        {
-            await NotifyNotFoundAsync(err, ct);
-            return Results.NotFound(err.Detail);
-        },
-        onSuccess: async (order, ct) =>
-        {
-            await SendConfirmationAsync(order, ct);
-            return Results.Ok(order);
-        },
-        cancellationToken: cancellationToken
-    );
+using Trellis;
+
+public record User(string Id, string Email);
+
+static Task<Result<User>> GetUserAsync(string id) =>
+    Task.FromResult(id == "42"
+        ? Result.Success(new User(id, "ada@example.com"))
+        : Result.Failure<User>(Error.NotFound($"User {id} not found", id)));
+
+var message = await GetUserAsync("42").MatchErrorAsync(
+    onSuccess: user => $"Loaded {user.Email}",
+    onNotFound: error => $"Missing: {error.Detail}",
+    onError: error => $"Fallback: {error.Code}");
 ```
 
-### Async SwitchError
+### `SwitchErrorAsync`
 
 ```csharp
-await ProcessPaymentAsync(payment, cancellationToken)
+using Trellis;
+
+await Task.FromResult(Result.Failure<string>(Error.Validation("Email is required", "email")))
     .SwitchErrorAsync(
-        onValidation: async (err, ct) => 
-            await LogErrorAsync("Validation failed", err, ct),
-        onUnexpected: async (err, ct) =>
-            await NotifyAdminAsync("Payment system error", err, ct),
-        onSuccess: async (result, ct) =>
-            await AuditSuccessAsync(result, ct),
-        cancellationToken: cancellationToken
-    );
-```
-
-### Async TapError with CancellationToken
-
-```csharp
-var result = await GetUserAsync(userId, cancellationToken)
-    .TapOnFailureAsync(
-        async (error, ct) => await LogErrorAsync(error, ct),
-        cancellationToken
-    )
-    .TapOnFailureAsync(
-        async (error, ct) => await NotifyAdminAsync(error, ct),
-        cancellationToken
-    );
-```
-
-### Async MapError
-
-```csharp
-var result = await FetchDataAsync(id, cancellationToken)
-    .MapOnFailureAsync(
-        async (error, ct) =>
+        onValidation: (error, ct) =>
         {
-            await LogErrorDetailsAsync(error, ct);
-            return Error.ServiceUnavailable("External service unavailable");
+            Console.WriteLine(error.Detail);
+            return Task.CompletedTask;
         },
-        cancellationToken
-    );
+        onSuccess: (value, ct) => Task.CompletedTask);
 ```
 
-## Custom Error Types
+## Exception Capture with `Try` and `TryAsync`
 
-While the built-in error types cover most scenarios, you can extend the system:
-
-### Custom Error Factory Methods
+Expected failures should be regular `Error` values. But for code that can throw, Trellis gives you a bridge.
 
 ```csharp
-public static class CustomErrors
-{
-    public static RateLimitError RateLimitExceeded(int retryAfterSeconds)
-    {
-        return Error.RateLimit(
-            $"Too many requests. Please try again after {retryAfterSeconds} seconds."
-        );
-    }
+using Trellis;
 
-    public static DomainError PaymentDeclined(string reason)
-    {
-        return Error.Domain(
-            $"Payment declined: {reason}"
-        );
-    }
-    
-    public static ValidationError InvalidCreditCard(string fieldName)
-    {
-        return Error.Validation(
-            "Credit card number is invalid",
-            fieldName
-        );
-    }
-}
+static Result<string> LoadText(string path) =>
+    Result.Try(() => File.ReadAllText(path));
 
-// Usage
-if (requestCount > limit)
-    return Result.Failure<Response>(
-        CustomErrors.RateLimitExceeded(retryAfterSeconds: 60)
-    );
+static Task<Result<string>> LoadTextAsync(string path) =>
+    Result.TryAsync(() => File.ReadAllTextAsync(path));
 ```
 
-### Domain-Specific Errors
+With custom mapping:
 
 ```csharp
-public static class OrderErrors
-{
-    public static Error InsufficientInventory(ProductId productId, int requested, int available)
-    {
-        return Error.Conflict(
-            $"Product {productId} has insufficient inventory. Requested: {requested}, Available: {available}",
-            productId.Value
-        );
-    }
+using Trellis;
 
-    public static Error OrderAlreadyShipped(OrderId orderId)
+var result = Result.Try(
+    () => File.ReadAllText("settings.json"),
+    exception => exception switch
     {
-        return Error.Conflict(
-            $"Order {orderId} has already been shipped and cannot be modified",
-            orderId.Value
-        );
-    }
-    
-    public static Error PaymentAmountMismatch(decimal expected, decimal actual)
-    {
-        return Error.Domain(
-            $"Payment amount mismatch. Expected: {expected:C}, Received: {actual:C}"
-        );
-    }
-}
-
-// Usage
-if (inventory.Available < order.Quantity)
-{
-    return Result.Failure<Order>(
-        OrderErrors.InsufficientInventory(
-            order.ProductId, 
-            order.Quantity, 
-            inventory.Available
-        )
-    );
-}
+        FileNotFoundException => Error.NotFound("settings.json was not found"),
+        UnauthorizedAccessException => Error.Forbidden("Access denied"),
+        _ => Error.Unexpected(exception.Message)
+    });
 ```
 
-## Best Practices
+## Equality: the Surprising Rule
 
-1. **Use Specific Error Types**: Choose the most specific error type (NotFound vs Validation vs Domain)
-2. **Include Context in Instance**: Use the `instance` parameter for resource identifiers
-3. **Consistent Error Codes**: Use consistent, meaningful error codes across your app
-4. **Handle Errors at Boundaries**: Use MatchError at API boundaries to convert to HTTP responses
-5. **Don't Swallow Errors**: Always propagate or handle errors explicitly
-6. **Use Aggregate for Multiple Errors**: Return all validation errors at once, not just the first one
-7. **Use TapError for Logging**: Add `TapOnFailure` calls to log failures without breaking the chain
-8. **Leverage Fluent API**: Use `ValidationError.For().And()` for building multi-field validations
-9. **Add Tracing IDs**: Include correlation IDs in error instance for distributed tracing
-10. **Use MapError Sparingly**: Only transform errors when you need to add context or change error types
+This is the accuracy detail most people miss.
 
-## Error Equality
-
-`Error` follows DDD Value Object equality semantics. `Error.Equals` is virtual, so each subtype compares all of its components:
-
-- Two errors are equal only if they have the **same type**, `Code`, `Detail`, and `Instance`
-- `ValidationError` also compares `FieldErrors`
-- `AggregateError` also compares its inner `Errors`
-
-This means you can use standard equality checks and assertions in tests:
+> [!WARNING]
+> `Error.Equals` compares **only `Code`**. It does **not** compare type, detail, or instance.
 
 ```csharp
-var error1 = Error.NotFound("User not found", "user-42");
-var error2 = Error.NotFound("User not found", "user-42");
-Assert.Equal(error1, error2); // ✅ Same type, Code, Detail, and Instance
+using Trellis;
 
-var error3 = Error.NotFound("User not found", "user-99");
-Assert.NotEqual(error1, error3); // ❌ Different Instance
+var first = Error.NotFound("User 42 not found", "42");
+var second = Error.NotFound("Order 99 not found", "99");
+
+Console.WriteLine(first.Equals(second)); // True
 ```
+
+That behavior is intentional: Trellis treats errors with the same code as equivalent for programmatic handling.
+
+## Practical Rules of Thumb
+
+- Use **`ValidationError`** when the caller can fix the request data
+- Use **`DomainError`** when the input is valid but the rule is not
+- Use **`ConflictError`** when the current state blocks the operation
+- Use **`NotFoundError`** when the resource does not exist
+- Use **`UnexpectedError`** for true surprises, not business logic
+- Use **`MatchError`** or **`MatchErrorAsync`** at system boundaries
+- Use **`TapOnFailure`** for logging and metrics
+- Use **`MapOnFailure`** when crossing layers
+- Let **`Combine(...)`** preserve multiple failures instead of throwing the first one away
 
 ## Next Steps
 
-- Learn about async operations in [Working with Async Operations](basics.md#working-with-async-operations)
-- See [Integration](integration.md) for converting errors to HTTP responses
-- Check [Advanced Features](advanced-features.md) for pattern matching and error recovery
+- Read [Advanced Features](advanced-features.md) for `Try`, `ParallelAsync`, tuple destructuring, and LINQ flows
+- Read [Why Maybe?](maybe-type.md) for optional values that compose with `Result<T>`

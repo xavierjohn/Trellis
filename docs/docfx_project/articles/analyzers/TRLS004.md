@@ -1,88 +1,60 @@
-﻿# TRLS004: Unsafe access to Result.Error
+# TRLS004 — Unsafe access to Result.Error
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Accessing `Result.Error` without first checking `IsFailure` or using proper guards.
+## What it detects
+Flags `result.Error` when the analyzer cannot prove that the access is guarded by a failure check or another safe Trellis pattern.
 
-## Rule Description
+## Why it matters
+`Result.Error` throws when the result is a success. Unchecked access swaps a clean result flow for an exception.
 
-`Result.Error` throws an `InvalidOperationException` if the `Result` is in a success state. Accessing it without checking `IsFailure` first can cause runtime exceptions.
+> [!WARNING]
+> This often appears in logging and HTTP mapping code. Make the failure path explicit before reading `Error`.
 
-## How to Fix Violations
-
-### Option 1: Check IsFailure First
+## Bad example
 ```csharp
-// ❌ Bad - Unsafe access
-var error = result.Error;
+using Trellis;
 
-// ✅ Good - Guarded access
-if (result.IsFailure)
+static class Example
 {
-    var error = result.Error;
-    Logger.LogError(error.Detail);
-}
-
-// ✅ Good - Ternary guard is also recognized
-var message = result.IsFailure ? result.Error.Detail : "ok";
-```
-
-### Option 2: Use Match
-```csharp
-// ✅ Good - Pattern matching
-return result.Match(
-    onSuccess: customer => Ok(customer),
-    onFailure: error => BadRequest(error));
-```
-
-### Option 3: Use TryGetError
-```csharp
-// ✅ Good - Safe extraction
-if (result.TryGetError(out var error))
-{
-    Logger.LogError(error.Detail);
+    public static string Bad(Result<int> result) =>
+        result.Error.Detail;
 }
 ```
 
-## Code Fix
-
-This diagnostic offers an automatic code fix that wraps the unsafe access in an `if (result.IsFailure)` guard.
-
-### Example Code Fix Transformation
-
-**Before:**
+## Good example
 ```csharp
-var result = GetCustomer();
-var error = result.Error;
-Logger.LogError(error.Code);
-```
+using Trellis;
 
-**After (automatic):**
-```csharp
-var result = GetCustomer();
-if (result.IsFailure)
+static class Example
 {
-    var error = result.Error;
-    Logger.LogError(error.Code);
+    public static string Good(Result<int> result)
+    {
+        if (result.IsFailure)
+            return result.Error.Detail;
+
+        return "No error";
+    }
 }
 ```
 
-## When to Suppress Warnings
+## Code fix available
+Yes — wraps the current usage in an `if (result.IsFailure)` guard.
 
-This warning can be suppressed in test code where you're explicitly testing failure scenarios.
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-```csharp
-[Fact]
-public void Should_FailWithInvalidEmail()
-{
-    var result = Customer.Create("invalid-email");
-    result.IsFailure.Should().BeTrue();
-    #pragma warning disable TRLS004
-    result.Error.Should().BeOfType<ValidationError>();
-    #pragma warning restore TRLS004
-}
+```ini
+dotnet_diagnostic.TRLS004.severity = none
 ```
 
-## Related Rules
+```csharp
+#pragma warning disable TRLS004
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS004
+```
 
-- [TRLS003](TRLS003.md) - Unsafe access to Result.Value
-- [TRLS005](TRLS005.md) - Consider using MatchError for error type discrimination
+> [!TIP]
+> When you need to translate both branches, `Match` and `MatchError` usually keep the code cleaner than a manual `Error` read.
+

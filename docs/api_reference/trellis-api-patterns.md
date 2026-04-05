@@ -1,377 +1,343 @@
-# Trellis — Usage Patterns, Recipes & Known Issues
+# Trellis Patterns API Reference
 
-> Part of the [Trellis API Reference](.). Cross-cutting patterns that span multiple packages.
+**Package:** multiple (`Trellis.Results`, `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Http`, `Trellis.Authorization`, `Trellis.Mediator`)  
+**Namespace:** mixed  
+**Purpose:** Documents the supported cross-package usage patterns Trellis builds around results, scalar values, ASP.NET integration, EF Core, HTTP clients, and mediator pipelines.
 
----
-
-# Known Issues & Workarounds
-
-## Trellis.Unit vs Mediator.Unit
-
-Projects referencing both `Trellis.Results` and `Mediator` will encounter ambiguous `Unit` references. Both libraries define a `Unit` type.
-
-```csharp
-// Preferred: Use parameterless Result.Success() — avoids referencing Unit entirely
-return Result.Success();  // instead of Result.Success(Unit.Value)
-
-// Alternative: Using alias (if you need to reference Unit directly)
-using Unit = Trellis.Unit;
-```
+See also: [trellis-api-results.md](trellis-api-results.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-entityframeworkcore.md](trellis-api-entityframeworkcore.md).
 
 ---
 
-# Usage Patterns & Recipes
+## Pattern: Scalar value validation in ASP.NET Core
 
-## Full Program.cs Setup
+### Applicable APIs
 
-Complete example showing MVC + Mediator + Auth + EF Core registration:
+| API | Exact Signature | Notes |
+| --- | --- | --- |
+| MVC setup | `public static IMvcBuilder AddScalarValueValidation(this IMvcBuilder builder)` | Use with `AddControllers()` |
+| Combined setup | `public static IServiceCollection AddScalarValueValidation(this IServiceCollection services)` | Configures JSON validation for MVC and Minimal APIs, but not MVC model binding/filtering |
+| Minimal API setup | `public static IServiceCollection AddScalarValueValidationForMinimalApi(this IServiceCollection services)` | Minimal APIs only |
+| Middleware | `public static IApplicationBuilder UseScalarValueValidation(this IApplicationBuilder app)` | Must run before routing/body handling |
+| Minimal API filter | `public static RouteHandlerBuilder WithScalarValueValidation(this RouteHandlerBuilder builder)` | Checks collected validation errors |
+
+### Required ordering
+
+| Rule | Required |
+| --- | --- |
+| Call `AddControllers().AddScalarValueValidation()` for MVC controllers | yes |
+| Call `AddScalarValueValidationForMinimalApi()` for Minimal API body binding | yes |
+| Call `UseScalarValueValidation()` before routing/endpoints | yes |
+| Call `WithScalarValueValidation()` on Minimal API handlers that accept validated body models | yes |
+| `MapScalarApiReference()` | **sample-app only, not a Trellis framework API** |
+| `WithDocumentPerVersion()` | **does not exist in this workspace** |
+
+### Compile-correct MVC example
 
 ```csharp
-using TodoSample.AntiCorruptionLayer;
-using TodoSample.Api;
-using TodoSample.Api.Middleware;
-using TodoSample.Application;
-using Scalar.AspNetCore;
 using Trellis.Asp;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddPresentation(builder.Environment)   // MVC, versioning, OpenTelemetry, SLI, DevelopmentActorProvider
-    .AddApplication()                        // Mediator + TrellisBehaviors
-    .AddAntiCorruptionLayer(connectionString); // DbContext + repositories + ResourceAuthorization
+    .AddControllers()
+    .AddScalarValueValidation();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi().WithDocumentPerVersion();
-    app.MapScalarApiReference(...);
-}
-
-app.UseHttpsRedirection();
+app.UseScalarValueValidation();
 app.UseAuthorization();
-app.UseScalarValueValidation();             // Middleware for scalar value validation
-app.UseMiddleware<ErrorHandlingMiddleware>();
 app.MapControllers();
-app.MapHealthChecks("/health");
-
-app.Run();
 ```
 
-## Create a Custom Value Object (RequiredGuid ID)
+### Compile-correct Minimal API example
 
-Complete example showing how to define a strongly-typed GUID identifier using `RequiredGuid<TSelf>`.
+```csharp
+using Trellis.Asp;
+
+var builder = WebApplication.CreateSlimBuilder(args);
+builder.Services.AddScalarValueValidationForMinimalApi();
+
+var app = builder.Build();
+
+app.UseScalarValueValidation();
+
+app.MapPost("/users", (CreateUserRequest request) => Results.Ok(request))
+   .WithScalarValueValidation();
+
+public sealed record CreateUserRequest(string Name);
+```
+
+---
+
+## Pattern: Scalar value object contracts
+
+### Applicable APIs
+
+| Type | Exact Signature |
+| --- | --- |
+| `IScalarValue<TSelf, TPrimitive>` | `static abstract Result<TSelf> TryCreate(TPrimitive value, string? fieldName = null)` |
+|  | `static abstract Result<TSelf> TryCreate(string? value, string? fieldName = null)` |
+|  | `static virtual TSelf Create(TPrimitive value)` |
+|  | `TPrimitive Value { get; }` |
+| `IFormattableScalarValue<TSelf, TPrimitive>` | `static abstract Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)` |
+
+### Guidance
+
+| Scenario | Use |
+| --- | --- |
+| Primitive input already parsed | `TryCreate(TPrimitive, fieldName)` |
+| Raw string input | `TryCreate(string?, fieldName)` |
+| Culture-aware parsing | `TryCreate(string?, provider, fieldName)` |
+| Known-valid constant/test data | `Create(TPrimitive)` |
+
+### Compile-correct example
 
 ```csharp
 using Trellis;
 
-public partial class OrderId : RequiredGuid<OrderId> { }
+public readonly record struct Quantity(int Value)
+    : IScalarValue<Quantity, int>
+{
+    public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
+        value <= 0
+            ? Error.Validation("Quantity must be greater than zero.", fieldName ?? "quantity")
+            : Result.Success(new Quantity(value));
 
-// Usage
-var id = OrderId.NewUniqueV7();
-var parsed = OrderId.TryCreate("550e8400-e29b-41d4-a716-446655440000");
+    public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
+        int.TryParse(value, out var parsed)
+            ? TryCreate(parsed, fieldName)
+            : Error.Validation("Quantity must be a valid integer.", fieldName ?? "quantity");
+}
 ```
 
-## Create a Custom Value Object (RequiredString)
+---
 
-Complete example showing how to define a validated string value object with optional length constraints and custom validation.
+## Pattern: MVC controllers returning `ActionResult`
+
+### Applicable APIs
+
+| API | Exact Signature |
+| --- | --- |
+| Sync mapping | `ToActionResult(this Result<TValue> result, ControllerBase controllerBase)` |
+| Async mapping | `public static Task<ActionResult<TValue>> ToActionResultAsync<TValue>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase)` |
+| Created response | `public static Task<ActionResult<TValue>> ToCreatedAtActionResultAsync<TValue>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, string? controllerName = null)` |
+| Created+mapped response | `public static Task<ActionResult<TOut>> ToCreatedAtActionResultAsync<TValue, TOut>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, Func<TValue, TOut> map, string? controllerName = null)` |
+
+### Notes
+
+| Fact | Value |
+| --- | --- |
+| `Result.Success()` returns | `Result<Unit>` |
+| `Unit.Value` | **does not exist** |
+| Explicit unit value when needed | `default(Unit)` or `new Unit()` |
+
+### Compile-correct example
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+
+[ApiController]
+[Route("products")]
+public sealed class ProductsController : ControllerBase
+{
+    [HttpPost]
+    public Task<ActionResult<ProductResponse>> Create(
+        [FromBody] CreateProductRequest request,
+        CancellationToken cancellationToken) =>
+        ProductName.TryCreate(request.Name)
+            .BindAsync(name => CreateProductAsync(name, cancellationToken))
+            .ToCreatedAtActionResultAsync(
+                this,
+                actionName: nameof(GetById),
+                routeValues: p => new { id = p.Id },
+                map: ProductResponse.From);
+
+    [HttpGet("{id}")]
+    public ActionResult<string> GetById(Guid id) => Ok(id.ToString());
+
+    private static Task<Result<Product>> CreateProductAsync(ProductName name, CancellationToken cancellationToken) =>
+        Task.FromResult(Result.Success(new Product(Guid.NewGuid(), name)));
+}
+
+public sealed record CreateProductRequest(string Name);
+public sealed record Product(Guid Id, ProductName Name);
+public sealed record ProductName(string Value)
+{
+    public static Result<ProductName> TryCreate(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? Error.Validation("Name is required.", "name")
+            : Result.Success(new ProductName(value));
+}
+public sealed record ProductResponse(Guid Id, string Name)
+{
+    public static ProductResponse From(Product product) => new(product.Id, product.Name.Value);
+}
+```
+
+---
+
+## Pattern: Minimal APIs returning `IResult`
+
+### Applicable APIs
+
+| API | Exact Signature |
+| --- | --- |
+| Standard mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TValue>(this Task<Result<TValue>> resultTask, TrellisAspOptions? options = null)` |
+| Created-at-route mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToCreatedAtRouteHttpResultAsync<TValue>(this Task<Result<TValue>> resultTask, string routeName, Func<TValue, RouteValueDictionary> routeValues, TrellisAspOptions? options = null)` |
+| Metadata-aware mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, HttpContext httpContext, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)` |
+| Created+metadata mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToCreatedHttpResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, HttpContext httpContext, Func<TIn, string> uriSelector, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)` |
+| Update+Prefer mapping | `ToUpdatedHttpResultAsync(...)` async overloads on `Result<T>`/`Task<Result<T>>` |
+
+### Compile-correct example
 
 ```csharp
 using Trellis;
+using Trellis.Asp;
 
-public partial class FirstName : RequiredString<FirstName> { }
+app.MapGet("/products/{id:guid}", (Guid id, HttpContext httpContext) =>
+    LoadProductAsync(id)
+        .ToHttpResultAsync(
+            httpContext,
+            p => RepresentationMetadata.WithStrongETag(p.ETag),
+            ProductResponse.From));
 
-// Usage
-var name = FirstName.Create("Alice");
-var result = FirstName.TryCreate(userInput);
-```
+static Task<Result<Product>> LoadProductAsync(Guid id) =>
+    Task.FromResult(Result.Success(new Product(id, "sample-etag")));
 
-With length constraints:
-
-```csharp
-[StringLength(50)]
-public partial class ProductName : RequiredString<ProductName> { }
-
-[StringLength(500, MinimumLength = 10)]
-public partial class Description : RequiredString<Description> { }
-```
-
-With custom validation (regex, format checks):
-
-```csharp
-[StringLength(10)]
-public partial class Sku : RequiredString<Sku>
+public sealed record Product(Guid Id, string ETag);
+public sealed record ProductResponse(Guid Id)
 {
-    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
-    {
-        if (!Regex.IsMatch(value, @"^SKU-\d{6}$"))
-            errorMessage = "Sku must match pattern SKU-XXXXXX.";
-    }
+    public static ProductResponse From(Product product) => new(product.Id);
 }
 ```
 
-## Create a Custom Value Object (RequiredEnum — Smart Enum)
+---
 
-Complete example showing how to define a smart enum with static members and case-insensitive parsing.
+## Pattern: EF Core query and save helpers
+
+### Applicable APIs
+
+| API | Exact Signature | Notes |
+| --- | --- | --- |
+| Maybe query | `public static Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default) where T : class` | Neutral absence |
+| Maybe query + predicate | `public static Task<Maybe<T>> FirstOrDefaultMaybeAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default) where T : class` | Predicate overload |
+| Result query | `public static Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Error notFoundError, CancellationToken cancellationToken = default) where T : class` | Not-found is failure |
+| Result query + predicate | `public static Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, Error notFoundError, CancellationToken cancellationToken = default) where T : class` | Predicate overload |
+| Save count | `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)` | Count on success |
+| Save unit | `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)` | Maps success with `.Map(_ => default(Unit))` |
+| Save unit + EF option | `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | Explicit EF option |
+| Convention scan | `public static ModelConfigurationBuilder ApplyTrellisConventions(this ModelConfigurationBuilder configurationBuilder, params Assembly[] assemblies)` | Pre-convention value-object registration |
+
+### Compile-correct example
 
 ```csharp
+using Microsoft.EntityFrameworkCore;
 using Trellis;
+using Trellis.EntityFrameworkCore;
 
-public partial class OrderStatus : RequiredEnum<OrderStatus>
+public static async Task<Result<Unit>> UpdateNameAsync(
+    AppDbContext db,
+    Guid id,
+    string name,
+    CancellationToken cancellationToken)
 {
-    public static readonly OrderStatus Draft = new();
-    public static readonly OrderStatus Pending = new();
-    public static readonly OrderStatus Confirmed = new();
-    public static readonly OrderStatus Shipped = new();
-    public static readonly OrderStatus Delivered = new();
-    public static readonly OrderStatus Cancelled = new();
+    return await db.Products
+        .FirstOrDefaultResultAsync(
+            p => p.Id == id,
+            Error.NotFound("Product not found.", id.ToString()),
+            cancellationToken)
+        .Tap(product => product.Name = name)
+        .CheckAsync(_ => db.SaveChangesResultUnitAsync(cancellationToken));
 }
 
-// Usage
-var status = OrderStatus.Draft;
-var all = OrderStatus.GetAll();
-var parsed = OrderStatus.TryFromName("Pending");
-if (status.Is(OrderStatus.Draft, OrderStatus.Pending)) { /* ... */ }
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<Product> Products => Set<Product>();
+}
+
+public sealed class Product
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
 ```
 
-## Create a Custom ScalarValueObject with Custom Validation
+---
 
-Complete example showing how to create a value object with fully custom validation logic by implementing `IScalarValue<TSelf, TPrimitive>` directly.
+## Pattern: HTTP client result pipelines
+
+### Applicable APIs
+
+| API | Exact Signature |
+| --- | --- |
+| Not found mapping | `public static Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<HttpResponseMessage> responseTask, NotFoundError notFoundError)` |
+| Unauthorized mapping | `public static Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<HttpResponseMessage> responseTask, UnauthorizedError unauthorizedError)` |
+| Forbidden mapping | `public static Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<HttpResponseMessage> responseTask, ForbiddenError forbiddenError)` |
+| Conflict mapping | `public static Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<HttpResponseMessage> responseTask, ConflictError conflictError)` |
+| Success enforcement | `EnsureSuccessAsync(...)` overloads on `Task<HttpResponseMessage>` |
+| JSON materialization | `ReadResultFromJsonAsync(...)` overloads on `Result<HttpResponseMessage>` / `Task<Result<HttpResponseMessage>>` |
+
+### Compile-correct example
 
 ```csharp
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Trellis;
+using Trellis.Http;
 
-public class Temperature : ScalarValueObject<Temperature, decimal>,
-    IScalarValue<Temperature, decimal>
-{
-    private Temperature(decimal value) : base(value) { }
+public static Task<Result<UserResponse>> GetUserAsync(HttpClient httpClient, Guid id, CancellationToken cancellationToken) =>
+    httpClient.GetAsync($"/users/{id}", cancellationToken)
+        .HandleNotFoundAsync(Error.NotFound("User not found.", id.ToString()))
+        .EnsureSuccessAsync()
+        .ReadResultFromJsonAsync(UserJsonContext.Default.UserResponse, cancellationToken);
 
-    public static Result<Temperature> TryCreate(decimal value, string? fieldName = null) =>
-        value.ToResult()
-            .Ensure(v => v >= -273.15m, Error.Validation("Below absolute zero", fieldName ?? "temperature"))
-            .Map(v => new Temperature(v));
+public sealed record UserResponse(Guid Id, string Name);
 
-    // Create is inherited automatically from ScalarValueObject
-}
+[JsonSerializable(typeof(UserResponse))]
+internal partial class UserJsonContext : JsonSerializerContext;
 ```
 
-## Define an Aggregate
+---
 
-Complete example showing how to define a DDD aggregate with domain methods, invariant enforcement, and domain event publishing.
+## Pattern: Mediator validation and authorization markers
 
-```csharp
-using Trellis;
+### Applicable APIs
 
-public class Order : Aggregate<OrderId>
-{
-    private readonly List<OrderLine> _lines = [];
-    public CustomerId CustomerId { get; }
-    public OrderStatus Status { get; private set; } = OrderStatus.Draft;
-    public Money Total { get; private set; }
+| Type | Exact Signature | Meaning |
+| --- | --- | --- |
+| `IAuthorize` | `IReadOnlyList<string> RequiredPermissions { get; }` | Current actor must satisfy all listed permissions |
+| `IValidate` | `IResult Validate()` | Message validates itself before handler execution |
 
-    private Order(CustomerId customerId) : base(OrderId.NewUniqueV7())
-    {
-        CustomerId = customerId;
-        Total = Money.Create(0m, "USD");
-        DomainEvents.Add(new OrderCreated(Id, customerId, DateTime.UtcNow));
-    }
-
-    public static Result<Order> TryCreate(CustomerId customerId) =>
-        Result.Success(new Order(customerId));
-
-    public Result<Order> AddLine(ProductId productId, string name, Money price, int quantity) =>
-        this.ToResult()
-            .Ensure(_ => Status == OrderStatus.Draft, Error.Conflict("Cannot modify non-draft order"))
-            .Bind(_ => OrderLine.TryCreate(productId, name, price, quantity))
-            .Tap(line => _lines.Add(line))
-            .Bind(_ => RecalculateTotal())
-            .Map(_ => this);
-
-    public Result<Order> Submit() =>
-        this.ToResult()
-            .Ensure(_ => Status == OrderStatus.Draft, Error.Conflict($"Cannot submit order in {Status} status"))
-            .Ensure(_ => _lines.Count > 0, Error.Domain("Cannot submit empty order"))
-            .Tap(_ =>
-            {
-                Status = OrderStatus.Pending;
-                DomainEvents.Add(new OrderSubmitted(Id, DateTime.UtcNow));
-            })
-            .Map(_ => this);
-
-    private Result<Unit> RecalculateTotal() =>
-        _lines.Select(l => l.LineTotal)
-            .Aggregate(Money.Zero("USD"), (acc, next) => acc.Bind(a => a.Add(next)))
-            .Tap(total => Total = total)
-            .Map(_ => Unit.Value);
-}
-```
-
-## Build an ROP Pipeline
-
-Complete example showing how to compose validation, transformation, and side effects using the Railway Oriented Programming pipeline.
+### Compile-correct example
 
 ```csharp
-// Validation + transformation
-var result = EmailAddress.TryCreate(dto.Email)
-    .Combine(FirstName.TryCreate(dto.FirstName))
-    .Combine(LastName.TryCreate(dto.LastName))
-    .Bind((email, first, last) => CreateUser(email, first, last));
-
-// Async pipeline with side effects
-var result = await OrderId.TryCreate(request.OrderId)
-    .BindAsync(id => _repository.GetByIdAsync(id, ct))
-    .EnsureAsync(order => order.Status == OrderStatus.Draft, Error.Conflict("Order already submitted"))
-    .BindAsync(order => order.Submit())
-    .CheckAsync(order => _repository.SaveAsync(order, ct))
-    .TapAsync(order => _eventBus.PublishAsync(order.UncommittedEvents(), ct));
-
-// Recovery
-var result = await ProcessPayment(order, paymentInfo)
-    .RecoverOnFailureAsync(
-        predicate: err => err is ServiceUnavailableError,
-        funcAsync: () => RetryPaymentAsync(order, paymentInfo));
-```
-
-## Use Maybe\<T\> for Optional Fields
-
-Complete example showing how to model optional fields with `Maybe<T>` in requests, validation, and EF Core persistence.
-
-```csharp
-public record CreateProfileRequest(
-    string Email,
-    string FirstName,
-    string? MiddleName,    // optional
-    string LastName,
-    Url? Website           // optional value object
-);
-
-// Validation with Optional
-var result = EmailAddress.TryCreate(dto.Email)
-    .Combine(Maybe.Optional(dto.MiddleName, MiddleName.TryCreate))
-    .Bind((email, middleName) => CreateProfile(email, middleName));
-
-// EF Core persistence — use partial Maybe<T> property (see trellis-api-efcore.md Maybe<T> Property Mapping)
-public partial class Profile
-{
-    public partial Maybe<Url> Website { get; set; }
-}
-// MaybeConvention auto-configures the backing field — no OnModelCreating needed
-```
-
-## Convert Result to HTTP Response
-
-Complete example showing how to map `Result<T>` to HTTP responses in both MVC controllers and Minimal API endpoints.
-
-```csharp
-// MVC Controller
-[HttpGet("{id}")]
-public async Task<ActionResult<OrderDto>> GetOrder(OrderId id)
-{
-    return await _service.GetOrderAsync(id)
-        .ToActionResultAsync(this, OrderDto.From);
-}
-
-[HttpPost]
-public async Task<ActionResult<OrderDto>> CreateOrder(CreateOrderRequest request)
-{
-    return await _service.CreateOrderAsync(request)
-        .ToCreatedAtActionResultAsync(this, nameof(GetOrder), dto => new { id = dto.Id }, OrderDto.From);
-}
-
-// Minimal API
-app.MapGet("/orders/{id}", async (OrderId id, IOrderService service) =>
-    await service.GetOrderAsync(id)
-        .MapAsync(order => order.ToDto())
-        .ToHttpResultAsync());
-```
-
-## HTTP Client → Result Pipeline
-
-Complete example showing how to chain HTTP status handling and JSON deserialization into a `Result<T>` pipeline.
-
-```csharp
-var result = await _httpClient.GetAsync($"/api/orders/{id}", ct)
-    .HandleNotFoundAsync(Error.NotFound($"Order {id} not found"))
-    .HandleUnauthorizedAsync(Error.Unauthorized("Authentication required"))
-    .EnsureSuccessAsync()
-    .ReadResultFromJsonAsync(JsonContext.Default.OrderDto, ct);
-```
-
-## EF Core Integration
-
-Complete example showing how to configure `DbContext` with Trellis conventions and implement a repository using Result-returning queries.
-
-```csharp
-// DbContext configuration
-protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-{
-    configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
-}
-
-// Repository
-public async Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken cancellationToken) =>
-    await _dbContext.Orders
-        .FirstOrDefaultResultAsync(o => o.Id == id, Error.NotFound($"Order {id} not found"), ct);
-
-public async Task<Maybe<Order>> FindByIdAsync(OrderId id, CancellationToken cancellationToken) =>
-    await _dbContext.Orders.FirstOrDefaultMaybeAsync(o => o.Id == id, ct);
-
-public async Task<Result<Unit>> SaveAsync(Order order, CancellationToken cancellationToken)
-{
-    _dbContext.Orders.Update(order);
-    return await _dbContext.SaveChangesResultUnitAsync(ct);
-}
-
-// Specification queries
-var highValueOrders = await _dbContext.Orders
-    .Where(new HighValueOrderSpec(1000m).And(new OrderStatusSpec(OrderStatus.Confirmed)))
-    .ToListAsync(ct);
-```
-
-#### Value Object LINQ Comparisons
-
-In LINQ queries, compare value objects to value objects — the value converter registered by `ApplyTrellisConventions` handles SQL translation automatically.
-
-```csharp
-// ✅ Correct — value object to value object
-var customer = await _dbContext.Customers
-    .FirstOrDefaultResultAsync(c => c.Email == EmailAddress.Create("alice@example.com"), notFoundError, ct);
-
-// ✅ Also correct (with ScalarValueQueryInterceptor registered via AddTrellisInterceptors)
-// The interceptor rewrites .Value access to the primitive for SQL translation
-var customer = await _dbContext.Customers
-    .FirstOrDefaultResultAsync(c => c.Email.Value == "alice@example.com", notFoundError, ct);
-```
-
-## CQRS Command with Authorization
-
-Complete example showing how to define a CQRS command with permission-based authorization, self-validation, and a handler using the ROP pipeline.
-
-```csharp
-using Mediator;
 using Trellis;
 using Trellis.Authorization;
 using Trellis.Mediator;
 
-public sealed record CreateOrderCommand(CustomerId CustomerId, List<OrderLineDto> Items)
-    : ICommand<Result<Order>>, IAuthorize, IValidate
+public sealed record CreateInvoice(string Number, decimal Amount) : IAuthorize, IValidate
 {
-    // Permission-based authorization
-    public IReadOnlyList<string> RequiredPermissions => ["Orders.Create"];
+    public IReadOnlyList<string> RequiredPermissions => ["invoice.create"];
 
-    // Self-validation
     public IResult Validate() =>
-        Result.Ensure(Items.Count > 0, Error.Validation("At least one item required", "items"));
-}
-
-public sealed class CreateOrderHandler(IOrderRepository repo)
-    : ICommandHandler<CreateOrderCommand, Result<Order>>
-{
-    public async ValueTask<Result<Order>> Handle(CreateOrderCommand command, CancellationToken cancellationToken) =>
-        await Order.TryCreate(command.CustomerId)
-            .BindAsync(order => AddItemsAsync(order, command.Items, ct))
-            .BindAsync(order => order.Submit())
-            .CheckAsync(order => repo.SaveAsync(order, ct));
+        string.IsNullOrWhiteSpace(Number)
+            ? Result.Failure(Error.Validation("Invoice number is required.", "number"))
+            : Result.Ensure(Amount > 0m, Error.Validation("Amount must be positive.", "amount"));
 }
 ```
+
+---
+
+## Pattern corrections from previous drafts
+
+| Incorrect claim | Correct source-backed statement |
+| --- | --- |
+| `Unit.Value` exists | `Unit` is a `record struct`; use `Result.Success()` or `default(Unit)` |
+| `WithDocumentPerVersion()` is part of Trellis | No such API exists in this workspace |
+| `MapScalarApiReference()` is a Trellis API | It appears only in the sample MVC app setup |
+| `UseScalarValueValidation()` can be placed anywhere | Register it before routing/endpoints that deserialize request bodies |
+| `IAuthorize.RequiredPermissions` is mutable or loosely typed | Its type is `IReadOnlyList<string>` |
+| `IValidate.Validate()` returns `Result<Unit>` | Its declared return type is `IResult` |
+

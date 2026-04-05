@@ -1,99 +1,135 @@
-﻿# ASP.NET Core Authorization (Entra ID)
+# ASP.NET Core Authorization
 
-**Level:** Intermediate | **Time:** 15-20 min | **Prerequisites:** [Basics](basics.md), [Trellis.Authorization](https://github.com/xavierjohn/Trellis/tree/main/Trellis.Authorization)
+**Level:** Intermediate | **Time:** 15-20 min | **Prerequisites:** [Basics](basics.md), [ASP.NET Core Integration](integration-aspnet.md)
 
-Map Azure Entra ID v2.0 JWT claims to `Actor` using the **Trellis.Asp.Authorization** package. This package provides `EntraActorProvider`, an `IActorProvider` implementation that hydrates an `Actor` from `HttpContext.User` with permissions, forbidden permissions, and ABAC attributes.
+Authentication tells you **who** called the API. Trellis authorization needs one more step: turn that authenticated principal into an `Actor` with permissions, forbidden permissions, and attributes that the rest of your application can trust. `Trellis.Asp.Authorization` handles that translation.
 
-> **Note:** This package assumes authentication middleware (e.g., `AddMicrosoftIdentityWebApi`) has already been configured. It handles **claim-to-Actor mapping**, not authentication itself.
+This article focuses on Azure Entra ID because `AddEntraActorProvider()` is the most opinionated setup, but the same package also includes generic claims-based and development-only providers.
 
-## Table of Contents
+## The mental model
 
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Default Claim Mapping](#default-claim-mapping)
-- [Customizing Mappings](#customizing-mappings)
-- [ActorAttributes Constants](#actorattributes-constants)
-- [Integration with Trellis.Mediator](#integration-with-trellismediator)
-- [Caching Actor Provider](#caching-actor-provider)
-- [Best Practices](#best-practices)
+```mermaid
+flowchart LR
+    Jwt[JWT claims]
+    Provider[EntraActorProvider]
+    Actor[Actor]
+    Behavior[AuthorizationBehavior]
+    Handler[Handler / Endpoint]
 
-## Installation
-
-```bash
-dotnet add package Trellis.Asp.Authorization
+    Jwt --> Provider
+    Provider --> Actor
+    Actor --> Behavior
+    Behavior --> Handler
 ```
 
-This package transitively references `Trellis.Authorization` — no need to install both.
+Why this matters:
 
-## Quick Start
+- your handlers stop parsing claims directly
+- permission checks become uniform
+- ABAC data such as tenant ID or MFA state is available from one object
+
+## Quick start with Entra ID
+
+```csharp
+using System.Linq;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddAuthentication().AddJwtBearer();
+builder.Services.AddAuthorization();
+builder.Services.AddEntraActorProvider();
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/me", [Authorize] async (IActorProvider actorProvider, CancellationToken ct) =>
+{
+    var actor = await actorProvider.GetCurrentActorAsync(ct);
+
+    return Results.Ok(new
+    {
+        actor.Id,
+        Permissions = actor.Permissions.OrderBy(p => p).ToArray(),
+        TenantId = actor.GetAttribute(ActorAttributes.TenantId),
+        Mfa = actor.GetAttribute(ActorAttributes.MfaAuthenticated)
+    });
+});
+
+app.Run();
+```
+
+That one registration makes `IActorProvider` available in DI, and `EntraActorProvider` builds the `Actor` from the current authenticated user.
+
+> [!NOTE]
+> `AddEntraActorProvider()` maps claims to an `Actor`. It does **not** authenticate tokens by itself. You still need your normal authentication middleware.
+
+## Default Entra mapping
+
+Out of the box, `EntraActorProvider` does a useful amount of work for you.
+
+| `Actor` member | Default source | Notes |
+| --- | --- | --- |
+| `Id` | `IdClaimType`, defaulting to the long object identifier claim | Falls back to short `oid` when `IdClaimType` is left at its default |
+| `Permissions` | `roles` and `ClaimTypes.Role` | Stored as a set for fast lookups |
+| `ForbiddenPermissions` | empty set | Override with `MapForbiddenPermissions` |
+| `Attributes["tid"]` | `tid` | Tenant ID |
+| `Attributes["preferred_username"]` | `preferred_username` | Good for display and audit, not authorization |
+| `Attributes["azp"]` | `azp` | Authorized party / client app |
+| `Attributes["azpacr"]` | `azpacr` | Client authentication method |
+| `Attributes["acrs"]` | `acrs` | Authentication context class reference |
+| `Attributes["ip_address"]` | `HttpContext.Connection.RemoteIpAddress` | Request IP |
+| `Attributes["mfa"]` | derived from `amr` | `"true"` if any `amr` claim equals `"mfa"` ignoring case; otherwise `"false"` |
+
+## Customizing claim mapping
+
+Most teams customize permissions before they customize anything else.
+
+### Flatten Entra roles into app permissions
 
 ```csharp
 using Trellis.Asp.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configure authentication (e.g., Microsoft Identity)
-builder.Services.AddAuthentication().AddJwtBearer();
+builder.Services.AddEntraActorProvider(options =>
+{
+    options.MapPermissions = claims =>
+    {
+        var rolePermissionMap = new Dictionary<string, string[]>
+        {
+            ["Catalog.Admin"] = ["Products.Read", "Products.Write", "Products.Delete"],
+            ["Catalog.Reader"] = ["Products.Read"]
+        };
 
-// 2. Register the Entra actor provider
-builder.Services.AddEntraActorProvider();
-
-var app = builder.Build();
-app.UseAuthentication();
-app.UseAuthorization();
-app.Run();
+        return claims
+            .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(c => rolePermissionMap.TryGetValue(c.Value, out var permissions)
+                ? permissions
+                : Array.Empty<string>())
+            .ToHashSet(StringComparer.Ordinal);
+    };
+});
 ```
 
-That's it. `IActorProvider` is now available via DI, and `Actor` is automatically hydrated from the authenticated user's JWT claims on every request.
-
-## Default Claim Mapping
-
-| Actor Property | Source | Details |
-|---------------|--------|---------|
-| `Id` | `oid` claim | Object identifier from Entra ID |
-| `Permissions` | `roles` claims | App role assignments |
-| `ForbiddenPermissions` | *(empty)* | Override via `MapForbiddenPermissions` |
-| `Attributes["tid"]` | `tid` claim | Tenant identifier |
-| `Attributes["preferred_username"]` | `preferred_username` claim | User's display email/UPN |
-| `Attributes["azp"]` | `azp` claim | Authorized party (client app ID) |
-| `Attributes["azpacr"]` | `azpacr` claim | Client authentication method |
-| `Attributes["acrs"]` | `acrs` claim | Auth context class reference |
-| `Attributes["ip_address"]` | `HttpContext.Connection.RemoteIpAddress` | Client IP |
-| `Attributes["mfa"]` | Derived from `amr` claim | `"true"` if `amr` contains `"mfa"` in any casing |
-
-## Customizing Mappings
-
-### Custom Permission Mapping
-
-Flatten JWT roles into granular permissions:
+### Use delegated scopes instead of roles
 
 ```csharp
 builder.Services.AddEntraActorProvider(options =>
 {
     options.MapPermissions = claims => claims
-        .Where(c => c.Type == "roles")
-        .SelectMany(role => RolePermissionMap[role.Value])
-        .ToHashSet();
+        .Where(c => string.Equals(c.Type, "scp", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c => c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        .ToHashSet(StringComparer.Ordinal);
 });
 ```
 
-### Scope-Based Permissions
-
-Map delegated permissions from the `scp` claim:
-
-```csharp
-builder.Services.AddEntraActorProvider(options =>
-{
-    options.MapPermissions = claims => claims
-        .Where(c => c.Type == "scp")
-        .SelectMany(c => c.Value.Split(' '))
-        .ToHashSet();
-});
-```
-
-### Custom ID Claim
-
-Use `sub` instead of `oid`:
+### Change the actor ID claim
 
 ```csharp
 builder.Services.AddEntraActorProvider(options =>
@@ -102,94 +138,75 @@ builder.Services.AddEntraActorProvider(options =>
 });
 ```
 
-### Forbidden Permissions
-
-Populate the deny list from an external source:
+### Add forbidden permissions or custom attributes
 
 ```csharp
 builder.Services.AddEntraActorProvider(options =>
 {
     options.MapForbiddenPermissions = claims => claims
-        .Where(c => c.Type == "denied_permissions")
+        .Where(c => string.Equals(c.Type, "denied_permissions", StringComparison.OrdinalIgnoreCase))
         .Select(c => c.Value)
-        .ToHashSet();
-});
-```
+        .ToHashSet(StringComparer.Ordinal);
 
-### Custom Attributes
-
-Add application-specific ABAC attributes:
-
-```csharp
-builder.Services.AddEntraActorProvider(options =>
-{
     options.MapAttributes = (claims, httpContext) =>
     {
-        var attrs = new Dictionary<string, string>();
-        var region = claims.FirstOrDefault(c => c.Type == "region");
-        if (region is not null)
-            attrs["region"] = region.Value;
-        return attrs;
+        var attributes = new Dictionary<string, string>();
+
+        var region = claims.FirstOrDefault(c => c.Type == "region")?.Value;
+        if (!string.IsNullOrWhiteSpace(region))
+            attributes["region"] = region;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+        if (!string.IsNullOrWhiteSpace(ipAddress))
+            attributes[ActorAttributes.IpAddress] = ipAddress;
+
+        return attributes;
     };
 });
 ```
 
-### Mapper Failure Behavior
+> [!WARNING]
+> If `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` throws, `EntraActorProvider` wraps that exception in an `InvalidOperationException` that points back to the failing option delegate.
 
-Custom mapping delegates run during actor hydration on every request. If `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` throws, `EntraActorProvider` wraps the original exception in an `InvalidOperationException` that identifies which mapping delegate failed. This makes misconfiguration easier to diagnose in logs and exception telemetry.
+## Working with `Actor`
+
+Once you have an `Actor`, authorization logic becomes plain application code.
+
+### Permission checks
 
 ```csharp
-builder.Services.AddEntraActorProvider(options =>
-{
-    options.MapPermissions = claims =>
-    {
-        // If this throws, the provider wraps it with EntraActorOptions.MapPermissions context
-        return claims
-            .Where(c => c.Type == "roles")
-            .Select(c => c.Value)
-            .ToHashSet();
-    };
-});
+if (!actor.HasPermission("Products.Delete"))
+    return Result.Failure(Error.Forbidden("Products.Delete is required."));
 ```
 
-## ActorAttributes Constants
+### Scoped permissions
 
-Use `ActorAttributes` constants for well-known attribute keys to avoid typos:
+`Actor.HasPermission(permission, scope)` uses `Actor.PermissionScopeSeparator`, which is `':'`.
 
 ```csharp
+var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
+
+if (tenantId is null || !actor.HasPermission("Documents.Read", tenantId))
+    return Result.Failure(Error.Forbidden("You cannot read documents in this tenant."));
+```
+
+That call checks for a permission string shaped like:
+
+```text
+Documents.Read:tenant-123
+```
+
+## Using authorization with Trellis.Mediator
+
+This is where the actor-provider abstraction becomes especially useful: authorization runs in the pipeline instead of being repeated in every handler.
+
+### Static permission checks with `IAuthorize`
+
+```csharp
+using Mediator;
+using Trellis;
 using Trellis.Authorization;
 
-if (actor.GetAttribute(ActorAttributes.MfaAuthenticated) == "true")
-{
-    // Allow sensitive operation
-}
-
-var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
-```
-
-| Constant | Value | Source |
-|----------|-------|--------|
-| `TenantId` | `"tid"` | Entra `tid` claim |
-| `PreferredUsername` | `"preferred_username"` | Entra `preferred_username` claim |
-| `AuthorizedParty` | `"azp"` | Entra `azp` claim |
-| `AuthorizedPartyAcr` | `"azpacr"` | Entra `azpacr` claim |
-| `AuthContextClassReference` | `"acrs"` | Entra `acrs` claim |
-| `IpAddress` | `"ip_address"` | `HttpContext.Connection.RemoteIpAddress` |
-| `MfaAuthenticated` | `"mfa"` | Derived from `amr` claim, case-insensitive on the claim value |
-
-## Integration with Trellis.Mediator
-
-When using `Trellis.Mediator`, the `EntraActorProvider` is automatically used by authorization pipeline behaviors:
-
-```csharp
-// Program.cs
-builder.Services.AddEntraActorProvider();
-builder.Services.AddMediator(options =>
-{
-    options.PipelineBehaviors = [.. ServiceCollectionExtensions.PipelineBehaviors];
-});
-
-// Command with authorization
 public sealed record DeleteDocumentCommand(string DocumentId)
     : ICommand<Result<Unit>>, IAuthorize
 {
@@ -197,42 +214,135 @@ public sealed record DeleteDocumentCommand(string DocumentId)
 }
 ```
 
-The `AuthorizationBehavior` resolves `IActorProvider` → `EntraActorProvider` → `Actor` from JWT claims → permission check, all automatically.
+Register the provider and the Trellis mediator behaviors together:
 
-## Caching Actor Provider
+```csharp
+using Mediator;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Trellis.Asp.Authorization;
 
-When resolving an `Actor` requires asynchronous work — such as loading permissions from a database or calling an external authorization service — implement `IActorProvider` and use `AddCachingActorProvider<T>()` to wrap it with per-request caching.
+var builder = WebApplication.CreateBuilder(args);
 
-### Implementation
+builder.Services.AddAuthentication().AddJwtBearer();
+builder.Services.AddAuthorization();
+builder.Services.AddEntraActorProvider();
+
+builder.Services.AddMediator(options =>
+{
+    options.ServiceLifetime = ServiceLifetime.Scoped;
+    options.PipelineBehaviors = [.. Trellis.Mediator.ServiceCollectionExtensions.PipelineBehaviors];
+});
+```
+
+### Resource-based checks with `IAuthorizeResource<TResource>`
+
+Use resource-based authorization when the rule depends on the loaded entity, not just the caller’s static permissions.
+
+```csharp
+using Mediator;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record Document(string Id, string OwnerId);
+
+public sealed record EditDocumentCommand(string DocumentId)
+    : ICommand<Result<Document>>, IAuthorizeResource<Document>
+{
+    public IResult Authorize(Actor actor, Document resource) =>
+        actor.IsOwner(resource.OwnerId) || actor.HasPermission("Documents.EditAny")
+            ? Result.Success()
+            : Result.Failure(Error.Forbidden("Only the owner can edit this document."));
+}
+```
+
+`IAuthorizeResource<TResource>` is contravariant (`in TResource`), which makes it easy to express rules against broader resource types when that fits your design.
+
+## `ActorAttributes` constants
+
+Use the built-in constants instead of hand-typed strings:
 
 ```csharp
 using Trellis.Authorization;
 
-public class DbActorProvider(
-    IHttpContextAccessor httpContextAccessor,
-    IPermissionStore store) : IActorProvider
+var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
+var clientApp = actor.GetAttribute(ActorAttributes.AuthorizedParty);
+var mfa = actor.GetAttribute(ActorAttributes.MfaAuthenticated);
+```
+
+This helps avoid subtle bugs from casing or spelling mismatches.
+
+## Other actor providers in the same package
+
+### `AddClaimsActorProvider()`
+
+Use this when your identity provider is not Entra or when your tokens already have the exact claims you want.
+
+```csharp
+builder.Services.AddClaimsActorProvider(options =>
 {
-    public async Task<Actor> GetCurrentActorAsync(CancellationToken ct = default)
+    options.ActorIdClaim = "sub";
+    options.PermissionsClaim = "permissions";
+});
+```
+
+### `AddDevelopmentActorProvider()`
+
+Use this only for local development and tests.
+
+```csharp
+builder.Services.AddDevelopmentActorProvider(options =>
+{
+    options.DefaultActorId = "development";
+    options.DefaultPermissions = new HashSet<string> { "Products.Read", "Products.Write" };
+});
+```
+
+> [!WARNING]
+> `DevelopmentActorProvider` throws whenever the host environment is **not** Development. That is true even if the `X-Test-Actor` header is absent.
+
+### `AddCachingActorProvider<T>()`
+
+Use this when resolving the current actor requires extra async work, such as database lookups.
+
+```csharp
+using Microsoft.AspNetCore.Http;
+using Trellis.Authorization;
+using Trellis.Asp.Authorization;
+
+builder.Services.AddCachingActorProvider<DatabaseActorProvider>();
+
+public interface IPermissionStore
+{
+    Task<IReadOnlySet<string>> GetPermissionsAsync(string userId, CancellationToken cancellationToken);
+}
+
+public sealed class DatabaseActorProvider(
+    IHttpContextAccessor httpContextAccessor,
+    IPermissionStore permissionStore) : IActorProvider
+{
+    public async Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
-        var permissions = await store.GetPermissionsAsync(userId, ct).ConfigureAwait(false);
+        var userId = httpContextAccessor.HttpContext?.User.FindFirst("sub")?.Value
+            ?? throw new InvalidOperationException("Missing user id.");
+
+        var permissions = await permissionStore.GetPermissionsAsync(userId, cancellationToken);
         return Actor.Create(userId, permissions);
     }
 }
-
-// DI registration — wraps DbActorProvider with CachingActorProvider
-services.AddCachingActorProvider<DbActorProvider>();
 ```
 
-### Behavior with Trellis.Mediator
+`CachingActorProvider` caches the first resolution task per request scope, so repeated authorization checks do not repeat the expensive work.
 
-`IActorProvider` has a single async method `GetCurrentActorAsync()`. The `AuthorizationBehavior` calls this method directly. When you need to layer additional permission resolution (e.g., database lookups) on top of claim-based mapping, implement a custom `IActorProvider` and register it with `AddCachingActorProvider<T>()` to avoid redundant async calls within the same request.
+## Best practices
 
-## Best Practices
+1. **Map coarse claims to fine-grained permissions once.** Keep runtime checks simple and fast.
+2. **Use `ActorAttributes` constants.** They are safer than raw strings.
+3. **Do not authorize on `preferred_username`.** It is for display and audit, not identity stability.
+4. **Use scoped permissions when tenant or resource scope matters.**
+5. **Keep development-only actor injection out of non-development environments.**
 
-1. **Pre-flatten permissions** — Use `MapPermissions` to convert coarse JWT roles into granular permissions at hydration time, keeping all `HasPermission` checks O(1).
-2. **Use `ActorAttributes` constants** — Avoid raw strings for attribute keys.
-3. **Don't use `preferred_username` for authorization** — It can change when a user is renamed. Use it for display/audit only.
-4. **Consider `azpacr` for sensitive operations** — Require certificate-based client auth (`"2"`) for admin endpoints.
-5. **Leverage `acrs` for step-up auth** — Enforce Conditional Access authentication context for high-risk operations.
-6. **Use `AddCachingActorProvider<T>()` for DB-backed permissions** — Wraps your provider with per-request caching and registers as scoped to match the request lifetime.
+## Next steps
+
+- Pair this with [ASP.NET Core Integration](integration-aspnet.md) to map failures cleanly to HTTP
+- Use [FluentValidation Integration](integration-fluentvalidation.md) if commands also need structured validation
+- Use [integration-mediator.md](integration-mediator.md) for deeper pipeline-behavior patterns

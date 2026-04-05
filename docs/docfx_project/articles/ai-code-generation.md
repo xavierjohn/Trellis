@@ -1,136 +1,209 @@
 # Trellis for AI Code Generation
 
-**Level:** Overview | **Time:** 15-20 min
+AI is good at producing code quickly.
 
-Trellis is designed so that both humans and AI can produce correct, maintainable, enterprise-grade code by following the structure the framework provides. This article explains how domain specifications map to Trellis constructs and why the framework is uniquely suited for AI-driven development.
+The hard part is getting code that is still understandable, reviewable, and correct **after the first happy-path demo**. That is where Trellis helps.
 
-## The Problem with AI-Generated Enterprise Code
+Trellis gives an AI a constrained set of good moves:
 
-The hardest part of AI-generated code isn't generating it — it's reading it. Trellis makes AI output predictable. Every service follows the same 4-layer architecture, the same ROP patterns, the same value object conventions. A developer who knows Trellis can review any AI-generated service in minutes, regardless of which AI wrote it.
+- validate input with value objects
+- represent failure with `Result<T>` instead of exceptions or `null`
+- keep domain rules explicit
+- map results to HTTP consistently
+- model state transitions explicitly when the workflow matters
 
-Without structure, traditional C# enterprise code gives AI no guardrails:
+That structure makes AI-generated code easier for humans to review.
 
-- **Nested if-statements** obscure business logic and make errors easy to miss
-- **Primitive obsession** (using `string` for email, `int` for order ID) lets bugs through that the compiler should catch
-- **Inconsistent error handling** — some code throws, some returns null, some returns error codes
-- **State transitions enforced by convention**, not by the type system
+## Start with a practical example
 
-AI generating this style of code can produce code that compiles but silently does the wrong thing.
+Imagine the specification says:
 
-## How Trellis Solves This
+> Register a user. First name, last name, and email are required. Return a structured validation error when any value is invalid.
 
-Trellis's building blocks **constrain what is possible to write**. An AI (or a junior developer) cannot produce invalid code because the framework prevents it. The compiler is the guardrail.
-
-### Make Illegal States Unrepresentable
+A Trellis-shaped implementation is straightforward:
 
 ```csharp
-// ❌ AI can generate this — compiles, but the email might be invalid
-public class User
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp;
+using Trellis.Primitives;
+
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
+public sealed record RegisterUserResponse(string FirstName, string LastName, string Email);
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddTrellisAsp();
+
+var app = builder.Build();
+
+app.MapPost("/users/register", (RegisterUserRequest request) =>
+    FirstName.TryCreate(request.FirstName)
+        .Combine(LastName.TryCreate(request.LastName))
+        .Combine(EmailAddress.TryCreate(request.Email))
+        .Bind((firstName, lastName, emailAddress) =>
+            Result.Success(new RegisterUserResponse(
+                firstName.Value,
+                lastName.Value,
+                emailAddress.Value)))
+        .ToHttpResult());
+
+app.Run();
+```
+
+Why this works well for AI-generated code:
+
+- the validation pattern is obvious
+- the failure path is explicit
+- the HTTP mapping is a single, predictable step
+- the reviewer can scan the whole flow in seconds
+
+## Why Trellis helps AI more than unstructured C# does
+
+### 1. Illegal states become harder to express
+
+Without Trellis, an AI can easily generate this:
+
+```csharp
+public sealed class User
 {
-    public string Email { get; set; }  // Could be anything
-    public string FirstName { get; set; }  // Could be null or empty
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
 }
+```
 
-// ✅ Trellis — if a value object exists, it's valid
-public class User : Aggregate<UserId>
+That compiles, but it tells you almost nothing about validity.
+
+With Trellis, the shape pushes the AI toward validated types instead:
+
+```csharp
+using Trellis.Primitives;
+
+public sealed record RegisteredUser(FirstName FirstName, EmailAddress Email);
+```
+
+Now the compiler and the construction path help enforce the rules.
+
+### 2. Errors are values, not side effects
+
+When AI-generated code mixes exceptions, `null`, and ad-hoc status flags, review gets expensive.
+
+Trellis makes the contract visible in the type:
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+
+public interface IPrimaryEmailLookup
 {
-    public EmailAddress Email { get; private set; }  // Always valid
-    public FirstName FirstName { get; private set; }  // Always non-empty
+    Result<EmailAddress> GetPrimaryEmail(string userName);
 }
 ```
 
-### Errors Are Values, Not Exceptions
+The caller knows it must handle success or failure. The ambiguity disappears.
+
+### 3. The same patterns repeat across the codebase
+
+That repetition is a feature.
+
+A reviewer learns one Trellis service and can usually review the next one much faster because the shapes stay familiar:
+
+- validate with `TryCreate`
+- compose with `Bind`, `Map`, `Ensure`, `Tap`, `Combine`
+- branch with `Match` / `MatchError`
+- map to HTTP with `ToHttpResult()` or `ToActionResult(this)`
+
+## Spec-to-code mapping
+
+This is where Trellis becomes especially useful for AI-assisted development.
+
+| Specification idea | Trellis construct | Typical API |
+| --- | --- | --- |
+| A validated input value | Value object | `EmailAddress.TryCreate(...)` |
+| An operation that can fail | Result-returning method | `Result<T>` |
+| Optional domain data | `Maybe<T>` | `Maybe<T>` |
+| A business rule on a success value | Validation step | `.Ensure(...)` |
+| Independent validations | Aggregation | `.Combine(...)` |
+| A side effect that should not change the value | Side-effect step | `.Tap(...)` |
+| HTTP response mapping | ASP.NET integration | `.ToHttpResult()` / `.ToActionResult(this)` |
+| Workflow transition | Stateless integration | `machine.FireResult(trigger)` |
+
+## State transitions are explicit too
+
+If your specification describes a workflow, Trellis gives the AI a better pattern than "throw an exception when the state is wrong."
 
 ```csharp
-// ❌ AI might forget to catch exceptions
-var user = await _repository.GetUserAsync(id);  // Throws? Returns null? Who knows?
+using Stateless;
+using Trellis;
+using Trellis.Stateless;
 
-// ✅ Trellis — the type system forces error handling
-Result<User> result = await _repository.GetUserAsync(id);
-// Can't access the value without handling the error case
+public enum OrderState { Draft, Submitted, Approved }
+public enum OrderTrigger { Submit, Approve }
+
+var state = OrderState.Draft;
+var machine = new StateMachine<OrderState, OrderTrigger>(() => state, s => state = s);
+
+machine.Configure(OrderState.Draft)
+    .Permit(OrderTrigger.Submit, OrderState.Submitted);
+
+machine.Configure(OrderState.Submitted)
+    .Permit(OrderTrigger.Approve, OrderState.Approved);
+
+Result<OrderState> result = machine.FireResult(OrderTrigger.Submit);
 ```
 
-### Code Reads Like English
+That gives an AI a clear, typed path for workflow behavior instead of hidden conventions.
 
-```csharp
-// Application layer — pure business logic chain
-public async Task<Result<User>> CreateUserAsync(
-    string firstName, string lastName, string email, CancellationToken ct)
-    => FirstName.TryCreate(firstName)
-        .Combine(LastName.TryCreate(lastName))
-        .Combine(EmailAddress.TryCreate(email))
-        .Bind((first, last, email) => User.TryCreate(first, last, email))
-        .Ensure(user => !_repository.EmailExists(user.Email), Error.Conflict("Email exists"))
-        .Tap(user => _repository.Save(user))
-        .Tap(user => _emailService.SendWelcome(user.Email));
+## What humans get back from this structure
 
-// API layer — one line to convert Result to HTTP response
-[HttpPost]
-public async Task<ActionResult<UserResponse>> CreateUser(
-    CreateUserRequest request, CancellationToken ct)
-    => await _userService.CreateUserAsync(
-        request.FirstName, request.LastName, request.Email, ct)
-        .ToActionResult(this);
-```
+### Faster review
 
-## Spec-to-Code Mapping
+A reviewer can spot missing validation, skipped error handling, or suspicious state transitions quickly because the code follows familiar Trellis shapes.
 
-When a specification says:
+### Better prompts
 
-> "An Order has an OrderId, a Customer, line items, and a status. The status transitions from Draft → Submitted → Approved → Shipped. An order can be cancelled from any state except Shipped."
+When a team prompts an AI with Trellis vocabulary, prompts become more precise:
 
-Trellis provides a direct, mechanical mapping:
+- "Use value objects for validated inputs."
+- "Return `Result<T>` from application services."
+- "Use `Combine` for independent validation."
+- "Map endpoint results with `ToHttpResult()`."
 
-| Specification Concept | Trellis Construct | Example |
-|----------------------|-------------------|---------|
-| **OrderId** | `RequiredGuid`-derived value object | `public partial class OrderId : RequiredGuid<OrderId> { }` |
-| **Customer** | Aggregate reference via typed ID | `public CustomerId CustomerId { get; }` |
-| **Order** | `Aggregate<OrderId>` with domain events | `public class Order : Aggregate<OrderId>` |
-| **Status transitions** | State machine returning `Result<Order>` | `Fire(OrderTrigger.Submit)` returns `Result<Order>` |
-| **Line items** | Collection of `Entity<LineItemId>` | `public IReadOnlyList<LineItem> Lines { get; }` |
-| **"Can be cancelled except from Shipped"** | Guard clause on the Cancel trigger | `stateMachine.Configure(Shipped).Ignore(Cancel)` |
-| **"Display all overdue orders over $500 in the West region"** | Composable `Specification<Order>` | `OverdueOrderSpec().And(OrderValueExceedsSpec(500m)).And(CustomerInRegionSpec("West"))` |
+That is easier to execute than vague instructions like "follow good architecture."
 
-The AI doesn't need to invent patterns. It follows the structure Trellis provides.
+### Compiler and analyzer support
 
-## The Workflow
+Trellis is not just a style guide. It also gives AI-generated code more compiler-visible structure and analyzer-visible patterns, which makes problems easier to catch early.
 
-1. **A human writes a specification** describing business requirements in plain language, using ubiquitous language from the domain.
-2. **An AI consumes that specification** and produces enterprise software using Trellis as the structural foundation.
-3. **The terms in the ubiquitous language map directly** to Trellis constructs — aggregates, value objects, entities, domain events, and state machines.
-4. **The type system and compiler enforce correctness** — it is impossible to skip error handling, construct invalid domain objects, or make illegal state transitions.
-5. **When requirements change**, the human updates the specification and the AI modifies the code. Trellis's structure ensures changes propagate correctly — new error cases must be handled, new states must be accounted for, new validation rules are enforced at compile time.
+## A good mental model
 
-## Why Trellis for AI?
+Trellis does not make AI "smarter."
 
-### Compiler as Guardrail
+It makes AI output **more bounded**.
 
-Trellis provides 19 Roslyn analyzers that catch incorrect usage at compile time. When AI generates code that doesn't follow the patterns, the compiler flags it immediately. See [Analyzer Rules](analyzers/index.md) for the complete list.
+That matters because bounded output is easier to:
 
-### Mechanical Mapping
+- review
+- test
+- refactor
+- regenerate safely
+- keep consistent across a team
 
-Every domain concept has a single, obvious Trellis construct. There is no ambiguity about which pattern to use:
+## Prompting advice for teams using AI with Trellis
 
-- Business entity with identity → `Entity<TId>` or `Aggregate<TId>`
-- Validated value → Value object with `TryCreate`/`Create`
-- Optional value → `Maybe<T>`
-- Operation that can fail → Returns `Result<T>`
-- Business rule → `Ensure` or `Specification<T>`
-- Side effect → `Tap`
-- Error → Discriminated error type (`Error.Validation`, `Error.NotFound`, etc.)
+If you want better results, ask for these things explicitly:
 
-### Evolving Specifications
+- use `TryCreate` for validated inputs
+- return `Result<T>` from operations that can fail
+- use `Combine` before `Bind` for independent validation steps
+- use `Ensure` for business-rule checks
+- use `ToHttpResult()` or `ToActionResult(this)` at the API boundary
+- use `FireResult` for state-machine transitions instead of throwing for invalid transitions
 
-When requirements change, the type system guides the update:
+## Bottom line
 
-- **New error case added** → Compiler error: all `MatchError` calls must handle the new case
-- **New state added to state machine** → Compiler error: transitions must be defined
-- **New required field on aggregate** → Compiler error: constructors and factories must be updated
-- **New validation rule** → Add an `Ensure` step; existing pipeline structure unchanged
+AI works best when the target codebase has strong rails.
 
-## Next Steps
+That is exactly what Trellis provides: not magic, but **predictable structure**.
 
-- [Introduction](intro.md) — Core concepts and why Trellis exists
-- [Basics](basics.md) — Learn the ROP operations
-- [Clean Architecture](clean-architecture.md) — Full architecture patterns
-- [Examples](examples.md) — Real-world code samples
+And predictable structure is what makes AI-generated enterprise code reviewable by humans.

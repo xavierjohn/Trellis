@@ -1,428 +1,271 @@
-﻿# Introduction
+# Introduction
 
-Learn why Trellis makes your code cleaner, safer, and more maintainable with Railway-Oriented Programming and Domain-Driven Design.
+Trellis is for the moment when your codebase has outgrown "just use strings and throw exceptions." It gives you a structure for writing application code that stays readable as validation, business rules, persistence, and HTTP concerns pile up.
 
 ## Table of Contents
 
 - [Why Trellis?](#why-trellis)
-- [Functional Programming](#functional-programming)
-- [Domain-Driven Design](#domain-driven-design)
-- [Error Types](#error-types)
-- [Key Features](#key-features)
-  - [Reuse Domain Validation at the API Layer](#reuse-domain-validation-at-the-api-layer)
-  - [Pagination Support](#pagination-support)
-  - [Avoid Primitive Obsession](#avoid-primitive-obsession)
-  - [AI-Ready Patterns](#ai-ready-patterns)
-  - [Async & Cancellation Support](#async--cancellation-support)
-  - [Parallel Execution](#parallel-execution)
+- [Start with a concrete problem](#start-with-a-concrete-problem)
+- [Railway-Oriented Programming](#railway-oriented-programming)
+- [Domain-Driven Design without ceremony](#domain-driven-design-without-ceremony)
+- [Error types that carry intent](#error-types-that-carry-intent)
+- [Why this works well in real systems](#why-this-works-well-in-real-systems)
 - [Performance](#performance)
-- [Next Steps](#next-steps)
+- [Next steps](#next-steps)
 
 ## Why Trellis?
 
-Building robust applications requires explicit error handling, type safety, and clean code. Trellis combines **Railway-Oriented Programming** with **Domain-Driven Design** to achieve all three — without sacrificing performance or readability.
+The short answer: **Trellis helps you express business rules directly in code without losing control of errors.**
 
-Trellis is designed so that both humans and AI can produce correct, maintainable, enterprise-grade code by following the structure the framework provides.
+Most application code becomes hard to read for three predictable reasons:
+
+1. **Validation is scattered** across controllers, services, and database checks.
+2. **Primitives hide meaning** so `string`, `Guid`, and `int` get passed around with no protection.
+3. **Failure handling interrupts the happy path** with nested `if` statements, null checks, and exception plumbing.
+
+Trellis combines **Railway-Oriented Programming (ROP)** and **Domain-Driven Design (DDD)** so those concerns become part of the structure instead of ad-hoc conventions.
 
 ```mermaid
 graph TB
-    subgraph Benefits["Core Benefits"]
-        A[Railway-Oriented<br/>Programming]
-        B[Domain-Driven<br/>Design]
-        C[Type Safety]
+    subgraph Problems[Common application pain]
+        A[Primitive obsession]
+        B[Scattered validation]
+        C[Inconsistent error handling]
     end
-    
-    subgraph Results["What You Get"]
-        D[Explicit Error<br/>Handling]
-        E[Clean Code]
-        F[Maintainable<br/>Applications]
+
+    subgraph Trellis[Trellis approach]
+        D[Value objects]
+        E[Result pipelines]
+        F[Structured errors]
     end
-    
+
+    subgraph Outcomes[What developers feel]
+        G[Readable workflows]
+        H[Safer refactoring]
+        I[Predictable API behavior]
+    end
+
     A --> D
     B --> E
-    C --> D
-    A --> E
-    B --> F
     C --> F
-    
-    style A fill:#E1F5FF
-    style B fill:#FFF4E1
-    style C fill:#E1FFE1
-    style D fill:#90EE90
-    style E fill:#90EE90
-    style F fill:#90EE90
+    D --> H
+    E --> G
+    F --> I
 ```
 
-## Functional Programming
+## Start with a concrete problem
 
-Railway-Oriented Programming (ROP) is a pattern for explicit error handling that **eliminates nested if-statements** and **makes your code read like a story**.
+The easiest way to understand Trellis is to start with code you probably already have.
 
-**The problem with traditional code:**
-- ❌ Scattered error checks interrupt the flow
-- ❌ Easy to forget a validation step
-- ❌ Hard to see the "happy path"
-- ❌ Verbose and repetitive
+**Problem:** You need to register a user, reject invalid fields, block duplicate emails, and send a welcome email only when the save succeeds.
 
-**Instead of this:**
+### Traditional flow
+
 ```csharp
-// ❌ Traditional approach - 15+ lines, hard to follow the logic
 var firstName = ValidateFirstName(input.FirstName);
-if (firstName == null) return BadRequest("Invalid first name");
+if (firstName is null)
+    return BadRequest("Invalid first name.");
 
 var lastName = ValidateLastName(input.LastName);
-if (lastName == null) return BadRequest("Invalid last name");
+if (lastName is null)
+    return BadRequest("Invalid last name.");
 
-var user = CreateUser(firstName, lastName);
-if (user == null) return BadRequest("Cannot create user");
+var email = ValidateEmail(input.Email);
+if (email is null)
+    return BadRequest("Invalid email.");
 
-if (_repository.EmailExists(user.Email))
-    return Conflict("Email exists");
+if (_repository.EmailExists(email))
+    return Conflict("Email already registered.");
 
+var user = new User(firstName, lastName, email);
 _repository.Save(user);
+_emailService.SendWelcome(email);
+
 return Ok(user);
 ```
 
-**You write this:**
+### Trellis flow
+
 ```csharp
-// ✅ ROP approach - 6 lines that read like English
-return FirstName.TryCreate(input.FirstName)
-    .Combine(LastName.TryCreate(input.LastName))
-    .Bind((first, last) => User.TryCreate(first, last))
-    .Ensure(user => !_repository.EmailExists(user.Email), Error.Conflict("Email exists"))
-    .Tap(user => _repository.Save(user))
-    .Match(onSuccess: user => Ok(user), onFailure: error => BadRequest(error.Detail));
-```
+using Trellis;
 
-**What you gain:**
-- 🎯 **60% less code** - More readable, less to maintain
-- 📖 **Self-documenting** - Chain reads like a recipe
-- 🛡️ **Compiler-enforced** - Can't skip error handling
-- 🔍 **Zero hidden logic** - Every step is visible
+public partial class FirstName : RequiredString<FirstName> { }
+public partial class LastName : RequiredString<LastName> { }
+public partial class CustomerEmail : RequiredString<CustomerEmail> { }
 
-👉 **Learn the fundamentals:** [Basics](basics.md) - Complete ROP tutorial with all core operations
+public sealed record RegisterUserInput(string FirstName, string LastName, string Email);
 
-## Domain-Driven Design
-
-Build rich domain models with **Aggregates**, **Entities**, **Value Objects**, and **Enum Value Objects** that enforce business rules and maintain valid state.
-
-**Key DDD building blocks:**
-- **Aggregates** - Consistency boundaries with domain events (e.g., `Order`, `Customer`)
-- **Entities** - Objects with identity that change over time (e.g., `User`, `Product`)
-- **Value Objects** - Immutable objects defined by their values (e.g., `EmailAddress`, `Money`)
-- **Scalar Value Objects** - Single-value wrappers with validation (e.g., `FirstName`, `Age`)
-- **RequiredEnum** - Type-safe enumerations with behavior and state machine support (e.g., `OrderState`, `PaymentStatus`)
-- **Specifications** - Composable business rules as expression trees (e.g., `OverdueOrderSpec`, `HighValueOrderSpec`)
-
-**Quick example:**
-```csharp
-// Value object with validation
-public partial class EmailAddress : RequiredString { }
-
-// RequiredEnum - type-safe enumeration (Name auto-derived)
-public partial class OrderState : RequiredEnum<OrderState>
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
 {
-    public static readonly OrderState Draft = new();
-    public static readonly OrderState Confirmed = new();
-    public static readonly OrderState Shipped = new();
-    
-    private OrderState() { }
+    public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
+        Result.Success(new User(firstName, lastName, email));
 }
 
-// Use in domain entity
-public class User : Entity<UserId>
+public static Result<User> RegisterUser(
+    RegisterUserInput input,
+    Func<CustomerEmail, bool> emailExists,
+    Action<User> saveUser,
+    Action<CustomerEmail> sendWelcomeEmail)
 {
-    public EmailAddress Email { get; private set; }
-    public FirstName FirstName { get; private set; }
-    
-    public static Result<User> Create(EmailAddress email, FirstName firstName)
-    {
-        var user = new User(email, firstName);
-        return Validator.ValidateToResult(user);
-    }
+    return FirstName.TryCreate(input.FirstName)
+        .Combine(LastName.TryCreate(input.LastName))
+        .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
+        .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
+        .Ensure(user => !emailExists(user.Email), Error.Conflict("Email already registered."))
+        .Tap(saveUser)
+        .Tap(user => sendWelcomeEmail(user.Email));
 }
 ```
 
-👉 **See patterns in action:** [Clean Architecture](clean-architecture.md) - DDD with ROP in layered applications  
-👉 **Integrate validation:** [FluentValidation Integration](integration-fluentvalidation.md) - Domain validation patterns
+The important part is not that the code is shorter. The important part is that **the business story is visible**.
 
-## Error Types
+- Validate the inputs
+- Create the user
+- Enforce the duplicate-email rule
+- Save
+- Send the email
 
-Trellis provides **10 specialized error types** that automatically map to HTTP status codes, giving you a single source of truth for error handling across your application. Any mapping can be overridden via `AddTrellisAsp()`.
+When any step fails, the rest of the chain is skipped automatically.
+
+> [!TIP]
+> Start by reading the pipeline left to right. If it reads like a business workflow, you are using Trellis the way it was designed.
+
+## Railway-Oriented Programming
+
+The problem ROP solves is simple: **errors should not force you to rewrite the happy path over and over.**
+
+With Trellis, a `Result<T>` is either a success with a value or a failure with an `Error`. The pipeline operators decide what happens next.
 
 ```mermaid
 graph LR
-    DOMAIN[Domain Logic] --> ERROR[Error Types]
-    ERROR --> HTTP[HTTP Responses]
-    ERROR --> LOG[Logging]
-    ERROR --> UI[User Messages]
-    
-    style DOMAIN fill:#E1F5FF
-    style ERROR fill:#FFD700
-    style HTTP fill:#90EE90
-    style LOG fill:#FFE4B5
-    style UI fill:#E1FFE1
+    A[Input] --> B{Step 1}
+    B -->|Success| C{Step 2}
+    B -->|Failure| F[Failure result]
+    C -->|Success| D{Step 3}
+    C -->|Failure| F
+    D -->|Success| E[Success result]
+    D -->|Failure| F
 ```
 
-**Common error types:**
-- `ValidationError` → 400 Bad Request (with field-level details)
-- `NotFoundError` → 404 Not Found
-- `UnauthorizedError` → 401 Unauthorized
-- `ConflictError` → 409 Conflict
-- `DomainError` → 422 Unprocessable Entity
+That gives you a small vocabulary for most workflows:
 
-**Example - Discriminated union matching:**
-```csharp
-return ProcessOrder(order).MatchError(
-    onValidation: err => BadRequest(err.FieldErrors),
-    onNotFound: err => NotFound(err.Detail),
-    onConflict: err => Conflict(err.Detail),
-    onSuccess: order => Ok(order)
-);
-```
+- **`Combine`** - validate independent inputs together
+- **`Bind`** - call the next operation when the current step succeeded
+- **`Ensure`** - add a business rule
+- **`Tap`** - run a side effect without changing the result
+- **`Match`** - turn the final result into a plain value, HTTP response, or message
 
-📖 **Complete error catalog:** [Error Handling](error-handling.md) - All 10 error types, custom errors, aggregation
+If you want the hands-on tutorial version, go straight to [Basics](basics.md).
 
-## Key Features
+## Domain-Driven Design without ceremony
 
-Trellis provides several powerful features that work together to simplify your code:
+DDD can become heavy when every concept requires pages of plumbing. Trellis keeps the useful parts and reduces the boilerplate.
 
-### Reuse Domain Validation at the API Layer
+### Start with value objects
 
-Domain validation rules automatically translate to HTTP standard error responses. ValidationError becomes BadRequest with detailed errors, NotFoundError becomes HTTP 404. This creates a **single source of truth**, eliminating duplication between domain and API layers.
-
-### Pagination Support
-
-Automatic HTTP header management with proper status codes: 200 (OK) for complete results, 206 (Partial Content) for paginated responses per [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110#field.content-range).
-
-### Avoid Primitive Obsession
-
-Use strongly-typed value objects instead of primitive types. RequiredString provides type-safe string properties with automatic source generation. Additional value object types are available for common scenarios.
-
-**Benefits:**
-- **Type safety** - Compiler prevents parameter mix-ups
-- **Self-documenting** - `FirstName` vs `string` is clearer
-- **Validation once** - Create validated objects, use everywhere
-- **Source generation** - Minimal boilerplate
-
-**Example:**
-```csharp
-// ❌ Easy to swap parameters
-Person CreatePerson(string firstName, string lastName);
-
-// ✅ Compiler catches mistakes
-Person CreatePerson(FirstName firstName, LastName lastName);
-```
-
-See [Basics](basics.md) to learn how to create type-safe value objects.
-
-### AI-Ready Patterns
-
-Trellis's structured patterns make it uniquely suited for AI-driven development workflows. The type system and compiler enforce correctness — it is impossible to skip error handling, construct invalid domain objects, or make illegal state transitions.
-
-Today's AI-generated code is tomorrow's maintenance burden. Trellis ensures that AI-generated services are structured the same way a senior engineer would write them — clean architecture, explicit error handling, no hidden state. Six months from now, your team can modify AI-generated code because it follows patterns they already understand.
-
-When a specification says "An Order has an OrderId and a status that transitions from Draft → Submitted → Shipped," Trellis provides a direct mapping:
-
-- **OrderId** → `RequiredGuid`-derived value object
-- **Order** → `Aggregate<OrderId>` with domain events
-- **Status transitions** → State machine returning `Result<Order>`
-
-The AI doesn't need to invent patterns. It follows the structure Trellis provides.
-
-See [Trellis for AI Code Generation](ai-code-generation.md) for details on spec-to-code mapping.
-
-### Async & Cancellation Support
-
-All async operations support `CancellationToken` for graceful shutdown and request timeouts:
+The problem value objects solve is **meaningless primitives**.
 
 ```csharp
-await GetCustomerByIdAsync(id, cancellationToken)
-   .EnsureAsync(
-      (customer, ct) => customer.CanBePromotedAsync(ct),
-      Error.Validation("Cannot promote"),
-      cancellationToken)
-   .TapAsync(
-      async (customer, ct) => await customer.PromoteAsync(ct),
-      cancellationToken)
-   .MatchAsync(
-      onSuccess: ok => "Success", 
-      onFailure: error => error.Detail,
-      cancellationToken: cancellationToken);
+using Trellis;
+
+[StringLength(100)]
+public partial class FirstName : RequiredString<FirstName> { }
+
+[StringLength(100)]
+public partial class LastName : RequiredString<LastName> { }
+
+public sealed record Person(FirstName FirstName, LastName LastName);
 ```
 
-Learn about async patterns in [Working with Async Operations](basics.md#working-with-async-operations).
-
-### Parallel Execution
-
-Fetch data from multiple sources in parallel while maintaining Railway Oriented Programming style:
+Now the compiler can protect you from mistakes that `string` never could.
 
 ```csharp
-// Execute multiple async operations in parallel using ParallelAsync
-var result = await GetUserAsync(userId, cancellationToken)
-    .ParallelAsync(GetOrdersAsync(userId, cancellationToken))
-    .ParallelAsync(GetPreferencesAsync(userId, cancellationToken))
-    .WhenAllAsync()
-    .Bind((user, orders, preferences) => 
-        Result.Success(new UserProfile(user, orders, preferences)));
+Person CreatePerson(FirstName firstName, LastName lastName) =>
+    new(firstName, lastName);
 ```
 
-See [Advanced Features](advanced-features.md) for parallel operations, LINQ syntax, and more.
+> [!NOTE]
+> For your own scalar value objects, use the generic base classes such as `RequiredString<FirstName>` and `RequiredGuid<OrderId>`. The generic parameter is part of the contract.
+
+### Then grow into aggregates and entities
+
+When the domain gets richer, Trellis gives you `Aggregate<TId>`, `Entity<TId>`, `ValueObject`, and `Specification<T>` so the language in your code can match the language in the business.
+
+That is where order lifecycles, payment rules, and customer policies start feeling natural instead of bolted on.
+
+For deeper DDD guidance, see [Clean Architecture](clean-architecture.md) and [Aggregate Factory Pattern](aggregate-factory-pattern.md).
+
+## Error types that carry intent
+
+The problem with plain strings and generic exceptions is that they tell humans something went wrong but tell the program almost nothing useful.
+
+Trellis uses concrete error types such as:
+
+- `ValidationError`
+- `NotFoundError`
+- `ConflictError`
+- `ForbiddenError`
+- `UnexpectedError`
+
+Each one carries intent, and the defaults map naturally to HTTP semantics.
+
+| Factory | Default code | Typical meaning |
+| --- | --- | --- |
+| `Error.Validation(...)` | `validation.error` | Input or rule validation failed |
+| `Error.NotFound(...)` | `not.found.error` | The resource does not exist |
+| `Error.Conflict(...)` | `conflict.error` | Current state prevents the operation |
+| `Error.Forbidden(...)` | `forbidden.error` | Caller is authenticated but not allowed |
+| `Error.Unexpected(...)` | `unexpected.error` | Something unplanned failed |
+
+```csharp
+using Trellis;
+
+var message = Error.NotFound("Order not found.") == Error.NotFound("Customer not found.")
+    ? "Same programmatic error code"
+    : "Different error code";
+```
+
+That comparison returns the first branch because **`Error.Equals` compares only `Code`**.
+
+> [!WARNING]
+> Do not treat `Error.Equals` as a comparison of the full message. It is intentionally code-based equality.
+
+If you want a full catalog of error types and HTTP mappings, read [Error Handling](error-handling.md).
+
+## Why this works well in real systems
+
+The value of Trellis becomes clearer as your application grows.
+
+### Reuse domain rules at the edge
+
+You can validate in the domain and reuse those failures at the API layer instead of duplicating rules in controllers. See [FluentValidation Integration](integration-fluentvalidation.md) and [ASP.NET Core Integration](integration-aspnet.md).
+
+### Keep async code readable
+
+Async flows still read left to right with `BindAsync`, `TapAsync`, and `MatchAsync`. You do not have to abandon the model once I/O enters the picture. See [Basics](basics.md#working-with-async-operations).
+
+### Give AI and humans the same rails
+
+Trellis works well for AI-assisted development because the framework encourages explicit structure:
+
+- inputs become value objects
+- workflows become result pipelines
+- failures become typed errors
+- endpoints become thin adapters over domain logic
+
+That is useful for generators, but it is even more useful for the humans who maintain the code later.
 
 ## Performance
 
-The library adds only **~11-16 nanoseconds** of overhead compared to imperative code—less than 0.002% of typical I/O operations. You get cleaner, more maintainable code with virtually zero performance cost.
+The framework cost is tiny compared to network calls, database queries, or serialization. Trellis is designed so you can choose clarity without paying a meaningful runtime penalty for ordinary application work.
 
-**Typical operation costs:**
+For benchmark details, see [Performance](performance.md).
 
-```mermaid
-%%{init: {'theme':'base'}}%%
-gantt
-    title Operation Time Comparison (Log Scale)
-    dateFormat X
-    axisFormat %s
-    
-    section I/O Operations
-    HTTP Request (10-100ms)    :milestone, 100000000, 0
-    Database Query (1-10ms)    :milestone, 10000000, 0
-    
-    section Library Overhead
-    ROP Overhead (11-16ns)     :milestone, 16, 0
-```
+## Next steps
 
-| Operation | Time (nanoseconds) | Relative Cost |
-|-----------|-------------------|---------------|
-| **HTTP Request** | 10,000,000 - 100,000,000 | 625,000x - 6,250,000x |
-| **Database Query** | 1,000,000 - 10,000,000 | 62,500x - 625,000x |
-| **ROP Overhead** | 11 - 16 | 1x (baseline) |
+Choose the path that matches what you need right now:
 
-The overhead is **negligible** compared to real-world I/O operations. See [Performance & Benchmarks](performance.md) for detailed performance analysis.
-
-## Next Steps
-
-Ready to get started? Choose your learning path:
-
-```mermaid
-graph TD
-    START[Choose Your Path]
-    
-    START --> BEG[?? Beginner Path<br/>2-3 hours]
-    START --> INT[?? Intermediate Path<br/>4-6 hours]
-    START --> ADV[?? Advanced Path<br/>2-3 hours]
-    
-    BEG --> B1[Basics]
-    BEG --> B2[Examples]
-    BEG --> B3[ASP.NET Integration]
-    
-    INT --> I1[Error Handling]
-    INT --> I2[Async & Cancellation]
-    INT --> I3[FluentValidation]
-    INT --> I4[Debugging]
-    
-    ADV --> A1[Advanced Features]
-    ADV --> A2[EF Core Integration]
-    ADV --> A3[OpenTelemetry]
-    ADV --> A4[Performance]
-    
-    style BEG fill:#E1F5FF
-    style INT fill:#FFF4E1
-    style ADV fill:#FFE1F5
-    
-    style B1 fill:#90EE90
-    style B2 fill:#90EE90
-    style B3 fill:#90EE90
-    
-    style I1 fill:#FFE4B5
-    style I2 fill:#FFE4B5
-    style I3 fill:#FFE4B5
-    style I4 fill:#FFE4B5
-    
-    style A1 fill:#E1FFE1
-    style A2 fill:#E1FFE1
-    style A3 fill:#E1FFE1
-    style A4 fill:#E1FFE1
-```
-
-### 🟢 Beginner Path (Start Here!)
-**Time:** 2-3 hours | **Goal:** Understand ROP basics and build your first features
-
-1. 📖 **[Basics](basics.md)** - Learn Railway-Oriented Programming fundamentals
-   - Result type, Combine, Bind, Map, Tap, Match
-   - Safe error handling patterns
-   - Complete working examples
-
-2. 💡 **[Examples](examples.md)** - See real-world patterns and code snippets
-   - User registration, form validation
-   - HTTP response handling
-   - Common patterns library
-
-3. 🌐 **[ASP.NET Core Integration](integration-aspnet.md)** - Connect to your API
-   - ToActionResult, ToHttpResult
-   - Automatic error-to-HTTP mapping
-   - MVC and Minimal API examples
-
-### 🔶 Intermediate Path
-**Time:** 4-6 hours | **Prerequisites:** Basics | **Goal:** Master error handling and async patterns
-
-1. 🛡️ **[Error Handling](error-handling.md)** - Discriminated unions, error aggregation
-   - Custom error types
-   - MatchError patterns
-   - ValidationError fluent API
-
-2. ⏱️ **[Working with Async Operations](basics.md#working-with-async-operations)** - CancellationToken patterns, timeouts
-   - Async operation chains
-   - Parallel execution
-   - Timeout and retry patterns
-
-3. ✅ **[FluentValidation Integration](integration-fluentvalidation.md)** - Domain validation
-   - InlineValidator
-   - Async validation rules
-   - Reuse domain validation at API layer
-
-4. 🔧 **[Debugging](debugging.md)** - Tools and techniques for debugging ROP chains
-   - Built-in debug extensions
-   - OpenTelemetry tracing
-   - Common pitfalls and solutions
-
-### 🔴 Advanced Path
-**Time:** 2-3 hours | **Prerequisites:** Intermediate | **Goal:** Expert-level patterns and optimization
-
-1. 🧩 **[Advanced Features](advanced-features.md)** - LINQ, parallel operations, Maybe type
-   - LINQ query syntax
-   - Parallel async operations
-   - Pattern matching
-   - Exception capture
-
-2. 🗄️ **[Entity Framework Core](integration-ef.md)** - Repository patterns
-   - Result-based repositories
-   - Async database operations
-   - Transaction handling
-
-3. 📊 **[OpenTelemetry Integration](integration-observability.md)** - Observability
-   - Automatic ROP tracing
-   - Distributed tracing
-   - Performance monitoring
-
-4. ⚡ **[Performance](performance.md)** - Optimization and benchmarks
-   - Performance characteristics
-   - Benchmarking results
-   - Optimization tips
-
-### 📚 Reference Materials (Jump to as Needed)
-
-- **[Error Handling Reference](error-handling.md)** - Complete error type catalog
-- **[Debugging Guide](debugging.md)** - Troubleshooting and tools
-- **[Performance & Benchmarks](performance.md)** - Detailed performance analysis
-- **[Integration Guides](integration.md)** - ASP.NET, EF Core, FluentValidation, OpenTelemetry
-
----
-
-## Quick Links by Experience Level
-
-**Never used functional programming?** Start with [Introduction](intro.md) then [Basics](basics.md)
-
-**Coming from F# or Haskell?** Jump to [Advanced Features](advanced-features.md) and [Examples](examples.md)
-
-**Need to integrate with existing code?** See [Integration](integration.md) and [FluentValidation](integration-fluentvalidation.md)
-
-**Looking for specific patterns?** Check [Examples](examples.md) and [Error Handling](error-handling.md)
-
+- **I want to learn the syntax** -> [Basics](basics.md)
+- **I want copy-pasteable scenarios** -> [Examples](examples.md)
+- **I am building APIs** -> [ASP.NET Core Integration](integration-aspnet.md)
+- **I want the full surface area** -> [API Documentation](../api/index.md)

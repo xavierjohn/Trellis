@@ -1,146 +1,54 @@
-﻿# Trellis Analyzers
+# Trellis analyzer rules
 
-The Trellis analyzers help you write safer, more functional code by detecting common mistakes and suggesting best practices for Railway Oriented Programming.
+Trellis analyzers help you keep `Result<T>`, `Maybe<T>`, EF Core integration, and Trellis value objects on the happy path. Every rule below uses the **Trellis** analyzer category.
 
-## Installation
+## Rule index
 
-```bash
-dotnet add package Trellis.Analyzers
-```
+| ID | Severity | Title | Article |
+|---|---|---|---|
+| TRLS001 | Warning | Result return value is not handled | [TRLS001](TRLS001.md) |
+| TRLS002 | Info | Use Bind instead of Map when lambda returns Result | [TRLS002](TRLS002.md) |
+| TRLS003 | Warning | Unsafe access to Result.Value | [TRLS003](TRLS003.md) |
+| TRLS004 | Warning | Unsafe access to Result.Error | [TRLS004](TRLS004.md) |
+| TRLS005 | Info | Consider using MatchError for error type discrimination | [TRLS005](TRLS005.md) |
+| TRLS006 | Warning | Unsafe access to Maybe.Value | [TRLS006](TRLS006.md) |
+| TRLS007 | Warning | Use Create instead of TryCreate().Value | [TRLS007](TRLS007.md) |
+| TRLS008 | Warning | Result is double-wrapped | [TRLS008](TRLS008.md) |
+| TRLS009 | Warning | Incorrect async Result usage | [TRLS009](TRLS009.md) |
+| TRLS010 | Info | Use specific error type instead of base Error class | [TRLS010](TRLS010.md) |
+| TRLS011 | Warning | Maybe is double-wrapped | [TRLS011](TRLS011.md) |
+| TRLS012 | Info | Consider using Result.Combine | [TRLS012](TRLS012.md) |
+| TRLS013 | Info | Consider using GetValueOrDefault or Match | [TRLS013](TRLS013.md) |
+| TRLS014 | Warning | Use async method variant for async lambda | [TRLS014](TRLS014.md) |
+| TRLS015 | Warning | Don't throw exceptions in Result chains | [TRLS015](TRLS015.md) |
+| TRLS016 | Warning | Error message should not be empty | [TRLS016](TRLS016.md) |
+| TRLS017 | Warning | Don't compare Result or Maybe to null | [TRLS017](TRLS017.md) |
+| TRLS018 | Warning | Unsafe access to Value in LINQ expression | [TRLS018](TRLS018.md) |
+| TRLS019 | Error | Combine chain exceeds maximum supported tuple size | [TRLS019](TRLS019.md) |
+| TRLS020 | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | [TRLS020](TRLS020.md) |
+| TRLS021 | Warning | HasIndex references a Maybe<T> property | [TRLS021](TRLS021.md) |
+| TRLS022 | Warning | Wrong [StringLength] or [Range] attribute namespace | [TRLS022](TRLS022.md) |
 
-The analyzer package is automatically included when you install any Trellis package.
+## Code fixes at a glance
 
-## Analyzer Rules
+These rules currently offer a code fix: **TRLS002**, **TRLS003**, **TRLS004**, **TRLS006**, **TRLS007**, **TRLS013**, **TRLS014**, and **TRLS020**.
 
-### Error Handling (TRLS001-TRLS006)
+## Suppressing a rule
 
-| ID | Title | Severity | Has Code Fix |
-|----|-------|----------|--------------|
-| [TRLS001](TRLS001.md) | Result return value is not handled | Warning | ❌ |
-| [TRLS002](TRLS002.md) | Use Bind instead of Map when lambda returns Result | Info | ✅ |
-| [TRLS003](TRLS003.md) | Unsafe access to Result.Value | Warning | ✅ |
-| [TRLS004](TRLS004.md) | Unsafe access to Result.Error | Warning | ✅ |
-| [TRLS005](TRLS005.md) | Consider using MatchError for error type discrimination | Info | ❌ |
-| [TRLS006](TRLS006.md) | Unsafe access to Maybe.Value | Warning | ✅ |
-
-### Value Objects (TRLS007)
-
-| ID | Title | Severity | Has Code Fix |
-|----|-------|----------|--------------|
-| [TRLS007](TRLS007.md) | Use Create instead of TryCreate().Value | Warning | ✅ |
-
-### Type Safety (TRLS008-TRLS011)
-
-| ID | Title | Severity | Has Code Fix |
-|----|-------|----------|--------------|
-| [TRLS008](TRLS008.md) | Result is double-wrapped | Warning | ❌ |
-| [TRLS009](TRLS009.md) | Incorrect async Result usage (blocking) | Warning | ❌ |
-| [TRLS010](TRLS010.md) | Use specific error type instead of base Error class | Info | ❌ |
-| [TRLS011](TRLS011.md) | Maybe is double-wrapped | Warning | ❌ |
-
-### Code Quality (TRLS012-TRLS019)
-
-| ID | Title | Severity | Has Code Fix |
-|----|-------|----------|--------------|
-| [TRLS012](TRLS012.md) | Consider using Result.Combine | Info | ❌ |
-| [TRLS013](TRLS013.md) | Consider using GetValueOrDefault or Match | Info | ✅ |
-| [TRLS014](TRLS014.md) | Use async method variant for async lambda | Warning | ✅ |
-| [TRLS015](TRLS015.md) | Don't throw exceptions in Result chains | Warning | ❌ |
-| [TRLS016](TRLS016.md) | Error message should not be empty | Warning | ❌ |
-| [TRLS017](TRLS017.md) | Don't compare Result or Maybe to null | Warning | ❌ |
-| [TRLS018](TRLS018.md) | Unsafe access to Value in LINQ expression | Warning | ❌ |
-| [TRLS019](TRLS019.md) | Combine chain exceeds maximum supported tuple size | Error | ❌ |
-
-### Entity Framework Core (TRLS020-TRLS021)
-
-| ID | Title | Severity | Has Code Fix |
-|----|-------|----------|--------------|
-| [TRLS020](TRLS020.md) | Use SaveChangesResultAsync instead of SaveChangesAsync | Warning | ✅ |
-| [TRLS021](TRLS021.md) | HasIndex references a Maybe\<T\> property | Warning | ❌ |
-
-## Severity Levels
-
-- **Error**: Code that will not work correctly and must be fixed
-- **Warning**: Potential runtime errors or correctness issues that should be fixed
-- **Info**: Suggestions for more idiomatic or maintainable code
-
-## Code Fixes
-
-
-Several analyzers provide automatic code fixes (✅ in the table above):
-
-- **TRLS002**: Automatically replaces `Map` with `Bind`
-- **TRLS003**: Wraps unsafe `result.Value` access in `if (result.IsSuccess)` guard
-- **TRLS004**: Wraps unsafe `result.Error` access in `if (result.IsFailure)` guard
-- **TRLS006**: Wraps unsafe `maybe.Value` access in `if (maybe.HasValue)` guard
-- **TRLS007**: Replaces `TryCreate().Value` with `Create()`
-- **TRLS013**: Replaces ternary with `GetValueOrDefault()` or `Match()`
-- **TRLS014**: Replaces sync method with async variant (e.g., `Map` → `MapAsync`)
-- **TRLS020**: Replaces `SaveChangesAsync`/`SaveChanges` with `SaveChangesResultUnitAsync` or `SaveChangesResultAsync`
-
-## Configuration
-
-### Disabling Specific Rules
-
-You can disable specific rules in your `.editorconfig`:
+Use `.editorconfig` when you want a project-wide or folder-wide setting:
 
 ```ini
-# Disable TRLS003 for test projects
-[**Tests/**/*.cs]
 dotnet_diagnostic.TRLS003.severity = none
-
-# Change TRLS007 to suggestion only
-dotnet_diagnostic.TRLS007.severity = suggestion
 ```
 
-### Suppressing Warnings
-
-Use `#pragma` directives for local suppression:
+Use `#pragma` when you need a narrow, local exception:
 
 ```csharp
 #pragma warning disable TRLS003
-var customer = result.Value; // Intentionally unsafe in test
+var customer = result.Value;
 #pragma warning restore TRLS003
 ```
 
-Or use `[SuppressMessage]` attribute:
+> [!TIP]
+> Treat analyzer suppressions as documentation. If a rule is intentionally suppressed, leave a short reason nearby.
 
-```csharp
-[SuppressMessage("Trellis", "TRLS003:Unsafe access to Result.Value",
-    Justification = "Test code - validating success scenario")]
-public void TestMethod()
-{
-    var customer = result.Value;
-}
-```
-
-## Common Patterns
-
-### API Controller Pattern
-
-```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class CustomersController : ControllerBase
-{
-    [HttpPost]
-    public async Task<IActionResult> CreateCustomer(CreateCustomerDto dto)
-    {
-        return await Result.Combine(
-                EmailAddress.TryCreate(dto.Email),
-                Name.TryCreate(dto.Name))
-            .BindAsync((email, name) => 
-                customerService.CreateAsync(email, name))
-            .MapAsync(customer => customer.ToDto())
-            .MatchAsync(
-                onSuccess: dto => Ok(dto),
-                onFailure: error => error.ToHttpResult());
-    }
-}
-```
-
-This pattern avoids all analyzer warnings!
-
-## Feedback
-
-Found a false positive or have suggestions? [Open an issue on GitHub](https://github.com/xavierjohn/Trellis/issues).

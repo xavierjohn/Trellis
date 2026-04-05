@@ -1,76 +1,69 @@
-﻿# TRLS005: Consider using MatchError for error type discrimination
+# TRLS005 — Consider using MatchError for error type discrimination
 
-## Cause
+- **Severity:** Info
+- **Category:** Trellis
 
-Using switch statements or if/else chains to discriminate between error types when `MatchError` provides a better, type-safe alternative.
+## What it detects
+Flags manual error-type discrimination on Trellis errors, such as `switch` statements, `switch` expressions, and `is` checks over `Error` or a derived error type.
 
-## Rule Description
+## Why it matters
+Manual pattern matching spreads error handling logic across branches. `MatchError` keeps the success case and the error-specific cases in one focused Trellis API.
 
-When you need to handle different error types differently, `MatchError` provides type-safe pattern matching with compile-time checking and a required fallback for unhandled types.
+> [!WARNING]
+> If you branch on concrete error types in multiple places, your code becomes harder to extend when a new error type appears.
 
-## How to Fix Violations
-
-Replace switch/if statements with `MatchError`:
-
+## Bad example
 ```csharp
-// ❌ Less ideal - Manual switch
-if (result.IsFailure)
+using Trellis;
+
+static class Example
 {
-    switch (result.Error)
+    public static string Bad(Result<int> result)
     {
-        case ValidationError ve:
-            return BadRequest(ve.Detail);
-        case NotFoundError nfe:
-            return NotFound(nfe.Detail);
-        default:
-            return StatusCode(500, result.Error.Detail);
+        if (result.IsSuccess)
+            return $"Value: {result.Value}";
+
+        return result.Error switch
+        {
+            ValidationError validation => $"Validation: {validation.Detail}",
+            NotFoundError notFound => $"Missing: {notFound.Detail}",
+            _ => $"Error: {result.Error.Detail}"
+        };
     }
 }
-
-// ✅ Better - Type-safe MatchError
-return result.MatchError(
-    onValidationError: ve => BadRequest(ve.Detail),
-    onNotFoundError: nfe => NotFound(nfe.Detail),
-    onOtherError: error => StatusCode(500, error.Detail));
 ```
 
-## Benefits of MatchError
+## Good example
+```csharp
+using Trellis;
 
-1. **Type Safety**: Each error handler gets the correctly typed error
-2. **Exhaustiveness**: Fallback handler is required
-3. **Readability**: Clear intent for error handling
-4. **Maintainability**: Easy to add new error type handlers
+static class Example
+{
+    public static string Good(Result<int> result) =>
+        result.MatchError(
+            onSuccess: value => $"Value: {value}",
+            onValidation: validation => $"Validation: {validation.Detail}",
+            onNotFound: notFound => $"Missing: {notFound.Detail}",
+            onError: error => $"Error: {error.Detail}");
+}
+```
 
-## Example
+## Code fix available
+No.
+
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS005.severity = none
+```
 
 ```csharp
-public IActionResult UpdateCustomer(Guid id, UpdateCustomerDto dto)
-{
-    return customerService.UpdateCustomer(id, dto)
-        .Match(
-            onSuccess: customer => Ok(customer.ToDto()),
-            onFailure: error => error.ToHttpResult());
-}
-
-public static class ErrorExtensions
-{
-    public static IActionResult ToHttpResult(this Error error) =>
-        error.MatchError(
-            onValidationError: ve => new BadRequestObjectResult(ve.Detail),
-            onNotFoundError: nfe => new NotFoundObjectResult(nfe.Detail),
-            onUnauthorizedError: ue => new UnauthorizedObjectResult(ue.Detail),
-            onOtherError: e => new ObjectResult(e.Detail) { StatusCode = 500 });
-}
+#pragma warning disable TRLS005
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS005
 ```
 
-## When to Suppress Warnings
+> [!TIP]
+> Use `MatchError` when you want strongly typed handlers for `ValidationError`, `NotFoundError`, and similar types plus a final catch-all.
 
-This is a suggestion-level diagnostic (Info severity). Suppress it if:
-- You prefer explicit switch statements
-- You're only checking for one specific error type
-- The error handling logic is complex and doesn't fit the `MatchError` pattern
-
-## Related Rules
-
-- [TRLS004](TRLS004.md) - Unsafe access to Result.Error
-- [TRLS010](TRLS010.md) - Use specific error type instead of base Error class

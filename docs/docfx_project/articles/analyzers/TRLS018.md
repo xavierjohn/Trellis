@@ -1,142 +1,62 @@
-﻿# TRLS018: Unsafe access to Value in LINQ expression
+# TRLS018 — Unsafe access to Value in LINQ expression
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Accessing `.Value` on `Result<T>` or `Maybe<T>` inside a LINQ expression like `Select`, `ToDictionary`, `GroupBy`, etc. without first filtering by `IsSuccess` or `HasValue`.
+## What it detects
+Flags `.Value` access on a LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier `Where(...)` guard proves the value is safe.
 
-## Rule Description
+## Why it matters
+Collection pipelines make it easy to forget that some items may be failures or empty values. One unsafe access can throw for the whole query.
 
-When you have a collection of `Result<T>` or `Maybe<T>` values and use LINQ to project them, accessing `.Value` without filtering first can throw exceptions for failed results or empty maybes.
+> [!WARNING]
+> The analyzer understands guard chains like `.Where(x => x.IsSuccess)` and `.Where(x => x.HasValue)`. Without that filter, `.Value` is treated as unsafe.
 
-## How to Fix Violations
-
-Filter the collection before projecting, or use safe extraction methods:
-
+## Bad example
 ```csharp
-// ❌ Bad - May throw for failed Results
-var values = results.Select(r => r.Value);
+using System.Collections.Generic;
+using System.Linq;
+using Trellis;
 
-// ✅ Good - Filter first
-var values = results.Where(r => r.IsSuccess).Select(r => r.Value);
-
-// ✅ Also good - Use Match
-var values = results.Select(r => r.Match(
-    onSuccess: v => v,
-    onFailure: _ => default));
+static class Example
+{
+    public static List<int> Bad(IEnumerable<Result<int>> values) =>
+        values.Select(result => result.Value).ToList();
+}
 ```
 
-## Examples
-
-### Example 1: Select on Results
-
+## Good example
 ```csharp
-List<Result<Customer>> customerResults = await GetCustomersAsync(ids);
+using System.Collections.Generic;
+using System.Linq;
+using Trellis;
 
-// ❌ Bad - Throws if any result is a failure
-var names = customerResults.Select(r => r.Value.Name);
-
-// ✅ Good - Filter first
-var names = customerResults
-    .Where(r => r.IsSuccess)
-    .Select(r => r.Value.Name);
-
-// ✅ Also good - Get successful results only
-var successfulCustomers = customerResults
-    .Where(r => r.IsSuccess)
-    .Select(r => r.Value)
-    .ToList();
+static class Example
+{
+    public static List<int> Good(IEnumerable<Result<int>> values) =>
+        values
+            .Where(result => result.IsSuccess)
+            .Select(result => result.Value)
+            .ToList();
+}
 ```
 
-### Example 2: Select on Maybe Values
+## Code fix available
+No.
 
-```csharp
-List<Maybe<User>> maybeUsers = GetOptionalUsers(ids);
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-// ❌ Bad - Throws if any Maybe is empty
-var emails = maybeUsers.Select(m => m.Value.Email);
-
-// ✅ Good - Filter first
-var emails = maybeUsers
-    .Where(m => m.HasValue)
-    .Select(m => m.Value.Email);
-
-// ✅ Also good - Use SelectMany pattern
-var emails = maybeUsers
-    .SelectMany(m => m.HasValue ? new[] { m.Value.Email } : Array.Empty<string>());
+```ini
+dotnet_diagnostic.TRLS018.severity = none
 ```
 
-### Example 3: ToDictionary
-
 ```csharp
-List<Result<(Guid Id, string Name)>> results = GetResults();
-
-// ❌ Bad - Both key and value selectors are unsafe
-var dict = results.ToDictionary(r => r.Value.Id, r => r.Value.Name);
-
-// ✅ Good - Filter first
-var dict = results
-    .Where(r => r.IsSuccess)
-    .ToDictionary(r => r.Value.Id, r => r.Value.Name);
+#pragma warning disable TRLS018
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS018
 ```
 
-### Example 4: GroupBy
+> [!TIP]
+> Filter first, then project. If you need both success and failure paths, use `Match` inside the projection instead of `.Value`.
 
-```csharp
-List<Result<Order>> orderResults = await GetOrdersAsync();
-
-// ❌ Bad - Accessing Value in key selector without filter
-var byStatus = orderResults.GroupBy(r => r.Value.Status);
-
-// ✅ Good - Filter first
-var byStatus = orderResults
-    .Where(r => r.IsSuccess)
-    .GroupBy(r => r.Value.Status);
-```
-
-## Handling Both Success and Failure
-
-If you need to handle both successful and failed results:
-
-```csharp
-var results = await ProcessItemsAsync(items);
-
-// Separate successes and failures
-var successes = results.Where(r => r.IsSuccess).Select(r => r.Value);
-var failures = results.Where(r => r.IsFailure).Select(r => r.Error);
-
-// Or use Match for transformation
-var processed = results.Select(r => r.Match(
-    onSuccess: value => new ProcessedItem(value, null),
-    onFailure: error => new ProcessedItem(null, error.Message)));
-```
-
-## LINQ Methods That Trigger This Rule
-
-- `Select`
-- `SelectMany`
-- `ToDictionary`
-- `ToLookup`
-- `GroupBy`
-- `OrderBy` / `OrderByDescending`
-- `ThenBy` / `ThenByDescending`
-
-## When This Rule Doesn't Apply
-
-The analyzer is smart enough to not report when you've already filtered:
-
-```csharp
-// ✅ No warning - Where clause filters by IsSuccess
-var values = results.Where(r => r.IsSuccess).Select(r => r.Value);
-
-// ✅ No warning - Where clause filters by HasValue
-var values = maybes.Where(m => m.HasValue).Select(m => m.Value);
-```
-
-## Related Rules
-
-- [TRLS003](TRLS003.md) - Unsafe access to Result.Value
-- [TRLS006](TRLS006.md) - Unsafe access to Maybe.Value
-
-## See Also
-
-- [LINQ Best Practices](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/linq/)

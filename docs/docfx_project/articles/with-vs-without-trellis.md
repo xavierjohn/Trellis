@@ -1,126 +1,203 @@
-# With vs Without Trellis: AI Code Generation Study
+# With Trellis vs Without Trellis
 
-**Level:** Case Study | **Time:** 10 min
+If you are using AI to build production software, the real question is not "Can it generate code?"
 
-Does a framework like Trellis actually improve AI-generated code, or does it just add complexity? We tested this empirically by having three AI models build the same Order Management service twice — once with Trellis, once without — and then cross-evaluated the results.
+The real question is: **Which setup gives you code that is safer to review and harder to get subtly wrong?**
 
-## Study Design
+This study compared both approaches on the same Order Management specification.
 
-**Spec:** A realistic Order Management System with 3 aggregates (Customer, Product, Order), 16 API endpoints, a 6-state order lifecycle, role-based authorization with resource-level ownership checks, stock management, and comprehensive validation rules.
+## The study in one minute
 
-**Models tested:** Claude Sonnet 4.6, Claude Opus 4.6, GPT 5.4
+Three models built the same service twice:
 
-**Conditions:**
-- **WithTrellis** — AI started from the `dotnet new trellis-asp` template with copilot instructions and API reference docs. Same spec.
-- **WithoutTrellis** — AI started from an empty folder with just the spec. Told to use .NET 10, ASP.NET Core, and EF Core with SQLite. Complete freedom to choose architecture and patterns.
+- **With Trellis** — starting from the `trellis-asp` template plus Trellis documentation and instructions
+- **Without Trellis** — starting from an empty folder with only the spec and standard .NET requirements
 
-**Evaluation:** Each implementation was reviewed by a *different* model than the one that built it (cross-review), eliminating self-review bias. Evaluation criteria were purely business-focused — no points for using specific framework patterns.
+Then different models reviewed the implementations.
 
-## Results at a Glance
+## Results at a glance
 
-| Metric | WithTrellis (avg) | WithoutTrellis (avg) |
-|--------|:-:|:-:|
+| Metric | With Trellis | Without Trellis |
+| --- | ---: | ---: |
 | Build succeeds | 3/3 | 3/3 |
 | All tests pass | 3/3 | 3/3 |
-| Test count (avg) | 62 | 65 |
+| Average test count | 62 | 65 |
 | Endpoints correct | **16/16** | 13-16/16 |
-| Auth vulnerabilities found | **0** | 2 of 3 |
-| Cross-review score (avg) | **8.2/10** | **7.1/10** |
+| Auth vulnerabilities found | **0** | 2 of 3 implementations |
+| Average cross-review score | **8.2/10** | **7.1/10** |
 
-## Finding 1: Trellis Prevents Spec Drift
+The surprising part is not that both approaches worked.
 
-The most striking result: one WithoutTrellis implementation got **6 of 16 endpoint paths wrong** — using `/submit` instead of `/submission`, `/approve` instead of `/approval`, and so on. The spec clearly defines noun-based resource paths, but when building 16 endpoints from scratch, subtle details slip.
+The surprising part is **where the failures clustered** when Trellis was absent:
 
-The same model, with Trellis, got all 16 paths correct. The template scaffolding provided the correct structure as the starting point, making compliance the default rather than a discipline requirement.
+- endpoint path drift
+- permission mistakes
+- inconsistent error handling
+- security gaps that were easy to miss in casual review
 
-Another WithoutTrellis implementation used the wrong permission (`orders:read` instead of `orders:read-all`) on the "List Orders by Customer" endpoint — a security bug that would give sales representatives access to any customer's order history.
+## Why this matters
 
-**WithTrellis implementations had zero spec compliance issues across all three models.**
+On day one, the non-Trellis code often looked more familiar.
 
-## Finding 2: Security Fails Open Without Guardrails
+But as the spec grew, Trellis gave the AI stronger rails:
 
-Two of three WithoutTrellis implementations had authorization vulnerabilities:
+- the template scaffolded the correct endpoint shapes
+- result-based flows made failure handling explicit
+- the authorization and error-handling patterns were less ad hoc
+- reviewers saw more uniform code across features
 
-- **Missing auth header defaults to admin** — When the `X-Test-Actor` header was absent or malformed, the actor provider returned an admin actor with full permissions. In production, any unauthenticated request would have complete access.
-- **Error responses leak internal details** — Exception messages (including internal type names and potentially sensitive context) were written directly to HTTP responses.
+## Before/after: the kind of difference reviewers felt
 
-WithTrellis implementations avoided both issues structurally:
-- The template's `DevelopmentActorProvider` is explicitly scoped to development environments. In production, the configuration throws at startup if no real auth provider is registered — **failing closed**.
-- The `ErrorHandlingMiddleware` returns a generic 500 message with only a trace ID. Internal details never reach the response.
+### Without Trellis
 
-**Authorization in Trellis is declarative and enforced by the pipeline — it's structurally impossible to forget it on a new endpoint.** WithoutTrellis implementations used manual permission checks repeated 16 times, which is consistent when disciplined but has no compiler enforcement.
+This style is ordinary ASP.NET Core. It is also easy for an AI to make inconsistent across many endpoints.
 
-## Finding 3: Cross-Review Reveals the True Gap
+```csharp
+using Microsoft.AspNetCore.Builder;
 
-When models reviewed their own code, the scores were close (7.5 vs 7.5 in one case). When a *different* model reviewed the code, the gap widened:
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
+public sealed record RegisterUserResponse(string FirstName, string LastName, string Email);
 
-| Code Author | Self-Review Gap | Cross-Review Gap |
-|-------------|:-:|:-:|
-| Opus 4.6 | Tie (7.5 vs 7.5) | **WT +1.5** (8.0 vs 6.5) |
-| GPT 5.4 | WT +1.5 (8.5 vs 7.0) | **WT +0.6** (8.3 vs 7.7) |
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
 
-Cross-reviewers were consistently harsher on WithoutTrellis code and identified issues the self-reviews missed (auth vulnerabilities, missing test coverage, spec compliance bugs).
+app.MapPost("/users/register", (RegisterUserRequest request) =>
+{
+    if (string.IsNullOrWhiteSpace(request.FirstName))
+        return Results.BadRequest(new { code = "validation.error", detail = "First name is required." });
 
-## Finding 4: The Template Is the Underrated Hero
+    if (string.IsNullOrWhiteSpace(request.LastName))
+        return Results.BadRequest(new { code = "validation.error", detail = "Last name is required." });
 
-Multiple evaluators independently noted that the template scaffolding — not the framework's type system — prevented the most bugs:
+    if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
+        return Results.BadRequest(new { code = "validation.error", detail = "Email is invalid." });
 
-> *"The three spec bugs in WithoutTrellis weren't caused by lack of effort. They were caused by writing 16 endpoints from scratch, where small details slip. The Trellis template scaffolded the correct paths and permissions from the start."*
-> — Sonnet 4.6 evaluator
+    return Results.Ok(new RegisterUserResponse(request.FirstName, request.LastName, request.Email));
+});
 
-The template provides:
-- Correct endpoint paths and HTTP methods
-- Permission constants matching the spec
-- API versioning by namespace convention
-- Test infrastructure (fake repositories, test actor helpers, integration test fixtures)
-- Copilot instructions that guide the AI through implementation order
+app.Run();
+```
 
-This scaffolding eliminates an entire class of errors before any business logic is written.
+### With Trellis
 
-## Finding 5: WithoutTrellis Wins on Day One
+The Trellis version pushes the code into a more uniform shape.
 
-Every evaluator agreed: WithoutTrellis code is easier to understand for a developer seeing it for the first time. No framework vocabulary to learn, no `Result<T>` pipelines to trace, standard .NET patterns throughout.
+```csharp
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp;
+using Trellis.Primitives;
 
-But every evaluator also agreed: **that advantage reverses as the codebase grows.** The consistent estimate across all reviewers was that the tipping point is approximately 5 aggregates or 3+ developers.
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
+public sealed record RegisterUserResponse(string FirstName, string LastName, string Email);
 
-> *"For this specific Order Management spec (3 aggregates, 16 endpoints), both approaches are equally viable. The tipping point where Trellis clearly wins is when you need to scale the codebase to 10+ aggregates, multiple teams, or complex cross-cutting concerns."*
-> — Opus 4.6 evaluator
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddTrellisAsp();
 
-## Dimension-by-Dimension Summary
+var app = builder.Build();
 
-Aggregated across all 5 evaluation reports (3 self-reviews + 2 cross-reviews):
+app.MapPost("/users/register", (RegisterUserRequest request) =>
+    FirstName.TryCreate(request.FirstName)
+        .Combine(LastName.TryCreate(request.LastName))
+        .Combine(EmailAddress.TryCreate(request.Email))
+        .Bind((firstName, lastName, emailAddress) =>
+            Result.Success(new RegisterUserResponse(
+                firstName.Value,
+                lastName.Value,
+                emailAddress.Value)))
+        .ToHttpResult());
 
-| Dimension | Winner | Unanimous? |
-|-----------|--------|:-:|
-| **Spec Compliance** | WithTrellis | Yes |
-| **Security** | WithTrellis | Yes |
-| **Code Maintainability** | WithTrellis | Yes |
-| **Future Flexibility** | WithTrellis | Yes |
-| **Error Handling** | WithTrellis | Yes |
-| **Consistency** | WithTrellis | Yes |
-| **Test Effectiveness** | WithTrellis | 4 of 5 |
-| **Code Readability** | Mixed | Split |
-| **Onboarding Cost** | WithoutTrellis | Yes |
+app.Run();
+```
 
-## What This Means for Teams
+Neither version is impossible to review. The Trellis version is simply **more constrained**, which makes large-scale AI output easier to keep consistent.
 
-### Choose Trellis when:
-- The system will grow beyond a handful of entities
-- Multiple developers will work on it over time
-- Authorization rules are complex (resource-based, multi-tenant)
-- You value compile-time guarantees over runtime discipline
-- AI is generating code and you want reviewable, predictable output
+## Five findings that mattered most
 
-### Skip Trellis when:
-- Building a short-lived prototype or single-aggregate microservice
-- The team prefers plain ASP.NET Core and doesn't want a framework learning curve
-- Onboarding speed matters more than long-term maintainability
+### 1. Trellis reduced spec drift
 
-## Methodology Notes
+The biggest difference was not raw code quality. It was **compliance with the spec**.
 
-- All implementations used .NET 10, ASP.NET Core, EF Core with SQLite
-- The spec was identical for all 6 sessions — no Trellis-specific language
-- WithTrellis agents received the template + copilot instructions; WithoutTrellis agents received only the spec
-- Evaluation criteria were business-focused (endpoint correctness, business rules, security, test quality, maintainability) — not framework-specific
-- Cross-evaluations used a different model than the one that built the code
-- All source code, evaluation reports, and raw data are available for inspection
+One non-Trellis implementation got **6 of 16 endpoint paths wrong**. The same model, working with Trellis scaffolding, got them right.
+
+Why? Because the template turned correctness into the default starting point.
+
+### 2. Trellis reduced security mistakes
+
+Two of the three non-Trellis implementations had authorization vulnerabilities.
+
+The issues included:
+
+- defaulting to an admin-like actor when test headers were missing or malformed
+- leaking internal exception details into HTTP responses
+
+The Trellis-based implementations avoided those classes of mistakes structurally.
+
+> [!NOTE]
+> In the Trellis setup, `DevelopmentActorProvider` is explicitly for development, and the error-handling middleware returns a generic 500 response instead of exposing internals.
+
+### 3. Cross-review exposed the gap more clearly than self-review
+
+When models reviewed their own code, the difference looked smaller.
+
+When a different model reviewed the code, the Trellis implementations scored better more consistently. That suggests Trellis improved not just generation, but **reviewability by another reader**.
+
+### 4. The template mattered a lot
+
+Reviewers repeatedly credited the template for preventing a whole class of mistakes before business logic even started.
+
+The template contributed:
+
+- correct endpoint paths and verbs
+- permission scaffolding
+- testing infrastructure
+- a consistent project layout
+- instructions that guide implementation order
+
+### 5. Non-Trellis code was easier to read at first
+
+This was the strongest point in favor of the non-Trellis approach.
+
+For a developer seeing the code for the first time, plain ASP.NET Core often felt more familiar.
+
+But reviewers also agreed that this advantage fades as the codebase grows. Once you have more aggregates, more rules, and more contributors, consistency begins to matter more than first-contact familiarity.
+
+## Where each approach wins
+
+### Choose Trellis when
+
+- the service will grow beyond a small prototype
+- multiple developers will touch the code over time
+- authorization rules are non-trivial
+- AI is generating a meaningful amount of the implementation
+- you want compile-time and template-level guardrails
+
+### Skip Trellis when
+
+- you are building a tiny throwaway prototype
+- the team strongly prefers plain ASP.NET Core patterns
+- short-term onboarding speed matters more than long-term uniformity
+
+## The bigger lesson
+
+The study does **not** say that AI without Trellis cannot succeed.
+
+It says something more practical:
+
+> [!TIP]
+> When AI has stronger structural constraints, it is less likely to drift away from the spec in ways that still compile and still look plausible.
+
+That is the real value.
+
+## Bottom line
+
+Without Trellis, AI can absolutely produce working software.
+
+With Trellis, it more consistently produced software that was:
+
+- closer to the spec
+- safer around auth and errors
+- easier for another reviewer to assess quickly
+
+That is why teams using AI for serious work should care.

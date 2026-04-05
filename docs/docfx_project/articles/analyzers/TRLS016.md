@@ -1,111 +1,55 @@
-﻿# TRLS016: Error message should not be empty
+# TRLS016 — Error message should not be empty
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Creating an `Error` using factory methods like `Error.Validation()`, `Error.NotFound()`, etc. with an empty or whitespace-only message.
+## What it detects
+Flags empty or whitespace-only messages passed to Trellis error factory methods such as `Error.Validation(...)`, `Error.NotFound(...)`, `Error.Conflict(...)`, `Error.Unauthorized(...)`, `Error.Forbidden(...)`, and `Error.Unexpected(...)`.
 
-## Rule Description
+## Why it matters
+Empty error messages make logs, diagnostics, and HTTP responses much harder to understand.
 
-Error messages provide crucial context for:
-- **Debugging**: Understanding what went wrong
-- **User feedback**: Showing meaningful messages to users
-- **Logging**: Recording actionable information
-- **API responses**: Returning helpful error details
+> [!WARNING]
+> `string.Empty`, `""`, whitespace-only literals, and interpolated strings that contain only whitespace all trigger this rule.
 
-Empty error messages make it impossible to understand failures without diving into the code.
-
-## How to Fix Violations
-
-Provide a meaningful message that describes the error:
-
+## Bad example
 ```csharp
-// ❌ Bad - Empty message
-Error.Validation("");
-Error.Validation("   ");
-Error.NotFound(string.Empty);
+using Trellis;
 
-// ✅ Good - Meaningful message
-Error.Validation("Email address is required", "email");
-Error.Validation("Password must be at least 8 characters", "password");
-Error.NotFound("Customer not found");
-```
-
-## Examples
-
-### Example 1: Validation Error
-
-```csharp
-// ❌ Bad
-public static Result<Email> TryCreate(string value)
+static class Example
 {
-    if (string.IsNullOrWhiteSpace(value))
-        return Error.Validation("");  // What's the error?
-    // ...
-}
-
-// ✅ Good
-public static Result<Email> TryCreate(string value)
-{
-    if (string.IsNullOrWhiteSpace(value))
-        return Error.Validation("Email address is required", "email");
-    // ...
+    public static Result<int> Bad(string quantity) =>
+        Result.Failure<int>(Error.Validation("", nameof(quantity)));
 }
 ```
 
-### Example 2: Not Found Error
-
+## Good example
 ```csharp
-// ❌ Bad
-public async Task<Result<Customer>> GetCustomerAsync(Guid id)
+using Trellis;
+
+static class Example
 {
-    var customer = await _repository.FindAsync(id);
-    if (customer is null)
-        return Error.NotFound("");  // What wasn't found?
-
-    return customer;
-}
-
-// ✅ Good
-public async Task<Result<Customer>> GetCustomerAsync(Guid id)
-{
-    var customer = await _repository.FindAsync(id);
-    if (customer is null)
-        return Error.NotFound($"Customer with ID {id} not found");
-
-    return customer;
+    public static Result<int> Good(string quantity) =>
+        Result.Failure<int>(Error.Validation("Quantity must be a whole number.", nameof(quantity)));
 }
 ```
 
-### Example 3: Multiple Validation Errors
+## Code fix available
+No.
 
-```csharp
-// ❌ Bad
-var errors = new List<Error>();
-if (string.IsNullOrEmpty(firstName))
-    errors.Add(Error.Validation(""));  // Which field?
-if (string.IsNullOrEmpty(lastName))
-    errors.Add(Error.Validation(""));  // Same empty message!
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-// ✅ Good
-var errors = new List<Error>();
-if (string.IsNullOrEmpty(firstName))
-    errors.Add(Error.Validation("First name is required", "firstName"));
-if (string.IsNullOrEmpty(lastName))
-    errors.Add(Error.Validation("Last name is required", "lastName"));
+```ini
+dotnet_diagnostic.TRLS016.severity = none
 ```
 
-## Best Practices for Error Messages
+```csharp
+#pragma warning disable TRLS016
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS016
+```
 
-1. **Be specific**: "Email must contain @" not "Invalid email"
-2. **Include field names**: Use the `fieldName` parameter for validation errors
-3. **Be user-friendly**: Messages may be shown to end users
-4. **Avoid technical jargon**: "Invalid format" not "Regex match failed"
-5. **Include relevant values** (but not sensitive data): "Order {orderId} not found"
+> [!TIP]
+> Write the message for the next person who will debug the failure. A short, specific sentence is enough.
 
-## Related Rules
-
-- [TRLS010](TRLS010.md) - Use specific error type instead of base Error class
-
-## See Also
-
-- [Error Handling Best Practices](../error-handling.md)

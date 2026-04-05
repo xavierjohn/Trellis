@@ -1,59 +1,67 @@
-﻿# TRLS002: Use Bind instead of Map when lambda returns Result
+# TRLS002 — Use Bind instead of Map when lambda returns Result
 
-## Cause
+- **Severity:** Info
+- **Category:** Trellis
 
-A `Map` operation is used with a lambda function that returns `Result<T>`, which creates a double-wrapped `Result<Result<T>>`.
+## What it detects
+Flags `Map` and `MapAsync` when the transformation already returns `Result<T>`, `Task<Result<T>>`, or `ValueTask<Result<T>>`. It covers lambdas, method groups, and member-access method groups.
 
-## Rule Description
+## Why it matters
+`Map` wraps the transformation result as a value, which leads to `Result<Result<T>>` or async equivalents. `Bind` and `BindAsync` flatten the pipeline correctly.
 
-In Railway Oriented Programming:
-- **Map** transforms the value inside a `Result<T>` while keeping the `Result` wrapper
-- **Bind** (also called flatMap) is used when the transformation itself returns a `Result<T>`
+> [!WARNING]
+> This rule is broader than a simple `x => Result.Success(...)` lambda. A method group like `Map(ParseAsync)` can trigger it too if `ParseAsync` already returns a `Result`.
 
-Using `Map` when the lambda returns a `Result<T>` creates `Result<Result<T>>`, which is almost always unintended.
-
-## How to Fix Violations
-
-Replace `Map` with `Bind` when the transformation function returns a `Result<T>`:
-
+## Bad example
 ```csharp
-// ❌ Bad - Creates Result<Result<Customer>>
-return emailResult.Map(email => Customer.Create(email, name));
-//                 ^^^                          ^^^^^^^^^^^^^^
-//                 Map                    Returns Result<Customer>
+using Trellis;
 
-// ✅ Good - Properly flattens to Result<Customer>
-return emailResult.Bind(email => Customer.Create(email, name));
-//                 ^^^^
-//                 Bind
-```
-
-## Example
-
-```csharp
-public Result<Order> CreateOrder(string emailStr, decimal amount)
+static class Example
 {
-    // ❌ Bad - Result<Result<Order>>
-    return Email.TryCreate(emailStr)
-        .Map(email => Order.Create(email, amount));
-        // Order.Create returns Result<Order>
-        // Map wraps it again → Result<Result<Order>>
+    public static Result<int> Bad()
+    {
+        var result = Result.Success("Ada");
+        return result.Map(ParseLength);
+    }
 
-    // ✅ Good - Result<Order>
-    return Email.TryCreate(emailStr)
-        .Bind(email => Order.Create(email, amount));
-        // Bind flattens → Result<Order>
+    static Result<int> ParseLength(string value) =>
+        Result.Success(value.Length);
 }
 ```
 
-## Code Fix
+## Good example
+```csharp
+using Trellis;
 
-This diagnostic offers an automatic code fix that replaces `Map` with `Bind`.
+static class Example
+{
+    public static Result<int> Good()
+    {
+        var result = Result.Success("Ada");
+        return result.Bind(ParseLength);
+    }
 
-## When to Suppress Warnings
+    static Result<int> ParseLength(string value) =>
+        Result.Success(value.Length);
+}
+```
 
-Do not suppress this warning. If you actually need `Result<Result<T>>` (extremely rare), make it explicit with a comment explaining why.
+## Code fix available
+Yes — replaces `Map` with `Bind`, or `MapAsync` with `BindAsync`.
 
-## Related Rules
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-- [TRLS008](TRLS008.md) - Result is double-wrapped
+```ini
+dotnet_diagnostic.TRLS002.severity = none
+```
+
+```csharp
+#pragma warning disable TRLS002
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS002
+```
+
+> [!TIP]
+> Use `Map` when you turn a success value into a plain value. Use `Bind` when you turn a success value into another `Result`.
+

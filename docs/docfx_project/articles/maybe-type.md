@@ -1,380 +1,390 @@
-﻿# Why Maybe&lt;T&gt;?
+# Why Maybe<T>?
 
-C# already has `Nullable<T>` for value types and nullable reference types (`T?`) for reference types. So why does Trellis include a `Maybe<T>` type?
+C# already gives you `T?`, `Nullable<T>`, and plain old `null`. So why does Trellis add `Maybe<T>`?
 
-This article makes an honest case: `Maybe<T>` solves specific problems in domain modeling and functional pipelines that C#'s built-in nullability can't address — but it's not a universal replacement for `null`.
+Because sometimes you do not just need “a value that might be missing.” You need that optional value to be:
+
+- explicit in your domain model
+- composable in a pipeline
+- easy to convert into `Result<T>` when absence becomes an error
+
+That is the job of `Maybe<T>`.
+
+> [!TIP]
+> `Maybe<T>` is not a replacement for every nullable value in your application. It shines when optionality is part of the **domain** and needs to compose with Trellis result flows.
+
+## Start Here: the Smallest Useful Example
 
 ```csharp
 using Trellis;
+
+Maybe<string> middleName = Maybe.From("Byron");
+Maybe<string> noNickname = Maybe<string>.None;
+
+Console.WriteLine(middleName.HasValue); // True
+Console.WriteLine(noNickname.HasValue); // False
+
+var displayName = middleName.Match(
+    some => some,
+    () => "(none)");
 ```
 
-## Table of Contents
+## The Problem `Maybe<T>` Solves
 
-- [The Problem](#the-problem)
-- [What C# Already Provides](#what-c-already-provides)
-- [Where Maybe Wins](#where-maybe-wins)
-  - [Pipeline Composition](#1-pipeline-composition)
-  - [Optional Value Objects](#2-optional-value-objects)
-  - [ASP.NET Boundary Integration](#3-aspnet-boundary-integration)
-  - [Where Nullability Lives](#4-where-nullability-lives)
-- [When to Use T? Instead](#when-to-use-t-instead)
-- [Quick Reference](#quick-reference)
-- [API Overview](#api-overview)
-- [Next Steps](#next-steps)
+The issue with plain nullable values is not that they are bad. The issue is that they stop being expressive once the code becomes more domain-driven.
 
-## The Problem
-
-In domain-driven design, you frequently model properties that are *intentionally optional* — a customer's phone number, a secondary email address, a middle name. The question is: how do you express "this value may or may not be present" in a way that's type-safe, composable, and semantically clear?
+Consider an entity with an optional phone number:
 
 ```csharp
-public class Customer : Entity<CustomerId>
-{
-    public CustomerName Name { get; }
-    public PhoneNumber? Phone { get; }  // Is this good enough?
-}
-```
+using Trellis;
 
-For simple cases, `PhoneNumber?` works fine. But as your domain grows, you'll run into three gaps that C#'s built-in nullability can't fill.
+public sealed record PhoneNumber(string Value);
 
-## What C# Already Provides
-
-C# has two nullability mechanisms, and it's important to understand what they do well:
-
-| Mechanism | Works With | Runtime Type? | Enforcement |
-|-----------|-----------|---------------|-------------|
-| `Nullable<T>` (`int?`, `DateTime?`) | Value types only | Yes — real wrapper struct | Full runtime enforcement |
-| `T?` (nullable reference types) | Reference types only | No — compiler annotation only | Warnings only (can be ignored) |
-
-**For most code, these are sufficient.** If you're writing a standard web API or working with primitives, `T?` is the idiomatic C# choice. Trellis doesn't suggest otherwise.
-
-## Where Maybe Wins
-
-`Maybe<T>` addresses specific gaps that matter when you're building domain models with Railway Oriented Programming.
-
-### 1. Pipeline Composition
-
-This is the strongest justification. `T?` gives you `?.` and `??`, but these are limited to simple null-coalescing. They can't inject validation, transformation, or error handling into a chain.
-
-**With `T?` — imperative null checks:**
-
-```csharp
-PhoneNumber? phone = FindPhone(customerId);
-if (phone is null)
-    return Result.Failure<string>(Error.NotFound("No phone on file"));
-
-var formatted = FormatForDisplay(phone);
-var result = await SendSmsAsync(formatted);
-```
-
-**With `Maybe<T>` — composable pipeline:**
-
-```csharp
-var result = FindPhone(customerId)           // returns Maybe<PhoneNumber>
-    .ToResult(Error.NotFound("No phone on file"))
-    .Map(phone => FormatForDisplay(phone))
-    .Bind(formatted => SendSmsAsync(formatted));
-```
-
-The `Maybe<T>` version plugs directly into the same `Result<T>` pipeline you're already using for validation and error handling. The `T?` version forces you out of the pipeline and into imperative code.
-
-**The bridge method — `ToResult`:**
-
-```csharp
-// Maybe → Result: absence becomes a domain error
-Maybe<User> maybeUser = FindUserInCache(id);
-Result<User> result = maybeUser.ToResult(Error.NotFound($"User {id} not found"));
-
-// From here, chain with Bind, Map, Ensure, Tap — the full ROP toolkit
-```
-
-### 2. Optional Value Objects
-
-Value objects are non-null by design — a `PhoneNumber` is always valid, an `EmailAddress` always contains a well-formed address. The question becomes: how do you express "this entity may or may not have a phone number"?
-
-**The invariant problem:**
-
-A `PhoneNumber` protects its invariants — it cannot be empty, null, or invalid. An "empty phone number" is a contradiction. So **nullability must live on the entity, not inside the value object:**
-
-```csharp
-// ✅ Nullability on the entity — PhoneNumber is always valid
-public class Customer : Entity<CustomerId>
+public sealed class Customer
 {
     public Maybe<PhoneNumber> Phone { get; }
-}
 
-// ❌ Nullability inside the value object — breaks invariants
-public class PhoneNumber : ValueObject
-{
-    public string? Number { get; }  // What does an empty phone number mean?
+    public Customer(Maybe<PhoneNumber> phone) => Phone = phone;
 }
 ```
 
-`Maybe<PhoneNumber>` makes the intent explicit: the customer may or may not have a phone number, but if they do, it's always valid.
+That says something precise:
 
-**Context-dependent optionality:**
+- the customer may or may not have a phone number
+- **if** there is a phone number, it is a real `PhoneNumber`
+- “empty phone number” is not a separate fake concept inside the value object
 
-The same value object can be required in one entity and optional in another:
+That is usually clearer than pushing optionality down into the value object itself.
+
+## When `Maybe<T>` Is Better Than `T?`
+
+### Use `Maybe<T>` when...
+
+| Scenario | Why `Maybe<T>` helps |
+| --- | --- |
+| Optional value objects | It keeps the value object valid and moves optionality to the containing model |
+| Optional data in a pipeline | It composes with `Map`, `Bind`, `Where`, `Tap`, and `ToResult(...)` |
+| Absence should become a domain error later | `ToResult(...)` makes that conversion explicit |
+| You want equality and operators for optional values | `Maybe<T>` supports `Equals`, `==`, and `!=` |
+
+### Use `T?` when...
+
+| Scenario | Better choice |
+| --- | --- |
+| Optional primitives on DTOs | `int?`, `DateTime?`, `decimal?` |
+| Optional strings or references with no pipeline needs | `string?`, `User?` |
+| Interop with APIs that already use nullable reference types | `T?` |
+| Performance-sensitive code where nullable semantics are enough | `T?` / `Nullable<T>` |
+
+> [!NOTE]
+> A practical rule: use `Maybe<T>` for **optional domain values** that need Trellis composition. Use `T?` for ordinary nullable data.
+
+## Creating `Maybe<T>` Values
+
+### Some value
 
 ```csharp
-public class Customer : Entity<CustomerId>
-{
-    public Maybe<PhoneNumber> Phone { get; }  // Optional for customers
-}
+using Trellis;
 
-public class Employee : Entity<EmployeeId>
-{
-    public PhoneNumber Phone { get; }         // Required for employees
-}
+Maybe<string> some = Maybe.From("Ada");
+Maybe<string> alsoSome = Maybe<string>.From("Ada");
+Maybe<string> implicitSome = "Ada";
 ```
 
-**The `notnull` constraint prevents misuse:**
+### No value
 
 ```csharp
-Maybe<PhoneNumber> phone;     // ✅ Valid
-Maybe<int> count;             // ✅ Valid
-Maybe<string?> name;          // ❌ Compile error — T must be notnull
-Maybe<Maybe<string>> nested;  // ❌ Analyzer TRLS011 warns against double wrapping
+using Trellis;
+
+Maybe<string> none = Maybe<string>.None;
+Maybe<int> missingCount = Maybe<int>.None;
 ```
 
-### 3. ASP.NET Boundary Integration
-
-At the API boundary, `null` is ambiguous. Did the client omit the field, or did they explicitly send `null`? For value objects, there's a third case: the field was present but invalid.
-
-Trellis provides automatic integration for `Maybe<T>` in DTOs:
+### Null becomes `None`
 
 ```csharp
-public record UpdateCustomerRequest(
-    FirstName Name,
-    Maybe<PhoneNumber> Phone    // Three possible states handled automatically
-);
+using Trellis;
+
+string? input = null;
+Maybe<string> maybeName = Maybe.From(input);
+
+Console.WriteLine(maybeName.HasValue); // False
 ```
 
-| JSON Input | Deserialized As | Behavior |
-|-----------|----------------|----------|
-| `"phone": "555-1234"` | `Maybe.From(PhoneNumber)` | Validated and wrapped |
-| `"phone": null` or field absent | `Maybe<PhoneNumber>.None` | Treated as intentionally empty |
-| `"phone": "invalid!"` | Validation error | Returns `400` with field-level error |
+## Reading Values Safely
 
-This is handled automatically by:
-- `MaybeScalarValueJsonConverter` — JSON deserialization
-- `MaybeModelBinder` — MVC model binding
-- `MaybeSuppressChildValidationMetadataProvider` — prevents MVC validation crashes
+The problem with optional values is not creating them. It is consuming them without littering your code with `if` statements.
 
-All registered with a single call to `AddScalarValueValidation()`. With `T?`, you'd need custom converters to distinguish "absent" from "invalid."
-
-### 4. Where Nullability Lives
-
-When validating optional input from users or APIs, you often need to handle "null means skip, non-null means validate." `Maybe.Optional` solves this cleanly:
+### `Match`
 
 ```csharp
-// Optional input: null is fine, but if provided, it must be valid
-string? phoneInput = request.Phone;
-string? websiteInput = request.Website;
+using Trellis;
 
-var result = FirstName.TryCreate(request.FirstName)
-    .Combine(LastName.TryCreate(request.LastName))
-    .Combine(Maybe.Optional(phoneInput, PhoneNumber.TryCreate))
-    .Combine(Maybe.Optional(websiteInput, Url.TryCreate))
-    .Bind((first, last, phone, website) =>
-        Customer.TryCreate(first, last, phone, website));
+Maybe<string> nickname = Maybe.From("Countess");
+
+var display = nickname.Match(
+    some => $"Nickname: {some}",
+    () => "No nickname on file");
 ```
 
-`Maybe.Optional` encodes the rule: **null input → `Maybe<T>.None` (success), non-null input → validate and wrap in `Maybe.From`**, invalid input → propagate the validation error. This composes naturally with `Combine` and keeps optional fields in the same pipeline as required fields.
-
-## When to Use T? Instead
-
-`Maybe<T>` is not always the right choice. Use `T?` for:
-
-| Scenario | Use | Example |
-|----------|-----|---------|
-| Optional primitives on entities | `T?` | `DateTime? CancelledAt` |
-| Optional strings | `T?` | `string? MiddleName` |
-| Optional primitives in DTOs | `T?` | `int? PageSize` |
-| Methods consumed directly (not piped) | `T?` | `User? FindUser(int id)` |
-| Performance-critical hot paths | `T?` | Zero allocation vs. struct copy |
-
-**The rule of thumb:**
-
-> Use `Maybe<T>` for optional value objects and when composing with `Result<T>` pipelines. Use `T?` for everything else.
-
-## Quick Reference
-
-| I want to... | Use |
-|-------------|-----|
-| Express "this value object is optional" | `Maybe<PhoneNumber>` |
-| Feed optionality into an ROP pipeline | `maybe.ToResult(error).Bind(...)` |
-| Validate optional API input | `Maybe.Optional(input, TryCreate)` |
-| Express "this primitive is optional" | `DateTime? CancelledAt` |
-| Return "not found" from a query | `Maybe<T>` if piped, `T?` if consumed directly |
-| Transform an optional value | `maybe.Map(x => x.Format())` |
-| Chain optional lookups | `maybe.Bind(x => GetRelated(x))` |
-| Filter an optional value | `maybe.Where(x => x.IsActive)` |
-| Fall back if absent | `maybe.Or(fallback)` |
-| Perform a side effect | `maybe.Tap(x => Log(x))` |
-| Pattern match on presence | `maybe.Match(x => ..., () => ...)` |
-| Safely get first/last from collection | `items.TryFirst(predicate)` |
-| Unwrap Some values from collection | `maybes.Choose()` |
-
-## API Overview
-
-### Creating Maybe Values
+### `TryGetValue`
 
 ```csharp
-Maybe<PhoneNumber> some = Maybe.From(phoneNumber);            // Wrap a value (type inferred)
-Maybe<PhoneNumber> same = Maybe<PhoneNumber>.From(phoneNumber); // Wrap a value (explicit type)
-Maybe<PhoneNumber> none = Maybe<PhoneNumber>.None;            // No value
-Maybe<string> greeting = "hello";                              // Implicit conversion
-```
+using Trellis;
 
-### Checking and Extracting
+Maybe<int> count = Maybe.From(3);
 
-```csharp
-if (maybe.HasValue)
-    Console.WriteLine(maybe.Value);
-
-if (maybe.TryGetValue(out var value))
+if (count.TryGetValue(out var value))
     Console.WriteLine(value);
-
-var fallback = maybe.GetValueOrDefault(PhoneNumber.Create("000-0000"));
-
-// Lazy default — evaluated only when None
-var fallback2 = maybe.GetValueOrDefault(() => LoadDefaultPhone());
 ```
 
-### Transforming
+### `GetValueOrDefault`
 
 ```csharp
-// Map — transform the inner value
-Maybe<string> formatted = maybePhone.Map(p => p.ToString());
+using Trellis;
 
-// Match — handle both cases
-string display = maybePhone.Match(
-    p => $"Phone: {p}",
-    () => "No phone on file"
-);
+Maybe<string> title = Maybe<string>.None;
+
+var value = title.GetValueOrDefault("Untitled");
+var lazyValue = title.GetValueOrDefault(() => "Generated title");
 ```
 
-### Chaining
+> [!WARNING]
+> `Value` throws when the `Maybe<T>` is empty. Prefer `Match`, `TryGetValue`, or `GetValueOrDefault(...)`.
+
+## Transforming Optional Values
+
+This is where `Maybe<T>` starts to earn its keep.
+
+### `Map`
 
 ```csharp
-// Bind — chain optional lookups without nesting
-var email = GetUser(id)
-    .Bind(user => GetProfile(user))
-    .Map(profile => profile.Email);
+using Trellis;
 
-// Compose multiple optional steps
-Maybe<Address> address = GetOrder(orderId)
-    .Bind(order => order.Customer)
-    .Bind(customer => customer.ShippingAddress);
+Maybe<string> email = Maybe.From("ada@example.com");
+Maybe<string> upper = email.Map(value => value.ToUpperInvariant());
 ```
 
-### Filtering
+### `Bind`
+
+Use `Bind` when the next step also returns a `Maybe<T>`.
 
 ```csharp
-// Where — returns None if predicate fails
-var activeUser = GetUser(id).Where(u => u.IsActive);
+using Trellis;
 
-// Combine with other operations
-var display = GetUser(id)
-    .Where(u => u.IsActive)
-    .Map(u => u.DisplayName);
+static Maybe<string> GetManagerEmail(string userId) =>
+    userId == "42" ? Maybe.From("manager@example.com") : Maybe<string>.None;
+
+var email = Maybe.From("42")
+    .Bind(GetManagerEmail);
 ```
 
-### Fallbacks
+### `Where`
 
 ```csharp
-// Or — use first available value
-var name = preferredName.Or(legalName).Or("Unknown");
+using Trellis;
 
-// Or — lazy evaluation (factory only called when None)
-var config = cachedConfig.Or(() => LoadConfigFromDisk());
-
-// Or — chain Maybe values
-var phone = mobilePhone.Or(homePhone).Or(workPhone);
-
-// Or — lazy Maybe (factory only called when None)
-var user = cachedUser.Or(() => FindUserInDatabase(id));
+Maybe<int> quantity = Maybe.From(3);
+Maybe<int> validQuantity = quantity.Where(value => value > 0);
 ```
 
-### Side Effects
+### `Tap`
 
 ```csharp
-// Tap — perform action if present, returns unchanged Maybe
-var user = GetUser(id)
-    .Tap(u => logger.LogInformation("Found user {Name}", u.Name))
-    .Map(u => u.Email);
+using Trellis;
+
+var maybeUser = Maybe.From("Ada")
+    .Tap(value => Console.WriteLine($"Found {value}"));
 ```
 
-### Bridging to Result
+### `Or`
 
 ```csharp
-// Convert to Result for ROP pipeline
-Result<PhoneNumber> result = maybePhone
-    .ToResult(Error.NotFound("No phone on file"));
+using Trellis;
 
-// Lazy error creation
-Result<PhoneNumber> result = maybePhone
-    .ToResult(() => Error.NotFound($"Phone not found for {customerId}"));
+Maybe<string> preferred = Maybe<string>.None;
+Maybe<string> legal = Maybe.From("Ada Lovelace");
+
+var name = preferred.Or(legal).Or("Unknown");
 ```
 
-### Handling Optional Input
+## Converting `Maybe<T>` to `Result<T>`
+
+This is the most important bridge in day-to-day Trellis usage.
+
+The problem it solves: sometimes “missing” is fine in the middle of the workflow, but becomes a real error at the boundary.
 
 ```csharp
-// Null → Maybe.None (success), non-null → validate and wrap
-Result<Maybe<PhoneNumber>> result = Maybe.Optional(input, PhoneNumber.TryCreate);
+using Trellis;
+
+Maybe<string> maybeEmail = Maybe<string>.None;
+
+Result<string> emailResult = maybeEmail.ToResult(
+    Error.NotFound("Primary email address was not found"));
 ```
 
-### LINQ Query Syntax
-
-Compose multiple optional values using C# query syntax:
+There is also a lazy overload when creating the error is expensive or needs runtime context.
 
 ```csharp
+using Trellis;
+
+var result = Maybe<string>.None.ToResult(
+    () => Error.NotFound("Primary email address was not found"));
+```
+
+## Converting `Result<T>` to `Maybe<T>`
+
+Sometimes you want the opposite tradeoff: “keep the value if successful, otherwise treat it as missing.”
+
+```csharp
+using Trellis;
+
+Maybe<string> existing = Result.Success("Ada").ToMaybe();
+Maybe<string> missing = Result.Failure<string>(Error.NotFound("User not found")).ToMaybe();
+```
+
+Use this only when dropping the error is the right thing to do.
+
+## Optional Input with `Maybe.Optional(...)`
+
+A very common problem at system boundaries is “null is acceptable, but if a value is present, it must be valid.”
+
+That is exactly what `Maybe.Optional(...)` is for.
+
+### Reference input
+
+```csharp
+using Trellis;
+
+static Result<string> NonEmpty(string value) =>
+    string.IsNullOrWhiteSpace(value)
+        ? Result.Failure<string>(Error.Validation("Value is required", "nickname"))
+        : Result.Success(value);
+
+string? input = "Countess";
+
+Result<Maybe<string>> result = Maybe.Optional(input, NonEmpty);
+```
+
+### Nullable value-type input
+
+```csharp
+using Trellis;
+
+static Result<int> Positive(int value) =>
+    value > 0
+        ? Result.Success(value)
+        : Result.Failure<int>(Error.Validation("Value must be positive", "quantity"));
+
+int? input = 3;
+
+Result<Maybe<int>> result = Maybe.Optional(input, Positive);
+```
+
+What `Maybe.Optional(...)` does:
+
+- `null` / no value -> success with `Maybe<T>.None`
+- value present and valid -> success with `Maybe.From(...)`
+- value present and invalid -> failure with the validation error
+
+## Equality and Operators
+
+This is another easy detail to miss.
+
+> [!TIP]
+> `Maybe<T>` supports `Equals`, `==`, and `!=`.
+
+```csharp
+using Trellis;
+
+Maybe<int> some = Maybe.From(42);
+Maybe<int> none = Maybe<int>.None;
+
+Console.WriteLine(some == 42);                  // True
+Console.WriteLine(some == Maybe.From(42));      // True
+Console.WriteLine(some != 0);                   // True
+Console.WriteLine(none == Maybe<int>.None);     // True
+Console.WriteLine(some.Equals(Maybe.From(42))); // True
+```
+
+## LINQ Query Syntax
+
+Optional values often read nicely in query form.
+
+```csharp
+using Trellis;
+
+Maybe<string> first = Maybe.From("Ada");
+Maybe<string> last = Maybe.From("Lovelace");
+
 Maybe<string> fullName =
-    from first in firstName
-    from last in lastName
-    select $"{first} {last}";
-
-// Chain optional lookups — any None short-circuits to None
-Maybe<Email> managerEmail =
-    from user in users.FindById(userId)
-    from manager in users.FindById(user.ManagerId)
-    from email in manager.Email
-    select email;
+    from f in first
+    from l in last
+    select $"{f} {l}";
 ```
 
-### Bridging from Result (ToMaybe)
+If any step is `None`, the whole query becomes `None`.
+
+## Collection Helpers
+
+Trellis also adds a few helpers that make working with collections of optional values pleasant.
+
+### `TryFirst` and `TryLast`
 
 ```csharp
-// Convert Result to Maybe — success→Some, failure→None (error discarded)
-Maybe<Avatar> avatar = avatarService.GetByUserId(userId).ToMaybe();
+using Trellis;
 
-// Async variant
-Maybe<Avatar> avatar = await avatarService.GetByUserId(userId).ToMaybeAsync();
+var numbers = new[] { 1, 2, 3, 4 };
+
+Maybe<int> first = numbers.TryFirst();
+Maybe<int> even = numbers.TryFirst(n => n % 2 == 0);
+Maybe<int> last = numbers.TryLast();
 ```
 
-### Collection Extensions
+### `Choose`
 
 ```csharp
-// TryFirst / TryLast — safe first-or-none, last-or-none
-Maybe<User> admin = users.TryFirst(u => u.IsAdmin);
-Maybe<Order> latest = orders.TryLast(o => o.IsCompleted);
+using Trellis;
 
-// Parameterless overloads
-Maybe<User> first = users.TryFirst();
-Maybe<User> last = users.TryLast();
+IEnumerable<Maybe<string>> names =
+[
+    Maybe.From("Ada"),
+    Maybe<string>.None,
+    Maybe.From("Grace")
+];
 
-// Choose — unwrap Some values, discard None
-IEnumerable<string> emails = users
-    .Select(u => u.Email)       // IEnumerable<Maybe<string>>
-    .Choose();                   // IEnumerable<string> — only the Some values
-
-// Choose with selector
-IEnumerable<string> emails = users.Choose(u => u.Email);
+IEnumerable<string> values = names.Choose();
+IEnumerable<int> lengths = names.Choose(name => name.Length);
 ```
+
+## `Maybe<T>` and Unit Results
+
+Sometimes the next question is: “what if my operation has no payload?”
+
+For Trellis unit results:
+
+- prefer `Result.Success()` for a successful `Result<Unit>`
+- use `new Unit()` or `default` if you need a `Unit` value explicitly
+- do **not** use `Unit.Value` — that API does not exist
+
+```csharp
+using Trellis;
+
+Result<Unit> ok = Result.Success();
+Unit unit = new Unit();
+Unit alsoUnit = default;
+```
+
+## Practical Rules of Thumb
+
+- Use `Maybe<T>` for optional **domain values**, especially value objects
+- Keep optionality on the containing model, not inside a value object's invariants
+- Use `ToResult(...)` when absence should become a real error
+- Use `Maybe.Optional(...)` for boundary validation of optional inputs
+- Use `ToMaybe()` only when you truly want to discard the error
+- Prefer safe readers like `Match`, `TryGetValue`, and `GetValueOrDefault(...)`
 
 ## Next Steps
 
-- Learn the [Basics](basics.md) of Railway Oriented Programming
-- See [Entity Framework Core Integration](integration-ef.md#maybe-property-convention) for persisting `Maybe<T>` properties
-- See [ASP.NET Core Integration](integration-aspnet.md#optional-value-objects-with-maybe) for JSON and model binding support
-- Review [Error Handling](error-handling.md) for the error types used with `ToResult`
+- Read [Error Handling](error-handling.md) for the errors typically paired with `ToResult(...)`
+- Read [Advanced Features](advanced-features.md) for LINQ, tuple destructuring, and parallel flows

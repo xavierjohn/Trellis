@@ -1,105 +1,100 @@
-# TRLS019: Combine chain exceeds maximum supported tuple size
+# TRLS019 — Combine chain exceeds maximum supported tuple size
 
-## Cause
+- **Severity:** Error
+- **Category:** Trellis
 
-A chain of `.Combine()` calls produces a tuple with more than 9 elements, which exceeds the maximum supported by downstream methods like `Bind`, `Map`, `Tap`, and `Match`.
+## What it detects
+Flags the outermost `Combine(...)` or `CombineAsync(...)` chain when it grows past Trellis's supported tuple width of nine elements.
 
-## Rule Description
+## Why it matters
+Downstream Trellis tuple-based APIs also stop at nine elements. Large combine chains are a sign that related inputs should be grouped first.
 
-`Combine` aggregates multiple `Result<T>` values into a single result containing a tuple. Trellis supports tuples up to 9 elements. When a `Combine` chain exceeds this limit, downstream operations cannot destructure the result.
+> [!WARNING]
+> This is the one rule where the bad example usually also causes a compile error: the tenth `Combine` has no matching overload. The analyzer gives you a clearer explanation of what to refactor.
 
-This rule fires as an **Error** because the code will fail to compile when you attempt to use `Bind`, `Map`, or other methods on the over-sized result.
-
-## How to Fix Violations
-
-Group related validations into intermediate value objects or sub-results, then combine those groups:
-
+## Bad example
 ```csharp
-// ❌ Bad - 10 elements exceeds the maximum of 9
-var result = FirstName.TryCreate(request.FirstName)
-    .Combine(LastName.TryCreate(request.LastName))
-    .Combine(EmailAddress.TryCreate(request.Email))
-    .Combine(PhoneNumber.TryCreate(request.Phone))
-    .Combine(Age.TryCreate(request.Age))
-    .Combine(Street.TryCreate(request.Street))
-    .Combine(City.TryCreate(request.City))
-    .Combine(State.TryCreate(request.State))
-    .Combine(ZipCode.TryCreate(request.Zip))
-    .Combine(CountryCode.TryCreate(request.Country)); // 10th element!
+using Trellis;
 
-// ✅ Good - Group related fields into sub-objects
-var personalInfo = FirstName.TryCreate(request.FirstName)
-    .Combine(LastName.TryCreate(request.LastName))
-    .Combine(EmailAddress.TryCreate(request.Email))
-    .Combine(PhoneNumber.TryCreate(request.Phone))
-    .Combine(Age.TryCreate(request.Age));
-
-var address = Street.TryCreate(request.Street)
-    .Combine(City.TryCreate(request.City))
-    .Combine(State.TryCreate(request.State))
-    .Combine(ZipCode.TryCreate(request.Zip))
-    .Combine(CountryCode.TryCreate(request.Country));
-
-var result = personalInfo
-    .Combine(address)
-    .Bind((personal, addr) => User.TryCreate(personal, addr));
+static class Example
+{
+    public static void Bad(
+        Result<int> r1,
+        Result<int> r2,
+        Result<int> r3,
+        Result<int> r4,
+        Result<int> r5,
+        Result<int> r6,
+        Result<int> r7,
+        Result<int> r8,
+        Result<int> r9,
+        Result<int> r10)
+    {
+        var combined = r1
+            .Combine(r2)
+            .Combine(r3)
+            .Combine(r4)
+            .Combine(r5)
+            .Combine(r6)
+            .Combine(r7)
+            .Combine(r8)
+            .Combine(r9)
+            .Combine(r10);
+    }
+}
 ```
 
-## Examples
-
-### Example 1: Order with Many Fields
-
+## Good example
 ```csharp
-// ❌ Bad - Too many fields in one chain
-var order = ProductId.TryCreate(req.ProductId)
-    .Combine(Quantity.TryCreate(req.Quantity))
-    .Combine(Price.TryCreate(req.Price))
-    .Combine(CurrencyCode.TryCreate(req.Currency))
-    .Combine(FirstName.TryCreate(req.ShipFirstName))
-    .Combine(LastName.TryCreate(req.ShipLastName))
-    .Combine(Street.TryCreate(req.ShipStreet))
-    .Combine(City.TryCreate(req.ShipCity))
-    .Combine(ZipCode.TryCreate(req.ShipZip))
-    .Combine(CountryCode.TryCreate(req.ShipCountry)); // 10 elements
+using Trellis;
 
-// ✅ Good - Separate into logical groups
-var lineItem = ProductId.TryCreate(req.ProductId)
-    .Combine(Quantity.TryCreate(req.Quantity))
-    .Combine(Money.TryCreate(req.Price, req.Currency));
+static class Example
+{
+    public static void Good(
+        Result<int> r1,
+        Result<int> r2,
+        Result<int> r3,
+        Result<int> r4,
+        Result<int> r5,
+        Result<int> r6,
+        Result<int> r7,
+        Result<int> r8,
+        Result<int> r9,
+        Result<int> r10)
+    {
+        var customerGroup = r1
+            .Combine(r2)
+            .Combine(r3)
+            .Combine(r4)
+            .Combine(r5);
 
-var shippingAddress = FirstName.TryCreate(req.ShipFirstName)
-    .Combine(LastName.TryCreate(req.ShipLastName))
-    .Combine(Street.TryCreate(req.ShipStreet))
-    .Combine(City.TryCreate(req.ShipCity))
-    .Combine(ZipCode.TryCreate(req.ShipZip))
-    .Combine(CountryCode.TryCreate(req.ShipCountry));
+        var orderGroup = r6
+            .Combine(r7)
+            .Combine(r8)
+            .Combine(r9)
+            .Combine(r10);
 
-var order = lineItem
-    .Combine(shippingAddress)
-    .Bind((item, address) => Order.TryCreate(item, address));
+        var combined = customerGroup.Combine(orderGroup);
+    }
+}
 ```
 
-### Example 2: Boundary Case (9 Elements Is Valid)
+## Code fix available
+No.
 
-```csharp
-// ✅ OK - 9 elements is the maximum supported
-var result = Field1.TryCreate(a)
-    .Combine(Field2.TryCreate(b))
-    .Combine(Field3.TryCreate(c))
-    .Combine(Field4.TryCreate(d))
-    .Combine(Field5.TryCreate(e))
-    .Combine(Field6.TryCreate(f))
-    .Combine(Field7.TryCreate(g))
-    .Combine(Field8.TryCreate(h))
-    .Combine(Field9.TryCreate(i)); // 9 elements - OK
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS019.severity = none
 ```
 
-## Related Rules
+```csharp
+#pragma warning disable TRLS019
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS019
+```
 
-- [TRLS012](TRLS012.md) - Consider using Result.Combine
-- [TRLS008](TRLS008.md) - Result is double-wrapped
+> [!TIP]
+> Create intermediate value objects or grouped validation results, then combine those smaller units.
 
-## See Also
-
-- [Basics - Combining Results](../basics.md) - How Combine works
-- [Clean Architecture](../clean-architecture.md) - Grouping validations into value objects

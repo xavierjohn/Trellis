@@ -54,6 +54,8 @@
     href: integration-aspnet.md
   - name: ASP.NET Core Authorization (Entra ID)
     href: integration-asp-authorization.md
+  - name: Setting Up Single Sign-On (SSO)
+    href: integration-sso.md
   - name: Testing with Entra ID Tokens
     href: integration-entra-testing.md
   - name: Database-Backed Permissions

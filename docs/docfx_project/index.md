@@ -1,67 +1,93 @@
-﻿# <img src="images/icon.png" alt="Trellis logo" width="48" style="vertical-align: middle; margin-right: 8px;" /> Trellis
+# <img src="images/icon.png" alt="Trellis logo" width="48" style="vertical-align: middle; margin-right: 8px;" /> Trellis
 
-> **Structured building blocks for AI-driven enterprise software**
+> **Structured building blocks for readable, explicit enterprise code**
 
-Write less code that reads like English using Railway-Oriented Programming and Domain-Driven Design for .NET 10.
+Trellis helps you model your domain with **type-safe value objects**, compose workflows with **Railway-Oriented Programming**, and return consistent errors without filling your codebase with null checks and exception plumbing.
 
-## Before & After
+## Why teams reach for Trellis
 
-### Traditional Approach
+The big win is simple: **your happy path stays readable even when the real world is messy**.
+
+- **Validate once, trust everywhere** with value objects such as `FirstName`, `OrderId`, and `CustomerEmail`
+- **Compose workflows safely** with `Combine`, `Bind`, `Ensure`, `Tap`, and `Match`
+- **Return structured errors** with concrete types like `ValidationError`, `NotFoundError`, and `ConflictError`
+- **Keep domain code expressive** with aggregates, entities, specifications, and domain events
+- **Integrate with ASP.NET Core** using `ToActionResult()` and `ToHttpResult()` when you are ready to expose APIs
+
+> [!NOTE]
+> Trellis error codes end with `.error` by default. For example, `Error.NotFound(...)` produces the code `not.found.error`.
+
+---
+
+## Before and after
+
+The problem: everyday application code often turns into defensive boilerplate.
+
+### Traditional approach
 
 ```csharp
-// 20 lines of repetitive error checking — easy to miss a check!
 var firstName = ValidateFirstName(input.FirstName);
-if (firstName == null) return BadRequest("Invalid first name");
+if (firstName is null)
+    return BadRequest("Invalid first name.");
 
 var lastName = ValidateLastName(input.LastName);
-if (lastName == null) return BadRequest("Invalid last name");
+if (lastName is null)
+    return BadRequest("Invalid last name.");
 
 var email = ValidateEmail(input.Email);
-if (email == null) return BadRequest("Invalid email");
+if (email is null)
+    return BadRequest("Invalid email.");
 
-var user = CreateUser(firstName, lastName, email);
-if (user == null) return BadRequest("Cannot create user");
+if (_repository.EmailExists(email))
+    return Conflict("Email already registered.");
 
-if (!_repository.EmailExists(email))
-    return Conflict("Email already registered");
-
+var user = new User(firstName, lastName, email);
 _repository.Save(user);
-_emailService.SendWelcome(user.Email);
+_emailService.SendWelcome(email);
+
 return Ok(user);
 ```
 
 ### With Trellis
 
 ```csharp
-// 8 lines — reads like a story: validate → create → check → save → notify
-return FirstName.TryCreate(input.FirstName)
-    .Combine(LastName.TryCreate(input.LastName))
-    .Combine(EmailAddress.TryCreate(input.Email))
-    .Bind((first, last, email) => User.TryCreate(first, last, email))
-    .Ensure(user => !_repository.EmailExists(user.Email), Error.Conflict("Email registered"))
-    .Tap(user => _repository.Save(user))
-    .Tap(user => _emailService.SendWelcome(user.Email))
-    .Match(onSuccess: user => Ok(user), onFailure: error => BadRequest(error.Detail));
+using Trellis;
+
+public partial class FirstName : RequiredString<FirstName> { }
+public partial class LastName : RequiredString<LastName> { }
+public partial class CustomerEmail : RequiredString<CustomerEmail> { }
+
+public sealed record RegisterUserInput(string FirstName, string LastName, string Email);
+
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
+{
+    public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
+        Result.Success(new User(firstName, lastName, email));
+}
+
+public static Result<User> RegisterUser(
+    RegisterUserInput input,
+    Func<CustomerEmail, bool> emailExists,
+    Action<User> saveUser,
+    Action<CustomerEmail> sendWelcomeEmail)
+{
+    return FirstName.TryCreate(input.FirstName)
+        .Combine(LastName.TryCreate(input.LastName))
+        .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
+        .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
+        .Ensure(user => !emailExists(user.Email), Error.Conflict("Email already registered."))
+        .Tap(saveUser)
+        .Tap(user => sendWelcomeEmail(user.Email));
+}
 ```
 
-**60% less code. Reads like English. Impossible to skip error handling.**
+**Same workflow, less ceremony:** validate -> create -> check -> save -> notify.
 
 ---
 
-## What You Get
+## Quick start
 
-- **Result\<T\> and Maybe\<T\>** — composable error handling and optional values. No exceptions, no null. [Learn more](articles/basics.md)
-- **Type-safe value objects** — `FirstName`, `EmailAddress`, `OrderId` generated from one-line declarations. If it exists, it's valid. [Learn more](articles/required-enum.md)
-- **Aggregates and entities** — DDD building blocks with domain events and consistency boundaries. [Learn more](articles/aggregate-factory-pattern.md)
-- **10 discriminated error types** — `ValidationError`, `NotFoundError`, `ConflictError`, etc. Map automatically to HTTP status codes. [Learn more](articles/error-handling.md)
-- **9 pipeline operations** — `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `Match`, and more. All with async variants. [Learn more](articles/basics.md)
-- **19 Roslyn analyzers** — catch unsafe `.Value` access, forgotten results, and anti-patterns at compile time. [Learn more](articles/analyzers/index.md)
-- **State machine integration** — `FireResult()` returns `Result<T>` instead of throwing. [Learn more](articles/state-machines.md)
-- **AI-ready patterns** — structured building blocks that AI can generate correctly. [Learn more](articles/ai-code-generation.md)
-
----
-
-## Quick Start
+Start with the packages most developers need first:
 
 ```bash
 dotnet add package Trellis.Results
@@ -70,77 +96,66 @@ dotnet add package Trellis.Primitives.Generator
 dotnet add package Trellis.Analyzers
 ```
 
+Then create your first value object and use it in a result flow.
+
 ```csharp
 using Trellis;
 
-// Define a value object — one line
-public partial class EmailAddress : RequiredString { }
+public partial class OrderNumber : RequiredString<OrderNumber> { }
 
-// Use it — invalid values are impossible
-Result<EmailAddress> result = EmailAddress.TryCreate("user@example.com");
+Result<OrderNumber> orderNumber = OrderNumber.TryCreate("SO-2025-0001");
 
-result.Match(
-    onSuccess: email => Console.WriteLine($"Valid: {email}"),
-    onFailure: error => Console.WriteLine($"Error: {error.Detail}")
+string message = orderNumber.Match(
+    onSuccess: value => $"Created order number {value}.",
+    onFailure: error => $"Validation failed: {error.Detail}"
 );
 ```
 
-See the [Introduction](articles/intro.md) for a full walkthrough, or jump to [Basics](articles/basics.md) for all pipeline operations.
+> [!TIP]
+> For quick custom value objects, inherit from the generic base type such as `RequiredString<OrderNumber>` or `RequiredGuid<OrderId>`. The generic parameter is required.
 
 ---
 
-## Packages
+## What you get
 
-### Core
-
-| Package | Purpose |
-|---------|---------|
-| `Trellis.Results` | Result\<T\>, Maybe\<T\>, error types, pipeline operations, async support |
-| `Trellis.DomainDrivenDesign` | Aggregate, Entity, ValueObject, Specification, Domain Events |
-| `Trellis.Primitives` | RequiredString, RequiredGuid, RequiredInt, RequiredDecimal + 12 ready-to-use value objects |
-| `Trellis.Primitives.Generator` | Source generator for value object boilerplate |
-| `Trellis.Analyzers` | 19 Roslyn analyzers enforcing ROP best practices at compile time |
-
-### Integration
-
-| Package | Purpose |
-|---------|---------|
-| `Trellis.Asp` | Result → HTTP responses: `ToActionResult()` for MVC, `ToHttpResult()` for Minimal API, [configurable error mapping](articles/integration-aspnet.md) |
-| `Trellis.Http` | [HttpClient extensions](articles/integration-http.md) returning Result\<T\> |
-| `Trellis.FluentValidation` | [Bridge FluentValidation errors](articles/integration-fluentvalidation.md) to Result\<T\> |
-| `Trellis.Testing` | FluentAssertions extensions, test builders, fakes |
-| `Trellis.Stateless` | Wraps Stateless state machine [Fire() to return Result\<T\>](articles/state-machines.md) |
+| Capability | Why it matters | Learn more |
+| --- | --- | --- |
+| **`Result<T>` and `Maybe<T>`** | Make success and failure explicit instead of hiding them in exceptions and nulls | [Basics](articles/basics.md) |
+| **Generated value objects** | Turn raw primitives into domain language the compiler understands | [Introduction](articles/intro.md) |
+| **DDD building blocks** | Model aggregates, entities, value objects, and specifications directly | [Aggregate Factory Pattern](articles/aggregate-factory-pattern.md) |
+| **Structured error types** | Return meaningful failures with default HTTP mappings | [Error Handling](articles/error-handling.md) |
+| **ASP.NET integration** | Convert results to MVC or Minimal API responses without repetitive switch logic | [ASP.NET Core Integration](articles/integration-aspnet.md) |
+| **Roslyn analyzers** | Catch unsafe `.Value` access and other ROP mistakes during development | [Analyzers](articles/analyzers/index.md) |
 
 ---
 
-## Performance
+## A practical learning path
 
-Trellis adds **11–16 nanoseconds** per operation — **0.002%** of a typical database query. Zero extra allocations on Combine.
+If you are new to Trellis, follow this order:
 
-See [Performance & Benchmarks](articles/performance.md) for detailed analysis.
+1. **[Introduction](articles/intro.md)** - understand the problems Trellis is solving
+2. **[Basics](articles/basics.md)** - learn the core result operators you will use every day
+3. **[Examples](articles/examples.md)** - copy real patterns for APIs, async work, and validation
+4. **[ASP.NET Core Integration](articles/integration-aspnet.md)** - wire domain results into HTTP endpoints
 
----
-
-## The Vision
-
-Trellis is designed so that both humans and AI can produce correct, maintainable, enterprise-grade code by following the structure the framework provides.
-
-1. A human writes a **specification** describing business requirements in plain language.
-2. An AI produces enterprise software using Trellis as the structural foundation.
-3. Domain terms map directly to Trellis constructs — aggregates, value objects, entities, domain events, state machines.
-4. The **type system and compiler enforce correctness** — impossible to skip error handling or make illegal state transitions.
-5. When requirements change, changes propagate correctly through the type system.
-
-See [Trellis for AI Code Generation](articles/ai-code-generation.md) for details on spec-to-code mapping.
+If you want the full API surface, jump to the **[API reference](api/index.md)** after you understand the concepts.
 
 ---
 
-## Learn More
+## A few accuracy notes worth knowing early
 
-| Path | Start Here |
-|------|------------|
-| **New to Trellis** | [Introduction](articles/intro.md) → [Basics](articles/basics.md) → [Examples](articles/examples.md) |
-| **Integrating** | [ASP.NET Core](articles/integration-aspnet.md) · [HTTP Client](articles/integration-http.md) · [EF Core](articles/integration-ef.md) · [FluentValidation](articles/integration-fluentvalidation.md) |
-| **Architecture** | [Clean Architecture](articles/clean-architecture.md) · [Aggregate Factory Pattern](articles/aggregate-factory-pattern.md) |
-| **Reference** | [API Documentation](api/index.md) · [Analyzer Rules](articles/analyzers/index.md) · [Debugging](articles/debugging.md) |
-| **Migrating** | [Migration Guide from FunctionalDDD](articles/migration.md) |
+- `Unit` is `record struct Unit;` and has **no** `Unit.Value` property. Use `Result.Success()` for a success-without-payload flow, or `new Unit()` / `default` when you need a `Unit` instance.
+- `Error.Equals(...)` compares **only the error code**, not the detail text.
+- `Error.NotFound(...)`, `Error.Conflict(...)`, and the other factory methods create specific error subtypes with default `.error` codes.
+
+---
+
+## Learn more
+
+| Goal | Start here |
+| --- | --- |
+| Build your first result pipeline | [Basics](articles/basics.md) |
+| Understand the mental model | [Introduction](articles/intro.md) |
+| See working scenarios | [Examples](articles/examples.md) |
+| Expose APIs | [ASP.NET Core Integration](articles/integration-aspnet.md) |
+| Dive into reference material | [API Documentation](api/index.md) |

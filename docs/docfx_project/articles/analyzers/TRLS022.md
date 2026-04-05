@@ -1,45 +1,53 @@
-﻿# TRLS022: Wrong \[StringLength\] or \[Range\] attribute namespace
+# TRLS022 — Wrong [StringLength] or [Range] attribute namespace
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-A type inheriting from a Trellis base class (`RequiredString<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredLong<T>`, etc.) is decorated with `System.ComponentModel.DataAnnotations.StringLengthAttribute` or `System.ComponentModel.DataAnnotations.RangeAttribute` instead of the Trellis versions (`Trellis.StringLengthAttribute`, `Trellis.RangeAttribute`).
+## What it detects
+Flags `System.ComponentModel.DataAnnotations.StringLengthAttribute` and `RangeAttribute` when they are applied to Trellis value-object base types.
 
-## Rule Description
+## Why it matters
+The code compiles, but the Trellis source generator only understands the Trellis versions of these attributes. Your intended validation rules never make it into the generated type.
 
-Trellis `[StringLength]` and `[Range]` share names with the `System.ComponentModel.DataAnnotations` versions. Using the wrong namespace compiles silently, but the Trellis source generator ignores the DataAnnotations attributes — resulting in value objects without the expected validation constraints.
+> [!WARNING]
+> This is a namespace problem, not a syntax problem. The attribute name looks right, but the generator ignores the DataAnnotations version.
 
-This typically happens when a `using System.ComponentModel.DataAnnotations;` directive is present (e.g., from a DTO or model class) and the attribute resolves to the wrong type.
-
-This rule fires as a **Warning** because the code compiles without errors but the generated `TryCreate` method will not enforce the intended length or range constraint.
-
-## How to Fix Violations
-
-Replace the DataAnnotations attribute with the Trellis version. The `global using Trellis;` directive (included in the template) makes the Trellis attributes available without a namespace prefix.
-
-### StringLength
-
+## Bad example
 ```csharp
-// ❌ Bad — System.ComponentModel.DataAnnotations.StringLength (generator ignores this)
-[System.ComponentModel.DataAnnotations.StringLength(100)]
-public partial class ProductName : RequiredString<ProductName> { }
+using Trellis;
 
-// ✅ Good — Trellis.StringLength (generator uses this for validation)
-[StringLength(100)]
-public partial class ProductName : RequiredString<ProductName> { }
+[System.ComponentModel.DataAnnotations.StringLength(50)]
+public sealed partial class FirstName : RequiredString<FirstName>
+{
+}
 ```
 
-### Range
-
+## Good example
 ```csharp
-// ❌ Bad — System.ComponentModel.DataAnnotations.Range (generator ignores this)
-[System.ComponentModel.DataAnnotations.Range(1, 1000)]
-public partial class Quantity : RequiredInt<Quantity> { }
+using Trellis;
 
-// ✅ Good — Trellis.Range (generator uses this for validation)
-[Range(1, 1000)]
-public partial class Quantity : RequiredInt<Quantity> { }
+[StringLength(50)]
+public sealed partial class FirstName : RequiredString<FirstName>
+{
+}
 ```
 
-## When to Suppress
+## Code fix available
+No.
 
-Do not suppress this warning. If you intentionally need the DataAnnotations attribute for a non-Trellis purpose (e.g., ASP.NET model validation on a DTO), apply it to the DTO class instead of the Trellis value object.
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS022.severity = none
+```
+
+```csharp
+#pragma warning disable TRLS022
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS022
+```
+
+> [!TIP]
+> Import or fully qualify `Trellis.StringLength` and `Trellis.Range` on Trellis value objects.
+

@@ -1,312 +1,216 @@
-﻿# Observability & Monitoring
+# Observability & Monitoring
 
-**Level:** Advanced 🚀 | **Time:** 20-30 min | **Prerequisites:** [Basics](basics.md)
+**Level:** Intermediate 📘 | **Time:** 15-20 min | **Prerequisites:** [Basics](basics.md)
 
-Enable distributed tracing and monitoring for Railway-Oriented Programming operations with OpenTelemetry and standard Problem Details error responses.
+Observability matters most when something fails between layers: an HTTP call returns a conflict, a mediator command fails authorization, or a value object rejects input. Trellis exposes tracing hooks for exactly those boundaries.
 
-## Table of Contents
-
-- [OpenTelemetry Tracing](#opentelemetry-tracing)
-
-## OpenTelemetry Tracing
-
-Enable distributed tracing for Railway Oriented Programming operations and Value Objects.
-
-> **Important:** Auto-instrumentation (`AddResultsInstrumentation()`) traces **every** `Result<T>` operation and can create significant noise in production. Treat it as a break-glass debugging option for pipeline forensics, not as the default observability strategy.
->
-> `AddPrimitiveValueObjectInstrumentation()` is often the more practical diagnostic default because it emits spans at value creation and validation boundaries, which usually carry higher signal with much lower volume.
-
-### Installation
+## Installation
 
 ```bash
 dotnet add package OpenTelemetry
-dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
 dotnet add package OpenTelemetry.Extensions.Hosting
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
 ```
 
-### Recommended: Manual Instrumentation
+## The short version
 
-For production, manually instrument critical business operations:
+Trellis can emit spans from three useful places:
+
+| Source | Activity source name | Best use |
+| --- | --- | --- |
+| Mediator pipeline | `Trellis.Mediator` | command/query tracing |
+| Primitive value objects | `Trellis.Primitives` | validation and parsing boundaries |
+| Result operations | `Trellis.Results` | deep ROP debugging |
+
+```mermaid
+flowchart LR
+    A[ASP.NET Core request] --> B[Trellis.Mediator]
+    B --> C[Your ActivitySource]
+    C --> D[Trellis.Primitives]
+    C --> E[Trellis.Http / other dependencies]
+    D --> F[OpenTelemetry exporter]
+    E --> F
+    B --> F
+```
+
+## Start with the low-noise option
+
+For most apps, the best first step is:
+
+- add the mediator source
+- add primitive value object instrumentation
+- keep full result instrumentation off until you need deep debugging
+
+```csharp
+using Trellis;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource("Trellis.Mediator")
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddOtlpExporter());
+```
+
+> [!TIP]
+> `AddPrimitiveValueObjectInstrumentation()` is often the best default because it shows where input validation succeeds or fails without tracing every `Bind`, `Map`, and `Tap`.
+
+## When to enable `AddResultsInstrumentation()`
+
+`AddResultsInstrumentation()` traces Railway-Oriented Programming operations from `Trellis.Results`.
+
+That is powerful, but noisy.
+
+```csharp
+using Trellis;
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource("Trellis.Mediator")
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddResultsInstrumentation()
+        .AddConsoleExporter());
+```
+
+Use it when you need to answer questions like:
+
+- which `Bind` step failed?
+- where did a result switch from success to failure?
+- which branch in a long workflow produced the error?
+
+> [!WARNING]
+> `AddResultsInstrumentation()` is a debugging tool, not a default production recommendation. It can create a lot of spans.
+
+## What mediator tracing gives you
+
+If you use `AddTrellisBehaviors()`, `TracingBehavior` creates an activity for every mediator message.
+
+On success:
+
+- status → `Ok`
+
+On failure:
+
+- status → `Error`
+- tag `error.type`
+- tag `error.code`
+
+That makes failed command/query execution easy to spot in any OpenTelemetry backend.
+
+## Manual business instrumentation still matters
+
+Framework spans tell you **where** something failed. Your own spans explain **what the business operation was doing**.
 
 ```csharp
 using System.Diagnostics;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Http;
 
-public class OrderService
+[JsonSerializable(typeof(CreateOrderRequest))]
+[JsonSerializable(typeof(OrderReceiptDto))]
+internal partial class OrdersJsonContext : JsonSerializerContext
 {
-    private static readonly ActivitySource ActivitySource = new("MyApp.OrderService");
+}
 
-    public async Task<Result<Order>> ProcessOrderAsync(
-        CreateOrderCommand command,
-        CancellationToken ct)
+public sealed record CreateOrderRequest(string CustomerId, decimal Amount);
+public sealed record OrderReceiptDto(string OrderId, decimal Amount);
+
+public sealed class CheckoutClient(HttpClient httpClient)
+{
+    private static readonly ActivitySource ActivitySource = new("Acme.Checkout");
+
+    public async Task<Result<OrderReceiptDto>> SubmitAsync(
+        CreateOrderRequest request,
+        CancellationToken cancellationToken)
     {
-        using var activity = ActivitySource.StartActivity("ProcessOrder");
-        activity?.SetTag("order.customerId", command.CustomerId);
-        activity?.SetTag("order.itemCount", command.Items.Count);
+        using var activity = ActivitySource.StartActivity("Checkout.Submit");
+        activity?.SetTag("order.customer_id", request.CustomerId);
+        activity?.SetTag("order.amount", request.Amount);
 
-        var result = await _validator.ValidateToResultAsync(command, ct)
-            .BindAsync((cmd, cancellationToken) => 
-                CreateOrderAsync(cmd, cancellationToken), ct)
-            .TapAsync(async (order, cancellationToken) => 
-                await _repository.SaveAsync(order, cancellationToken), ct);
+        var result = await httpClient.PostAsJsonAsync(
+                "orders",
+                request,
+                OrdersJsonContext.Default.CreateOrderRequest,
+                cancellationToken)
+            .HandleConflictAsync(Error.Conflict("An order with the same data already exists."))
+            .ReadResultFromJsonAsync(OrdersJsonContext.Default.OrderReceiptDto, cancellationToken);
 
-        // Record result in trace
-        activity?.SetTag("result.isSuccess", result.IsSuccess);
         if (result.IsFailure)
         {
-            activity?.SetTag("result.error.type", result.Error.GetType().Name);
-            activity?.SetTag("result.error.detail", result.Error.Detail);
             activity?.SetStatus(ActivityStatusCode.Error, result.Error.Detail);
+            activity?.SetTag("error.code", result.Error.Code);
+            activity?.SetTag("error.type", result.Error.GetType().Name);
         }
-
-        return result;
-    }
-}
-
-// Register your ActivitySource
-builder.Services.AddOpenTelemetry()
-    .WithTracing(tracerBuilder =>
-    {
-        tracerBuilder
-            .AddSource("MyApp.OrderService")  // Only trace what you register
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddOtlpExporter();
-    });
-```
-
-**Benefits of manual instrumentation:**
-- ✅ **Control** - Trace only critical paths
-- ✅ **Performance** - Minimal overhead
-- ✅ **Signal-to-noise** - Clear, actionable traces
-- ✅ **Business context** - Add domain-specific tags
-
-### Auto-Instrumentation (Development/Debugging Only)
-
-Auto-instrumentation is useful for **development and debugging** to see all ROP operations. In practice, the two built-in tracing modes serve different purposes:
-
-- `AddResultsInstrumentation()` — best for short-lived deep debugging when you need to reconstruct an entire pipeline
-- `AddPrimitiveValueObjectInstrumentation()` — often suitable for regular troubleshooting because value object creation/validation spans are fewer and easier to interpret
-
-```csharp
-// ⚠️ Development/debugging only - creates significant trace noise
-builder.Services.AddOpenTelemetry()
-    .WithTracing(tracerProviderBuilder =>
-    {
-        tracerProviderBuilder
-            .AddResultsInstrumentation()      // ⚠️ Traces EVERY Result<T> operation
-            .AddPrimitiveValueObjectInstrumentation()      // ⚠️ Traces EVERY value object creation
-            .AddConsoleExporter();  // Console output for debugging
-    });
-```
-
-**Use auto-instrumentation when:**
-- 🔍 Debugging complex ROP chains
-- 🧪 Development/testing environments
-- 📊 Analyzing performance bottlenecks
-- 🐛 Troubleshooting specific issues
-
-**Prefer primitive value object tracing when:**
-- ✅ You want visibility into validation failures at API or message boundaries
-- ✅ You need a lower-noise trace stream than full ROP pipeline tracing
-- ✅ You care more about input quality and parsing failures than every intermediate pipeline step
-
-**Avoid in production when:**
-- ❌ High-traffic applications (performance overhead)
-- ❌ Cost-sensitive environments (trace volume = $$$)
-- ❌ Noise-sensitive monitoring (hard to find signal)
-
-### Production Configuration
-
-For production, use **selective instrumentation** with sampling:
-
-```csharp
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(
-            serviceName: builder.Configuration["OpenTelemetry:ServiceName"] ?? "MyApp",
-            serviceVersion: Assembly.GetExecutingAssembly().GetName().Version?.ToString()))
-    .WithTracing(tracerProviderBuilder =>
-    {
-        tracerProviderBuilder
-            // ✅ Only register your own ActivitySources
-            .AddSource("MyApp.OrderService")
-            .AddSource("MyApp.UserService")
-            .AddSource("MyApp.PaymentService")
-            
-            // ✅ Standard infrastructure instrumentation
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation()
-            
-            // ✅ Sample to reduce overhead (10% of traces)
-            .SetSampler(new TraceIdRatioBasedSampler(0.1))
-            
-            .AddOtlpExporter(options =>
-            {
-                options.Endpoint = new Uri(
-                    builder.Configuration["OpenTelemetry:Endpoint"] 
-                    ?? "http://localhost:4317");
-            });
-    });
-```
-
-**Configuration (appsettings.json):**
-```json
-{
-  "OpenTelemetry": {
-    "ServiceName": "TrellisApi",
-    "Endpoint": "https://otel-collector.example.com:4317"
-  }
-}
-```
-
-### Manual Instrumentation Patterns
-
-#### Pattern 1: Command Handlers
-
-```csharp
-public class CreateUserCommandHandler
-{
-    private static readonly ActivitySource ActivitySource = new("MyApp.UserCommands");
-
-    public async ValueTask<Result<User>> Handle(
-        CreateUserCommand command,
-        CancellationToken ct)
-    {
-        using var activity = ActivitySource.StartActivity("CreateUser");
-        activity?.SetTag("user.email", command.Email);
-        
-        var result = await _validator.ValidateToResultAsync(command, ct)
-            .BindAsync((cmd, cancellationToken) => 
-                User.CreateAsync(cmd, cancellationToken), ct)
-            .TapAsync(async (user, cancellationToken) => 
-                await _repository.SaveAsync(user, cancellationToken), ct);
-        
-        RecordResult(activity, result);
-        return result;
-    }
-
-    private static void RecordResult<T>(Activity? activity, Result<T> result)
-    {
-        if (activity == null) return;
-        
-        activity.SetTag("result.isSuccess", result.IsSuccess);
-        if (result.IsFailure)
+        else
         {
-            activity.SetTag("result.error.type", result.Error.GetType().Name);
-            activity.SetTag("result.error.code", result.Error.Code);
-            activity.SetStatus(ActivityStatusCode.Error, result.Error.Detail);
+            activity?.SetStatus(ActivityStatusCode.Ok);
         }
-    }
-}
-```
 
-#### Pattern 2: Domain Services
-
-```csharp
-public class PaymentService
-{
-    private static readonly ActivitySource ActivitySource = new("MyApp.Payments");
-
-    public async Task<Result<Payment>> ProcessPaymentAsync(
-        Order order,
-        PaymentMethod method,
-        CancellationToken ct)
-    {
-        using var activity = ActivitySource.StartActivity("ProcessPayment");
-        activity?.SetTag("payment.orderId", order.Id);
-        activity?.SetTag("payment.amount", order.TotalAmount);
-        activity?.SetTag("payment.method", method.ToString());
-
-        var result = await ValidatePaymentMethod(method)
-            .BindAsync(async (m, cancellationToken) => 
-                await _gateway.ChargeAsync(order.TotalAmount, m, cancellationToken), ct)
-            .TapAsync(async (payment, cancellationToken) => 
-                await _repository.SaveAsync(payment, cancellationToken), ct);
-
-        RecordResult(activity, result);
         return result;
     }
 }
 ```
 
-#### Pattern 3: Complex Workflows
+## Why error codes matter in traces
+
+Trellis errors carry machine-readable codes such as:
+
+- `validation.error`
+- `not.found.error`
+- `forbidden.error`
+
+Those codes are better than free-form log messages when you want dashboards, alerts, or grouped failure analysis.
+
+## Suggested production setup
+
+If you are sending data to a real collector, add sampling and keep the sources intentional.
 
 ```csharp
-public class CheckoutWorkflow
-{
-    private static readonly ActivitySource ActivitySource = new("MyApp.Checkout");
+using OpenTelemetry.Trace;
+using Trellis;
 
-    public async Task<Result<Order>> ExecuteAsync(
-        CheckoutCommand command,
-        CancellationToken ct)
-    {
-        using var activity = ActivitySource.StartActivity("Checkout");
-        activity?.SetTag("checkout.customerId", command.CustomerId);
-
-        // Trace each step
-        using var validateActivity = ActivitySource.StartActivity("ValidateCheckout");
-        var validationResult = await ValidateCheckoutAsync(command, ct);
-        RecordResult(validateActivity, validationResult);
-        
-        if (validationResult.IsFailure)
-            return validationResult.Error;
-
-        using var inventoryActivity = ActivitySource.StartActivity("CheckInventory");
-        var inventoryResult = await CheckInventoryAsync(command.Items, ct);
-        RecordResult(inventoryActivity, inventoryResult);
-        
-        if (inventoryResult.IsFailure)
-            return inventoryResult.Error;
-
-        using var paymentActivity = ActivitySource.StartActivity("ProcessPayment");
-        var paymentResult = await ProcessPaymentAsync(command.Payment, ct);
-        RecordResult(paymentActivity, paymentResult);
-
-        // Continue workflow...
-        return await CreateOrderAsync(command, ct);
-    }
-}
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource("Trellis.Mediator")
+        .AddPrimitiveValueObjectInstrumentation()
+        .SetSampler(new TraceIdRatioBasedSampler(0.1))
+        .AddOtlpExporter());
 ```
 
-#### Pattern 4: Parallel Operations with Built-in Tracing
+## Practical guidance
 
-The `ParallelAsync` and `WhenAllAsync` operations automatically create tracing spans to monitor parallel execution:
+### Prefer signal over volume
 
-```csharp
-public class FraudDetectionService
-{
-    public async Task<Result<FraudCheckResult>> ValidateTransactionAsync(
-        Transaction transaction,
-        CancellationToken ct)
-    {
-        // ParallelAsync and WhenAllAsync automatically create "WhenAllAsync" spans
-        // with parallel.task_count tags for observability
-        return await Result.ParallelAsync(
-            () => CheckBlacklistAsync(transaction.AccountId, ct),
-            () => CheckVelocityLimitsAsync(transaction, ct),
-            () => CheckAmountThresholdAsync(transaction, ct),
-            () => CheckGeolocationAsync(transaction, ct)
-        )
-        .WhenAllAsync()  // Creates span: "WhenAllAsync" with tag "parallel.task_count: 4"
-        .BindAsync((blacklist, velocity, amount, geo, cancellationToken) => 
-            CombineChecksAsync(blacklist, velocity, amount, geo, cancellationToken), ct);
-    }
-}
-```
+If every `Result` operation is traced, the interesting span can get buried. Start small.
 
-**Automatic tracing benefits:**
-- ✅ **Parallel task count** - `parallel.task_count` tag shows how many operations ran
-- ✅ **Execution duration** - See how long parallel operations took
-- ✅ **Success/failure status** - `ActivityStatusCode.Ok` or `ActivityStatusCode.Error`
-- ✅ **Error correlation** - Failed operations show error status in traces
+### Use business spans for expensive workflows
 
-**Trace example in Jaeger/Application Insights:**
-```
-FraudDetectionService.ValidateTransaction (200ms)
-  └─ WhenAllAsync (parallel.task_count: 4) (150ms)
-     ├─ CheckBlacklist (50ms) ✓
-     ├─ CheckVelocityLimits (100ms) ✓
-     ├─ CheckAmountThreshold (30ms) ✓
-     └─ CheckGeolocation (150ms) ✓
-  └─ Bind: CombineChecks (50ms) ✓
+Examples:
+
+- checkout
+- invoice generation
+- approval workflows
+- cross-service orchestration
+
+### Use primitive traces to understand bad inputs
+
+If you want to know why requests are failing validation at the edge, `Trellis.Primitives` is usually the clearest signal.
+
+### Use result tracing only when needed
+
+Turn on `AddResultsInstrumentation()` when debugging a complicated pipeline, then turn it back down.
+
+## Next steps
+
+- [Mediator Pipeline](integration-mediator.md)
+- [HTTP Integration](integration-http.md)
+- [Testing](integration-testing.md)

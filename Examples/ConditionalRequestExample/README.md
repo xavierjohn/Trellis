@@ -1,91 +1,32 @@
-﻿# Conditional Request Example (RFC 9110)
+# Conditional Request Example
 
-Demonstrates **ETag-based optimistic concurrency** using Trellis with a Minimal API and SQLite.
+This example demonstrates ETag-based conditional GETs and optimistic concurrency with Trellis, Minimal APIs, EF Core, and in-memory SQLite.
 
-This example covers the full [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) conditional-request flow:
+## What You'll Learn
+- How `If-None-Match` enables `304 Not Modified`
+- How optional versus required `If-Match` changes update behavior
+- How Trellis maps ETags into response metadata and update guards
 
-| Header | Verb | Behaviour |
-|---|---|---|
-| `ETag` | GET / POST / PUT | Returned on every successful response |
-| `If-None-Match` | GET | Returns **304 Not Modified** when the ETag matches |
-| `If-Match` | PUT | Returns **412 Precondition Failed** when the ETag is stale |
+## Prerequisites
+- .NET 10 SDK
 
-## Key Trellis APIs used
-
-- `Aggregate<TId>.ETag` — built-in concurrency token
-- `AggregateETagConvention` + `AggregateETagInterceptor` — automatic ETag management via `ApplyTrellisConventions` / `AddTrellisInterceptors`
-- `ETagHelper.ParseIfMatch(request)` — parses `If-Match` header into typed `EntityTagValue[]?`
-- `OptionalETag(EntityTagValue[]?)` — validates the `If-Match` precondition (skips if absent)
-- `RequireETag(EntityTagValue[]?)` — validates the `If-Match` precondition (428 if absent)
-- `ToHttpResult(httpContext, etagSelector, map)` — sets the `ETag` header and handles `If-None-Match → 304`
-- `ConditionalRequestEvaluator.Evaluate(request, metadata)` — unified RFC §13.2.2 precondition evaluator
-- `RepresentationMetadata` — carries ETag, Last-Modified, Vary, Content-Language through response mappers
-
-## Run
-
+## Run It
 ```bash
-dotnet run --project Examples/ConditionalRequestExample
+dotnet run
 ```
 
-The server starts on `http://localhost:5000` by default (or whichever port Kestrel selects).
+The app starts at `https://localhost:62265` and `http://localhost:62266`.
 
-## Try it with curl
+## Key Files
+| File | What It Shows |
+|------|--------------|
+| `Program.cs` | App startup, SQLite setup, and route registration |
+| `Api/ProductRoutes.cs` | Optional and required ETag routes |
+| `Domain/Product.cs` | Aggregate with built-in `ETag` support |
+| `Data/ProductDbContext.cs` | EF Core conventions and Trellis interceptors |
+| `api.http` | Request flow for create, read, and conditional update |
 
-### 1. Create a product
-
-```bash
-curl -s -D - -X POST http://localhost:5000/products \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Widget","price":9.99}'
-```
-
-Response includes `ETag: "<value>"` and a `201 Created` body.
-
-### 2. GET — observe the ETag header
-
-```bash
-curl -s -D - http://localhost:5000/products/{id}
-```
-
-### 3. GET with If-None-Match — 304 Not Modified
-
-```bash
-curl -s -D - http://localhost:5000/products/{id} \
-  -H 'If-None-Match: "<etag>"'
-```
-
-Returns **304** with an empty body when the ETag matches.
-
-### 4. PUT with If-Match — conditional update
-
-```bash
-curl -s -D - -X PUT http://localhost:5000/products/{id} \
-  -H "Content-Type: application/json" \
-  -H 'If-Match: "<etag>"' \
-  -d '{"price":12.99}'
-```
-
-Succeeds with **200 OK** and a **new** ETag.
-
-### 5. PUT with stale If-Match — 412 Precondition Failed
-
-Replay the same PUT (the old ETag is now stale):
-
-```bash
-curl -s -D - -X PUT http://localhost:5000/products/{id} \
-  -H "Content-Type: application/json" \
-  -H 'If-Match: "<old-etag>"' \
-  -d '{"price":14.99}'
-```
-
-Returns **412 Precondition Failed** because the resource has been modified.
-
-### 6. PUT without If-Match — unconditional update
-
-```bash
-curl -s -D - -X PUT http://localhost:5000/products/{id} \
-  -H "Content-Type: application/json" \
-  -d '{"price":14.99}'
-```
-
-When no `If-Match` header is sent, `OptionalETag` is a no-op and the update proceeds unconditionally.
+## Related Docs
+- [ASP.NET Core Integration](https://xavierjohn.github.io/Trellis/articles/integration-aspnet.html)
+- [Entity Framework Core Integration](https://xavierjohn.github.io/Trellis/articles/integration-ef.html)
+- [Examples](https://xavierjohn.github.io/Trellis/articles/examples.html)

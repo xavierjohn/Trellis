@@ -1,466 +1,289 @@
-﻿# FluentValidation Integration
+# FluentValidation Integration
 
-**Level:** Intermediate 📚 | **Time:** 30-40 min | **Prerequisites:** [Basics](basics.md)
+**Level:** Intermediate 📚 | **Time:** 20-30 min | **Prerequisites:** [Basics](basics.md)
 
-Integrate FluentValidation with Railway-Oriented Programming using the **Trellis.FluentValidation** adapter. This package provides seamless conversion from FluentValidation results to `Result<T>`, enabling you to use FluentValidation's powerful validation framework within your ROP workflows.
+FluentValidation is great at describing validation rules. Trellis is great at keeping application flow on the success/failure railway. `Trellis.FluentValidation` connects those two worlds so you can validate once and stay inside `Result<T>`.
 
-> **Note:** Trellis.FluentValidation is an **adapter library** that bridges FluentValidation and Railway-Oriented Programming. It does not replace or extend FluentValidation—it simply converts FluentValidation's validation results to `Result<T>`. For comprehensive FluentValidation documentation, see the [official FluentValidation docs](https://docs.fluentvalidation.net/).
+This article starts with the everyday case first, then covers null handling, async rules, and when `ToResult(...)` is the better fit.
 
 ## Table of Contents
 
-- [Installation](#installation)
-- [What the Adapter Provides](#what-the-adapter-provides)
-- [Basic Usage](#basic-usage)
-- [Inline Validators](#inline-validators)
-- [Separate Validator Classes](#separate-validator-classes)
-- [Async Validation](#async-validation)
-- [Dependency Injection](#dependency-injection)
-- [Best Practices](#best-practices)
+- [Quick start](#quick-start)
+- [What the adapter gives you](#what-the-adapter-gives-you)
+- [Validating in application services](#validating-in-application-services)
+- [Validating inside domain factories](#validating-inside-domain-factories)
+- [Async validation](#async-validation)
+- [Null input behavior](#null-input-behavior)
+- [Converting an existing `ValidationResult`](#converting-an-existing-validationresult)
+- [Practical guidance](#practical-guidance)
 
-## Installation
+## Quick start
+
+If you already use FluentValidation, the adapter adds a very small API surface:
 
 ```bash
 dotnet add package FluentValidation
 dotnet add package Trellis.FluentValidation
 ```
 
-## What the Adapter Provides
-
-The **Trellis.FluentValidation** adapter provides extension methods to convert FluentValidation results to `Result<T>`:
-
-### Core Extension Methods
-
-```csharp
-// Synchronous validation
-Result<T> ValidateToResult<T>(this IValidator<T> validator, T instance);
-
-// Asynchronous validation
-Task<Result<T>> ValidateToResultAsync<T>(
-    this IValidator<T> validator, 
-    T instance, 
-    CancellationToken ct);
-```
-
-**What happens:**
-- ✅ **Success**: Returns `Result.Success(instance)` with the validated object
-- ❌ **Failure**: Converts FluentValidation errors to `ValidationError` with field-level details
-- 🔄 **Automatic Mapping**: FluentValidation's `ValidationFailure` → `ValidationError.FieldError`
-
-### Conversion Details
-
-```csharp
-// FluentValidation result
-var validationResult = validator.Validate(command);
-
-// Manual conversion (what the adapter does internally)
-if (validationResult.IsValid)
-{
-    return Result.Success(command);
-}
-else
-{
-    var fieldErrors = validationResult.Errors
-        .GroupBy(e => e.PropertyName)
-        .Select(g => new ValidationError.FieldError(
-            FieldName: g.Key,
-            Details: g.Select(e => e.ErrorMessage).ToArray()))
-        .ToArray();
-    
-    return Result.Failure<Command>(new ValidationError(fieldErrors));
-}
-
-// Adapter does this automatically
-return validator.ValidateToResult(command);
-```
-
-## Basic Usage
-
-### Example: Command Validation
-
 ```csharp
 using FluentValidation;
 using Trellis;
+using Trellis.FluentValidation;
 
-// 1. Define your FluentValidation validator (standard FluentValidation)
-public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
+public sealed record CreateUserRequest(string Email, string FirstName, string LastName);
+
+public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 {
-    public CreateUserCommandValidator()
+    public CreateUserRequestValidator()
     {
         RuleFor(x => x.Email).NotEmpty().EmailAddress();
         RuleFor(x => x.FirstName).NotEmpty().MaximumLength(50);
         RuleFor(x => x.LastName).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Age).GreaterThanOrEqualTo(18);
     }
 }
 
-// 2. Use the adapter to convert validation results to Result<T>
-public class UserService
-{
-    private readonly IValidator<CreateUserCommand> _validator;
+var validator = new CreateUserRequestValidator();
+var request = new CreateUserRequest("sam@example.com", "Sam", "Taylor");
 
-    public UserService(IValidator<CreateUserCommand> validator)
-    {
-        _validator = validator;
-    }
-
-    public Result<User> CreateUser(CreateUserCommand command)
-    {
-        // ValidateToResult converts FluentValidation results to Result<T>
-        return _validator.ValidateToResult(command)
-            .Bind(validCommand => User.Create(validCommand))
-            .Tap(user => _repository.Add(user));
-    }
-}
+Result<CreateUserRequest> result = validator.ValidateToResult(request);
 ```
 
-**HTTP Response (validation failure):**
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-  "title": "One or more validation errors occurred.",
-  "status": 400,
-  "errors": {
-    "Email": ["'Email' must not be empty."],
-    "Age": ["'Age' must be greater than or equal to '18'."]
-  }
-}
+On success, you get `Result.Success(request)`. On failure, you get a Trellis validation failure with grouped field errors.
+
+## What the adapter gives you
+
+The goal is simple: stop translating `ValidationResult` by hand.
+
+Public helpers:
+
+```csharp
+Result<T> ValidateToResult<T>(
+    this IValidator<T> validator,
+    T value,
+    [CallerArgumentExpression(nameof(value))] string paramName = "value",
+    string? message = null);
+
+Task<Result<T>> ValidateToResultAsync<T>(
+    this IValidator<T> validator,
+    T value,
+    [CallerArgumentExpression(nameof(value))] string paramName = "value",
+    string? message = null,
+    CancellationToken cancellationToken = default);
+
+Result<T> ToResult<T>(
+    this ValidationResult validationResult,
+    T value,
+    [CallerArgumentExpression(nameof(value))] string paramName = "value");
 ```
 
-## Inline Validators
+What those helpers do for you:
 
-Use FluentValidation's `InlineValidator` for simple validation within aggregates:
+- return the validated value on success
+- convert FluentValidation failures into `Error.Validation(...)`
+- preserve grouped field errors
+- use caller argument expressions for better root-level field names
+- short-circuit `null` input before FluentValidation runs
+
+> [!NOTE]
+> The real methods use `[CallerArgumentExpression]` for `paramName`. That means `validator.ValidateToResult(command)` can automatically report `"command"` as the field name for root-level failures or null input.
+
+## Validating in application services
+
+This is the most common use case: validate a request, then continue with domain logic only if validation succeeded.
 
 ```csharp
 using FluentValidation;
 using Trellis;
+using Trellis.FluentValidation;
 
-public class User : Aggregate<UserId>
+public sealed record RegisterUserRequest(string Email, string FirstName, string LastName);
+
+public sealed class RegisterUserRequestValidator : AbstractValidator<RegisterUserRequest>
 {
-    public FirstName FirstName { get; }
-    public LastName LastName { get; }
-    public EmailAddress Email { get; }
-    public int Age { get; }
-
-    public static Result<User> TryCreate(
-        FirstName firstName, 
-        LastName lastName, 
-        EmailAddress email,
-        int age)
+    public RegisterUserRequestValidator()
     {
-        var user = new User(firstName, lastName, email, age);
-        
-        // ValidateToResult converts FluentValidation results to Result<User>
-        return Validator.ValidateToResult(user);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
+        RuleFor(x => x.FirstName).NotEmpty();
+        RuleFor(x => x.LastName).NotEmpty();
     }
+}
 
-    private User(
-        FirstName firstName, 
-        LastName lastName, 
-        EmailAddress email, 
-        int age)
-        : base(UserId.NewUniqueV7())
-    {
-        FirstName = firstName;
-        LastName = lastName;
-        Email = email;
-        Age = age;
-    }
+public sealed record User(string Email, string FirstName, string LastName);
 
-    // Standard FluentValidation InlineValidator
-    private static readonly InlineValidator<User> Validator = new()
-    {
-        v => v.RuleFor(x => x.FirstName).NotNull(),
-        v => v.RuleFor(x => x.LastName).NotNull(),
-        v => v.RuleFor(x => x.Email).NotNull(),
-        v => v.RuleFor(x => x.Age)
-            .GreaterThanOrEqualTo(18)
-            .WithMessage("Must be 18 or older")
-    };
+public sealed class UserService(RegisterUserRequestValidator validator)
+{
+    public Result<User> Register(RegisterUserRequest request) =>
+        validator.ValidateToResult(request)
+            .Map(valid => new User(valid.Email, valid.FirstName, valid.LastName));
 }
 ```
 
-**What you get:**
-- ✅ Domain validation stays with the aggregate
-- ✅ Automatic conversion to `Result<T>` via the adapter
-- ✅ FluentValidation's rich rule set (see [FluentValidation docs](https://docs.fluentvalidation.net/))
-- ✅ Error messages formatted as `ValidationError`
+Why this reads well:
 
-## Separate Validator Classes
+- validation stays near the request boundary
+- the rest of the method only deals with valid input
+- the return type stays `Result<T>` all the way through
 
-For complex validation, use standard FluentValidation `AbstractValidator` classes:
+## Validating inside domain factories
 
-```csharp
-// Standard FluentValidation validator
-public class CreateOrderValidator : AbstractValidator<CreateOrderCommand>
-{
-    public CreateOrderValidator()
-    {
-        RuleFor(x => x.CustomerId).NotEmpty();
-        RuleFor(x => x.Items).NotEmpty();
-        RuleForEach(x => x.Items).SetValidator(new OrderItemValidator());
-        RuleFor(x => x.ShippingAddress).SetValidator(new AddressValidator());
-        RuleFor(x => x.TotalAmount).GreaterThan(0);
-    }
-}
+Sometimes the thing you are validating is not an incoming DTO. It is the aggregate or value object you just constructed.
 
-// Use the adapter in your service
-public class OrderService : IOrderService
-{
-    private readonly IValidator<CreateOrderCommand> _validator;
-    private readonly IOrderRepository _repository;
-
-    public OrderService(
-        IValidator<CreateOrderCommand> validator,
-        IOrderRepository repository)
-    {
-        _validator = validator;
-        _repository = repository;
-    }
-
-    public Result<Order> CreateOrder(CreateOrderCommand command)
-    {
-        // Adapter converts FluentValidation result to Result<T>
-        return _validator.ValidateToResult(command)
-            .Bind(validCommand => Order.Create(validCommand))
-            .Tap(order => _repository.Add(order));
-    }
-}
-```
-
-> **Tip:** For FluentValidation syntax and built-in validators (like `NotEmpty()`, `EmailAddress()`, `GreaterThan()`, etc.), see the [official FluentValidation documentation](https://docs.fluentvalidation.net/en/latest/built-in-validators.html).
-
-## Async Validation
-
-The adapter supports async validation with `ValidateToResultAsync`:
-
-```csharp
-// Standard FluentValidation async validator
-public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
-{
-    private readonly IUserRepository _repository;
-
-    public RegisterUserValidator(IUserRepository repository)
-    {
-        _repository = repository;
-
-        RuleFor(x => x.Email)
-            .NotEmpty()
-            .EmailAddress()
-            .MustAsync(BeUniqueEmailAsync)
-            .WithMessage("Email is already registered");
-        
-        RuleFor(x => x.Username)
-            .NotEmpty()
-            .Length(3, 50)
-            .MustAsync(BeUniqueUsernameAsync)
-            .WithMessage("Username is already taken");
-    }
-
-    private async Task<bool> BeUniqueEmailAsync(string email, CancellationToken ct)
-    {
-        var exists = await _repository.ExistsByEmailAsync(email, ct);
-        return !exists;
-    }
-
-    private async Task<bool> BeUniqueUsernameAsync(string username, CancellationToken ct)
-    {
-        var exists = await _repository.ExistsByUsernameAsync(username, ct);
-        return !exists;
-    }
-}
-```
-
-### Async Usage with the Adapter
-
-```csharp
-public async Task<Result<User>> RegisterUserAsync(
-    RegisterUserCommand command,
-    CancellationToken ct)
-{
-    // ValidateToResultAsync converts async FluentValidation results to Result<T>
-    return await _validator.ValidateToResultAsync(command, ct)
-        .BindAsync((validCommand, cancellationToken) => 
-            User.CreateAsync(validCommand, cancellationToken), ct)
-        .TapAsync(async (user, cancellationToken) => 
-            await _repository.SaveAsync(user, cancellationToken), ct);
-}
-```
-
-**Key Points:**
-- ✅ `ValidateToResultAsync` is the async adapter method
-- ✅ Converts async FluentValidation results to `Result<T>`
-- ✅ Supports `CancellationToken` propagation
-- ✅ Works with FluentValidation's `MustAsync`, `CustomAsync`, etc.
-
-## Dependency Injection
-
-Register FluentValidation validators with ASP.NET Core DI as normal:
+`InlineValidator<T>` works well for that:
 
 ```csharp
 using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Register all FluentValidation validators from assembly
-builder.Services.AddValidatorsFromAssemblyContaining<Program>();
-
-// Or register specific validators
-builder.Services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderValidator>();
-builder.Services.AddScoped<IValidator<RegisterUserCommand>, RegisterUserValidator>();
-
-// Register your services that use the adapter
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IOrderService, OrderService>();
-
-var app = builder.Build();
-```
-
-### Inject Validators into Services
-
-```csharp
-public class UserService : IUserService
+public sealed class Product : Entity<Guid>
 {
-    private readonly IValidator<RegisterUserCommand> _registerValidator;
-    private readonly IValidator<UpdateUserCommand> _updateValidator;
-    private readonly IUserRepository _repository;
+    private static readonly InlineValidator<Product> s_validator = CreateValidator();
 
-    public UserService(
-        IValidator<RegisterUserCommand> registerValidator,
-        IValidator<UpdateUserCommand> updateValidator,
-        IUserRepository repository)
+    public string Name { get; }
+    public decimal Price { get; }
+
+    private Product(Guid id, string name, decimal price)
+        : base(id)
     {
-        _registerValidator = registerValidator;
-        _updateValidator = updateValidator;
-        _repository = repository;
+        Name = name;
+        Price = price;
     }
 
-    public async Task<Result<User>> RegisterAsync(
-        RegisterUserCommand command,
-        CancellationToken ct)
-        // Adapter converts FluentValidation result to Result<T>
-        => await _registerValidator.ValidateToResultAsync(command, ct)
-            .BindAsync((cmd, cancellationToken) => 
-                User.CreateAsync(cmd, cancellationToken), ct)
-            .TapAsync(async (user, cancellationToken) => 
-                await _repository.SaveAsync(user, cancellationToken), ct);
-
-    public async Task<Result<User>> UpdateAsync(
-        UpdateUserCommand command,
-        CancellationToken ct)
-        // Adapter converts FluentValidation result to Result<T>
-        => await _updateValidator.ValidateToResultAsync(command, ct)
-            .BindAsync(async (cmd, cancellationToken) => 
-                await _repository.GetByIdAsync(cmd.UserId, cancellationToken), ct)
-            .Bind(user => user.Update(command))
-            .TapAsync(async (user, cancellationToken) => 
-                await _repository.SaveAsync(user, cancellationToken), ct);
-}
-```
-
-## Best Practices
-
-### 1. Validate Early in the Pipeline
-
-Use the adapter at the application service layer to validate before business logic:
-
-```csharp
-public async Task<Result<Order>> CreateOrderAsync(
-    CreateOrderCommand command,
-    CancellationToken ct)
-{
-    // Validate first with adapter, fail fast
-    return await _validator.ValidateToResultAsync(command, ct)
-        .BindAsync((validCmd, cancellationToken) => 
-            ProcessOrderAsync(validCmd, cancellationToken), ct);
-}
-```
-
-### 2. Separate Domain and Application Validation
-
-- **Domain Validators (InlineValidator)**: Use for invariants that must always be true
-- **Application Validators (AbstractValidator)**: Use for context-specific rules (uniqueness, external dependencies)
-
-```csharp
-// Domain validator - invariants (using adapter)
-private static readonly InlineValidator<EmailAddress> DomainValidator = new()
-{
-    v => v.RuleFor(x => x.Value).NotEmpty().EmailAddress()
-};
-
-public static Result<EmailAddress> TryCreate(string value)
-    => DomainValidator.ValidateToResult(new EmailAddress(value));
-
-// Application validator - context rules (using adapter)
-public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
-{
-    public RegisterUserValidator(IUserRepository repository)
+    public static Result<Product> Create(string name, decimal price)
     {
-        RuleFor(x => x.Email)
-            .MustAsync(async (email, ct) => 
-                !await repository.ExistsByEmailAsync(email, ct))
-            .WithMessage("Email already registered");
+        var product = new Product(Guid.NewGuid(), name, price);
+        return s_validator.ValidateToResult(product);
+    }
+
+    private static InlineValidator<Product> CreateValidator()
+    {
+        var validator = new InlineValidator<Product>();
+        validator.RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
+        validator.RuleFor(x => x.Price).GreaterThan(0);
+        return validator;
     }
 }
 ```
 
-### 3. Always Pass CancellationToken
+This keeps invariant validation close to the type that owns the invariant.
 
-Support graceful cancellation in async validation:
+## Async validation
 
-```csharp
-public async Task<Result<User>> ProcessAsync(
-    CreateUserCommand command,
-    CancellationToken ct)  // ✅ Accept token
-    => await _validator.ValidateToResultAsync(command, ct)  // ✅ Pass to adapter
-        .BindAsync((cmd, cancellationToken) => 
-            User.CreateAsync(cmd, cancellationToken), ct);  // ✅ Pass through
-```
-
-### 4. Leverage FluentValidation Features
-
-The adapter works with all FluentValidation features:
+Use the async helper when your rules hit the database, a remote API, or any other I/O.
 
 ```csharp
-public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
+using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public interface IUserRepository
 {
-    public CreatePaymentValidator()
-    {
-        // Conditional validation
-        When(x => x.PaymentMethod == PaymentMethod.CreditCard, () =>
-        {
-            RuleFor(x => x.CreditCardNumber).CreditCard();
-            RuleFor(x => x.ExpiryDate).GreaterThan(DateTime.UtcNow);
-        });
+    Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
+}
 
-        // Cascade mode
+public sealed record RegisterUserRequest(string Email);
+
+public sealed class RegisterUserRequestValidator : AbstractValidator<RegisterUserRequest>
+{
+    public RegisterUserRequestValidator(IUserRepository repository)
+    {
         RuleFor(x => x.Email)
-            .Cascade(CascadeMode.Stop)
             .NotEmpty()
-            .EmailAddress();
-
-        // Custom validators
-        RuleFor(x => x.Password).SetValidator(new StrongPasswordValidator());
+            .EmailAddress()
+            .MustAsync(async (email, cancellationToken) =>
+                !await repository.EmailExistsAsync(email, cancellationToken))
+            .WithMessage("Email is already registered.");
     }
 }
 
-// Adapter works seamlessly with all FluentValidation features
-var result = _validator.ValidateToResult(command);
+public sealed class UserService(RegisterUserRequestValidator validator)
+{
+    public async Task<Result<RegisterUserRequest>> RegisterAsync(
+        RegisterUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validated = await validator.ValidateToResultAsync(
+            request,
+            cancellationToken: cancellationToken);
+
+        if (validated.IsFailure)
+            return Result.Failure<RegisterUserRequest>(validated.Error);
+
+        return Result.Success(validated.Value);
+    }
+}
 ```
 
-> **Learn More:** For comprehensive FluentValidation documentation on validators, rules, and patterns, see:
-> - [Built-in Validators](https://docs.fluentvalidation.net/en/latest/built-in-validators.html)
-> - [Custom Validators](https://docs.fluentvalidation.net/en/latest/custom-validators.html)
-> - [Async Validation](https://docs.fluentvalidation.net/en/latest/async.html)
-> - [Conditional Validation](https://docs.fluentvalidation.net/en/latest/conditions.html)
+> [!TIP]
+> Pass the cancellation token through. `ValidateToResultAsync(...)` forwards it to `validator.ValidateAsync(...)`.
 
-## Error Format
+## Null input behavior
 
-The adapter automatically converts FluentValidation errors to `ValidationError`:
+Null request models are easy to forget because FluentValidation usually assumes you already have an instance. The adapter closes that gap.
 
 ```csharp
-// FluentValidation failure
-var validationResult = validator.Validate(command);
-// Errors: [
-//   { PropertyName: "Email", ErrorMessage: "'Email' must not be empty." },
-//   { PropertyName: "Age", ErrorMessage: "'Age' must be greater than or equal to '18'." }
-// ]
+using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+string? alias = null;
+
+var validator = new InlineValidator<string?>();
+validator.RuleFor(x => x).NotEmpty();
+
+Result<string?> result = validator.ValidateToResult(
+    alias,
+    message: "Alias is required.");
+```
+
+Important behavior:
+
+- if `value` is `null`, the adapter does **not** call `validator.Validate(...)`
+- it returns a validation failure immediately
+- the field name comes from the caller expression unless you override the message
+
+## Converting an existing `ValidationResult`
+
+Sometimes you already have a `ValidationResult` because you ran FluentValidation directly or you are integrating with older code. Use `ToResult(...)` in that case.
+
+```csharp
+using FluentValidation;
+using FluentValidation.Results;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record CreateUserRequest(string Email);
+
+var validator = new InlineValidator<CreateUserRequest>();
+validator.RuleFor(x => x.Email).NotEmpty().EmailAddress();
+
+var request = new CreateUserRequest("invalid-email");
+ValidationResult validationResult = validator.Validate(request);
+
+Result<CreateUserRequest> result = validationResult.ToResult(request);
+```
+
+That is the right helper when:
+
+- validation already happened elsewhere
+- you only need the Trellis conversion step
+- you want to preserve the original validated value
+
+## Practical guidance
+
+Use this adapter when you want FluentValidation rules but Trellis flow control.
+
+### Good defaults
+
+- validate requests at the application boundary
+- use `InlineValidator<T>` for domain invariants when it keeps the type simpler
+- use `ValidateToResultAsync(...)` for rules that touch I/O
+- use `ToResult(...)` only when you already have a `ValidationResult`
+
+### What the resulting errors look like
+
+Failures are Trellis validation errors, so they use Trellis error conventions such as the standard `validation.error` code.
+
+> [!WARNING]
+> `Trellis.FluentValidation` is an adapter. It does not replace FluentValidation features, rule syntax, or DI registration. You still configure validators the normal FluentValidation way.

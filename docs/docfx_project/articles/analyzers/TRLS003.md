@@ -1,114 +1,60 @@
-﻿# TRLS003: Unsafe access to Result.Value
+# TRLS003 — Unsafe access to Result.Value
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Accessing `Result.Value` without first checking `IsSuccess` or using proper guards.
+## What it detects
+Flags `result.Value` when the analyzer cannot prove that the access is guarded by a success check or another safe Trellis pattern.
 
-## Rule Description
+## Why it matters
+`Result.Value` throws when the result is a failure. Unchecked access turns a modeled failure into an exception.
 
-`Result.Value` throws an `InvalidOperationException` if the `Result` is in a failure state. Accessing it without checking `IsSuccess` first can cause runtime exceptions.
+> [!WARNING]
+> The analyzer understands many guard patterns, but it will still warn when the safety is unclear. When in doubt, prefer `IsSuccess`, `TryGetValue`, or `Match`.
 
-This diagnostic ensures that `Result.Value` is only accessed in safe contexts where the success state has been verified.
-
-## How to Fix Violations
-
-### Option 1: Check IsSuccess First
+## Bad example
 ```csharp
-// ❌ Bad - Unsafe access
-var customer = result.Value;
+using Trellis;
 
-// ✅ Good - Guarded access
-if (result.IsSuccess)
+static class Example
 {
-    var customer = result.Value;
-    // Use customer...
-}
-
-// ✅ Good - Ternary guard is also recognized
-var defaultCustomer = GetDefaultCustomer();
-var customer = result.IsSuccess ? result.Value : defaultCustomer;
-```
-
-### Option 2: Use Match
-```csharp
-// ✅ Good - Pattern matching
-return result.Match(
-    onSuccess: customer => customer.ToDto(),
-    onFailure: error => DefaultDto());
-```
-
-### Option 3: Use TryGetValue
-```csharp
-// ✅ Good - Safe extraction
-if (result.TryGetValue(out var customer))
-{
-    // Use customer...
+    public static int Bad(Result<int> result) =>
+        result.Value + 1;
 }
 ```
 
-### Option 4: Use GetValueOrDefault
+## Good example
 ```csharp
-// ✅ Good - With fallback
-var customer = result.GetValueOrDefault(defaultCustomer);
-```
+using Trellis;
 
-## Code Fix
-
-This diagnostic offers an automatic code fix that wraps the unsafe access in an `if (result.IsSuccess)` guard. The code fix intelligently:
-- Wraps all consecutive statements that use `result.Value`
-- Tracks variables derived from `result.Value`
-- Stops at unrelated statements
-
-### Example Code Fix Transformation
-
-**Before:**
-```csharp
-var result = GetCustomer();
-result.IsSuccess.Should().BeTrue();
-Customer customer = result.Value;
-customer.Name.Should().Be("John");
-customer.Email.Should().Contain("@");
-SomeOtherMethod();
-```
-
-**After (automatic):**
-```csharp
-var result = GetCustomer();
-result.IsSuccess.Should().BeTrue();
-if (result.IsSuccess)
+static class Example
 {
-    Customer customer = result.Value;
-    customer.Name.Should().Be("John");
-    customer.Email.Should().Contain("@");
-}
-SomeOtherMethod();
-```
+    public static int Good(Result<int> result)
+    {
+        if (result.IsSuccess)
+            return result.Value + 1;
 
-## When to Suppress Warnings
-
-This warning can be suppressed in test code where you're explicitly testing success scenarios and expect the operation to succeed.
-
-```csharp
-[Fact]
-public void Should_CreateValidCustomer()
-{
-    var result = Customer.Create("test@example.com");
-    #pragma warning disable TRLS003
-    var customer = result.Value; // Safe in test - we're verifying success
-    #pragma warning restore TRLS003
-    customer.Email.Should().Be("test@example.com");
+        return 0;
+    }
 }
 ```
 
-However, even in tests, using `Match` or checking `IsSuccess` is preferred.
+## Code fix available
+Yes — wraps the current usage in an `if (result.IsSuccess)` guard.
 
-## Special Behavior
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-**Note:** This diagnostic is suppressed for invocation patterns like `TryCreate().Value`. Those are handled by [TRLS007](TRLS007.md) instead, which suggests using `Create()` for better error messages.
+```ini
+dotnet_diagnostic.TRLS003.severity = none
+```
 
-## Related Rules
+```csharp
+#pragma warning disable TRLS003
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS003
+```
 
-- [TRLS004](TRLS004.md) - Unsafe access to Result.Error
-- [TRLS006](TRLS006.md) - Unsafe access to Maybe.Value
-- [TRLS007](TRLS007.md) - Use Create instead of TryCreate().Value
-- [TRLS013](TRLS013.md) - Use GetValueOrDefault or Match instead of ternary
+> [!TIP]
+> `Match`, `TryGetValue`, and early-return guards usually read better than reaching for `Value` directly.
+

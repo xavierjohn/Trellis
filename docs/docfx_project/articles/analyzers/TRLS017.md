@@ -1,129 +1,55 @@
-﻿# TRLS017: Don't compare Result or Maybe to null
+# TRLS017 — Don't compare Result or Maybe to null
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Comparing a `Result<T>` or `Maybe<T>` value to `null` using `==`, `!=`, `is null`, or `is not null`.
+## What it detects
+Flags `== null`, `!= null`, `is null`, and `is not null` when the checked value is a Trellis `Result<T>` or `Maybe<T>`.
 
-## Rule Description
+## Why it matters
+These are structs. Presence and success are represented by state members such as `HasValue`, `HasNoValue`, `IsSuccess`, and `IsFailure`, not by nullability.
 
-`Result<T>` and `Maybe<T>` are **structs** (value types), not classes. They cannot be null. Comparing them to null:
+> [!WARNING]
+> A null check can look harmless, but it asks the wrong question and hides the actual success or optionality rule.
 
-- **Always produces a compile error** (CS0019 or CS9135)
-- **Indicates a misunderstanding** of how these types work
-- **Should use proper state checks** instead
-
-## How to Fix Violations
-
-Use the appropriate state-checking properties:
-
-### For Result<T>
-
+## Bad example
 ```csharp
-// ❌ Bad - Result is a struct, can't be null
-if (result == null) { }
-if (result is null) { }
-if (result != null) { }
-if (result is not null) { }
+using Trellis;
 
-// ✅ Good - Use state properties
-if (result.IsSuccess) { }
-if (result.IsFailure) { }
-```
-
-### For Maybe<T>
-
-```csharp
-// ❌ Bad - Maybe is a struct, can't be null
-if (maybe == null) { }
-if (maybe is null) { }
-
-// ✅ Good - Use state properties
-if (maybe.HasValue) { }
-if (maybe.HasNoValue) { }
-```
-
-## Examples
-
-### Example 1: Checking Result Success
-
-```csharp
-// ❌ Bad - Compiler error + wrong pattern
-public IActionResult Get(Guid id)
+static class Example
 {
-    var result = GetCustomer(id);
-    if (result == null)  // CS0019: Operator '==' cannot be applied
-        return NotFound();
-    return Ok(result.Value);
-}
-
-// ✅ Good
-public IActionResult Get(Guid id)
-{
-    var result = GetCustomer(id);
-    if (result.IsFailure)
-        return result.Error.ToHttpResult();
-    return Ok(result.Value);
+    public static string Bad(Maybe<string> nickname) =>
+        nickname == null ? "Anonymous" : nickname.Value;
 }
 ```
 
-### Example 2: Checking Maybe Value
-
+## Good example
 ```csharp
-// ❌ Bad
-public string GetDisplayName(Maybe<User> maybeUser)
-{
-    if (maybeUser is null)  // Compiler error
-        return "Guest";
-    return maybeUser.Value.Name;
-}
+using Trellis;
 
-// ✅ Good
-public string GetDisplayName(Maybe<User> maybeUser)
+static class Example
 {
-    if (maybeUser.HasNoValue)
-        return "Guest";
-    return maybeUser.Value.Name;
+    public static string Good(Maybe<string> nickname) =>
+        nickname.HasNoValue ? "Anonymous" : nickname.Value;
 }
-
-// ✅ Better - Use Match
-public string GetDisplayName(Maybe<User> maybeUser) =>
-    maybeUser.Match(
-        onValue: user => user.Name,
-        onNoValue: () => "Guest");
 ```
 
-### Example 3: Pattern Matching
+## Code fix available
+No.
 
-```csharp
-// ❌ Bad - Wrong pattern
-var message = result is not null ? "Has value" : "No value";
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-// ✅ Good
-var message = result.IsSuccess ? "Success" : "Failure";
-
-// ✅ Better - Use Match
-var message = result.Match(
-    onSuccess: _ => "Success",
-    onFailure: _ => "Failure");
+```ini
+dotnet_diagnostic.TRLS017.severity = none
 ```
 
-## Why Structs Can't Be Null
+```csharp
+#pragma warning disable TRLS017
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS017
+```
 
-In C#, structs are value types that:
-- Are stored on the stack (or inline in other objects)
-- Always have a value (default is `default(T)`, not `null`)
-- Cannot be assigned `null` without using `Nullable<T>` (`T?`)
+> [!TIP]
+> Check the state you actually care about: `HasValue` for `Maybe<T>`, `IsSuccess` or `IsFailure` for `Result<T>`.
 
-`Result<T>` and `Maybe<T>` are intentionally designed as structs to:
-- Avoid null reference exceptions
-- Provide better performance (no heap allocation)
-- Force explicit handling of success/failure states
-
-## Related Rules
-
-- [TRLS003](TRLS003.md) - Unsafe access to Result.Value
-- [TRLS006](TRLS006.md) - Unsafe access to Maybe.Value
-
-## See Also
-
-- [C# Value Types](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/value-types)
