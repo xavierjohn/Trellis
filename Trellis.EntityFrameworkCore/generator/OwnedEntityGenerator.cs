@@ -44,6 +44,18 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    /// <summary>
+    /// Diagnostic reported when [OwnedEntity] is applied to a type that does not
+    /// inherit from <c>Trellis.ValueObject</c>.
+    /// </summary>
+    private static readonly DiagnosticDescriptor s_doesNotInheritValueObject = new(
+        id: "TRLSGEN103",
+        title: "[OwnedEntity] type must inherit from ValueObject",
+        messageFormat: "Type '{0}' is decorated with [OwnedEntity] but does not inherit from 'Trellis.ValueObject'. [OwnedEntity] is only supported on ValueObject-derived types.",
+        category: "Trellis.EntityFrameworkCore.Generator",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -78,6 +90,24 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         var compilation = ctx.SemanticModel.Compilation;
         var valueObjectSymbol = compilation.GetTypeByMetadataName("Trellis.ValueObject");
         var objectSymbol = compilation.ObjectType;
+
+        // Check that the type inherits from Trellis.ValueObject
+        var inheritsFromValueObject = false;
+        if (valueObjectSymbol is not null)
+        {
+            var baseCheck = symbol.BaseType;
+            while (baseCheck is not null)
+            {
+                if (SymbolEqualityComparer.Default.Equals(baseCheck, valueObjectSymbol))
+                {
+                    inheritsFromValueObject = true;
+                    break;
+                }
+
+                baseCheck = baseCheck.BaseType;
+            }
+        }
+
         var currentType = symbol;
         while (currentType is not null)
         {
@@ -133,6 +163,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
             isRecord: isRecord,
             isPartial: isPartial,
             hasParameterlessCtor: hasParameterlessCtor,
+            inheritsFromValueObject: inheritsFromValueObject,
             referencePropertyNames: referenceProps.Distinct().ToArray(),
             nestingParents: nestingParents.ToArray(),
             typePath: typePath);
@@ -141,6 +172,14 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
     private static void Execute(SourceProductionContext spc, OwnedEntityInfo? info)
     {
         if (info is null) return;
+
+        // Report diagnostic if the type does not inherit from Trellis.ValueObject
+        if (!info.InheritsFromValueObject)
+        {
+            spc.ReportDiagnostic(Diagnostic.Create(
+                s_doesNotInheritValueObject, info.Location, info.TypeName));
+            return;
+        }
 
         // Report diagnostic if not partial
         if (!info.IsPartial)
@@ -252,6 +291,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
             bool isRecord,
             bool isPartial,
             bool hasParameterlessCtor,
+            bool inheritsFromValueObject,
             string[] referencePropertyNames,
             string[] nestingParents,
             string typePath)
@@ -264,6 +304,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
             IsRecord = isRecord;
             IsPartial = isPartial;
             HasParameterlessCtor = hasParameterlessCtor;
+            InheritsFromValueObject = inheritsFromValueObject;
             ReferencePropertyNames = referencePropertyNames;
             NestingParents = nestingParents;
             TypePath = typePath;
@@ -277,6 +318,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         public bool IsRecord { get; }
         public bool IsPartial { get; }
         public bool HasParameterlessCtor { get; }
+        public bool InheritsFromValueObject { get; }
         public string[] ReferencePropertyNames { get; }
         public string[] NestingParents { get; }
         public string TypePath { get; }
@@ -293,6 +335,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
                 && IsRecord == other.IsRecord
                 && IsPartial == other.IsPartial
                 && HasParameterlessCtor == other.HasParameterlessCtor
+                && InheritsFromValueObject == other.InheritsFromValueObject
                 && TypePath == other.TypePath
                 && ReferencePropertyNames.SequenceEqual(other.ReferencePropertyNames)
                 && NestingParents.SequenceEqual(other.NestingParents);
@@ -312,6 +355,7 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
                 hash = (hash * 31) + IsRecord.GetHashCode();
                 hash = (hash * 31) + IsPartial.GetHashCode();
                 hash = (hash * 31) + HasParameterlessCtor.GetHashCode();
+                hash = (hash * 31) + InheritsFromValueObject.GetHashCode();
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
                 return hash;
             }

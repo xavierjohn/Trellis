@@ -144,6 +144,43 @@ public class FakeRepository<TAggregate, TId>
     public IEnumerable<TAggregate> GetAll() => [.. _store.Values];
 
     /// <summary>
+    /// Finds the first aggregate matching the predicate, returning <see cref="Maybe{T}.None"/> if no match.
+    /// Use in test repository adapters for custom query methods (e.g., <c>FindByEmailAsync</c>).
+    /// </summary>
+    /// <param name="predicate">The predicate to match.</param>
+    /// <returns>Maybe with the first matching aggregate or None.</returns>
+    public Task<Maybe<TAggregate>> FindAsync(Func<TAggregate, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        var match = _store.Values.FirstOrDefault(predicate);
+        return Task.FromResult(match is not null ? Maybe.From(match) : Maybe<TAggregate>.None);
+    }
+
+    /// <summary>
+    /// Returns all aggregates matching the predicate.
+    /// Use in test repository adapters for custom query methods (e.g., <c>GetByCustomerIdAsync</c>).
+    /// </summary>
+    /// <param name="predicate">The predicate to filter by.</param>
+    /// <returns>A list of matching aggregates.</returns>
+    public Task<IReadOnlyList<TAggregate>> WhereAsync(Func<TAggregate, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        return Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(predicate).ToList());
+    }
+
+    /// <summary>
+    /// Returns all aggregates matching the specification.
+    /// Use in test repository adapters for specification-based queries (e.g., <c>GetOverdueOrdersAsync</c>).
+    /// </summary>
+    /// <param name="specification">The specification to evaluate.</param>
+    /// <returns>A list of matching aggregates.</returns>
+    public Task<IReadOnlyList<TAggregate>> WhereAsync(Specification<TAggregate> specification)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+        return Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(specification.IsSatisfiedBy).ToList());
+    }
+
+    /// <summary>
     /// Gets the count of stored aggregates.
     /// </summary>
     public int Count => _store.Count;

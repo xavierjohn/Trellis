@@ -127,12 +127,87 @@ var result = await repo.GetByIdAsync(orderId);        // Result<Order> (NotFound
 var maybe = await repo.FindByIdAsync(orderId);        // Maybe<Order>
 await repo.DeleteAsync(orderId);
 
+// Query helpers — use in test repository adapters for custom query methods
+var customer = await repo.FindAsync(c => c.Email == email);          // Maybe<T> (first match or None)
+var orders = await repo.WhereAsync(o => o.CustomerId == customerId); // IReadOnlyList<T>
+var overdue = await repo.WhereAsync(new OverdueOrderSpec(cutoff));   // IReadOnlyList<T> via Specification
+
 // Seeding test data
 var order = Order.Create(...);
 await repo.SaveAsync(order);                           // Now GetByIdAsync will return it
 
 // Domain event inspection
 repo.PublishedEvents                                   // IReadOnlyList<IDomainEvent>
+```
+
+## FakeSharedResourceLoader
+
+**Namespace: `Trellis.Testing.Fakes`**
+
+In-memory fake implementation of `SharedResourceLoaderById<TResource, TId>` that delegates to a `FakeRepository`. Eliminates the need to hand-write a per-command resource loader in tests when using `IAuthorizeResource<T>` with `SharedResourceLoaderById`.
+
+```csharp
+// Construction — pass the FakeRepository
+var repo = new FakeRepository<Order, OrderId>();
+var loader = new FakeSharedResourceLoader<Order, OrderId>(repo);
+
+// DI registration in test Startup:
+services.AddScoped<FakeRepository<Order, OrderId>>();
+services.AddScoped<SharedResourceLoaderById<Order, OrderId>, FakeSharedResourceLoader<Order, OrderId>>();
+```
+
+## AggregateTestMutator — Time-Travel for Maybe\<T\> Properties
+
+**Namespace: `Trellis.Testing`**
+
+Reflection-based helpers to set source-generated `Maybe<T>` backing fields in tests. Works with and without EF Core — usable in both unit tests (with `FakeRepository`) and integration tests (with `WebApplicationFactory`). Fluent chaining supported.
+
+```csharp
+// Backdate a Maybe<DateTime> property — no raw SQL
+order.SetMaybeField(o => o.SubmittedAt, DateTime.UtcNow.AddDays(-8))
+     .SetMaybeField(o => o.ShippedAt, DateTime.UtcNow.AddDays(-5));
+
+// Clear a Maybe<T> to None
+order.ClearMaybeField(o => o.SubmittedAt);
+```
+
+For integration tests, load the entity from a scoped `DbContext`, mutate, then save:
+```csharp
+using var scope = factory.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+var order = await db.Orders.FindAsync(orderId);
+order!.SetMaybeField(o => o.SubmittedAt, DateTime.UtcNow.AddDays(-8));
+await db.SaveChangesAsync(ct);
+```
+
+## WithFakeTimeProvider — Full Time Control in Integration Tests
+
+**Namespace: `Trellis.Testing`**
+
+`WebApplicationFactory` extension that registers a `FakeTimeProvider` as the `TimeProvider` singleton. Tests rewind/advance time to control timestamps set by domain logic and `EntityTimestampInterceptor`.
+
+```csharp
+var fakeTime = new FakeTimeProvider(DateTimeOffset.UtcNow);
+_factory = _factory.WithFakeTimeProvider(fakeTime);
+
+// Or with out parameter:
+_factory = _factory.WithFakeTimeProvider(out var fakeTime);
+
+// Rewind time, then exercise the endpoint
+fakeTime.SetUtcNow(DateTimeOffset.UtcNow.AddDays(-8));
+await client.PostAsync("/api/orders/1/submission", null, ct);
+fakeTime.SetUtcNow(DateTimeOffset.UtcNow);
+var response = await client.GetAsync("/api/orders/overdue", ct);
+```
+
+## ReplaceSingleton — Generic DI Helper
+
+**Namespace: `Trellis.Testing`**
+
+Replaces all registrations of a service type with a singleton instance. Common use: swapping `TimeProvider` in integration tests.
+
+```csharp
+services.ReplaceSingleton<TimeProvider>(fakeTime);
 ```
 
 ## TestActorProvider and TestActorScope

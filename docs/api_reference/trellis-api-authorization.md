@@ -1,6 +1,6 @@
 # Trellis.Authorization — API Reference
 
-> Part of the [Trellis API Reference](.). See also: trellis-api-mediator.md, trellis-api-asp.md, trellis-api-testing.md.
+> Part of the [Trellis API Reference](.). See also: trellis-api-mediator.md, trellis-api-asp.md, trellis-api-testing-reference.md.
 
 **Packages:** `Trellis.Authorization` + `Trellis.Asp.Authorization` | **Namespaces:** `Trellis.Authorization`, `Trellis.Asp.Authorization`
 

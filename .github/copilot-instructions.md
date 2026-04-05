@@ -20,7 +20,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 | HttpClient extensions | `docs/api_reference/trellis-api-http.md` |
 | Mediator pipeline behaviors | `docs/api_reference/trellis-api-mediator.md` |
 | State machine integration | `docs/api_reference/trellis-api-stateless.md` |
-| Testing helpers | `docs/api_reference/trellis-api-testing.md` |
+| Testing helpers | `docs/api_reference/trellis-api-testing-reference.md` |
 | Analyzer rules (TRLS001-TRLS022) | `docs/api_reference/trellis-api-analyzers.md` |
 
 These files document the exact method signatures, overloads, and usage patterns. Do not assume APIs based on naming conventions — read the reference first.
@@ -217,6 +217,7 @@ Before considering work complete, verify:
 5. **Do NOT commit without explicit approval** — stage changes and present the diff for review
 6. **Do NOT push branches** — the repository owner will push when ready
 7. **Do NOT create or merge pull requests** — present changes locally for review
+8. **Do NOT rewrite pushed history** — never use `git commit --amend`, `git rebase`, or `git push --force` on commits that have been pushed. Always create new commits for fixes.
 
 ## Test Organization
 

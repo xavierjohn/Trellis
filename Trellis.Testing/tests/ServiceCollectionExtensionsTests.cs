@@ -137,6 +137,55 @@ public class ServiceCollectionExtensionsTests
 
     #endregion
 
+    #region ReplaceSingleton
+
+    [Fact]
+    public void ReplaceSingleton_RegistersInstance()
+    {
+        var services = new ServiceCollection();
+        var instance = TimeProvider.System;
+
+        services.ReplaceSingleton(instance);
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<TimeProvider>().Should().BeSameAs(instance);
+    }
+
+    [Fact]
+    public void ReplaceSingleton_ReplacesExistingRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(TimeProvider.System);
+        var replacement = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+
+        services.ReplaceSingleton<TimeProvider>(replacement);
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<TimeProvider>().Should().BeSameAs(replacement);
+    }
+
+    [Fact]
+    public void ReplaceSingleton_ReturnsServiceCollection_ForChaining()
+    {
+        var services = new ServiceCollection();
+
+        var returned = services.ReplaceSingleton(TimeProvider.System);
+
+        returned.Should().BeSameAs(services);
+    }
+
+    [Fact]
+    public void ReplaceSingleton_NullInstance_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.ReplaceSingleton<TimeProvider>(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
+
     #region Test Types
 
     private sealed record TestCommand(string Id);

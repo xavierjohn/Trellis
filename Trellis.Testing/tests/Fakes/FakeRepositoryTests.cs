@@ -399,4 +399,98 @@ public class FakeRepositoryTests
     }
 
     #endregion
+
+    #region FindAsync (predicate) Tests
+
+    [Fact]
+    public async Task FindAsync_Returns_Maybe_With_Value_When_Match_Exists()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice", "alice@test.com"), TestContext.Current.CancellationToken);
+        await repository.SaveAsync(TestAggregate.Create("2", "Bob", "bob@test.com"), TestContext.Current.CancellationToken);
+
+        var maybe = await repository.FindAsync(a => a.Email == "alice@test.com");
+
+        maybe.Should().HaveValue();
+        maybe.Value.Name.Should().Be("Alice");
+    }
+
+    [Fact]
+    public async Task FindAsync_Returns_None_When_No_Match()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice", "alice@test.com"), TestContext.Current.CancellationToken);
+
+        var maybe = await repository.FindAsync(a => a.Email == "nonexistent@test.com");
+
+        maybe.Should().BeNone();
+    }
+
+    #endregion
+
+    #region WhereAsync (predicate) Tests
+
+    [Fact]
+    public async Task WhereAsync_Predicate_Returns_Matching_Aggregates()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice"), TestContext.Current.CancellationToken);
+        await repository.SaveAsync(TestAggregate.Create("2", "Bob"), TestContext.Current.CancellationToken);
+        await repository.SaveAsync(TestAggregate.Create("3", "Alice2"), TestContext.Current.CancellationToken);
+
+        var results = await repository.WhereAsync(a => a.Name.StartsWith("Alice", StringComparison.Ordinal));
+
+        results.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task WhereAsync_Predicate_Returns_Empty_When_No_Match()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice"), TestContext.Current.CancellationToken);
+
+        var results = await repository.WhereAsync(a => a.Name == "Nobody");
+
+        results.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region WhereAsync (Specification) Tests
+
+    [Fact]
+    public async Task WhereAsync_Specification_Returns_Matching_Aggregates()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice"), TestContext.Current.CancellationToken);
+        await repository.SaveAsync(TestAggregate.Create("2", "Bob"), TestContext.Current.CancellationToken);
+        await repository.SaveAsync(TestAggregate.Create("3", "Alice2"), TestContext.Current.CancellationToken);
+
+        var spec = new NameStartsWithSpecification("Alice");
+        var results = await repository.WhereAsync(spec);
+
+        results.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task WhereAsync_Specification_Returns_Empty_When_No_Match()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        await repository.SaveAsync(TestAggregate.Create("1", "Alice"), TestContext.Current.CancellationToken);
+
+        var spec = new NameStartsWithSpecification("Nobody");
+        var results = await repository.WhereAsync(spec);
+
+        results.Should().BeEmpty();
+    }
+
+    private class NameStartsWithSpecification : Specification<TestAggregate>
+    {
+        private readonly string _prefix;
+        public NameStartsWithSpecification(string prefix) => _prefix = prefix;
+        public override System.Linq.Expressions.Expression<Func<TestAggregate, bool>> ToExpression() =>
+            a => a.Name.StartsWith(_prefix, System.StringComparison.Ordinal);
+    }
+
+    #endregion
 }

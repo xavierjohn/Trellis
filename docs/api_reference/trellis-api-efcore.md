@@ -127,6 +127,7 @@ public partial class Address : ValueObject
 ```
 
 **Diagnostics:**
+- `TRLSGEN103` (Error) — `[OwnedEntity]` on a type that does not inherit from `Trellis.ValueObject`
 - `TRLSGEN101` (Error) — `[OwnedEntity]` on a non-`partial` type
 - `TRLSGEN102` (Warning) — `[OwnedEntity]` on a type that already has a parameterless constructor
 
