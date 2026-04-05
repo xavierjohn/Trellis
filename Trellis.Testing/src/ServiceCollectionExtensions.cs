@@ -43,7 +43,7 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Replaces all registrations of <typeparamref name="TService"/> with a singleton instance.
     /// Common use: replacing <see cref="TimeProvider"/> with
-    /// <c>Microsoft.Extensions.TimeProvider.Testing.FakeTimeProvider</c> in integration tests.
+    /// <c>Microsoft.Extensions.Time.Testing.FakeTimeProvider</c> in integration tests.
     /// </summary>
     /// <typeparam name="TService">The service type to replace.</typeparam>
     /// <param name="services">The service collection to modify.</param>
@@ -60,6 +60,7 @@ public static class ServiceCollectionExtensions
         TService instance)
         where TService : class
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(instance);
         services.RemoveAll<TService>();
         services.AddSingleton(instance);
