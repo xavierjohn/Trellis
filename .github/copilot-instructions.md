@@ -217,6 +217,7 @@ Before considering work complete, verify:
 5. **Do NOT commit without explicit approval** — stage changes and present the diff for review
 6. **Do NOT push branches** — the repository owner will push when ready
 7. **Do NOT create or merge pull requests** — present changes locally for review
+8. **Do NOT rewrite pushed history** — never use `git commit --amend`, `git rebase`, or `git push --force` on commits that have been pushed. Always create new commits for fixes.
 
 ## Test Organization
 
