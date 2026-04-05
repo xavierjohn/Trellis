@@ -39,4 +39,30 @@ public static class ServiceCollectionExtensions
         services.AddScoped(factory);
         return services;
     }
+
+    /// <summary>
+    /// Replaces all registrations of <typeparamref name="TService"/> with a singleton instance.
+    /// Common use: replacing <see cref="TimeProvider"/> with
+    /// <c>Microsoft.Extensions.TimeProvider.Testing.FakeTimeProvider</c> in integration tests.
+    /// </summary>
+    /// <typeparam name="TService">The service type to replace.</typeparam>
+    /// <param name="services">The service collection to modify.</param>
+    /// <param name="instance">The singleton instance to register.</param>
+    /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
+    /// <example>
+    /// <code>
+    /// var fakeTime = new FakeTimeProvider(DateTimeOffset.UtcNow);
+    /// services.ReplaceSingleton&lt;TimeProvider&gt;(fakeTime);
+    /// </code>
+    /// </example>
+    public static IServiceCollection ReplaceSingleton<TService>(
+        this IServiceCollection services,
+        TService instance)
+        where TService : class
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+        services.RemoveAll<TService>();
+        services.AddSingleton(instance);
+        return services;
+    }
 }
