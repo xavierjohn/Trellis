@@ -135,6 +135,22 @@ await repo.SaveAsync(order);                           // Now GetByIdAsync will 
 repo.PublishedEvents                                   // IReadOnlyList<IDomainEvent>
 ```
 
+## FakeSharedResourceLoader
+
+**Namespace: `Trellis.Testing.Fakes`**
+
+In-memory fake implementation of `SharedResourceLoaderById<TResource, TId>` that delegates to a `FakeRepository`. Eliminates the need to hand-write a per-command resource loader in tests when using `IAuthorizeResource<T>` with `SharedResourceLoaderById`.
+
+```csharp
+// Construction — pass the FakeRepository
+var repo = new FakeRepository<Order, OrderId>();
+var loader = new FakeSharedResourceLoader<Order, OrderId>(repo);
+
+// DI registration in test Startup:
+services.AddScoped<FakeRepository<Order, OrderId>>();
+services.AddScoped<SharedResourceLoaderById<Order, OrderId>, FakeSharedResourceLoader<Order, OrderId>>();
+```
+
 ## TestActorProvider and TestActorScope
 
 **Namespace: `Trellis.Testing.Fakes`**
