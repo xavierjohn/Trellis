@@ -1,376 +1,208 @@
-﻿# Performance
+# Performance
 
-This guide covers performance characteristics, benchmarks, and optimization techniques.
+If you're deciding whether Trellis is "too expensive," the short answer is usually **no**.
 
-## Table of Contents
+Trellis adds a very small amount of CPU overhead so you can get explicit errors, composable workflows, and easier-to-review code. In real applications, database calls, HTTP calls, and serialization dominate the timeline long before Trellis does.
 
-- [Overview](#overview)
-- [Key Metrics](#key-metrics)
-- [Benchmark Results](#benchmark-results)
-- [Real-World Context](#real-world-context)
-- [Optimization Tips](#optimization-tips)
-- [Running Your Own Benchmarks](#running-your-own-benchmarks)
+> [!TIP]
+> Measure Trellis the same way you measure LINQ: compare it to the real work around it, not to an empty method.
 
-## Overview
+## The practical answer
 
-Benchmarks on **.NET 10** show railway-oriented programming adds only **~11-16 nanoseconds** overhead compared to imperative code—less than **0.002%** of typical I/O operations.
+On the latest benchmark run captured in this repository, the simple happy-path comparison showed Trellis adding roughly **4-5 ns** over imperative code on a fast desktop CPU. Older runs on different hardware landed in the **11-16 ns** range. The exact number moves with hardware and JIT behavior, but the conclusion does not: **the overhead is tiny**.
 
-**Test Environment:**
-- **CPU**: Intel Core i7-1185G7 @ 3.00GHz
-- **OS**: Windows 11
-- **.NET**: 10.0.1
+| Question | Practical answer |
+| --- | --- |
+| Does Trellis allocate more than equivalent imperative code? | Usually **no** on the same path. |
+| Is the happy path fast? | Yes — common `Map`, `Bind`, and `Tap` calls stay in the low-nanosecond range. |
+| Is the failure path expensive? | Usually no — short-circuiting keeps it predictable. |
+| Should I optimize Trellis before I optimize I/O? | Almost never. |
 
-## Key Metrics
+## Why the overhead usually does not matter
 
-| Metric | Finding |
-|--------|---------|
-| **Overhead** | 11-16 nanoseconds (~12-13% vs imperative) |
-| **Memory** | Identical allocations to imperative code |
-| **Success Path** | Highly optimized, minimal allocations |
-| **Error Path** | Efficient with short-circuit optimization |
-| **Combine Operations** | 7-58 ns for 2-5 results |
-| **Bind Operations** | 9-63 ns for 1-5 chains |
-| **Map Operations** | 4.6-44.5 ns for 1-5 transforms |
+A few nanoseconds sounds real in a benchmark because the benchmark is isolating the framework cost. Your production code usually is not.
 
-## Benchmark Results
+| Operation | Typical scale |
+| --- | ---: |
+| `Map` / `Bind` / `Tap` | single-digit to low double-digit ns |
+| JSON serialization | microseconds |
+| Database query | milliseconds |
+| HTTP call | milliseconds to tens of milliseconds |
 
-### ROP vs Imperative Style
+That means Trellis overhead is usually lost in the noise of:
 
-Direct comparison of ROP versus traditional if-style code:
+- database access
+- network latency
+- disk I/O
+- logging and serialization
+- your own business logic
+
+## A simple example
+
+This is the kind of code the benchmarks are measuring:
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+
+var output = FirstName.TryCreate("Ada")
+    .Combine(EmailAddress.TryCreate("ada@example.com"))
+    .Match(
+        onSuccess: values => $"{values.Item1} <{values.Item2}>",
+        onFailure: error => error.Detail);
+```
+
+The imperative equivalent is a little closer to the metal, but not by much:
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+
+var firstName = FirstName.TryCreate("Ada");
+var email = EmailAddress.TryCreate("ada@example.com");
+
+string output;
+if (firstName.IsSuccess && email.IsSuccess)
+    output = $"{firstName.Value} <{email.Value}>";
+else
+{
+    Error? error = null;
+    if (firstName.IsFailure)
+        error = firstName.Error;
+    if (email.IsFailure)
+        error = error is null ? email.Error : error.Combine(email.Error);
+
+    output = error!.Detail;
+}
+```
+
+## Headline numbers from the benchmark suite
+
+These figures come from the benchmark data checked into this repository. Treat them as **directionally useful**, not as universal constants.
+
+### ROP vs imperative
 
 | Method | Mean | Allocated |
-|--------|------|-----------|
-| **ROP Happy Path** | 147 ns | 144 B |
-| **Imperative Happy Path** | 131 ns | 144 B |
-| **ROP Error Path** | 99 ns | 184 B |
-| **Imperative Error Path** | 88 ns | 184 B |
+| --- | ---: | ---: |
+| `RopStyleHappy` | 98.32 ns | 296 B |
+| `IfStyleHappy` | 93.86 ns | 296 B |
+| `RopStyleSad` | 65.63 ns | 336 B |
+| `IfStyleSad` | 75.08 ns | 336 B |
 
-**Key Takeaways:**
-- ROP adds **~16 ns** on success path (12% overhead)
-- ROP adds **~11 ns** on error path (13% overhead)
-- **Identical memory allocations** between approaches
-- Error paths are faster due to short-circuit optimization
+### Core operations
 
-### Core Operation Benchmarks
+| Operation | Representative result |
+| --- | --- |
+| `Bind` | ~4.85 ns for a single happy-path bind |
+| `Map` | ~3.24 ns for a single happy-path map |
+| `Tap` | ~2.88 ns for a single happy-path tap |
+| `Ensure` | ~12.06 ns for one predicate |
+| `Combine` | ~7.27 ns for two successful results |
 
-#### Combine Operations
+> [!NOTE]
+> Benchmarks vary by CPU, runtime version, and benchmark shape. Compare **relative cost** and **allocation behavior** more than any single absolute number.
 
-Aggregating multiple Result objects:
+## What actually makes Trellis fast enough
 
-| Results Combined | Mean Time | Allocated |
-|-----------------|-----------|-----------|
-| 2 results | 7 ns | 0 B |
-| 3 results | 30 ns | 0 B |
-| 5 results | 58 ns | 0 B |
+### 1. Success-path operations are tiny
 
-**Zero allocations** - highly efficient for validation scenarios.
+Common pipeline steps are intentionally lightweight. If your chain is mostly validation, mapping, and short-circuiting, Trellis is not likely to be your bottleneck.
 
-#### Bind Operations
+### 2. Failure short-circuits
 
-Chaining operations that return Results:
+Once a result is failed, downstream success-path work is skipped. That makes failure behavior predictable and often surprisingly cheap.
 
-| Chain Length | Mean Time | Allocated |
-|-------------|-----------|-----------|
-| 1 bind | 9 ns | 0 B |
-| 3 binds | 35 ns | 0 B |
-| 5 binds | 63 ns | 0 B |
+### 3. The memory story is good
 
-**Linear scaling** with excellent performance characteristics.
+For equivalent logic, the benchmark suite repeatedly shows **matching allocations** between Trellis and imperative code. When allocations do appear, they usually come from:
 
-#### Map Operations
+- constructing errors
+- allocating strings or objects in your mapping code
+- async machinery
+- logging or collection growth
 
-Transforming successful values:
+## Performance advice that actually pays off
 
-| Transforms | Mean Time | Allocated |
-|-----------|-----------|-----------|
-| 1 map | 4.6 ns | 0 B |
-| 3 maps | 21 ns | 0 B |
-| 5 maps | 44.5 ns | 0 B |
+### Combine validations before you bind
 
-**Fastest operation** with zero allocations on success path.
-
-#### Tap Operations
-
-Executing side effects:
-
-| Taps | Mean Time | Allocated |
-|------|-----------|-----------|
-| 1 tap | 3 ns | 0 B |
-| 3 taps | 18 ns | 32 B |
-| 5 taps | 37.4 ns | 64 B |
-
-**Minimal overhead** for logging and side effects.
-
-#### Ensure Operations
-
-Adding validation checks:
-
-| Checks | Mean Time | Allocated |
-|--------|-----------|-----------|
-| 1 ensure | 22.5 ns | 152 B |
-| 3 ensures | 89 ns | 456 B |
-| 5 ensures | 175 ns | 760 B |
-
-**Note**: Allocations include error object creation for failed validations.
-
-### Async Operations
-
-Async operations have similar performance characteristics with additional Task overhead:
+When validations are independent, aggregate them first.
 
 ```csharp
-// Async overhead is from Task machinery, not ROP
-await GetUserAsync(id)           // ~1,000,000 ns (database call)
-    .BindAsync(ProcessUserAsync)  // + 50 ns (ROP overhead)
-    .TapAsync(LogUserAsync);      // + 20 ns (ROP overhead)
+using Trellis;
+using Trellis.Primitives;
+
+Result<string> CreateDisplayName(string first, string last, string email) =>
+    FirstName.TryCreate(first)
+        .Combine(LastName.TryCreate(last))
+        .Combine(EmailAddress.TryCreate(email))
+        .Bind((firstName, lastName, emailAddress) =>
+            Result.Success($"{firstName} {lastName} <{emailAddress}>"));
 ```
 
-The ROP overhead is **less than 0.01%** of typical async I/O operations.
+That is usually clearer *and* more efficient than deeply nested sequential validation.
 
-## Real-World Context
-
-To put these numbers in perspective:
-
-```
-Database Query:    1,000,000 ns (1 ms)
-HTTP Request:     10,000,000 ns (10 ms)
-File Read:         5,000,000 ns (5 ms)
-ROP Chain (5 ops):        150 ns (0.00015 ms)
-                          ↑
-                     0.015% of a database query
-```
-
-**The 16ns ROP overhead is 1/62,500th of a single database query!**
-
-### Performance in Web Applications
-
-In a typical ASP.NET Core request:
+### Reuse stable errors on hot paths
 
 ```csharp
-// Typical web request processing
-app.MapPost("/orders", async (CreateOrderRequest request, CancellationToken ct) =>
-{
-    return await ValidateRequest(request)              // ~50 ns
-        .BindAsync((req, ct) => CreateOrderAsync(req, ct), ct)  // ~1-5 ms (DB write)
-        .TapAsync((order, ct) => PublishEventAsync(order, ct), ct)  // ~10-50 ms (message queue)
-        .MatchAsync(
-            onSuccess: order => Results.Created($"/orders/{order.Id}", order),
-            onFailure: error => error.ToHttpResult()
-        );
-});
-
-// Total ROP overhead: ~150 ns
-// Total request time: ~15-60 ms
-// ROP percentage: 0.0003%
-```
-
-## Optimization Tips
-
-### 1. Prefer Struct-Based Value Objects
-
-```csharp
-// ✅ Good - Struct, no heap allocation
-public readonly struct UserId
-{
-    private readonly Guid _value;
-    public UserId(Guid value) => _value = value;
-}
-
-// ❌ Worse - Class, heap allocation
-public class UserId
-{
-    public Guid Value { get; }
-    public UserId(Guid value) => Value = value;
-}
-```
-
-### 2. Use ValueTask for Hot Paths
-
-```csharp
-// ✅ Good - ValueTask for potentially synchronous completions
-public ValueTask<Result<User>> GetUserFromCacheAsync(UserId id)
-{
-    if (_cache.TryGetValue(id, out var user))
-        return ValueTask.FromResult(Result.Success(user));
-    
-    return new ValueTask<Result<User>>(FetchFromDbAsync(id));
-}
-
-// ❌ Allocates Task even when cached
-public Task<Result<User>> GetUserFromCacheAsync(UserId id)
-{
-    if (_cache.TryGetValue(id, out var user))
-        return Task.FromResult(Result.Success(user));
-    
-    return FetchFromDbAsync(id);
-}
-```
-
-### 3. Combine Before Bind
-
-```csharp
-// ✅ Good - Validate all at once
-var result = Email.TryCreate(email)
-    .Combine(FirstName.TryCreate(firstName))
-    .Combine(LastName.TryCreate(lastName))
-    .Bind((e, f, l) => CreateUser(e, f, l));
-
-// ❌ Less efficient - Sequential validation
-var result = Email.TryCreate(email)
-    .Bind(e => FirstName.TryCreate(firstName)
-        .Bind(f => LastName.TryCreate(lastName)
-            .Bind(l => CreateUser(e, f, l))));
-```
-
-### 4. Minimize Allocations in Hot Paths
-
-```csharp
-// ✅ Good - Reuse error instances
-private static readonly Error InvalidAgeError = 
-    Error.Validation("Age must be between 0 and 120");
-
-public Result<Age> ValidateAge(int age)
-{
-    return age is >= 0 and <= 120
-        ? Result.Success(new Age(age))
-        : InvalidAgeError;
-}
-
-// ❌ Allocates error on every failure
-public Result<Age> ValidateAge(int age)
-{
-    return age is >= 0 and <= 120
-        ? Result.Success(new Age(age))
-        : Error.Validation("Age must be between 0 and 120");  // New allocation
-}
-```
-
-### 5. Use ConfigureAwait in Libraries
-
-```csharp
-// ✅ Good - For library code
-public async Task<Result<User>> GetUserAsync(UserId id)
-{
-    var user = await _repository.GetByIdAsync(id).ConfigureAwait(false);
-    return user.ToResult(Error.NotFound($"User {id} not found"));
-}
-
-// ✅ Also fine - For application code (ASP.NET Core)
-public async Task<Result<User>> GetUserAsync(UserId id)
-{
-    var user = await _repository.GetByIdAsync(id);
-    return user.ToResult(Error.NotFound($"User {id} not found"));
-}
-```
-
-### 6. Avoid Excessive Logging in Hot Paths
-
-```csharp
-// ❌ Bad - Logs on every success
-.Tap(user => _logger.LogDebug("Got user {Id}", user.Id))
-
-// ✅ Good - Log only on failures or important events
-.TapOnFailure(error => _logger.LogWarning("Failed to get user: {Error}", error))
-
-// ✅ Good - Use structured logging with guards
-.Tap(user => 
-{
-    if (_logger.IsEnabled(LogLevel.Debug))
-        _logger.LogDebug("Got user {Id}", user.Id);
-})
-```
-
-## Benefits Without Sacrifice
-
-Despite the minimal overhead, you get significant benefits:
-
-✅ **Same Memory Usage** - No additional allocations vs imperative code  
-⚡ **Blazing Fast** - Single-digit to low double-digit nanosecond overhead  
-✅ **Better Code** - Cleaner, more testable, and maintainable  
-✅ **Explicit Errors** - Clear error propagation and aggregation  
-✅ **Composable** - Chain operations naturally  
-✅ **Type Safe** - Compiler-enforced error handling  
-
-## Running Your Own Benchmarks
-
-### Install BenchmarkDotNet
-
-```bash
-dotnet add package BenchmarkDotNet
-```
-
-### Create a Benchmark
-
-```csharp
-using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
 using Trellis;
 
-[MemoryDiagnoser]
-[ShortRunJob]
-public class MyBenchmarks
+static class CustomerRules
 {
-    [Benchmark]
-    public Result<int> RopStyle()
-    {
-        return Result.Success(5)
-            .Map(x => x * 2)
-            .Ensure(x => x > 0, Error.Validation("Must be positive"))
-            .Map(x => x + 10);
-    }
+    private static readonly Error MinimumSpendError =
+        Error.Validation("Customer must have spent at least 1000.");
 
-    [Benchmark(Baseline = true)]
-    public int ImperativeStyle()
-    {
-        var x = 5;
-        x = x * 2;
-        if (x <= 0) throw new InvalidOperationException();
-        return x + 10;
-    }
-}
-
-// Run benchmarks
-class Program
-{
-    static void Main(string[] args)
-    {
-        BenchmarkRunner.Run<MyBenchmarks>();
-    }
+    public static Result<decimal> Validate(decimal totalSpend) =>
+        totalSpend >= 1000m
+            ? Result.Success(totalSpend)
+            : MinimumSpendError;
 }
 ```
 
-### Run the Benchmark
+### Prefer `ValueTask` only when it is genuinely helpful
+
+If an async API frequently completes synchronously — for example, cache hits — `ValueTask` can help reduce allocations. If the work is always real I/O, `Task` is usually fine.
+
+### Optimize I/O before you optimize Trellis
+
+If a request is slow, look for:
+
+- N+1 database queries
+- repeated HTTP calls
+- unnecessary serialization
+- chatty logging
+- inefficient collection or string processing
+
+Those costs dwarf the framework overhead.
+
+## Running the benchmarks yourself
+
+Run the full benchmark suite:
 
 ```bash
-dotnet run -c Release --project YourBenchmarkProject
+dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release
 ```
 
-### View Full Project Benchmarks
+Run one subset:
 
 ```bash
-cd Trellis
-dotnet run --project Trellis.Benchmark/Trellis.Benchmark.csproj -c Release
+dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter *Combine*
 ```
 
-## Performance FAQs
+## When you should care more
 
-### Q: Is ROP slower than exceptions?
+There *are* cases where micro-overhead matters:
 
-**A:** For the error path, ROP is typically **faster** than exceptions:
-- Exception throw: ~1,000-10,000 ns
-- ROP error return: ~90-150 ns
+- extremely hot CPU-bound loops
+- high-frequency in-memory processing
+- code paths called millions of times per second
+- allocation-sensitive low-latency services
 
-### Q: Should I worry about the 16ns overhead?
+If that is your world, benchmark your exact workload. Trellis is still viable in many of those scenarios, but you should verify with production-shaped data.
 
-**A:** No, unless you're in a **tight CPU-bound loop**. For typical web applications with database/HTTP calls, the overhead is **0.002%** or less.
+## Bottom line
 
-### Q: What about memory pressure?
+Trellis is a trade: a few nanoseconds for clearer control flow, explicit errors, and easier composition.
 
-**A:** ROP has **identical** memory allocations to imperative code. The Result struct is stack-allocated in most cases.
+For most systems, that is an excellent trade.
 
-### Q: How does async affect performance?
-
-**A:** Async overhead comes from the Task machinery (~50-100 ns), not ROP. ROP adds the same ~15 ns overhead on top.
-
-### Q: Can I use ROP in high-performance scenarios?
-
-**A:** Yes! The overhead is minimal. Many high-throughput systems use ROP successfully. Profile your specific use case if concerned.
+If you want the raw numbers, keep reading: [Benchmarks](BENCHMARKS.md).

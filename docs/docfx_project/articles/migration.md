@@ -1,13 +1,32 @@
-# Migration from FunctionalDDD
+# Migrating from FunctionalDDD
 
-**Time:** 15-30 min | **Prerequisites:** Existing project using `FunctionalDdd.*` packages
+Migrating from `FunctionalDdd.*` to `Trellis.*` is mostly a **rename exercise**, not a redesign.
 
-This guide covers migrating from the `FunctionalDdd.*` NuGet packages to the renamed `Trellis.*` packages. No API changes — all types, methods, and behaviors remain identical.
+That is good news: you usually do **not** need to rethink your domain model or rewrite your pipelines. You need to update package names, namespaces, and a few integration method names.
 
-## Package Mapping
+> [!TIP]
+> Start with a mechanical rename, then let the compiler and analyzers show you the handful of places that still need attention.
 
-| Old Package | New Package |
-|-------------|-------------|
+## What changes and what does not
+
+### What changes
+
+- NuGet package names
+- namespaces
+- a few instrumentation method names
+- references to the old Ardalis specification package
+
+### What does not
+
+- core `Result<T>` / `Maybe<T>` usage
+- `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `Match`
+- aggregate and entity patterns
+- most application-layer code shape
+
+## Package mapping
+
+| Old package | New package |
+| --- | --- |
 | `FunctionalDdd.RailwayOrientedProgramming` | `Trellis.Results` |
 | `FunctionalDdd.DomainDrivenDesign` | `Trellis.DomainDrivenDesign` |
 | `FunctionalDdd.PrimitiveValueObjects` | `Trellis.Primitives` |
@@ -15,81 +34,173 @@ This guide covers migrating from the `FunctionalDdd.*` NuGet packages to the ren
 | `FunctionalDdd.Asp` | `Trellis.Asp` |
 | `FunctionalDdd.Http` | `Trellis.Http` |
 | `FunctionalDdd.FluentValidation` | `Trellis.FluentValidation` |
-| `FunctionalDdd.ArdalisSpecification` | Removed (replaced by native `Specification<T>` in `Trellis.DomainDrivenDesign`) |
+| `FunctionalDdd.ArdalisSpecification` | Remove and use native `Specification<T>` from `Trellis.DomainDrivenDesign` |
 
-New packages with no previous equivalent:
+Optional new packages with no direct one-to-one predecessor include:
 
-| Package | Purpose |
-|---------|---------|
-| `Trellis.Analyzers` | 19 Roslyn analyzers enforcing ROP best practices |
-| `Trellis.Testing` | FluentAssertions extensions, test builders, fakes |
-| `Trellis.Stateless` | Wraps Stateless state machine Fire() to return Result\<T\> |
+- `Trellis.Analyzers`
+- `Trellis.Testing`
+- `Trellis.Stateless`
 
-## Step-by-Step Migration
+## Step 1: update package references
 
-### 1. Update Package References
+If you centralize package versions in `Directory.Packages.props`, this is the fastest path.
 
-If you use `Directory.Packages.props` (recommended), update it in one place:
+### Before
 
 ```xml
-<!-- Before -->
-<PackageVersion Include="FunctionalDdd.RailwayOrientedProgramming" Version="2.x.x" />
-<PackageVersion Include="FunctionalDdd.DomainDrivenDesign" Version="2.x.x" />
-<PackageVersion Include="FunctionalDdd.Asp" Version="2.x.x" />
-<PackageVersion Include="FunctionalDdd.PrimitiveValueObjects" Version="2.x.x" />
-<PackageVersion Include="FunctionalDdd.PrimitiveValueObjectGenerator" Version="2.x.x" />
-
-<!-- After -->
-<PackageVersion Include="Trellis.Results" Version="3.x.x" />
-<PackageVersion Include="Trellis.DomainDrivenDesign" Version="3.x.x" />
-<PackageVersion Include="Trellis.Asp" Version="3.x.x" />
-<PackageVersion Include="Trellis.Primitives" Version="3.x.x" />
-<PackageVersion Include="Trellis.Primitives.Generator" Version="3.x.x" />
-<PackageVersion Include="Trellis.Analyzers" Version="3.x.x" />
+<ItemGroup>
+  <PackageVersion Include="FunctionalDdd.RailwayOrientedProgramming" Version="2.x.x" />
+  <PackageVersion Include="FunctionalDdd.DomainDrivenDesign" Version="2.x.x" />
+  <PackageVersion Include="FunctionalDdd.Asp" Version="2.x.x" />
+  <PackageVersion Include="FunctionalDdd.PrimitiveValueObjects" Version="2.x.x" />
+  <PackageVersion Include="FunctionalDdd.PrimitiveValueObjectGenerator" Version="2.x.x" />
+</ItemGroup>
 ```
 
-Otherwise, update each `.csproj` file individually.
+### After
 
-### 2. Update Using Statements
+```xml
+<ItemGroup>
+  <PackageVersion Include="Trellis.Results" Version="3.x.x" />
+  <PackageVersion Include="Trellis.DomainDrivenDesign" Version="3.x.x" />
+  <PackageVersion Include="Trellis.Asp" Version="3.x.x" />
+  <PackageVersion Include="Trellis.Primitives" Version="3.x.x" />
+  <PackageVersion Include="Trellis.Primitives.Generator" Version="3.x.x" />
+  <PackageVersion Include="Trellis.Analyzers" Version="3.x.x" />
+</ItemGroup>
+```
 
-Global find-and-replace in source files:
+If you do not use central package management, update each project file directly.
 
-| Find | Replace |
-|------|---------|
+## Step 2: update namespaces
+
+The most important namespace change is this:
+
+| Old | New |
+| --- | --- |
 | `using FunctionalDdd;` | `using Trellis;` |
-| `using FunctionalDdd.PrimitiveValueObjects;` | `using Trellis;` |
+| `using FunctionalDdd.PrimitiveValueObjects;` | `using Trellis.Primitives;` |
 
-All types are now in the `Trellis` namespace.
+### Why this matters
 
-### 3. Update OpenTelemetry Method Names
+Core result and DDD primitives live in `Trellis`.
 
-If you use auto-instrumentation:
+Ready-to-use value objects such as `EmailAddress`, `FirstName`, and `Money` live in `Trellis.Primitives`.
 
-| Find | Replace |
-|------|---------|
+A common migration pattern is therefore:
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+```
+
+## Step 3: update instrumentation names
+
+If you enabled OpenTelemetry integration, rename these extension methods:
+
+| Old | New |
+| --- | --- |
 | `.AddFunctionalDddRopInstrumentation()` | `.AddResultsInstrumentation()` |
 | `.AddFunctionalDddCvoInstrumentation()` | `.AddPrimitiveValueObjectInstrumentation()` |
 
-### 4. Build and Test
+## Step 4: replace Ardalis specification usage
+
+If you were using `FunctionalDdd.ArdalisSpecification`, migrate to native Trellis specifications.
+
+```csharp
+using System.Linq.Expressions;
+using Trellis;
+
+public sealed class Customer
+{
+    public bool IsActive { get; init; }
+}
+
+public sealed class ActiveCustomerSpecification : Specification<Customer>
+{
+    public override Expression<Func<Customer, bool>> ToExpression() =>
+        customer => customer.IsActive;
+}
+```
+
+## Step 5: fix the small but important gotchas
+
+### `Unit.Value` does not exist
+
+If older code or snippets refer to `Unit.Value`, replace that usage with either:
+
+```csharp
+using Trellis;
+
+var unit1 = default(Unit);
+var unit2 = new Unit();
+var success = Result.Success();
+```
+
+### Error-code comparisons should use the current Trellis codes
+
+Trellis error codes use the standard `.error` suffix for the built-in error families, for example:
+
+- `validation.error`
+- `not.found.error`
+- `forbidden.error`
+- `unexpected.error`
+
+### Built-in value objects belong in `Trellis.Primitives`
+
+If migration leaves you with missing type errors for `EmailAddress`, `FirstName`, `Money`, and similar types, add the correct namespace import rather than forcing everything into `Trellis`.
+
+## A simple before/after example
+
+### Before
+
+```csharp
+using FunctionalDdd;
+using FunctionalDdd.PrimitiveValueObjects;
+
+var result = FirstName.TryCreate(firstName)
+    .Combine(EmailAddress.TryCreate(email));
+```
+
+### After
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+
+var result = FirstName.TryCreate(firstName)
+    .Combine(EmailAddress.TryCreate(email));
+```
+
+The code shape stays the same. That is the pattern you should expect throughout the migration.
+
+## Recommended migration workflow
+
+1. Update package references.
+2. Replace namespaces.
+3. Fix instrumentation names.
+4. Replace any old specification package usage.
+5. Build.
+6. Run tests.
+7. Add `Trellis.Analyzers` if you want the compiler to help enforce current patterns.
+
+## Verification
+
+After the rename, run your normal verification commands:
 
 ```bash
 dotnet build
 dotnet test
 ```
 
-The compiler and Trellis.Analyzers will flag any issues. All types, methods, and behaviors remain identical — only the namespace and package names have changed.
+## Bottom line
 
-## No API Changes
+For most codebases, the migration is intentionally boring:
 
-All public APIs are identical between FunctionalDdd v2 and Trellis v3:
+- rename packages
+- rename namespaces
+- fix a few integration points
+- keep your domain logic largely unchanged
 
-- `Result<T>`, `Maybe<T>`, all error types — unchanged
-- `Bind`, `Map`, `Tap`, `Ensure`, `Match`, `Combine` — unchanged
-- `Aggregate<T>`, `Entity<T>`, `ValueObject` — unchanged
-- `RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal` — unchanged
-- `ToActionResult()`, `ToHttpResult()` — unchanged
-- All async extensions — unchanged
-
-## Deprecation Notice
-
-The old `FunctionalDdd.*` NuGet packages will be deprecated (not unlisted) with a pointer to the corresponding `Trellis.*` package. Existing code using the old packages will continue to work, but no new features or bug fixes will be applied to the old packages.
+That is exactly what you want from a rebrand-style migration.

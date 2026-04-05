@@ -1,33 +1,40 @@
 # Trellis.Mediator
 
-Result-aware pipeline behaviors for [martinothamar/Mediator](https://github.com/martinothamar/Mediator).
+[![NuGet Package](https://img.shields.io/nuget/v/Trellis.Mediator.svg)](https://www.nuget.org/packages/Trellis.Mediator)
 
-Provides validation, authorization, logging, tracing, and exception handling behaviors that understand Trellis `Result<T>` types and short-circuit correctly.
+Result-aware pipeline behaviors for [Mediator](https://github.com/martinothamar/Mediator) that keep handlers focused on business work.
 
-Authorization types (`Actor`, `IActorProvider`, `IAuthorize`, `IAuthorizeResource<TResource>`) live in the separate `Trellis.Authorization` package — use them with or without CQRS.
-
-## Behaviors
-
-| Behavior | Purpose |
-|----------|---------|
-| `ExceptionBehavior` | Catches unhandled exceptions → `Error.Unexpected` |
-| `TracingBehavior` | OpenTelemetry Activity with Result status |
-| `LoggingBehavior` | Structured logging with duration |
-| `AuthorizationBehavior` | Static permission checks (`IAuthorize`) |
-| `ResourceAuthorizationBehavior<,,>` | Loads resource, checks ownership (`IAuthorizeResource<TResource>`). Auto-discovered via `AddResourceAuthorization(Assembly)`. |
-| `ValidationBehavior` | Self-validation via `IValidate` |
-
-## Usage
-
-```csharp
-services.AddMediator(options =>
-{
-    options.Assemblies = [typeof(MyCommand).Assembly];
-    options.PipelineBehaviors = [.. ServiceCollectionExtensions.PipelineBehaviors];
-});
-
-// Auto-discover IAuthorizeResource<T> commands and IResourceLoader<,> implementations
-services.AddResourceAuthorization(typeof(MyCommand).Assembly);
+## Installation
+```bash
+dotnet add package Trellis.Mediator
 ```
 
-See the [full documentation](https://xavierjohn.github.io/Trellis/) for details.
+## Quick Example
+```csharp
+using Mediator;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed record GetOrderQuery(string Id) : IQuery<Result<string>>, IValidate
+{
+    public IResult Validate() =>
+        string.IsNullOrWhiteSpace(Id)
+            ? Result.Failure(Error.Validation("Order ID is required.", nameof(Id)))
+            : Result.Success();
+}
+
+builder.Services.AddMediator();
+builder.Services.AddTrellisBehaviors();
+```
+
+## Key Features
+- Adds validation, authorization, tracing, logging, and exception behaviors that understand `Result<T>`.
+- Short-circuits failures before handlers do unnecessary work.
+- Supports resource authorization with explicit or assembly-scanned registration.
+
+## Documentation
+- [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html)
+- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+
+## Part of Trellis
+This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

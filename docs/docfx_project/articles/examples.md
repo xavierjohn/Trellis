@@ -1,428 +1,292 @@
-﻿# Examples
+# Examples
 
-This page provides quick code snippets to get you started. For comprehensive real-world examples, see the [Examples Directory](https://github.com/xavierjohn/Trellis/tree/main/Examples).
+This article is a pattern library for real application code. Each section starts with the problem, then shows a working Trellis approach you can adapt.
 
-## Real-World Examples
+If you want the big-picture tutorial first, read [Introduction](intro.md) and [Basics](basics.md) before coming back here.
 
-The repository includes production-ready examples demonstrating complete systems:
+## Real-world sample projects
 
-### 🛒 [E-Commerce Order Processing](https://github.com/xavierjohn/Trellis/tree/main/Examples/EcommerceExample)
-Complete order processing with payment, inventory management, and email notifications. Demonstrates complex workflows, recovery patterns, specification-based filtering, and transaction-like behavior.
+The repository includes full examples you can browse after these snippets click:
 
-**Key Concepts**: Aggregate lifecycle, recovery, parallel validation, async workflows, specification pattern
-
-### 🏦 [Banking Transactions](https://github.com/xavierjohn/Trellis/tree/main/Examples/BankingExample)
-Banking system with fraud detection, daily limits, overdraft protection, and interest calculations. Shows security patterns and state machines.
-
-**Key Concepts**: Fraud detection, parallel fraud checks, MFA, account freeze, audit trail
-
-### 🌐 [Web API Integration](https://github.com/xavierjohn/Trellis/tree/main/Examples/SampleWeb/SampleWebApplication)
-ASP.NET Core MVC and Minimal API examples with automatic error-to-HTTP status mapping.
-
-**Key Concepts**: ToActionResult, ToHttpResult, API integration, HTTP status codes, automatic value object validation
-
-See the [Examples README](https://github.com/xavierjohn/Trellis/tree/main/Examples/README.md) for a complete guide including complexity ratings, learning paths, and common patterns.
+- [E-commerce order processing](https://github.com/xavierjohn/Trellis/tree/main/Examples/EcommerceExample)
+- [Banking workflows](https://github.com/xavierjohn/Trellis/tree/main/Examples/BankingExample)
+- [Sample Web API and Minimal API](https://github.com/xavierjohn/Trellis/tree/main/Examples/SampleWeb)
 
 ---
 
-## Quick Code Snippets
+## Example 1: validate a registration request without losing readability
 
-### Compose Multiple Operations in a Single Chain
-
-```csharp
-await GetCustomerByIdAsync(id, cancellationToken)
-    .ToResultAsync(Error.NotFound($"Customer {id} not found"))
-    .EnsureAsync(customer => customer.CanBePromoted,
-        Error.Validation("The customer has the highest status possible"))
-    .TapAsync(customer => customer.Promote())
-    .TapAsync(async (customer, ct) => 
-        await EmailGateway.SendPromotionNotificationAsync(customer.Email, ct), 
-        cancellationToken)
-    .MatchAsync(
-        onSuccess: _ => "Okay",
-        onFailure: error => error.Detail
-    );
-```
-
-**Explanation**:
-- `GetCustomerByIdAsync` returns a `Customer?` (nullable)
-- `ToResultAsync` converts `null` to a failure `Result` with `NotFoundError`
-- `EnsureAsync` validates business rules (can the customer be promoted?)
-- `TapAsync` executes side effects (promote the customer)
-- `TapAsync` sends email notification (side effect - doesn't change the result)
-- `MatchAsync` terminates the chain and returns a string
-
-### Multi-Field Validation with Combine
+**Problem:** you want to validate multiple fields, enforce a duplicate-email rule, and only run side effects when everything succeeds.
 
 ```csharp
-EmailAddress.TryCreate("user@example.com")
-    .Combine(FirstName.TryCreate("John"))
-    .Combine(LastName.TryCreate("Doe"))
-    .Bind((email, firstName, lastName) =>
-        User.Create(email, firstName, lastName));
-```
+using Trellis;
 
-**Key Points**:
-- `Combine` validates multiple fields independently
-- If **any** fail, all errors are collected (validation errors are merged)
-- Tuple destructuring automatically unpacks the three values
-- Avoiding primitive obsession prevents parameter confusion
+public partial class FirstName : RequiredString<FirstName> { }
+public partial class LastName : RequiredString<LastName> { }
+public partial class CustomerEmail : RequiredString<CustomerEmail> { }
 
-### Validation with FluentValidation
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
 
-This library integrates with [FluentValidation](https://docs.fluentvalidation.net). Domain validation logic can be reused at the API layer to return `BadRequest` with detailed validation errors.
-
-```csharp
-public class User : Aggregate<UserId>
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
 {
-    public FirstName FirstName { get; }
-    public LastName LastName { get; }
+    public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
+        Result.Success(new User(firstName, lastName, email));
+}
 
-    public static Result<User> TryCreate(FirstName firstName, LastName lastName)
+public static Result<User> RegisterUser(
+    RegisterUserRequest request,
+    Func<CustomerEmail, bool> emailExists,
+    Action<User> saveUser,
+    Action<CustomerEmail> sendWelcomeEmail)
+{
+    return FirstName.TryCreate(request.FirstName)
+        .Combine(LastName.TryCreate(request.LastName))
+        .Combine(CustomerEmail.TryCreate(request.Email, fieldName: "email"))
+        .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
+        .Ensure(user => !emailExists(user.Email), Error.Conflict("Email already registered."))
+        .Tap(saveUser)
+        .Tap(user => sendWelcomeEmail(user.Email));
+}
+```
+
+Why this works well:
+
+- `Combine` keeps independent validation together
+- `Bind` moves from validated inputs to a domain object
+- `Ensure` adds a business rule
+- `Tap` keeps side effects on the success path
+
+---
+
+## Example 2: return the right HTTP response from MVC without a giant switch statement
+
+**Problem:** controllers should be thin, but hand-mapping every result to an HTTP response gets repetitive fast.
+
+This example is based on the sample MVC application in the repository.
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+
+[ApiController]
+[Route("users")]
+public sealed class UsersController : ControllerBase
+{
+    [HttpPost]
+    public ActionResult<UserResponse> Register([FromBody] RegisterUserRequest request)
     {
-        var user = new User(firstName, lastName);
-        return Validator.ValidateToResult(user);
+        Result<UserResponse> result = RegisterCore(request);
+        return result.ToActionResult(this);
     }
 
-    private User(FirstName firstName, LastName lastName)
-        : base(UserId.NewUniqueV7())
+    private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
     {
-        FirstName = firstName;
-        LastName = lastName;
+        return string.IsNullOrWhiteSpace(request.Email)
+            ? Error.Validation("Email is required.", "email")
+            : Result.Success(new UserResponse(request.Email));
+    }
+}
+
+public sealed record RegisterUserRequest(string Email);
+public sealed record UserResponse(string Email);
+```
+
+`ToActionResult(this)` handles the common success/failure mapping so the controller can stay focused on orchestration.
+
+For the full integration guide, see [ASP.NET Core Integration](integration-aspnet.md).
+
+---
+
+## Example 3: do the same thing in Minimal APIs
+
+**Problem:** Minimal APIs are concise, but you still want Trellis errors to map cleanly to HTTP results.
+
+```csharp
+using Microsoft.AspNetCore.Builder;
+using Trellis;
+using Trellis.Asp;
+
+public static class UserRoutes
+{
+    public static void MapUserRoutes(this WebApplication app)
+    {
+        app.MapPost("/users", (RegisterUserRequest request) =>
+            RegisterCore(request).ToHttpResult());
     }
 
-    // FluentValidation rules
-    private static readonly InlineValidator<User> Validator = new()
+    private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
     {
-        v => v.RuleFor(x => x.FirstName).NotNull(),
-        v => v.RuleFor(x => x.LastName).NotNull(),
-    };
-}
-```
-
-**API Response** when LastName is missing:
-
-```http
-HTTP/1.1 400 Bad Request
-Content-Type: application/problem+json; charset=utf-8
-
-{
-  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-  "title": "One or more validation errors occurred.",
-  "status": 400,
-  "traceId": "00-c86cd9b34ca9435b688ec3a6b905b8e4-5f4c286ce90f99cb-00",
-  "errors": {
-    "lastName": [
-      "Last Name cannot be empty."
-    ]
-  }
-}
-```
-
-### Running Parallel Async Operations
-
-Execute multiple independent async operations concurrently for better performance:
-
-```csharp
-var result = await Result.ParallelAsync(
-    () => GetStudentInfoAsync(studentId, cancellationToken),
-    () => GetStudentGradesAsync(studentId, cancellationToken),
-    () => GetLibraryBooksAsync(studentId, cancellationToken)
-)
-.WhenAllAsync()
-.BindAsync(
-    (info, grades, books, ct) => PrepareReportAsync(info, grades, books, ct),
-    cancellationToken
-);
-```
-
-**Key Points:**
-- `Result.ParallelAsync` accepts factory functions that return `Task<Result<T>>`
-- All three `Get*Async` operations run **concurrently** (not sequentially)
-- `.WhenAllAsync()` waits for all operations to complete
-- Results are automatically destructured into `(info, grades, books)` tuple
-- `BindAsync` processes the combined results with `CancellationToken` support
-
-**Performance:**
-- **Sequential:** 3 × 50ms = 150ms
-- **Parallel:** max(50ms, 50ms, 50ms) = ~50ms
-- **3x faster!**
-
-### Error Matching and Handling
-
-Handle different error types with specific logic:
-
-```csharp
-return await ProcessOrderAsync(order, cancellationToken)
-    .MatchErrorAsync(
-        onValidation: err => 
-            Results.BadRequest(new { 
-                errors = err.FieldErrors.ToDictionary(
-                    f => f.FieldName, 
-                    f => f.Details.ToArray()
-                )
-            }),
-        onNotFound: err => 
-            Results.NotFound(new { message = err.Detail }),
-        onConflict: err => 
-            Results.Conflict(new { message = err.Detail }),
-        onDomain: err =>
-            Results.UnprocessableEntity(new { message = err.Detail }),
-        onError: err => 
-            Results.StatusCode(500),  // Fallback for all other errors
-        onSuccess: order => 
-            Results.Ok(new { orderId = order.Id }),
-        cancellationToken: cancellationToken
-    );
-```
-
-**Key Points**:
-- `MatchErrorAsync` discriminates between error types
-- Each error type can have its own handler
-- `onError` provides a fallback for unhandled error types
-- Automatically maps to appropriate HTTP status codes
-
-### Error Side Effects with TapError
-
-Execute side effects when errors occur without changing the result:
-
-```csharp
-var result = await ProcessPaymentAsync(order, cancellationToken)
-    .TapAsync(payment => 
-        _logger.LogInformation("Payment succeeded: {PaymentId}", payment.Id))
-    .TapOnFailureAsync(async (error, ct) => 
-        await _logger.LogErrorAsync("Payment failed: {Error}", error.Detail, ct),
-        cancellationToken)
-    .TapOnFailureAsync(async (error, ct) => 
-        await _notificationService.NotifyAdminAsync(error, ct),
-        cancellationToken);
-```
-
-**Key Points**:
-- `TapAsync` executes only on **success**
-- `TapOnFailureAsync` executes only on **failure**
-- Side effects don't change the `Result` value
-- Perfect for logging, metrics, and notifications
-
-### Error Recovery with RecoverOnFailure
-
-Provide fallback behavior when specific errors occur:
-
-```csharp
-var result = await GetUserFromCacheAsync(userId, cancellationToken)
-    .RecoverOnFailureAsync(
-        predicate: error => error is NotFoundError,
-        func: async ct => await GetUserFromDatabaseAsync(userId, ct),
-        cancellationToken: cancellationToken
-    )
-    .TapAsync(user => 
-        _logger.LogInformation("User retrieved from {Source}", 
-            user.Source == "cache" ? "cache" : "database"));
-```
-
-**Key Points**:
-- `RecoverOnFailureAsync` provides fallback on specific error types
-- Predicate determines which errors trigger recovery
-- Useful for retry logic, fallback services, default values
-
-### Retry Transient Failures
-
-For retry logic, use [the .NET resilience library](https://learn.microsoft.com/en-us/dotnet/core/resilience/) — Trellis handles functional error flow, the resilience library handles transient fault tolerance:
-
-```csharp
-// Configure HttpClient with the .NET resilience library
-services.AddHttpClient<IOrderService, OrderService>()
-    .AddStandardResilienceHandler();
-
-// Then use Trellis for functional error handling
-public async Task<Result<Order>> GetOrderAsync(string orderId, CancellationToken ct)
-{
-    return await _httpClient.GetAsync($"api/orders/{orderId}", ct)  // Resilience library handles retries
-        .HandleNotFoundAsync(Error.NotFound("Order", orderId))       // Trellis handles errors
-        .ReadResultFromJsonAsync(OrderJsonContext.Default.Order, ct);
-}
-```
-
-**Key Points**:
-- Use the .NET resilience library for retry, circuit breaker, and timeout policies
-- Use Trellis for functional error handling and composition
-- They complement each other — resilience wraps the HTTP layer, Trellis wraps the result
-
-### Read HTTP Response as Result
-
-Convert HTTP responses to `Result` with proper error handling:
-
-#### Option 1: Handle NotFound Specifically
-
-```csharp
-var result = await _httpClient.GetAsync($"api/person/{id}", cancellationToken)
-    .HandleNotFoundAsync(Error.NotFound($"Person {id} not found"))
-    .BindAsync(response => 
-        response.ReadResultMaybeFromJsonAsync<Person>(
-            PersonContext.Default.Person, 
-            cancellationToken))
-    .BindAsync(maybePerson => 
-        maybePerson.ToResult(Error.NotFound($"Person {id} returned null")));
-```
-
-#### Option 2: Custom Error Handling
-
-```csharp
-async Task<Error> HandleFailure(
-    HttpResponseMessage response, 
-    string personId, 
-    CancellationToken ct)
-{
-    var content = await response.Content.ReadAsStringAsync(ct);
-    _logger.LogError(
-        "Person API failed: {StatusCode}, {Content}, PersonId: {PersonId}", 
-        response.StatusCode, content, personId);
-    
-    return response.StatusCode switch
-    {
-        HttpStatusCode.NotFound => Error.NotFound($"Person {personId} not found"),
-        HttpStatusCode.BadRequest => Error.BadRequest("Invalid person ID format"),
-        HttpStatusCode.Unauthorized => Error.Unauthorized("Authentication required"),
-        _ => Error.Unexpected($"Unexpected error: {response.StatusCode}")
-    };
+        return string.IsNullOrWhiteSpace(request.Email)
+            ? Error.Validation("Email is required.", "email")
+            : Result.Success(new UserResponse(request.Email));
+    }
 }
 
-var result = await _httpClient.GetAsync($"api/person/{id}", cancellationToken)
-    .HandleFailureAsync(HandleFailure, id, cancellationToken)
-    .ReadResultFromJsonAsync<Person>(
-        PersonContext.Default.Person, 
-        cancellationToken);
+public sealed record RegisterUserRequest(string Email);
+public sealed record UserResponse(string Email);
 ```
 
-**Key Points**:
-- `HandleNotFoundAsync` specifically handles 404 responses
-- `HandleFailureAsync` provides custom error handling for all failure status codes
-- `ReadResultMaybeFromJsonAsync` returns `Result<Maybe<Person>>` (handles null JSON)
-- `ReadResultFromJsonAsync` returns `Result<Person>` (fails if JSON is null)
+When your endpoint is already expressed as a `Result<T>`, `ToHttpResult()` keeps the web layer very small.
 
-### Converting Nullable to Result
+---
 
-Convert nullable values to `Result` for consistent error handling:
+## Example 4: fetch independent dashboard data in parallel
 
-```csharp
-// Convert nullable reference type
-User? user = await _repository.GetByIdAsync(userId);
-var userResult = user.ToResult(Error.NotFound($"User {userId} not found"));
+**Problem:** dashboards often need several unrelated queries, and doing them sequentially makes the endpoint slower for no good reason.
 
-// Convert nullable value type
-int? age = GetAge();
-var ageResult = age.ToResult(Error.Validation("Age is required"));
-
-// Async variant
-var result = await _repository.GetByIdAsync(userId)
-    .ToResultAsync(Error.NotFound($"User {userId} not found"));
-```
-
-### Exception Handling with Try/TryAsync
-
-Safely wrap exception-throwing code:
+This example mirrors the sample dashboard endpoint in the repo.
 
 ```csharp
-// Synchronous
-Result<string> LoadFile(string path)
-{
-    return Result.Try(() => File.ReadAllText(path));
-    // Or with custom error mapping:
-    // return Result.Try(
-    //     () => File.ReadAllText(path),
-    //     ex => ex switch
-    //     {
-    //         FileNotFoundException => Error.NotFound($"File not found: {path}"),
-    //         UnauthorizedAccessException => Error.Forbidden("Access denied"),
-    //         _ => Error.Unexpected(ex.Message)
-    //     }
-    // );
-}
+using Trellis;
 
-// Asynchronous
-async Task<Result<User>> FetchUserAsync(string url, CancellationToken ct)
-{
-    return await Result.TryAsync(
-        async ct => await _httpClient.GetFromJsonAsync<User>(url, ct),
-        cancellationToken: ct
-    );
-}
-```
+public sealed record DashboardResponse(int ProductCount, int OrderCount, decimal TotalRevenue);
 
-### LINQ Query Syntax
+static Task<Result<int>> GetProductCountAsync() => Task.FromResult(Result.Success(42));
+static Task<Result<int>> GetOrderCountAsync() => Task.FromResult(Result.Success(12));
+static Task<Result<decimal>> GetRevenueAsync() => Task.FromResult(Result.Success(1850.50m));
 
-Use C# query syntax for multi-step operations:
-
-```csharp
-var result = 
-    from user in GetUser(userId)
-    from order in GetLastOrder(user)
-    from payment in ProcessPayment(order)
-    select new OrderConfirmation(user, order, payment);
-
-// Async variant
-var asyncResult = await (
-    from userId in UserId.TryCreate(userIdInput)
-    from user in GetUserAsync(userId)
-    from permissions in GetPermissionsAsync(user.Id)
-    select new UserWithPermissions(user, permissions)
-).ConfigureAwait(false);
-```
-
-**Note**: `where` clauses use a generic "filtered out" error. For domain-specific errors, use `Ensure` instead.
-
-## Common Patterns
-
-### 1. Validation Pipeline
-
-```csharp
-public Result<Order> ProcessOrder(OrderRequest request)
-{
-    return ValidateRequest(request)
-        .Bind(req => CheckInventory(req.ProductId, req.Quantity))
-        .Bind(product => ValidatePayment(request.PaymentInfo))
-        .Bind(payment => CreateOrder(request, payment))
-        .Tap(order => SendConfirmationEmail(order))
-        .TapOnFailure(error => LogOrderFailure(error));
-}
-```
-
-### 2. Async Workflow with Cancellation
-
-```csharp
-public async Task<Result<string>> PromoteCustomerAsync(
-    string customerId, 
-    CancellationToken ct)
-{
-    return await GetCustomerByIdAsync(customerId, ct)
-        .ToResultAsync(Error.NotFound($"Customer {customerId} not found"))
-        .EnsureAsync(customer => customer.CanBePromoted,
-            Error.Validation("Customer has highest status"))
-        .TapAsync(async (customer, ct) => await customer.PromoteAsync(ct), ct)
-        .BindAsync(
-            async (customer, ct) => 
-                await SendPromotionEmailAsync(customer.Email, ct), 
-            ct);
-}
-```
-
-### 3. Parallel Fraud Detection
-
-```csharp
-public async Task<Result<Transaction>> ValidateTransactionAsync(
-    Transaction transaction,
-    CancellationToken ct)
-{
-    return await Result.ParallelAsync(
-        () => CheckBlacklistAsync(transaction.AccountId, ct),
-        () => CheckVelocityLimitsAsync(transaction, ct),
-        () => CheckAmountThresholdAsync(transaction, ct),
-        () => CheckGeolocationAsync(transaction, ct)
-    )
+Result<DashboardResponse> result = await Result.ParallelAsync(
+        () => GetProductCountAsync(),
+        () => GetOrderCountAsync(),
+        () => GetRevenueAsync())
     .WhenAllAsync()
-    .BindAsync(
-        (check1, check2, check3, check4, ct) => 
-            ApproveTransactionAsync(transaction, ct),
-        ct
-    );
+    .MapAsync((productCount, orderCount, totalRevenue) =>
+        new DashboardResponse(productCount, orderCount, totalRevenue));
+```
+
+Use this pattern when:
+
+- the work is independent
+- latency matters
+- you still want one combined `Result<T>` at the end
+
+> [!TIP]
+> `ParallelAsync` starts the operations together. `WhenAllAsync()` waits for them and gives you a single result to continue the pipeline.
+
+---
+
+## Example 5: reuse FluentValidation instead of duplicating rules
+
+**Problem:** teams often end up validating once in the domain and again in the API. That is tedious and easy to drift out of sync.
+
+```csharp
+using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record CreateCustomer(string Email);
+
+var validator = new InlineValidator<CreateCustomer>();
+validator.RuleFor(x => x.Email).NotEmpty().EmailAddress();
+
+Result<CreateCustomer> result = validator.ValidateToResult(new CreateCustomer("user@example.com"));
+```
+
+If validation fails, the result becomes a `ValidationError` with field-level details. That makes it easy to carry the same rule set from your application layer to HTTP responses.
+
+See [FluentValidation Integration](integration-fluentvalidation.md) for a full walkthrough.
+
+---
+
+## Example 6: recover from a failure when a fallback is acceptable
+
+**Problem:** sometimes failure should not be the end of the story. A cache miss can fall back to the database, or a secondary provider can take over.
+
+```csharp
+using Trellis;
+
+public sealed record PricingSnapshot(string Source);
+
+Result<PricingSnapshot> cacheResult = Error.NotFound("Price not found in cache.");
+Result<PricingSnapshot> databaseResult = Result.Success(new PricingSnapshot("database"));
+
+Result<PricingSnapshot> finalResult = cacheResult.RecoverOnFailure(
+    predicate: error => error is NotFoundError,
+    func: _ => databaseResult);
+```
+
+This keeps the fallback logic explicit and local to the workflow.
+
+---
+
+## Example 7: handle async side effects and notifications cleanly
+
+**Problem:** async application code becomes noisy when loading data, checking rules, mutating state, and notifying another system all happen together.
+
+```csharp
+using Trellis;
+
+public sealed class Customer
+{
+    public Customer(string email, bool canBePromoted)
+    {
+        Email = email;
+        CanBePromoted = canBePromoted;
+    }
+
+    public string Email { get; }
+    public bool CanBePromoted { get; }
+    public Task PromoteAsync() => Task.CompletedTask;
 }
+
+static Task<Customer?> GetCustomerByIdAsync(long id) =>
+    Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
+
+static Task<Result<Unit>> SendPromotionNotificationAsync(string email) =>
+    Task.FromResult(Result.Success(new Unit()));
+
+string message = await GetCustomerByIdAsync(1)
+    .ToResultAsync(Error.NotFound("Customer not found."))
+    .EnsureAsync(customer => customer.CanBePromoted, Error.Validation("Customer cannot be promoted."))
+    .TapAsync(customer => customer.PromoteAsync())
+    .BindAsync(customer => SendPromotionNotificationAsync(customer.Email))
+    .MatchAsync(
+        onSuccess: _ => "Promotion completed.",
+        onFailure: error => error.Detail);
+```
+
+The shape is the same as the synchronous version. That is one of the nicest parts of Trellis.
+
+---
+
+## Example 8: branch on specific error types when the caller cares
+
+**Problem:** some endpoints need different behavior for validation failures, missing data, and unexpected faults.
+
+```csharp
+using Microsoft.AspNetCore.Http;
+using Trellis;
+
+Result<string> result = Error.NotFound("Order not found.");
+
+IResult httpResult = result.MatchError(
+    onSuccess: order => Results.Ok(order),
+    onValidation: error => Results.BadRequest(error.FieldErrors),
+    onNotFound: error => Results.NotFound(error.Detail),
+    onConflict: error => Results.Conflict(error.Detail),
+    onError: _ => Results.StatusCode(StatusCodes.Status500InternalServerError));
+```
+
+This is especially handy when you want to shape the HTTP response yourself instead of delegating to `ToActionResult()` or `ToHttpResult()`.
+
+---
+
+## A few patterns worth memorizing
+
+| Need | Pattern |
+| --- | --- |
+| Validate several incoming fields | `A.TryCreate(...).Combine(B.TryCreate(...))` |
+| Move from validated input to domain logic | `.Bind(...)` |
+| Add a business rule | `.Ensure(..., Error.Validation(...))` |
+| Save or notify on success | `.Tap(...)` / `.TapAsync(...)` |
+| Fallback on acceptable failures | `.RecoverOnFailure(...)` |
+| Return HTTP from MVC or Minimal API | `.ToActionResult(this)` / `.ToHttpResult()` |
+| Branch by concrete error type | `.MatchError(...)` |
+
+## Where to go next
+
+- Need the operator-by-operator tutorial? Read [Basics](basics.md)
+- Want the reasoning behind the framework? Read [Introduction](intro.md)
+- Building APIs? Read [ASP.NET Core Integration](integration-aspnet.md)
+- Need exact signatures? Use the [API reference](../api/index.md)

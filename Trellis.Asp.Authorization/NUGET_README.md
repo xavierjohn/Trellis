@@ -1,57 +1,38 @@
 # Trellis.Asp.Authorization
 
-ASP.NET Core actor providers for [Trellis](https://github.com/xavierjohn/Trellis).
+[![NuGet Package](https://img.shields.io/nuget/v/Trellis.Asp.Authorization.svg)](https://www.nuget.org/packages/Trellis.Asp.Authorization)
 
-Provides two `IActorProvider` implementations:
-- **`EntraActorProvider`** — Production. Maps Azure Entra ID v2.0 JWT claims to `Actor`.
-- **`DevelopmentActorProvider`** — Development/testing. Reads `Actor` from `X-Test-Actor` HTTP header with production environment guard.
+ASP.NET Core actor providers for turning authenticated requests into Trellis `Actor` objects.
 
-## Quick Start
+## Installation
+```bash
+dotnet add package Trellis.Asp.Authorization
+```
 
+## Quick Example
 ```csharp
+using System.Threading;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Trellis.Asp.Authorization;
+using Trellis.Authorization;
 
-if (builder.Environment.IsDevelopment())
-    builder.Services.AddDevelopmentActorProvider();
-else
-    builder.Services.AddEntraActorProvider();
+builder.Services.AddAuthentication().AddJwtBearer();
+builder.Services.AddAuthorization();
+builder.Services.AddEntraActorProvider();
+
+app.MapGet("/me", [Authorize] async (IActorProvider actors, CancellationToken ct) =>
+    Results.Ok(await actors.GetCurrentActorAsync(ct)));
 ```
 
-Default mapping:
+## Key Features
+- Includes claims-based, Azure Entra, and development actor providers.
+- Produces a single `Actor` model that the rest of your app can trust.
+- Keeps identity-provider specifics in the API layer instead of handlers and domain code.
 
-| Actor Property | Source |
-|---------------|--------|
-| `Id` | `oid` claim |
-| `Permissions` | `roles` claims |
-| `ForbiddenPermissions` | Empty (override to populate) |
-| `Attributes` | `tid`, `preferred_username`, `azp`, `azpacr`, `acrs`, `ip_address`, `mfa` |
+## Documentation
+- [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-asp-authorization.html)
+- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
 
-`mfa` is derived from the `amr` claim and treats `mfa`, `Mfa`, and `MFA` equivalently.
-
-## Customization
-
-```csharp
-builder.Services.AddEntraActorProvider(options =>
-{
-    // Flatten roles into granular permissions
-    options.MapPermissions = claims => claims
-        .Where(c => c.Type == "roles")
-        .SelectMany(role => RolePermissionMap[role.Value])
-        .ToHashSet();
-
-    // Populate deny list from a custom claim
-    options.MapForbiddenPermissions = claims => claims
-        .Where(c => c.Type == "denied_permissions")
-        .Select(c => c.Value)
-        .ToHashSet();
-});
-```
-
-If a custom `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` delegate throws, `EntraActorProvider` wraps the original exception with context identifying which delegate failed.
-
-## Requirements
-
-- .NET 10.0+
-- ASP.NET Core (for `DevelopmentActorProvider`: any environment; for `EntraActorProvider`: authentication middleware e.g., `AddMicrosoftIdentityWebApi`)
-
-See the [full documentation](https://xavierjohn.github.io/Trellis/) for details.
+## Part of Trellis
+This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

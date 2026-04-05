@@ -1,1151 +1,323 @@
-﻿# Entity Framework Core Integration
+# Entity Framework Core Integration
 
 **Level:** Intermediate 📚 | **Time:** 30-40 min | **Prerequisites:** [Basics](basics.md)
 
-Integrate Railway-Oriented Programming with Entity Framework Core for type-safe repository patterns. Learn when to use `Result<T>` vs `Maybe<T>` in your repositories.
+Entity Framework Core is usually where clean domain code starts to feel messy: value objects need converters, queries return `null`, and database exceptions leak into application code. `Trellis.EntityFrameworkCore` exists to keep that plumbing predictable.
+
+This guide starts with the smallest useful setup, then builds up to query patterns, save patterns, and the conventions Trellis adds for you.
 
 ## Table of Contents
 
-- [Installation](#installation)
-- [Value Object Configuration](#value-object-configuration)
-- [Repository Return Types](#repository-return-types)
-- [Result vs Maybe Pattern](#result-vs-maybe-pattern)
-- [Query Extensions](#query-extensions)
-- [Handling Database Exceptions](#handling-database-exceptions)
-- [Money Property Convention](#money-property-convention)
-- [Composite Value Object Convention](#composite-value-object-convention)
-- [Maybe\<T\> Property Convention](#maybe-property-convention)
-- [GUID V7 for Entity IDs](#guid-v7-for-entity-ids)
+- [Quick start](#quick-start)
+- [Querying without null checks everywhere](#querying-without-null-checks-everywhere)
+- [Saving without exception-driven flow](#saving-without-exception-driven-flow)
+- [What `ApplyTrellisConventions` actually does](#what-applytrellisconventions-actually-does)
+- [Optimistic concurrency with ETags](#optimistic-concurrency-with-etags)
+- [When to use `Maybe<T>` vs `Result<T>`](#when-to-use-maybet-vs-resultt)
+- [Manual EF Core setup without the package](#manual-ef-core-setup-without-the-package)
 
-> [!TIP]
-> This guide covers two approaches: using the **Trellis.EntityFrameworkCore** package (recommended) and a **manual** approach for teams that prefer not to take the dependency. Sections marked with 📦 use the package; sections marked with 🔧 show the manual equivalent.
+## Quick start
 
-## Installation
-
-### 📦 With Trellis.EntityFrameworkCore (Recommended)
+If you want Trellis value objects, Trellis-friendly query helpers, and save helpers that return `Result<T>`, this is the minimum setup:
 
 ```bash
 dotnet add package Trellis.EntityFrameworkCore
 ```
 
-This package provides:
-
-| Feature | Description |
-|---------|-------------|
-| `ApplyTrellisConventions` | Auto-registers EF Core value converters for scalar/symbolic Trellis value objects and auto-maps `Money` as a structured owned type |
-| `SaveChangesResultAsync` | Wraps `SaveChangesAsync` — returns `Result<int>` instead of throwing |
-| `SaveChangesResultUnitAsync` | Same as above but returns `Result<Unit>` |
-| `DbExceptionClassifier` | Provider-agnostic exception classification (SQL Server, PostgreSQL, SQLite) |
-| `FirstOrDefaultMaybeAsync` | Wraps query results in `Maybe<T>` |
-| `FirstOrDefaultResultAsync` | Wraps query results in `Result<T>` with a not-found error |
-| `SingleOrDefaultMaybeAsync` | Single-result variant returning `Maybe<T>` |
-| `.Where(specification)` | Applies a `Specification<T>` as a LINQ Where clause |
-
-### 🔧 Without the Package
-
-No extra package needed — just reference `Trellis.Results` (or whichever Trellis packages you already use) and configure EF Core manually. Each section below shows the manual equivalent.
-
-## Value Object Configuration
-
-### 📦 Convention-Based (Recommended)
-
-Override `ConfigureConventions` in your `DbContext` and call `ApplyTrellisConventions`. This registers value converters for all Trellis value objects **before** EF Core's convention engine runs, so properties are treated as scalars — not navigations.
-
 ```csharp
+using Microsoft.EntityFrameworkCore;
+using Trellis;
 using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
 
-public class AppDbContext : DbContext
+namespace MyApp.Data;
+
+public sealed class CustomerId : RequiredGuid<CustomerId>;
+public sealed class CustomerName : RequiredString<CustomerName>;
+
+public sealed class Customer : Aggregate<CustomerId>
+{
+    public CustomerName Name { get; private set; } = null!;
+    public EmailAddress Email { get; private set; } = null!;
+
+    private Customer()
+        : base(CustomerId.NewUniqueV7())
+    {
+    }
+
+    public static Result<Customer> Create(CustomerName name, EmailAddress email) =>
+        Result.Success(new Customer
+        {
+            Name = name,
+            Email = email
+        });
+}
+
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Customer> Customers => Set<Customer>();
-    public DbSet<Order> Orders => Set<Order>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.ApplyTrellisConventions(typeof(CustomerId).Assembly);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Customer>(b =>
+        modelBuilder.Entity<Customer>(builder =>
         {
-            b.HasKey(c => c.Id);
-            b.Property(c => c.Name).HasMaxLength(100).IsRequired();
-            b.Property(c => c.Email).HasMaxLength(254).IsRequired();
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Name).HasMaxLength(100);
+            builder.Property(x => x.Email).HasMaxLength(254);
         });
     }
 }
 ```
 
-`ApplyTrellisConventions` automatically:
-
-- Scans your assemblies for types implementing `IScalarValue<TSelf, TPrimitive>` (e.g., `RequiredGuid<T>`, `RequiredString<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, custom `ScalarValueObject<,>` subclasses)
-- Scans for `RequiredEnum<T>` types and stores them as strings (using `Value` / `TryFromName`)
-- Always includes the `Trellis.Primitives` assembly (for `EmailAddress`, `Url`, `PhoneNumber`, etc.)
-- Registers `AggregateETagConvention` — marks `ETag` as a concurrency token on aggregate types
-- Registers `AggregateTransientPropertyConvention` — auto-ignores `IsChanged` on aggregate types (no manual `builder.Ignore` needed)
-
-### Manual Override
-
-If you need a custom converter for a specific property, use `HasConversion` in `OnModelCreating` — it takes precedence over the convention:
+Register EF Core and Trellis interceptors in DI:
 
 ```csharp
-protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    modelBuilder.Entity<Customer>(b =>
-    {
-        // This overrides the convention-registered converter for Name
-        b.Property(c => c.Name)
-            .HasConversion(
-                name => name.Value.ToUpperInvariant(),
-                str => CustomerName.Create(str));
-    });
-}
-```
+using Microsoft.EntityFrameworkCore;
+using Trellis.EntityFrameworkCore;
 
-### Value Object Types Quick Reference
-
-| Value Object | Storage Type | Converter |
-|--------------|-------------|-----------|
-| `RequiredGuid<T>` | `Guid` | `v.Value` ↔ `T.Create(guid)` |
-| `RequiredString<T>` | `string` | `v.Value` ↔ `T.Create(str)` |
-| `RequiredInt<T>` | `int` | `v.Value` ↔ `T.Create(num)` |
-| `RequiredDecimal<T>` | `decimal` | `v.Value` ↔ `T.Create(num)` |
-| `RequiredEnum<T>` | `string` | `v.Value` ↔ symbolic value lookup via `T.TryFromName(str).Value` |
-| `EmailAddress` | `string(254)` | `v.Value` ↔ `EmailAddress.Create(str)` |
-| Custom `ScalarValueObject<T,P>` | `P` | `v.Value` ↔ `T.Create(p)` |
-| Custom composite `ValueObject` | Owned type (one column per property) | Auto-registered as owned entity |
-
-### 🔧 Manual HasConversion (Without Package)
-
-Register value converters per-property in `OnModelCreating`. You must add `HasConversion` for every Trellis value object property:
-
-```csharp
-public class AppDbContext : DbContext
-{
-    public DbSet<Customer> Customers => Set<Customer>();
-    public DbSet<Order> Orders => Set<Order>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Customer>(b =>
-        {
-            b.HasKey(c => c.Id);
-
-            // RequiredGuid<CustomerId> → Guid
-            b.Property(c => c.Id)
-                .HasConversion(id => id.Value, guid => CustomerId.Create(guid))
-                .IsRequired();
-
-            // RequiredString<CustomerName> → string
-            b.Property(c => c.Name)
-                .HasConversion(name => name.Value, str => CustomerName.Create(str))
-                .HasMaxLength(100)
-                .IsRequired();
-
-            // EmailAddress → string
-            b.Property(c => c.Email)
-                .HasConversion(email => email.Value, str => EmailAddress.Create(str))
-                .HasMaxLength(254)
-                .IsRequired();
-        });
-
-        modelBuilder.Entity<Order>(b =>
-        {
-            b.HasKey(o => o.Id);
-            b.Property(o => o.Id)
-                .HasConversion(id => id.Value, guid => OrderId.Create(guid));
-            b.Property(o => o.CustomerId)
-                .HasConversion(id => id.Value, guid => CustomerId.Create(guid));
-        });
-    }
-}
-```
-
-> [!NOTE]
-> Without `ApplyTrellisConventions`, every Trellis value object property needs an explicit `HasConversion` call. Missing one causes EF Core to treat the property as a navigation (class-typed), resulting in runtime errors.
-
-## Repository Return Types
-
-**Key Principle:** The repository (Anti-Corruption Layer) should not make domain decisions. Use the appropriate return type based on the operation's nature.
-
-### When to Use Each Type
-
-| Return Type | Use When | Example |
-|-------------|----------|---------|
-| `Result<T>` | Operation can fail due to **expected infrastructure failures** | Concurrency conflict, duplicate key, foreign key violation |
-| `Maybe<T>` | Item may or may not exist (**domain's decision**) | Looking up by email (might be checking uniqueness) |
-| `bool` | Simple existence check | `ExistsByEmailAsync(email)` |
-| `Exception` | **Unexpected infrastructure failures** | Database connection failure, network timeout, disk full |
-| `void`/`Task` | Fire-and-forget side effects | Publishing domain events |
-
-### Repository Pattern Architecture
-
-```mermaid
-graph TB
-    subgraph Controller["Controller Layer"]
-        REQ[HTTP Request]
-    end
-    
-    subgraph Service["Service/Domain Layer"]
-        VAL{Validate Input}
-        LOGIC{Business Logic}
-        DEC{Domain Decision}
-    end
-    
-    subgraph Repository["Repository Layer"]
-        QUERY[Query Methods<br/>return Maybe&lt;T&gt;]
-        COMMAND[Command Methods<br/>return Result&lt;Unit&gt;]
-    end
-    
-    subgraph Database["Database"]
-        DB[(EF Core<br/>DbContext)]
-    end
-    
-    REQ --> VAL
-    VAL -->|Valid| LOGIC
-    LOGIC --> DEC
-    
-    DEC -->|Need Data?| QUERY
-    QUERY --> DB
-    DB -.->|null?| MAYBE[Maybe&lt;T&gt;]
-    MAYBE --> DEC
-    
-    DEC -->|Save/Update?| COMMAND
-    COMMAND --> DB
-    DB -.->|Success| RES_OK[Result.Success]
-    DB -.->|Duplicate Key| RES_CONFLICT[Error.Conflict]
-    DB -.->|FK Violation| RES_DOMAIN[Error.Domain]
-    DB -.->|Concurrency| RES_CONFLICT2[Error.Conflict]
-    
-    RES_OK --> HTTP_OK[200 OK]
-    RES_CONFLICT --> HTTP_409[409 Conflict]
-    RES_DOMAIN --> HTTP_422[422 Unprocessable]
-    RES_CONFLICT2 --> HTTP_409
-    
-    style MAYBE fill:#E1F5FF
-    style RES_OK fill:#90EE90
-    style RES_CONFLICT fill:#FFB6C6
-    style RES_DOMAIN fill:#FFD700
-    style RES_CONFLICT2 fill:#FFB6C6
-```
-
-> **Note:** `DbUpdateConcurrencyException` maps to `ConflictError` (409) at the database layer. At the HTTP layer, use `OptionalETag`/`RequireETag` with the parsed `If-Match` header to return `PreconditionFailedError` (412) per RFC 9110 *before* the save attempt. If a race condition causes `DbUpdateConcurrencyException` after the ETag check passes, it surfaces as 409.
-
-### Automatic ETag Concurrency Token
-
-`Aggregate<TId>` includes a `string ETag` property that is automatically configured as a concurrency token by `ApplyTrellisConventions`. The `AggregateETagInterceptor` (registered by `AddTrellisInterceptors()`) generates a new GUID-based ETag on every save:
-
-```csharp
-// Aggregate — ETag is managed automatically, no manual configuration needed
-public class Order : Aggregate<OrderId>
-{
-    public CustomerName Customer { get; private set; } = null!;
-    public Money Total { get; private set; } = null!;
-    // ETag inherited from Aggregate<TId> — auto-generated on save
-}
-
-// DbContext — just call ApplyTrellisConventions (no manual ETag configuration)
-protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-    configurationBuilder.ApplyTrellisConventions(typeof(OrderId).Assembly);
-
-// DI — AddTrellisInterceptors registers the ETag interceptor
 services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString)
-           .AddTrellisInterceptors());  // Registers AggregateETagInterceptor
-
-// Repository — SaveChangesResultUnitAsync handles concurrency exceptions
-public async Task<Result<Unit>> SaveAsync(Order order, CancellationToken ct)
-{
-    var entry = _context.Entry(order);
-    if (entry.State == EntityState.Detached)
-        _context.Orders.Add(order);
-
-    return await _context.SaveChangesResultUnitAsync(ct);
-    // DbUpdateConcurrencyException → ConflictError (409)
-    // At HTTP layer with If-Match: → PreconditionFailedError (412)
-}
+        .AddTrellisInterceptors());
 ```
 
-**ETag lifecycle:**
-1. New aggregate → ETag is `""` (empty string)
-2. First save (Added) → interceptor generates GUID ETag (e.g., `"a1b2c3d4e5f6..."`)
-3. Subsequent saves (Modified) → interceptor generates new GUID ETag
-4. Concurrent modification → EF Core's `WHERE ETag = @original` matches 0 rows → `ConflictError`
+> [!TIP]
+> `ApplyTrellisConventions(...)` is the main entry point for model configuration. `AddTrellisInterceptors()` is the main entry point for runtime save behavior. You usually want both.
 
-## Result vs Maybe Pattern
+## Querying without null checks everywhere
 
-### ✅ Use Maybe<T> for Queries
+The main problem in repository code is not querying itself. It is answering the question, “What does absence mean here?”
 
-**When the domain needs to interpret "not found":**
+- Use `Maybe<T>` when “not found” is normal and the caller should decide what it means.
+- Use `Result<T>` when “not found” is already an error at the repository boundary.
 
 ```csharp
-public interface IUserRepository
+using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+namespace MyApp.Data;
+
+public sealed class CustomerRepository(AppDbContext db)
 {
-    // 🔍 Returns Maybe - domain decides if absence is good/bad
-    Task<Maybe<User>> GetByEmailAsync(EmailAddress email, CancellationToken ct);
-    Task<Maybe<User>> GetByIdAsync(UserId id, CancellationToken ct);
-    
-    // 🔍 Simple existence check
-    Task<bool> ExistsByEmailAsync(EmailAddress email, CancellationToken ct);
-}
+    public Task<Maybe<Customer>> GetByEmailAsync(EmailAddress email, CancellationToken ct) =>
+        db.Customers.FirstOrDefaultMaybeAsync(x => x.Email == email, ct);
 
-public class UserRepository : IUserRepository
-{
-    private readonly ApplicationDbContext _context;
-
-    public async Task<Maybe<User>> GetByEmailAsync(
-        EmailAddress email,
-        CancellationToken ct)
-    {
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email, ct);
-        
-        return Maybe.From(user);  // ✅ Neutral - just presence/absence
-    }
-
-    public async Task<bool> ExistsByEmailAsync(
-        EmailAddress email,
-        CancellationToken ct)
-    {
-        return await _context.Users
-            .AnyAsync(u => u.Email == email, ct);
-    }
+    public Task<Result<Customer>> GetRequiredAsync(CustomerId id, CancellationToken ct) =>
+        db.Customers.FirstOrDefaultResultAsync(
+            x => x.Id == id,
+            Error.NotFound($"Customer {id} was not found."),
+            ct);
 }
 ```
 
-**Domain layer interprets the Maybe:**
+> [!IMPORTANT]
+> `FirstOrDefaultResultAsync(...)` returns **the exact `Error` you pass in**. It does not automatically create a `NotFoundError`.
 
-```csharp
-// Example 1: Not found is BAD (user login)
-public async Task<Result<User>> LoginAsync(
-    EmailAddress email,
-    Password password,
-    CancellationToken ct)
-{
-    var maybeUser = await _repository.GetByEmailAsync(email, ct);
-    
-    // Domain decides: no user = error
-    if (maybeUser.HasNoValue)
-        return Error.NotFound($"User with email {email} not found");
-    
-    return maybeUser.Value.VerifyPassword(password);
-}
+### Query flow at a glance
 
-// Example 2: Not found is GOOD (checking availability)
-public async Task<Result<User>> RegisterUserAsync(
-    RegisterUserCommand cmd,
-    CancellationToken ct)
-{
-    var existingUser = await _repository.GetByEmailAsync(cmd.Email, ct);
-    
-    // Domain decides: user exists = error
-    if (existingUser.HasValue)
-        return Error.Conflict($"Email {cmd.Email} already in use");
-    
-    // No user = good, can register
-    return User.Create(cmd.Email, cmd.FirstName, cmd.LastName);
-}
-
-// Example 3: Simple boolean check
-public async Task<Result<Unit>> CheckEmailAvailabilityAsync(
-    EmailAddress email,
-    CancellationToken ct)
-{
-    var exists = await _repository.ExistsByEmailAsync(email, ct);
-    
-    if (exists)
-        return Error.Conflict("Email already in use");
-    
-    return Result.Success();
-}
+```mermaid
+flowchart LR
+    A[Repository query] --> B{Can absence be valid?}
+    B -->|Yes| C[Return Maybe<T>]
+    B -->|No| D[Return Result<T>]
+    C --> E[Caller decides what no value means]
+    D --> F[Repository supplies the exact Error]
 ```
 
-### ✅ Use Result<T> for Commands
+## Saving without exception-driven flow
 
-**When the operation can fail due to infrastructure:**
+The next pain point is `SaveChangesAsync()`: it succeeds with a row count, but failures come back as exceptions. Trellis wraps that pattern so your repository can stay on the railway.
 
-```csharp
-public interface IUserRepository
-{
-    // 🔑 Returns Result - can fail due to DB constraints, concurrency, etc.
-    Task<Result<Unit>> SaveAsync(User user, CancellationToken ct);
-    Task<Result<Unit>> DeleteAsync(UserId id, CancellationToken ct);
-}
+Use:
 
-public class UserRepository : IUserRepository
-{
-    private readonly ApplicationDbContext _context;
-
-    public async Task<Result<Unit>> SaveAsync(
-        User user,
-        CancellationToken ct)
-    {
-        _context.Users.Update(user);
-        return await _context.SaveChangesResultUnitAsync(ct);
-    }
-
-    public async Task<Result<Unit>> DeleteAsync(
-        UserId id,
-        CancellationToken ct)
-    {
-        var user = await _context.Users.FindAsync(new object[] { id }, ct);
-        
-        if (user == null)
-            return Error.NotFound($"User {id} not found");
-        
-        _context.Users.Remove(user);
-        return await _context.SaveChangesResultUnitAsync(ct);
-    }
-}
-```
-
-### Complete Repository Example
+- `SaveChangesResultAsync(...)` when you care about the row count
+- `SaveChangesResultUnitAsync(...)` when success/failure is enough
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Trellis;
 using Trellis.EntityFrameworkCore;
 
-public interface IUserRepository
+namespace MyApp.Data;
+
+public sealed class CustomerRepository(AppDbContext db)
 {
-    // Queries - return Maybe (domain interprets)
-    Task<Maybe<User>> GetByIdAsync(UserId id, CancellationToken ct);
-    Task<Maybe<User>> GetByEmailAsync(EmailAddress email, CancellationToken ct);
-    Task<bool> ExistsByEmailAsync(EmailAddress email, CancellationToken ct);
-    
-    // Commands - return Result (infrastructure can fail)
-    Task<Result<Unit>> SaveAsync(User user, CancellationToken ct);
-    Task<Result<Unit>> DeleteAsync(UserId id, CancellationToken ct);
-}
-
-public class UserRepository : IUserRepository
-{
-    private readonly ApplicationDbContext _context;
-
-    public UserRepository(ApplicationDbContext context) => _context = context;
-
-    // Maybe pattern - domain decides if "not found" is good/bad
-    public async Task<Maybe<User>> GetByIdAsync(UserId id, CancellationToken ct) =>
-        await _context.Users.FirstOrDefaultMaybeAsync(u => u.Id == id, ct);
-
-    public async Task<Maybe<User>> GetByEmailAsync(EmailAddress email, CancellationToken ct) =>
-        await _context.Users.FirstOrDefaultMaybeAsync(u => u.Email == email, ct);
-
-    public async Task<bool> ExistsByEmailAsync(EmailAddress email, CancellationToken ct) =>
-        await _context.Users.AnyAsync(u => u.Email == email, ct);
-
-    // Result pattern - infrastructure can fail
-    public async Task<Result<Unit>> SaveAsync(User user, CancellationToken ct)
+    public async Task<Result<Unit>> AddAsync(Customer customer, CancellationToken ct)
     {
-        _context.Users.Update(user);
-        return await _context.SaveChangesResultUnitAsync(ct);
+        db.Customers.Add(customer);
+        return await db.SaveChangesResultUnitAsync(ct);
     }
 
-    public async Task<Result<Unit>> DeleteAsync(UserId id, CancellationToken ct)
-    {
-        var user = await _context.Users.FindAsync(new object[] { id }, ct);
-        
-        if (user == null)
-            return Error.NotFound($"User {id} not found");
-        
-        _context.Users.Remove(user);
-        return await _context.SaveChangesResultUnitAsync(ct);
-    }
+    public async Task<Result<int>> SaveAsync(CancellationToken ct) =>
+        await db.SaveChangesResultAsync(ct);
 }
 ```
 
-## Query Extensions
+### How save failures are mapped
 
-### 📦 With Package
-
-`Trellis.EntityFrameworkCore` provides query extension methods that wrap EF Core results in `Maybe<T>` or `Result<T>`, so you don't need to write your own nullable conversion helpers.
-
-#### Maybe — When Absence Is Neutral
-
-Use `FirstOrDefaultMaybeAsync` or `SingleOrDefaultMaybeAsync` when the domain layer should decide whether "not found" is good or bad:
-
-```csharp
-public async Task<Maybe<User>> GetByEmailAsync(
-    EmailAddress email,
-    CancellationToken ct) =>
-    await _context.Users
-        .FirstOrDefaultMaybeAsync(u => u.Email == email, ct);
-```
-
-#### Result — When "Not Found" Is the Error
-
-Use `FirstOrDefaultResultAsync` when absence is always an error:
-
-```csharp
-public async Task<Result<User>> GetByIdAsync(
-    UserId id,
-    CancellationToken ct) =>
-    await _context.Users
-        .FirstOrDefaultResultAsync(
-            u => u.Id == id,
-            Error.NotFound($"User {id} not found"),
-            ct);
-```
-
-#### Specification Integration
-
-Apply a `Specification<T>` directly as a LINQ Where clause:
-
-```csharp
-public async Task<List<Order>> GetActiveOrdersAsync(CancellationToken ct) =>
-    await _context.Orders
-        .Where(new ActiveOrderSpecification())
-        .ToListAsync(ct);
-```
-
-### 🔧 Without Package
-
-Use `FirstOrDefaultAsync` and wrap the result with `Maybe.From` or check for null:
-
-```csharp
-// Maybe pattern
-public async Task<Maybe<User>> GetByEmailAsync(
-    EmailAddress email,
-    CancellationToken ct)
-{
-    var user = await _context.Users
-        .FirstOrDefaultAsync(u => u.Email == email, ct);
-    return Maybe.From(user);
-}
-
-// Result pattern
-public async Task<Result<User>> GetByIdAsync(
-    UserId id,
-    CancellationToken ct)
-{
-    var user = await _context.Users
-        .FirstOrDefaultAsync(u => u.Id == id, ct);
-    return user is not null
-        ? Result.Success(user)
-        : Result.Failure<User>(Error.NotFound($"User {id} not found"));
-}
-```
-
-## Handling Database Exceptions
-
-**Key Principle:** Only convert **expected failures** to `Result<T>`. Let **unexpected failures** (infrastructure exceptions) propagate as exceptions.
-
-### 📦 With Package
-
-#### SaveChangesResultAsync
-
-The simplest approach — `SaveChangesResultAsync` handles exception classification for you:
-
-```csharp
-public async Task<Result<Unit>> SaveAsync(User user, CancellationToken ct)
-{
-    _context.Users.Update(user);
-    return await _context.SaveChangesResultUnitAsync(ct);
-    // Concurrency conflict → Error.Conflict
-    // At HTTP layer: If-Match header → OptionalETag → PreconditionFailedError (412)
-    // Duplicate key → Error.Conflict
-    // Foreign key violation → Error.Domain
-    // Connection failure, timeout → exception propagates
-}
-```
-
-#### DbExceptionClassifier
-
-For custom error messages per exception type, use `DbExceptionClassifier` directly. It works with SQL Server, PostgreSQL, and SQLite:
-
-```csharp
-public async Task<Result<Unit>> SaveAsync(User user, CancellationToken ct)
-{
-    try
-    {
-        _context.Users.Update(user);
-        await _context.SaveChangesAsync(ct);
-        return Result.Success();
-    }
-    catch (DbUpdateConcurrencyException)
-    {
-        return Error.Conflict("User was modified by another process");
-    }
-    catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
-    {
-        return Error.Conflict("User with this email already exists");
-    }
-    catch (DbUpdateException ex) when (DbExceptionClassifier.IsForeignKeyViolation(ex))
-    {
-        return Error.Domain("Cannot save user due to referential integrity");
-    }
-    // Unexpected failures (connection, timeout) propagate as exceptions
-}
-```
-
-### 🔧 Without Package
-
-Write your own exception classification using `DbUpdateException.InnerException` message inspection:
-
-```csharp
-public async Task<Result<Unit>> SaveAsync(User user, CancellationToken ct)
-{
-    try
-    {
-        _context.Users.Update(user);
-        await _context.SaveChangesAsync(ct);
-        return Result.Success();
-    }
-    catch (DbUpdateConcurrencyException)
-    {
-        return Error.Conflict("User was modified by another process");
-    }
-    catch (DbUpdateException ex) when (IsDuplicateKey(ex))
-    {
-        return Error.Conflict("User with this email already exists");
-    }
-    catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
-    {
-        return Error.Domain("Cannot save user due to referential integrity");
-    }
-    // Don't catch generic Exception — let infrastructure failures propagate
-}
-
-private static bool IsDuplicateKey(DbUpdateException ex) =>
-    ex.InnerException?.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) == true
-    || ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true;
-
-private static bool IsForeignKeyViolation(DbUpdateException ex) =>
-    ex.InnerException?.Message.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase) == true
-    || ex.InnerException?.Message.Contains("violates foreign key", StringComparison.OrdinalIgnoreCase) == true;
-```
+| EF Core failure | Trellis result |
+| --- | --- |
+| `DbUpdateConcurrencyException` | `ConflictError` (`conflict.error`) |
+| Duplicate key `DbUpdateException` | `ConflictError` (`conflict.error`) |
+| Foreign key `DbUpdateException` | `DomainError` (`domain.error`) |
 
 > [!NOTE]
-> The manual approach uses message-string matching which is fragile across database providers. `DbExceptionClassifier` in the package handles SQL Server error numbers, PostgreSQL SqlState codes, and SQLite messages correctly.
+> The Trellis save helpers call EF Core’s `SaveChangesAsync(...)` internally. The public API you should use is `SaveChangesResultAsync(...)` or `SaveChangesResultUnitAsync(...)`.
 
-### Expected vs Unexpected Failures
+## What `ApplyTrellisConventions` actually does
 
-| Type | Example | Handling |
-|------|---------|----------|
-| **Expected Failure** | Duplicate key, concurrency conflict, foreign key violation | Convert to `Result<T>` with appropriate error |
-| **Unexpected Failure** | Database connection failure, network timeout | Let exception propagate (don't catch) |
+Most teams adopt the package for one reason: they do not want to hand-write `HasConversion(...)` for every value object. That is the first benefit, but not the only one.
 
-### Exception Handling Strategy
+When you call `ApplyTrellisConventions(...)`, Trellis:
 
-```mermaid
-flowchart TB
-    START[Database Operation] --> CATCH{Exception Type?}
-    
-    CATCH -->|DbUpdateConcurrencyException| EXPECTED1[Expected Failure]
-    CATCH -->|DbUpdateException<br/>Duplicate Key| EXPECTED2[Expected Failure]
-    CATCH -->|DbUpdateException<br/>Foreign Key| EXPECTED3[Expected Failure]
-    CATCH -->|Connection Error<br/>Timeout<br/>Network Issue| UNEXPECTED[Unexpected Failure]
-    
-    EXPECTED1 --> CONVERT1[Convert to Result<br/>Error.Conflict]
-    EXPECTED2 --> CONVERT2[Convert to Result<br/>Error.Conflict]
-    EXPECTED3 --> CONVERT3[Convert to Result<br/>Error.Domain]
-    
-    CONVERT1 --> RETURN[Return Result&lt;T&gt;<br/>to caller]
-    CONVERT2 --> RETURN
-    CONVERT3 --> RETURN
-    
-    UNEXPECTED --> PROPAGATE[Let Exception<br/>Propagate]
-    PROPAGATE --> GLOBAL[Global Exception<br/>Handler]
-    GLOBAL --> RETRY{Retry Policy?}
-    RETRY -->|Transient| CIRCUIT[Circuit Breaker]
-    RETRY -->|Non-Transient| LOG[Log & Return 500]
-    
-    RETURN --> HTTP_4XX[4xx Response<br/>Client Error]
-    LOG --> HTTP_500[500 Response<br/>Server Error]
-    
-    style EXPECTED1 fill:#FFE1A8
-    style EXPECTED2 fill:#FFE1A8
-    style EXPECTED3 fill:#FFE1A8
-    style UNEXPECTED fill:#FFB6C6
-    style RETURN fill:#90EE90
-    style PROPAGATE fill:#FF6B6B
-```
+- scans the assemblies you pass in for Trellis value object types
+- always includes built-in Trellis primitives for scalar value objects
+- registers scalar converters up front so EF Core treats those types as scalar properties
+- applies `Maybe<T>` conventions
+- applies composite value object conventions
+- applies `Money` conventions
+- marks aggregate `ETag` as a concurrency token
+- ignores transient aggregate properties such as `IsChanged`
 
-### ❌ Don't Catch Unexpected Failures
+### A subtle but important detail about composite value objects
 
-```csharp
-// ❌ Bad - catches ALL exceptions, even unexpected ones
-public async Task<Result<User>> SaveAsync(User user, CancellationToken ct)
-{
-    try
-    {
-        _context.Users.Update(user);
-        await _context.SaveChangesAsync(ct);
-        return Result.Success(user);
-    }
-    catch (Exception ex)  // ❌ Too broad - hides infrastructure problems
-    {
-        _logger.LogError(ex, "Failed to save user");
-        return Error.Unexpected("Failed to save user");
-    }
-}
+Composite value objects are not treated like scalar converters. They follow **owned-type conventions**.
 
-// ✅ Good - only catch expected failures (or use SaveChangesResultUnitAsync)
-public async Task<Result<Unit>> SaveAsync(User user, CancellationToken ct)
-{
-    _context.Users.Update(user);
-    return await _context.SaveChangesResultUnitAsync(ct);
-    // Database connection failures, etc. will propagate as exceptions
-}
-```
+That matters because:
 
-### Why Let Unexpected Failures Propagate?
+- a composite value object becomes structured EF Core mapping, not a single scalar column
+- `Maybe<T>` around an owned composite can stay inline **only when EF Core can model it safely**
+- when a `Maybe<T>` owned value has nested owned types or non-nullable value-type members, Trellis moves it to a separate owned table instead of generating invalid nullable inline mapping
 
-1. **Infrastructure problems need different handling** - Connection failures, timeouts, etc. should bubble up to global exception handlers, retry policies, or circuit breakers
+> [!WARNING]
+> `ApplyTrellisConventions(...)` only discovers composite value objects in the assemblies you explicitly pass in. If a composite type lives in another assembly, include that assembly too.
 
-2. **Hiding infrastructure failures is dangerous** - If the database is down, wrapping it in `Result<T>` makes it look like a normal business failure
+## Maybe property convention
 
-3. **Let the infrastructure layer fail fast** - The calling layer can decide how to handle infrastructure exceptions (retry, circuit breaker, failover)
+`Maybe<T>` solves a domain problem—optional values—while EF Core still needs a storage strategy.
 
-4. **Logging and monitoring** - Exception middleware, Application Insights, and monitoring tools can properly track infrastructure failures
+Trellis handles two common cases for you:
 
-### Complete Repository Example with SaveChangesResultAsync
+- `Maybe<T>` over a scalar value object maps through scalar conversion rules
+- `Maybe<T>` over an owned composite value object follows owned-type rules
+
+For owned composites, Trellis prefers inline nullable columns when EF Core can represent them safely. If the owned value contains nested owned types or non-nullable value-type members, Trellis switches to a separate owned table instead.
+
+That keeps your domain model expressive without forcing you to hand-author the tricky nullability mapping yourself.
+
+## Optimistic concurrency with ETags
+
+Concurrency bugs are hard to reason about after the fact. Trellis gives aggregates an `ETag` story that works with EF Core instead of around it.
+
+You do **not** configure internal convention or interceptor types directly. The supported public API is:
+
+- `ApplyTrellisConventions(...)`
+- `AddTrellisInterceptors()`
+
+Once those are registered:
+
+- aggregate `ETag` is configured as a concurrency token
+- a new ETag is generated when an aggregate is **Added**
+- a new ETag is generated when an aggregate is **Modified**
+- aggregate roots can also be promoted when loaded dependents changed, so concurrency still works at the aggregate boundary
 
 ```csharp
-// Configure EF Core retry policy for transient failures in Program.cs:
-//   builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//       options.UseSqlServer(connectionString,
-//           sqlOptions => sqlOptions.EnableRetryOnFailure()));
+using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
 
-public class UserRepository : IUserRepository
+namespace MyApp.Data;
+
+public sealed class OrderId : RequiredGuid<OrderId>;
+
+public sealed class Order : Aggregate<OrderId>
 {
-    private readonly ApplicationDbContext _context;
+    public string Description { get; private set; } = string.Empty;
 
-    public UserRepository(ApplicationDbContext context) => _context = context;
-
-    public async Task<Maybe<User>> GetByIdAsync(UserId id, CancellationToken ct) =>
-        await _context.Users
-            .FirstOrDefaultMaybeAsync(u => u.Id == id, ct);
-
-    public async Task<Maybe<User>> GetByEmailAsync(EmailAddress email, CancellationToken ct) =>
-        await _context.Users
-            .FirstOrDefaultMaybeAsync(u => u.Email == email, ct);
-
-    public async Task<Result<Unit>> SaveAsync(User user, CancellationToken ct)
+    private Order()
+        : base(OrderId.NewUniqueV7())
     {
-        _context.Users.Update(user);
-        return await _context.SaveChangesResultUnitAsync(ct);
-        // EF Core handles transient retries via EnableRetryOnFailure
-        // Expected failures (duplicate key, concurrency) → Result error
-        // Non-transient failures → exception propagates
+    }
+
+    public static Order Create(string description) =>
+        new()
+        {
+            Description = description
+        };
+
+    public void Rename(string description) => Description = description;
+}
+```
+
+```csharp
+public sealed class OrderRepository(AppDbContext db)
+{
+    public async Task<Result<Unit>> UpdateAsync(Order order, CancellationToken ct)
+    {
+        db.Orders.Update(order);
+        return await db.SaveChangesResultUnitAsync(ct);
     }
 }
 ```
 
-### ✅ Use Maybe<T> for Queries
+If another writer changed the same aggregate first, EF Core throws `DbUpdateConcurrencyException` and Trellis converts that to `ConflictError` with the standard `conflict.error` code.
 
-**When the domain needs to interpret "not found":**
+## When to use `Maybe<T>` vs `Result<T>`
 
-```mermaid
-flowchart LR
-    subgraph Repository
-        REPO_QUERY[Repository Query<br/>GetByEmailAsync]
-        DB_QUERY[(Database Query<br/>FirstOrDefaultAsync)]
-    end
-    
-    subgraph Domain
-        CHECK{User exists?}
-        LOGIN[Login Flow<br/>HasNoValue = Error]
-        REGISTER[Register Flow<br/>HasValue = Error]
-    end
-    
-    REPO_QUERY --> DB_QUERY
-    DB_QUERY -->|User or null| MAYBE[Maybe&lt;User&gt;]
-    MAYBE --> CHECK
-    
-    CHECK -->|Login scenario| LOGIN
-    CHECK -->|Register scenario| REGISTER
-    
-    LOGIN -->|HasNoValue| ERR1[Error.NotFound<br/>User not found]
-    LOGIN -->|HasValue| OK1[Result.Success<br/>Verify password]
-    
-    REGISTER -->|HasValue| ERR2[Error.Conflict<br/>Email taken]
-    REGISTER -->|HasNoValue| OK2[Result.Success<br/>Can register]
-    
-    style MAYBE fill:#E1F5FF
-    style ERR1 fill:#FFB6C6
-    style ERR2 fill:#FFB6C6
-    style OK1 fill:#90EE90
-    style OK2 fill:#90EE90
-```
+This is the repository design rule that keeps your application layer clear.
 
-**Implementation:**
+| Return type | Use it when | Example |
+| --- | --- | --- |
+| `Maybe<T>` | absence is data, not failure | “Find customer by email” |
+| `Result<T>` | the repository should decide the failure | “Load required customer” |
+| `Result<Unit>` | command succeeded or failed | save, delete, update |
+| `bool` | you only need existence | uniqueness checks |
 
+### Practical rule of thumb
 
-### ✅ Use Result<T> for Commands
+- Query by optional business key? Start with `Maybe<T>`.
+- Load a required resource for a command handler? Use `Result<T>`.
+- Persist changes? Use `SaveChangesResultUnitAsync(...)`.
 
-**When the operation can fail due to infrastructure:**
+## Manual EF Core setup without the package
 
-```mermaid
-flowchart TB
-    START[SaveAsync User] --> TRY{Try SaveChangesAsync}
-    
-    TRY -->|Success| SUCCESS[Result.Success]
-    
-    TRY -->|DbUpdateConcurrencyException| CONFLICT1[Error.Conflict<br/>Modified by another process]
-    
-    TRY -->|DbUpdateException<br/>Duplicate Key| CONFLICT2[Error.Conflict<br/>Email already exists]
-    
-    TRY -->|DbUpdateException<br/>Foreign Key| DOMAIN[Error.Domain<br/>Referential integrity]
-    
-    TRY -->|Other Exception<br/>Connection/Timeout| PROPAGATE[Exception Propagates<br/>Global Handler]
-    
-    SUCCESS --> HTTP_200[200 OK]
-    CONFLICT1 --> HTTP_409[409 Conflict]
-    CONFLICT2 --> HTTP_409_2[409 Conflict]
-    DOMAIN --> HTTP_422[422 Unprocessable]
-    PROPAGATE --> HTTP_500[500 Internal Server Error]
-    
-    style SUCCESS fill:#90EE90
-    style CONFLICT1 fill:#FFB6C6
-    style CONFLICT2 fill:#FFB6C6
-    style DOMAIN fill:#FFD700
-    style PROPAGATE fill:#FF6B6B
-```
-
-## GUID V7 for Entity IDs
-
-GUID V7 (`NewUniqueV7()`) provides the same benefits as ULIDs — time-ordered, sequential, timestamp-embedded — while using the standard `System.Guid` type with better database index performance than random GUIDs:
+Some teams prefer to keep EF Core mapping explicit. That is fine—you just take on the wiring yourself.
 
 ```csharp
-// Define GUID-based identifiers
-public partial class OrderId : RequiredGuid<OrderId> { }
-public partial class CustomerId : RequiredGuid<CustomerId> { }
+using Microsoft.EntityFrameworkCore;
+using Trellis.Primitives;
 
-// GUID V7s sort chronologically - great for database indexes!
-var orders = await context.Orders
-    .OrderBy(o => o.Id)  // Natural creation-time ordering
-    .Take(10)
-    .ToListAsync();
-```
-
-| Feature | GUID V7 | GUID V4 |
-|---------|---------|----------|
-| **Database Index Performance** | ✅ Sequential (better) | ❌ Random (fragmentation) |
-| **Natural Ordering** | ✅ By creation time | ❌ Random |
-| **Use Case** | Orders, Events, Logs | Legacy systems |
-
-## Money Property Convention
-
-`Money` properties on entities are automatically mapped as owned types by `ApplyTrellisConventions` — no `OwnsOne` configuration needed.
-That is the expected structured-value-object path, not a scalar converter special case.
-
-### How It Works
-
-The `MoneyConvention` (registered by `ApplyTrellisConventions`) uses two EF Core convention interfaces:
-- `IModelInitializedConvention` — calls `modelBuilder.Owned(typeof(Money))` to pre-register Money as an owned type before entity discovery runs
-- `IModelFinalizingConvention` — sets column names, precision, and max length on the owned Money properties
-
-### Entity Declaration
-
-Just declare `Money` properties on your entities:
-
-```csharp
-public class Order
+protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
-    public OrderId Id { get; set; } = null!;
-    public Money Price { get; set; } = null!;
-    public Money ShippingCost { get; set; } = null!;
-}
-```
-
-### Column Naming Convention
-
-| Property Name | Amount Column | Currency Column |
-|---------------|---------------|------------------|
-| `Price` | `Price` | `PriceCurrency` |
-| `ShippingCost` | `ShippingCost` | `ShippingCostCurrency` |
-
-Amount columns use `decimal(18,3)` precision. Currency columns use `nvarchar(3)` (ISO 4217). Scale 3 accommodates all ISO 4217 minor units (0 for JPY, 2 for USD/EUR, 3 for BHD/KWD/OMR/TND).
-
-### Explicit Override
-
-If you need custom column names or precision, use `OwnsOne` in `OnModelCreating` — explicit configuration takes precedence:
-
-```csharp
-modelBuilder.Entity<Order>(b =>
-{
-    b.OwnsOne(o => o.Price, money =>
+    modelBuilder.Entity<Customer>(builder =>
     {
-        money.Property(m => m.Amount).HasColumnName("UnitPrice").HasPrecision(19, 4);
-        money.Property(m => m.Currency).HasColumnName("UnitCurrency");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id)
+            .HasConversion(id => id.Value, value => CustomerId.Create(value));
+
+        builder.Property(x => x.Name)
+            .HasConversion(name => name.Value, value => CustomerName.Create(value))
+            .HasMaxLength(100);
+
+        builder.Property(x => x.Email)
+            .HasConversion(email => email.Value, value => EmailAddress.Create(value))
+            .HasMaxLength(254);
     });
-});
-```
-
-> [!NOTE]
-> Multiple `Money` properties on the same entity work automatically — each gets its own pair of columns.
-
-### MonetaryAmount (Single-Currency Alternative)
-
-If your system uses one currency everywhere, use `MonetaryAmount` instead of `Money`. It is a scalar value object (`ScalarValueObject<MonetaryAmount, decimal>`) so it maps to a **single `decimal` column** automatically via `ApplyTrellisConventions` — the same convention that handles all `IScalarValue` types. No owned-type configuration needed.
-
-```csharp
-public class Invoice
-{
-    public InvoiceId Id { get; set; } = null!;
-    public MonetaryAmount Total { get; set; } = null!;     // 1 decimal column: Total
-    public partial Maybe<MonetaryAmount> Discount { get; set; }  // 1 nullable column: Discount
 }
 ```
 
-### Optional Money with Maybe\<Money\>
-
-For optional Money properties, use `partial Maybe<Money>`. The conventions auto-configure it as an optional owned type — no `OwnsOne` needed:
-
-```csharp
-public partial class Penalty : Aggregate<PenaltyId>
-{
-    public Money Fine { get; set; } = null!;              // required Money (2 NOT NULL columns)
-    public partial Maybe<Money> FinePaid { get; set; }    // optional Money (2 nullable columns)
-}
-```
-
-Column naming follows the same convention: `FinePaid` (nullable `decimal(18,3)`) and `FinePaidCurrency` (nullable `nvarchar(3)`).
-
-> [!WARNING]
-> `ExecuteUpdate` helpers (`SetMaybeValue`/`SetMaybeNone`) do not support `Maybe<Money>`. Use tracked entity updates (load, modify, `SaveChangesAsync`) instead.
-
-## Composite Value Object Convention
-
-Any type extending `ValueObject` that does not implement `IScalarValue` is automatically registered as an EF Core owned type by `ApplyTrellisConventions`. No `OwnsOne` configuration needed.
-
-### Entity Declaration
-
-Use the `[OwnedEntity]` attribute on a `partial` class to auto-generate the private parameterless constructor required by EF Core:
-
-```csharp
-[OwnedEntity]
-public partial class Address : ValueObject
-{
-    public string Street { get; private set; }
-    public string City { get; private set; }
-    public string State { get; private set; }
-    public string ZipCode { get; private set; }
-
-    public Address(string street, string city, string state, string zipCode)
-    { Street = street; City = city; State = state; ZipCode = zipCode; }
-
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
-    { yield return Street; yield return City; yield return State; yield return ZipCode; }
-}
-// Generator emits: private Address() { Street = null!; City = null!; State = null!; ZipCode = null!; }
-```
-
-> **Diagnostics:** `TRLSGEN101` (error) if the type is not `partial`; `TRLSGEN102` (warning) if it already has a parameterless constructor.
-
-### Required and Optional Properties
-
-```csharp
-public partial class Customer : Aggregate<CustomerId>
-{
-    public Address ShippingAddress { get; set; } = null!;           // required (4 NOT NULL columns)
-    public partial Maybe<Address> BillingAddress { get; set; }      // optional (4 nullable columns)
-}
-```
-
-Required composite VO properties produce NOT NULL columns. `Maybe<T>` composite VO properties produce nullable columns with the original property name as column prefix.
-
-### How It Works
-
-The `CompositeValueObjectConvention` (registered by `ApplyTrellisConventions`) scans provided assemblies for `ValueObject` subclasses that are not `IScalarValue`, then:
-
-1. **Model initialization** — calls `modelBuilder.Owned(type)` for each discovered composite VO
-2. **Model finalization** — for `Maybe<T>` navigations, marks all owned columns as nullable and fixes column naming to use the original property name prefix
-
-`Money` retains its specialized column naming (e.g., `Price` + `PriceCurrency`) via `MoneyConvention`, which runs after and overrides the generic convention.
-
-### Explicit Override
-
-Explicit `OwnsOne` in `OnModelCreating` takes precedence:
-
-```csharp
-modelBuilder.Entity<Customer>(b => b.OwnsOne(c => c.ShippingAddress, a =>
-{
-    a.Property(x => x.Street).HasColumnName("addr_street");
-    a.Property(x => x.City).HasColumnName("addr_city");
-}));
-```
-
-> [!NOTE]
-> Composite value objects with nested owned types (e.g., `Maybe<Address>` where `Address` has a `Money` property) are supported. The convention maps the optional dependent to a **separate table** (`{OwnerType}_{PropertyName}`) instead of inlining nullable columns into the owner. All columns remain NOT NULL; optionality is expressed by row presence/absence. You can override the table name with explicit `OwnsOne` and `ToTable()` configuration.
-
-## <a id="maybe-property-convention"></a>Maybe\<T\> Property Convention
-
-`Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional — calling `IsRequired(false)` or setting `IsNullable = true` throws `InvalidOperationException`. Trellis keeps the primary programming model at the CLR property level and hides the EF workaround behind generated code, conventions, and helpers.
-
-### Entity Declaration
-
-Declare optional properties as `partial Maybe<T>`:
-
-```csharp
-public partial class Customer
-{
-    public CustomerId Id { get; set; } = null!;
-    public CustomerName Name { get; set; } = null!;
-
-    public partial Maybe<PhoneNumber> Phone { get; set; }
-    public partial Maybe<DateTime> SubmittedAt { get; set; }
-}
-```
-
-No `OnModelCreating` configuration needed — `MaybeConvention` (registered by `ApplyTrellisConventions`) handles everything automatically.
-
-When `T` is a composite owned type (e.g., `Money`), `MaybeConvention` creates an optional ownership navigation instead of a scalar column — see [Optional Money with Maybe\<Money\>](#optional-money-with-maybemoney) above.
-
-### Day-to-Day Usage
-
-Use the property-level helpers when querying, indexing, updating, or diagnosing `Maybe<T>` mappings:
-
-```csharp
-var withoutPhone = await context.Customers.WhereNone(c => c.Phone).ToListAsync(ct);
-
-var withPhone = await context.Customers.WhereHasValue(c => c.Phone).ToListAsync(ct);
-
-var matches = await context.Customers.WhereEquals(c => c.Phone, phone).ToListAsync(ct);
-
-// Comparison operators for Maybe<T> (requires IComparable<T>)
-var cutoff = DateTime.UtcNow.AddDays(-7);
-var overdue = await context.Orders
-    .WhereLessThan(o => o.SubmittedAt, cutoff)
-    .ToListAsync(ct);
-
-// With MaybeQueryInterceptor, natural LINQ also works:
-// Register via: optionsBuilder.AddTrellisInterceptors()
-var overdueNatural = await context.Orders
-    .Where(o => o.SubmittedAt.HasValue && o.SubmittedAt.Value < cutoff)
-    .ToListAsync(ct);
-
-modelBuilder.Entity<Customer>(builder =>
-{
-    builder.HasKey(c => c.Id);
-    builder.HasTrellisIndex(c => c.Phone);
-    builder.HasTrellisIndex(c => new { c.Name, c.SubmittedAt });
-});
-
-await context.Customers
-    .Where(c => c.Id == customerId)
-    .ExecuteUpdateAsync(setters => setters.SetMaybeValue(c => c.Phone, phone), ct);
-
-var mappings = context.GetMaybePropertyMappings();
-var debugView = context.ToMaybeMappingDebugString();
-```
-
-> [!WARNING]
-> Do not use direct property references like `.Where(c => c.Phone.HasValue)` — EF Core cannot translate them. Use the Trellis query helpers instead.
-
-## Scalar Value Object LINQ Support
-
-When `AddTrellisInterceptors()` is registered, scalar value objects (`RequiredString<T>`, `RequiredGuid<T>`, `RequiredDateTime<T>`, etc.) can be used naturally in LINQ queries without accessing `.Value`. The `ScalarValueQueryInterceptor` rewrites expression trees to use the implicit conversion operator, which EF Core translates via the registered value converter.
-
-### LINQ Support Matrix
-
-| Scenario | Example | Types | `.Value` needed? |
-|----------|---------|-------|:---:|
-| Equality (VO vs primitive) | `c.Name == "Alice"` | `RequiredString<Name>` vs `string` | No |
-| Equality (VO vs VO) | `c.Name == someName` | `Name` vs `Name` | No |
-| Comparison (VO vs primitive) | `todo.DueDate < cutoff` | `RequiredDateTime<DueDate>` vs `DateTime` | No |
-| Comparison (VO vs VO) | `todo.DueDate < someDueDate` | `DueDate` vs `DueDate` | No |
-| StartsWith | `c.Name.StartsWith("Al")` | method on `RequiredString<Name>` | No |
-| Contains | `c.Name.Contains("lic")` | method on `RequiredString<Name>` | No |
-| EndsWith | `c.Name.EndsWith("ce")` | method on `RequiredString<Name>` | No |
-| Length | `c.Name.Length > 3` | property on `RequiredString<Name>` | No |
-| OrderBy | `OrderBy(c => c.Name)` | key selector returns `Name` | No |
-| Specification | `todo.DueDate < _asOf` | `DueDate` vs `DateTime` (implicit conversion) | No |
-| Select to primitive | `Select(c => c.Name.Value)` | projects `string` | **Yes** |
-| String.Substring | `c.Name.Value.Substring(0,3)` | method on `string` only | **Yes** |
-
-### Specification Example
-
-Specifications work naturally with value objects — no `.Value` needed:
-
-```csharp
-public class OverdueTodoSpecification : Specification<TodoItem>
-{
-    private readonly DateTime _asOf;
-    public OverdueTodoSpecification(DateTime asOf) => _asOf = asOf;
-
-    public override Expression<Func<TodoItem, bool>> ToExpression() =>
-        todo => todo.Status == TodoStatus.Active && todo.DueDate < _asOf;
-}
-
-// Compose with other specifications
-var overdueWithTag = new OverdueTodoSpecification(DateTime.UtcNow)
-    .And(new HasTagSpecification());
-
-// Use in EF Core queries
-var results = await context.TodoItems.Where(overdueWithTag).ToListAsync(ct);
-```
-
-### Implementation Details
-
-Under the hood, the **source generator** emits a private `_camelCase` storage field and getter/setter for each `partial Maybe<T>` property:
-
-```csharp
-// Auto-generated
-private PhoneNumber? _phone;
-public partial Maybe<PhoneNumber> Phone
-{
-    get => _phone is not null ? Maybe.From(_phone) : Maybe<PhoneNumber>.None;
-    set => _phone = value.HasValue ? value.Value : null;
-}
-```
-
-The **`MaybeConvention`** (`IModelFinalizingConvention`) then:
-
-1. Always ignores the `Maybe<T>` CLR property (EF Core can't map structs as nullable)
-2. Discovers the private `_camelCase` storage field
-3. Maps the storage member as optional (`IsRequired(false)`)
-4. Sets the column name to the original property name (`Phone`, not `_phone`)
-5. Configures field-only access mode
-
-### Column Naming
-
-| Property | Storage Member | Column Name |
-|----------|---------------|-------------|
-| `Phone` | `_phone` | `Phone` |
-| `SubmittedAt` | `_submittedAt` | `SubmittedAt` |
-| `AlternateEmail` | `_alternateEmail` | `AlternateEmail` |
-
-### Indexing, Bulk Updates, and Diagnostics
-
-Use the CLR-property helpers when you need features that would otherwise tempt you to reach for raw field names:
-
-```csharp
-modelBuilder.Entity<Customer>(builder =>
-{
-    builder.HasKey(c => c.Id);
-    builder.HasTrellisIndex(c => c.Phone);
-    builder.HasTrellisIndex(c => new { c.Name, c.SubmittedAt });
-});
-
-await context.Customers
-    .Where(c => c.Id == customerId)
-    .ExecuteUpdateAsync(setters => setters.SetMaybeValue(c => c.Phone, phone), ct);
-
-await context.Customers
-    .Where(c => c.Id == customerId)
-    .ExecuteUpdateAsync(setters => setters.SetMaybeNone(c => c.Phone), ct);
-
-var mappings = context.GetMaybePropertyMappings();
-var debugView = context.ToMaybeMappingDebugString();
-```
-
-`HasTrellisIndex` resolves `Maybe<T>` selectors to the mapped storage automatically while leaving regular properties unchanged, so mixed composite indexes stay strongly typed.
-
-`HasTrellisIndex` only accepts **direct** property access on the lambda parameter. Nested selectors such as `o => o.Customer.Phone` are rejected with `ArgumentException` so the helper cannot accidentally resolve a storage member name against the wrong entity type.
-
-For `Maybe<T>` properties, `HasTrellisIndex` also validates that the expected generated storage member exists on the CLR type hierarchy or is already mapped in the EF model. If it is missing, the method throws `InvalidOperationException` with guidance to declare the property as `partial` or configure the mapping explicitly before calling `HasTrellisIndex`.
-
-### TRLSGEN100 Diagnostic
-
-If a `Maybe<T>` property is not declared `partial`, the source generator emits diagnostic `TRLSGEN100` prompting the developer to add the `partial` modifier.
-
-## Complete Example
-
-See the [EF Core Example](https://github.com/xavierjohn/Trellis/tree/main/Examples/EfCoreExample) for a full working example demonstrating:
-
-- Convention-based value object configuration with `ApplyTrellisConventions`
-- `RequiredGuid<T>` for identifiers (`OrderId`, `CustomerId`, `ProductId`)
-- `RequiredString<T>` for validated strings (`ProductName`, `CustomerName`)
-- `RequiredEnum<T>` for enum-like types stored as strings
-- `EmailAddress` for RFC 5322 email validation
-- Railway-Oriented Programming for entity creation and validation
+That approach works, but you now own:
+
+- converter registration for every scalar value object property
+- structured mapping for composite value objects
+- nullable/owned rules for `Maybe<T>`
+- concurrency token wiring for aggregate ETags
+- exception-to-result translation on save
+
+> [!TIP]
+> If your model uses more than a handful of Trellis types, the package usually pays for itself very quickly.

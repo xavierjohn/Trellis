@@ -1,110 +1,66 @@
-﻿# TRLS009: Incorrect async Result usage
+# TRLS009 — Incorrect async Result usage
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Accessing `Task<Result<T>>` using blocking calls like `.Result` or `.Wait()` instead of using `await`.
+## What it detects
+Flags blocking access on `Task<Result<T>>` and `ValueTask<Result<T>>`: `.Result`, `.Wait()`, and `.GetAwaiter().GetResult()`.
 
-## Rule Description
+## Why it matters
+Blocking async Result pipelines can deadlock, hide cancellation behavior, and makes failure handling harder to reason about.
 
-Blocking on async operations can cause:
-- **Deadlocks** in UI applications or ASP.NET contexts
-- **Thread pool starvation** under load
-- **Poor performance** by blocking threads
+> [!WARNING]
+> This rule covers both `Task` and `ValueTask`. Replacing `.Result` with `.GetAwaiter().GetResult()` does not avoid the diagnostic.
 
-When working with `Task<Result<T>>`, always use `await` to get the `Result<T>`.
-
-## How to Fix Violations
-
-Use `await` instead of blocking:
-
+## Bad example
 ```csharp
-// ❌ Bad - Blocking call (can deadlock!)
-var result = GetCustomerAsync().Result;
+using System.Threading.Tasks;
+using Trellis;
 
-// ✅ Good - Async/await
-var result = await GetCustomerAsync();
-```
-
-## Examples
-
-### Example 1: Accessing .Result
-
-```csharp
-// ❌ Bad
-public CustomerDto GetCustomer(Guid id)
+static class Example
 {
-    var result = customerService.GetCustomerAsync(id).Result;  // Deadlock risk!
-    return result.Match(
-        onSuccess: c => c.ToDto(),
-        onFailure: _ => null);
-}
+    public static Result<int> Bad()
+    {
+        var pending = GetCountAsync();
+        return pending.GetAwaiter().GetResult();
+    }
 
-// ✅ Good
-public async Task<CustomerDto> GetCustomerAsync(Guid id)
-{
-    var result = await customerService.GetCustomerAsync(id);
-    return result.Match(
-        onSuccess: c => c.ToDto(),
-        onFailure: _ => null);
+    static ValueTask<Result<int>> GetCountAsync() =>
+        new(Result.Success(42));
 }
 ```
 
-### Example 2: Accessing .Wait()
-
+## Good example
 ```csharp
-// ❌ Bad
-public void ProcessCustomer(Guid id)
-{
-    var task = customerService.GetCustomerAsync(id);
-    task.Wait();  // Deadlock risk!
-    var result = task.Result;
-    // ...
-}
+using System.Threading.Tasks;
+using Trellis;
 
-// ✅ Good
-public async Task ProcessCustomerAsync(Guid id)
+static class Example
 {
-    var result = await customerService.GetCustomerAsync(id);
-    // ...
+    public static async ValueTask<Result<int>> Good() =>
+        await GetCountAsync();
+
+    static ValueTask<Result<int>> GetCountAsync() =>
+        new(Result.Success(42));
 }
 ```
 
-## Async Best Practices with Result
+## Code fix available
+No.
 
-### Use async/await all the way
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-```csharp
-// ✅ Good - Async all the way
-public async Task<IActionResult> CreateCustomer(CreateCustomerDto dto)
-{
-    return await EmailAddress.TryCreate(dto.Email)
-        .BindAsync(email => customerService.CreateAsync(email, dto.Name))
-        .MapAsync(customer => customer.ToDto())
-        .MatchAsync(
-            onSuccess: dto => Ok(dto),
-            onFailure: error => BadRequest(error));
-}
+```ini
+dotnet_diagnostic.TRLS009.severity = none
 ```
 
-### Use ConfigureAwait in library code
-
 ```csharp
-// ✅ Library code - use ConfigureAwait(false)
-public async Task<Result<Customer>> GetCustomerAsync(Guid id)
-{
-    var result = await repository
-        .FindByIdAsync(id)
-        .ConfigureAwait(false);
-    
-    return result.ToResult(
-        Error.NotFound($"Customer {id} not found"));
-}
+#pragma warning disable TRLS009
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS009
 ```
 
-## When to Suppress Warnings
+> [!TIP]
+> Once a method touches `Task<Result<T>>` or `ValueTask<Result<T>>`, keep the method async and `await` the result all the way through.
 
-**Never suppress this warning.** If you absolutely must block (rare cases like `Main` method or console apps), use explicit synchronous methods instead of blocking on async methods.
-
-## Related Rules
-
-None - this is a general async/await best practice.

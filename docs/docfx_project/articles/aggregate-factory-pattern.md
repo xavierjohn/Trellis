@@ -1,193 +1,205 @@
 ﻿# Aggregate Factory Pattern
 
-## The Problem: How to Handle Both New and Existing Aggregates?
+When an aggregate can be both **created from scratch** and **reconstituted from existing data**, one factory method is not enough.
 
-When working with DDD aggregates, you need **two different creation scenarios**:
+That is the problem this pattern solves.
 
-1. **Creating NEW aggregates** - Generate fresh ID
-2. **Reconstituting EXISTING aggregates** - Preserve existing ID (from database, tests, etc.)
+- new aggregates need a **new ID**
+- reconstituted aggregates must keep an **existing ID**
+- both paths should enforce the same domain invariants
 
-If you only have one factory method that always generates a new ID, you **can't** load existing aggregates from the database!
+> [!TIP]
+> `Aggregate<TId>` does not impose factory methods for you. The pattern below is a Trellis-friendly convention for keeping creation explicit and safe.
 
-## The Solution: Dual Factory Methods
+## The recommended shape
 
-### Pattern Overview
+Use two factory paths:
+
+| Method | Use it for | ID behavior |
+| --- | --- | --- |
+| `TryCreate(...)` | New aggregate | Generates a new ID |
+| `TryCreateExisting(id, ...)` | Reconstitution, migrations, tests with known IDs | Preserves the supplied ID |
+| `Create(...)` | Same as `TryCreate`, but for known-good data | Throws on failure |
+| `CreateExisting(id, ...)` | Same as `TryCreateExisting`, but for known-good data | Throws on failure |
+
+## A working example
 
 ```csharp
-public class Product : Aggregate<ProductId>
+using Trellis;
+using Trellis.Primitives;
+
+namespace AggregateFactories;
+
+[Trellis.StringLength(200)]
+public partial class ProductName : RequiredString<ProductName> { }
+
+[Trellis.StringLength(64)]
+public partial class Sku : RequiredString<Sku> { }
+
+public partial class ProductId : RequiredGuid<ProductId> { }
+
+public sealed record ProductCreated(ProductId ProductId, DateTime OccurredAt) : IDomainEvent;
+
+public sealed class Product : Aggregate<ProductId>
 {
-    // ✅ Pattern 1: Parameterless constructor for EF Core
-    private Product() : base(null!) { }
-
-    // ✅ Pattern 2: Private constructor accepting ID
-    private Product(ProductId id, ...) : base(id) { }
-
-    // ✅ Pattern 3: TryCreate for NEW aggregates (generates ID)
-    public static Result<Product> TryCreate(...) =>
-        // ... validation ...
-        .Map(() => new Product(ProductId.NewUniqueV7(), ...));
-
-    // ✅ Pattern 4: TryCreateExisting for EXISTING aggregates (accepts ID)
-    public static Result<Product> TryCreateExisting(ProductId id, ...) =>
-        // ... validation ...
-        .Map(() => new Product(id, ...));
-
-    // ✅ Pattern 5: Convenience methods that throw
-    public static Product Create(...)
+    private Product(ProductId id, ProductName name, Sku sku)
+        : base(id)
     {
-        var result = TryCreate(...);
+        Name = name;
+        Sku = sku;
+        IsActive = true;
+    }
+
+    private Product() : base(null!)
+    {
+        Name = null!;
+        Sku = null!;
+    }
+
+    public ProductName Name { get; private set; }
+    public Sku Sku { get; private set; }
+    public bool IsActive { get; private set; }
+
+    public static Result<Product> TryCreate(ProductName name, Sku sku)
+    {
+        var product = new Product(ProductId.NewUniqueV7(), name, sku);
+        product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
+        return Result.Success(product);
+    }
+
+    public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku)
+    {
+        var product = new Product(id, name, sku);
+        return Result.Success(product);
+    }
+
+    public static Product Create(ProductName name, Sku sku)
+    {
+        var result = TryCreate(name, sku);
         if (result.IsFailure)
-            throw new InvalidOperationException($"Failed to create Product: {result.Error.Detail}");
+            throw new InvalidOperationException(result.Error.Detail);
 
         return result.Value;
     }
 
-    public static Product CreateExisting(ProductId id, ...)
+    public static Product CreateExisting(ProductId id, ProductName name, Sku sku)
     {
-        var result = TryCreateExisting(id, ...);
+        var result = TryCreateExisting(id, name, sku);
         if (result.IsFailure)
-            throw new InvalidOperationException($"Failed to create Product: {result.Error.Detail}");
+            throw new InvalidOperationException(result.Error.Detail);
 
         return result.Value;
     }
 }
 ```
 
-## When to Use Each Method
+## Why two methods are better than one
 
-| Method | Use Case | ID Handling | Example |
-|--------|----------|-------------|---------|
-| `TryCreate` | Creating new domain objects | Generates new ID | `Product.TryCreate("Laptop", "SKU-001", 999.99m, "Electronics")` |
-| `TryCreateExisting` | Loading from database, tests with known IDs | Accepts existing ID | `Product.TryCreateExisting(productId, "Laptop", "SKU-001", 999.99m, "Electronics")` |
-| `Create` | Tests where validation should never fail | Generates new ID, throws | `var product = Product.Create("Laptop", "SKU-001", 999.99m, "Electronics")` |
-| `CreateExisting` | Tests needing specific ID | Accepts existing ID, throws | `var product = Product.CreateExisting(knownId, "Laptop", "SKU-001", 999.99m, "Electronics")` |
-
-## Real-World Examples
-
-### Example 1: Creating a New Product (Domain Logic)
+If `TryCreate(...)` always generates an ID, you cannot safely rebuild an existing aggregate:
 
 ```csharp
-// ✅ Use TryCreate - generates new ID
-public async Task<Result<Product>> CreateProductAsync(ProductDto dto)
+var knownId = ProductId.Create(Guid.Parse("8e945d6d-e4f4-4dd6-bb50-3ab19f9d9fd1"));
+var name = ProductName.Create("Trellis Mug");
+var sku = Sku.Create("MUG-001");
+
+var newProduct = Product.Create(name, sku);                     // new ID
+var existingProduct = Product.CreateExisting(knownId, name, sku); // preserved ID
+```
+
+That distinction matters for:
+
+- **manual rehydration**
+- **tests that need fixed IDs**
+- **data import or migration code**
+- **reconstitution outside EF Core**
+
+## Where EF Core fits
+
+When EF Core materializes an aggregate, it typically uses the parameterless constructor and sets properties during rehydration.
+
+That is why many Trellis aggregates use this shape:
+
+- parameterless constructor for EF Core
+- private constructor with all required state
+- `TryCreate(...)` for new instances
+- `TryCreateExisting(...)` for explicit reconstitution outside EF Core
+
+> [!NOTE]
+> The parameterless constructor is for infrastructure. Your domain code should still prefer explicit factory methods.
+
+## Keep validation in one place
+
+Both creation paths should enforce the same rules. A simple way to do that is to validate the arguments before either constructor call.
+
+```csharp
+public static Result<Product> TryCreate(ProductName name, Sku sku)
 {
-    return await Product.TryCreate(
-            dto.Name,
-            dto.Sku,
-            dto.Price,
-            dto.Category,
-            dto.StockQuantity)
-        .EnsureAsync(
-            async p => !await _repository.SkuExistsAsync(p.Sku),
-            Error.Conflict("SKU already exists"))
-        .TapAsync(async p => await _repository.SaveAsync(p));
+    var validation = Validate(name, sku);
+    if (validation.IsFailure)
+        return validation.Error;
+
+    var product = new Product(ProductId.NewUniqueV7(), name, sku);
+    product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
+    return Result.Success(product);
+}
+
+public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku)
+{
+    var validation = Validate(name, sku);
+    if (validation.IsFailure)
+        return validation.Error;
+
+    return Result.Success(new Product(id, name, sku));
+}
+
+private static Result Validate(ProductName name, Sku sku)
+{
+    if (sku.Value.StartsWith("LEGACY-", StringComparison.OrdinalIgnoreCase))
+        return Error.Validation("SKU cannot start with LEGACY.", nameof(sku));
+
+    return Result.Success();
 }
 ```
 
-### Example 2: Loading from Database (EF Core)
+## Domain events and reconstitution
 
-```csharp
-// ✅ EF Core uses parameterless constructor + property setters
-var product = await _dbContext.Products
-    .FirstOrDefaultAsync(p => p.Id == productId);
-// EF Core reconstitutes: new Product() { Id = productId, Name = ..., etc. }
-```
+A common mistake is raising “created” events while reconstituting existing data.
 
-### Example 3: Testing with Known IDs
+Use this rule:
 
-```csharp
-[Fact]
-public void Product_with_specific_id_for_testing()
-{
-    // ✅ Use CreateExisting in tests when you need a specific ID
-    var knownId = ProductId.Create(Guid.Parse("12345678-1234-1234-1234-123456789abc"));
-    
-    var product = Product.CreateExisting(
-        knownId,
-        "Test Product",
-        "TEST-SKU",
-        99.99m,
-        "Test Category");
-    
-    product.Id.Should().Be(knownId);
-}
-```
+- `TryCreate(...)` may raise creation events
+- `TryCreateExisting(...)` usually should **not**
 
-### Example 4: Updating an Existing Product
+That keeps `UncommittedEvents()` meaningful.
 
-```csharp
-// ✅ Load existing product, then update
-public async Task<Result<Product>> UpdateProductAsync(ProductId id, UpdateProductDto dto)
-{
-    return await _repository.GetByIdAsync(id)  // Loads with existing ID
-        .ToResultAsync(Error.NotFound($"Product {id} not found"))
-        .Bind(product => product.UpdateDetails(dto.Name, dto.Price, dto.Category))
-        .TapAsync(async product => await _repository.SaveAsync(product));
-}
-```
+## What this pattern does **not** do
 
-### Example 5: Manual Reconstitution (if not using EF Core)
+These concerns belong elsewhere:
 
-```csharp
-// ✅ Use TryCreateExisting when manually deserializing
-public Result<Product> DeserializeProduct(ProductData data) =>
-    Product.TryCreateExisting(
-        data.Id,
-        data.Name,
-        data.Sku,
-        data.Price,
-        data.Category,
-        data.StockQuantity,
-        data.IsActive);
-```
+- **`ETag`** is infrastructure-managed
+- **`AcceptChanges()`** belongs after persistence/event publication
+- **repository lookups** belong in repositories or handlers, not in the aggregate constructor
 
-## Why Two Factory Methods?
+> [!WARNING]
+> Do not assign `ETag` in your factory methods. `ETag` exists for optimistic concurrency and is owned by persistence infrastructure.
 
-### ❌ Anti-Pattern: Single Factory Always Generates ID
+## A practical checklist
 
-```csharp
-// ❌ BAD: Can't load existing products!
-public static Result<Product> TryCreate(string name, ...) =>
-    // ...
-    .Map(() => new Product(ProductId.NewUniqueV7(), ...));  // Always new ID!
+Use this pattern when your aggregate:
 
-// Problem 1: Can't load from database
-var existingProduct = Product.TryCreate(dbData.Name, ...);  // ❌ Creates NEW ID!
-
-// Problem 2: Can't test with known IDs
-var testId = ProductId.Create(Guid.Parse("..."));
-var product = Product.TryCreate(...);  // ❌ Generates random ID, can't use testId
-```
-
-### ✅ Correct Pattern: Dual Factory Methods
-
-```csharp
-// ✅ GOOD: Separate methods for different scenarios
-
-// For creating NEW products
-public static Result<Product> TryCreate(string name, ...) =>
-    .Map(() => new Product(ProductId.NewUniqueV7(), ...));  // ✅ New ID
-
-// For EXISTING products
-public static Result<Product> TryCreateExisting(ProductId id, string name, ...) =>
-    .Map(() => new Product(id, ...));  // ✅ Existing ID preserved
-```
-
-## Benefits
-
-✅ **Type-safe** - Compiler ensures you provide an ID when needed  
-✅ **Clear intent** - Method name tells you if ID is new or existing  
-✅ **EF Core compatible** - Parameterless constructor for ORM  
-✅ **Testable** - Can create products with specific IDs in tests  
-✅ **Domain-driven** - `TryCreate` for business logic, `TryCreateExisting` for infrastructure  
+- has a strong identity type like `ProductId`
+- needs a constructor for EF Core
+- must support both new and existing instances
+- raises domain events for true state changes
 
 ## Summary
 
-| Scenario | Method | Why |
-|----------|--------|-----|
-| **Creating new product in domain** | `TryCreate` | Business logic should generate IDs |
-| **Loading from database** | EF Core parameterless constructor | ORM handles reconstitution |
-| **Manual deserialization** | `TryCreateExisting` | Preserve existing ID from source |
-| **Testing with known ID** | `CreateExisting` | Tests need predictable IDs |
-| **Quick test setup** | `Create` | Tests where validation won't fail |
+The aggregate factory pattern gives you:
 
-**Key Insight:** The `TryCreate` vs `TryCreateExisting` distinction mirrors the DDD principle that **aggregate identity is immutable**. New aggregates get new IDs; existing aggregates keep their IDs. 🎯
+- clear intent
+- correct identity handling
+- safer tests
+- cleaner reconstitution paths
+- fewer accidental domain events
+
+If the aggregate is new, generate a new ID. If it already exists, preserve the ID you were given.

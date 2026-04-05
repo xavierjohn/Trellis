@@ -1,261 +1,231 @@
 ﻿# RequiredEnum
 
-RequiredEnum is a type-safe enumeration with behavior, providing a powerful alternative to C# enums for domain modeling. When used with the `partial` keyword, the source generator automatically adds `IScalarValue<TSelf, string>`, JSON serialization, ASP.NET Core model binding, and `IParsable<T>`.
+Regular C# enums are fast and familiar, but they are weak at domain modeling:
 
-## Why RequiredEnum?
+- invalid casts are possible
+- behavior has to live somewhere else
+- wire names and display names get bolted on afterward
 
-C# enums have limitations that can lead to bugs:
+`RequiredEnum<TSelf>` solves that by giving you a **finite symbolic set with behavior**.
 
-```csharp
-// C# enum problems
-public enum OrderStatus { Draft, Confirmed, Shipped }
-
-var status = (OrderStatus)999;  // Valid! No compile or runtime error
-var invalid = Enum.Parse<OrderStatus>("Invalid");  // Throws at runtime
-```
-
-RequiredEnum solves these issues:
-
-```csharp
-// RequiredEnum - type-safe, with behavior
-public partial class OrderState : RequiredEnum<OrderState>
-{
-    public static readonly OrderState Draft = new();
-    public static readonly OrderState Confirmed = new();
-    public static readonly OrderState Shipped = new();
-    
-    private OrderState() { }
-}
-
-// Cannot create invalid values - Value defaults to the field name
-var result = OrderState.TryCreate("Invalid");  // Returns Result.Failure with "Valid values: Draft, Confirmed, Shipped"
-var state = OrderState.Draft;  // state.Value == "Draft"
-```
-
-## Basic Usage
-
-### Defining a RequiredEnum
-
-Use `partial` to enable source generation. By default, `Value` is just the field name:
+## Start with a working example
 
 ```csharp
 using Trellis;
-using Trellis.Primitives;
 
-public partial class PaymentMethod : RequiredEnum<PaymentMethod>
+namespace RequiredEnumExamples;
+
+public partial class OrderStatus : RequiredEnum<OrderStatus>
 {
-    public static readonly PaymentMethod CreditCard = new();
-    public static readonly PaymentMethod DebitCard = new();
-    public static readonly PaymentMethod BankTransfer = new();
-    public static readonly PaymentMethod Crypto = new();
+    public static readonly OrderStatus Draft = new(canShip: false, isTerminal: false);
 
-    private PaymentMethod() { }
-}
+    [EnumValue("awaiting-payment")]
+    public static readonly OrderStatus AwaitingPayment = new(canShip: false, isTerminal: false);
 
-// CreditCard.Value == "CreditCard"
-// Crypto.Value == "Crypto"
-```
+    public static readonly OrderStatus Paid = new(canShip: true, isTerminal: false);
+    public static readonly OrderStatus Shipped = new(canShip: false, isTerminal: false);
+    public static readonly OrderStatus Cancelled = new(canShip: false, isTerminal: true);
 
-Only add `[EnumValue(...)]` when the external name must differ from the field name:
-
-```csharp
-public partial class PaymentMethod : RequiredEnum<PaymentMethod>
-{
-    public static readonly PaymentMethod CreditCard = new();
-
-    [EnumValue("bank-transfer")]
-    public static readonly PaymentMethod BankTransfer = new();
-
-    private PaymentMethod() { }
-}
-
-// CreditCard.Value == "CreditCard"
-// BankTransfer.Value == "bank-transfer"
-```
-
-### Creating Instances
-
-```csharp
-// From name/value (case-insensitive, returns Result<T>)
-var result = PaymentMethod.TryCreate("CreditCard");
-if (result.IsSuccess)
-    Console.WriteLine(result.Value.Value);  // "CreditCard"
-
-// Direct access when known valid
-var method = PaymentMethod.Create("CreditCard");  // Throws if invalid
-
-// Use the override only when you intentionally exposed a different external name
-var transfer = PaymentMethod.Create("bank-transfer");
-
-// Check membership
-if (payment.Is(PaymentMethod.CreditCard, PaymentMethod.DebitCard))
-    ApplyCardFee();
-
-if (payment.IsNot(PaymentMethod.Crypto))
-    ProcessTraditionalPayment();
-
-// Enumerate all values
-foreach (var m in PaymentMethod.GetAll())
-    Console.WriteLine(m.Value);
-```
-
-## Adding Behavior
-
-RequiredEnum types can have properties and methods:
-
-```csharp
-public partial class OrderState : RequiredEnum<OrderState>
-{
-    // Value follows the field name unless you intentionally override it with [EnumValue(...)]
-    public static readonly OrderState Draft = new(canModify: true, canCancel: true, isTerminal: false);
-    public static readonly OrderState Confirmed = new(canModify: false, canCancel: true, isTerminal: false);
-    public static readonly OrderState Shipped = new(canModify: false, canCancel: false, isTerminal: false);
-    public static readonly OrderState Delivered = new(canModify: false, canCancel: false, isTerminal: true);
-    public static readonly OrderState Cancelled = new(canModify: false, canCancel: false, isTerminal: true);
-
-    public bool CanModify { get; }
-    public bool CanCancel { get; }
-    public bool IsTerminal { get; }
-
-    private OrderState(bool canModify, bool canCancel, bool isTerminal)
+    private OrderStatus(bool canShip, bool isTerminal)
     {
-        CanModify = canModify;
-        CanCancel = canCancel;
+        CanShip = canShip;
         IsTerminal = isTerminal;
     }
+
+    public bool CanShip { get; }
+    public bool IsTerminal { get; }
 }
-
-// Usage
-if (order.State.CanModify)
-    order.AddLine(product, quantity);
-
-if (order.State.CanCancel)
-    order.Cancel();
 ```
 
-## State Machine Pattern
-
-RequiredEnum types excel at modeling state machines with valid transitions:
+Usage stays simple:
 
 ```csharp
-public partial class OrderState : RequiredEnum<OrderState>
+using RequiredEnumExamples;
+
+var paid = OrderStatus.Paid;
+var parsed = OrderStatus.TryCreate("awaiting-payment");
+var shipped = OrderStatus.TryFromName("Shipped");
+var all = OrderStatus.GetAll();
+
+bool readyToShip = paid.CanShip;
+bool isOpenState = paid.Is(OrderStatus.Draft, OrderStatus.AwaitingPayment, OrderStatus.Paid);
+bool isNotTerminal = paid.IsNot(OrderStatus.Cancelled);
+```
+
+## Why teams reach for `RequiredEnum<TSelf>`
+
+It helps when your “enum” has to do more than hold an integer:
+
+- state transitions
+- policy flags
+- wire-name overrides
+- JSON/model binding
+- richer equality semantics
+
+## What the API actually gives you
+
+`RequiredEnum<TSelf>` exposes these important members:
+
+| Member | Purpose |
+| --- | --- |
+| `Value` | symbolic identity |
+| `Ordinal` | declaration-order metadata only |
+| `GetAll()` | returns every declared member |
+| `TryFromName(...)` | case-insensitive symbolic lookup |
+| `Is(params TSelf[])` | membership check |
+| `IsNot(params TSelf[])` | negated membership check |
+
+The source generator also adds:
+
+- `TryCreate(string value)`
+- `TryCreate(string? value, string? fieldName = null)`
+- `Create(string value)`
+- parsing and JSON support
+
+> [!NOTE]
+> Generated `TryCreate(...)` delegates to `TryFromName(...)`. There is **no separate `TryFromValue(...)` API path** in the current Trellis implementation.
+
+## `Value` and `Ordinal` mean different things
+
+This distinction is easy to miss:
+
+- **`Value`** is the semantic identity
+- **`Ordinal`** is just declaration-order metadata
+
+`Ordinal` is useful for diagnostics or display ordering, but it should not be treated as a stable wire contract.
+
+## Default names vs `[EnumValue]`
+
+By default, the symbolic value is the field name:
+
+```csharp
+using RequiredEnumExamples;
+
+bool usesFieldName = OrderStatus.Paid.Value == "Paid";
+```
+
+Use `[EnumValue(...)]` only when the external symbolic name must differ:
+
+```csharp
+using RequiredEnumExamples;
+
+bool usesOverride = OrderStatus.AwaitingPayment.Value == "awaiting-payment";
+```
+
+That keeps one source of truth most of the time.
+
+## Adding behavior is the real win
+
+This is where `RequiredEnum<TSelf>` beats a raw enum.
+
+```csharp
+public partial class InvoiceStatus : RequiredEnum<InvoiceStatus>
 {
-    // ... members defined above ...
+    public static readonly InvoiceStatus Draft = new(canPost: false);
+    public static readonly InvoiceStatus Approved = new(canPost: true);
+    public static readonly InvoiceStatus Posted = new(canPost: false);
 
-    public IReadOnlyList<OrderState> AllowedTransitions => this switch
+    private InvoiceStatus(bool canPost) => CanPost = canPost;
+
+    public bool CanPost { get; }
+}
+```
+
+Now the behavior travels with the symbolic value instead of being scattered through `switch` statements.
+
+## State-machine style modeling
+
+`RequiredEnum<TSelf>` works especially well for workflows:
+
+```csharp
+using Trellis;
+
+namespace WorkflowExample;
+
+public partial class ShipmentStatus : RequiredEnum<ShipmentStatus>
+{
+    public static readonly ShipmentStatus Draft = new();
+    public static readonly ShipmentStatus Ready = new();
+    public static readonly ShipmentStatus Sent = new();
+    public static readonly ShipmentStatus Delivered = new();
+
+    private ShipmentStatus() { }
+
+    public bool CanTransitionTo(ShipmentStatus next) =>
+        this switch
+        {
+            _ when this == Draft => next.Is(Ready),
+            _ when this == Ready => next.Is(Sent),
+            _ when this == Sent => next.Is(Delivered),
+            _ => false
+        };
+}
+```
+
+## Serialization and web input
+
+When you declare a concrete type as `partial`, the generator provides the plumbing for:
+
+- JSON conversion
+- ASP.NET Core model binding
+- parsing helpers
+
+That means `"Paid"` or `"awaiting-payment"` can flow naturally through APIs without hand-written converters.
+
+## EF Core persistence
+
+Persist the symbolic `Value`, not `Ordinal`.
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace RequiredEnumEfExample;
+
+public sealed class Order
+{
+    public int Id { get; set; }
+    public RequiredEnumExamples.OrderStatus Status { get; set; } = null!;
+}
+
+public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
     {
-        _ when this == Draft => [Confirmed, Cancelled],
-        _ when this == Confirmed => [Shipped, Cancelled],
-        _ when this == Shipped => [Delivered],
-        _ => []  // Terminal states have no transitions
-    };
-
-    public bool CanTransitionTo(OrderState newState) =>
-        AllowedTransitions.Contains(newState);
-
-    public Result<OrderState> TryTransitionTo(OrderState newState)
-    {
-        if (CanTransitionTo(newState))
-            return newState;
-
-        return Error.Validation(
-            $"Cannot transition from '{this}' to '{newState}'. " +
-            $"Allowed: {string.Join(", ", AllowedTransitions)}");
+        builder.Property(order => order.Status)
+            .HasConversion(
+                status => status.Value,
+                value => RequiredEnumExamples.OrderStatus.Create(value))
+            .IsRequired();
     }
 }
 ```
 
-## JSON Serialization
+> [!WARNING]
+> Persisting `Ordinal` turns declaration order into a storage contract. That is usually a mistake.
 
-When using the `partial` keyword, the source generator automatically adds a `[JsonConverter]` attribute. No manual configuration needed:
+## Best practices
 
-```csharp
-// Source generator adds [JsonConverter(typeof(RequiredEnumJsonConverter<OrderState>))]
-public partial class OrderState : RequiredEnum<OrderState>
-{
-    // ...
-}
+1. Declare members as `public static readonly`
+2. Keep constructors private
+3. Prefer field names as the default symbolic value
+4. Use `[EnumValue(...)]` only for true wire-name overrides
+5. Put state behavior on the type itself
+6. Use `Is(...)` and `IsNot(...)` for readable membership checks
 
-// Serializes to: "Confirmed" (the Value)
-var json = JsonSerializer.Serialize(OrderState.Confirmed);
+## Summary
 
-// Deserializes from string (case-insensitive)
-var state = JsonSerializer.Deserialize<OrderState>("\"Confirmed\"");
-```
+Use `RequiredEnum<TSelf>` when you need a finite set of domain values that:
 
-## Entity Framework Core
+- must be valid
+- may carry behavior
+- need stable symbolic names
+- should work cleanly with JSON and model binding
 
-Store RequiredEnum types using the auto-generated Value property:
+If you just need an integer-backed constant, a regular enum is fine. If the values are part of your domain language, `RequiredEnum<TSelf>` is usually the better fit.
 
-```csharp
-// In DbContext.OnModelCreating
-modelBuilder.Entity<Order>(builder =>
-{
-    // Store as string using the auto-generated Value ("Draft", "Confirmed", ...)
-    builder.Property(o => o.State)
-        .HasConversion(
-            state => state.Value,
-            value => OrderState.GetAll().First(s => s.Value == value))
-        .IsRequired();
-});
-```
+## See also
 
-**Note:** `Ordinal` is assigned from field declaration order (0, 1, 2, ...), so it is secondary metadata rather than semantic identity.
-Do not persist or expose `Ordinal` as a public contract unless you intentionally want declaration order to become part of that contract.
-
-## ASP.NET Core Integration
-
-Because the source generator adds `IScalarValue<TSelf, string>`, RequiredEnum types work automatically with ASP.NET Core:
-
-- **Route parameters:** `/orders/states/{state}` — binds and validates automatically
-- **Query parameters:** `?state=Draft` — binds and validates automatically  
-- **JSON body:** `{ "state": "Draft" }` — validates via `ValidatingJsonConverter`
-- **Validation errors:** Returns rich error messages like `"Valid values: Draft, Confirmed, Shipped, Delivered, Cancelled"`
-
-## API Reference
-
-### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `Value` | `string` | Semantic symbolic value; defaults to the field name and can be overridden with `[EnumValue(...)]` |
-| `Ordinal` | `int` | Declaration-order metadata; not a stable public identity |
-
-### Static Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `GetAll()` | `IReadOnlyCollection<T>` | All defined members |
-| `TryCreate(string)` | `Result<T>` | Find by symbolic value (case-insensitive) |
-| `TryCreate(string?, string?)` | `Result<T>` | Find by symbolic value with field name for errors |
-| `Create(string)` | `T` | Find by name, throws if invalid |
-
-### Instance Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `Is(params T[])` | `bool` | Check if instance is one of the specified values |
-| `IsNot(params T[])` | `bool` | Check if instance is not one of the specified values |
-
-### Operators
-
-- Equality: `==`, `!=`
-
-## Best Practices
-
-1. **Use private constructor** - Prevent external instantiation
-2. **Define members as static readonly** - Ensures single instances
-3. **Use the field name by default** - keep one source of truth whenever the external name can match
-4. **Use `[EnumValue(...)]` only as an override** - reserve it for cases where the external name must differ
-5. **Treat `Ordinal` as secondary metadata** - avoid teaching it as a wire, JSON, or persistence contract
-6. **Add behavior for domain logic** - Encapsulate rules in the enum
-7. **Use TryCreate** - For user input validation
-8. **Use Create** - For known-valid values (tests, constants)
-9. **Model state machines** - When values have valid transitions
-10. **Use Is() and IsNot()** - For readable membership checks
-
-## See Also
-
-- [Domain-Driven Design](intro.md#domain-driven-design) - Overview of DDD patterns
-- [Entity Framework Core Integration](integration-ef.md) - Persistence patterns
-- [Clean Architecture](clean-architecture.md) - Using RequiredEnum in layered applications
+- [Primitive Value Objects](primitives.md)
+- [Clean Architecture](clean-architecture.md)
+- [Trellis primitives API reference](../../api_reference/trellis-api-primitives.md)

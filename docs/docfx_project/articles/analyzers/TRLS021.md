@@ -1,84 +1,78 @@
-﻿# TRLS021: HasIndex references a Maybe\<T\> property
+# TRLS021 — HasIndex references a Maybe<T> property
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-A `HasIndex` lambda expression in an EF Core entity configuration references a property declared as `Maybe<T>`. This silently fails to create the index because `MaybeConvention` maps `Maybe<T>` through generated storage members, making the CLR property invisible to EF Core's index builder.
+## What it detects
+Flags `EntityTypeBuilder.HasIndex(...)` lambda expressions that reference a `Maybe<T>` property when Trellis.EntityFrameworkCore's Maybe convention is active.
 
-## Rule Description
+## Why it matters
+EF Core indexes the generated storage member, not the `Maybe<T>` CLR property. A normal `HasIndex` call can silently fail to create the index you thought you configured.
 
-When you use `Maybe<T>` for optional properties, Trellis provides `HasTrellisIndex` so you can keep indexing at the CLR-property level. Plain EF Core `HasIndex` does not understand the Trellis mapping strategy for `Maybe<T>`, so an index that mentions a `Maybe<T>` property will silently miss that column.
+> [!WARNING]
+> The diagnostic tells you both the `Maybe<T>` property name and the generated storage-member fallback name so you can see what EF Core actually maps.
 
-This rule fires as a **Warning** because the code compiles and runs without errors, but the database index simply won't exist at runtime.
-
-## How to Fix Violations
-
-Replace the lambda-based `HasIndex` with `HasTrellisIndex`. Use the string-based storage member name only as a fallback when you intentionally need to bypass the Trellis helper.
-
-`HasTrellisIndex` only accepts direct property access on the lambda parameter. Expressions like `e => e.Customer.SubmittedAt` are rejected with `ArgumentException` instead of being interpreted as indexes on the root entity.
-
-For `Maybe<T>` properties, `HasTrellisIndex` validates that the expected generated storage member exists on the entity CLR type hierarchy or is already mapped in the EF model. If that mapping is missing, it throws `InvalidOperationException` with guidance to use `partial` properties or explicit field mapping.
-
-### Single property index
-
+## Bad example
 ```csharp
-// ❌ Bad - index silently not created
-builder.HasIndex(e => e.SubmittedAt);
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Trellis;
 
-// ✅ Preferred - resolves Maybe<T> to the mapped storage member for you
-builder.HasTrellisIndex(e => e.SubmittedAt);
+sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.HasIndex(order => order.SubmittedAt);
+    }
+}
 
-// ✅ Fallback - uses the mapped storage member name directly
-builder.HasIndex("_submittedAt");
+sealed class Order
+{
+    public string Status { get; set; } = string.Empty;
+    public Maybe<DateTime> SubmittedAt { get; set; }
+}
 ```
 
-### Composite index with Maybe\<T\>
-
+## Good example
 ```csharp
-// ❌ Bad - SubmittedAt part of index silently ignored
-builder.HasIndex(e => new { e.Status, e.SubmittedAt });
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Trellis;
+using Trellis.EntityFrameworkCore;
 
-// ✅ Preferred - regular properties stay regular, Maybe<T> resolves automatically
-builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt });
+sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.HasTrellisIndex(order => new { order.Status, order.SubmittedAt });
+    }
+}
 
-// ✅ Fallback - uses string-based overload with the mapped storage member
-builder.HasIndex("Status", "_submittedAt");
+sealed class Order
+{
+    public string Status { get; set; } = string.Empty;
+    public Maybe<DateTime> SubmittedAt { get; set; }
+}
 ```
 
-### Composite index without Maybe\<T\>
+## Code fix available
+No.
 
-```csharp
-// ✅ Fine - no Maybe<T> properties, lambda works correctly
-builder.HasIndex(e => new { e.Status, e.Name });
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS021.severity = none
 ```
-
-## Storage Naming Convention
-
-If you must drop to the raw mapped member name, the generated storage field follows `_camelCase` naming from the property name:
-
-| Property | Storage Member |
-|----------|----------------|
-| `SubmittedAt` | `_submittedAt` |
-| `Phone` | `_phone` |
-| `AlternateEmail` | `_alternateEmail` |
-
-## Background
-
-`Maybe<T>` is a `readonly struct`. EF Core cannot mark non-nullable struct properties as optional. Trellis compensates with generated storage members and conventions so your normal entry point can remain the CLR property and the Trellis helpers. See the [EF Core integration guide](../integration-ef.md) for full details.
-
-## When to Suppress Warnings
-
-Suppress this warning only if you intentionally don't want an index on the `Maybe<T>` property and the `HasIndex` includes other non-Maybe properties that you do want indexed:
 
 ```csharp
 #pragma warning disable TRLS021
-builder.HasIndex(e => new { e.Status, e.SubmittedAt }); // Only Status index matters
+// Intentional: documented exception or test-only pattern.
 #pragma warning restore TRLS021
 ```
 
-However, in this case it's clearer to remove the `Maybe<T>` property from the index expression entirely or switch to `HasTrellisIndex`.
+> [!TIP]
+> Prefer `HasTrellisIndex(...)` for mixed regular and `Maybe<T>` properties. Use string-based `HasIndex(...)` only when you need the storage member directly.
 
-## See Also
-
-- [EF Core Integration](../integration-ef.md)
-- [Maybe\<T\> with EF Core](../integration-ef.md)
-- [MaybeConvention source](https://github.com/xavierjohn/Trellis)

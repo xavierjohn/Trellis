@@ -1,108 +1,55 @@
-﻿# TRLS006: Unsafe access to Maybe.Value
+# TRLS006 — Unsafe access to Maybe.Value
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Accessing `Maybe.Value` without first checking `HasValue` or using proper guards.
+## What it detects
+Flags `maybe.Value` when the analyzer cannot prove the `Maybe<T>` definitely contains a value.
 
-## Rule Description
+## Why it matters
+`Maybe.Value` throws when the instance is empty. That turns optional data into an exception path.
 
-`Maybe.Value` throws an `InvalidOperationException` if the `Maybe` has no value. Accessing it without checking `HasValue` first can cause runtime exceptions.
+> [!WARNING]
+> This commonly shows up in DTO mapping, logging, and formatting code where an empty `Maybe<T>` is easy to overlook.
 
-## How to Fix Violations
-
-### Option 1: Check HasValue First
+## Bad example
 ```csharp
-// ❌ Bad - Unsafe access
-var customer = maybe.Value;
+using Trellis;
 
-// ✅ Good - Guarded access
-if (maybe.HasValue)
+static class Example
 {
-    var customer = maybe.Value;
-    // Use customer...
-}
-
-// ✅ Good - Ternary guard is also recognized
-Customer? customerOrNull = maybe.HasValue ? maybe.Value : null;
-```
-
-### Option 2: Use TryGetValue
-```csharp
-// ✅ Good - Safe extraction
-if (maybe.TryGetValue(out var customer))
-{
-    // Use customer...
+    public static string Bad(Maybe<string> nickname) =>
+        nickname.Value.ToUpperInvariant();
 }
 ```
 
-### Option 3: Use GetValueOrDefault
+## Good example
 ```csharp
-// ✅ Good - With fallback
-var customer = maybe.GetValueOrDefault(defaultCustomer);
-```
+using Trellis;
 
-### Option 4: Convert to Result
-```csharp
-// ✅ Good - Convert to Result for better composability
-return maybe.ToResult(Error.NotFound("Customer not found"))
-    .Map(customer => customer.ToDto());
-```
-
-## Code Fix
-
-This diagnostic offers an automatic code fix that wraps the unsafe access in an `if (maybe.HasValue)` guard.
-
-### Example Code Fix Transformation
-
-**Before:**
-```csharp
-var maybe = FindCustomer(id);
-var customer = maybe.Value;
-customer.UpdateEmail(newEmail);
-```
-
-**After (automatic):**
-```csharp
-var maybe = FindCustomer(id);
-if (maybe.HasValue)
+static class Example
 {
-    var customer = maybe.Value;
-    customer.UpdateEmail(newEmail);
+    public static string Good(Maybe<string> nickname) =>
+        nickname.GetValueOrDefault("unknown").ToUpperInvariant();
 }
 ```
 
-## When to Suppress Warnings
+## Code fix available
+Yes — wraps the current usage in an `if (maybe.HasValue)` guard.
 
-This warning can be suppressed in test code where you're explicitly testing the "has value" scenario.
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-```csharp
-[Fact]
-public void Should_FindExistingCustomer()
-{
-    var maybe = repository.FindById(customerId);
-    maybe.HasValue.Should().BeTrue();
-    #pragma warning disable TRLS006
-    maybe.Value.Name.Should().Be("John");
-    #pragma warning restore TRLS006
-}
+```ini
+dotnet_diagnostic.TRLS006.severity = none
 ```
 
-## Best Practices
-
-Consider using `Result<T>` instead of `Maybe<T>` when you want to provide error information:
-
 ```csharp
-// Maybe provides no error context
-public Maybe<Customer> FindCustomer(Guid id) { ... }
-
-// Result provides clear error information
-public Result<Customer> FindCustomer(Guid id)
-{
-    var maybe = repository.FindById(id);
-    return maybe.ToResult(Error.NotFound($"Customer {id} not found"));
-}
+#pragma warning disable TRLS006
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS006
 ```
 
-## Related Rules
+> [!TIP]
+> Prefer `GetValueOrDefault`, `TryGetValue`, or a `HasValue` guard when you only need a fallback or a conditional branch.
 
-- [TRLS003](TRLS003.md) - Unsafe access to Result.Value

@@ -1,190 +1,228 @@
 ﻿# Specifications
 
-**Level:** Intermediate | **Package:** `Trellis.DomainDrivenDesign`
+The same business rule often shows up in three places:
 
-Specifications express business rules as composable, storage-agnostic expression trees. The same specification works for querying EF Core, Cosmos DB, or in-memory collections.
+- query filters
+- validation logic
+- reporting or batch jobs
 
-## Why Specifications?
+Without a specification, that rule gets copied, renamed, and slowly drifts apart.
 
-Business rules like "find all overdue orders over $500 in the West region" appear in multiple places — queries, validation, reporting. Without specifications, this logic gets duplicated across repositories, services, and controllers.
+`Specification<T>` gives you one reusable home for that rule.
 
-Specifications solve this by encapsulating business rules as **reusable expression trees** that any LINQ provider can evaluate.
-
-## Defining a Specification
-
-Inherit from `Specification<T>` and override `ToExpression()`:
+## Start with a practical example
 
 ```csharp
 using System.Linq.Expressions;
 using Trellis;
 
-public class OverdueOrderSpec(DateTimeOffset now) : Specification<Order>
+namespace SpecificationExamples;
+
+public sealed class Order
 {
-    public override Expression<Func<Order, bool>> ToExpression()
-        => order => order.DueDate < now && order.Status != OrderStatus.Completed;
+    public decimal TotalAmount { get; init; }
+    public DateTimeOffset DueAt { get; init; }
+    public bool IsPaid { get; init; }
+    public string Region { get; init; } = string.Empty;
 }
 
-public class HighValueOrderSpec(decimal threshold) : Specification<Order>
-{
-    public override Expression<Func<Order, bool>> ToExpression()
-        => order => order.TotalAmount > threshold;
-}
-
-public class CustomerInRegionSpec(string region) : Specification<Order>
-{
-    public override Expression<Func<Order, bool>> ToExpression()
-        => order => order.Customer.Region == region;
-}
-```
-
-## In-Memory Evaluation
-
-Use `IsSatisfiedBy` to evaluate a specification against an entity:
-
-```csharp
-var spec = new HighValueOrderSpec(500m);
-
-if (spec.IsSatisfiedBy(order))
-    Console.WriteLine("High-value order detected");
-
-// Filter a collection
-var highValueOrders = orders.Where(spec.IsSatisfiedBy).ToList();
-```
-
-## Composability
-
-Specifications combine using `And`, `Or`, and `Not`:
-
-```csharp
-// Compose multiple specifications
-var spec = new OverdueOrderSpec(DateTimeOffset.UtcNow)
-    .And(new HighValueOrderSpec(500m))
-    .And(new CustomerInRegionSpec("West"));
-
-// Negate a specification
-var notOverdue = new OverdueOrderSpec(DateTimeOffset.UtcNow).Not();
-
-// OR composition
-var urgentOrExpensive = new OverdueOrderSpec(DateTimeOffset.UtcNow)
-    .Or(new HighValueOrderSpec(1000m));
-```
-
-Specifications are **immutable** — composition always returns a new specification, leaving the originals unchanged.
-
-## IQueryable Integration
-
-Specifications convert **implicitly** to `Expression<Func<T, bool>>`, so they work directly with `IQueryable.Where()`:
-
-```csharp
-var spec = new OverdueOrderSpec(DateTimeOffset.UtcNow)
-    .And(new HighValueOrderSpec(500m));
-
-// Implicit conversion — expression tree translates to SQL via EF Core
-var results = await _dbContext.Orders
-    .Where(spec)
-    .OrderByDescending(o => o.TotalAmount)
-    .ToListAsync();
-```
-
-> **Note:** Composite specifications use `Expression.Invoke` internally, which requires **EF Core 8+** for server-side translation.
-
-## Repository Pattern
-
-Define repository interfaces that accept specifications:
-
-```csharp
-public interface IOrderRepository
-{
-    Task<IReadOnlyList<Order>> ListAsync(Specification<Order> spec, CancellationToken ct);
-    Task<int> CountAsync(Specification<Order> spec, CancellationToken ct);
-    Task<bool> AnyAsync(Specification<Order> spec, CancellationToken ct);
-}
-
-public class OrderRepository : IOrderRepository
-{
-    private readonly AppDbContext _db;
-
-    public OrderRepository(AppDbContext db) => _db = db;
-
-    public async Task<IReadOnlyList<Order>> ListAsync(
-        Specification<Order> spec, CancellationToken ct)
-        => await _db.Orders.Where(spec).ToListAsync(ct);
-
-    public async Task<int> CountAsync(
-        Specification<Order> spec, CancellationToken ct)
-        => await _db.Orders.Where(spec).CountAsync(ct);
-
-    public async Task<bool> AnyAsync(
-        Specification<Order> spec, CancellationToken ct)
-        => await _db.Orders.Where(spec).AnyAsync(ct);
-}
-```
-
-## API Reference
-
-| Member | Description |
-|--------|-------------|
-| `ToExpression()` | Returns `Expression<Func<T, bool>>` for LINQ providers |
-| `IsSatisfiedBy(T)` | Evaluates the specification in-memory (cached compilation) |
-| `CacheCompilation` | `true` by default; override to `false` for mutable-state specs |
-| `And(Specification<T>)` | Logical AND composition |
-| `Or(Specification<T>)` | Logical OR composition |
-| `Not()` | Logical negation |
-| Implicit operator | Converts to `Expression<Func<T, bool>>` for `IQueryable.Where()` |
-
-## Expression Caching
-
-`IsSatisfiedBy` automatically caches the compiled expression using `Lazy<Func<T, bool>>`, so repeated in-memory evaluations compile the expression tree only once.
-
-If your specification captures **mutable state** — for example, a threshold that changes at runtime — the cached delegate will not reflect updated values. In that case, override `CacheCompilation` to opt out:
-
-```csharp
-// Mutable threshold spec — opt out of caching
-public class ThresholdSpec(Func<int> getThreshold) : Specification<int>
-{
-    protected override bool CacheCompilation => false;
-    public override Expression<Func<int, bool>> ToExpression()
-        => x => x > getThreshold();
-}
-```
-
-> **Tip:** Most specifications are constructed with immutable parameters (e.g., `new HighValueOrderSpec(500m)`). For these, caching is always safe and enabled by default.
-
-## Design Principles
-
-- **Domain concept** — Specifications express business rules, not persistence concerns
-- **Storage-agnostic** — Works with EF Core, Cosmos DB, or any LINQ provider
-- **Composable** — `And`, `Or`, `Not` for building complex queries from simple parts
-- **Testable** — Specifications can be tested against in-memory collections
-- **Owned by the domain layer** — No dependency on any persistence library
-
-## Relationship to Trellis
-
-Specifications integrate with the rest of Trellis:
-
-- Value objects in specification predicates enforce type safety
-- Result types for specification evaluation failures
-- Aggregate boundaries respected in specification queries
-
-## Maybe<T> Support in Specifications
-
-Specifications that reference `Maybe<T>` properties work with EF Core when using the Trellis query interceptor. Register the interceptor via `AddTrellisInterceptors()`, then use natural LINQ in your specification expression:
-
-```csharp
-public class OverdueOrderSpecification(DateTime cutoff) : Specification<Order>
+public sealed class OverdueOrderSpecification(DateTimeOffset now) : Specification<Order>
 {
     public override Expression<Func<Order, bool>> ToExpression() =>
-        order => order.Status == OrderStatus.Submitted
-              && order.SubmittedAt.HasValue
-              && order.SubmittedAt.Value < cutoff;
+        order => !order.IsPaid && order.DueAt < now;
+}
+
+public sealed class HighValueOrderSpecification(decimal threshold) : Specification<Order>
+{
+    public override Expression<Func<Order, bool>> ToExpression() =>
+        order => order.TotalAmount >= threshold;
+}
+
+public sealed class RegionSpecification(string region) : Specification<Order>
+{
+    public override Expression<Func<Order, bool>> ToExpression() =>
+        order => order.Region == region;
 }
 ```
 
-The interceptor rewrites `Maybe<T>.HasValue` to `IS NOT NULL` and `Maybe<T>.Value` to the backing storage field, enabling EF Core to translate the expression to SQL. Without the interceptor, use the explicit `WhereLessThan` extension method in the repository instead.
+Now the business rule reads clearly:
 
-## Next Steps
+```csharp
+var spec = new OverdueOrderSpecification(DateTimeOffset.UtcNow)
+    .And(new HighValueOrderSpecification(500m))
+    .And(new RegionSpecification("West"));
+```
 
-- [Clean Architecture](clean-architecture.md) — Architecture patterns that use specifications
-- [Entity Framework Core](integration-ef.md) — Repository patterns for persistence
-- [Trellis for AI Code Generation](ai-code-generation.md) — How specs map to code
-- [DDD Samples](https://github.com/xavierjohn/Trellis/blob/main/Trellis.DomainDrivenDesign/SAMPLES.md#specification-pattern) — Comprehensive code examples
+## Why this is better than inline predicates
+
+Inline LINQ predicates are fine for one-off queries. Specifications help when the rule has a name and a life of its own.
+
+They give you:
+
+- **reuse** across repository methods and services
+- **composability** through `And`, `Or`, and `Not`
+- **storage-agnostic expressions** for LINQ providers
+- **testability** through `IsSatisfiedBy(...)`
+
+## In-memory evaluation
+
+Use `IsSatisfiedBy(...)` when you already have objects in memory:
+
+```csharp
+var spec = new HighValueOrderSpecification(500m);
+
+bool isMatch = spec.IsSatisfiedBy(new Order
+{
+    TotalAmount = 750m,
+    DueAt = DateTimeOffset.UtcNow.AddDays(2),
+    IsPaid = false,
+    Region = "West"
+});
+```
+
+`Specification<T>` caches the compiled delegate by default, so repeated in-memory checks stay cheap.
+
+## Composing rules
+
+Composition is where specifications become really useful:
+
+```csharp
+var overdue = new OverdueOrderSpecification(DateTimeOffset.UtcNow);
+var highValue = new HighValueOrderSpecification(500m);
+var westRegion = new RegionSpecification("West");
+
+var urgent = overdue.And(highValue);
+var westOrUrgent = westRegion.Or(urgent);
+var notOverdue = overdue.Not();
+```
+
+## Querying with `IQueryable`
+
+`Specification<T>` has an implicit conversion to `Expression<Func<T, bool>>`, so it plugs directly into LINQ:
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+List<Order> orders =
+[
+    new() { TotalAmount = 250m, DueAt = DateTimeOffset.UtcNow.AddDays(1), IsPaid = false, Region = "West" },
+    new() { TotalAmount = 750m, DueAt = DateTimeOffset.UtcNow.AddDays(-2), IsPaid = false, Region = "West" }
+];
+
+IQueryable<Order> query = orders.AsQueryable();
+
+var spec = new OverdueOrderSpecification(DateTimeOffset.UtcNow)
+    .And(new HighValueOrderSpecification(500m));
+
+var filtered = query.Where(spec);
+```
+
+That same pattern works with EF Core and other LINQ providers.
+
+> [!NOTE]
+> Composed specifications use `Expression.Invoke` internally. For EF Core translation, use **EF Core 8+**.
+
+## Repository-friendly design
+
+A repository can accept a specification without learning any business details:
+
+```csharp
+using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+
+namespace RepositoryExample;
+
+public sealed class Order
+{
+    public decimal TotalAmount { get; init; }
+}
+
+public interface IOrderRepository
+{
+    Task<IReadOnlyList<Order>> ListAsync(Specification<Order> specification, CancellationToken ct);
+    Task<bool> AnyAsync(Specification<Order> specification, CancellationToken ct);
+}
+```
+
+That keeps the repository generic and the business rules named.
+
+## When to disable cached compilation
+
+Most specifications are created with immutable constructor values and should keep the default behavior.
+
+If your expression depends on mutable state, override `CacheCompilation`:
+
+```csharp
+using System.Linq.Expressions;
+using Trellis;
+
+namespace CacheControlExample;
+
+public sealed class ThresholdSpecification(Func<int> getThreshold) : Specification<int>
+{
+    protected override bool CacheCompilation => false;
+
+    public override Expression<Func<int, bool>> ToExpression() =>
+        value => value > getThreshold();
+}
+```
+
+## Specifications and Trellis value objects
+
+Specifications work well with Trellis primitives because the domain types can stay in the predicate instead of being peeled back to raw values everywhere.
+
+For example, you can use specifications over aggregates or entities that expose:
+
+- `EmailAddress`
+- `RequiredEnum<TSelf>` members
+- `MonetaryAmount`
+- `Money`
+
+That keeps your query language aligned with the domain language.
+
+## `Maybe<T>` support in EF Core queries
+
+If your specification references `Maybe<T>` members in EF Core, register the Trellis interceptors so the query can be rewritten correctly.
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+
+public sealed class AppDbContext : DbContext
+{
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
+        optionsBuilder.AddTrellisInterceptors();
+}
+```
+
+Then expressions like `HasValue` and `Value` can translate cleanly in supported scenarios.
+
+## When specifications are a good fit
+
+Use them when the rule:
+
+- has a clear business name
+- appears in more than one place
+- should run both in memory and in queries
+- is worth testing independently
+
+Skip them when a predicate is truly one-off and unlikely to matter again.
+
+## Summary
+
+Specifications help you keep business rules:
+
+- named
+- reusable
+- composable
+- testable
+
+That is the main win. They are less about pattern purity and more about preventing rule duplication.
+
+## See also
+
+- [Clean Architecture](clean-architecture.md)
+- [Primitive Value Objects](primitives.md)
+- [Trellis DDD API reference](../../api_reference/trellis-api-ddd.md)

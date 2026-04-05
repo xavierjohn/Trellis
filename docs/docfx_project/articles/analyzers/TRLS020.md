@@ -1,126 +1,72 @@
-﻿# TRLS020: Use SaveChangesResultAsync instead of SaveChangesAsync
+# TRLS020 — Use SaveChangesResultAsync instead of SaveChangesAsync
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-Code calls `SaveChanges()` or `SaveChangesAsync()` directly on a `DbContext` instance instead of using the Trellis `SaveChangesResultAsync` or `SaveChangesResultUnitAsync` extension methods.
+## What it detects
+Flags direct `DbContext.SaveChanges()` and `DbContext.SaveChangesAsync()` calls when `Trellis.EntityFrameworkCore` is referenced.
 
-## Rule Description
+## Why it matters
+Raw EF Core save calls throw exceptions on database failures. Trellis save helpers keep persistence inside the `Result` pipeline.
 
-Direct `SaveChanges`/`SaveChangesAsync` calls bypass the Result pipeline and turn database errors into unhandled exceptions. The Trellis `DbContextExtensions` provide Result-returning alternatives that capture database errors as `Result<T>` failures, keeping your code on the railway.
+> [!WARNING]
+> The analyzer catches both sync and async saves. The code fix chooses `SaveChangesResultAsync` when the count is used and `SaveChangesResultUnitAsync` when it is discarded.
 
-| Extension Method | Returns | Use When |
-|------------------|---------|----------|
-| `SaveChangesResultUnitAsync` | `Task<Result<Unit>>` | You don't need the row count |
-| `SaveChangesResultAsync` | `Task<Result<int>>` | You need the affected row count |
-
-This rule fires as a **Warning** because the code will compile and run, but database errors will surface as unhandled exceptions rather than flowing through the Result pipeline.
-
-## How to Fix Violations
-
-Replace `SaveChangesAsync()` or `SaveChanges()` with the appropriate Result-returning extension method.
-
-### Standalone calls (row count not used)
-
+## Bad example
 ```csharp
-// ❌ Bad - exceptions bypass Result pipeline
-await _dbContext.SaveChangesAsync(ct);
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
-// ✅ Good - errors flow through Result pipeline
-await _dbContext.SaveChangesResultUnitAsync(ct);
-```
-
-### When the row count is needed
-
-```csharp
-// ❌ Bad - exceptions bypass Result pipeline
-var count = await _dbContext.SaveChangesAsync(ct);
-
-// ✅ Good - returns Result<int> with the row count
-var countResult = await _dbContext.SaveChangesResultAsync(ct);
-```
-
-### Synchronous calls
-
-```csharp
-// ❌ Bad - sync call bypasses Result pipeline
-_dbContext.SaveChanges();
-
-// ✅ Good - switch to async Result variant
-await _dbContext.SaveChangesResultUnitAsync(ct);
-```
-
-## Code Fix
-
-The code fix automatically renames the method call:
-
-- **Standalone `SaveChangesAsync`** → `SaveChangesResultUnitAsync`
-- **`SaveChangesAsync` with return value used** → `SaveChangesResultAsync`
-- **`SaveChangesAsync(bool, CancellationToken)` standalone** → `SaveChangesResultUnitAsync(bool, CancellationToken)`
-- **Standalone `SaveChanges` in a void method** → `SaveChangesResultUnitAsync` (also adds `await`, `async`, and `Task` return type)
-- **`SaveChanges(bool)` in a void method** → `SaveChangesResultUnitAsync(bool)` (also adds `await`, `async`, and `Task` return type)
-
-The code fix also adds `using Trellis.EntityFrameworkCore;` and `using System.Threading.Tasks;` if not already present.
-
-The code fix correctly handles `.ConfigureAwait(false)` chains, preserving them in the fixed code. The `acceptAllChangesOnSuccess` parameter is preserved when present.
-
-> [!NOTE]
-> The code fix is not offered when:
->
-> - **Sync `SaveChanges()`**: The return value is used, or the containing method has a non-void return type
-> - **Async `SaveChangesAsync` in a return statement**: e.g., `return await _dbContext.SaveChangesAsync(ct)` — the method return type would need to change from `Task<int>` to `Task<Result<int>>`
->
-> These cases require manual refactoring.
-
-## Examples
-
-### Example 1: Repository Pattern
-
-```csharp
-// ❌ Bad
-public async Task<Result<Order>> CreateOrder(Order order, CancellationToken ct)
+static class Example
 {
-    _dbContext.Orders.Add(order);
-    await _dbContext.SaveChangesAsync(ct); // TRLS020
-    return Result.Success(order);
+    public static async Task SaveAsync(AppDbContext db, CancellationToken ct)
+    {
+        await db.SaveChangesAsync(ct);
+    }
 }
 
-// ✅ Good
-public async Task<Result<Order>> CreateOrder(Order order, CancellationToken ct)
+sealed class AppDbContext : DbContext
 {
-    _dbContext.Orders.Add(order);
-    return await _dbContext.SaveChangesResultUnitAsync(ct)
-        .MapAsync(_ => order);
 }
 ```
 
-### Example 2: Checking Affected Rows
-
+## Good example
 ```csharp
-// ❌ Bad
-public async Task<Result<int>> UpdatePrices(decimal factor, CancellationToken ct)
-{
-    foreach (var product in await _dbContext.Products.ToListAsync(ct))
-        product.Price *= factor;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Trellis.EntityFrameworkCore;
 
-    var count = await _dbContext.SaveChangesAsync(ct); // TRLS020
-    return Result.Success(count);
+static class Example
+{
+    public static async Task SaveAsync(AppDbContext db, CancellationToken ct)
+    {
+        await db.SaveChangesResultUnitAsync(ct);
+    }
 }
 
-// ✅ Good
-public async Task<Result<int>> UpdatePrices(decimal factor, CancellationToken ct)
+sealed class AppDbContext : DbContext
 {
-    foreach (var product in await _dbContext.Products.ToListAsync(ct))
-        product.Price *= factor;
-
-    return await _dbContext.SaveChangesResultAsync(ct);
 }
 ```
 
-## Related Rules
+## Code fix available
+Yes — replaces `SaveChanges` or `SaveChangesAsync` with `SaveChangesResultAsync` or `SaveChangesResultUnitAsync`, and can add `await`, `async`, and missing `using` directives.
 
-- [TRLS009](TRLS009.md) - Incorrect async Result usage (blocking)
-- [TRLS001](TRLS001.md) - Result return value is not handled
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-## See Also
+```ini
+dotnet_diagnostic.TRLS020.severity = none
+```
 
-- [Entity Framework Core Integration](../integration-ef.md) - Full EF Core integration guide
+```csharp
+#pragma warning disable TRLS020
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS020
+```
+
+> [!TIP]
+> Add `using Trellis.EntityFrameworkCore;` and keep saves inside your Trellis pipeline so persistence errors become `Result` values.
+

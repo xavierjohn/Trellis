@@ -1,81 +1,37 @@
-# Stateless State Machine Integration
+# Trellis.Stateless
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Stateless.svg)](https://www.nuget.org/packages/Trellis.Stateless)
 
-Wraps the [Stateless](https://github.com/dotnet-state-machine/stateless) library's `Fire()` method to return `Result<TState>` instead of throwing on invalid transitions.
+A thin Trellis wrapper for [Stateless](https://github.com/dotnet-state-machine/stateless) that returns `Result<TState>` for transitions.
 
 ## Installation
-
 ```bash
 dotnet add package Trellis.Stateless
 ```
 
-## Quick Start
-
+## Quick Example
 ```csharp
 using Stateless;
 using Trellis;
 using Trellis.Stateless;
 
-var machine = new StateMachine<OrderState, OrderTrigger>(OrderState.New);
-machine.Configure(OrderState.New)
-    .Permit(OrderTrigger.Submit, OrderState.Submitted);
+enum OrderState { Draft, Submitted }
+enum OrderTrigger { Submit }
 
-// Returns Result<OrderState> — no exceptions on invalid transitions
+var machine = new StateMachine<OrderState, OrderTrigger>(OrderState.Draft);
+machine.Configure(OrderState.Draft).Permit(OrderTrigger.Submit, OrderState.Submitted);
+
 Result<OrderState> result = machine.FireResult(OrderTrigger.Submit);
-// result.IsSuccess == true, result.Value == OrderState.Submitted
-
-Result<OrderState> invalid = machine.FireResult(OrderTrigger.Cancel);
-// invalid.IsFailure == true, invalid.Error is DomainError
 ```
 
-## LazyStateMachine
+## Key Features
+- Convert invalid transitions into typed domain failures instead of raw exceptions.
+- Keep state-machine code inside the same Result pipeline as the rest of your app.
+- Support lazy state-machine construction for materialized aggregates.
 
-Aggregates with state machines face a materialization problem with ORMs like EF Core: the parameterless constructor runs before properties are populated, so a `stateAccessor` lambda like `() => Status` reads a default or uninitialized value — reference-type states throw, while enum states silently start the machine in the wrong state. `LazyStateMachine<TState, TTrigger>` defers machine construction until first use:
+## Documentation
+- [Full documentation](https://xavierjohn.github.io/Trellis/articles/state-machines.html)
+- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
 
-```csharp
-public class Order : Aggregate<OrderId>
-{
-    private readonly LazyStateMachine<OrderStatus, string> _machine;
-
-    public OrderStatus Status { get; private set; }
-
-    public Order()
-    {
-        _machine = new LazyStateMachine<OrderStatus, string>(
-            () => Status,
-            s => Status = s,
-            ConfigureStateMachine);
-    }
-
-    public Result<Order> Submit() =>
-        _machine.FireResult("submit")
-            .Map(_ => this);
-
-    private static void ConfigureStateMachine(StateMachine<OrderStatus, string> machine)
-    {
-        machine.Configure(OrderStatus.Draft)
-            .Permit("submit", OrderStatus.Submitted);
-    }
-}
-```
-
-- **Constructor-safe** — `stateAccessor`/`stateMutator` are not invoked until first `FireResult` or `Machine` access
-- **Configure once** — the configuration callback runs exactly once on first access
-- **Direct access** — use `.Machine` to access the underlying `StateMachine<TState, TTrigger>` for `CanFire()` checks
-
-## How It Works
-
-- Calls Stateless's `Fire()` directly and wraps known invalid-transition `InvalidOperationException`s in a `DomainError`
-- Returns `Result<TState>` with the new state on success
-- Preserves exceptions from user entry, exit, or transition actions instead of swallowing them
-- Inherits Stateless thread-safety constraints — do not call `FireResult(...)` concurrently on the same machine instance without external synchronization
-
-## Related Packages
-
-- [Trellis.Results](https://www.nuget.org/packages/Trellis.Results) — Core `Result<T>` type
-- [Stateless](https://www.nuget.org/packages/Stateless) — State machine library (required dependency)
-
-## License
-
-MIT — see [LICENSE](https://github.com/xavierjohn/Trellis/blob/main/LICENSE) for details.
+## Part of Trellis
+This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

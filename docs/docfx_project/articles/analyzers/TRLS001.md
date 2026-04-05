@@ -1,70 +1,68 @@
-﻿# TRLS001: Result return value is not handled
+# TRLS001 — Result return value is not handled
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-A method returns a `Result<T>`, but the return value is not assigned to a variable or used in a chain operation. This means error information may be lost.
+## What it detects
+Flags `Result<T>` values that are produced and immediately discarded. That includes bare expression statements like `CreateUser(...)` and discarded `await` expressions whose awaited type is `Task<Result<T>>` or `ValueTask<Result<T>>`.
 
-## Rule Description
+## Why it matters
+A `Result<T>` exists to carry success or failure. If you drop it on the floor, you also drop the error information and break the pipeline.
 
-`Result<T>` is designed to enforce error handling through the type system. When a method returns a `Result<T>`, it signals that the operation might fail and the caller must handle both success and failure cases.
+> [!WARNING]
+> Ignoring a `Result<T>` is easy to do in async code. `await SomeCallAsync();` still counts as discarded if the awaited value is a `Result<T>`.
 
-Ignoring the return value defeats the purpose of using `Result<T>` and can lead to silent failures.
-
-## How to Fix Violations
-
-Handle the returned `Result<T>` in one of these ways:
-
-### Option 1: Assign to a Variable
+## Bad example
 ```csharp
-// ❌ Bad - Result is ignored
-customer.UpdateEmail(newEmail);
+using System.Threading.Tasks;
+using Trellis;
 
-// ✅ Good - Result is captured
-var result = customer.UpdateEmail(newEmail);
-if (result.IsFailure)
-    return result.Error;
+static class Example
+{
+    public static async Task SaveAsync(string email)
+    {
+        await CreateCustomerAsync(email);
+    }
+
+    static ValueTask<Result<int>> CreateCustomerAsync(string email) =>
+        new(Result.Success(email.Length));
+}
 ```
 
-### Option 2: Use in a Chain
+## Good example
 ```csharp
-// ✅ Good - Result is chained
-return customer.UpdateEmail(newEmail)
-    .Bind(c => c.UpdatePhone(newPhone))
-    .Map(c => c.ToDto());
+using System.Threading.Tasks;
+using Trellis;
+
+static class Example
+{
+    public static async Task<Result<int>> SaveAsync(string email)
+    {
+        var result = await CreateCustomerAsync(email);
+        return result;
+    }
+
+    static ValueTask<Result<int>> CreateCustomerAsync(string email) =>
+        new(Result.Success(email.Length));
+}
 ```
 
-### Option 3: Use Match
-```csharp
-// ✅ Good - Result is matched
-customer.UpdateEmail(newEmail)
-    .Match(
-        onSuccess: c => Console.WriteLine("Updated!"),
-        onFailure: error => Console.WriteLine($"Failed: {error}"));
+## Code fix available
+No.
+
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS001.severity = none
 ```
 
-## When to Suppress Warnings
-
-Do not suppress this warning. If you truly want to ignore the result, use `Discard()` to make the intent explicit:
-
 ```csharp
-customer.UpdateEmail(newEmail).Discard(); // Explicit — intentionally ignoring the outcome
+#pragma warning disable TRLS001
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS001
 ```
 
-For async pipelines, use `DiscardAsync()`:
+> [!TIP]
+> If you are at a boundary, return the `Result`, convert it with `Match` or `MatchError`, or explicitly assign it so the next step can handle success and failure.
 
-```csharp
-await GetCustomerAsync(id)
-    .BindAsync(c => c.UpdateEmail(newEmail))
-    .DiscardAsync(); // Explicit — best-effort operation
-```
-
-Alternatively, you can use the discard operator:
-
-```csharp
-_ = customer.UpdateEmail(newEmail); // Explicit discard
-```
-
-## Related Rules
-
-- [TRLS003](TRLS003.md) - Unsafe access to Result.Value
-- [TRLS004](TRLS004.md) - Unsafe access to Result.Error

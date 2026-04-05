@@ -1,426 +1,295 @@
-﻿# Advanced Features
+# Advanced Features
 
-Advanced Railway Oriented Programming patterns for complex scenarios.
+Once you know `Map`, `Bind`, and `Ensure`, the next question is usually: **how do I keep the same style when the workflow gets more complex?**
 
-## Table of Contents
+This article covers the Trellis features that help when you need to:
 
-- [Pattern Matching](#pattern-matching)
-- [Tuple Destructuring](#tuple-destructuring)
-- [Exception Capture](#exception-capture)
-- [Parallel Operations](#parallel-operations)
-- [LINQ Query Syntax](#linq-query-syntax)
-- [Maybe Type](#maybe-type) *(see dedicated article)*
+- branch cleanly at the end of a pipeline
+- combine several successful values without tuple plumbing
+- capture exceptions from throw-happy APIs
+- run independent async work in parallel
+- write more declarative pipelines with LINQ
 
-## Pattern Matching
-
-`Match` handles both success and failure cases elegantly:
-
-### Basic Pattern Matching
+## Start Here: a Compact Example
 
 ```csharp
-var description = GetUser("123").Match(
-    onSuccess: user => $"User: {user.Name}",
-    onFailure: error => $"Error: {error.Code}"
-);
-```
+using Trellis;
 
-### Async Pattern Matching
-
-```csharp
-await ProcessOrderAsync(order).MatchAsync(
-    onSuccess: async order => await SendConfirmationAsync(order),
-    onFailure: async error => await LogErrorAsync(error)
-);
-```
-
-### With HTTP Results
-
-```csharp
-app.MapGet("/users/{id}", async (string id) =>
-{
-    return await GetUserAsync(id)
-        .ToResultAsync(Error.NotFound($"User {id} not found"))
-        .MatchAsync(
-            onSuccess: user => Results.Ok(user),
-            onFailure: error => error.ToHttpResult()
-        );
-});
-```
-
-## Tuple Destructuring
-
-Automatically destructure tuples in Match and Bind operations:
-
-### Automatic Destructuring
-
-```csharp
-var result = EmailAddress.TryCreate(email)
-    .Combine(UserId.TryCreate(userId))
-    .Combine(OrderId.TryCreate(orderId))
+var result = Result.Success("Ada")
+    .Combine(Result.Success("Lovelace"))
+    .Map((first, last) => $"{first} {last}")
     .Match(
-        // Tuple automatically destructured into named parameters
-        onSuccess: (email, userId, orderId) => 
-            $"Order {orderId} for user {userId} at {email}",
-        onFailure: error => 
-            $"Validation failed: {error.Detail}"
-    );
+        onSuccess: name => $"Hello, {name}",
+        onFailure: error => $"Failed: {error.Code}");
 ```
 
-### Tuple Destructuring in Bind
+That example uses three advanced ideas at once:
+
+- tuple-aware `Combine(...)`
+- tuple-aware `Map(...)`
+- terminal pattern matching with `Match(...)`
+
+## Pattern Matching: Make the End of the Pipeline Obvious
+
+The problem pattern matching solves is simple: after a chain of operations, you need one clear place to decide what happens on success and failure.
+
+### `Match`
 
 ```csharp
-var result = FirstName.TryCreate("John")
-    .Combine(LastName.TryCreate("Smith"))
-    .Combine(EmailAddress.TryCreate("john@example.com"))
-    .Bind((firstName, lastName, email) => 
-        CreateUser(firstName, lastName, email)
-    );
+using Trellis;
+
+var description = Result.Success("Ada")
+    .Match(
+        onSuccess: value => $"Success: {value}",
+        onFailure: error => $"Failure: {error.Code}");
 ```
 
-### Support for 2-9 Parameters
-
-Tuple destructuring supports 2 to 9 combined values:
+### `MatchAsync`
 
 ```csharp
-// Works with any number of combined results
-var result = value1.TryCreate()
-    .Combine(value2.TryCreate())
-    .Combine(value3.TryCreate())
-    .Combine(value4.TryCreate())
-    // ... up to 9 values
-    .Bind((v1, v2, v3, v4, /* ... */) => ProcessAll(...));
+using Trellis;
+
+public record User(string Id, string Name);
+
+static Task<Result<User>> GetUserAsync(string id) =>
+    Task.FromResult(id == "42"
+        ? Result.Success(new User(id, "Ada"))
+        : Result.Failure<User>(Error.NotFound($"User {id} not found", id)));
+
+var message = await GetUserAsync("42").MatchAsync(
+    onSuccess: user => $"Loaded {user.Name}",
+    onFailure: error => $"Failed: {error.Code}");
 ```
 
-## Exception Capture
+> [!TIP]
+> Use `Match(...)` when you want one final value. Use `MatchError(...)` from the error-handling guide when different error types need different outcomes.
 
-Convert exception-throwing code into Results using `Try` and `TryAsync`:
+## Tuple Destructuring: Combine Values Without Manual Unpacking
 
-### Synchronous Exception Capture
+When several validations or lookups all need to succeed, the annoying part is usually the tuple handling. Trellis solves that by letting `Bind`, `Map`, `Tap`, and `Match` destructure combined tuples for you.
+
+### `Combine(...)` + `Bind(...)`
 
 ```csharp
-Result<string> LoadFile(string path)
-{
-    return Result.Try(() => File.ReadAllText(path));
-}
+using Trellis;
 
-// Usage
-var content = LoadFile("config.json")
-    .Ensure(c => !string.IsNullOrEmpty(c), 
-           Error.Validation("File is empty"))
-    .Bind(ParseConfig);
+public record OrderDraft(string CustomerId, string Sku, int Quantity);
+
+var draft = Result.Success("customer-42")
+    .Combine(Result.Success("sku-123"))
+    .Combine(Result.Success(3))
+    .Bind((customerId, sku, quantity) =>
+        Result.Success(new OrderDraft(customerId, sku, quantity)));
 ```
 
-### Async Exception Capture
+### `Combine(...)` + `Map(...)`
 
 ```csharp
-async Task<Result<User>> FetchUserAsync(string url)
-{
-    return await Result.TryAsync(async () => 
-        await _httpClient.GetFromJsonAsync<User>(url));
-}
+using Trellis;
 
-// Usage with chaining
-var user = await FetchUserAsync(apiUrl)
-    .EnsureAsync(u => u != null, Error.NotFound("User not found"))
-    .TapAsync(u => LogUserAccessAsync(u.Id));
+var summary = Result.Success("Ada")
+    .Combine(Result.Success("Lovelace"))
+    .Combine(Result.Success("admin"))
+    .Map((first, last, role) => $"{first} {last} ({role})");
 ```
 
-### Custom Exception Mapping
+### `Combine(...)` + `Match(...)`
 
 ```csharp
-Result<string> ReadFileWithCustomErrors(string path)
-{
-    return Result.Try(
-        () => File.ReadAllText(path),
-        exception => exception switch
-        {
-            FileNotFoundException => Error.NotFound($"File not found: {path}"),
-            UnauthorizedAccessException => Error.Forbidden("Access denied"),
-            _ => Error.Unexpected(exception.Message)
-        }
-    );
-}
+using Trellis;
+
+var message = Result.Success("Ada")
+    .Combine(Result.Success("Lovelace"))
+    .Match(
+        onSuccess: (first, last) => $"User: {first} {last}",
+        onFailure: error => error.Detail);
 ```
 
-## Parallel Operations
+> [!NOTE]
+> Generated tuple overloads support arities from 2 through 9.
 
-Execute multiple async operations in parallel while maintaining ROP style using `Result.ParallelAsync`:
+## Exception Capture: Keep Throwing APIs at the Edge
 
-### Parallel Execution with Result.ParallelAsync
+Many .NET APIs still throw exceptions for normal operational problems. Trellis gives you a clean bridge so the rest of your code can stay in `Result<T>`.
+
+### `Result.Try(...)`
 
 ```csharp
-// Execute multiple async operations in parallel
-var result = await Result.ParallelAsync(
-    () => GetUserAsync(userId, cancellationToken),
-    () => GetOrdersAsync(userId, cancellationToken),
-    () => GetPreferencesAsync(userId, cancellationToken)
-)
-.WhenAllAsync()
-.BindAsync((user, orders, preferences, ct) => 
-    CreateDashboard(user, orders, preferences, ct),
-    cancellationToken
-);
+using Trellis;
+
+static Result<string> LoadFile(string path) =>
+    Result.Try(() => File.ReadAllText(path));
+
+var content = LoadFile("settings.json")
+    .Ensure(text => !string.IsNullOrWhiteSpace(text), Error.BadRequest("settings.json is empty"));
 ```
 
-**How it works:**
-1. `Result.ParallelAsync` accepts factory functions (`Func<Task<Result<T>>>`)
-2. All operations **start immediately** and run **concurrently**
-3. `.WhenAllAsync()` waits for all operations to complete
-4. Returns `Result<(T1, T2, T3)>` tuple containing all values
-5. If any operation fails, returns combined errors
-6. Tuple is automatically destructured in `BindAsync`
-
-### Multi-Stage Parallel Execution
-
-Execute dependent operations in stages - parallel within stages, sequential between stages:
+### `Result.TryAsync(...)`
 
 ```csharp
-// Stage 1: Fetch core data in parallel
-var result = await Result.ParallelAsync(
-    () => FetchUserAsync(userId, ct),
-    () => CheckInventoryAsync(productId, ct),
-    () => ValidatePaymentAsync(paymentId, ct)
-)
-.WhenAllAsync()  // Wait for Stage 1 to complete
+using Trellis;
 
-// Stage 2: Use results from Stage 1 to run fraud & shipping in parallel
-.BindAsync((user, inventory, payment, ct) =>
-    Result.ParallelAsync(
-        () => RunFraudDetectionAsync(user, payment, inventory, ct),
-        () => CalculateShippingAsync(address, inventory, ct)
-    )
-    .WhenAllAsync()
-    .BindAsync((fraudCheck, shipping, ct2) =>
-        Result.Success(new CheckoutResult(user, inventory, payment, fraudCheck, shipping))
-    ),
-    ct
-);
+static Task<Result<string>> LoadFileAsync(string path) =>
+    Result.TryAsync(() => File.ReadAllTextAsync(path));
+
+var content = await LoadFileAsync("settings.json")
+    .EnsureAsync(text => Task.FromResult(!string.IsNullOrWhiteSpace(text)), Error.BadRequest("settings.json is empty"));
 ```
 
-**Why multi-stage?**
-- Stage 2 operations **depend on** Stage 1 results
-- Each stage runs **in parallel** internally
-- Stages run **sequentially** (Stage 2 waits for Stage 1)
-- **2-3x performance** improvement over sequential execution
-
-### Real-World Example: Fraud Detection
+### Custom exception mapping
 
 ```csharp
-public async Task<Result<Transaction>> ProcessTransactionAsync(
-    Transaction transaction,
-    CancellationToken ct)
-{
-    // Run all fraud checks in parallel
-    var result = await Result.ParallelAsync(
-        () => CheckBlacklistAsync(transaction.AccountId, ct),
-        () => CheckVelocityLimitsAsync(transaction, ct),
-        () => CheckAmountThresholdAsync(transaction, ct),
-        () => CheckGeolocationAsync(transaction, ct)
-    )
-    .WhenAllAsync()
-    .BindAsync((check1, check2, check3, check4, ct) => 
-        ApproveTransactionAsync(transaction, ct), 
-        ct
-    );
-    
-    return result;
-}
+using Trellis;
+
+var result = Result.Try(
+    () => File.ReadAllText("settings.json"),
+    exception => exception switch
+    {
+        FileNotFoundException => Error.NotFound("settings.json was not found"),
+        UnauthorizedAccessException => Error.Forbidden("Access denied"),
+        _ => Error.Unexpected(exception.Message)
+    });
 ```
 
-**Performance benefit:**
-- **Sequential:** 4 checks × 50ms each = 200ms
-- **Parallel:** max(50ms, 50ms, 50ms, 50ms) = 50ms
-- **4x faster!**
+> [!TIP]
+> A good default rule is: **use exceptions at the integration boundary, then convert them once**.
 
-### Error Handling in Parallel Operations
+## Parallel Operations: Run Independent Async Work Together
+
+The problem `ParallelAsync(...)` solves is wasted time. If three async operations do not depend on each other, running them one after another is just latency.
+
+### The basic pattern
 
 ```csharp
-// If ANY operation fails, the entire result fails
-var result = await Result.ParallelAsync(
-    () => GetUserAsync(userId, ct),           // ✅ Success
-    () => GetOrdersAsync(userId, ct),          // ❌ Fails (user has no orders)
-    () => GetPreferencesAsync(userId, ct)      // ✅ Success
-).WhenAllAsync();
+using Trellis;
 
-// result.IsFailure == true
-// result.Error contains the "no orders" error
+public record User(string Id, string Name);
+public record Order(string Id);
+public record Preferences(bool DarkMode);
+public record Dashboard(User User, IReadOnlyList<Order> Orders, Preferences Preferences);
+
+static Task<Result<User>> GetUserAsync(string userId) =>
+    Task.FromResult(Result.Success(new User(userId, "Ada")));
+
+static Task<Result<IReadOnlyList<Order>>> GetOrdersAsync(string userId) =>
+    Task.FromResult(Result.Success<IReadOnlyList<Order>>([new Order("ord-1")]));
+
+static Task<Result<Preferences>> GetPreferencesAsync(string userId) =>
+    Task.FromResult(Result.Success(new Preferences(true)));
+
+var combined = await Result.ParallelAsync(
+    () => GetUserAsync("42"),
+    () => GetOrdersAsync("42"),
+    () => GetPreferencesAsync("42"))
+    .WhenAllAsync();
+
+var dashboard = combined.Bind((user, orders, preferences) =>
+    Result.Success(new Dashboard(user, orders, preferences)));
 ```
 
-**Multiple failures:**
-```csharp
-var result = await Result.ParallelAsync(
-    () => ValidateEmailAsync("invalid"),       // ❌ ValidationError
-    () => ValidatePhoneAsync("bad"),           // ❌ ValidationError
-    () => ValidateAgeAsync(-5)                 // ❌ ValidationError
-).WhenAllAsync();
+### What `ParallelAsync(...)` actually does
 
-// result.Error is ValidationError with all 3 field errors combined
+- accepts factory functions like `Func<Task<Result<T>>>`
+- invokes those factories immediately
+- returns a tuple of tasks
+- lets `WhenAllAsync()` wait for all of them
+- combines successes into a tuple result
+- combines failures using normal Trellis error aggregation rules
+
+> [!WARNING]
+> `WhenAllAsync()` combines **failed `Result<T>` values**, but if one of the tasks itself faults or is canceled, that exception still escapes.
+
+### When to use it
+
+Use `ParallelAsync(...)` when:
+
+- operations are independent
+- operations are safe to run concurrently
+- latency matters
+- collecting multiple failures is useful
+
+Avoid it when:
+
+- step B depends on step A
+- operations mutate shared state unsafely
+- ordering is part of the business rule
+
+## LINQ Query Syntax: Write Sequential Intent Clearly
+
+LINQ syntax is handy when your pipeline is conceptually “do this, then that, then that.”
+
+### Result LINQ
+
+```csharp
+using Trellis;
+
+var confirmation =
+    from customerId in Result.Success("customer-42")
+    from sku in Result.Success("sku-123")
+    from quantity in Result.Success(3)
+        .Ensure(value => value > 0, Error.Validation("Quantity must be positive", "quantity"))
+    select $"{customerId}:{sku}:{quantity}";
 ```
 
-### Parallel vs Sequential Comparison
-
-**Sequential (old way):**
-```csharp
-var user = await GetUserAsync(userId, ct);
-if (user.IsFailure) return user.Error;
-
-var orders = await GetOrdersAsync(userId, ct);
-if (orders.IsFailure) return orders.Error;
-
-var prefs = await GetPreferencesAsync(userId, ct);
-if (prefs.IsFailure) return prefs.Error;
-
-// Total time: ~150ms (50ms + 50ms + 50ms)
-```
-
-**Parallel (new way):**
-```csharp
-var result = await Result.ParallelAsync(
-    () => GetUserAsync(userId, ct),
-    () => GetOrdersAsync(userId, ct),
-    () => GetPreferencesAsync(userId, ct)
-).WhenAllAsync();
-
-// Total time: ~50ms (all run concurrently)
-// 3x faster!
-```
-
-### When to Use Parallel Execution
-
-✅ **DO use `Result.ParallelAsync` when:**
-- Operations are **independent** (no dependencies between them)
-- Operations can run **concurrently** safely
-- **Performance matters** (user-facing, high-throughput)
-- Need to **aggregate errors** from multiple validations
-
-❌ **DON'T use when:**
-- Operations have **dependencies** (use `BindAsync` chain)
-- Operations must run **sequentially**
-- Operations **modify shared state** (need synchronization)
-
-### Best Practices
-
-1. **Use factory functions** - Ensures operations don't start until `ParallelAsync` is called
-2. **Always call `.WhenAllAsync()`** - Waits for all operations to complete
-3. **Short-circuit on failure** - If one fails, others may still complete but result will be failure
-4. **Combine errors intelligently** - ValidationErrors merge field errors, different types create AggregateError
-5. **Pass CancellationToken** - Allows graceful cancellation of all operations
-
-## LINQ Query Syntax
-
-Use C#'s LINQ query syntax for readable multi-step operations:
-
-### Basic LINQ Query
+### `where` in LINQ
 
 ```csharp
+using Trellis;
+
 var result =
-    from user in GetUser(userId)
-    from order in GetLastOrder(user)
-    from payment in ProcessPayment(order)
-    select new OrderConfirmation(user, order, payment);
+    from name in Result.Success("Ada")
+    where name.Length >= 3
+    select name.ToUpperInvariant();
 ```
 
-### LINQ with Where Clause
+> [!NOTE]
+> In a Result LINQ expression, `where` uses Trellis' generic “filtered out” failure. If you need a domain-specific message, prefer `Ensure(...)`.
+
+### Maybe LINQ
+
+`Maybe<T>` supports LINQ too, which makes optional flows much easier to read.
 
 ```csharp
-var result =
-    from email in EmailAddress.TryCreate(emailInput)
-    from user in GetUserByEmail(email)
-    where user.IsActive
-    from orders in GetUserOrders(user.Id)
-    select new UserSummary(user, orders);
-```
+using Trellis;
 
-**Note:** The `where` clause uses a generic "filtered out" error. For domain-specific error messages, use `Ensure` instead:
+Maybe<string> first = Maybe.From("Ada");
+Maybe<string> last = Maybe.From("Lovelace");
 
-```csharp
-// Better: Use Ensure for custom error messages
-var result = EmailAddress.TryCreate(emailInput)
-    .Bind(email => GetUserByEmail(email))
-    .Ensure(user => user.IsActive, Error.Validation("User account is not active"))
-    .Bind(user => GetUserOrders(user.Id))
-    .Map(orders => new UserSummary(user, orders));
-```
-
-### LINQ with Async Operations
-
-```csharp
-var result = await (
-    from userId in UserId.TryCreate(userIdInput)
-    from user in GetUserAsync(userId)
-    from permissions in GetPermissionsAsync(user.Id)
-    select new UserWithPermissions(user, permissions)
-).ConfigureAwait(false);
-```
-
-**Note:** LINQ query syntax works best with synchronous operations. For complex async workflows, consider using `BindAsync` for better readability and cancellation token support.
-
-### Maybe LINQ Query Syntax
-
-`Maybe<T>` also supports LINQ query syntax via `Select` and `SelectMany`, enabling composition of optional values:
-
-```csharp
-// Compose multiple optional values
 Maybe<string> fullName =
-    from first in firstName
-    from last in lastName
-    select $"{first} {last}";
-// If either is None → result is None
-
-// Chain optional lookups
-Maybe<Email> managerEmail =
-    from user in users.FindById(userId)
-    from manager in users.FindById(user.ManagerId)
-    from email in manager.Email
-    select email;
+    from f in first
+    from l in last
+    select $"{f} {l}";
 ```
 
-### ToMaybe - Convert Result to Maybe
+## Result-to-Maybe Conversion
 
-`ToMaybe` converts a `Result<T>` to a `Maybe<T>`: success→Some(value), failure→None. The error is intentionally discarded.
-
-**Use when:** You don't care why something failed — you just want the value if it succeeded.
+Sometimes the only question is “did I get a value?” — not “why did it fail?” That is what `ToMaybe()` is for.
 
 ```csharp
-// Try to load avatar — if it fails, just don't show one
-Maybe<Avatar> avatar = await avatarService.GetByUserId(userId).ToMaybeAsync();
+using Trellis;
 
-// Sync version
-Maybe<User> user = GetUser(id).ToMaybe();
+Maybe<string> cachedName = Result.Success("Ada").ToMaybe();
+Maybe<string> missingName = Result.Failure<string>(Error.NotFound("User not found")).ToMaybe();
 ```
 
-## Maybe Type
-
-`Maybe<T>` represents domain-level optionality — a value that was either provided or intentionally omitted. It composes with `Result<T>` pipelines and provides type-safe handling of optional value objects.
-
-For a complete guide on why `Maybe<T>` exists, when to use it vs. `T?`, and its full API, see the dedicated **[Why Maybe?](maybe-type.md)** article.
-
-**Quick example:**
+And the async version:
 
 ```csharp
-// Optional value object on an entity
-public class Customer : Entity<CustomerId>
-{
-    public Maybe<PhoneNumber> Phone { get; }
-}
+using Trellis;
 
-// Bridge to Result pipeline
-var result = customer.Phone
-    .ToResult(Error.NotFound("No phone on file"))
-    .Map(phone => FormatForDisplay(phone))
-    .Bind(formatted => SendSmsAsync(formatted));
+Maybe<string> value = await Task.FromResult(Result.Success("Ada")).ToMaybeAsync();
 ```
 
-## Best Practices
+## Practical Rules of Thumb
 
-1. **Use Try for Third-Party Code**: Wrap exception-throwing code with `Result.Try` or `Result.TryAsync`
-2. **Leverage Tuples**: Use tuple destructuring for combining multiple validations
-3. **Parallel When Possible**: Use `Task.WhenAll` for independent async operations
-4. **Choose Maybe vs Result Carefully**: Use Maybe for optional data, Result for operations that can fail
-5. **LINQ for Readability**: Use LINQ query syntax for complex multi-step operations
+- Use **pattern matching** to make the end of the pipeline obvious
+- Use **tuple destructuring** instead of manual tuple unpacking
+- Use **`Try` / `TryAsync`** at integration boundaries
+- Use **`ParallelAsync(...).WhenAllAsync()`** only for truly independent async work
+- Use **LINQ syntax** when it reads more clearly than nested `Bind(...)`
+- Use **`ToMaybe()`** only when discarding the error is intentional
 
 ## Next Steps
 
-- Learn about [Error Handling](error-handling.md) for discriminated error matching
-- See [Working with Async Operations](basics.md#working-with-async-operations) for CancellationToken support
-- Check [Integration](integration.md) for ASP.NET and FluentValidation usage
+- Read [Error Handling](error-handling.md) for type-specific matching and aggregation
+- Read [Why Maybe?](maybe-type.md) for domain optionality and `ToResult(...)`

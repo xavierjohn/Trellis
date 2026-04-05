@@ -1,68 +1,55 @@
-﻿# TRLS008: Result is double-wrapped
+# TRLS008 — Result is double-wrapped
 
-## Cause
+- **Severity:** Warning
+- **Category:** Trellis
 
-A `Result<Result<T>>` type is detected, indicating that a `Result` is wrapped inside another `Result`.
+## What it detects
+Flags declared or inferred `Result<Result<T>>`, and also flags `Result.Success(existingResult)` or `Result.Failure(existingResult)` when the value is already a `Result<T>`.
 
-## Rule Description
+## Why it matters
+Double-wrapped results are awkward to handle and usually mean the pipeline used `Map` where `Bind` was intended.
 
-`Result<Result<T>>` is almost always unintended and indicates a logic error. This typically happens when:
-- Using `Map` instead of `Bind` when the transformation returns a `Result`
-- Manually wrapping a `Result` in another `Result`
+> [!WARNING]
+> A nested `Result` is almost never the domain model you actually want. It usually signals a flattened pipeline that never got flattened.
 
-## How to Fix Violations
-
-### Use Bind instead of Map
-
+## Bad example
 ```csharp
-// ❌ Bad - Creates Result<Result<Customer>>
-return emailResult.Map(email => Customer.Create(email));
-//                                      ^^^^^^^^^^^^^^^^^^^
-//                             Returns Result<Customer>
+using Trellis;
 
-// ✅ Good - Flattens to Result<Customer>
-return emailResult.Bind(email => Customer.Create(email));
-```
-
-### Don't wrap existing Results
-
-```csharp
-// ❌ Bad - Double wrapping
-Result<Customer> customerResult = GetCustomer();
-Result<Result<Customer>> wrapped = Result.Success(customerResult); // Wrong!
-
-// ✅ Good - Return the Result directly
-Result<Customer> customerResult = GetCustomer();
-return customerResult;
-```
-
-## Example
-
-```csharp
-public Result<Order> CreateOrder(string emailStr, decimal amount)
+static class Example
 {
-    // ❌ Bad - Result<Result<Order>>
-    var result = Email.TryCreate(emailStr)
-        .Map(email => Order.Create(email, amount));
-    //  ^^^                ^^^^^^^^^^^^^^^^^^^
-    //  Map           Returns Result<Order>
-    // Result is: Result<Result<Order>>
-
-    // ✅ Good - Result<Order>
-    var result = Email.TryCreate(emailStr)
-        .Bind(email => Order.Create(email, amount));
-    //  ^^^^
-    //  Bind flattens the Result
+    public static Result<Result<int>> Bad() =>
+        Result.Success(Result.Success(42));
 }
 ```
 
-## When to Suppress Warnings
+## Good example
+```csharp
+using Trellis;
 
-Do not suppress this warning. `Result<Result<T>>` is never the correct type.
+static class Example
+{
+    public static Result<int> Good() =>
+        Result.Success(42);
+}
+```
 
-If you have a legitimate case (extremely rare), restructure your code to use `Bind` or unwrap one layer.
+## Code fix available
+No.
 
-## Related Rules
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
 
-- [TRLS002](TRLS002.md) - Use Bind instead of Map when lambda returns Result
-- [TRLS011](TRLS011.md) - Maybe is double-wrapped
+```ini
+dotnet_diagnostic.TRLS008.severity = none
+```
+
+```csharp
+#pragma warning disable TRLS008
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS008
+```
+
+> [!TIP]
+> If the inner expression already returns `Result<T>`, switch to `Bind` or return the inner result directly.
+
