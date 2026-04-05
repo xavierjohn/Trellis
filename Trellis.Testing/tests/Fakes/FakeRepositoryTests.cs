@@ -489,7 +489,7 @@ public class FakeRepositoryTests
         private readonly string _prefix;
         public NameStartsWithSpecification(string prefix) => _prefix = prefix;
         public override System.Linq.Expressions.Expression<Func<TestAggregate, bool>> ToExpression() =>
-            a => a.Name.StartsWith(_prefix);
+            a => a.Name.StartsWith(_prefix, System.StringComparison.Ordinal);
     }
 
     #endregion

@@ -151,6 +151,7 @@ public class FakeRepository<TAggregate, TId>
     /// <returns>Maybe with the first matching aggregate or None.</returns>
     public Task<Maybe<TAggregate>> FindAsync(Func<TAggregate, bool> predicate)
     {
+        ArgumentNullException.ThrowIfNull(predicate);
         var match = _store.Values.FirstOrDefault(predicate);
         return Task.FromResult(match is not null ? Maybe.From(match) : Maybe<TAggregate>.None);
     }
@@ -161,8 +162,11 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="predicate">The predicate to filter by.</param>
     /// <returns>A list of matching aggregates.</returns>
-    public Task<IReadOnlyList<TAggregate>> WhereAsync(Func<TAggregate, bool> predicate) =>
-        Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(predicate).ToList());
+    public Task<IReadOnlyList<TAggregate>> WhereAsync(Func<TAggregate, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        return Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(predicate).ToList());
+    }
 
     /// <summary>
     /// Returns all aggregates matching the specification.
@@ -170,8 +174,11 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="specification">The specification to evaluate.</param>
     /// <returns>A list of matching aggregates.</returns>
-    public Task<IReadOnlyList<TAggregate>> WhereAsync(Specification<TAggregate> specification) =>
-        Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(specification.IsSatisfiedBy).ToList());
+    public Task<IReadOnlyList<TAggregate>> WhereAsync(Specification<TAggregate> specification)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+        return Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(specification.IsSatisfiedBy).ToList());
+    }
 
     /// <summary>
     /// Gets the count of stored aggregates.
