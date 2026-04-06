@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+﻿namespace Trellis.Testing.AspNetCore;
 
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;

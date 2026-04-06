@@ -1,7 +1,6 @@
 ﻿namespace Trellis.Testing.Tests.Fakes;
 
 using Trellis.Authorization;
-using Trellis.Testing.Fakes;
 
 /// <summary>
 /// Tests for <see cref="TestActorProvider"/> and <see cref="TestActorScope"/>.

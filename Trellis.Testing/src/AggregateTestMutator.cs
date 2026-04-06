@@ -11,7 +11,7 @@ using System.Reflection;
 /// </summary>
 /// <remarks>
 /// <para>Use in integration tests to backdate time-dependent properties (e.g., <c>SubmittedAt</c>)
-/// without raw SQL. Also usable in unit tests with <see cref="Trellis.Testing.Fakes.FakeRepository{TAggregate,TId}"/>.</para>
+/// without raw SQL. Also usable in unit tests with <see cref="FakeRepository{TAggregate,TId}"/>.</para>
 /// <para>These helpers are test-only. Do NOT use in production code.</para>
 /// </remarks>
 public static class AggregateTestMutator

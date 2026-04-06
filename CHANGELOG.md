@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+#### Trellis.Testing — Package Restructure
+
+- **Removed `ResultBuilder`** — Use `Result.Success(value)` and `Result.Failure<T>(Error.XYZ(...))` directly. `ResultBuilder` was a thin wrapper that added no value over the existing API.
+- **Removed `ValidationErrorBuilder`** — Use `Error.Validation(detail, fieldName).And(fieldName, detail)` directly.
+- **Removed `Trellis.Testing.Builders` namespace** — All builder types have been removed.
+- **Removed `Trellis.Testing.Fakes` namespace** — `FakeRepository`, `FakeSharedResourceLoader`, `TestActorProvider`, and `TestActorScope` now live in the `Trellis.Testing` namespace. Replace `using Trellis.Testing.Fakes;` with `using Trellis.Testing;`.
+- **New package: `Trellis.Testing.AspNetCore`** — ASP.NET Core integration test helpers (`WebApplicationFactoryExtensions`, `WebApplicationFactoryTimeExtensions`, `ServiceCollectionExtensions`, `ServiceCollectionDbProviderExtensions`, `MsalTestTokenProvider`, `MsalTestOptions`, `TestUserCredentials`) moved to this new package. Add `dotnet add package Trellis.Testing.AspNetCore` and add `using Trellis.Testing.AspNetCore;` for these types. Projects using both core assertions and ASP.NET helpers will need both packages.
+- **`Trellis.Testing` no longer depends on ASP.NET Core, EF Core, or MSAL** — The core package now only depends on `Trellis.Results`, `Trellis.DomainDrivenDesign`, `Trellis.Authorization`, and `FluentAssertions`.
+
 ### Added
 
 #### Trellis.EntityFrameworkCore — Composite Value Object Convention

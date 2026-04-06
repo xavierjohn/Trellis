@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+﻿namespace Trellis.Testing.AspNetCore;
 
 /// <summary>
 /// Configuration options for acquiring real Azure Entra ID tokens in E2E integration tests

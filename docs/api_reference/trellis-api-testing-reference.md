@@ -1,8 +1,10 @@
 # Trellis.Testing — API Reference
 
 - **Package:** `Trellis.Testing`
-- **Namespaces:** `Trellis.Testing`, `Trellis.Testing.Builders`, `Trellis.Testing.Fakes`
-- **Purpose:** Test-only assertions, builders, fakes, DI helpers, and integration-test helpers for Trellis applications.
+- **Namespace:** `Trellis.Testing`
+- **Purpose:** FluentAssertions extensions, unwrap helpers, and test doubles (FakeRepository, TestActorProvider) for Trellis applications.
+
+> **ASP.NET Core integration test helpers** (WebApplicationFactory, DI replacement, MSAL tokens) are in a separate package: [`Trellis.Testing.AspNetCore`](#trelllistestingaspnetcore--api-reference).
 
 ## Types
 
@@ -268,6 +270,161 @@ public static class AggregateTestMutator
 }
 ```
 
+#### `FakeRepository<TAggregate, TId>`
+```csharp
+public class FakeRepository<TAggregate, TId>
+    where TAggregate : Aggregate<TId>
+    where TId : notnull
+{
+    public IReadOnlyList<IDomainEvent> PublishedEvents { get; }
+    public int Count { get; }
+
+    public FakeRepository<TAggregate, TId> WithUniqueConstraint(Func<TAggregate, object?> propertySelector);
+
+    public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default);
+    public Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default);
+    public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
+    public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default);
+
+    public void Clear();
+    public bool Exists(TId id);
+    public TAggregate? Get(TId id);
+    public IEnumerable<TAggregate> GetAll();
+
+    public Task<Maybe<TAggregate>> FindAsync(Func<TAggregate, bool> predicate);
+    public Task<IReadOnlyList<TAggregate>> WhereAsync(Func<TAggregate, bool> predicate);
+    public Task<IReadOnlyList<TAggregate>> WhereAsync(Specification<TAggregate> specification);
+}
+```
+
+#### `FakeSharedResourceLoader<TResource, TId>`
+```csharp
+public class FakeSharedResourceLoader<TResource, TId> : SharedResourceLoaderById<TResource, TId>
+    where TResource : Aggregate<TId>
+    where TId : notnull
+{
+    public FakeSharedResourceLoader(FakeRepository<TResource, TId> repository);
+
+    public override Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
+}
+```
+
+#### `TestActorProvider`
+```csharp
+public sealed class TestActorProvider : IActorProvider
+{
+    public TestActorProvider(Actor actor);
+    public TestActorProvider(string userId, params string[] permissions);
+
+    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default);
+
+    public TestActorScope WithActor(Actor actor);
+    public TestActorScope WithActor(string userId, params string[] permissions);
+}
+```
+
+#### `TestActorScope`
+```csharp
+public sealed class TestActorScope : IAsyncDisposable, IDisposable
+{
+    public ValueTask DisposeAsync();
+    public void Dispose();
+}
+```
+
+## Usage notes
+
+### Assertions
+
+- Synchronous assertions start from `Result<T>` or `Maybe<T>`:
+  - `result.Should().BeSuccess()`
+  - `result.Should().BeFailureOfType<ValidationError>()`
+  - `maybe.Should().HaveValue()`
+- **Async assertions are extension methods on `Task<Result<T>>` and `ValueTask<Result<T>>`, not on `ResultAssertions<T>`.**
+  - Correct: `await resultTask.BeSuccessAsync();`
+  - Correct: `await valueTaskResult.BeFailureAsync();`
+  - Wrong: `await result.Should().BeSuccessAsync();`
+
+### FakeRepository
+
+- `SaveAsync` and `DeleteAsync` return `Task<Result<Unit>>`.
+- `WithUniqueConstraint(Func<TAggregate, object?> propertySelector)` — fluent constraint registration
+- `Clear()`, `Exists(TId id)`, `Get(TId id)`, `GetAll()`, `Count` — direct inspection helpers
+- `GetByIdAsync` / `DeleteAsync` return `NotFoundError` details in the format:
+  - `"{AggregateTypeName} with ID {id} not found"`
+- Unique-constraint conflicts return:
+  - `"A {AggregateTypeName} with the same value already exists."`
+
+## Compilable examples
+
+### Result assertions
+
+```csharp
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var success = Result.Success(42);
+success.Should().BeSuccess().Which.Should().Be(42);
+
+var notFound = Result.Failure<int>(Error.NotFound("Order 123 not found", "123"));
+notFound.Should().BeFailure()
+    .Which.Detail.Should().Be("Order 123 not found");
+```
+
+### Async assertions
+
+```csharp
+using System.Threading.Tasks;
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+Task<Result<int>> resultTask = Task.FromResult(Result.Success(42));
+ValueTask<Result<int>> valueTaskResult = ValueTask.FromResult(Result.Success(7));
+
+(await resultTask.BeSuccessAsync()).Which.Should().Be(42);
+(await valueTaskResult.BeSuccessAsync()).Which.Should().Be(7);
+```
+
+### FakeRepository
+
+```csharp
+using System;
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+public sealed record OrderId(Guid Value);
+
+public sealed class Order : Aggregate<OrderId>
+{
+    public Order(OrderId id) : base(id) { }
+}
+
+var repo = new FakeRepository<Order, OrderId>()
+    .WithUniqueConstraint(order => order.Id);
+
+var order = new Order(new OrderId(Guid.NewGuid()));
+
+await repo.SaveAsync(order).BeSuccessAsync();
+(await repo.GetByIdAsync(order.Id)).Should().BeSuccess().Which.Should().BeSameAs(order);
+repo.Exists(order.Id).Should().BeTrue();
+repo.Count.Should().Be(1);
+```
+
+---
+
+# Trellis.Testing.AspNetCore — API Reference
+
+- **Package:** `Trellis.Testing.AspNetCore`
+- **Namespace:** `Trellis.Testing.AspNetCore`
+- **Purpose:** ASP.NET Core integration test utilities — WebApplicationFactory helpers, DI service replacement, fake time providers, and MSAL token acquisition.
+
+## Types
+
+### Namespace `Trellis.Testing.AspNetCore`
+
 #### `ServiceCollectionExtensions`
 ```csharp
 public static class ServiceCollectionExtensions
@@ -367,153 +524,7 @@ public sealed class TestUserCredentials
 }
 ```
 
-### Namespace `Trellis.Testing.Builders`
-
-#### `ResultBuilder`
-```csharp
-public static class ResultBuilder
-{
-    public static Result<T> Success<T>(T value);
-    public static Result<T> Failure<T>(Error error);
-    public static Result<T> NotFound<T>(string detail);
-    public static Result<T> NotFound<T>(string entity, string instance);
-    public static Result<T> Validation<T>(string detail, string fieldName = "");
-    public static Result<T> Unauthorized<T>(string detail = "Unauthorized");
-    public static Result<T> Forbidden<T>(string detail = "Forbidden");
-    public static Result<T> Conflict<T>(string detail);
-    public static Result<T> ServiceUnavailable<T>(string detail);
-    public static Result<T> Unexpected<T>(string detail);
-    public static Result<T> Domain<T>(string detail);
-    public static Result<T> RateLimit<T>(string detail);
-    public static Result<T> BadRequest<T>(string detail);
-    public static Result<T> Gone<T>(string detail);
-    public static Result<T> MethodNotAllowed<T>(string detail, IReadOnlyList<string> allowedMethods);
-    public static Result<T> NotAcceptable<T>(string detail);
-    public static Result<T> UnsupportedMediaType<T>(string detail);
-    public static Result<T> ContentTooLarge<T>(string detail);
-    public static Result<T> RangeNotSatisfiable<T>(string detail, long completeLength);
-}
-```
-
-#### `ValidationErrorBuilder`
-```csharp
-public class ValidationErrorBuilder
-{
-    public static ValidationErrorBuilder Create();
-
-    public ValidationErrorBuilder WithFieldError(string fieldName, string detail);
-    public ValidationErrorBuilder WithFieldError(string fieldName, params string[] details);
-
-    public ValidationError Build();
-    public Result<T> BuildFailure<T>();
-}
-```
-
-### Namespace `Trellis.Testing.Fakes`
-
-#### `FakeRepository<TAggregate, TId>`
-```csharp
-public class FakeRepository<TAggregate, TId>
-    where TAggregate : Aggregate<TId>
-    where TId : notnull
-{
-    public IReadOnlyList<IDomainEvent> PublishedEvents { get; }
-    public int Count { get; }
-
-    public FakeRepository<TAggregate, TId> WithUniqueConstraint(Func<TAggregate, object?> propertySelector);
-
-    public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default);
-    public Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default);
-    public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
-    public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default);
-
-    public void Clear();
-    public bool Exists(TId id);
-    public TAggregate? Get(TId id);
-    public IEnumerable<TAggregate> GetAll();
-
-    public Task<Maybe<TAggregate>> FindAsync(Func<TAggregate, bool> predicate);
-    public Task<IReadOnlyList<TAggregate>> WhereAsync(Func<TAggregate, bool> predicate);
-    public Task<IReadOnlyList<TAggregate>> WhereAsync(Specification<TAggregate> specification);
-}
-```
-
-#### `FakeSharedResourceLoader<TResource, TId>`
-```csharp
-public class FakeSharedResourceLoader<TResource, TId> : SharedResourceLoaderById<TResource, TId>
-    where TResource : Aggregate<TId>
-    where TId : notnull
-{
-    public FakeSharedResourceLoader(FakeRepository<TResource, TId> repository);
-
-    public override Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
-}
-```
-
-#### `TestActorProvider`
-```csharp
-public sealed class TestActorProvider : IActorProvider
-{
-    public TestActorProvider(Actor actor);
-    public TestActorProvider(string userId, params string[] permissions);
-
-    public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default);
-
-    public TestActorScope WithActor(Actor actor);
-    public TestActorScope WithActor(string userId, params string[] permissions);
-}
-```
-
-#### `TestActorScope`
-```csharp
-public sealed class TestActorScope : IAsyncDisposable, IDisposable
-{
-    public ValueTask DisposeAsync();
-    public void Dispose();
-}
-```
-
 ## Usage notes
-
-### Assertions
-
-- Synchronous assertions start from `Result<T>` or `Maybe<T>`:
-  - `result.Should().BeSuccess()`
-  - `result.Should().BeFailureOfType<ValidationError>()`
-  - `maybe.Should().HaveValue()`
-- **Async assertions are extension methods on `Task<Result<T>>` and `ValueTask<Result<T>>`, not on `ResultAssertions<T>`.**
-  - Correct: `await resultTask.BeSuccessAsync();`
-  - Correct: `await valueTaskResult.BeFailureAsync();`
-  - Wrong: `await result.Should().BeSuccessAsync();`
-
-### Builders
-
-- Builder namespace is **`Trellis.Testing.Builders`**.
-- `ResultBuilder.NotFound<T>(string entity, string instance)` builds:
-  - detail: `"{entity} {instance} not found"`
-  - instance: `instance`
-- Added failure helpers exposed by the current source:
-  - `Gone`
-  - `MethodNotAllowed`
-  - `NotAcceptable`
-  - `UnsupportedMediaType`
-  - `ContentTooLarge`
-  - `RangeNotSatisfiable`
-
-### FakeRepository
-
-- `SaveAsync` and `DeleteAsync` return `Task<Result<Unit>>`.
-- Public helpers not present in the old doc but present in source:
-  - `WithUniqueConstraint(Func<TAggregate, object?> propertySelector)`
-  - `Clear()`
-  - `Exists(TId id)`
-  - `Get(TId id)`
-  - `GetAll()`
-  - `Count`
-- `GetByIdAsync` / `DeleteAsync` return `NotFoundError` details in the format:
-  - `"{AggregateTypeName} with ID {id} not found"`
-- Unique-constraint conflicts return:
-  - `"A {AggregateTypeName} with the same value already exists."`
 
 ### WebApplicationFactory actor header
 
@@ -536,64 +547,6 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
 
 ## Compilable examples
 
-### Result assertions and builders
-
-```csharp
-using FluentAssertions;
-using Trellis;
-using Trellis.Testing;
-using Trellis.Testing.Builders;
-
-var success = ResultBuilder.Success(42);
-success.Should().BeSuccess().Which.Should().Be(42);
-
-var notFound = ResultBuilder.NotFound<int>("Order", "123");
-notFound.Should().BeFailure()
-    .Which.Detail.Should().Be("Order 123 not found");
-```
-
-### Async assertions
-
-```csharp
-using System.Threading.Tasks;
-using FluentAssertions;
-using Trellis;
-using Trellis.Testing;
-
-Task<Result<int>> resultTask = Task.FromResult(Result.Success(42));
-ValueTask<Result<int>> valueTaskResult = ValueTask.FromResult(Result.Success(7));
-
-(await resultTask.BeSuccessAsync()).Which.Should().Be(42);
-(await valueTaskResult.BeSuccessAsync()).Which.Should().Be(7);
-```
-
-### FakeRepository
-
-```csharp
-using System;
-using FluentAssertions;
-using Trellis;
-using Trellis.Testing;
-using Trellis.Testing.Fakes;
-
-public sealed record OrderId(Guid Value);
-
-public sealed class Order : Aggregate<OrderId>
-{
-    public Order(OrderId id) : base(id) { }
-}
-
-var repo = new FakeRepository<Order, OrderId>()
-    .WithUniqueConstraint(order => order.Id);
-
-var order = new Order(new OrderId(Guid.NewGuid()));
-
-await repo.SaveAsync(order).BeSuccessAsync();
-(await repo.GetByIdAsync(order.Id)).Should().BeSuccess().Which.Should().BeSameAs(order);
-repo.Exists(order.Id).Should().BeTrue();
-repo.Count.Should().Be(1);
-```
-
 ### WebApplicationFactory helpers
 
 ```csharp
@@ -602,7 +555,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Time.Testing;
 using Trellis.Authorization;
-using Trellis.Testing;
+using Trellis.Testing.AspNetCore;
 
 public sealed class Program
 {

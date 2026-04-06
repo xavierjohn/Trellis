@@ -87,7 +87,6 @@ If you are testing application handlers, `FakeRepository<TAggregate, TId>` is us
 using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
-using Trellis.Testing.Fakes;
 
 public sealed record OrderId(Guid Value);
 
@@ -123,7 +122,7 @@ When you want to test permission checks or resource ownership, use `TestActorPro
 ```csharp
 using FluentAssertions;
 using Trellis.Authorization;
-using Trellis.Testing.Fakes;
+using Trellis.Testing;
 
 var actorProvider = new TestActorProvider("admin", "Orders.Read", "Orders.Write");
 
@@ -142,22 +141,20 @@ There is also an overload that accepts a full `Actor`, which is useful when you 
 
 ## Building failures for tests
 
-`ResultBuilder` keeps intent obvious and removes repetitive error construction.
+Use the standard `Result` and `Error` factory methods directly — no special test builder needed.
 
 ```csharp
-using Trellis.Testing.Builders;
+using Trellis;
 
-var success = ResultBuilder.Success(42);
-var notFound = ResultBuilder.NotFound<int>("Order", "123");
-var forbidden = ResultBuilder.Forbidden<int>("Not allowed.");
+var success = Result.Success(42);
+var notFound = Result.Failure<int>(Error.NotFound("Order 123 not found", "123"));
+var forbidden = Result.Failure<int>(Error.Forbidden("Not allowed."));
 ```
 
-`ResultBuilder.NotFound<T>("Order", "123")` produces:
+`Error.NotFound("Order 123 not found", "123")` produces:
 
 - detail: `Order 123 not found`
 - instance: `123`
-
-No extra quotes are added.
 
 ## HTTP integration tests with actor headers
 
@@ -167,7 +164,7 @@ When your app uses `DevelopmentActorProvider`, `CreateClientWithActor` is the ea
 
 ```csharp
 using Microsoft.AspNetCore.Mvc.Testing;
-using Trellis.Testing;
+using Trellis.Testing.AspNetCore;
 
 public sealed class Program
 {
@@ -186,7 +183,7 @@ Use this when the test needs more than id + granted permissions.
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Authorization;
-using Trellis.Testing;
+using Trellis.Testing.AspNetCore;
 
 public sealed class Program
 {
@@ -217,7 +214,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Trellis.Testing;
+using Trellis.Testing.AspNetCore;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
@@ -256,7 +253,7 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Authorization;
-using Trellis.Testing;
+using Trellis.Testing.AspNetCore;
 
 public sealed record GetOrderQuery(string OrderId);
 public sealed record OrderResource(string Id);

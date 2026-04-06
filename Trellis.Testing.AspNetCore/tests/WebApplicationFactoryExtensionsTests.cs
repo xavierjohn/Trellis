@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests.Http;
+﻿namespace Trellis.Testing.AspNetCore.Tests;
 
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;

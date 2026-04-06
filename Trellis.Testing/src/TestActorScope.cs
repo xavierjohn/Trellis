@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Fakes;
+﻿namespace Trellis.Testing;
 
 /// <summary>
 /// Captures the current <see cref="Trellis.Authorization.Actor"/> and restores it on dispose.

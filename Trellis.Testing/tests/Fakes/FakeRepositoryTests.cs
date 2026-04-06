@@ -1,7 +1,5 @@
 ﻿namespace Trellis.Testing.Tests.Fakes;
 
-using Trellis.Testing.Fakes;
-
 public class FakeRepositoryTests
 {
     #region Test Aggregate
