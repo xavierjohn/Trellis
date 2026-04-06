@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+﻿namespace Trellis.Testing.AspNetCore;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Func<IServiceProvider, IResourceLoader<TMessage, TResource>> factory)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(factory);
         services.RemoveAll<IResourceLoader<TMessage, TResource>>();
         services.AddScoped(factory);
         return services;

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests;
+﻿namespace Trellis.Testing.AspNetCore.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;

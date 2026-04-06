@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Fakes;
+﻿namespace Trellis.Testing;
 
 using Trellis;
 

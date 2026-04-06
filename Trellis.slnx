@@ -128,4 +128,8 @@
     <Project Path="Trellis.Testing/src/Trellis.Testing.csproj" />
     <Project Path="Trellis.Testing/tests/Trellis.Testing.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Testing.AspNetCore/">
+    <Project Path="Trellis.Testing.AspNetCore/src/Trellis.Testing.AspNetCore.csproj" />
+    <Project Path="Trellis.Testing.AspNetCore/tests/Trellis.Testing.AspNetCore.Tests.csproj" />
+  </Folder>
 </Solution>

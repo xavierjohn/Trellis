@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+﻿namespace Trellis.Testing.AspNetCore;
 
 /// <summary>
 /// Credentials for a named test user in an Azure Entra ID test tenant.

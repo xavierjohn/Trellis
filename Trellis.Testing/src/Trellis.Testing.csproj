@@ -12,7 +12,7 @@
     <IsAotCompatible>true</IsAotCompatible>
     
     <PackageId>Trellis.Testing</PackageId>
-    <Description>Testing utilities and assertions for Trellis - FluentAssertions extensions, test builders, and fake implementations for Railway-Oriented Programming</Description>
+    <Description>FluentAssertions extensions and test doubles for Trellis - assert Result, Maybe, and Error types with readable fluent syntax</Description>
     <PackageTags>trellis;functional-programming;testing;assertions;fluent-assertions;ddd;railway-oriented-programming;result;maybe;test-utilities</PackageTags>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
   </PropertyGroup>
@@ -24,12 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="FluentAssertions" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
-    <PackageReference Include="Microsoft.Identity.Client" />
   </ItemGroup>
 
   <ItemGroup>

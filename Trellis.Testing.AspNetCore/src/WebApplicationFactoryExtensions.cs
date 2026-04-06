@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+﻿namespace Trellis.Testing.AspNetCore;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
@@ -34,6 +34,8 @@ public static class WebApplicationFactoryExtensions
         params string[] permissions)
         where TEntryPoint : class
     {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(actorId);
         permissions ??= [];
 
         var client = factory.CreateClient();
@@ -61,6 +63,7 @@ public static class WebApplicationFactoryExtensions
         Actor actor)
         where TEntryPoint : class
     {
+        ArgumentNullException.ThrowIfNull(factory);
         ArgumentNullException.ThrowIfNull(actor);
 
         var client = factory.CreateClient();

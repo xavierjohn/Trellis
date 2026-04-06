@@ -107,7 +107,7 @@ env:
 
 ```csharp
 using Microsoft.Extensions.Configuration;
-using Trellis.Testing;
+using Trellis.Testing.AspNetCore;
 
 var configuration = new ConfigurationBuilder()
     .AddUserSecrets<Program>(optional: true)
@@ -134,7 +134,7 @@ using System.Text.Json.Serialization;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using Trellis.Testing;
+using Trellis.Testing.AspNetCore;
 using Xunit;
 
 [JsonSerializable(typeof(CreateOrderRequest))]

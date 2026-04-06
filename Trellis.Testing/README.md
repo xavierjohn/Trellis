@@ -2,7 +2,7 @@
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Testing.svg)](https://www.nuget.org/packages/Trellis.Testing)
 
-FluentAssertions extensions that make Result and Maybe tests read like intent instead of plumbing.
+FluentAssertions extensions and test doubles that make Result and Maybe tests read like intent instead of plumbing.
 
 ## Installation
 ```bash
@@ -23,9 +23,22 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 ```
 
 ## Key Features
-- Assert success, failure, error codes, and values with concise helpers.
-- Test `Maybe<T>` without repetitive `HasValue` / `Value` ceremony.
-- Keep Trellis-heavy test suites readable and intention-revealing.
+- **Result assertions** — `BeSuccess()`, `BeFailure()`, `BeFailureOfType<T>()`, `HaveErrorCode()`, async variants
+- **Maybe assertions** — `HaveValue()`, `BeNone()`, `HaveValueEqualTo()`, `HaveValueMatching()`
+- **Error assertions** — `HaveCode()`, `HaveDetail()`, `BeOfType<T>()`
+- **ValidationError assertions** — `HaveFieldError()`, `HaveFieldErrorWithDetail()`, `HaveFieldCount()`
+- **Unwrap helpers** — `Unwrap()` for extracting values in test code without analyzer warnings
+- **FakeRepository** — In-memory aggregate store with domain event tracking and unique constraints
+- **TestActorProvider** — Mutable `IActorProvider` with `AsyncLocal` scoping for authorization tests
+- **AggregateTestMutator** — Reflection helpers for setting `Maybe<T>` backing fields in tests
+
+## ASP.NET Core Integration Tests
+
+For WebApplicationFactory helpers, DI service replacement, and MSAL token acquisition, use the companion package:
+
+```bash
+dotnet add package Trellis.Testing.AspNetCore
+```
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-testing.html)
