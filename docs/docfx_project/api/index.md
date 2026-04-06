@@ -1,333 +1,140 @@
-# API Documentation for Trellis
+# Trellis API Reference
 
-Welcome to the Trellis API reference. Trellis combines Railway-Oriented Programming (ROP) with Domain-Driven Design (DDD) to provide structured building blocks for enterprise software in C#.
+Trellis is a .NET framework that **guides AI to develop structured, maintainable enterprise software**. It combines Railway-Oriented Programming and Domain-Driven Design into building blocks where the compiler enforces correctness — errors must be handled, objects cannot be constructed in invalid states, and business logic reads like the specification it was generated from.
 
-## Core Packages
+A trellis guides growth in the right direction. In a garden, plants grow along the trellis rather than sprawling randomly. In software, Trellis guides AI-generated code into correct, composable patterns — turning a plain-language specification into working, tested software with zero warnings and zero skipped validations.
 
-### Railway-Oriented Programming
-
-> **New to Railway-Oriented Programming?** The concept uses a railway track analogy where operations flow along a success track or switch to an error track. For a gentle introduction to the philosophy, see [this introductory article](https://blog.logrocket.com/what-is-railway-oriented-programming/). Our documentation provides a comprehensive, production-ready C# implementation with type safety, async support, and real-world patterns.
-
-#### [Result&lt;T&gt;](xref:Trellis.Result`1)
-
-The `Result<T>` monad represents an operation that can either succeed with a value of type `T` or fail with an `Error`. This is the foundation of Railway-Oriented Programming, enabling explicit error handling without exceptions.
-
-**Type Definition:**
 ```csharp
-public readonly struct Result<T>
-{
-    public bool IsSuccess { get; }
-    public bool IsFailure { get; }
-    public T Value { get; }          // Available when IsSuccess is true
-    public Error Error { get; }      // Available when IsFailure is true
-}
+// Without Trellis — AI scatters validation, misses edge cases, drifts across endpoints
+if (string.IsNullOrWhiteSpace(request.Email))
+    return Results.BadRequest(new { code = "validation.error", detail = "Email is required." });
+if (!request.Email.Contains('@'))
+    return Results.BadRequest(new { code = "validation.error", detail = "Email is invalid." });
+return Results.Ok(new User(request.Email.Trim().ToLowerInvariant()));
+
+// With Trellis — AI follows the types, the compiler catches the rest
+return EmailAddress.TryCreate(request.Email)
+    .Map(email => new User(email))
+    .ToHttpResult();
 ```
 
-**Core Operations:**
-- **`Bind`** - Chain operations that return Result (railway switching)
-- **`Map`** - Transform success values while preserving errors
-- **`Tap`** - Execute side effects without changing the result (logging, events, notifications)
-- **`Ensure`** - Apply business rule validation
-- **`Match`** - Pattern match on success/failure for final handling
-- **`Combine`** - Aggregate multiple results and collect all errors (parallel validation)
-- **`RecoverOnFailure`** - Provide fallback values on failure
-- **`MapError`** - Transform error types
-- **`When`** - Conditional execution based on predicates
+> New to Trellis? Start with the [Introduction](~/articles/intro.md), see [how AI uses Trellis](~/articles/ai-code-generation.md), or browse the [examples](~/articles/examples.md).
 
-**Common Usage Patterns:**
+---
 
-*Railway Pattern - Sequential Chaining:*
-```csharp
-var result = UserId.TryCreate(id)
-    .Bind(repository.GetUser)
-    .Map(user => new UserDto(user))
-    .Tap(dto => logger.LogInformation("User retrieved: {Id}", dto.Id))
-    .Match(
-        onSuccess: dto => Ok(dto),
-        onFailure: error => error.ToActionResult(this)
-    );
-```
+## Core Types
 
-*Combine - Parallel Validation (Collects ALL Errors):*
-```csharp
-var result = EmailAddress.TryCreate(email)
-    .Combine(FirstName.TryCreate(firstName))
-    .Combine(LastName.TryCreate(lastName))
-    .Bind((email, first, last) => User.Create(email, first, last));
-```
+The foundation — zero dependencies beyond the .NET runtime. One `using Trellis;` makes these available.
 
-*Tap - Side Effects Without Breaking the Chain:*
-```csharp
-var result = order.Submit()
-    .Tap(o => logger.LogInformation("Order {Id} submitted", o.Id))
-    .Tap(o => eventBus.Publish(new OrderSubmittedEvent(o.Id)))
-    .Tap(o => emailService.SendConfirmation(o.CustomerEmail))
-    .Tap(o => analytics.Track("OrderSubmitted", o.Id));
-// Result is still Result<Order> after all Taps
-```
+| Type | Purpose |
+|------|---------|
+| [`Result<T>`](xref:Trellis.Result`1) | An operation that succeeds with `T` or fails with an [`Error`](xref:Trellis.Error) — the core of Railway-Oriented Programming |
+| [`Maybe<T>`](xref:Trellis.Maybe`1) | A value that may or may not exist — type-safe alternative to `null` |
+| [`Error`](xref:Trellis.Error) | Typed error hierarchy with built-in HTTP status code mapping |
+| [`Unit`](xref:Trellis.Unit) | Represents "no value" for void operations like `Result<Unit>` |
 
-**Combine vs Bind:**
-```csharp
-// Combine: ALL validations run, ALL errors collected
-var result = ProductName.TryCreate(name)      // ❌ Error: "Name too short"
-    .Combine(Price.TryCreate(price))          // ❌ Error: "Price must be positive"
-    .Combine(Quantity.TryCreate(quantity));   // ✅ Success
-// Returns errors for BOTH name AND price
+### Pipeline Operations
 
-// Bind: Sequential - stops at first error
-var result = ProductName.TryCreate(name)      // ❌ Error: "Name too short"
-    .Bind(n => Price.TryCreate(price)         // 🚫 Never executed
-        .Bind(p => Quantity.TryCreate(quantity)));
-// Only returns the name error
-```
+Chain operations into readable workflows. Each method has sync, `Task`, and `ValueTask` overloads.
 
-**Factory Methods:**
-- `Result.Success<T>(T value)` - Create a successful result
-- `Result.Failure<T>(Error error)` - Create a failed result
+| Operation | What it does |
+|-----------|-------------|
+| [`Bind`](xref:Trellis.BindExtensions) | Chain an operation that returns `Result` — the railway switch |
+| [`Map`](xref:Trellis.MapExtensions) | Transform the success value |
+| [`Tap`](xref:Trellis.TapExtensions) | Run a side effect without changing the result |
+| [`Ensure`](xref:Trellis.EnsureExtensions) | Validate a business rule — fail if the predicate is false |
+| [`Combine`](xref:Trellis.CombineExtensions) | Merge multiple results, collecting **all** errors |
+| [`Check`](xref:Trellis.CheckExtensions) | Run a validation that returns `Result`, keep the original value on success |
+| [`Match`](xref:Trellis.MatchExtensions) | Unwrap the result by handling both success and failure |
+| [`RecoverOnFailure`](xref:Trellis.RecoverOnFailureExtensions) | Provide a fallback value on failure |
+| [`MapOnFailure`](xref:Trellis.MapOnFailureExtensions) | Transform the value on the failure track |
+| [`TapOnFailure`](xref:Trellis.TapOnFailureExtensions) | Run a side effect on the failure track |
+| [`When`](xref:Trellis.WhenExtensions) | Execute conditionally based on a predicate |
 
-#### Using Result&lt;Unit&gt; for Void Operations
-
-When an operation doesn't return a value (like Delete or Update commands), use `Result<Unit>`:
-
-**What is Unit?**
-- `Unit` is a special type representing "no value" 
-- Similar to `void` but can be used as a generic type parameter
-- `Result<Unit>` indicates success/failure without a data payload
-
-**Type:**
-```csharp
-Result<Unit>  // Success or failure, no value
-```
-
-**Common Use Cases:**
-- Delete operations
-- Update operations that don't return data
-- Void commands
-- Operations that modify state
-
-**Example:**
-```csharp
-// Void operation that can fail
-public Result<Unit> DeleteUser(UserId id) =>
-    repository.Delete(id)
-        .Tap(() => eventBus.Publish(new UserDeletedEvent(id)));
-
-// In API controllers, Unit results automatically return 204 No Content
-[HttpDelete("{id}")]
-public ActionResult<Unit> DeleteUser(Guid id) =>
-    UserId.TryCreate(id)
-        .Bind(DeleteUserCommand)
-        .ToActionResult(this);  // Returns 204 No Content on success
-```
-
-**Factory Methods for Unit Results:**
-- `Result.Success()` - Create successful unit result
-- `Result.Failure(Error error)` - Create failed unit result
-
-#### [Maybe&lt;T&gt;](xref:Trellis.Maybe`1)
-
-The `Maybe<T>` monad represents an optional value that may or may not exist. Use it to eliminate null reference exceptions and make optionality explicit in your type system. Think of it as a type-safe alternative to nullable references.
-
-**Type Definition:**
-```csharp
-public readonly struct Maybe<T>
-{
-    public bool HasValue { get; }
-    public bool HasNoValue { get; }
-    public T Value { get; }  // Throws if HasNoValue is true
-}
-```
-
-**Core Operations:**
-- **`GetValueOrDefault`** - Safely extract value with fallback
-- **`TryGetValue`** - Try to get the value (out parameter pattern)
-- **`GetValueOrThrow`** - Get value or throw exception
-- **`ToResult`** - Convert to Result (None becomes an Error)
-- **`AsMaybe`** - Convert from nullable to Maybe
-- **`AsNullable`** - Convert Maybe back to nullable
-
-**Properties:**
-- **`HasValue`** - Check if value is present
-- **`HasNoValue`** - Check if value is absent  
-- **`Value`** - Get value (throws if absent)
-
-**Common Patterns:**
-```csharp
-// Repository query (null-safe)
-Maybe<User> FindUserByEmail(EmailAddress email);
-
-// Safe value extraction with fallback
-var user = repository.FindUserByEmail(email);
-var userName = user.HasValue 
-    ? user.Value.FullName 
-    : "Unknown User";
-
-// Or using GetValueOrDefault
-var userName = repository.FindUserByEmail(email)
-    .GetValueOrDefault(defaultUser)
-    .FullName;
-
-// Convert to Result for further processing
-var result = repository.FindUserByEmail(email)
-    .ToResult(Error.NotFound("User", email.Value))
-    .Bind(user => user.UpdateProfile(newData));
-
-// Try pattern for safe access
-if (repository.FindUserByEmail(email).TryGetValue(out var user))
-{
-    // Use user safely
-    ProcessUser(user);
-}
-```
-
-**Factory Methods:**
-- `Maybe.From<T>(T value)` - Create Maybe from nullable value (null becomes None)
-- `Maybe<T>.None` - Create an empty Maybe
-
-**When to Use:**
-- **Maybe**: When absence is a valid, expected state (e.g., optional config, search results)
-- **Result**: When you need to communicate *why* something failed (validation, business rules)
-
-#### [Error Types](xref:Trellis.Error)
-
-A hierarchy of error types for representing different failure scenarios:
-- `ValidationError` - Input validation failures with field-level details
-- `NotFoundError` - Resource not found (404)
-- `UnauthorizedError` - Authentication required (401)
-- `ForbiddenError` - Insufficient permissions (403)
-- `ConflictError` - Resource conflicts (409)
-- `DomainError` - Business rule violations (422)
-- `UnexpectedError` - Unexpected system errors (500)
-- `ServiceUnavailableError` - Service unavailable (503)
+> Learn the pipeline patterns: [Core Concepts](~/articles/basics.md) · [Error Handling](~/articles/error-handling.md) · [Advanced Features](~/articles/advanced-features.md)
 
 ---
 
 ## Domain-Driven Design
 
-### [Aggregate](xref:Trellis.Aggregate`1)
+DDD building blocks for modeling your domain. Also in the `Trellis` namespace.
 
-A DDD aggregate is a cluster of domain objects that can be treated as a single unit. An aggregate will have one of its component objects be the aggregate root. Any references from outside the aggregate should only go to the aggregate root. The root can thus ensure the integrity of the aggregate as a whole.
+| Type | Purpose |
+|------|---------|
+| [`Aggregate<T>`](xref:Trellis.Aggregate`1) | Consistency boundary with a typed identity and domain events |
+| [`Entity<T>`](xref:Trellis.Entity`1) | Domain object with a unique identity |
+| [`ValueObject`](xref:Trellis.ValueObject) | Immutable object defined by its attributes, not its identity |
+| [`Specification<T>`](xref:Trellis.Specification`1) | Composable business rule that can be combined with `And`, `Or`, `Not` |
 
-**Key features:** Encapsulation, consistency boundaries, transactional boundaries
+> Learn more: [Aggregate Factory Pattern](~/articles/aggregate-factory-pattern.md) · [Specifications](~/articles/specifications.md)
 
-[Read more about DDD Aggregates](https://martinfowler.com/bliki/DDD_Aggregate.html)
+---
 
-### [Entity](xref:Trellis.Entity`1)
+## Value Objects
 
-A domain object that has a unique identity that runs through time and different representations. Two entities with the same identity are considered the same, even if their attributes differ.
+Base classes in the `Trellis` namespace; ready-to-use primitives in `Trellis.Primitives`.
 
-### [ValueObject](xref:Trellis.ValueObject)
+| Base class | Wraps | Example |
+|------------|-------|---------|
+| [`RequiredString<TSelf>`](xref:Trellis.RequiredString`1) | Non-empty `string` | `FirstName`, `ProductCode` |
+| [`RequiredGuid<TSelf>`](xref:Trellis.RequiredGuid`1) | Non-empty `Guid` | `OrderId`, `UserId` |
+| [`RequiredInt<TSelf>`](xref:Trellis.RequiredInt`1) | Validated `int` | `Quantity`, `LineNumber` |
+| [`RequiredDecimal<TSelf>`](xref:Trellis.RequiredDecimal`1) | Validated `decimal` | `Price`, `Weight` |
+| [`RequiredEnum<TSelf>`](xref:Trellis.RequiredEnum`1) | Validated `enum` | `OrderStatus`, `Priority` |
+| [`ScalarValueObject<TSelf, T>`](xref:Trellis.ScalarValueObject`2) | Any single primitive | Custom scalar values |
 
-A value object is an object that represents a descriptive aspect of the domain with no conceptual identity. It is a small, simple object that encapsulates a concept from your problem domain. Unlike an aggregate, a value object does not have a unique identity and is immutable. Value objects support and enrich the ubiquitous language of your domain.
+**Ready-to-use:** [`EmailAddress`](xref:Trellis.Primitives.EmailAddress), [`Money`](xref:Trellis.Primitives.Money), [`PhoneNumber`](xref:Trellis.Primitives.PhoneNumber), [`Url`](xref:Trellis.Primitives.Url), [`Slug`](xref:Trellis.Primitives.Slug), [`CountryCode`](xref:Trellis.Primitives.CountryCode), [`CurrencyCode`](xref:Trellis.Primitives.CurrencyCode), [`Percentage`](xref:Trellis.Primitives.Percentage), and [more](xref:Trellis.Primitives).
 
-**Key characteristics:** Immutability, equality by value, no identity
+> Learn more: [Primitive Value Objects](~/articles/primitives.md)
 
 ---
 
 ## Integration Packages
 
-### ASP.NET Core Integration
+Each integration has its own namespace and pulls in the relevant third-party dependency.
 
-#### [ActionResult Extensions](xref:Trellis.Asp.ActionResultExtensions)
-
-Convert `Result<T>` to ASP.NET Core action results for MVC controllers.
-
-**Features:** Automatic status code mapping, Problem Details (RFC 7807) format, field-level validation errors
-
-#### [HttpResult Extensions](xref:Trellis.Asp.HttpResultExtensions)
-
-Convert `Result<T>` to `IResult` for Minimal API endpoints.
-
-**Features:** Fluent error matching, pagination support, Unit type handling (204 No Content)
-
-### HTTP Client Integration
-
-#### [HttpResponseExtensions](xref:Trellis.Http.HttpResponseExtensions)
-
-Extension methods for `HttpResponseMessage` that enable functional HTTP communication with Result types.
-
-**Key methods:**
-- `HandleNotFound` / `HandleUnauthorized` / `HandleForbidden` / `HandleConflict` - Handle specific status codes
-- `HandleClientError` / `HandleServerError` - Handle error ranges (4xx, 5xx)
-- `EnsureSuccess` - Functional alternative to `EnsureSuccessStatusCode()`
-- `ReadResultFromJsonAsync` - Deserialize JSON to `Result<T>`
-- `ReadResultMaybeFromJsonAsync` - Deserialize JSON to `Result<Maybe<T>>`
-
-### FluentValidation Integration
-
-#### [FluentValidation Extensions](xref:Trellis.FluentValidation.FluentValidationResultExtensions)
-
-Convert FluentValidation results to `Result<T>` for seamless integration with Railway-Oriented Programming.
-
-**Features:** Automatic `ValidationError` creation, field-level error mapping, async validation support
+| Namespace | What it does | Guide |
+|-----------|-------------|-------|
+| [`Trellis.Asp`](xref:Trellis.Asp) | `Result<T>` → HTTP responses for MVC and Minimal APIs | [ASP.NET Core](~/articles/integration-aspnet.md) |
+| [`Trellis.Asp.Authorization`](xref:Trellis.Asp.Authorization) | Claims, Entra ID, and development actor providers | [Authorization](~/articles/integration-asp-authorization.md) |
+| [`Trellis.Authorization`](xref:Trellis.Authorization) | `Actor`, permission checks, resource authorization | [Authorization](~/articles/integration-asp-authorization.md) |
+| [`Trellis.Http`](xref:Trellis.Http) | `HttpClient` extensions that stay inside the Result pipeline | [HTTP Client](~/articles/integration-http.md) |
+| [`Trellis.FluentValidation`](xref:Trellis.FluentValidation) | FluentValidation output → Trellis `Result` | [FluentValidation](~/articles/integration-fluentvalidation.md) |
+| [`Trellis.EntityFrameworkCore`](xref:Trellis.EntityFrameworkCore) | Value object converters, `Maybe<T>` queries, safe save | [EF Core](~/articles/integration-ef.md) |
+| [`Trellis.Mediator`](xref:Trellis.Mediator) | Result-aware pipeline behaviors for Mediator | [Mediator](~/articles/integration-mediator.md) |
+| [`Trellis.Stateless`](xref:Trellis.Stateless) | State machine transitions returning `Result<TState>` | [State Machines](~/articles/state-machines.md) |
+| [`Trellis.Testing`](xref:Trellis.Testing) | FluentAssertions extensions for `Result<T>` and `Maybe<T>` | [Testing](~/articles/integration-testing.md) |
 
 ---
 
-## Common Value Objects
+## Tooling
 
-### EmailAddress
+| Package | What it does |
+|---------|-------------|
+| [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | 19+ Roslyn analyzers that catch common mistakes at build time |
+| [Trellis.Primitives.Generator](https://www.nuget.org/packages/Trellis.Primitives.Generator) | Source generation for `RequiredString` and related primitives |
+| [Trellis.AspSourceGenerator](https://www.nuget.org/packages/Trellis.AspSourceGenerator) | AOT-friendly JSON converter generation for scalar values |
+| [Trellis.EntityFrameworkCore.Generator](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Generator) | Generated backing fields for `Maybe<T>` and owned value objects |
 
-A validated email address value object. Ensures email format correctness at construction.
-
-**Type:** `Trellis.EmailAddress`
-
-### RequiredString&lt;TSelf&gt;
-
-A non-null, non-empty string value object. Prevents primitive obsession for required text fields.
-
-**Type:** `Trellis.RequiredString<TSelf>`
-
-### RequiredGuid&lt;TSelf&gt;
-
-A validated GUID value object that cannot be empty (Guid.Empty).
-
-**Type:** `Trellis.RequiredGuid<TSelf>`
-
-### ScalarValueObject&lt;TSelf, T&gt;
-
-Base class for creating custom value objects that wrap a single primitive value.
-
-**Type:** `Trellis.ScalarValueObject<TSelf, T>`
-
-**Common examples:** `FirstName`, `LastName`, `OrderId`, `UserId`, `ProductCode`
+> See all analyzer rules: [Analyzer Rules](~/articles/analyzers/toc.yml)
 
 ---
 
 ## Observability
 
-### OpenTelemetry Tracing
+Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xref:Trellis.ResultsTraceProviderBuilderExtensions) and [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions). Automatic span creation for pipeline operations and value object creation boundaries.
 
-Built-in distributed tracing support for Railway-Oriented Programming operations, with primitive value object tracing generally being the lower-noise default and full ROP tracing better suited to break-glass debugging.
-
-**Type:** `Trellis.ResultsTraceProviderBuilderExtensions`
-
-**Features:**
-- Automatic span creation for `Bind`, `Map`, `Tap`, `Ensure` operations
-- Primitive value object tracing for parse/validate/create boundaries
-- Error tracking and status codes
-- Trace correlation across async operations
-- Integration with Jaeger, Zipkin, Application Insights
+> Learn more: [Observability & Monitoring](~/articles/integration-observability.md)
 
 ---
 
 ## Next Steps
 
-- **Get Started:** Read the [Introduction](~/articles/intro.md) guide
-- **Learn Basics:** Explore [Core Concepts](~/articles/basics.md)
-- **Integration:** See [ASP.NET Core](~/articles/integration-aspnet.md), [HTTP Client](~/articles/integration-http.md), and [FluentValidation](~/articles/integration-fluentvalidation.md) guides
-- **Examples:** Browse [Real-World Examples](~/articles/examples.md)
-
----
-
-## Package Reference
-
-| Package | Description | NuGet |
-|---------|-------------|-------|
-| Trellis.Results | Core Result/Maybe types | [![NuGet](https://img.shields.io/nuget/v/Trellis.Results.svg)](https://www.nuget.org/packages/Trellis.Results) |
-| Trellis.Asp | ASP.NET Core integration | [![NuGet](https://img.shields.io/nuget/v/Trellis.Asp.svg)](https://www.nuget.org/packages/Trellis.Asp) |
-| Trellis.Http | HTTP client extensions | [![NuGet](https://img.shields.io/nuget/v/Trellis.Http.svg)](https://www.nuget.org/packages/Trellis.Http) |
-| Trellis.FluentValidation | FluentValidation integration | [![NuGet](https://img.shields.io/nuget/v/Trellis.FluentValidation.svg)](https://www.nuget.org/packages/Trellis.FluentValidation) |
-| Trellis.Primitives | Reusable value objects | [![NuGet](https://img.shields.io/nuget/v/Trellis.Primitives.svg)](https://www.nuget.org/packages/Trellis.Primitives) |
-| Trellis.DomainDrivenDesign | DDD building blocks | [![NuGet](https://img.shields.io/nuget/v/Trellis.DomainDrivenDesign.svg)](https://www.nuget.org/packages/Trellis.DomainDrivenDesign) |
-| Trellis.Analyzers | Roslyn analyzers | [![NuGet](https://img.shields.io/nuget/v/Trellis.Analyzers.svg)](https://www.nuget.org/packages/Trellis.Analyzers) |
-| Trellis.Testing | Test helpers & assertions | [![NuGet](https://img.shields.io/nuget/v/Trellis.Testing.svg)](https://www.nuget.org/packages/Trellis.Testing) |
+| Goal | Where to go |
+|------|-------------|
+| Understand the concepts | [Introduction](~/articles/intro.md) |
+| Learn the pipeline operations | [Core Concepts](~/articles/basics.md) |
+| See it compared side-by-side | [With vs Without Trellis](~/articles/with-vs-without-trellis.md) |
+| Browse working code | [Examples](~/articles/examples.md) |
+| Set up integrations | [Integration Overview](~/articles/integration.md) |
+| Run the benchmarks | [Performance](~/articles/performance.md) |
