@@ -1,0 +1,35 @@
+name: Publish Trellis Alpha
+
+on:
+  push:
+    branches: [ "main", "develop" ] # Trigger on pushes to these branches
+  workflow_dispatch: # Allows you to run it manually from the Actions tab
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Crucial: Allows the GITHUB_TOKEN to upload packages
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x' # Match your project version
+          # This automatically creates a temporary nuget.config for the runner
+          source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Pack Alpha
+        # We use the Run ID to ensure the version is always unique (e.g. 1.0.0-alpha.42)
+        run: dotnet pack --configuration Release --version-suffix "alpha.${{ github.run_number }}" --output ./dist
+
+      - name: Push to GitHub Packages
+        run: dotnet nuget push "./dist/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
