@@ -63,53 +63,69 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
     {
         foreach (var entityType in modelBuilder.Metadata.GetEntityTypes().ToList())
         {
-            if (entityType.ClrType is null)
-                continue;
+            ProcessEntityType(modelBuilder, entityType);
+        }
+    }
 
-            foreach (var maybeProperty in MaybePropertyResolver.GetMaybeProperties(entityType.ClrType))
+    /// <summary>
+    /// Processes all <see cref="Maybe{T}"/> CLR properties on a single entity type,
+    /// ignoring the struct property and mapping the generated backing field instead.
+    /// </summary>
+    private void ProcessEntityType(
+        IConventionModelBuilder modelBuilder,
+        IConventionEntityType entityType)
+    {
+        if (entityType.ClrType is null)
+            return;
+
+        foreach (var maybeProperty in MaybePropertyResolver.GetMaybeProperties(entityType.ClrType))
+        {
+            // Verify the generated storage member exists (source generator should have created it)
+            var storageMember = MaybePropertyResolver.FindStorageMember(entityType.ClrType, maybeProperty);
+
+            if (storageMember is null)
+                throw new InvalidOperationException(
+                    $"Cannot map Maybe<T> property '{maybeProperty.PropertyName}' on entity '{entityType.ClrType.Name}'. " +
+                    $"Expected generated storage member '{maybeProperty.StorageMemberName}' was not found. " +
+                    "Declare the property as partial so the Trellis.EntityFrameworkCore.Generator can emit the storage member, or configure the storage-member property explicitly before model finalization.");
+
+            // Owned types (e.g., Money) need ownership navigations, not scalar columns.
+            if (modelBuilder.Metadata.IsOwned(maybeProperty.InnerType))
             {
-                // Verify the generated storage member exists (source generator should have created it)
-                var storageMember = MaybePropertyResolver.FindStorageMember(entityType.ClrType, maybeProperty);
-
-                if (storageMember is null)
-                    throw new InvalidOperationException(
-                        $"Cannot map Maybe<T> property '{maybeProperty.PropertyName}' on entity '{entityType.ClrType.Name}'. " +
-                        $"Expected generated storage member '{maybeProperty.StorageMemberName}' was not found. " +
-                        "Declare the property as partial so the Trellis.EntityFrameworkCore.Generator can emit the storage member, or configure the storage-member property explicitly before model finalization.");
-
-                // Owned types (e.g., Money) need ownership navigations, not scalar columns.
-                if (modelBuilder.Metadata.IsOwned(maybeProperty.InnerType))
-                {
-                    ConfigureOwnedMaybe(entityType, maybeProperty, storageMember);
-                    continue;
-                }
-
-                // Always ignore the Maybe<T> CLR property — EF Core cannot map structs as nullable
-                entityType.Builder.Ignore(maybeProperty.PropertyName);
-
-                // Reuse an existing property if earlier model-building steps created it (for example via HasIndex).
-                var existingBackingProp = entityType.FindProperty(maybeProperty.StorageMemberName);
-
-                // Map or fetch the storage member as a nullable property.
-                var propertyBuilder = existingBackingProp?.Builder
-                    ?? entityType.Builder.Property(maybeProperty.StoreType, maybeProperty.StorageMemberName);
-                if (propertyBuilder is null)
-                    throw new InvalidOperationException(
-                        $"Cannot map Maybe<T> property '{maybeProperty.PropertyName}' on entity '{entityType.ClrType.Name}'. " +
-                        $"Storage member '{maybeProperty.StorageMemberName}' exists but EF Core could not map it as store type '{maybeProperty.StoreType.Name}'.");
-
-                propertyBuilder.UsePropertyAccessMode(PropertyAccessMode.Field);
-                propertyBuilder.IsRequired(false);
-                propertyBuilder.HasAnnotation(RelationalAnnotationNames.ColumnName, maybeProperty.PropertyName);
+                ConfigureOwnedMaybe(modelBuilder, entityType, maybeProperty, storageMember);
+                continue;
             }
+
+            // Always ignore the Maybe<T> CLR property — EF Core cannot map structs as nullable
+            entityType.Builder.Ignore(maybeProperty.PropertyName);
+
+            // Reuse an existing property if earlier model-building steps created it (for example via HasIndex).
+            var existingBackingProp = entityType.FindProperty(maybeProperty.StorageMemberName);
+
+            // Map or fetch the storage member as a nullable property.
+            var propertyBuilder = existingBackingProp?.Builder
+                ?? entityType.Builder.Property(maybeProperty.StoreType, maybeProperty.StorageMemberName);
+            if (propertyBuilder is null)
+                throw new InvalidOperationException(
+                    $"Cannot map Maybe<T> property '{maybeProperty.PropertyName}' on entity '{entityType.ClrType.Name}'. " +
+                    $"Storage member '{maybeProperty.StorageMemberName}' exists but EF Core could not map it as store type '{maybeProperty.StoreType.Name}'.");
+
+            propertyBuilder.UsePropertyAccessMode(PropertyAccessMode.Field);
+            propertyBuilder.IsRequired(false);
+            propertyBuilder.HasAnnotation(RelationalAnnotationNames.ColumnName, maybeProperty.PropertyName);
         }
     }
 
     /// <summary>
     /// Configures a <c>Maybe&lt;T&gt;</c> property where <c>T</c> is an owned type.
     /// Creates an optional ownership navigation via the source-generated backing field.
+    /// After creating the owned entity type, recursively processes any <c>Maybe&lt;T&gt;</c>
+    /// scalar properties on the owned type — these would otherwise be missed because the
+    /// owned entity type was not in the <c>.ToList()</c> snapshot taken at the start of
+    /// <see cref="ProcessModelFinalizing"/>.
     /// </summary>
-    private static void ConfigureOwnedMaybe(
+    private void ConfigureOwnedMaybe(
+        IConventionModelBuilder modelBuilder,
         IConventionEntityType entityType,
         MaybePropertyDescriptor maybeProperty,
         FieldInfo storageMember)
@@ -127,6 +143,11 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
         // Store the original property name so MoneyConvention can use it for column naming
         var navigation = entityType.FindNavigation(storageMember.Name);
         navigation?.Builder.HasAnnotation(MaybeOwnedPropertyNameAnnotation, maybeProperty.PropertyName);
+
+        // The owned entity type was just created and is not in the outer .ToList() snapshot.
+        // Process its Maybe<T> properties now so they don't get missed.
+        if (navigation?.TargetEntityType is { } ownedEntityType)
+            ProcessEntityType(modelBuilder, ownedEntityType);
     }
 
     /// <summary>

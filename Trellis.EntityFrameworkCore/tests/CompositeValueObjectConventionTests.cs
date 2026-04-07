@@ -706,4 +706,203 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     }
 
     #endregion
+
+    #region Maybe<scalar> inside required composite VO
+
+    [Fact]
+    public void MaybeScalarInsideRequiredCompositeVo_ModelBuildsSuccessfully()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<RequiredContactInfoDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new RequiredContactInfoDbContext(options);
+        context.Database.EnsureCreated();
+    }
+
+    [Fact]
+    public async Task MaybeScalarInsideRequiredCompositeVo_WithValue_RoundTripWorks()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<RequiredContactInfoDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new RequiredContactInfoDbContext(options);
+        context.Database.EnsureCreated();
+
+        var ct = TestContext.Current.CancellationToken;
+        var phone = PhoneNumber.Create("+15551234567");
+        var entity = new RequiredContactInfoEntity
+        {
+            Id = 1,
+            Contact = TestContactInfo.Create("Alice", Maybe.From(phone))
+        };
+
+        context.Entities.Add(entity);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Entities.FindAsync([1], ct);
+        loaded.Should().NotBeNull();
+        loaded!.Contact.Name.Should().Be("Alice");
+        loaded.Contact.Phone.HasValue.Should().BeTrue();
+        ((string)loaded.Contact.Phone.Value).Should().Be("+15551234567");
+    }
+
+    [Fact]
+    public async Task MaybeScalarInsideRequiredCompositeVo_WithNone_RoundTripWorks()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<RequiredContactInfoDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new RequiredContactInfoDbContext(options);
+        context.Database.EnsureCreated();
+
+        var ct = TestContext.Current.CancellationToken;
+        var entity = new RequiredContactInfoEntity
+        {
+            Id = 2,
+            Contact = TestContactInfo.Create("Bob", Maybe<PhoneNumber>.None)
+        };
+
+        context.Entities.Add(entity);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Entities.FindAsync([2], ct);
+        loaded.Should().NotBeNull();
+        loaded!.Contact.Name.Should().Be("Bob");
+        loaded.Contact.Phone.HasValue.Should().BeFalse();
+    }
+
+    private class RequiredContactInfoEntity
+    {
+        public int Id { get; set; }
+        public TestContactInfo Contact { get; set; } = null!;
+    }
+
+    private class RequiredContactInfoDbContext : DbContext
+    {
+        public DbSet<RequiredContactInfoEntity> Entities => Set<RequiredContactInfoEntity>();
+
+        public RequiredContactInfoDbContext(DbContextOptions<RequiredContactInfoDbContext> options) : base(options) { }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestContactInfo).Assembly);
+    }
+
+    #endregion
+
+    #region Maybe<scalar> inside Maybe<composite VO>
+
+    /// <summary>
+    /// Model building must succeed when a <c>Maybe&lt;CompositeVO&gt;</c> contains
+    /// <c>partial Maybe&lt;T&gt;</c> scalar properties. <see cref="MaybeConvention"/> creates
+    /// the owned entity type for the composite VO during its finalization loop — but
+    /// the owned type's <c>Maybe&lt;T&gt;</c> scalar properties must also be processed.
+    /// The <c>.ToList()</c> snapshot taken at the start of the loop misses entity types
+    /// created mid-loop by <c>ConfigureOwnedMaybe</c>.
+    /// </summary>
+    [Fact]
+    public void MaybeScalarInsideMaybeCompositeVo_ModelBuildsSuccessfully()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<MaybeContactInfoDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new MaybeContactInfoDbContext(options);
+        context.Database.EnsureCreated(); // Must not throw
+    }
+
+    [Fact]
+    public async Task MaybeScalarInsideMaybeCompositeVo_WithValue_RoundTripWorks()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<MaybeContactInfoDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new MaybeContactInfoDbContext(options);
+        context.Database.EnsureCreated();
+
+        var ct = TestContext.Current.CancellationToken;
+        var phone = PhoneNumber.Create("+15551234567");
+        var entity = new MaybeContactInfoEntity
+        {
+            Id = 1,
+            Contact = Maybe.From(TestContactInfo.Create("Alice", Maybe.From(phone)))
+        };
+
+        context.Entities.Add(entity);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Entities.FindAsync([1], ct);
+        loaded.Should().NotBeNull();
+        loaded!.Contact.HasValue.Should().BeTrue();
+        loaded.Contact.Value.Name.Should().Be("Alice");
+        loaded.Contact.Value.Phone.HasValue.Should().BeTrue();
+        ((string)loaded.Contact.Value.Phone.Value).Should().Be("+15551234567");
+    }
+
+    [Fact]
+    public async Task MaybeScalarInsideMaybeCompositeVo_WithNone_RoundTripWorks()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<MaybeContactInfoDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        using var context = new MaybeContactInfoDbContext(options);
+        context.Database.EnsureCreated();
+
+        var ct = TestContext.Current.CancellationToken;
+        var entity = new MaybeContactInfoEntity
+        {
+            Id = 2
+        };
+
+        context.Entities.Add(entity);
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Entities.FindAsync([2], ct);
+        loaded.Should().NotBeNull();
+        loaded!.Contact.HasValue.Should().BeFalse();
+    }
+
+    private partial class MaybeContactInfoEntity
+    {
+        public int Id { get; set; }
+        public partial Maybe<TestContactInfo> Contact { get; set; }
+    }
+
+    private class MaybeContactInfoDbContext : DbContext
+    {
+        public DbSet<MaybeContactInfoEntity> Entities => Set<MaybeContactInfoEntity>();
+
+        public MaybeContactInfoDbContext(DbContextOptions<MaybeContactInfoDbContext> options) : base(options) { }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestContactInfo).Assembly);
+    }
+
+    #endregion
 }
