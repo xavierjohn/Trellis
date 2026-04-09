@@ -5,6 +5,7 @@
     <PackageTags>trellis;authorization;actor;permissions;result;railway-oriented;functional-programming</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>authorization</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />

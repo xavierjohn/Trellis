@@ -5,6 +5,7 @@
     <PackageTags>trellis;http;httpclient;railway-oriented;result;maybe;functional-programming;error-handling;json</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>http</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />

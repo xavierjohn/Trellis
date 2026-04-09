@@ -7,6 +7,7 @@
     <PackageTags>trellis;value-objects;source-generation;required-string;required-guid;email;ddd;strongly-typed;domain-primitives;primitive-obsession</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>primitives</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\"/>
