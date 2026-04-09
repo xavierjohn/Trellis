@@ -8,6 +8,7 @@
     <PackageTags>trellis;functional-programming;railway-oriented;result;monad;error-handling;maybe;csharp;dotnet;rop</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>results</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />

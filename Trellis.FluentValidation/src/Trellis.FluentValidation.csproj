@@ -5,6 +5,7 @@
     <PackageTags>trellis;validation;fluentvalidation;railway-oriented;result;error-handling;ddd</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>fluentvalidation</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\"/>

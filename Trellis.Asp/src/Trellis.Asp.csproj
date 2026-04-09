@@ -5,6 +5,7 @@
     <PackageTags>trellis;aspnetcore;mvc;minimal-api;web-api;railway-oriented;result;http;error-handling</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>asp</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />

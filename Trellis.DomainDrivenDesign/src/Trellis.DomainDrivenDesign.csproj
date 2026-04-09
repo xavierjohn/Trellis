@@ -7,6 +7,7 @@
     <PackageTags>trellis;ddd;domain-driven-design;aggregate;entity;value-object;domain-events;tactical-patterns</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>ddd</TrellisApiRefName>
   </PropertyGroup>
   
   <ItemGroup>

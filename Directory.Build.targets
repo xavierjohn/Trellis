@@ -1,0 +1,16 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    Auto-pack API reference markdown and shared .targets for any Trellis package
+    that sets TrellisApiRefName (e.g., <TrellisApiRefName>asp</TrellisApiRefName>).
+  -->
+  <ItemGroup Condition="'$(TrellisApiRefName)' != ''">
+    <None Include="$(MSBuildThisFileDirectory)docs\api_reference\trellis-api-$(TrellisApiRefName).md"
+          Pack="true" PackagePath="trellis\" />
+    <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
+          Pack="true" PackagePath="build\$(PackageId).targets" />
+    <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
+          Pack="true" PackagePath="buildTransitive\$(PackageId).targets" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,10 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Shared targets file packed into each Trellis NuGet package.
+    Declares TrellisApiReference items pointing to the API reference markdown
+    shipped in the package's trellis/ folder.
+  -->
+  <ItemGroup>
+    <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
+  </ItemGroup>
+</Project>
