@@ -3,8 +3,8 @@
   <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
   <Description>Roslyn analyzers for Trellis library. Enforces proper Result and Maybe handling patterns at compile time.</Description>
   <PackageTags>trellis;roslyn;analyzers;functional;ddd;result;maybe;railway-oriented-programming</PackageTags>
-    <TrellisApiRefName>analyzers</TrellisApiRefName>
-  </PropertyGroup>
+  <TrellisApiRefName>analyzers</TrellisApiRefName>
+</PropertyGroup>
 
   <PropertyGroup>
     <!-- Analyzers must target netstandard 2.0 -->
