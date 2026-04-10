@@ -319,8 +319,8 @@ public static class HttpResultExtensions
     /// <example>
     /// GET endpoint mapping domain to DTO:
     /// <code>
-    /// app.MapGet("/orders/{id}", (OrderId id, ISender sender) =>
-    ///     sender.Send(new GetOrderByIdQuery(id))
+    /// app.MapGet("/orders/{id}", async (OrderId id, ISender sender) =>
+    ///     (await sender.Send(new GetOrderByIdQuery(id)))
     ///         .ToHttpResult(OrderDto.From));
     /// </code>
     /// </example>
