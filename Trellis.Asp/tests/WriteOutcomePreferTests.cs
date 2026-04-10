@@ -286,4 +286,73 @@ public class WriteOutcomePreferTests
     }
 
     #endregion
+
+    #region Async Task/ValueTask variants for static RepresentationMetadata?
+
+    [Fact]
+    public async Task ToUpdatedActionResultAsync_Task_StaticMetadata_ReturnMinimal_Returns204()
+    {
+        var (controller, _) = CreateControllerWithPrefer("return=minimal");
+        var resultTask = Task.FromResult(Result.Success("async-value"));
+        var metadata = RepresentationMetadata.WithStrongETag("task-etag");
+
+        var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, metadata, (string s) => s.ToUpperInvariant());
+
+        actionResult.Result.Should().BeOfType<NoContentResult>();
+        controller.Response.Headers.ETag.ToString().Should().Be("\"task-etag\"");
+        controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=minimal");
+    }
+
+    [Fact]
+    public async Task ToUpdatedActionResultAsync_Task_StaticMetadata_NoPrefer_Returns200()
+    {
+        var (controller, _) = CreateControllerWithPrefer();
+        var resultTask = Task.FromResult(Result.Success("async-value"));
+        var metadata = RepresentationMetadata.WithStrongETag("task-etag2");
+
+        var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, metadata, (string s) => s.ToUpperInvariant());
+
+        actionResult.Result.Should().BeOfType<OkObjectResult>();
+        actionResult.Result.As<OkObjectResult>().Value.Should().Be("ASYNC-VALUE");
+    }
+
+    [Fact]
+    public async Task ToUpdatedActionResultAsync_Task_StaticMetadata_Failure_ReturnsError()
+    {
+        var (controller, _) = CreateControllerWithPrefer("return=minimal");
+        var resultTask = Task.FromResult(Result.Failure<string>(Error.NotFound("gone")));
+
+        var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, (RepresentationMetadata?)null, (string s) => s);
+
+        actionResult.Result.Should().BeOfType<ObjectResult>();
+        actionResult.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status404NotFound);
+    }
+
+    [Fact]
+    public async Task ToUpdatedActionResultAsync_ValueTask_StaticMetadata_ReturnMinimal_Returns204()
+    {
+        var (controller, _) = CreateControllerWithPrefer("return=minimal");
+        var resultTask = new ValueTask<Result<string>>(Result.Success("vtask-value"));
+        var metadata = RepresentationMetadata.WithStrongETag("vtask-etag");
+
+        var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, metadata, (string s) => s.ToUpperInvariant());
+
+        actionResult.Result.Should().BeOfType<NoContentResult>();
+        controller.Response.Headers.ETag.ToString().Should().Be("\"vtask-etag\"");
+        controller.Response.Headers["Preference-Applied"].ToString().Should().Be("return=minimal");
+    }
+
+    [Fact]
+    public async Task ToUpdatedActionResultAsync_ValueTask_StaticMetadata_Failure_ReturnsError()
+    {
+        var (controller, _) = CreateControllerWithPrefer();
+        var resultTask = new ValueTask<Result<string>>(Result.Failure<string>(Error.Conflict("exists")));
+
+        var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, (RepresentationMetadata?)null, (string s) => s);
+
+        actionResult.Result.Should().BeOfType<ObjectResult>();
+        actionResult.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status409Conflict);
+    }
+
+    #endregion
 }

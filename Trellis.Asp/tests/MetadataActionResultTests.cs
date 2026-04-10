@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -58,7 +58,7 @@ public class MetadataActionResultTests : IDisposable
             .SetAcceptRanges("bytes")
             .Build();
 
-        var response = result.ToActionResult(controller, metadata, s => s.ToUpperInvariant());
+        var response = result.ToActionResult(controller, _ => metadata, s => s.ToUpperInvariant());
 
         response.Result.As<OkObjectResult>().StatusCode.Should().Be(StatusCodes.Status200OK);
         response.Result.As<OkObjectResult>().Value.Should().Be("HELLO");
@@ -79,7 +79,7 @@ public class MetadataActionResultTests : IDisposable
             .SetWeakETag("abc123")
             .Build();
 
-        result.ToActionResult(controller, metadata, s => s);
+        result.ToActionResult(controller, _ => metadata, s => s);
 
         controller.Response.Headers.ETag.ToString().Should().Be("W/\"abc123\"");
     }
@@ -95,7 +95,7 @@ public class MetadataActionResultTests : IDisposable
         var result = Result.Success("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.Should().BeOfType<StatusCodeResult>();
         response.Result.As<StatusCodeResult>().StatusCode.Should().Be(StatusCodes.Status304NotModified);
@@ -108,7 +108,7 @@ public class MetadataActionResultTests : IDisposable
         var result = Result.Success("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.Should().BeOfType<StatusCodeResult>();
         response.Result.As<StatusCodeResult>().StatusCode.Should().Be(StatusCodes.Status304NotModified);
@@ -121,7 +121,7 @@ public class MetadataActionResultTests : IDisposable
         var result = Result.Success("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.As<OkObjectResult>().StatusCode.Should().Be(StatusCodes.Status200OK);
     }
@@ -133,7 +133,7 @@ public class MetadataActionResultTests : IDisposable
         var result = Result.Success("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         // Conditional evaluation is skipped for unsafe methods — preconditions
         // are checked before the write via OptionalETag/RequireETag, not in the response mapper.
@@ -151,7 +151,7 @@ public class MetadataActionResultTests : IDisposable
         var result = Result.Success("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         // Conditional evaluation skipped for unsafe methods
         response.Result.Should().BeOfType<OkObjectResult>();
@@ -164,7 +164,7 @@ public class MetadataActionResultTests : IDisposable
         var result = Result.Success("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.As<OkObjectResult>().StatusCode.Should().Be(StatusCodes.Status200OK);
     }
@@ -184,7 +184,7 @@ public class MetadataActionResultTests : IDisposable
             .SetLastModified(lastModified)
             .Build();
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         // Conditional evaluation skipped for unsafe methods
         response.Result.Should().BeOfType<OkObjectResult>();
@@ -201,7 +201,7 @@ public class MetadataActionResultTests : IDisposable
             .SetLastModified(lastModified)
             .Build();
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.As<OkObjectResult>().StatusCode.Should().Be(StatusCodes.Status200OK);
     }
@@ -221,7 +221,7 @@ public class MetadataActionResultTests : IDisposable
             .SetLastModified(lastModified)
             .Build();
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.Should().BeOfType<StatusCodeResult>();
         response.Result.As<StatusCodeResult>().StatusCode.Should().Be(StatusCodes.Status304NotModified);
@@ -238,7 +238,7 @@ public class MetadataActionResultTests : IDisposable
             .SetLastModified(lastModified)
             .Build();
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.As<OkObjectResult>().StatusCode.Should().Be(StatusCodes.Status200OK);
     }
@@ -254,7 +254,7 @@ public class MetadataActionResultTests : IDisposable
         var result = Result.Failure<string>(Error.NotFound("gone"));
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
-        var response = result.ToActionResult(controller, metadata, s => s);
+        var response = result.ToActionResult(controller, _ => metadata, s => s);
 
         response.Result.Should().BeOfType<ObjectResult>();
         response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status404NotFound);
@@ -272,7 +272,7 @@ public class MetadataActionResultTests : IDisposable
         var resultTask = Task.FromResult(Result.Success("hello"));
         var metadata = RepresentationMetadata.WithStrongETag("etag1");
 
-        var response = await resultTask.ToActionResultAsync(controller, metadata, s => s.ToUpperInvariant());
+        var response = await resultTask.ToActionResultAsync(controller, _ => metadata, s => s.ToUpperInvariant());
 
         response.Result.As<OkObjectResult>().Value.Should().Be("HELLO");
         controller.Response.Headers.ETag.ToString().Should().Be("\"etag1\"");
@@ -285,7 +285,7 @@ public class MetadataActionResultTests : IDisposable
         var resultTask = new ValueTask<Result<string>>(Result.Success("hello"));
         var metadata = RepresentationMetadata.WithStrongETag("etag2");
 
-        var response = await resultTask.ToActionResultAsync(controller, metadata, s => s.ToUpperInvariant());
+        var response = await resultTask.ToActionResultAsync(controller, _ => metadata, s => s.ToUpperInvariant());
 
         response.Result.As<OkObjectResult>().Value.Should().Be("HELLO");
         controller.Response.Headers.ETag.ToString().Should().Be("\"etag2\"");

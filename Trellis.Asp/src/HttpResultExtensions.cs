@@ -298,6 +298,44 @@ public static class HttpResultExtensions
     }
 
     /// <summary>
+    /// Converts a <see cref="Result{TIn}"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// by applying a mapping function on success, or Problem Details on failure.
+    /// </summary>
+    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
+    /// <typeparam name="TOut">The type of the value in the response body.</typeparam>
+    /// <param name="result">The result object to convert.</param>
+    /// <param name="map">Function that transforms the input value to the output type.</param>
+    /// <param name="options">Optional custom error-to-status-code mappings. When null, uses default mappings.</param>
+    /// <returns>
+    /// <list type="bullet">
+    /// <item>200 OK with transformed value if result is successful</item>
+    /// <item>Appropriate error status code based on error type if result is failure</item>
+    /// </list>
+    /// </returns>
+    /// <remarks>
+    /// Use this overload when the Mediator handler returns a domain type and the endpoint
+    /// needs to map it to a DTO before returning.
+    /// </remarks>
+    /// <example>
+    /// GET endpoint mapping domain to DTO:
+    /// <code>
+    /// app.MapGet("/orders/{id}", (OrderId id, ISender sender) =>
+    ///     sender.Send(new GetOrderByIdQuery(id))
+    ///         .ToHttpResult(OrderDto.From));
+    /// </code>
+    /// </example>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TIn, TOut>(
+        this Result<TIn> result,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        if (result.IsSuccess)
+            return Results.Ok(map(result.Value));
+
+        return result.Error.ToHttpResult(options);
+    }
+
+    /// <summary>
     /// Converts a <see cref="Result{TValue}"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/> that returns
     /// 201 Created with a Location header on success, or Problem Details on failure.
     /// </summary>

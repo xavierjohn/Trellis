@@ -333,6 +333,44 @@ public static class ActionResultExtensions
     }
 
     /// <summary>
+    /// Converts a <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/> that returns
+    /// 206 Partial Content with a <c>Content-Range</c> header when the result represents a subset,
+    /// or 200 OK when it represents the complete set.
+    /// </summary>
+    /// <typeparam name="TValue">The type of the value contained in the result.</typeparam>
+    /// <param name="result">The result object to convert.</param>
+    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
+    /// <param name="from">The starting index of the range (zero-indexed, inclusive).</param>
+    /// <param name="to">The ending index of the range (zero-indexed, inclusive).</param>
+    /// <param name="totalLength">The total number of items available.</param>
+    /// <returns>206 Partial Content when the range is a subset, 200 OK when complete, or an error response.</returns>
+    public static ActionResult<TValue> ToActionResult<TValue>(
+        this Result<TValue> result,
+        ControllerBase controllerBase,
+        long from,
+        long to,
+        long totalLength)
+    {
+        if (result.IsSuccess)
+        {
+            // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
+            if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
+                return (ActionResult<TValue>)controllerBase.Ok(result.Value);
+
+            // Clamp to against totalLength to prevent ContentRangeHeaderValue from throwing
+            var clampedTo = Math.Min(to, totalLength - 1);
+
+            var isCompleteRange = from == 0 && clampedTo == totalLength - 1;
+            if (!isCompleteRange)
+                return new PartialContentResult(from, clampedTo, totalLength, result.Value);
+
+            return (ActionResult<TValue>)controllerBase.Ok(result.Value);
+        }
+
+        return result.Error.ToActionResult<TValue>(controllerBase);
+    }
+
+    /// <summary>
     /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> by applying
     /// a mapping function on success, or Problem Details on failure.
     /// </summary>
@@ -483,6 +521,63 @@ public static class ActionResultExtensions
         return result.Error.ToActionResult<TOut>(controllerBase);
     }
 
+    /// <summary>
+    /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> that returns
+    /// 201 Created with a Location header and representation metadata headers (ETag, Last-Modified, etc.)
+    /// on success, or Problem Details on failure.
+    /// </summary>
+    /// <typeparam name="TIn">The type of the value contained in the input result.</typeparam>
+    /// <typeparam name="TOut">The type of the value in the output ActionResult.</typeparam>
+    /// <param name="result">The result object to convert.</param>
+    /// <param name="controllerBase">The controller context used to create the ActionResult.</param>
+    /// <param name="actionName">The name of the action to use for generating the Location header URL.</param>
+    /// <param name="routeValues">A function that extracts route values from the result value for URL generation.</param>
+    /// <param name="metadataSelector">Function to extract metadata from the domain value (e.g., build ETag from aggregate).</param>
+    /// <param name="map">A function that transforms the input value to the output type for the response body.</param>
+    /// <param name="controllerName">Optional controller name. When null, the current controller is used.</param>
+    /// <returns>
+    /// <list type="bullet">
+    /// <item>201 Created with Location header, metadata headers, and mapped value if result is successful</item>
+    /// <item>Appropriate error status code (400-599) based on error type if result is failure</item>
+    /// </list>
+    /// </returns>
+    /// <remarks>
+    /// Use this overload when a POST creates a resource and the client needs an ETag for subsequent
+    /// conditional updates (optimistic concurrency).
+    /// </remarks>
+    /// <example>
+    /// POST endpoint creating a resource with ETag:
+    /// <code>
+    /// [HttpPost]
+    /// public ActionResult&lt;OrderDto&gt; CreateOrder(CreateOrderRequest request) =>
+    ///     _orderService.CreateOrder(request)
+    ///         .ToCreatedAtActionResult(this,
+    ///             actionName: nameof(GetOrder),
+    ///             routeValues: order => new { id = order.Id },
+    ///             metadataSelector: order => RepresentationMetadata.WithStrongETag(order.Version.ToString()),
+    ///             map: order => new OrderDto(order));
+    /// </code>
+    /// </example>
+    public static ActionResult<TOut> ToCreatedAtActionResult<TIn, TOut>(
+        this Result<TIn> result,
+        ControllerBase controllerBase,
+        string actionName,
+        Func<TIn, object?> routeValues,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map,
+        string? controllerName = null)
+    {
+        if (result.IsSuccess)
+        {
+            var metadata = metadataSelector(result.Value);
+            ApplyMetadataHeaders(controllerBase.Response, metadata);
+            var value = map(result.Value);
+            return (ActionResult<TOut>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(result.Value), value);
+        }
+
+        return result.Error.ToActionResult<TOut>(controllerBase);
+    }
+
     internal static void EmitCompanionHeaders(Error error, Microsoft.AspNetCore.Http.HttpResponse response)
     {
         switch (error)
@@ -525,20 +620,32 @@ public static class ActionResultExtensions
     #region RepresentationMetadata Support
 
     /// <summary>
-    /// Converts a Result to an ActionResult, applying representation metadata headers
+    /// Converts a Result to an ActionResult, applying dynamically-computed representation metadata headers
     /// (ETag, Last-Modified, Vary, Content-Language, Content-Location, Accept-Ranges).
     /// Evaluates all conditional request headers (If-Match, If-Unmodified-Since, If-None-Match,
     /// If-Modified-Since) with correct RFC 9110 §13.2.2 precedence via <see cref="ConditionalRequestEvaluator"/>.
     /// </summary>
+    /// <typeparam name="TIn">The domain type in the result.</typeparam>
+    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
+    /// <param name="result">The result to convert.</param>
+    /// <param name="controller">The controller context.</param>
+    /// <param name="metadataSelector">Function to extract metadata from the domain value (e.g., build ETag from aggregate).
+    /// For static metadata, use <c>_ =&gt; metadata</c>.</param>
+    /// <param name="map">Function to transform the domain value to a response DTO.</param>
+    /// <returns>An ActionResult with metadata headers and conditional request evaluation.</returns>
+    /// <remarks>
+    /// The selector is not invoked when the result is a failure.
+    /// </remarks>
     public static ActionResult<TOut> ToActionResult<TIn, TOut>(
         this Result<TIn> result,
         ControllerBase controller,
-        RepresentationMetadata metadata,
+        Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map)
     {
         if (result.IsFailure)
             return result.Error.ToActionResult<TOut>(controller);
 
+        var metadata = metadataSelector(result.Value);
         ApplyMetadataHeaders(controller.Response, metadata);
 
         // Only evaluate conditional headers for safe methods (GET/HEAD).
@@ -558,45 +665,6 @@ public static class ActionResultExtensions
         }
 
         return controller.Ok(map(result.Value));
-    }
-
-    /// <summary>Async Task overload of metadata-aware ToActionResult.</summary>
-    public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
-        this Task<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
-        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
-
-    /// <summary>Async ValueTask overload of metadata-aware ToActionResult.</summary>
-    public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(
-        this ValueTask<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map) =>
-        (await resultTask.ConfigureAwait(false)).ToActionResult(controller, metadata, map);
-
-    /// <summary>
-    /// Converts a Result to an ActionResult, applying dynamically-computed representation metadata headers
-    /// (ETag, Last-Modified, Vary, Content-Language, Content-Location, Accept-Ranges).
-    /// Evaluates all conditional request headers with correct RFC 9110 §13.2.2 precedence.
-    /// </summary>
-    /// <typeparam name="TIn">The domain type in the result.</typeparam>
-    /// <typeparam name="TOut">The mapped output type for the response body.</typeparam>
-    /// <param name="result">The result to convert.</param>
-    /// <param name="controller">The controller context.</param>
-    /// <param name="metadataSelector">Function to extract metadata from the domain value (e.g., build ETag from aggregate).</param>
-    /// <param name="map">Function to transform the domain value to a response DTO.</param>
-    /// <returns>An ActionResult with metadata headers and conditional request evaluation.</returns>
-    /// <remarks>
-    /// Use this overload when the metadata depends on the success value (e.g., ETag derived from an aggregate).
-    /// The selector is not invoked when the result is a failure.
-    /// </remarks>
-    public static ActionResult<TOut> ToActionResult<TIn, TOut>(
-        this Result<TIn> result,
-        ControllerBase controller,
-        Func<TIn, RepresentationMetadata> metadataSelector,
-        Func<TIn, TOut> map)
-    {
-        if (result.IsFailure)
-            return result.Error.ToActionResult<TOut>(controller);
-
-        var metadata = metadataSelector(result.Value);
-        return result.ToActionResult(controller, metadata, map);
     }
 
     /// <summary>Async Task overload of metadata-selector-aware ToActionResult.</summary>

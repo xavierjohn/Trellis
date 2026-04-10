@@ -236,6 +236,36 @@ public static class ActionResultExtensionsAsync
     }
 
     /// <summary>
+    /// Converts a Task-wrapped <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/>
+    /// that returns 206 Partial Content or 200 OK with scalar range parameters (Task variant).
+    /// </summary>
+    public static async Task<ActionResult<TValue>> ToActionResultAsync<TValue>(
+        this Task<Result<TValue>> resultTask,
+        ControllerBase controllerBase,
+        long from,
+        long to,
+        long totalLength)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToActionResult(controllerBase, from, to, totalLength);
+    }
+
+    /// <summary>
+    /// Converts a ValueTask-wrapped <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/>
+    /// that returns 206 Partial Content or 200 OK with scalar range parameters (ValueTask variant).
+    /// </summary>
+    public static async ValueTask<ActionResult<TValue>> ToActionResultAsync<TValue>(
+        this ValueTask<Result<TValue>> resultTask,
+        ControllerBase controllerBase,
+        long from,
+        long to,
+        long totalLength)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToActionResult(controllerBase, from, to, totalLength);
+    }
+
+    /// <summary>
     /// Converts a Task-wrapped <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/>
     /// by applying a mapping function on success, or Problem Details on failure.
     /// </summary>
@@ -455,6 +485,40 @@ public static class ActionResultExtensionsAsync
     {
         var result = await resultTask.ConfigureAwait(false);
         return result.ToCreatedAtActionResult(controllerBase, actionName, routeValues, map, controllerName);
+    }
+
+    /// <summary>
+    /// Converts a Task-wrapped <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> that returns
+    /// 201 Created with a Location header and representation metadata headers on success, or Problem Details on failure (Task variant).
+    /// </summary>
+    public static async Task<ActionResult<TOut>> ToCreatedAtActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        ControllerBase controllerBase,
+        string actionName,
+        Func<TIn, object?> routeValues,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map,
+        string? controllerName = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToCreatedAtActionResult(controllerBase, actionName, routeValues, metadataSelector, map, controllerName);
+    }
+
+    /// <summary>
+    /// Converts a ValueTask-wrapped <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> that returns
+    /// 201 Created with a Location header and representation metadata headers on success, or Problem Details on failure (ValueTask variant).
+    /// </summary>
+    public static async ValueTask<ActionResult<TOut>> ToCreatedAtActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        ControllerBase controllerBase,
+        string actionName,
+        Func<TIn, object?> routeValues,
+        Func<TIn, RepresentationMetadata> metadataSelector,
+        Func<TIn, TOut> map,
+        string? controllerName = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToCreatedAtActionResult(controllerBase, actionName, routeValues, metadataSelector, map, controllerName);
     }
 
 }

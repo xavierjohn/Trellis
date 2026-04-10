@@ -688,12 +688,11 @@ public sealed class ValidatingJsonConverterFactory : JsonConverterFactory
 public static ActionResult<TValue> ToActionResult<TValue>(this Result<TValue> result, ControllerBase controllerBase)
 public static ActionResult<TValue> ToActionResult<TValue>(this Error error, ControllerBase controllerBase)
 public static ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controllerBase, Func<TIn, ContentRangeHeaderValue> funcRange, Func<TIn, TOut> funcValue)
+public static ActionResult<TValue> ToActionResult<TValue>(this Result<TValue> result, ControllerBase controllerBase, long from, long to, long totalLength)
 public static ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controllerBase, Func<TIn, TOut> map)
 public static ActionResult<TValue> ToCreatedAtActionResult<TValue>(this Result<TValue> result, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, string? controllerName = null)
 public static ActionResult<TOut> ToCreatedAtActionResult<TValue, TOut>(this Result<TValue> result, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, Func<TValue, TOut> map, string? controllerName = null)
-public static ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map)
-public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map)
-public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata metadata, Func<TIn, TOut> map)
+public static ActionResult<TOut> ToCreatedAtActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controllerBase, string actionName, Func<TIn, object?> routeValues, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, string? controllerName = null)
 public static ActionResult<TOut> ToActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)
 public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)
 public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)
@@ -706,12 +705,16 @@ public static async Task<ActionResult<TValue>> ToActionResultAsync<TValue>(this 
 public static async ValueTask<ActionResult<TValue>> ToActionResultAsync<TValue>(this ValueTask<Result<TValue>> resultTask, ControllerBase controllerBase)
 public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controllerBase, Func<TIn, ContentRangeHeaderValue> funcRange, Func<TIn, TOut> funcValue)
 public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, ControllerBase controllerBase, Func<TIn, ContentRangeHeaderValue> funcRange, Func<TIn, TOut> funcValue)
+public static async Task<ActionResult<TValue>> ToActionResultAsync<TValue>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase, long from, long to, long totalLength)
+public static async ValueTask<ActionResult<TValue>> ToActionResultAsync<TValue>(this ValueTask<Result<TValue>> resultTask, ControllerBase controllerBase, long from, long to, long totalLength)
 public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controllerBase, Func<TIn, TOut> map)
 public static async ValueTask<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, ControllerBase controllerBase, Func<TIn, TOut> map)
 public static async Task<ActionResult<TValue>> ToCreatedAtActionResultAsync<TValue>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, string? controllerName = null)
 public static async ValueTask<ActionResult<TValue>> ToCreatedAtActionResultAsync<TValue>(this ValueTask<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, string? controllerName = null)
 public static async Task<ActionResult<TOut>> ToCreatedAtActionResultAsync<TValue, TOut>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, Func<TValue, TOut> map, string? controllerName = null)
 public static async ValueTask<ActionResult<TOut>> ToCreatedAtActionResultAsync<TValue, TOut>(this ValueTask<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, Func<TValue, TOut> map, string? controllerName = null)
+public static async Task<ActionResult<TOut>> ToCreatedAtActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controllerBase, string actionName, Func<TIn, object?> routeValues, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, string? controllerName = null)
+public static async ValueTask<ActionResult<TOut>> ToCreatedAtActionResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, ControllerBase controllerBase, string actionName, Func<TIn, object?> routeValues, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, string? controllerName = null)
 ```
 
 ### `HttpResultExtensions`
@@ -719,6 +722,7 @@ public static async ValueTask<ActionResult<TOut>> ToCreatedAtActionResultAsync<T
 ```csharp
 public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TValue>(this Result<TValue> result, TrellisAspOptions? options = null)
 public static Microsoft.AspNetCore.Http.IResult ToHttpResult(this Error error, TrellisAspOptions? options = null)
+public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> map, TrellisAspOptions? options = null)
 public static Microsoft.AspNetCore.Http.IResult ToCreatedAtRouteHttpResult<TValue>(this Result<TValue> result, string routeName, Func<TValue, RouteValueDictionary> routeValues, TrellisAspOptions? options = null)
 public static Microsoft.AspNetCore.Http.IResult ToCreatedAtRouteHttpResult<TValue, TOut>(this Result<TValue> result, string routeName, Func<TValue, RouteValueDictionary> routeValues, Func<TValue, TOut> map, TrellisAspOptions? options = null)
 public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TIn, TOut>(this Result<TIn> result, HttpContext httpContext, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)
@@ -734,6 +738,8 @@ public static Microsoft.AspNetCore.Http.IResult ToUpdatedHttpResult<TIn, TOut>(t
 ```csharp
 public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TValue>(this Task<Result<TValue>> resultTask, TrellisAspOptions? options = null)
 public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TValue>(this ValueTask<Result<TValue>> resultTask, TrellisAspOptions? options = null)
+public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, TOut> map, TrellisAspOptions? options = null)
+public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, Func<TIn, TOut> map, TrellisAspOptions? options = null)
 public static async Task<Microsoft.AspNetCore.Http.IResult> ToCreatedAtRouteHttpResultAsync<TValue>(this Task<Result<TValue>> resultTask, string routeName, Func<TValue, Microsoft.AspNetCore.Routing.RouteValueDictionary> routeValues, TrellisAspOptions? options = null)
 public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToCreatedAtRouteHttpResultAsync<TValue>(this ValueTask<Result<TValue>> resultTask, string routeName, Func<TValue, Microsoft.AspNetCore.Routing.RouteValueDictionary> routeValues, TrellisAspOptions? options = null)
 public static async Task<Microsoft.AspNetCore.Http.IResult> ToCreatedAtRouteHttpResultAsync<TValue, TOut>(this Task<Result<TValue>> resultTask, string routeName, Func<TValue, Microsoft.AspNetCore.Routing.RouteValueDictionary> routeValues, Func<TValue, TOut> map, TrellisAspOptions? options = null)
@@ -777,6 +783,8 @@ public static IServiceCollection AddTrellisAsp(this IServiceCollection services,
 ```csharp
 public static ActionResult ToActionResult<T, TOut>(this WriteOutcome<T> outcome, ControllerBase controller, Func<T, TOut>? map = null)
 public static ActionResult<TOut> ToUpdatedActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller, RepresentationMetadata? metadata, Func<TIn, TOut> map)
+public static async Task<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata? metadata, Func<TIn, TOut> map)
+public static async ValueTask<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, ControllerBase controller, RepresentationMetadata? metadata, Func<TIn, TOut> map)
 public static ActionResult<TOut> ToUpdatedActionResult<TIn, TOut>(this Result<TIn> result, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)
 public static async Task<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)
 public static async ValueTask<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, ControllerBase controller, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map)

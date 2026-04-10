@@ -92,7 +92,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
 
         var product = result.Value;
         var metadata = RepresentationMetadata.WithStrongETag(product.ETag);
-        return result.ToActionResult(this, metadata, ProductResponse.From);
+        return result.ToActionResult(this, _ => metadata, ProductResponse.From);
     }
 
     // POST /products — create with ETag + Location
