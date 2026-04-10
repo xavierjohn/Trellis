@@ -1,4 +1,4 @@
-namespace SampleDataAccess;
+﻿namespace SampleDataAccess;
 
 using Microsoft.EntityFrameworkCore;
 using SampleUserLibrary;

@@ -202,6 +202,32 @@ public static class HttpResultExtensionsAsync
     }
 
     /// <summary>
+    /// Converts a Task-wrapped <see cref="Result{TIn}"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// by applying a mapping function on success, or Problem Details on failure (Task variant).
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(map, options);
+    }
+
+    /// <summary>
+    /// Converts a ValueTask-wrapped <see cref="Result{TIn}"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/>
+    /// by applying a mapping function on success, or Problem Details on failure (ValueTask variant).
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        Func<TIn, TOut> map,
+        TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(map, options);
+    }
+
+    /// <summary>
     /// Converts a Task-wrapped <see cref="Result{TValue}"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/> that returns
     /// 201 Created with a Location header on success, or Problem Details on failure.
     /// </summary>

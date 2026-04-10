@@ -1,4 +1,4 @@
-namespace SampleWebApplication.Controllers;
+﻿namespace SampleWebApplication.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -73,7 +73,7 @@ public class NewOrdersController(
             return result.Error.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
-            RepresentationMetadata.WithStrongETag(result.Value.ETag),
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
             OrderResponse.From);
     }
 
@@ -111,7 +111,7 @@ public class NewOrdersController(
             return result.Error.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
-            RepresentationMetadata.WithStrongETag(result.Value.ETag),
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
             OrderResponse.From);
     }
 
@@ -147,7 +147,7 @@ public class NewOrdersController(
             return result.Error.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
-            RepresentationMetadata.WithStrongETag(result.Value.ETag),
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
             OrderResponse.From);
     }
 

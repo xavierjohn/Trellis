@@ -44,11 +44,11 @@ public class OrderWorkflow
         var ct = cancellationToken;
 
         return await Order.TryCreate(customerId)
-            .TapAsync((Func<Order, Task>)(order =>
+            .TapAsync(order =>
             {
                 currentOrder = order;
                 return _notificationService.SendOrderCreatedEmailAsync(customerId, order.Id, ct);
-            }))
+            })
             .BindAsync(order => AddItemsToOrderAsync(order, items, ct))
             .BindAsync(async order =>
             {
@@ -93,12 +93,12 @@ public class OrderWorkflow
                 return Result.Success(order);
             })
             .BindAsync(order => Task.FromResult(order.Confirm()))
-            .TapAsync((Func<Order, Task>)(async order =>
+            .TapAsync(async order =>
             {
                 // Publish all domain events after successful confirmation
                 await PublishEventsAndAcceptChangesAsync(order, ct);
                 await _notificationService.SendOrderConfirmedEmailAsync(customerId, order.Id, ct);
-            }));
+            });
     }
 
     /// <summary>

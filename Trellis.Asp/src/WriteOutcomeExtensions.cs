@@ -139,6 +139,32 @@ public static class WriteOutcomeExtensions
     }
 
     /// <summary>
+    /// Async Task variant of <see cref="ToUpdatedActionResult{TIn,TOut}(Result{TIn}, ControllerBase, RepresentationMetadata, Func{TIn, TOut})"/>.
+    /// </summary>
+    public static async Task<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(
+        this Task<Result<TIn>> resultTask,
+        ControllerBase controller,
+        RepresentationMetadata? metadata,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedActionResult(controller, metadata, map);
+    }
+
+    /// <summary>
+    /// Async ValueTask variant of <see cref="ToUpdatedActionResult{TIn,TOut}(Result{TIn}, ControllerBase, RepresentationMetadata, Func{TIn, TOut})"/>.
+    /// </summary>
+    public static async ValueTask<ActionResult<TOut>> ToUpdatedActionResultAsync<TIn, TOut>(
+        this ValueTask<Result<TIn>> resultTask,
+        ControllerBase controller,
+        RepresentationMetadata? metadata,
+        Func<TIn, TOut> map)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToUpdatedActionResult(controller, metadata, map);
+    }
+
+    /// <summary>
     /// Converts a successful <see cref="Result{TIn}"/> to an updated response with dynamic metadata,
     /// honoring RFC 7240 <c>Prefer</c>.
     /// </summary>

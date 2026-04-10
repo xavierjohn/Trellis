@@ -54,9 +54,9 @@ public class BankingWorkflow
         }
 
         return await account.ToResult()
-            .BindAsync((Func<BankAccount, Task<Result<BankAccount>>>)PerformChecks)
+            .BindAsync(PerformChecks)
             .BindAsync(acc => Task.FromResult(acc.Withdraw(amount, "ATM Withdrawal")))
-            .TapAsync((Func<BankAccount, Task>)(acc => PublishEventsAndAcceptChangesAsync(acc, cancellationToken)))
+            .TapAsync(acc => PublishEventsAndAcceptChangesAsync(acc, cancellationToken))
             .RecoverOnFailureAsync(
                 predicate: error => error.Code == "fraud.detected",
                 funcAsync: async error =>
@@ -97,12 +97,12 @@ public class BankingWorkflow
                 await PublishEventsAndAcceptChangesAsync(accounts.From, cancellationToken);
                 await PublishEventsAndAcceptChangesAsync(accounts.To, cancellationToken);
             }))
-            .TapAsync((Func<(BankAccount From, BankAccount To), Task>)(accounts => NotifyTransferCompleteAsync(
+            .TapAsync(accounts => NotifyTransferCompleteAsync(
                 fromAccount.CustomerId,
                 toAccount.CustomerId,
                 amount,
                 cancellationToken
-            )));
+            ));
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public class BankingWorkflow
                 await Task.Delay(50, cancellationToken);
                 return account.Deposit(interest, $"Daily interest at {interestRate:P2} APR");
             })
-            .TapAsync((Func<BankAccount, Task>)(acc => PublishEventsAndAcceptChangesAsync(acc, cancellationToken)));
+            .TapAsync(acc => PublishEventsAndAcceptChangesAsync(acc, cancellationToken));
     }
 
     /// <summary>
