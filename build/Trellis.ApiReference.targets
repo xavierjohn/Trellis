@@ -23,21 +23,21 @@
 
   <PropertyGroup Condition="'$(_TrellisRepoRoot)' == ''">
     <_Tp0>$(MSBuildProjectDirectory)</_Tp0>
-    <_Tp1>$([System.IO.Path]::GetFullPath('$(_Tp0)/..'))</_Tp1>
-    <_Tp2>$([System.IO.Path]::GetFullPath('$(_Tp1)/..'))</_Tp2>
-    <_Tp3>$([System.IO.Path]::GetFullPath('$(_Tp2)/..'))</_Tp3>
-    <_Tp4>$([System.IO.Path]::GetFullPath('$(_Tp3)/..'))</_Tp4>
-    <_Tp5>$([System.IO.Path]::GetFullPath('$(_Tp4)/..'))</_Tp5>
-    <_TrellisRepoRoot Condition="Exists('$(_Tp0)/.git')">$(_Tp0)</_TrellisRepoRoot>
-    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp1)/.git')">$(_Tp1)</_TrellisRepoRoot>
-    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp2)/.git')">$(_Tp2)</_TrellisRepoRoot>
-    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp3)/.git')">$(_Tp3)</_TrellisRepoRoot>
-    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp4)/.git')">$(_Tp4)</_TrellisRepoRoot>
-    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp5)/.git')">$(_Tp5)</_TrellisRepoRoot>
+    <_Tp1>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp0)', '..'))))</_Tp1>
+    <_Tp2>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp1)', '..'))))</_Tp2>
+    <_Tp3>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp2)', '..'))))</_Tp3>
+    <_Tp4>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp3)', '..'))))</_Tp4>
+    <_Tp5>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp4)', '..'))))</_Tp5>
+    <_TrellisRepoRoot Condition="Exists($([System.IO.Path]::Combine('$(_Tp0)', '.git')))">$(_Tp0)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists($([System.IO.Path]::Combine('$(_Tp1)', '.git')))">$(_Tp1)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists($([System.IO.Path]::Combine('$(_Tp2)', '.git')))">$(_Tp2)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists($([System.IO.Path]::Combine('$(_Tp3)', '.git')))">$(_Tp3)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists($([System.IO.Path]::Combine('$(_Tp4)', '.git')))">$(_Tp4)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists($([System.IO.Path]::Combine('$(_Tp5)', '.git')))">$(_Tp5)</_TrellisRepoRoot>
   </PropertyGroup>
 
   <PropertyGroup>
-    <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != ''">$(_TrellisRepoRoot)/.github/</_TrellisApiOutputDir>
+    <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != ''">$([System.IO.Path]::Combine('$(_TrellisRepoRoot)', '.github'))\</_TrellisApiOutputDir>
   </PropertyGroup>
 
   <Target Name="_CopyTrellisApiReference"
