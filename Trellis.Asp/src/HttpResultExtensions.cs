@@ -512,6 +512,10 @@ public static class HttpResultExtensions
     {
         if (result.IsSuccess)
         {
+            // If TValue is Unit, return 204 No Content
+            if (typeof(TValue) == typeof(Unit))
+                return Results.NoContent();
+
             // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
             if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
                 return Results.Ok(result.Value);

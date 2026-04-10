@@ -353,6 +353,10 @@ public static class ActionResultExtensions
     {
         if (result.IsSuccess)
         {
+            // If TValue is Unit, return 204 No Content
+            if (typeof(TValue) == typeof(Unit))
+                return (ActionResult<TValue>)controllerBase.NoContent();
+
             // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
             if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
                 return (ActionResult<TValue>)controllerBase.Ok(result.Value);
