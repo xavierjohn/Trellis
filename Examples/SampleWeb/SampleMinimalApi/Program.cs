@@ -32,7 +32,7 @@ builder.Services.AddHostedService<SqliteConnectionDisposer>();
 
 // Authorization— DevelopmentActorProvider reads actor from X-Test-Actor header
 if (builder.Environment.IsDevelopment())
-builder.Services.AddDevelopmentActorProvider();
+    builder.Services.AddDevelopmentActorProvider();
 
 builder.Services.AddAuthorization();
 

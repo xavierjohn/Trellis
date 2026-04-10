@@ -1,4 +1,4 @@
-namespace SampleMinimalApiNoAot.API;
+﻿namespace SampleMinimalApiNoAot.API;
 
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
@@ -134,4 +134,3 @@ public static class ProductRoutes
             .WithScalarValueValidation();
     }
 }
-

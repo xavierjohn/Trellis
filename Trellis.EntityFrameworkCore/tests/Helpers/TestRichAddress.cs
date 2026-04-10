@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Tests.Helpers;
+﻿namespace Trellis.EntityFrameworkCore.Tests.Helpers;
 
 /// <summary>
 /// Test composite value object containing a scalar value object property.

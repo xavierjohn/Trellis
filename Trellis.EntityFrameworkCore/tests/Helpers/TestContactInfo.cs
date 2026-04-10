@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Tests.Helpers;
+﻿namespace Trellis.EntityFrameworkCore.Tests.Helpers;
 
 using Trellis.Primitives;
 

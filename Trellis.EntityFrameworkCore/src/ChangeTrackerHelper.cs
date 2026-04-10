@@ -34,8 +34,11 @@ internal static class ChangeTrackerHelper
                     }
                 }
             }
-            else if (navigation is ReferenceEntry { TargetEntry.State: EntityState.Modified
-                or EntityState.Added or EntityState.Deleted })
+            else if (navigation is ReferenceEntry
+            {
+                TargetEntry.State: EntityState.Modified
+                or EntityState.Added or EntityState.Deleted
+            })
             {
                 return true;
             }

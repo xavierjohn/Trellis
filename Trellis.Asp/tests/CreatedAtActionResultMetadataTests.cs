@@ -1,9 +1,9 @@
 ﻿namespace Trellis.Asp.Tests;
 
+using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using System.Globalization;
 using Trellis;
 
 /// <summary>
