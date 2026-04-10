@@ -1,5 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
-         InitialTargets="_CopyTrellisApiReference">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!--
     Shared targets file packed into each Trellis NuGet package.
     Declares TrellisApiReference items pointing to the API reference markdown
@@ -7,6 +6,8 @@
     in the repository root so GitHub Copilot can consume them.
 
     Override TrellisApiReferenceRoot to change the destination root.
+    Set TrellisDisableApiReferenceSync=true to disable automatic sync.
+    Manual sync: dotnet build /t:TrellisSyncApiReference
   -->
   <ItemGroup>
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
@@ -48,7 +49,8 @@
   </PropertyGroup>
 
   <Target Name="_CopyTrellisApiReference"
-          Condition="'@(TrellisApiReference)' != ''">
+          BeforeTargets="Build"
+          Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true'">
     <Warning Text="Trellis API references not copied: .git not found within 6 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
              Condition="'$(_TrellisApiOutputDir)' == ''" />
     <Copy SourceFiles="@(TrellisApiReference)"
