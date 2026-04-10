@@ -6,6 +6,8 @@
     in the repository root so GitHub Copilot can consume them.
 
     Override TrellisApiReferenceRoot to change the destination root.
+    Set TrellisDisableApiReferenceSync=true to disable automatic sync.
+    Manual sync: dotnet build /t:TrellisSyncApiReference
   -->
   <ItemGroup>
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
@@ -48,7 +50,7 @@
 
   <Target Name="_CopyTrellisApiReference"
           BeforeTargets="Build"
-          Condition="'@(TrellisApiReference)' != ''">
+          Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true'">
     <Warning Text="Trellis API references not copied: .git not found within 6 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
              Condition="'$(_TrellisApiOutputDir)' == ''" />
     <Copy SourceFiles="@(TrellisApiReference)"
@@ -56,4 +58,11 @@
           SkipUnchangedFiles="true"
           Condition="'$(_TrellisApiOutputDir)' != ''" />
   </Target>
+
+  <!--
+    Manual invocation: dotnet build /t:TrellisSyncApiReference
+    Copies API reference files without running a full build.
+  -->
+  <Target Name="TrellisSyncApiReference"
+          DependsOnTargets="_CopyTrellisApiReference" />
 </Project>
