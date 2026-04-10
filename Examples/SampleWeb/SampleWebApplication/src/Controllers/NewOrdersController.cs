@@ -73,7 +73,7 @@ public class NewOrdersController(
             return result.Error.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
-            _ => RepresentationMetadata.WithStrongETag(result.Value.ETag),
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
             OrderResponse.From);
     }
 
@@ -111,7 +111,7 @@ public class NewOrdersController(
             return result.Error.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
-            _ => RepresentationMetadata.WithStrongETag(result.Value.ETag),
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
             OrderResponse.From);
     }
 
@@ -147,7 +147,7 @@ public class NewOrdersController(
             return result.Error.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
-            _ => RepresentationMetadata.WithStrongETag(result.Value.ETag),
+            order => RepresentationMetadata.WithStrongETag(order.ETag),
             OrderResponse.From);
     }
 

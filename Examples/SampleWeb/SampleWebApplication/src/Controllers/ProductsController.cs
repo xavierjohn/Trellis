@@ -90,9 +90,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
         if (result.IsFailure)
             return result.Error.ToActionResult<ProductResponse>(this);
 
-        var product = result.Value;
-        var metadata = RepresentationMetadata.WithStrongETag(product.ETag);
-        return result.ToActionResult(this, _ => metadata, ProductResponse.From);
+        return result.ToActionResult(this, product => RepresentationMetadata.WithStrongETag(product.ETag), ProductResponse.From);
     }
 
     // POST /products — create with ETag + Location
