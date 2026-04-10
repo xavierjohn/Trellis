@@ -327,13 +327,8 @@ public static class HttpResultExtensions
     public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TIn, TOut>(
         this Result<TIn> result,
         Func<TIn, TOut> map,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-            return Results.Ok(map(result.Value));
-
-        return result.Error.ToHttpResult(options);
-    }
+        TrellisAspOptions? options = null) =>
+        result.Map(map).ToHttpResult(options);
 
     /// <summary>
     /// Converts a <see cref="Result{TValue}"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/> that returns
