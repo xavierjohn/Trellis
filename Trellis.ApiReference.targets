@@ -42,12 +42,9 @@
 
   <Target Name="_CopyTrellisApiReference"
           BeforeTargets="Build"
-          Condition="'@(TrellisApiReference)' != ''">
-    <Warning Text="Trellis API references not copied: .git not found within 6 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
-             Condition="'$(_TrellisApiOutputDir)' == ''" />
+          Condition="'@(TrellisApiReference)' != '' AND '$(_TrellisApiOutputDir)' != ''">
     <Copy SourceFiles="@(TrellisApiReference)"
           DestinationFolder="$(_TrellisApiOutputDir)"
-          SkipUnchangedFiles="true"
-          Condition="'$(_TrellisApiOutputDir)' != ''" />
+          SkipUnchangedFiles="true" />
   </Target>
 </Project>
