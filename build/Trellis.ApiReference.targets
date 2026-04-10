@@ -2,9 +2,26 @@
   <!--
     Shared targets file packed into each Trellis NuGet package.
     Declares TrellisApiReference items pointing to the API reference markdown
-    shipped in the package's trellis/ folder.
+    shipped in the package's trellis/ folder, and copies them to .github/
+    in the repository root so GitHub Copilot can consume them.
+
+    Override TrellisApiReferenceRoot to change the destination root.
   -->
   <ItemGroup>
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <_TrellisRepoRoot Condition="'$(TrellisApiReferenceRoot)' != ''">$(TrellisApiReferenceRoot)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == ''">$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildProjectDirectory)', '.git'))</_TrellisRepoRoot>
+    <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != ''">$(_TrellisRepoRoot)\.github\</_TrellisApiOutputDir>
+  </PropertyGroup>
+
+  <Target Name="_CopyTrellisApiReference"
+          BeforeTargets="Build"
+          Condition="'@(TrellisApiReference)' != '' AND '$(_TrellisApiOutputDir)' != ''">
+    <Copy SourceFiles="@(TrellisApiReference)"
+          DestinationFolder="$(_TrellisApiOutputDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
