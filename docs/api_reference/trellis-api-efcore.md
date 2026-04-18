@@ -82,7 +82,7 @@ public abstract class RepositoryBase<TAggregate, TId>
     where TId : notnull
 ```
 
-Abstract generic repository base class for EF Core aggregate persistence. Extracts the recurring FindById/Save/Query pattern used by concrete repositories.
+Abstract generic repository base class for EF Core aggregate persistence. Provides standard read and staging methods. Repositories stage changes to the change tracker; the `IUnitOfWork` (typically driven by a pipeline behavior) is responsible for committing staged changes.
 
 #### Properties
 
@@ -91,19 +91,29 @@ Abstract generic repository base class for EF Core aggregate persistence. Extrac
 | `protected DbSet<TAggregate> DbSet` | `DbSet<TAggregate>` | The EF Core `DbSet` for this aggregate type. |
 | `protected DbContext Context` | `DbContext` | The underlying `DbContext`. Use sparingly — prefer repository methods. |
 
-#### Methods
+#### Read Methods
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public virtual Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default)` | `Task<Maybe<TAggregate>>` | Finds an aggregate by ID using an expression-tree predicate (`Expression.Equal`). Returns `Maybe<T>.None` if not found. |
-| `public virtual Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Persists a new or modified aggregate. Detached aggregates are added; tracked aggregates are updated in place. To update, first retrieve via `FindByIdAsync`, mutate, then save. |
-| `public virtual Task<IReadOnlyList<TAggregate>> QueryAsync(Specification<TAggregate> specification, CancellationToken cancellationToken = default)` | `Task<IReadOnlyList<TAggregate>>` | Queries aggregates matching the specification. |
+| `public virtual Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken ct = default)` | `Task<Maybe<TAggregate>>` | Finds a tracked aggregate by ID. Returns `Maybe<T>.None` if not found. |
+| `public virtual Task<IReadOnlyList<TAggregate>> QueryAsync(Specification<TAggregate> spec, CancellationToken ct = default)` | `Task<IReadOnlyList<TAggregate>>` | Queries aggregates matching the specification (no-tracking by default). |
+| `public virtual Task<bool> ExistsAsync(TId id, CancellationToken ct = default)` | `Task<bool>` | Lightweight check for existence by ID (no-tracking, no materialization). |
+| `public virtual Task<bool> ExistsAsync(Specification<TAggregate> spec, CancellationToken ct = default)` | `Task<bool>` | Checks whether any aggregate matches the specification. |
+| `public virtual Task<int> CountAsync(Specification<TAggregate> spec, CancellationToken ct = default)` | `Task<int>` | Counts aggregates matching the specification. |
+
+#### Staging Methods (never call SaveChanges)
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public virtual void Add(TAggregate aggregate)` | `void` | Stages a new aggregate for insertion. No-op if already tracked. |
+| `public virtual void Remove(TAggregate aggregate)` | `void` | Stages an aggregate for deletion. |
+| `public virtual Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken ct = default)` | `Task<Result<Unit>>` | Looks up by ID via `DbSet.FindAsync` (avoids Include graphs) and stages for deletion. Returns not-found if absent. |
 
 #### Virtual Hooks
 
 | Signature | Description |
 | --- | --- |
-| `protected virtual IQueryable<TAggregate> BuildFindByIdQuery()` | Override to add `.Include()` or filters to the find-by-ID query. Defaults to `DbSet.AsQueryable()`. |
+| `protected virtual IQueryable<TAggregate> BuildFindByIdQuery()` | Override to add `.Include()` or filters to the find-by-ID query. Defaults to `DbSet`. |
 | `protected virtual IQueryable<TAggregate> BuildQueryBase()` | Override to add `.Include()` or filters to specification queries. Defaults to `DbSet.AsNoTracking()`. |
 
 #### Usage
@@ -114,7 +124,57 @@ public class OrderRepository(DbContext context) : RepositoryBase<Order, OrderId>
     protected override IQueryable<Order> BuildFindByIdQuery() =>
         DbSet.Include(o => o.LineItems);
 }
+
+// In a command handler (pipeline auto-commits on success):
+var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
+return maybe
+    .ToResult(Error.NotFound("Order not found."))
+    .Bind(order => order.Ship());
+// Tracked changes are committed automatically by TransactionalCommandBehavior.
 ```
+
+### `IUnitOfWork`
+
+```csharp
+public interface IUnitOfWork
+```
+
+Abstraction over the commit boundary for staged changes. Repositories stage changes; calling `CommitAsync` persists them. In the standard Trellis pipeline, commit is handled automatically by `TransactionalCommandBehavior`. Inject `IUnitOfWork` directly only in non-pipeline scenarios (background jobs, integration tests).
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. |
+
+### `EfUnitOfWork<TContext>`
+
+```csharp
+public class EfUnitOfWork<TContext> : IUnitOfWork
+    where TContext : DbContext
+```
+
+EF Core implementation of `IUnitOfWork`. Delegates to `DbContextExtensions.SaveChangesResultUnitAsync` which maps `DbUpdateConcurrencyException` → `Error.Conflict`, duplicate-key → `Error.Conflict`, FK violations → `Error.Domain`.
+
+### `TransactionalCommandBehavior<TMessage, TResponse>`
+
+```csharp
+public sealed class TransactionalCommandBehavior<TMessage, TResponse>
+    : IPipelineBehavior<TMessage, TResponse>
+    where TMessage : ICommand<TResponse>
+    where TResponse : IResult, IFailureFactory<TResponse>
+```
+
+Pipeline behavior that auto-commits staged changes after a successful command handler. Only applies to `ICommand<TResponse>` messages — queries are skipped. If the handler returns a failure, no commit occurs and staged changes are discarded with the `DbContext`.
+
+### `UnitOfWorkServiceCollectionExtensions`
+
+```csharp
+public static class UnitOfWorkServiceCollectionExtensions
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` as `IUnitOfWork` and adds the `TransactionalCommandBehavior` pipeline behavior. The behavior is inserted after the last existing `IPipelineBehavior<,>` registration (innermost position). Call this **after** `AddTrellisBehaviors()` so that commit failures are visible to outer behaviors (logging, tracing). |
+| `public static IServiceCollection AddTrellisUnitOfWorkWithoutBehavior<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` without the pipeline behavior. Use for manual commit control or non-Mediator scenarios. |
 
 ### `EntityTimestampInterceptor`
 

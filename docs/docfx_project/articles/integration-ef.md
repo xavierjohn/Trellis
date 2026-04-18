@@ -168,6 +168,34 @@ public sealed class CustomerRepository(AppDbContext db)
 > [!NOTE]
 > The Trellis save helpers call EF Core’s `SaveChangesAsync(...)` internally. The public API you should use is `SaveChangesResultAsync(...)` or `SaveChangesResultUnitAsync(...)`.
 
+### Preferred approach: RepositoryBase + IUnitOfWork
+
+For CQRS applications using the Trellis Mediator pipeline, use `RepositoryBase<TAggregate, TId>` with `IUnitOfWork` instead of calling `SaveChangesResultAsync` directly. Repositories stage changes; the `TransactionalCommandBehavior` pipeline behavior auto-commits after successful command handlers.
+
+```csharp
+// Repository — staging only, never calls SaveChanges
+public class OrderRepository(AppDbContext db) : RepositoryBase<Order, OrderId>(db)
+{
+    protected override IQueryable<Order> BuildFindByIdQuery() =>
+        DbSet.Include(o => o.LineItems);
+}
+
+// Command handler — pure domain logic, no persistence concerns
+public async ValueTask<Result<Order>> Handle(ShipOrderCommand cmd, CancellationToken ct)
+{
+    var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
+    return maybe
+        .ToResult(Error.NotFound("Order not found."))
+        .Bind(order => order.Ship());
+    // TransactionalCommandBehavior auto-commits the tracked changes on success.
+}
+
+// DI registration — call AddTrellisUnitOfWork after AddTrellisBehaviors
+// so the commit behavior runs innermost (closest to the handler).
+services.AddTrellisBehaviors();
+services.AddTrellisUnitOfWork<AppDbContext>();
+```
+
 ## What `ApplyTrellisConventions` actually does
 
 Most teams adopt the package for one reason: they do not want to hand-write `HasConversion(...)` for every value object. That is the first benefit, but not the only one.

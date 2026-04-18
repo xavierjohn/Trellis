@@ -5,14 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 /// <summary>
 /// Base class for EF Core repositories that persist <see cref="Aggregate{TId}"/> instances.
-/// Provides standard <see cref="FindByIdAsync"/>, <see cref="SaveAsync"/>, and
-/// <see cref="QueryAsync"/> implementations that compose the existing Trellis EF Core helpers.
+/// Provides standard read and staging methods. Repositories stage changes to the
+/// <see cref="DbContext"/> change tracker; the <see cref="IUnitOfWork"/> (typically driven
+/// by a pipeline behavior) is responsible for committing staged changes.
 /// </summary>
 /// <typeparam name="TAggregate">The aggregate root type.</typeparam>
 /// <typeparam name="TId">The type of the aggregate's unique identifier.</typeparam>
 /// <remarks>
 /// <para>
-/// This base class eliminates the repetitive save/find/query boilerplate that appears in every
+/// This base class eliminates the repetitive find/query/add/remove boilerplate that appears in every
 /// concrete repository. Repositories with custom queries inherit and add methods.
 /// </para>
 /// <para>
@@ -20,12 +21,11 @@ using Microsoft.EntityFrameworkCore;
 /// <c>.Include()</c> chains for eager loading.
 /// </para>
 /// <para>
-/// <see cref="SaveAsync"/> uses detached-entity detection: if the aggregate's change tracker
-/// state is <see cref="EntityState.Detached"/>, it is added to the <see cref="DbSet"/>.
-/// This means new aggregates are inserted and already-tracked aggregates are updated.
-/// If your scenario requires disconnected-update semantics (attaching a deserialized
-/// aggregate that was never tracked), override <see cref="SaveAsync"/> in the concrete
-/// repository.
+/// <b>Staging vs. Committing:</b> Methods like <see cref="Add"/>, <see cref="Remove"/>,
+/// and <see cref="RemoveByIdAsync"/> stage changes in the EF Core change tracker but never
+/// call <c>SaveChanges</c>. The commit boundary is owned by the pipeline
+/// (see <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/>) or by explicitly
+/// calling <see cref="IUnitOfWork.CommitAsync"/>.
 /// </para>
 /// </remarks>
 /// <example>
@@ -69,6 +69,10 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// </summary>
     protected DbContext Context => _context;
 
+    // ──────────────────────────────────────────────
+    // Virtual hooks
+    // ──────────────────────────────────────────────
+
     /// <summary>
     /// Builds the base query used by <see cref="FindByIdAsync"/>. Override to add
     /// <c>.Include()</c> chains for eager loading when finding by ID.
@@ -77,15 +81,20 @@ public abstract class RepositoryBase<TAggregate, TId>
     protected virtual IQueryable<TAggregate> BuildFindByIdQuery() => DbSet;
 
     /// <summary>
-    /// Builds the base query used by <see cref="QueryAsync"/>. Override to add
-    /// <c>.Include()</c> chains for list/search queries.
+    /// Builds the base query used by <see cref="QueryAsync"/>, <see cref="ExistsAsync(Specification{TAggregate}, CancellationToken)"/>,
+    /// and <see cref="CountAsync"/>. Override to add <c>.Include()</c> chains for list/search queries.
     /// The default query is no-tracking to avoid unnecessary change tracking for read operations.
     /// </summary>
     /// <returns>An <see cref="IQueryable{T}"/> starting from <see cref="DbSet"/> with no tracking.</returns>
     protected virtual IQueryable<TAggregate> BuildQueryBase() => DbSet.AsNoTracking();
 
+    // ──────────────────────────────────────────────
+    // Reads
+    // ──────────────────────────────────────────────
+
     /// <summary>
     /// Finds an aggregate by its unique identifier.
+    /// The returned aggregate is tracked by the change tracker (suitable for mutations).
     /// Returns <see cref="Maybe{T}.None"/> if not found.
     /// </summary>
     /// <param name="id">The aggregate identifier to search for.</param>
@@ -98,29 +107,8 @@ public abstract class RepositoryBase<TAggregate, TId>
     }
 
     /// <summary>
-    /// Persists a new or modified aggregate. New (detached) aggregates are added to the
-    /// <see cref="DbSet"/>; already-tracked aggregates are updated in place.
-    /// To update an existing aggregate, first retrieve it with <see cref="FindByIdAsync"/>
-    /// (which starts change tracking), mutate it, then call this method.
-    /// Passing a detached entity that already exists in the database will attempt an insert
-    /// and fail with a duplicate-key exception.
-    /// </summary>
-    /// <param name="aggregate">The aggregate to save.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Result{Unit}"/> representing success or failure.</returns>
-    public virtual Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(aggregate);
-
-        var entry = _context.Entry(aggregate);
-        if (entry.State == EntityState.Detached)
-            DbSet.Add(aggregate);
-
-        return _context.SaveChangesResultUnitAsync(cancellationToken);
-    }
-
-    /// <summary>
     /// Queries aggregates matching the given specification.
+    /// Results are no-tracking by default (via <see cref="BuildQueryBase"/>).
     /// </summary>
     /// <param name="specification">The specification to filter by.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
@@ -132,6 +120,112 @@ public abstract class RepositoryBase<TAggregate, TId>
         ArgumentNullException.ThrowIfNull(specification);
         return await BuildQueryBase().Where(specification).ToListAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Checks whether an aggregate with the given identifier exists.
+    /// Uses <see cref="BuildQueryBase"/> (no-tracking, lightweight — no entity materialization)
+    /// so that repository-level query customization (e.g., soft-delete or tenant filters) is respected.
+    /// </summary>
+    /// <param name="id">The aggregate identifier to check.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns><see langword="true"/> if an aggregate with the given ID exists; otherwise <see langword="false"/>.</returns>
+    public virtual Task<bool> ExistsAsync(TId id, CancellationToken cancellationToken = default)
+    {
+        var predicate = BuildIdPredicate(id);
+        return BuildQueryBase().AnyAsync(predicate, cancellationToken);
+    }
+
+    /// <summary>
+    /// Checks whether any aggregate matches the given specification.
+    /// Uses <see cref="BuildQueryBase"/> (no-tracking by default).
+    /// </summary>
+    /// <param name="specification">The specification to test.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns><see langword="true"/> if at least one aggregate matches; otherwise <see langword="false"/>.</returns>
+    public virtual Task<bool> ExistsAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+        return BuildQueryBase().Where(specification).AnyAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Counts aggregates matching the given specification.
+    /// Uses <see cref="BuildQueryBase"/> (no-tracking by default).
+    /// </summary>
+    /// <param name="specification">The specification to filter by.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>The number of matching aggregates.</returns>
+    public virtual Task<int> CountAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+        return BuildQueryBase().Where(specification).CountAsync(cancellationToken);
+    }
+
+    // ──────────────────────────────────────────────
+    // Staging (change tracker only — never calls SaveChanges)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Stages a new aggregate for insertion. If the aggregate is already tracked,
+    /// this is a no-op (EF Core will detect modifications automatically).
+    /// Does not call <c>SaveChanges</c> — the commit is deferred to the pipeline or
+    /// <see cref="IUnitOfWork.CommitAsync"/>.
+    /// </summary>
+    /// <param name="aggregate">The aggregate to stage for insertion.</param>
+    public virtual void Add(TAggregate aggregate)
+    {
+        ArgumentNullException.ThrowIfNull(aggregate);
+        var entry = _context.Entry(aggregate);
+        if (entry.State == EntityState.Detached)
+            DbSet.Add(aggregate);
+    }
+
+    /// <summary>
+    /// Stages an aggregate for deletion. The aggregate must be tracked or will be attached
+    /// before marking for deletion.
+    /// Does not call <c>SaveChanges</c> — the commit is deferred to the pipeline or
+    /// <see cref="IUnitOfWork.CommitAsync"/>.
+    /// </summary>
+    /// <param name="aggregate">The aggregate to stage for deletion.</param>
+    public virtual void Remove(TAggregate aggregate)
+    {
+        ArgumentNullException.ThrowIfNull(aggregate);
+        DbSet.Remove(aggregate);
+    }
+
+    /// <summary>
+    /// Looks up an aggregate by ID and stages it for deletion.
+    /// Uses <see cref="DbSet{TEntity}.FindAsync(object?[], CancellationToken)"/> directly
+    /// (not <see cref="BuildFindByIdQuery"/>) to avoid loading heavy Include graphs.
+    /// Returns a not-found error if the aggregate does not exist.
+    /// Does not call <c>SaveChanges</c> — the commit is deferred to the pipeline or
+    /// <see cref="IUnitOfWork.CommitAsync"/>.
+    /// <para>
+    /// <b>Note:</b> <c>FindAsync</c> bypasses EF Core global query filters. If your repository
+    /// uses soft-delete or tenant filters, override this method to apply the appropriate
+    /// filtered lookup (e.g., using <see cref="BuildIdPredicate"/> with a filtered query).
+    /// </para>
+    /// </summary>
+    /// <param name="id">The aggregate identifier to remove.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A <see cref="Result{Unit}"/> representing success (staged) or not-found failure.</returns>
+    public virtual async Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default)
+    {
+        var entity = await DbSet.FindAsync([id], cancellationToken).ConfigureAwait(false);
+        if (entity is null)
+            return Error.NotFound($"{typeof(TAggregate).Name} with ID '{id}' not found.");
+
+        DbSet.Remove(entity);
+        return Result.Success();
+    }
+
+    // ──────────────────────────────────────────────
+    // Internal helpers
+    // ──────────────────────────────────────────────
 
     /// <summary>
     /// Builds an expression predicate that compares <c>entity.Id == id</c>.
