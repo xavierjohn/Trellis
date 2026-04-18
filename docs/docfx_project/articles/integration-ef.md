@@ -190,7 +190,9 @@ public async ValueTask<Result<Order>> Handle(ShipOrderCommand cmd, CancellationT
     // TransactionalCommandBehavior auto-commits the tracked changes on success.
 }
 
-// DI registration
+// DI registration — call AddTrellisUnitOfWork after AddTrellisBehaviors
+// so the commit behavior runs innermost (closest to the handler).
+services.AddTrellisBehaviors();
 services.AddTrellisUnitOfWork<AppDbContext>();
 ```
 

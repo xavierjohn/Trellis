@@ -123,7 +123,8 @@ public abstract class RepositoryBase<TAggregate, TId>
 
     /// <summary>
     /// Checks whether an aggregate with the given identifier exists.
-    /// Uses a no-tracking, lightweight query (no entity materialization).
+    /// Uses <see cref="BuildQueryBase"/> (no-tracking, lightweight — no entity materialization)
+    /// so that repository-level query customization (e.g., soft-delete or tenant filters) is respected.
     /// </summary>
     /// <param name="id">The aggregate identifier to check.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
@@ -131,7 +132,7 @@ public abstract class RepositoryBase<TAggregate, TId>
     public virtual Task<bool> ExistsAsync(TId id, CancellationToken cancellationToken = default)
     {
         var predicate = BuildIdPredicate(id);
-        return DbSet.AsNoTracking().AnyAsync(predicate, cancellationToken);
+        return BuildQueryBase().AnyAsync(predicate, cancellationToken);
     }
 
     /// <summary>
@@ -203,6 +204,11 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// Returns a not-found error if the aggregate does not exist.
     /// Does not call <c>SaveChanges</c> — the commit is deferred to the pipeline or
     /// <see cref="IUnitOfWork.CommitAsync"/>.
+    /// <para>
+    /// <b>Note:</b> <c>FindAsync</c> bypasses EF Core global query filters. If your repository
+    /// uses soft-delete or tenant filters, override this method to apply the appropriate
+    /// filtered lookup (e.g., using <see cref="BuildIdPredicate"/> with a filtered query).
+    /// </para>
     /// </summary>
     /// <param name="id">The aggregate identifier to remove.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>

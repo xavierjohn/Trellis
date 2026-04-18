@@ -63,25 +63,26 @@ public class UnitOfWorkServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddTrellisUnitOfWork_before_other_behaviors_still_ends_up_innermost()
+    public void AddTrellisUnitOfWork_before_other_behaviors_appends_at_end()
     {
-        // Arrange — UoW registered first, then "other" behaviors
+        // Arrange — UoW registered first, then "other" behaviors added later
         var services = new ServiceCollection();
         services.AddDbContext<RepoTestDbContext>(o => o.UseSqlite("DataSource=:memory:"));
 
-        // Act — register UoW first (no other behaviors yet)
+        // Act — register UoW first (no other behaviors yet), then add another behavior
         services.AddTrellisUnitOfWork<RepoTestDbContext>();
-        // Then add another behavior (simulates AddTrellisBehaviors called later)
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(FakeBehavior<,>));
 
         // Assert — TransactionalCommandBehavior was appended first (only behavior at that time),
         // then FakeBehavior was appended after. Order: Transaction, Fake.
-        // This is acceptable — when no other behaviors exist yet, it appends normally.
+        // For correct ordering, AddTrellisUnitOfWork should be called AFTER other behaviors.
         var behaviorDescriptors = services
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
             .ToList();
 
         behaviorDescriptors.Should().HaveCount(2);
+        behaviorDescriptors[0].ImplementationType.Should().Be(typeof(TransactionalCommandBehavior<,>));
+        behaviorDescriptors[1].ImplementationType.Should().Be(typeof(FakeBehavior<,>));
     }
 
     [Fact]

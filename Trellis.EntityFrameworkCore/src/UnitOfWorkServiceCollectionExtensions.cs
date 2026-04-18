@@ -15,10 +15,10 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// implementation and adds the <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/>
     /// pipeline behavior so that command handlers automatically commit on success.
     /// <para>
-    /// The behavior is always inserted after the last existing <see cref="IPipelineBehavior{TMessage,TResponse}"/>
-    /// registration (innermost position, closest to the handler). This ensures commit failures
-    /// are visible to outer behaviors (logging, tracing, exception handling) regardless of
-    /// whether this method is called before or after <c>AddTrellisBehaviors()</c>.
+    /// The behavior is inserted after the last existing <see cref="IPipelineBehavior{TMessage,TResponse}"/>
+    /// registration (innermost position, closest to the handler). For correct ordering, call this
+    /// method <b>after</b> <c>AddTrellisBehaviors()</c> and any other behavior registrations so that
+    /// commit failures are visible to outer behaviors (logging, tracing, exception handling).
     /// </para>
     /// </summary>
     /// <typeparam name="TContext">The concrete <see cref="DbContext"/> type.</typeparam>
@@ -27,7 +27,8 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// <example>
     /// <code>
     /// services.AddDbContext&lt;AppDbContext&gt;(...);
-    /// services.AddTrellisUnitOfWork&lt;AppDbContext&gt;();
+    /// services.AddTrellisBehaviors();           // register other behaviors first
+    /// services.AddTrellisUnitOfWork&lt;AppDbContext&gt;(); // commit behavior goes innermost
     /// </code>
     /// </example>
     public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services)
@@ -58,6 +59,7 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// Inserts <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> after the last
     /// <see cref="IPipelineBehavior{TMessage,TResponse}"/> registration to ensure it runs
     /// innermost (closest to the handler). If no behaviors are registered yet, appends at the end.
+    /// Detects both open-generic and closed-generic behavior registrations.
     /// </summary>
     private static void InsertTransactionalBehavior(IServiceCollection services)
     {
@@ -67,7 +69,10 @@ public static class UnitOfWorkServiceCollectionExtensions
         var lastBehaviorIndex = -1;
         for (var i = 0; i < services.Count; i++)
         {
-            if (services[i].ServiceType == typeof(IPipelineBehavior<,>))
+            var serviceType = services[i].ServiceType;
+            if (serviceType == typeof(IPipelineBehavior<,>)
+                || (serviceType.IsGenericType
+                    && serviceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
                 lastBehaviorIndex = i;
         }
 
