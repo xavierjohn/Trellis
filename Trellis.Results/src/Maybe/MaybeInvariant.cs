@@ -486,9 +486,9 @@ public static class MaybeInvariant
 
         // None present — report all fields
         ValidationError? error = null;
+        const string message = "At least one of the related fields must be provided.";
         for (int i = 0; i < fields.Length; i++)
         {
-            string message = $"At least one of the related fields must be provided.";
             error = error is null
                 ? ValidationError.For(fields[i].fieldName, message, ValidationErrorCode)
                 : error.And(fields[i].fieldName, message);
