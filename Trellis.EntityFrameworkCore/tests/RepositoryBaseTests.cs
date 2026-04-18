@@ -70,63 +70,6 @@ public partial class RepositoryBaseTests : IDisposable
 
     #endregion
 
-    #region SaveAsync
-
-    [Fact]
-    public async Task SaveAsync_new_aggregate_inserts_and_returns_success()
-    {
-        // Arrange
-        var ct = TestContext.Current.CancellationToken;
-        var id = TestItemId.Create(Guid.NewGuid());
-        var item = TestItem.Create(id, TestItemName.Create("New Item"));
-
-        // Act
-        var result = await _repository.SaveAsync(item, ct);
-
-        // Assert
-        result.Should().BeSuccess();
-
-        _context.ChangeTracker.Clear();
-        var found = await _context.Items.FindAsync([id], ct);
-        found.Should().NotBeNull();
-        found!.Name.Should().Be(TestItemName.Create("New Item"));
-    }
-
-    [Fact]
-    public async Task SaveAsync_tracked_aggregate_updates_and_returns_success()
-    {
-        // Arrange
-        var ct = TestContext.Current.CancellationToken;
-        var id = TestItemId.Create(Guid.NewGuid());
-        var item = TestItem.Create(id, TestItemName.Create("Original"));
-        _context.Items.Add(item);
-        await _context.SaveChangesAsync(ct);
-
-        item.Name = TestItemName.Create("Updated");
-
-        // Act
-        var result = await _repository.SaveAsync(item, ct);
-
-        // Assert
-        result.Should().BeSuccess();
-
-        _context.ChangeTracker.Clear();
-        var found = await _context.Items.FindAsync([id], ct);
-        found!.Name.Should().Be(TestItemName.Create("Updated"));
-    }
-
-    [Fact]
-    public async Task SaveAsync_null_aggregate_throws()
-    {
-        // Act
-        var act = () => _repository.SaveAsync(null!);
-
-        // Assert
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("aggregate");
-    }
-
-    #endregion
-
     #region QueryAsync
 
     [Fact]
@@ -173,6 +116,276 @@ public partial class RepositoryBaseTests : IDisposable
 
         // Assert
         await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("specification");
+    }
+
+    #endregion
+
+    #region ExistsAsync (by ID)
+
+    [Fact]
+    public async Task ExistsAsync_byId_existing_returns_true()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var id = TestItemId.Create(Guid.NewGuid());
+        _context.Items.Add(TestItem.Create(id, TestItemName.Create("Present")));
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var exists = await _repository.ExistsAsync(id, ct);
+
+        // Assert
+        exists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExistsAsync_byId_nonexistent_returns_false()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var id = TestItemId.Create(Guid.NewGuid());
+
+        // Act
+        var exists = await _repository.ExistsAsync(id, ct);
+
+        // Assert
+        exists.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region ExistsAsync (by Specification)
+
+    [Fact]
+    public async Task ExistsAsync_bySpec_matching_returns_true()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        _context.Items.Add(TestItem.Create(TestItemId.Create(Guid.NewGuid()), TestItemName.Create("Findable")));
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var spec = new TestItemNameSpec(TestItemName.Create("Findable"));
+
+        // Act
+        var exists = await _repository.ExistsAsync(spec, ct);
+
+        // Assert
+        exists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExistsAsync_bySpec_no_match_returns_false()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var spec = new TestItemNameSpec(TestItemName.Create("Missing"));
+
+        // Act
+        var exists = await _repository.ExistsAsync(spec, ct);
+
+        // Assert
+        exists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExistsAsync_bySpec_null_specification_throws()
+    {
+        // Act
+        var act = () => _repository.ExistsAsync((Specification<TestItem>)null!);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("specification");
+    }
+
+    #endregion
+
+    #region CountAsync
+
+    [Fact]
+    public async Task CountAsync_returns_matching_count()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        _context.Items.Add(TestItem.Create(TestItemId.Create(Guid.NewGuid()), TestItemName.Create("Alpha")));
+        _context.Items.Add(TestItem.Create(TestItemId.Create(Guid.NewGuid()), TestItemName.Create("Alpha")));
+        _context.Items.Add(TestItem.Create(TestItemId.Create(Guid.NewGuid()), TestItemName.Create("Beta")));
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var spec = new TestItemNameSpec(TestItemName.Create("Alpha"));
+
+        // Act
+        var count = await _repository.CountAsync(spec, ct);
+
+        // Assert
+        count.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CountAsync_no_matches_returns_zero()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var spec = new TestItemNameSpec(TestItemName.Create("Ghost"));
+
+        // Act
+        var count = await _repository.CountAsync(spec, ct);
+
+        // Assert
+        count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CountAsync_null_specification_throws()
+    {
+        // Act
+        var act = () => _repository.CountAsync(null!);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("specification");
+    }
+
+    #endregion
+
+    #region Add
+
+    [Fact]
+    public async Task Add_detached_aggregate_stages_insert()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var id = TestItemId.Create(Guid.NewGuid());
+        var item = TestItem.Create(id, TestItemName.Create("New Item"));
+
+        // Act
+        _repository.Add(item);
+
+        // Assert — staged but not yet persisted
+        _context.Entry(item).State.Should().Be(EntityState.Added);
+
+        // Commit manually to verify persistence
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+        var found = await _context.Items.FindAsync([id], ct);
+        found.Should().NotBeNull();
+        found!.Name.Should().Be(TestItemName.Create("New Item"));
+    }
+
+    [Fact]
+    public async Task Add_tracked_aggregate_is_noop()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var id = TestItemId.Create(Guid.NewGuid());
+        var item = TestItem.Create(id, TestItemName.Create("Tracked"));
+        _context.Items.Add(item);
+        await _context.SaveChangesAsync(ct);
+
+        item.Name = TestItemName.Create("Modified");
+        var stateBefore = _context.Entry(item).State;
+
+        // Act
+        _repository.Add(item);
+
+        // Assert — state remains Modified, not re-Added
+        _context.Entry(item).State.Should().Be(stateBefore);
+    }
+
+    [Fact]
+    public void Add_null_aggregate_throws()
+    {
+        // Act
+        var act = () => _repository.Add(null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>().WithParameterName("aggregate");
+    }
+
+    #endregion
+
+    #region Remove
+
+    [Fact]
+    public async Task Remove_tracked_aggregate_stages_deletion()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var id = TestItemId.Create(Guid.NewGuid());
+        var item = TestItem.Create(id, TestItemName.Create("ToRemove"));
+        _context.Items.Add(item);
+        await _context.SaveChangesAsync(ct);
+
+        // Act
+        _repository.Remove(item);
+
+        // Assert — staged for deletion
+        _context.Entry(item).State.Should().Be(EntityState.Deleted);
+
+        // Commit manually to verify persistence
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+        var found = await _context.Items.FindAsync([id], ct);
+        found.Should().BeNull();
+    }
+
+    [Fact]
+    public void Remove_null_aggregate_throws()
+    {
+        // Act
+        var act = () => _repository.Remove(null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>().WithParameterName("aggregate");
+    }
+
+    #endregion
+
+    #region RemoveByIdAsync
+
+    [Fact]
+    public async Task RemoveByIdAsync_existing_stages_deletion_and_returns_success()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var id = TestItemId.Create(Guid.NewGuid());
+        var item = TestItem.Create(id, TestItemName.Create("ToDelete"));
+        _context.Items.Add(item);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var result = await _repository.RemoveByIdAsync(id, ct);
+
+        // Assert — staged, not committed
+        result.Should().BeSuccess();
+
+        // Verify it's in change tracker as Deleted
+        var entry = _context.ChangeTracker.Entries<TestItem>().SingleOrDefault(e => e.Entity.Id == id);
+        entry.Should().NotBeNull();
+        entry!.State.Should().Be(EntityState.Deleted);
+
+        // Commit manually to verify persistence
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+        var found = await _context.Items.FindAsync([id], ct);
+        found.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RemoveByIdAsync_nonexistent_returns_not_found()
+    {
+        // Arrange
+        var ct = TestContext.Current.CancellationToken;
+        var id = TestItemId.Create(Guid.NewGuid());
+
+        // Act
+        var result = await _repository.RemoveByIdAsync(id, ct);
+
+        // Assert
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType<NotFoundError>();
     }
 
     #endregion

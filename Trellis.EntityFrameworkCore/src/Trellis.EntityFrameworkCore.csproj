@@ -17,6 +17,8 @@
     <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Mediator.Abstractions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 </Project>

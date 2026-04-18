@@ -176,6 +176,17 @@ For `Result<T>`, `Maybe<T>`, `Error`, and all ROP extension methods (`Bind`, `Ma
 
 For `Maybe<T>` usage in ASP.NET DTOs and EF Core, see `docs/api_reference/trellis-api-asp.md` and `docs/api_reference/trellis-api-efcore.md`.
 
+### Repository and Unit of Work Pattern
+
+**Critical Rule:** Repositories stage changes. The pipeline commits. Handlers never call `SaveChanges`.
+
+- `RepositoryBase` provides staging methods (`Add`, `Remove`, `RemoveByIdAsync`) and read methods (`FindByIdAsync`, `QueryAsync`, `ExistsAsync`, `CountAsync`). None of these call `SaveChanges`.
+- `TransactionalCommandBehavior` is a pipeline behavior that auto-commits after a successful command handler. Queries are skipped (no overhead).
+- `IUnitOfWork.CommitAsync()` is the single commit point. In the standard pipeline it's called automatically. Inject `IUnitOfWork` directly only for non-pipeline scenarios (background jobs, tests).
+- Register with `services.AddTrellisUnitOfWork<AppDbContext>()` in the ACL layer.
+
+For the full API surface, see `docs/api_reference/trellis-api-efcore.md`.
+
 ### Testing Philosophy
 
 1. **Railway track behavior**: Once on failure track, stay there
