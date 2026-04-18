@@ -173,7 +173,7 @@ public static class UnitOfWorkServiceCollectionExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` as `IUnitOfWork` and adds the `TransactionalCommandBehavior` pipeline behavior. |
+| `public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` as `IUnitOfWork` and adds the `TransactionalCommandBehavior` pipeline behavior. The behavior is always inserted after the last existing `IPipelineBehavior<,>` registration (innermost position) so that commit failures are visible to outer behaviors (logging, tracing) regardless of call order. |
 | `public static IServiceCollection AddTrellisUnitOfWorkWithoutBehavior<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` without the pipeline behavior. Use for manual commit control or non-Mediator scenarios. |
 
 ### `EntityTimestampInterceptor`

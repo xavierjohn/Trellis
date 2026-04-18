@@ -14,6 +14,12 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// Registers <see cref="EfUnitOfWork{TContext}"/> as the <see cref="IUnitOfWork"/>
     /// implementation and adds the <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/>
     /// pipeline behavior so that command handlers automatically commit on success.
+    /// <para>
+    /// The behavior is always inserted after the last existing <see cref="IPipelineBehavior{TMessage,TResponse}"/>
+    /// registration (innermost position, closest to the handler). This ensures commit failures
+    /// are visible to outer behaviors (logging, tracing, exception handling) regardless of
+    /// whether this method is called before or after <c>AddTrellisBehaviors()</c>.
+    /// </para>
     /// </summary>
     /// <typeparam name="TContext">The concrete <see cref="DbContext"/> type.</typeparam>
     /// <param name="services">The service collection.</param>
@@ -28,7 +34,7 @@ public static class UnitOfWorkServiceCollectionExtensions
         where TContext : DbContext
     {
         services.AddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
+        InsertTransactionalBehavior(services);
         return services;
     }
 
@@ -46,5 +52,28 @@ public static class UnitOfWorkServiceCollectionExtensions
     {
         services.AddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
         return services;
+    }
+
+    /// <summary>
+    /// Inserts <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> after the last
+    /// <see cref="IPipelineBehavior{TMessage,TResponse}"/> registration to ensure it runs
+    /// innermost (closest to the handler). If no behaviors are registered yet, appends at the end.
+    /// </summary>
+    private static void InsertTransactionalBehavior(IServiceCollection services)
+    {
+        var descriptor = ServiceDescriptor.Scoped(
+            typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
+
+        var lastBehaviorIndex = -1;
+        for (var i = 0; i < services.Count; i++)
+        {
+            if (services[i].ServiceType == typeof(IPipelineBehavior<,>))
+                lastBehaviorIndex = i;
+        }
+
+        if (lastBehaviorIndex >= 0)
+            services.Insert(lastBehaviorIndex + 1, descriptor);
+        else
+            services.Add(descriptor);
     }
 }
