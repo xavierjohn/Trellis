@@ -74,6 +74,48 @@ public static class QueryableExtensions
 | `public static Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, Error notFoundError, CancellationToken cancellationToken = default) where T : class` | `Task<Result<T>>` | Returns the first predicate match or **the exact `notFoundError` supplied by the caller**. |
 | `public static IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification) where T : class` | `IQueryable<T>` | Applies a Trellis specification expression to the query. |
 
+### `RepositoryBase<TAggregate, TId>`
+
+```csharp
+public abstract class RepositoryBase<TAggregate, TId>
+    where TAggregate : Aggregate<TId>
+    where TId : notnull
+```
+
+Abstract generic repository base class for EF Core aggregate persistence. Extracts the recurring FindById/Save/Query pattern used by concrete repositories.
+
+#### Properties
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `protected DbSet<TAggregate> DbSet` | `DbSet<TAggregate>` | The EF Core `DbSet` for this aggregate type. |
+| `protected DbContext Context` | `DbContext` | The underlying `DbContext`. Use sparingly — prefer repository methods. |
+
+#### Methods
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public virtual Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default)` | `Task<Maybe<TAggregate>>` | Finds an aggregate by ID using an expression-tree predicate (`Expression.Equal`). Returns `Maybe<T>.None` if not found. |
+| `public virtual Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Persists a new or modified aggregate. Detached aggregates are added; tracked aggregates are updated in place. To update, first retrieve via `FindByIdAsync`, mutate, then save. |
+| `public virtual Task<IReadOnlyList<TAggregate>> QueryAsync(Specification<TAggregate> specification, CancellationToken cancellationToken = default)` | `Task<IReadOnlyList<TAggregate>>` | Queries aggregates matching the specification. |
+
+#### Virtual Hooks
+
+| Signature | Description |
+| --- | --- |
+| `protected virtual IQueryable<TAggregate> BuildFindByIdQuery()` | Override to add `.Include()` or filters to the find-by-ID query. Defaults to `DbSet.AsQueryable()`. |
+| `protected virtual IQueryable<TAggregate> BuildQueryBase()` | Override to add `.Include()` or filters to specification queries. Defaults to `DbSet.AsNoTracking()`. |
+
+#### Usage
+
+```csharp
+public class OrderRepository(DbContext context) : RepositoryBase<Order, OrderId>(context)
+{
+    protected override IQueryable<Order> BuildFindByIdQuery() =>
+        DbSet.Include(o => o.LineItems);
+}
+```
+
 ### `EntityTimestampInterceptor`
 
 ```csharp
