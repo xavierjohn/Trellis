@@ -30,7 +30,6 @@
 | `TRLS020` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result<Unit>) instead. |
 | `TRLS021` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
 | `TRLS022` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
-| `TRLS023` | Warning | Command or query has resource ID without resource authorization | Commands and queries that carry a typed aggregate ID (a property whose type implements `IScalarValue` and whose name ends with "Id") should typically implement `IAuthorizeResource<T>` to enforce resource-level authorization. When adding `IAuthorizeResource<T>`, also ensure a matching `IResourceLoader` or `IIdentifyResource` implementation is registered. |
 
 ## Analyzer classes
 
@@ -209,13 +208,6 @@
   - `RequiredBool`
   - `RequiredDateTime`
   - `RequiredEnum`
-- No code fix.
-
-#### `MissingResourceAuthorizationAnalyzer` — `TRLS023`
-- Flags commands (`Mediator.ICommand<T>`) and queries (`Mediator.IQuery<T>`) that have a property whose type implements `IScalarValue<,>` and whose name ends with "Id", but do not implement `IAuthorizeResource<T>`.
-- Uses `CompilationStartAction` to cache type symbols; only activates when both `Mediator.ICommand`/`IQuery` and `Trellis.Authorization.IAuthorizeResource` are referenced.
-- Walks the base type hierarchy to catch inherited ID properties.
-- Reports one diagnostic per message type, listing all candidate ID properties.
 - No code fix.
 
 ## Code fix providers

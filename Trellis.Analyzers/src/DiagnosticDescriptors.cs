@@ -326,21 +326,4 @@ public static class DiagnosticDescriptors
                  "Use the Trellis versions (namespace Trellis) instead.",
         helpLinkUri: HelpLinkBase + "TRLS022");
 
-    /// <summary>
-    /// TRLS023: Command or query has typed resource ID but missing IAuthorizeResource.
-    /// </summary>
-    public static readonly DiagnosticDescriptor MissingResourceAuthorization = new(
-        id: "TRLS023",
-        title: "Command or query has resource ID without resource authorization",
-        messageFormat: "'{0}' has typed resource ID {1} but does not implement IAuthorizeResource<T>. Consider adding resource-level authorization, or suppress this warning if authorization is intentionally omitted.",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Commands and queries that carry a typed aggregate ID (a property whose type implements IScalarValue and whose name " +
-                 "ends with 'Id') should typically implement IAuthorizeResource<T> to enforce resource-level authorization. " +
-                 "Without it, the handler has no compile-time guarantee that the caller is authorized to access the referenced resource. " +
-                 "When adding IAuthorizeResource<T>, also ensure a matching IResourceLoader or IIdentifyResource implementation " +
-                 "is registered so the authorization pipeline can resolve the resource at runtime.",
-        helpLinkUri: HelpLinkBase + "TRLS023");
-
 }
