@@ -124,6 +124,9 @@ public sealed class MissingResourceAuthorizationAnalyzer : DiagnosticAnalyzer
                 if (member is not IPropertySymbol property)
                     continue;
 
+                if (property.IsStatic)
+                    continue;
+
                 if (!property.Name.EndsWith("Id", StringComparison.Ordinal))
                     continue;
 

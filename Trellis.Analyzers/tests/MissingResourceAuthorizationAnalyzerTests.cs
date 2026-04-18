@@ -303,6 +303,23 @@ public class MissingResourceAuthorizationAnalyzerTests
         await test.RunAsync();
     }
 
+    [Fact]
+    public async Task Command_with_static_id_property_no_warning()
+    {
+        const string source = """
+            namespace TestNamespace
+            {
+                public sealed record StaticIdCommand : Mediator.ICommand<Trellis.Result<TodoItem>>
+                {
+                    public static TodoId DefaultTodoId { get; } = default;
+                }
+            }
+            """;
+
+        var test = CreateTest(source);
+        await test.RunAsync();
+    }
+
     #endregion
 
     private static CSharpAnalyzerTest<MissingResourceAuthorizationAnalyzer, DefaultVerifier> CreateTest(string source)

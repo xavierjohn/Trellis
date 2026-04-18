@@ -202,23 +202,23 @@ Multi-field validation helpers for `Maybe<T>` values. Each method returns `Resul
 
 | Signature | Notes |
 | --- | --- |
-| `public static Result<Unit> AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | All fields present or all absent. Arities 2, 3, 4. |
-| `public static Result<Unit> Requires<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | If `first` is present, `second` must be too. Arity 2. |
-| `public static Result<Unit> MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | At most one field may be present. Arities 2, 3. |
-| `public static Result<Unit> ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | Exactly one field must be present. Arities 2, 3. |
-| `public static Result<Unit> AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | At least one field must be present. Arities 2, 3. |
+| `public static Result<Unit> AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | All fields present or all absent. Arities 2, 3, 4. |
+| `public static Result<Unit> Requires<T1, T2>(Maybe<T1> source, Maybe<T2> required, string sourceFieldName, string requiredFieldName)` | If `source` is present, `required` must be too. Arity 2. |
+| `public static Result<Unit> MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At most one field may be present. Arities 2, 3. |
+| `public static Result<Unit> ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | Exactly one field must be present. Arities 2, 3. |
+| `public static Result<Unit> AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At least one field must be present. Arities 2, 3. |
 
 #### Usage
 
 ```csharp
 // All-or-none: street + city must both be provided or both omitted
-MaybeInvariant.AllOrNone(command.Street, command.City, "street", "city")
+MaybeInvariant.AllOrNone(command.Street, command.City, "street", "city");
 
 // Requires: if discount is given, reason is required
-MaybeInvariant.Requires(command.Discount, command.DiscountReason, "discount", "discountReason")
+MaybeInvariant.Requires(command.Discount, command.DiscountReason, "discount", "discountReason");
 
 // ExactlyOne: must provide either email or phone
-MaybeInvariant.ExactlyOne(command.Email, command.Phone, "email", "phone")
+MaybeInvariant.ExactlyOne(command.Email, command.Phone, "email", "phone");
 ```
 
 ---

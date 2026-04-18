@@ -79,9 +79,10 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// <summary>
     /// Builds the base query used by <see cref="QueryAsync"/>. Override to add
     /// <c>.Include()</c> chains for list/search queries.
+    /// The default query is no-tracking to avoid unnecessary change tracking for read operations.
     /// </summary>
-    /// <returns>An <see cref="IQueryable{T}"/> starting from <see cref="DbSet"/>.</returns>
-    protected virtual IQueryable<TAggregate> BuildQueryBase() => DbSet;
+    /// <returns>An <see cref="IQueryable{T}"/> starting from <see cref="DbSet"/> with no tracking.</returns>
+    protected virtual IQueryable<TAggregate> BuildQueryBase() => DbSet.AsNoTracking();
 
     /// <summary>
     /// Finds an aggregate by its unique identifier.
