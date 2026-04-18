@@ -194,6 +194,35 @@ None.
 
 ---
 
+### `public static class MaybeInvariant`
+
+Multi-field validation helpers for `Maybe<T>` values. Each method returns `Result<Unit>` — success when the invariant holds, or a `ValidationError` with field-level details when it does not. All error codes use `"validation.error"`.
+
+#### Methods
+
+| Signature | Notes |
+| --- | --- |
+| `public static Result<Unit> AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | All fields present or all absent. Arities 2, 3, 4. |
+| `public static Result<Unit> Requires<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | If `first` is present, `second` must be too. Arity 2. |
+| `public static Result<Unit> MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | At most one field may be present. Arities 2, 3. |
+| `public static Result<Unit> ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | Exactly one field must be present. Arities 2, 3. |
+| `public static Result<Unit> AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstName, string secondName)` | At least one field must be present. Arities 2, 3. |
+
+#### Usage
+
+```csharp
+// All-or-none: street + city must both be provided or both omitted
+MaybeInvariant.AllOrNone(command.Street, command.City, "street", "city")
+
+// Requires: if discount is given, reason is required
+MaybeInvariant.Requires(command.Discount, command.DiscountReason, "discount", "discountReason")
+
+// ExactlyOne: must provide either email or phone
+MaybeInvariant.ExactlyOne(command.Email, command.Phone, "email", "phone")
+```
+
+---
+
 ### `public readonly struct Maybe<T> where T : notnull`
 
 Optional value container for domain optionality.
