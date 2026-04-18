@@ -96,7 +96,7 @@ public class TransactionalCommandBehaviorTests
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
         {
             CommitCount++;
-            return Task.FromResult(CommitResult ?? Result.Success(default(Unit)));
+            return Task.FromResult(CommitResult ?? Result.Success());
         }
     }
 

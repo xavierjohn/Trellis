@@ -220,7 +220,7 @@ public abstract class RepositoryBase<TAggregate, TId>
             return Error.NotFound($"{typeof(TAggregate).Name} with ID '{id}' not found.");
 
         DbSet.Remove(entity);
-        return Result.Success(default(Unit));
+        return Result.Success();
     }
 
     // ──────────────────────────────────────────────

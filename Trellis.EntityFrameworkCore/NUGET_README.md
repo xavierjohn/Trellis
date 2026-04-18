@@ -28,7 +28,7 @@ Result<int> saved = await dbContext.SaveChangesResultAsync(cancellationToken);
 - Return `Result<int>` or `Result<Unit>` from save operations instead of throwing on expected failures.
 - `RepositoryBase<TAggregate, TId>` — staging-only base class (Add/Remove/Query/Exists/Count).
 - `IUnitOfWork` / `EfUnitOfWork<TContext>` — single commit boundary for staged changes.
-- `TransactionalCommandBehavior` — pipeline behavior that auto-commits after successful command handlers.
+- `TransactionalCommandBehavior` — Mediator pipeline behavior that auto-commits after successful command handlers (requires Mediator pipeline registration).
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-ef.html)
