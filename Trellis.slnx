@@ -36,9 +36,6 @@
     <File Path="docs/docfx_project/articles/toc.yml" />
   </Folder>
   <Folder Name="/Examples/">
-    <Project Path="Examples/BankingExample/BankingExample.csproj" />
-    <Project Path="Examples/EcommerceExample/EcommerceExample.csproj" />
-    <Project Path="Examples/AuthorizationExample/AuthorizationExample.csproj" />
     <Project Path="Examples/EfCoreExample/EfCoreExample.csproj" />
     <Project Path="Examples/ConditionalRequestExample/ConditionalRequestExample.csproj" />
     <Project Path="Examples/SsoExample/SsoExample.csproj" />
@@ -54,11 +51,7 @@
     <File Path="Examples/SampleWeb/MoneyApi.http" />
     <File Path="Examples/SampleWeb/OrderApi.http" />
     <File Path="Examples/SampleWeb/UserApi.http" />
-    <Project Path="Examples/SampleWeb/SampleDataAccess/SampleDataAccess.csproj" />
-    <Project Path="Examples/SampleWeb/SampleMinimalApi/SampleMinimalApi.csproj" />
-    <Project Path="Examples/SampleWeb/SampleMinimalApiNoAot/SampleMinimalApiNoAot.csproj" />
     <Project Path="Examples/SampleWeb/SampleUserLibrary/SampleUserLibrary.csproj" />
-    <Project Path="Examples/SampleWeb/SampleWebApplication/src/SampleWebApplication.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
