@@ -44,6 +44,11 @@
     <Project Path="Examples/SsoExample/SsoExample.csproj" />
     <Project Path="Examples/Xunit/Example.Tests.csproj" />
   </Folder>
+  <Folder Name="/Examples/Showcase/">
+    <Project Path="Examples/Showcase/src/Showcase.Domain/Showcase.Domain.csproj" />
+    <Project Path="Examples/Showcase/src/Showcase.Api/Showcase.Api.csproj" />
+    <Project Path="Examples/Showcase/tests/Showcase.Tests/Showcase.Tests.csproj" />
+  </Folder>
   <Folder Name="/Examples/SampleWeb/">
     <File Path="Examples/SampleWeb/ErrorResponse.http" />
     <File Path="Examples/SampleWeb/MoneyApi.http" />

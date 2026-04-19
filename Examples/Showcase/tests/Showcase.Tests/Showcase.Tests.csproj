@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Showcase.Domain\Showcase.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Showcase.Api\Showcase.Api.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Testing.AspNetCore\src\Trellis.Testing.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,248 @@
+namespace Trellis.Showcase.Domain.Aggregates;
+
+using global::Stateless;
+using Trellis;
+using Trellis.Primitives;
+using Trellis.Showcase.Domain.Entities;
+using Trellis.Showcase.Domain.Events;
+using Trellis.Showcase.Domain.Lifecycle;
+using Trellis.Showcase.Domain.ValueObjects;
+using Trellis.Stateless;
+
+public enum AccountStatus
+{
+    Active,
+    Frozen,
+    Closed,
+}
+
+public enum AccountType
+{
+    Checking,
+    Savings,
+    MoneyMarket,
+}
+
+/// <summary>
+/// Bank account aggregate.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Demonstrates two distinct error-handling patterns side by side:
+/// <list type="bullet">
+///   <item>Plain ROP (<c>Ensure</c>/<c>Bind</c>/<c>Tap</c>) for money operations.</item>
+///   <item>A <see cref="StateMachine{TState,TTrigger}"/> for lifecycle transitions
+///     (Active ↔ Frozen → Closed). Invalid lifecycle transitions become
+///     <see cref="Error.Conflict"/> via <see cref="StateMachineExtensions.FireResult"/>.</item>
+/// </list>
+/// </para>
+/// </remarks>
+public class BankAccount : Aggregate<AccountId>
+{
+    private readonly List<Transaction> _transactions = [];
+    private readonly Func<DateTime> _utcNow;
+    private StateMachine<AccountStatus, AccountTrigger> _lifecycle = default!;
+
+    public CustomerId CustomerId { get; }
+    public AccountType AccountType { get; }
+    public Money Balance { get; private set; }
+    public Money DailyWithdrawalLimit { get; }
+    public Money OverdraftLimit { get; }
+    public AccountStatus Status => _lifecycle.State;
+    public IReadOnlyList<Transaction> Transactions => _transactions.AsReadOnly();
+
+    private BankAccount(
+        AccountId id,
+        CustomerId customerId,
+        AccountType accountType,
+        Money initialBalance,
+        Money dailyWithdrawalLimit,
+        Money overdraftLimit,
+        AccountStatus initialStatus,
+        Func<DateTime> utcNow)
+        : base(id)
+    {
+        CustomerId = customerId;
+        AccountType = accountType;
+        Balance = initialBalance;
+        DailyWithdrawalLimit = dailyWithdrawalLimit;
+        OverdraftLimit = overdraftLimit;
+        _utcNow = utcNow;
+        ConfigureLifecycle(initialStatus);
+    }
+
+    private void ConfigureLifecycle(AccountStatus initial)
+    {
+        _lifecycle = new StateMachine<AccountStatus, AccountTrigger>(initial);
+
+        _lifecycle.Configure(AccountStatus.Active)
+            .Permit(AccountTrigger.Freeze, AccountStatus.Frozen)
+            .Permit(AccountTrigger.Close, AccountStatus.Closed);
+
+        _lifecycle.Configure(AccountStatus.Frozen)
+            .Permit(AccountTrigger.Unfreeze, AccountStatus.Active);
+
+        _lifecycle.Configure(AccountStatus.Closed)
+            .Ignore(AccountTrigger.Freeze)
+            .Ignore(AccountTrigger.Unfreeze)
+            .Ignore(AccountTrigger.Close);
+    }
+
+    /// <summary>
+    /// Reconstructs an existing <see cref="BankAccount"/> from persisted state without raising
+    /// <see cref="AccountOpened"/>. Use this from repositories or seed data; use
+    /// <see cref="TryCreate"/> for new accounts that should emit creation events.
+    /// </summary>
+    public static BankAccount Hydrate(
+        AccountId id,
+        CustomerId customerId,
+        AccountType accountType,
+        Money balance,
+        Money dailyWithdrawalLimit,
+        Money overdraftLimit,
+        AccountStatus status,
+        Func<DateTime>? utcNow = null) =>
+        new(id, customerId, accountType, balance, dailyWithdrawalLimit, overdraftLimit, status, utcNow ?? (() => DateTime.UtcNow));
+
+    public static Result<BankAccount> TryCreate(
+        CustomerId customerId,
+        AccountType accountType,
+        Money initialDeposit,
+        Money dailyWithdrawalLimit,
+        Money overdraftLimit,
+        Func<DateTime>? utcNow = null)
+    {
+        utcNow ??= () => DateTime.UtcNow;
+
+        var violations = new List<FieldViolation>();
+        if (initialDeposit.Amount < 0)
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(initialDeposit)), "validation.range") { Detail = "Initial deposit must be non-negative" });
+        if (dailyWithdrawalLimit.Amount <= 0)
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(dailyWithdrawalLimit)), "validation.range") { Detail = "Daily withdrawal limit must be positive" });
+        if (overdraftLimit.Amount < 0)
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(overdraftLimit)), "validation.range") { Detail = "Overdraft limit must be non-negative" });
+
+        if (violations.Count > 0)
+            return Result.Fail<BankAccount>(new Error.UnprocessableContent(EquatableArray.Create(violations.ToArray())));
+
+        var account = new BankAccount(
+            AccountId.NewUniqueV4(),
+            customerId,
+            accountType,
+            initialDeposit,
+            dailyWithdrawalLimit,
+            overdraftLimit,
+            AccountStatus.Active,
+            utcNow);
+
+        account.DomainEvents.Add(new AccountOpened(
+            account.Id,
+            customerId,
+            accountType,
+            initialDeposit,
+            utcNow()));
+
+        return Result.Ok(account);
+    }
+
+    public Result<BankAccount> Deposit(Money amount, string description = "Deposit") =>
+        this.ToResult()
+            .Ensure(_ => Status == AccountStatus.Active,
+                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot deposit to {Status} account" })
+            .Ensure(_ => amount.Amount > 0,
+                new Error.UnprocessableContent(EquatableArray.Create(
+                    new FieldViolation(InputPointer.ForProperty(nameof(amount)), "validation.range") { Detail = "Deposit amount must be positive" })))
+            .Ensure(_ => amount.Amount <= 10000,
+                new Error.Conflict(null, "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" })
+            .Bind(_ => Balance.Add(amount))
+            .Tap(newBalance =>
+            {
+                Balance = newBalance;
+                var now = _utcNow();
+                _transactions.Add(Transaction.CreateDeposit(TransactionId.NewUniqueV4(), amount, Balance, description, now));
+                DomainEvents.Add(new MoneyDeposited(Id, amount, Balance, description, now));
+            })
+            .Map(_ => this);
+
+    public Result<BankAccount> Withdraw(Money amount, string description = "Withdrawal")
+    {
+        var todayTotal = GetTodayWithdrawals();
+
+        return this.ToResult()
+            .Ensure(_ => Status == AccountStatus.Active,
+                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot withdraw from {Status} account" })
+            .Ensure(_ => amount.Amount > 0,
+                new Error.UnprocessableContent(EquatableArray.Create(
+                    new FieldViolation(InputPointer.ForProperty(nameof(amount)), "validation.range") { Detail = "Withdrawal amount must be positive" })))
+            .Bind(_ => todayTotal.Add(amount))
+            .Ensure(totalWithToday => !totalWithToday.IsGreaterThanOrEqual(DailyWithdrawalLimit),
+                new Error.Conflict(null, "withdrawal.daily.limit") { Detail = $"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded" })
+            .Bind(_ => Balance.Subtract(amount))
+            .Ensure(newBalance => newBalance.Amount >= -OverdraftLimit.Amount,
+                new Error.Conflict(null, "withdrawal.overdraft.exceeded") { Detail = $"Withdrawal would exceed overdraft limit of {OverdraftLimit}" })
+            .Tap(newBalance =>
+            {
+                Balance = newBalance;
+                var now = _utcNow();
+                _transactions.Add(Transaction.CreateWithdrawal(TransactionId.NewUniqueV4(), amount, Balance, description, now));
+                DomainEvents.Add(new MoneyWithdrawn(Id, amount, Balance, description, now));
+            })
+            .Map(_ => this);
+    }
+
+    public Result<(BankAccount From, BankAccount To)> TransferTo(BankAccount toAccount, Money amount, string description = "Transfer")
+    {
+        ArgumentNullException.ThrowIfNull(toAccount);
+
+        if (Id.Equals(toAccount.Id))
+            return Result.Fail<(BankAccount From, BankAccount To)>(
+                new Error.Conflict(null, "transfer.same.account") { Detail = "Cannot transfer to the same account" });
+
+        return Withdraw(amount, $"{description} to {toAccount.Id}")
+            .Bind(_ => toAccount.Deposit(amount, $"{description} from {Id}"))
+            .Tap(_ => DomainEvents.Add(new TransferCompleted(Id, toAccount.Id, amount, description, _utcNow())))
+            .Map(_ => (this, toAccount));
+    }
+
+    public Result<BankAccount> Freeze(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return Result.Fail<BankAccount>(new Error.UnprocessableContent(EquatableArray.Create(
+                new FieldViolation(InputPointer.ForProperty(nameof(reason)), "validation.required") { Detail = "Freeze reason is required" })));
+        }
+
+        return _lifecycle.FireResult(AccountTrigger.Freeze)
+            .Tap(_ => DomainEvents.Add(new AccountFrozen(Id, reason, _utcNow())))
+            .Map(_ => this);
+    }
+
+    public Result<BankAccount> Unfreeze() =>
+        _lifecycle.FireResult(AccountTrigger.Unfreeze)
+            .Tap(_ => DomainEvents.Add(new AccountUnfrozen(Id, _utcNow())))
+            .Map(_ => this);
+
+    public Result<BankAccount> Close()
+    {
+        if (Balance.Amount != 0)
+        {
+            return Result.Fail<BankAccount>(
+                new Error.Conflict(null, "account.close.nonzero.balance") { Detail = "Account balance must be zero to close" });
+        }
+
+        return _lifecycle.FireResult(AccountTrigger.Close)
+            .Tap(_ => DomainEvents.Add(new AccountClosed(Id, _utcNow())))
+            .Map(_ => this);
+    }
+
+    public Money GetAvailableBalance() => Money.Create(Balance.Amount + OverdraftLimit.Amount, Balance.Currency);
+
+    private Money GetTodayWithdrawals()
+    {
+        var today = _utcNow().Date;
+        var total = _transactions
+            .Where(t => t.Type == TransactionType.Withdrawal && t.Timestamp.Date == today)
+            .Sum(t => t.Amount.Amount);
+        return Money.Create(total, Balance.Currency);
+    }
+}

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Trellis.Showcase.Api</RootNamespace>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="Scalar.AspNetCore.Microsoft" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Showcase.Domain\Showcase.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Asp.Authorization\src\Trellis.Asp.Authorization.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
+  </ItemGroup>
+
+</Project>
