@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+namespace Trellis.Testing;
 
 using FluentAssertions;
 using FluentAssertions.Execution;
@@ -77,7 +77,7 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
                 value);
 
         Subject.TryGetError(out var error);
-        return new AndWhichConstraint<ResultAssertions<TValue>, Error>(this, error);
+        return new AndWhichConstraint<ResultAssertions<TValue>, Error>(this, error!);
     }
 
     /// <summary>
@@ -102,12 +102,18 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
             .BecauseOf(because, becauseArgs)
             .ForCondition(error is TError)
             .FailWith("Expected {context:result} error to be of type {0}{reason}, but found {1}",
-                typeof(TError).Name,
-                error?.GetType().Name);
+                FormatErrorTypeName(typeof(TError)),
+                error is null ? null : FormatErrorTypeName(error.GetType()));
 
         return new AndWhichConstraint<ResultAssertions<TValue>, TError>(
             this,
             (TError)error!);
+    }
+
+    private static string FormatErrorTypeName(System.Type t)
+    {
+        var declaring = t.DeclaringType;
+        return declaring is null ? t.Name : $"{declaring.Name}.{t.Name}";
     }
 
     /// <summary>
@@ -201,7 +207,7 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
         BeFailure(because, becauseArgs);
 
         Subject.TryGetError(out var error);
-        error.Code.Should().Be(expectedCode, because, becauseArgs);
+        error!.Code.Should().Be(expectedCode, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -224,7 +230,7 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
         BeFailure(because, becauseArgs);
 
         Subject.TryGetError(out var error);
-        error.Detail.Should().Be(expectedDetail, because, becauseArgs);
+        error!.Detail!.Should().Be(expectedDetail, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -247,7 +253,7 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
         BeFailure(because, becauseArgs);
 
         Subject.TryGetError(out var error);
-        error.Detail.Should().Contain(substring, because, becauseArgs);
+        error!.Detail!.Should().Contain(substring, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }

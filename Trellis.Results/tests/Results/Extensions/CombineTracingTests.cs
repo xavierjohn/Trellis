@@ -39,7 +39,7 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Fail<string>(Error.Validation("Bad first"))
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad first" })
             .Combine(Result.Ok("Second"));
 
         // Assert
@@ -50,7 +50,7 @@ public class CombineTracingTests : TestBase
         // Verify error is also tracked in activity tags
         var errorTag = activity.TagObjects.FirstOrDefault(t => t.Key == "result.error.code");
         errorTag.Should().NotBeNull();
-        errorTag.Value.Should().Be("validation.error");
+        errorTag.Value.Should().Be("unprocessable-content");
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class CombineTracingTests : TestBase
 
         // Act
         var result = Result.Ok("First")
-            .Combine(Result.Fail<string>(Error.Validation("Bad second")));
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad second" }));
 
         // Assert
         result.Should().BeFailure();
@@ -75,8 +75,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Fail<string>(Error.Validation("Bad first"))
-            .Combine(Result.Fail<string>(Error.Validation("Bad second")));
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad first" })
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad second" }));
 
         // Assert
         result.Should().BeFailure();
@@ -111,7 +111,7 @@ public class CombineTracingTests : TestBase
 
         // Act
         var result = Result.Ok("Value")
-            .Combine(Result.Fail(Error.Validation("Unit validation failed")));
+            .Combine(Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Unit validation failed" }));
 
         // Assert
         result.Should().BeFailure();
@@ -152,7 +152,7 @@ public class CombineTracingTests : TestBase
 
         // Act
         var result = Result.Ok("First")
-            .Combine(Result.Fail<string>(Error.Validation("Bad second")))
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad second" }))
             .Combine(Result.Ok("Third"));
 
         // Assert
@@ -173,7 +173,7 @@ public class CombineTracingTests : TestBase
         // Act
         var result = Result.Ok("First")
             .Combine(Result.Ok("Second"))
-            .Combine(Result.Fail<string>(Error.Validation("Bad third")));
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad third" }));
 
         // Assert
         result.Should().BeFailure();
@@ -264,7 +264,7 @@ public class CombineTracingTests : TestBase
 
         // Act
         var result = Result.Ok("First")
-            .Combine(Result.Fail<string>(Error.Validation("Bad second")))
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad second" }))
             .Combine(Result.Ok("Third"))
             .TapOnFailure(() => tapExecuted = true);
 
@@ -306,7 +306,7 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad first")))
+        var result = await Task.FromResult(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad first" }))
             .CombineAsync(Result.Ok("Second"));
 
         // Assert
@@ -353,7 +353,7 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await ValueTask.FromResult(Result.Fail<string>(Error.Validation("Bad first")))
+        var result = await ValueTask.FromResult(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad first" }))
             .CombineAsync(ValueTask.FromResult(Result.Ok("Second")));
 
         // Assert
@@ -412,13 +412,13 @@ public class CombineTracingTests : TestBase
         var errorLogged = false;
 
         // Act - Multiple validations fail
-        var result = Result.Fail<string>(Error.Validation("Invalid email", "email"))
-            .Combine(Result.Fail<string>(Error.Validation("Invalid first name", "firstName")))
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "unprocessable-content") { Detail = "Invalid email" })))
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("firstName"), "unprocessable-content") { Detail = "Invalid first name" }))))
             .Combine(Result.Ok("Doe"))
             .TapOnFailure(error => errorLogged = true);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
         errorLogged.Should().BeTrue();
 
         // Verify Combine operations were traced with Error status
@@ -439,12 +439,12 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Fail<string>(Error.Validation("Validation error"))
-            .Combine(Result.Fail<string>(Error.NotFound("Not found")))
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Validation error" })
+            .Combine(Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" }))
             .Combine(Result.Ok("Third"));
 
         // Assert
-        result.Should().BeFailureOfType<AggregateError>();
+        result.Should().BeFailureOfType<Error.Aggregate>();
 
         // Verify Combine operations were traced with Error status
         var activities = activityTest.AssertActivityCaptured("Combine", 2);

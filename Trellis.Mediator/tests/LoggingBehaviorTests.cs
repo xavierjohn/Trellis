@@ -43,7 +43,7 @@ public class LoggingBehaviorTests
         var behavior = new LoggingBehavior<TestCommand, Result<string>>(logger);
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Fail<string>(Error.Validation("Something failed.", "field")));
+            Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Something failed." }))));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 

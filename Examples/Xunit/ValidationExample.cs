@@ -6,7 +6,7 @@ namespace Example;
 using System.Collections.Immutable;
 using Trellis;
 using static Result;
-using static Trellis.ValidationError;
+using static Trellis.Error.UnprocessableContent;
 
 public class ValidationExample
 {
@@ -19,7 +19,7 @@ public class ValidationExample
         var actual = EmailAddress.TryCreate("xavier@somewhere.com")
             .Combine(FirstName.TryCreate("Xavier"))
             .Combine(LastName.TryCreate("John"))
-            .Combine(Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt")))
+            .Combine(Ensure(createdAt <= updatedAt, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "updateAt cannot be less than createdAt" }))
             .Bind((email, firstName, lastName) => Result.Ok(string.Join(" ", firstName, lastName, email)));
 
         actual.Unwrap().Should().Be("Xavier John xavier@somewhere.com");
@@ -29,10 +29,10 @@ public class ValidationExample
     public void Validation_failed_Test()
     {
         // Arrange
-        ImmutableArray<FieldError> expected = [
-            new("lastName", ["Last Name cannot be empty."]),
-            new("email", ["Email address is not valid."]),
-            new("updatedAt", ["updateAt cannot be less than createdAt"]),
+        ImmutableArray<FieldViolation> expected = [
+            new(InputPointer.ForProperty("lastName"), "validation.error") { Detail = "Last Name cannot be empty." },
+            new(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email address is not valid." },
+            new(InputPointer.ForProperty("updatedAt"), "validation.error") { Detail = "updateAt cannot be less than createdAt" },
         ];
 
         var createdAt = DateTime.UtcNow;
@@ -42,7 +42,7 @@ public class ValidationExample
         var actual = FirstName.TryCreate("Xavier")
             .Combine(LastName.TryCreate(string.Empty))
             .Combine(EmailAddress.TryCreate("xavier @ somewhereelse.com"))
-            .Combine(Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt", nameof(updatedAt))))
+            .Combine(Ensure(createdAt <= updatedAt, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), "validation.error") { Detail = "updateAt cannot be less than createdAt" }))))
             .Bind((firstName, lastName, email) =>
             {
                 true.Should().BeFalse("this code should not get executed");
@@ -50,9 +50,9 @@ public class ValidationExample
             });
         // Assert
         actual.IsFailure.Should().BeTrue();
-        var validationErrors = (ValidationError)actual.UnwrapError();
-        validationErrors.FieldErrors.Should().HaveCount(3);
-        validationErrors.FieldErrors.Should().BeEquivalentTo(expected);
+        var validationErrors = (Error.UnprocessableContent)actual.UnwrapError();
+        validationErrors.Fields.Items.Should().HaveCount(3);
+        validationErrors.Fields.Items.Should().BeEquivalentTo(expected);
     }
 
     [Fact]
@@ -86,9 +86,9 @@ public class ValidationExample
             .Bind(Add);
 
         actual.IsFailure.Should().BeTrue();
-        actual.UnwrapError().Should().BeOfType<ValidationError>();
-        var validationError = (ValidationError)actual.UnwrapError();
-        validationError.FieldErrors[0].Details[0].Should().Be("First Name cannot be empty.");
+        actual.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validationError = (Error.UnprocessableContent)actual.UnwrapError();
+        validationError.Fields[0].Detail.Should().Be("First Name cannot be empty.");
 
         static Result<string> Add(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
             => Result.Ok(emailAddress + " " + firstname + " " + lastname);

@@ -326,13 +326,13 @@ public class TupleTracingTests : TestBase
         var errorLogged = false;
 
         // Act - One validation fails in Combine
-        var result = Result.Fail<string>(Error.Validation("First name required"))
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "First name required" })
             .Combine(Result.Ok("Doe"))
             .Bind((first, last) => Result.Ok($"{first} {last}"))
             .TapOnFailure(error => errorLogged = true);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
         errorLogged.Should().BeTrue();
 
         // Verify failure path tracing
@@ -397,7 +397,7 @@ public class TupleTracingTests : TestBase
 
         // Act - Bind fails, TapOnFailure should execute
         var result = Result.Ok(("valid", "input"))
-            .Bind((s1, s2) => Result.Fail<string>(Error.Unexpected("Bind failed")))
+            .Bind((s1, s2) => Result.Fail<string>(new Error.InternalServerError("test") { Detail = "Bind failed" }))
             .TapOnFailure(() => tapExecuted = true);
 
         // Assert
@@ -455,12 +455,12 @@ public class TupleTracingTests : TestBase
         // Act - Last validation fails
         var result = Result.Ok("user@example.com")
             .Combine(Result.Ok("John"))
-            .Combine(Result.Fail<string>(Error.Validation("Last name required")))
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Last name required" }))
             .Bind((email, first, last) => Result.Ok($"{first} {last}"))
             .TapOnFailure(error => errorMessage = error.Detail);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
         errorMessage.Should().Contain("Last name required");
 
         // Verify error path tracing

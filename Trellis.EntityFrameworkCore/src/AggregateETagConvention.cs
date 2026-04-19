@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+namespace Trellis.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -16,7 +16,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// since it was loaded, the statement affects zero rows and EF Core throws
 /// <see cref="DbUpdateConcurrencyException"/>, which
 /// <see cref="DbContextExtensions.SaveChangesResultAsync(DbContext, CancellationToken)"/>
-/// maps to <see cref="ConflictError"/>.
+/// maps to <see cref="Error.Conflict"/>.
 /// </para>
 /// <para>
 /// Registered automatically by <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/>.

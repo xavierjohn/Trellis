@@ -110,7 +110,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     #endregion
@@ -169,7 +169,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<DomainError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     #endregion
@@ -271,7 +271,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -293,7 +293,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<DomainError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     #endregion

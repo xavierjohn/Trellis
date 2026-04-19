@@ -24,9 +24,9 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(Error.Validation("Email is required.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(Error.Validation("Email must contain @.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
             return Result.Ok(new Email(value));
         }
     }
@@ -39,9 +39,9 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(Error.Validation("Age cannot be negative.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age cannot be negative." })));
             if (value > 150)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(Error.Validation("Age must be realistic.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age must be realistic." })));
             return Result.Ok(new Age(value));
         }
         public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
@@ -56,9 +56,9 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "percentage";
             if (value < 0)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(Error.Validation("Percentage cannot be negative.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot be negative." })));
             if (value > 100)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(Error.Validation("Percentage cannot exceed 100.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot exceed 100." })));
             return Result.Ok(new Percentage(value));
         }
         public static Result<Percentage> TryCreate(string? value, string? fieldName = null) =>
@@ -73,7 +73,7 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "itemId";
             if (value == Guid.Empty)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.ItemId>(Error.Validation("ItemId cannot be empty.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.ItemId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "ItemId cannot be empty." })));
             return Result.Ok(new ItemId(value));
         }
         public static Result<ItemId> TryCreate(string? value, string? fieldName = null) =>
@@ -126,9 +126,9 @@ public class ValidatingJsonConverterTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].FieldName.Should().Be("Email");
-            error.FieldErrors[0].Details[0].Should().Be("Email must contain @.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Field.Path.Should().Be("/Email");
+            error.Fields[0].Detail.Should().Be("Email must contain @.");
         }
     }
 
@@ -173,10 +173,10 @@ public class ValidatingJsonConverterTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null values should produce a validation error for required value objects");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Email");
-            error.FieldErrors[0].Details.Should().Contain("Email cannot be null.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Email");
+            error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
 
@@ -261,8 +261,8 @@ public class ValidatingJsonConverterTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].Details[0].Should().Be("Age cannot be negative.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Detail.Should().Be("Age cannot be negative.");
         }
     }
 
@@ -442,8 +442,8 @@ public class ValidatingJsonConverterTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].Details[0].Should().Be("ItemId cannot be empty.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Detail.Should().Be("ItemId cannot be empty.");
         }
     }
 

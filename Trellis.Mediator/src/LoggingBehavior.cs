@@ -40,7 +40,7 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
         var elapsed = Stopwatch.GetElapsedTime(stopwatch);
 
         if (response.TryGetError(out var error))
-            LogHandledWithFailure(_logger, messageName, elapsed.TotalMilliseconds, error.Detail);
+            LogHandledWithFailure(_logger, messageName, elapsed.TotalMilliseconds, error.GetDisplayMessage());
         else
             LogHandled(_logger, messageName, elapsed.TotalMilliseconds);
 

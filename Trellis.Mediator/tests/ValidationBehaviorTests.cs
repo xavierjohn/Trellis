@@ -40,8 +40,8 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        result.UnwrapError().Detail.Should().Contain("Name");
+        var validation = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Name"));
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked for invalid messages");
     }
 
@@ -89,7 +89,8 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(query, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Detail.Should().Contain("Id");
+        var validation = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Id"));
         tracker.WasInvoked.Should().BeFalse();
     }
 

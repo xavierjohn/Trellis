@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using Microsoft.AspNetCore.Http;
@@ -37,7 +37,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_BadRequest_Result()
     {
         // Arrange
-        var error = Error.BadRequest("Test");
+        var error = new Error.BadRequest("bad.request") { Detail = "Test" };
         var result = Result.Fail<string>(error);
         var expected = new ProblemDetails
         {
@@ -54,24 +54,25 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
     public void Will_return_BadRequst_for_validation_failure()
     {
         // Arrange
-        ValidationError.FieldError field1 = new("MyField1", ["Detail 1"]);
-        ValidationError.FieldError field2 = new("MyField2", ["Detail 2", "More Detail 2"]);
-        Error errors = Error.Validation([field1, field2], "Some validation failed.", "magicInstance");
+        var field1 = new FieldViolation(InputPointer.ForProperty("MyField1"), "validation.error") { Detail = "Detail 1" };
+        var field2a = new FieldViolation(InputPointer.ForProperty("MyField2"), "validation.error") { Detail = "Detail 2" };
+        var field2b = new FieldViolation(InputPointer.ForProperty("MyField2"), "validation.error") { Detail = "More Detail 2" };
+        Error errors = new Error.UnprocessableContent(EquatableArray.Create(field1, field2a, field2b)) { Detail = "Some validation failed." };
         var result = Result.Fail(errors);
         var expected = new HttpValidationProblemDetails
         {
             Title = "One or more validation errors occurred.",
             Detail = "Some validation failed.",
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            Status = StatusCodes.Status400BadRequest,
-            Instance = "magicInstance",
+            Type = "https://tools.ietf.org/html/rfc4918#section-11.2",
+            Status = StatusCodes.Status422UnprocessableEntity,
+            Instance = (string?)null,
             Errors = new Dictionary<string, string[]>
             {
                 ["MyField1"] = ["Detail 1"],
@@ -88,7 +89,7 @@ public class HttpResultsTests : IDisposable
         problemResult.ContentType.Should().Be("application/problem+json");
         problemResult.ProblemDetails.Should().BeOfType<HttpValidationProblemDetails>();
         HttpValidationProblemDetails actualProblemDetails = problemResult.ProblemDetails.As<HttpValidationProblemDetails>();
-        actualProblemDetails.Should().BeEquivalentTo(expected);
+        actualProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
 
     }
 
@@ -96,12 +97,12 @@ public class HttpResultsTests : IDisposable
     public void Will_retun_NotFound()
     {
         // Arrange
-        var result = Result.Fail(Error.NotFound("User not found", "Chris"));
+        var result = Result.Fail(new Error.NotFound(new ResourceRef("Resource", "Chris"?.ToString())) { Detail = "User not found" });
         var expected = new ProblemDetails
         {
             Title = "Not Found",
             Detail = "User not found",
-            Instance = "Chris",
+            Instance = (string?)null,
             Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
             Status = StatusCodes.Status404NotFound
         };
@@ -113,19 +114,19 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
     public void Will_retun_Conflict()
     {
         // Arrange
-        var result = Result.Fail(Error.Conflict("Record has changed.", "Jon"));
+        var result = Result.Fail(new Error.Conflict(null, "Jon") { Detail = "Record has changed." });
         var expected = new ProblemDetails
         {
             Title = "Conflict",
             Detail = "Record has changed.",
-            Instance = "Jon",
+            Instance = (string?)null,
             Type = "https://tools.ietf.org/html/rfc9110#section-15.5.10",
             Status = StatusCodes.Status409Conflict
         };
@@ -137,19 +138,19 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
     public void Will_retun_Unauthorized()
     {
         // Arrange
-        var result = Result.Fail(Error.Unauthorized("You do not have access.", "Donald"));
+        var result = Result.Fail(new Error.Unauthorized() { Detail = "You do not have access." });
         var expected = new ProblemDetails
         {
             Title = "Unauthorized",
             Detail = "You do not have access.",
-            Instance = "Donald",
+            Instance = (string?)null,
             Type = "https://tools.ietf.org/html/rfc9110#section-15.5.2",
             Status = StatusCodes.Status401Unauthorized
         };
@@ -161,19 +162,19 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
     public void Will_return_Forbidden()
     {
         // Arrange
-        var result = Result.Fail(Error.Forbidden("Access is forbidden.", "Alice"));
+        var result = Result.Fail(new Error.Forbidden("Alice") { Detail = "Access is forbidden." });
         var expected = new ProblemDetails
         {
             Title = "Forbidden",
             Detail = "Access is forbidden.",
-            Instance = "Alice",
+            Instance = (string?)null,
             Type = "https://tools.ietf.org/html/rfc9110#section-15.5.4",
             Status = StatusCodes.Status403Forbidden
         };
@@ -185,19 +186,19 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
     public void Will_return_InternalServerError()
     {
         // Arrange
-        var result = Result.Fail(Error.Unexpected("An unexpected error occurred.", "Server"));
+        var result = Result.Fail(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred." });
         var expected = new ProblemDetails
         {
             Title = "An error occurred while processing your request.",
             Detail = "An internal error occurred.",
-            Instance = "Server",
+            Instance = (string?)null,
             Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
             Status = StatusCodes.Status500InternalServerError
         };
@@ -209,7 +210,7 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
@@ -231,12 +232,12 @@ public class HttpResultsTests : IDisposable
     public void Will_return_NotFound_for_Unit_failure()
     {
         // Arrange
-        var result = Result.Fail(Error.NotFound("Resource not found", "UnitResource"));
+        var result = Result.Fail(new Error.NotFound(new ResourceRef("Resource", "UnitResource"?.ToString())) { Detail = "Resource not found" });
         var expected = new ProblemDetails
         {
             Title = "Not Found",
             Detail = "Resource not found",
-            Instance = "UnitResource",
+            Instance = (string?)null,
             Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
             Status = StatusCodes.Status404NotFound
         };
@@ -248,14 +249,14 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
-    public void Will_return_UnprocessableEntity_for_Domain_error()
+    public void Will_return_Conflict_for_Domain_error()
     {
         // Arrange
-        var result = Result.Fail(Error.Domain("Cannot withdraw more than account balance", "account-123"));
+        var result = Result.Fail(new Error.Conflict(null, "account-123") { Detail = "Cannot withdraw more than account balance" });
 
         // Act
         var response = result.ToHttpResult();
@@ -264,17 +265,17 @@ public class HttpResultsTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Title.Should().Be("Unprocessable Entity");
+        problemResult.ProblemDetails.Title.Should().Be("Conflict");
         problemResult.ProblemDetails.Detail.Should().Be("Cannot withdraw more than account balance");
-        problemResult.ProblemDetails.Instance.Should().Be("account-123");
-        problemResult.ProblemDetails.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        problemResult.ProblemDetails.Instance.Should().BeNull();
+        problemResult.ProblemDetails.Status.Should().Be(StatusCodes.Status409Conflict);
     }
 
     [Fact]
     public void Will_return_TooManyRequests_for_RateLimit_error()
     {
         // Arrange
-        var result = Result.Fail(Error.RateLimit("API rate limit exceeded. Please try again in 60 seconds", "user-456"));
+        var result = Result.Fail(new Error.TooManyRequests() { Detail = "API rate limit exceeded. Please try again in 60 seconds" });
 
         // Act
         var response = result.ToHttpResult();
@@ -284,7 +285,7 @@ public class HttpResultsTests : IDisposable
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
         problemResult.ProblemDetails.Detail.Should().Be("API rate limit exceeded. Please try again in 60 seconds");
-        problemResult.ProblemDetails.Instance.Should().Be("user-456");
+        problemResult.ProblemDetails.Instance.Should().BeNull();
         problemResult.ProblemDetails.Status.Should().Be(StatusCodes.Status429TooManyRequests);
     }
 
@@ -292,7 +293,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_ServiceUnavailable_for_ServiceUnavailable_error()
     {
         // Arrange
-        var result = Result.Fail(Error.ServiceUnavailable("Service is under maintenance. Please try again later", "payment-service"));
+        var result = Result.Fail(new Error.ServiceUnavailable() { Detail = "Service is under maintenance. Please try again later" });
 
         // Act
         var response = result.ToHttpResult();
@@ -302,7 +303,7 @@ public class HttpResultsTests : IDisposable
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
         problemResult.ProblemDetails.Detail.Should().Be("An internal error occurred.");
-        problemResult.ProblemDetails.Instance.Should().Be("payment-service");
+        problemResult.ProblemDetails.Instance.Should().BeNull();
         problemResult.ProblemDetails.Status.Should().Be(StatusCodes.Status503ServiceUnavailable);
     }
 
@@ -313,8 +314,8 @@ public class HttpResultsTests : IDisposable
     {
         // Arrange
         var options = new TrellisAspOptions();
-        options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var result = Result.Fail<string>(Error.Domain("Business rule"));
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+        var result = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" });
 
         // Act
         var response = result.ToHttpResult(options);
@@ -329,7 +330,7 @@ public class HttpResultsTests : IDisposable
     public void ToHttpResult_without_options_uses_defaults()
     {
         // Arrange
-        var result = Result.Fail<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" });
 
         // Act
         var response = result.ToHttpResult();
@@ -337,7 +338,7 @@ public class HttpResultsTests : IDisposable
         // Assert
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
-            .ProblemDetails.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+            .ProblemDetails.Status.Should().Be(StatusCodes.Status409Conflict);
     }
 
     [Fact]
@@ -345,8 +346,8 @@ public class HttpResultsTests : IDisposable
     {
         // Arrange
         var options = new TrellisAspOptions();
-        options.MapError<ConflictError>(StatusCodes.Status422UnprocessableEntity);
-        var error = Error.Conflict("Already exists");
+        options.MapError<Error.Conflict>(StatusCodes.Status422UnprocessableEntity);
+        var error = new Error.Conflict(null, "conflict") { Detail = "Already exists" };
 
         // Act
         var response = error.ToHttpResult(options);
@@ -360,10 +361,10 @@ public class HttpResultsTests : IDisposable
     [Fact]
     public void ToHttpResult_custom_options_do_not_affect_unmapped_errors()
     {
-        // Arrange — override DomainError only
+        // Arrange — override Error.Conflict only
         var options = new TrellisAspOptions();
-        options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var result = Result.Fail<string>(Error.NotFound("Missing"));
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Missing" });
 
         // Act
         var response = result.ToHttpResult(options);
@@ -383,16 +384,16 @@ public class HttpResultsTests : IDisposable
     {
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
         services.AddTrellisAsp(options =>
-            options.MapError<DomainError>(StatusCodes.Status400BadRequest));
+            options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest));
 
-        var result = Result.Fail<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" });
 
         var response = result.ToHttpResult();
 
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
             .ProblemDetails.Status.Should().Be(StatusCodes.Status400BadRequest,
-                "AddTrellisAsp configured DomainError → 400, but ToHttpResult ignores it without explicit options");
+                "AddTrellisAsp configured Error.Conflict → 400, but ToHttpResult ignores it without explicit options");
     }
 
     [Fact]
@@ -400,9 +401,9 @@ public class HttpResultsTests : IDisposable
     {
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
         services.AddTrellisAsp(options =>
-            options.MapError<DomainError>(StatusCodes.Status400BadRequest));
+            options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest));
 
-        var result = Result.Fail<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" });
 
         Task<Microsoft.AspNetCore.Http.IResult> responseTask;
         using (ExecutionContext.SuppressFlow())
@@ -424,7 +425,7 @@ public class HttpResultsTests : IDisposable
     public void ToHttpResult_5xx_error_should_not_leak_internal_detail()
     {
         var result = Result.Fail<string>(
-            Error.Unexpected("NullReferenceException at MyService.GetUser line 45"));
+            new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "NullReferenceException at MyService.GetUser line 45" });
 
         var response = result.ToHttpResult();
 
@@ -433,6 +434,64 @@ public class HttpResultsTests : IDisposable
         problem.ProblemDetails.Status.Should().Be(StatusCodes.Status500InternalServerError);
         problem.ProblemDetails.Detail.Should().NotContain("NullReferenceException",
             "5xx responses must not leak internal error details to clients");
+    }
+
+    #endregion
+
+    #region ProblemDetails extensions (code/kind/faultId/rules)
+
+    [Fact]
+    public void ToHttpResult_populates_extensions_with_code_and_kind()
+    {
+        var result = Result.Fail(new Error.NotFound(new ResourceRef("User", "42")) { Detail = "User not found" });
+
+        var response = result.ToHttpResult();
+        var problem = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+
+        problem.ProblemDetails.Extensions.Should().ContainKey("code").WhoseValue.Should().Be("not-found");
+        problem.ProblemDetails.Extensions.Should().ContainKey("kind").WhoseValue.Should().Be("not-found");
+    }
+
+    [Fact]
+    public void ToHttpResult_for_InternalServerError_exposes_faultId_in_extensions()
+    {
+        var result = Result.Fail(new Error.InternalServerError("fault-abc-123") { Detail = "boom" });
+
+        var response = result.ToHttpResult();
+        var problem = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+
+        problem.ProblemDetails.Extensions.Should().ContainKey("faultId").WhoseValue.Should().Be("fault-abc-123");
+        // Detail is redacted on 5xx, but FaultId remains discoverable via extensions.
+        problem.ProblemDetails.Detail.Should().NotContain("boom");
+    }
+
+    [Fact]
+    public void ToHttpResult_UnprocessableContent_with_only_wrapper_Detail_returns_Problem_with_Detail()
+    {
+        var result = Result.Fail(
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Cannot withdraw from closed account" });
+
+        var response = result.ToHttpResult();
+        var problem = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+
+        problem.ProblemDetails.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        problem.ProblemDetails.Detail.Should().Be("Cannot withdraw from closed account");
+        problem.ProblemDetails.Should().NotBeOfType<HttpValidationProblemDetails>(
+            "with no field violations there is nothing to populate Errors with");
+    }
+
+    [Fact]
+    public void ToHttpResult_UnprocessableContent_with_Rules_populates_extensions_rules_and_uses_ValidationProblem()
+    {
+        var rule = new RuleViolation("passwords_must_match", Detail: "Passwords don't match");
+        var result = Result.Fail(
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty, EquatableArray.Create(rule)));
+
+        var response = result.ToHttpResult();
+        var problem = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
+
+        problem.ProblemDetails.Should().BeOfType<HttpValidationProblemDetails>();
+        problem.ProblemDetails.Extensions.Should().ContainKey("rules");
     }
 
     #endregion

@@ -110,7 +110,7 @@ public class HttpPaginationTests : IDisposable
     [Fact]
     public void ToHttpResult_Failure_ReturnsError()
     {
-        var result = Result.Fail<string[]>(Error.NotFound("not found"));
+        var result = Result.Fail<string[]>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var response = result.ToHttpResult(0, 2, 10);
 
@@ -182,7 +182,7 @@ public class HttpPaginationTests : IDisposable
     [Fact]
     public void ToHttpResult_Lambda_Failure_ReturnsError()
     {
-        var result = Result.Fail<string>(Error.BadRequest("bad"));
+        var result = Result.Fail<string>(new Error.BadRequest("bad.request") { Detail = "bad" });
 
         var response = result.ToHttpResult(
             _ => new ContentRangeHeaderValue(0, 0, 1) { Unit = "items" },

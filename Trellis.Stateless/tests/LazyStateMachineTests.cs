@@ -112,8 +112,8 @@ public class LazyStateMachineTests
 
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err.Should().BeOfType<DomainError>();
-        err.Code.Should().Be("state.machine.invalid.transition");
+        err!.Should().BeOfType<Error.Conflict>();
+        err!.Code.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class LazyStateMachineTests
 
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err.Should().BeOfType<DomainError>();
+        err!.Should().BeOfType<Error.Conflict>();
     }
 
     #endregion
@@ -262,7 +262,7 @@ public class LazyStateMachineTests
 
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err.Should().BeOfType<DomainError>();
+        err!.Should().BeOfType<Error.Conflict>();
     }
 
     #endregion

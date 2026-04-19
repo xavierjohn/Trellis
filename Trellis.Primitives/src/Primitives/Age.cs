@@ -34,9 +34,9 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Age) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("age");
         if (value < 0)
-            return Result.Fail<Age>(Error.Validation("Age must be non-negative.", field));
+            return Result.Fail<Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age must be non-negative." })));
         if (value > 150)
-            return Result.Fail<Age>(Error.Validation("Age is unrealistically high.", field));
+            return Result.Fail<Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age is unrealistically high." })));
         return Result.Ok(new Age(value));
     }
 
@@ -49,10 +49,10 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         var field = fieldName.NormalizeFieldName("age");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Age>(Error.Validation("Age is required.", field));
+            return Result.Fail<Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age is required." })));
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<Age>(Error.Validation("Age must be a valid integer.", field));
+            return Result.Fail<Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age must be a valid integer." })));
 
         return TryCreate(parsed, fieldName);
     }
@@ -70,10 +70,10 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         var field = fieldName.NormalizeFieldName("age");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Age>(Error.Validation("Age is required.", field));
+            return Result.Fail<Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age is required." })));
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<Age>(Error.Validation("Age must be a valid integer.", field));
+            return Result.Fail<Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age must be a valid integer." })));
 
         return TryCreate(parsed, fieldName);
     }
@@ -84,7 +84,7 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     public static Age Parse(string? s, IFormatProvider? provider) =>
         TryCreate(s, provider).Match(
             onSuccess: value => value,
-            onFailure: error => throw new FormatException(error.Detail));
+            onFailure: error => throw new FormatException(error.GetDisplayMessage()));
 
     /// <summary>
     /// Tries to parse an age.

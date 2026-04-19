@@ -1,69 +1,25 @@
-# TRLS005 — Consider using MatchError for error type discrimination
+# TRLS005 — *(removed in v2)*
 
-- **Severity:** Info
-- **Category:** Trellis
+This analyzer (`UseMatchErrorAnalyzer`) was deleted in V2.
 
-## What it detects
-Flags manual error-type discrimination on Trellis errors, such as `switch` statements, `switch` expressions, and `is` checks over `Error` or a derived error type.
+## Why it was removed
 
-## Why it matters
-Manual pattern matching spreads error handling logic across branches. `MatchError` keeps the success case and the error-specific cases in one focused Trellis API.
+In V1 the rule encouraged use of the `MatchError(...)` extension to discriminate error types. With the V2 closed-ADT `Error` (see [ADR-001](../../../adr/ADR-001-result-api-surface.md)), a `switch` expression over an `Error` reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled, and adding a new case lights up every site that doesn't handle it. Manual `switch` patterns are now the recommended idiom.
 
-> [!WARNING]
-> If you branch on concrete error types in multiple places, your code becomes harder to extend when a new error type appears.
+## Recommended replacement
 
-## Bad example
 ```csharp
 using Trellis;
 
-static class Example
-{
-    public static string Bad(Result<int> result)
-    {
-        if (result.IsSuccess)
-            return $"Value: {result.Value}";
-
-        return result.Error switch
+static string Render(Result<int> result) =>
+    result.Match(
+        onSuccess: value => $"Value: {value}",
+        onFailure: error => error switch
         {
-            ValidationError validation => $"Validation: {validation.Detail}",
-            NotFoundError notFound => $"Missing: {notFound.Detail}",
-            _ => $"Error: {result.Error.Detail}"
-        };
-    }
-}
+            Error.UnprocessableContent uc => $"Validation: {uc.GetDisplayMessage()}",
+            Error.NotFound nf             => $"Missing: {nf.Detail}",
+            _                              => $"Error: {error.Detail}"
+        });
 ```
 
-## Good example
-```csharp
-using Trellis;
-
-static class Example
-{
-    public static string Good(Result<int> result) =>
-        result.MatchError(
-            onSuccess: value => $"Value: {value}",
-            onValidation: validation => $"Validation: {validation.Detail}",
-            onNotFound: notFound => $"Missing: {notFound.Detail}",
-            onError: error => $"Error: {error.Detail}");
-}
-```
-
-## Code fix available
-No.
-
-## Configuration
-Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
-
-```ini
-dotnet_diagnostic.TRLS005.severity = none
-```
-
-```csharp
-#pragma warning disable TRLS005
-// Intentional: documented exception or test-only pattern.
-#pragma warning restore TRLS005
-```
-
-> [!TIP]
-> Use `MatchError` when you want strongly typed handlers for `ValidationError`, `NotFoundError`, and similar types plus a final catch-all.
-
+The `MatchError` / `SwitchError` extensions and the `FlattenValidationErrors` helper were removed alongside this analyzer; use `switch` patterns and `Combine` instead.

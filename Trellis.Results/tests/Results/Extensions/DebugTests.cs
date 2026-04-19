@@ -56,7 +56,7 @@ public class DebugTests : TestBase
     [Fact]
     public void DebugDetailed_with_validation_error_returns_same_result()
     {
-        var validationError = Error.Validation("Test error", "TestField");
+        var validationError = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("TestField"), "unprocessable-content") { Detail = "Test error" }));
         Result<T> result = Result.Fail<T>(validationError);
 
         var returned = result.DebugDetailed("Validation test");
@@ -67,7 +67,7 @@ public class DebugTests : TestBase
     [Fact]
     public void DebugDetailed_with_aggregate_error_returns_same_result()
     {
-        var aggregateError = new AggregateError([Error1, Error2]);
+        var aggregateError = new Error.Aggregate([Error1, Error2]);
         Result<T> result = Result.Fail<T>(aggregateError);
 
         var returned = result.DebugDetailed("Aggregate test");
@@ -386,14 +386,14 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var error = Error.NotFound("User not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" };
         var result = Result.Fail<string>(error);
         result.Debug("Error test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Error test");
         activity.DisplayName.Should().Be("Debug: Error test");
         activity.Tags.Should().Contain(t => t.Key == "debug.result.status" && t.Value == "Failure");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "not.found.error");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "not-found");
         activity.Tags.Should().Contain(t => t.Key == "debug.error.detail" && t.Value == "User not found");
         activity.Status.Should().Be(ActivityStatusCode.Error);
     }
@@ -416,15 +416,16 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var validationError = Error.Validation("Email is required", "email")
-            .And("password", "Password too short");
+        var validationError = new Error.UnprocessableContent(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty("email"), "unprocessable-content") { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("password"), "unprocessable-content") { Detail = "Password too short" }));
         var result = Result.Fail<string>(validationError);
         result.DebugDetailed("Validation error test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Validation error test (Detailed)");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.type" && t.Value == "ValidationError");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.validation.field[0].name" && t.Value == "email");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.validation.field[1].name" && t.Value == "password");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.type" && t.Value == "UnprocessableContent");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.validation.field[0].name" && t.Value == "/email");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.validation.field[1].name" && t.Value == "/password");
     }
 
     [Fact]
@@ -432,16 +433,16 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var error1 = Error.NotFound("User not found");
-        var error2 = Error.Unauthorized("Not authorized");
-        var aggregateError = new AggregateError([error1, error2]);
+        var error1 = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" };
+        var error2 = new Error.Unauthorized() { Detail = "Not authorized" };
+        var aggregateError = new Error.Aggregate([error1, error2]);
         var result = Result.Fail<string>(aggregateError);
         result.DebugDetailed("Aggregate error test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Aggregate error test (Detailed)");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.type" && t.Value == "AggregateError");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].code" && t.Value == "not.found.error");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].code" && t.Value == "unauthorized.error");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.type" && t.Value == "Aggregate");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].code" && t.Value == "not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].code" && t.Value == "unauthorized");
     }
 
     [Fact]
@@ -485,12 +486,12 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var error = Error.BadRequest("Invalid request");
+        var error = new Error.BadRequest("bad-request") { Detail = "Invalid request" };
         var result = Result.Fail<string>(error);
         result.DebugOnFailure(_ => { });
 
         var activity = activityTest.AssertActivityCapturedWithStatus("Debug: OnFailure", ActivityStatusCode.Error);
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "bad.request.error");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "bad-request");
     }
 
     [Fact]

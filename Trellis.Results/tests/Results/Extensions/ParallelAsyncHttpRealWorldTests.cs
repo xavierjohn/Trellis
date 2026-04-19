@@ -77,10 +77,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             () => CalculateShippingAsync(request.ShippingAddress)
         ).WhenAllAsync();
 
-        // Assert - should fail with NotFoundError (permanent failure)
+        // Assert - should fail with new Error.NotFound(new ResourceRef("Resource", null)) { Detail = permanent failure }
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<NotFoundError>();
-        result.Error.Detail.Should().Contain("User not found");
+        result.Error!.Should().BeOfType<Error.NotFound>();
+        result.Error!.Detail.Should().Contain("User not found");
     }
 
     [Fact]
@@ -98,10 +98,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             () => CalculateShippingAsync(request.ShippingAddress)
         ).WhenAllAsync();
 
-        // Assert - should fail with ConflictError (permanent business rule violation)
+        // Assert - should fail with new Error.Conflict(null, "conflict") { Detail = permanent business rule violation }
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ConflictError>();
-        result.Error.Detail.Should().Contain("Out of stock");
+        result.Error!.Should().BeOfType<Error.Conflict>();
+        result.Error!.Detail.Should().Contain("Out of stock");
     }
 
     [Fact]
@@ -119,10 +119,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             () => CalculateShippingAsync(request.ShippingAddress)
         ).WhenAllAsync();
 
-        // Assert - should fail with ValidationError (permanent business rule)
+        // Assert - should fail with Error.UnprocessableContent (permanent business rule)
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>();
-        result.Error.Detail.Should().Contain("expired");
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
+        result.Error!.Detail.Should().Contain("expired");
     }
 
     [Fact]
@@ -133,20 +133,20 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Act - 3 out of 4 services fail
         var result = await Result.ParallelAsync(
-            () => FetchUserAsync("nonexistent-user"),      // NotFoundError
-            () => CheckInventoryAsync("prod-out-of-stock"), // ConflictError
-            () => ValidatePaymentAsync("pm-expired"),       // ValidationError
+            () => FetchUserAsync("nonexistent-user"),      // Error.NotFound
+            () => CheckInventoryAsync("prod-out-of-stock"), // Error.Conflict
+            () => ValidatePaymentAsync("pm-expired"),       // Error.UnprocessableContent
             () => CalculateShippingAsync(request.ShippingAddress)  // Success
         ).WhenAllAsync();
 
         // Assert - should aggregate different error types
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<AggregateError>();
-        var aggregateError = (AggregateError)result.Error;
-        aggregateError.Errors.Should().HaveCount(3);
-        aggregateError.Errors.Should().ContainSingle(e => e is NotFoundError);
-        aggregateError.Errors.Should().ContainSingle(e => e is ConflictError);
-        aggregateError.Errors.Should().ContainSingle(e => e is ValidationError);
+        result.Error!.Should().BeOfType<Error.Aggregate>();
+        var aggregateError = (Error.Aggregate)result.Error!;
+        aggregateError.Errors.Items.Should().HaveCount(3);
+        aggregateError.Errors.Items.Should().ContainSingle(e => e is Error.NotFound);
+        aggregateError.Errors.Items.Should().ContainSingle(e => e is Error.Conflict);
+        aggregateError.Errors.Items.Should().ContainSingle(e => e is Error.UnprocessableContent);
     }
 
     #endregion
@@ -166,7 +166,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             {
                 // First attempt: transient error (503 Service Unavailable)
                 await Task.Delay(10); // Simulate network delay
-                return Result.Fail<InventoryResponse>(Error.ServiceUnavailable("Inventory service temporarily unavailable"));
+                return Result.Fail<InventoryResponse>(new Error.ServiceUnavailable() { Detail = "Inventory service temporarily unavailable" });
             }
 
             // Retry succeeds
@@ -181,7 +181,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             () => FetchUserAsync(request.UserId),
             () => CheckInventoryWithRetry(request.ProductId)
                 .RecoverOnFailureAsync(
-                    predicate: error => error is ServiceUnavailableError,
+                    predicate: error => error is Error.ServiceUnavailable,
                     funcAsync: async () =>
                     {
                         await Task.Delay(50); // Backoff delay
@@ -209,7 +209,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             {
                 // Fail first 2 attempts (transient)
                 await Task.Delay(10);
-                return Result.Fail<PaymentResponse>(Error.ServiceUnavailable("Payment service timeout"));
+                return Result.Fail<PaymentResponse>(new Error.ServiceUnavailable() { Detail = "Payment service timeout" });
             }
 
             // Third attempt succeeds
@@ -220,13 +220,13 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         // Act - chain RecoverOnFailureAsync for multiple retries
         var result = await ValidatePaymentWithRetries("pm-789")
             .RecoverOnFailureAsync(
-                predicate: error => error is ServiceUnavailableError,
+                predicate: error => error is Error.ServiceUnavailable,
                 funcAsync: async () =>
                 {
                     await Task.Delay(50); // First retry delay
                     return await ValidatePaymentWithRetries("pm-789")
                         .RecoverOnFailureAsync(
-                            predicate: error => error is ServiceUnavailableError,
+                            predicate: error => error is Error.ServiceUnavailable,
                             funcAsync: async () =>
                             {
                                 await Task.Delay(100); // Second retry delay (exponential backoff)
@@ -249,19 +249,19 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         {
             attemptCount++;
             await Task.Delay(10);
-            return Result.Fail<ShippingResponse>(Error.ServiceUnavailable("Shipping service down"));
+            return Result.Fail<ShippingResponse>(new Error.ServiceUnavailable() { Detail = "Shipping service down" });
         }
 
         // Act - try with 2 retries (3 total attempts)
         var result = await CalculateShippingAlwaysFails("123 Main St")
             .RecoverOnFailureAsync(
-                predicate: error => error is ServiceUnavailableError,
+                predicate: error => error is Error.ServiceUnavailable,
                 funcAsync: async () =>
                 {
                     await Task.Delay(50); // First retry
                     return await CalculateShippingAlwaysFails("123 Main St")
                         .RecoverOnFailureAsync(
-                            predicate: error => error is ServiceUnavailableError,
+                            predicate: error => error is Error.ServiceUnavailable,
                             funcAsync: async () =>
                             {
                                 await Task.Delay(100); // Second retry
@@ -272,7 +272,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Assert - should fail after all retries exhausted
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ServiceUnavailableError>();
+        result.Error!.Should().BeOfType<Error.ServiceUnavailable>();
         attemptCount.Should().Be(3); // Initial + 2 retries
     }
 
@@ -402,7 +402,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Assert - Stage 1 failed, Stage 2 never ran
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<NotFoundError>();
+        result.Error!.Should().BeOfType<Error.NotFound>();
         stage2Executed.Should().BeFalse();  // ✅ Stage 2 was skipped (short-circuit)
     }
 
@@ -433,8 +433,8 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Assert - Stage 2 fraud check failed
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ForbiddenError>();
-        result.Error.Detail.Should().Contain("Suspicious transaction");
+        result.Error!.Should().BeOfType<Error.Forbidden>();
+        result.Error!.Detail.Should().Contain("Suspicious transaction");
     }
 
     [Fact]
@@ -557,10 +557,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // High-risk scenarios
         if (user.UserId == "user-high-risk")
-            return Result.Fail<FraudCheckResponse>(Error.Forbidden("Suspicious transaction detected: high-risk user"));
+            return Result.Fail<FraudCheckResponse>(new Error.Forbidden("authorization.forbidden") { Detail = "Suspicious transaction detected: high-risk user" });
 
         if (inventory.ProductId == "prod-expensive" && inventory.StockLevel < 10)
-            return Result.Fail<FraudCheckResponse>(Error.Forbidden("Suspicious transaction: expensive item with low stock"));
+            return Result.Fail<FraudCheckResponse>(new Error.Forbidden("authorization.forbidden") { Detail = "Suspicious transaction: expensive item with low stock" });
 
         return Result.Ok(new FraudCheckResponse(true, "Low"));
     }
@@ -572,7 +572,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         await Task.Delay(40); // Simulate shipping calculation
 
         if (string.IsNullOrWhiteSpace(address))
-            return Result.Fail<ShippingResponse>(Error.Validation("Shipping address required"));
+            return Result.Fail<ShippingResponse>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Shipping address required" });
 
         // Calculate based on inventory (heavier items cost more)
         var rate = inventory.StockLevel > 50 ? 12.99m : 9.99m;
@@ -585,7 +585,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         await Task.Delay(25); // Simulate reservation
 
         if (!inventory.Available)
-            return Result.Fail<InventoryReservation>(Error.Conflict("Cannot reserve unavailable inventory"));
+            return Result.Fail<InventoryReservation>(new Error.Conflict(null, "conflict") { Detail = "Cannot reserve unavailable inventory" });
 
         return Result.Ok(new InventoryReservation($"res-{Guid.NewGuid():N}", true));
     }
@@ -596,10 +596,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         return userId switch
         {
-            "nonexistent-user" => Result.Fail<UserResponse>(Error.NotFound($"User not found: {userId}")),
+            "nonexistent-user" => Result.Fail<UserResponse>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"User not found: {userId}" }),
             "user-123" => Result.Ok(new UserResponse(userId, "user@example.com", true)),
             "user-high-risk" => Result.Ok(new UserResponse(userId, "highrisk@example.com", true)),
-            _ => Result.Fail<UserResponse>(Error.Unexpected("Unknown user ID"))
+            _ => Result.Fail<UserResponse>(new Error.InternalServerError("test") { Detail = "Unknown user ID" })
         };
     }
 
@@ -609,10 +609,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         return productId switch
         {
-            "prod-out-of-stock" => Result.Fail<InventoryResponse>(Error.Conflict("Out of stock: product is unavailable")),
+            "prod-out-of-stock" => Result.Fail<InventoryResponse>(new Error.Conflict(null, "conflict") { Detail = "Out of stock: product is unavailable" }),
             "prod-456" => Result.Ok(new InventoryResponse(productId, 100, true)),
             "prod-expensive" => Result.Ok(new InventoryResponse(productId, 5, true)),
-            _ => Result.Fail<InventoryResponse>(Error.NotFound($"Product not found: {productId}"))
+            _ => Result.Fail<InventoryResponse>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"Product not found: {productId}" })
         };
     }
 
@@ -622,9 +622,9 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         return paymentMethodId switch
         {
-            "pm-expired" => Result.Fail<PaymentResponse>(Error.Validation("Payment method expired")),
+            "pm-expired" => Result.Fail<PaymentResponse>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Payment method expired" }),
             "pm-789" => Result.Ok(new PaymentResponse(paymentMethodId, true)),
-            _ => Result.Fail<PaymentResponse>(Error.NotFound($"Payment method not found: {paymentMethodId}"))
+            _ => Result.Fail<PaymentResponse>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"Payment method not found: {paymentMethodId}" })
         };
     }
 
@@ -633,7 +633,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         await Task.Delay(50);
 
         if (string.IsNullOrWhiteSpace(address))
-            return Result.Fail<ShippingResponse>(Error.Validation("Shipping address required"));
+            return Result.Fail<ShippingResponse>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Shipping address required" });
 
         return Result.Ok(new ShippingResponse("USPS", 9.99m));
     }

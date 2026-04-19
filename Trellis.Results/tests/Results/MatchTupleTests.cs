@@ -34,7 +34,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple2_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         var output = result.Match(
@@ -66,12 +66,12 @@ public class MatchTupleTests
     public void Match_WithFailureTuple2_ValidationError_ReturnsErrorDetail()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.Validation("Invalid input", "field1"));
+        var result = Result.Fail<(int, string)>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), "validation.error") { Detail = "Invalid input" })));
 
         // Act
         var output = result.Match(
             onSuccess: (num, str) => "Success",
-            onFailure: err => err.Detail
+            onFailure: err => err.GetDisplayMessage()
         );
 
         // Assert
@@ -121,7 +121,7 @@ public class MatchTupleTests
     public void Switch_WithFailureTuple2_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
         var output = "";
 
         // Act
@@ -161,7 +161,7 @@ public class MatchTupleTests
     public void Switch_WithFailureTuple2_ExecutesFailureAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int)>(Error.Unexpected("Server error"));
+        var result = Result.Fail<(int, int)>(new Error.InternalServerError("test") { Detail = "Server error" });
         var errorLogged = false;
         var errorMessage = "";
 
@@ -208,12 +208,12 @@ public class MatchTupleTests
     public void Match_WithFailureTuple3_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, string, double)>(Error.Forbidden("Access denied"));
+        var result = Result.Fail<(int, string, double)>(new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" });
 
         // Act
         var output = result.Match(
             onSuccess: (i, s, d) => "Success",
-            onFailure: err => err.Detail
+            onFailure: err => err.GetDisplayMessage()
         );
 
         // Assert
@@ -240,7 +240,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple4_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int)>(Error.Conflict("Conflict occurred"));
+        var result = Result.Fail<(int, int, int, int)>(new Error.Conflict(null, "conflict") { Detail = "Conflict occurred" });
 
         // Act - Use base Match since tuple destructuring is only for success
         var output = result.Match(
@@ -272,7 +272,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple5_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int)>(Error.BadRequest("Bad request"));
+        var result = Result.Fail<(int, int, int, int, int)>(new Error.BadRequest("bad.request") { Detail = "Bad request" });
 
         // Act
         var output = result.Match(
@@ -305,7 +305,7 @@ public class MatchTupleTests
     public void Switch_WithFailureTuple3_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, string, double)>(Error.RateLimit("Too many requests"));
+        var result = Result.Fail<(int, string, double)>(new Error.TooManyRequests() { Detail = "Too many requests" });
         var output = "";
 
         // Act
@@ -376,12 +376,12 @@ public class MatchTupleTests
     public async Task MatchAsync_WithFailureTuple2_SyncHandlers_CallsOnFailure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" }));
 
         // Act
         var output = await resultTask.MatchAsync(
             onSuccess: (num, str) => "Success",
-            onFailure: err => err.Detail
+            onFailure: err => err.GetDisplayMessage()
         );
 
         // Assert
@@ -416,7 +416,7 @@ public class MatchTupleTests
     public async Task MatchAsync_WithFailureTuple2_AsyncHandlers_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.Validation("Invalid", "field"));
+        var result = Result.Fail<(int, string)>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Invalid" })));
 
         // Act
         var output = await result.MatchAsync(
@@ -428,7 +428,7 @@ public class MatchTupleTests
             onFailure: async err =>
             {
                 await Task.Delay(10);
-                return err.Detail;
+                return err.GetDisplayMessage();
             }
         );
 
@@ -464,7 +464,7 @@ public class MatchTupleTests
     public async Task MatchAsync_TaskResult_AsyncHandlers_Failure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Fail<(int, int)>(Error.Unexpected("Error")));
+        var resultTask = Task.FromResult(Result.Fail<(int, int)>(new Error.InternalServerError("test") { Detail = "Error" }));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -517,7 +517,7 @@ public class MatchTupleTests
     public async Task SwitchAsync_WithFailureTuple2_ExecutesFailureAction()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" }));
         var errorLogged = false;
 
         // Act
@@ -583,19 +583,19 @@ public class MatchTupleTests
     public void Match_CombinedValidation_Failure_ToErrorDto()
     {
         // Arrange
-        var emailResult = Result.Fail<string>(Error.Validation("Invalid email", "email"));
+        var emailResult = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" })));
         var nameResult = Result.Ok("John Doe");
         var combined = emailResult.Combine(nameResult);
 
         // Act
         var response = combined.Match(
             onSuccess: (email, name) => new { Success = true, Error = (string?)null },
-            onFailure: err => new { Success = false, Error = (string?)err.Detail }
+            onFailure: err => new { Success = false, Error = (string?)err.GetDisplayMessage() }
         );
 
         // Assert
         response.Success.Should().BeFalse();
-        response.Error.Should().Be("Invalid email");
+        response.Error!.Should().Be("Invalid email");
     }
 
     [Fact]

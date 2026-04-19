@@ -19,7 +19,7 @@ var actor = Actor.Create("user-1", new HashSet<string> { "orders:read" });
 
 IResult result = actor.HasPermission("orders:read")
     ? Result.Ok()
-    : Result.Fail(Error.Forbidden("Missing permission."));
+    : Result.Fail(new Error.Forbidden("policy.id") { Detail = "Missing permission." });
 ```
 
 ## Key Features

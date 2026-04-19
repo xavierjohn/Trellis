@@ -394,21 +394,20 @@ public class TapOnFailureTests : TestBase
     public void TapOnFailure_LoggingErrorDetails()
     {
         // Arrange
-        var result = Result.Fail<string>(Error.NotFound("User not found", "user-123"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", "user-123"?.ToString())) { Detail = "User not found" });
         var loggedMessage = string.Empty;
 
         // Act
 #pragma warning disable IDE0053 // Multi-statement lambda cannot use expression body
         var actual = result.TapOnFailure(error =>
         {
-            loggedMessage = $"Error: {error.Code} - {error.Detail} (Instance: {error.Instance})";
+            loggedMessage = $"Error: {error.Code} - {error.Detail}";
         });
 #pragma warning restore IDE0053
 
         // Assert
-        loggedMessage.Should().Contain("not.found");
+        loggedMessage.Should().Contain("not-found");
         loggedMessage.Should().Contain("User not found");
-        loggedMessage.Should().Contain("user-123");
         actual.Should().BeFailure();
     }
 
@@ -416,13 +415,13 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_IncrementErrorMetrics()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.ServiceUnavailable("External service down"));
+        var result = Result.Fail<int>(new Error.ServiceUnavailable() { Detail = "External service down" });
         var errorCount = 0;
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
         {
-            if (error is ServiceUnavailableError)
+            if (error is Error.ServiceUnavailable)
                 errorCount++;
             return Task.CompletedTask;
         });
@@ -439,7 +438,7 @@ public class TapOnFailureTests : TestBase
         var errorMessages = new List<string>();
 
         // Act
-        var result = Result.Fail<int>(Error.Validation("Invalid input"))
+        var result = Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid input" })
             .TapOnFailure(error => errorMessages.Add("First handler"))
             .TapOnFailure(error => errorMessages.Add("Second handler"))
             .TapOnFailure(error => errorMessages.Add("Third handler"));

@@ -26,7 +26,7 @@ using System.Diagnostics;
 /// 
 /// // Or use the safe accessors
 /// if (result.TryGetValue(out var user)) Console.WriteLine(user.Name);
-/// else if (result.TryGetError(out var err)) Console.WriteLine(err.Detail);
+/// else if (result.Error is { } err) Console.WriteLine(err.Detail);
 /// 
 /// // Chaining operations
 /// var finalResult = GetUser(id)
@@ -42,12 +42,14 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// True when the result represents success.
     /// </summary>
     /// <value>True if successful; otherwise false.</value>
+    [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(false, nameof(Error))]
     public bool IsSuccess => !IsFailure;
 
     /// <summary>
     /// True when the result represents failure.
     /// </summary>
     /// <value>True if failed; otherwise false.</value>
+    [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
     public bool IsFailure { get; }
 
     /// <summary>
@@ -92,21 +94,42 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     private readonly TValue? _value;
     private readonly Error? _error;
 
-    // ------------- Internal accessors for in-assembly use -------------
-    // These intentionally mirror the v1 public Value/Error properties so that
-    // ROP combinator extensions in this assembly stay readable and avoid the
-    // (out param) cost of TryGet*. They are not part of the public API; external
-    // consumers must use TryGetValue/TryGetError/Deconstruct (see plan §3.1).
+    // ------------- Public accessors -------------
 
-    internal TValue Value =>
+    /// <summary>
+    /// Gets the success value when this result is a success.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the result is a failure. <typeparamref name="TValue"/> may be a value type
+    /// (e.g. <see cref="int"/>, <see cref="System.Guid"/>) where <see langword="default"/> is
+    /// indistinguishable from a real value, so reading <see cref="Value"/> on failure raises
+    /// rather than silently returning a misleading default. Check <see cref="Error"/> or
+    /// <see cref="IsFailure"/> first.
+    /// </exception>
+    public TValue Value =>
         IsSuccess
             ? _value!
-            : throw new InvalidOperationException("Cannot access Value on a failed result.");
+            : throw new InvalidOperationException("Cannot access Value on a failed result. Check IsFailure or Error first.");
 
-    internal Error Error =>
-        IsFailure
-            ? _error!
-            : throw new InvalidOperationException("Cannot access Error on a successful result.");
+    /// <summary>
+    /// Gets the error when this result is a failure, or <see langword="null"/> when it is a success.
+    /// </summary>
+    /// <remarks>
+    /// Reading this property never throws. The nullable return type is the discriminator: a non-null
+    /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
+    /// Pattern-match on the value to handle individual error cases.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// if (result.Error is { } error)
+    ///     return error switch
+    ///     {
+    ///         Error.NotFound nf => HandleNotFound(nf),
+    ///         _ => HandleGeneric(error),
+    ///     };
+    /// </code>
+    /// </example>
+    public Error? Error => _error;
 
     // ------------- Convenience / ergonomic APIs ------------
 
@@ -116,8 +139,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <param name="value">When this method returns true, contains the success value; otherwise, the default value.</param>
     /// <returns>True if the result is successful; otherwise false.</returns>
     /// <remarks>
-    /// This is the recommended safe way to access the value without exception handling.
-    /// Similar to the TryParse pattern in .NET.
+    /// Equivalent to <c>!IsFailure</c>; provided as a TryParse-style convenience that binds the value in a single call.
     /// </remarks>
     public bool TryGetValue(out TValue value)
     {
@@ -132,23 +154,15 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     }
 
     /// <summary>
-    /// Attempts to get the error without throwing.
+    /// Attempts to get the error without throwing. Companion to <see cref="Error"/> for callers
+    /// that prefer <c>TryParse</c>-style imperative usage where a non-null local binding is desired.
     /// </summary>
-    /// <param name="error">When this method returns true, contains the error; otherwise, null.</param>
-    /// <returns>True if the result is a failure; otherwise false.</returns>
-    /// <remarks>
-    /// This is the recommended safe way to access the error without exception handling.
-    /// </remarks>
-    public bool TryGetError(out Error error)
+    /// <param name="error">When this method returns <see langword="true"/>, contains the error; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the result is a failure; otherwise <see langword="false"/>.</returns>
+    public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Error? error)
     {
-        if (IsFailure)
-        {
-            error = _error!;
-            return true;
-        }
-
-        error = default!;
-        return false;
+        error = _error;
+        return error is not null;
     }
 
     /// <summary>
@@ -161,9 +175,9 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <code>
     /// var (success, value, error) = GetUser(id);
     /// if (success)
-    ///     Console.WriteLine($"User: {value.Name}");
+    ///     Console.WriteLine($"User: {value!.Name}");
     /// else
-    ///     Console.WriteLine($"Error: {error.Detail}");
+    ///     Console.WriteLine($"Error: {error!.Detail}");
     /// </code>
     /// </example>
     public void Deconstruct(out bool isSuccess, out TValue? value, out Error? error)
@@ -239,7 +253,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// </summary>
     /// <returns>A string in the format "Success(value)" or "Failure(ErrorCode: detail)".</returns>
     public override string ToString() =>
-        IsFailure
-            ? $"Failure({Error.Code}: {Error.Detail})"
+        _error is { } error
+            ? $"Failure({error.Code}: {error.Detail})"
             : $"Success({(_value is null ? "<null>" : _value)})";
 }

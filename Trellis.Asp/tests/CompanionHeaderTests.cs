@@ -20,7 +20,7 @@ public class CompanionHeaderTests : IDisposable
     {
         // Arrange
         var controller = CreateControllerWithHttpContext();
-        var error = Error.MethodNotAllowed("DELETE is not supported.", ["GET", "PUT"]);
+        var error = new Error.MethodNotAllowed(EquatableArray.Create("GET", "PUT")) { Detail = "DELETE is not supported." };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -36,7 +36,7 @@ public class CompanionHeaderTests : IDisposable
     {
         // Arrange
         var controller = CreateControllerWithHttpContext();
-        var error = Error.RateLimit("Too many requests", RetryAfterValue.FromSeconds(60));
+        var error = new Error.TooManyRequests(RetryAfterValue.FromSeconds(60)) { Detail = "Too many requests" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -52,7 +52,7 @@ public class CompanionHeaderTests : IDisposable
     {
         // Arrange
         var controller = CreateControllerWithHttpContext();
-        var error = Error.RateLimit("Too many requests");
+        var error = new Error.TooManyRequests() { Detail = "Too many requests" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -68,7 +68,7 @@ public class CompanionHeaderTests : IDisposable
     {
         // Arrange
         var controller = CreateControllerWithHttpContext();
-        var error = Error.ServiceUnavailable("Service is down", RetryAfterValue.FromSeconds(120));
+        var error = new Error.ServiceUnavailable(RetryAfterValue.FromSeconds(120)) { Detail = "Service is down" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -80,19 +80,19 @@ public class CompanionHeaderTests : IDisposable
     }
 
     [Fact]
-    public void ContentTooLargeError_with_RetryAfter_emits_RetryAfter_header()
+    public void ContentTooLarge_does_not_emit_RetryAfter_header_in_V6()
     {
-        // Arrange
+        // V6 ADT note: Error.ContentTooLarge has no RetryAfter property.
+        // If a Retry-After advisory becomes a requirement for 413, add a property to the
+        // record and emit the header in ActionResultExtensions / HttpResultExtensions.
         var controller = CreateControllerWithHttpContext();
-        var error = Error.ContentTooLarge("Request body too large", RetryAfterValue.FromSeconds(30));
+        var error = new Error.ContentTooLarge() { Detail = "Request body too large" };
         var result = Result.Fail<string>(error);
 
-        // Act
         var response = result.ToActionResult(controller);
 
-        // Assert
         response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status413RequestEntityTooLarge);
-        controller.Response.Headers["Retry-After"].ToString().Should().Be("30");
+        controller.Response.Headers.ContainsKey("Retry-After").Should().BeFalse();
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class CompanionHeaderTests : IDisposable
     {
         // Arrange
         var controller = CreateControllerWithHttpContext();
-        var error = Error.RangeNotSatisfiable("Requested range not satisfiable", 1024);
+        var error = new Error.RangeNotSatisfiable(1024, "bytes") { Detail = "Requested range not satisfiable" };
         var result = Result.Fail<string>(error);
 
         // Act

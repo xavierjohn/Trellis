@@ -1,4 +1,5 @@
-﻿using Trellis.Asp;
+﻿using System.Globalization;
+using Trellis.Asp;
 using Trellis.Primitives;
 
 namespace SampleWebApplication.Controllers;
@@ -56,27 +57,27 @@ public class UsersController : ControllerBase
 
     [HttpGet("notfound/{id}")]
     public ActionResult NotFound(int id) =>
-        Result.Fail(Error.NotFound("User not found", id))
+        Result.Fail(new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "User not found" })
             .ToActionResult(this);
 
     [HttpGet("conflict/{id}")]
     public ActionResult Conflict(int id) =>
-        Result.Fail(Error.Conflict("Record has changed.", id))
+        Result.Fail(new Error.Conflict(null, id.ToString(CultureInfo.InvariantCulture)) { Detail = "Record has changed." })
             .ToActionResult(this);
 
     [HttpGet("forbidden/{id}")]
     public ActionResult Forbidden(int id) =>
-        Result.Fail(Error.Forbidden("You do not have access.", id))
+        Result.Fail(new Error.Forbidden(id.ToString(CultureInfo.InvariantCulture)) { Detail = "You do not have access." })
             .ToActionResult(this);
 
     [HttpGet("unauthorized/{id}")]
     public ActionResult Unauthorized(int id) =>
-        Result.Fail(Error.Unauthorized("Please log in."))
+        Result.Fail(new Error.Unauthorized() { Detail = "Please log in." })
             .ToActionResult(this);
 
     [HttpGet("unexpected/{id}")]
     public ActionResult Unexpected(int id) =>
-        Result.Fail(Error.Unexpected("Something went wrong."))
+        Result.Fail(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "Something went wrong." })
             .ToActionResult(this);
 
     [HttpDelete("{id}")]

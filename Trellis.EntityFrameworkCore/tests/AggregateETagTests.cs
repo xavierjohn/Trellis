@@ -175,7 +175,7 @@ public class AggregateETagTests : IDisposable
         var result = await _context.SaveChangesResultAsync(ct);
 
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class AggregateETagTests : IDisposable
         var result = await _context.SaveChangesResultUnitAsync(ct);
 
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     #endregion

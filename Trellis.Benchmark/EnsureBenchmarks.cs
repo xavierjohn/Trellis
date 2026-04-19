@@ -17,46 +17,46 @@ public class EnsureBenchmarks
     public void Setup()
     {
         _successResult = Result.Ok(42);
-        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
+        _failureResult = Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Test error" });
     }
 
     [Benchmark(Baseline = true)]
     public Result<int> Ensure_SinglePredicate_Pass()
     {
         return _successResult
-            .Ensure(x => x > 0, Error.Validation("Value must be positive"));
+            .Ensure(x => x > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be positive" });
     }
 
     [Benchmark]
     public Result<int> Ensure_SinglePredicate_Fail()
     {
         return _successResult
-            .Ensure(x => x > 100, Error.Validation("Value must be greater than 100"));
+            .Ensure(x => x > 100, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be greater than 100" });
     }
 
     [Benchmark]
     public Result<int> Ensure_SinglePredicate_OnFailureResult()
     {
         return _failureResult
-            .Ensure(x => x > 0, Error.Validation("Value must be positive"));
+            .Ensure(x => x > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be positive" });
     }
 
     [Benchmark]
     public Result<int> Ensure_ThreePredicates_AllPass()
     {
         return _successResult
-            .Ensure(x => x > 0, Error.Validation("Must be positive"))
-            .Ensure(x => x < 100, Error.Validation("Must be less than 100"))
-            .Ensure(x => x % 2 == 0, Error.Validation("Must be even"));
+            .Ensure(x => x > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be positive" })
+            .Ensure(x => x < 100, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be less than 100" })
+            .Ensure(x => x % 2 == 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be even" });
     }
 
     [Benchmark]
     public Result<int> Ensure_ThreePredicates_FailAtSecond()
     {
         return _successResult
-            .Ensure(x => x > 0, Error.Validation("Must be positive"))
-            .Ensure(x => x > 100, Error.Validation("Must be greater than 100"))
-            .Ensure(x => x % 2 == 0, Error.Validation("Must be even"));
+            .Ensure(x => x > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be positive" })
+            .Ensure(x => x > 100, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be greater than 100" })
+            .Ensure(x => x % 2 == 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be even" });
     }
 
     [Benchmark]
@@ -64,7 +64,7 @@ public class EnsureBenchmarks
     {
         return _successResult
             .Ensure(x => x > 0 && x < 100 && x % 2 == 0,
-                   Error.Validation("Complex validation failed"));
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Complex validation failed" });
     }
 
     [Benchmark]
@@ -72,7 +72,7 @@ public class EnsureBenchmarks
     {
         return _successResult
             .Ensure(x => x > 100 && x < 200 && x % 3 == 0,
-                   Error.Validation("Complex validation failed"));
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Complex validation failed" });
     }
 
     [Benchmark]
@@ -80,7 +80,7 @@ public class EnsureBenchmarks
     {
         return _successResult
             .Ensure(x => IsExpensiveValidationPassed(x),
-                   Error.Validation("Expensive validation failed"));
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Expensive validation failed" });
     }
 
     [Benchmark]
@@ -88,7 +88,7 @@ public class EnsureBenchmarks
     {
         return _successResult
             .Ensure(x => IsExpensiveValidationFailed(x),
-                   Error.Validation("Expensive validation failed"));
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Expensive validation failed" });
     }
 
     [Benchmark]
@@ -96,20 +96,20 @@ public class EnsureBenchmarks
     {
         var person = new Person(42, "John Doe", 30, "john@example.com");
         return Result.Ok(person)
-            .Ensure(p => p.Age >= 18, Error.Validation("Must be adult"))
-            .Ensure(p => p.Name.Length > 0, Error.Validation("Name required"))
-            .Ensure(p => p.Email.Contains('@'), Error.Validation("Valid email required"));
+            .Ensure(p => p.Age >= 18, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be adult" })
+            .Ensure(p => p.Name.Length > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Name required" })
+            .Ensure(p => p.Email.Contains('@'), new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Valid email required" });
     }
 
     [Benchmark]
     public Result<int> Ensure_FivePredicates_AllPass()
     {
         return _successResult
-            .Ensure(x => x > 0, Error.Validation("Must be positive"))
-            .Ensure(x => x < 100, Error.Validation("Must be less than 100"))
-            .Ensure(x => x % 2 == 0, Error.Validation("Must be even"))
-            .Ensure(x => x >= 40, Error.Validation("Must be at least 40"))
-            .Ensure(x => x <= 50, Error.Validation("Must be at most 50"));
+            .Ensure(x => x > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be positive" })
+            .Ensure(x => x < 100, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be less than 100" })
+            .Ensure(x => x % 2 == 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be even" })
+            .Ensure(x => x >= 40, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be at least 40" })
+            .Ensure(x => x <= 50, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be at most 50" });
     }
 
     [Benchmark]
@@ -117,9 +117,9 @@ public class EnsureBenchmarks
     {
         return _successResult
             .Map(x => x * 2)
-            .Ensure(x => x > 50, Error.Validation("Must be greater than 50"))
+            .Ensure(x => x > 50, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be greater than 50" })
             .Bind(x => Result.Ok(x + 10))
-            .Ensure(x => x < 200, Error.Validation("Must be less than 200"));
+            .Ensure(x => x < 200, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be less than 200" });
     }
 
     private static bool IsExpensiveValidationPassed(int value)

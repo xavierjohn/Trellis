@@ -37,7 +37,7 @@ public class CreatedAtRouteHttpResultTaskTests
     public async Task ToCreatedAtRouteHttpResultAsync_Task_Failure_ReturnsProblemDetails()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Fail<UserDto>(Error.BadRequest("Bad")));
+        var resultTask = Task.FromResult(Result.Fail<UserDto>(new Error.BadRequest("bad.request") { Detail = "Bad" }));
 
         // Act
         var response = await resultTask.ToCreatedAtRouteHttpResultAsync(
@@ -72,7 +72,7 @@ public class CreatedAtRouteHttpResultTaskTests
     public async Task ToCreatedAtRouteHttpResultAsync_Task_WithMap_Failure_ReturnsProblemDetails()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Fail<(string, string)>(Error.Conflict("Exists")));
+        var resultTask = Task.FromResult(Result.Fail<(string, string)>(new Error.Conflict(null, "conflict") { Detail = "Exists" }));
 
         // Act
         var response = await resultTask.ToCreatedAtRouteHttpResultAsync(

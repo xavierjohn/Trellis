@@ -16,7 +16,7 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             () => true,
-            Error.Validation("Should not fail"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Should not fail" });
 
         // Assert
         result.Should().BeSuccess("predicate passed")
@@ -32,18 +32,18 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             () => false,
-            Error.Validation("Predicate check failed"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Predicate check failed" });
 
         // Assert
         result.Should().BeFailure("predicate failed")
-            .Which.Should().Be(Error.Validation("Predicate check failed"));
+            .Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Predicate check failed" });
     }
 
     [Fact]
     public async Task EnsureAsync_Left_Bool_NoParam_StaticError_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = Error.NotFound("Initial error");
+        var initialError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
 
@@ -54,7 +54,7 @@ public class Ensure_ValueTask_Left_Tests
                 predicateInvoked = true;
                 return true;
             },
-            Error.Validation("Should not see this error"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this error" });
 
         // Assert
         result.Should().BeFailure("initial result is failure")
@@ -75,7 +75,7 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             value => value.Length > 0,
-            Error.Validation("Value should not be empty"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value should not be empty" });
 
         // Assert
         result.Should().BeSuccess("predicate passed")
@@ -91,18 +91,18 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             value => value.Length > 10,
-            Error.Validation("String is too short"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "String is too short" });
 
         // Assert
         result.Should().BeFailure("predicate failed")
-            .Which.Should().Be(Error.Validation("String is too short"));
+            .Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "String is too short" });
     }
 
     [Fact]
     public async Task EnsureAsync_Left_Bool_WithParam_StaticError_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = Error.Conflict("Initial conflict");
+        var initialError = new Error.Conflict(null, "conflict") { Detail = "Initial conflict" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
 
@@ -113,7 +113,7 @@ public class Ensure_ValueTask_Left_Tests
                 predicateInvoked = true;
                 return value.Length > 0;
             },
-            Error.Validation("Should not see this error"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this error" });
 
         // Assert
         result.Should().BeFailure("initial result is failure")
@@ -130,7 +130,7 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             age => age >= 18,
-            Error.Validation("Must be 18 or older"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be 18 or older" });
 
         // Assert
         result.Should().BeSuccess("age is valid")
@@ -150,7 +150,7 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             value => value >= 0,
-            value => Error.Validation($"Value {value} must be non-negative"));
+            value => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Value {value} must be non-negative" });
 
         // Assert
         result.Should().BeSuccess("predicate passed")
@@ -166,18 +166,18 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             value => value >= 0,
-            value => Error.Validation($"Value {value} must be non-negative"));
+            value => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Value {value} must be non-negative" });
 
         // Assert
         result.Should().BeFailure("predicate failed")
-            .Which.Should().Be(Error.Validation("Value -5 must be non-negative"));
+            .Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value -5 must be non-negative" });
     }
 
     [Fact]
     public async Task EnsureAsync_Left_Bool_WithParam_ErrorFactory_FailureResult_ErrorFactoryNotInvoked()
     {
         // Arrange
-        var initialError = Error.Unauthorized("Initial error");
+        var initialError = new Error.Unauthorized() { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
         var errorFactoryInvoked = false;
 
@@ -187,7 +187,7 @@ public class Ensure_ValueTask_Left_Tests
             value =>
             {
                 errorFactoryInvoked = true;
-                return Error.Validation("Should not see this");
+                return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this" };
             });
 
         // Assert
@@ -209,13 +209,13 @@ public class Ensure_ValueTask_Left_Tests
             value =>
             {
                 capturedValue = value;
-                return Error.Validation($"Email '{value}' is invalid");
+                return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Email '{value}' is invalid" };
             });
 
         // Assert
         result.Should().BeFailure("email validation failed");
         capturedValue.Should().Be("test@example");
-        result.Error.Detail.Should().Contain("test@example");
+        result.Error!.Detail.Should().Contain("test@example");
     }
 
     #endregion
@@ -234,7 +234,7 @@ public class Ensure_ValueTask_Left_Tests
             async value =>
             {
                 await Task.Delay(1); // Simulate async error creation
-                return Error.Validation($"Username '{value}' is too short");
+                return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Username '{value}' is too short" };
             });
 
         // Assert
@@ -254,20 +254,20 @@ public class Ensure_ValueTask_Left_Tests
             async value =>
             {
                 await Task.Delay(1); // Simulate async error creation
-                return Error.Validation($"Username '{value}' must be at least 3 characters");
+                return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Username '{value}' must be at least 3 characters" };
             });
 
         // Assert
         result.Should().BeFailure("predicate failed");
-        result.Error.Detail.Should().Contain("ab");
-        result.Error.Detail.Should().Contain("must be at least 3 characters");
+        result.Error!.Detail.Should().Contain("ab");
+        result.Error!.Detail.Should().Contain("must be at least 3 characters");
     }
 
     [Fact]
     public async Task EnsureAsync_Left_Bool_WithParam_AsyncErrorFactory_FailureResult_AsyncErrorFactoryNotInvoked()
     {
         // Arrange
-        var initialError = Error.Forbidden("Initial error");
+        var initialError = new Error.Forbidden("authorization.forbidden") { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var asyncErrorFactoryInvoked = false;
 
@@ -278,7 +278,7 @@ public class Ensure_ValueTask_Left_Tests
             {
                 asyncErrorFactoryInvoked = true;
                 await Task.Delay(1);
-                return Error.Validation("Should not see this");
+                return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this" };
             });
 
         // Assert
@@ -291,7 +291,7 @@ public class Ensure_ValueTask_Left_Tests
     public async Task EnsureAsync_Left_Bool_WithParam_AsyncErrorFactory_PredicateNotCalled_WhenResultIsFailure()
     {
         // Arrange
-        var initialError = Error.BadRequest("Initial bad request");
+        var initialError = new Error.BadRequest("bad.request") { Detail = "Initial bad request" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
         var asyncErrorFactoryInvoked = false;
@@ -307,7 +307,7 @@ public class Ensure_ValueTask_Left_Tests
             {
                 asyncErrorFactoryInvoked = true;
                 await Task.Delay(1);
-                return Error.Validation("Should not see this");
+                return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this" };
             });
 
         // Assert
@@ -341,7 +341,7 @@ public class Ensure_ValueTask_Left_Tests
     {
         // Arrange
         var initialResult = ValueTask.FromResult(Result.Ok("Initial value"));
-        var predicateError = Error.Validation("System validation failed");
+        var predicateError = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "System validation failed" };
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -356,7 +356,7 @@ public class Ensure_ValueTask_Left_Tests
     public async Task EnsureAsync_Left_Result_NoParam_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = Error.RateLimit("Initial error");
+        var initialError = new Error.TooManyRequests() { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
 
@@ -398,7 +398,7 @@ public class Ensure_ValueTask_Left_Tests
     {
         // Arrange
         var initialResult = ValueTask.FromResult(Result.Ok(15));
-        var predicateError = Error.Validation("Age must be 18 or older");
+        var predicateError = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Age must be 18 or older" };
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -415,7 +415,7 @@ public class Ensure_ValueTask_Left_Tests
     public async Task EnsureAsync_Left_Result_WithParam_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = Error.Domain("Initial domain error");
+        var initialError = new Error.Conflict(null, "domain.violation") { Detail = "Initial domain error" };
         var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
         var predicateInvoked = false;
 
@@ -446,7 +446,7 @@ public class Ensure_ValueTask_Left_Tests
                 var isValid = email.Contains('@') && email.Contains('.');
                 return isValid
                     ? Result.Ok(email)
-                    : Result.Fail<string>(Error.Validation($"Email '{email}' is invalid"));
+                    : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Email '{email}' is invalid" });
             });
 
         // Assert
@@ -464,12 +464,12 @@ public class Ensure_ValueTask_Left_Tests
         var result = await initialResult.EnsureAsync(
             email => email.Contains('@') && email.Contains('.')
                 ? Result.Ok(email)
-                : Result.Fail<string>(Error.Validation($"Email '{email}' must contain @ and .")));
+                : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Email '{email}' must contain @ and ." }));
 
         // Assert
         result.Should().BeFailure("email validation failed");
-        result.Error.Detail.Should().Contain("invalid-email");
-        result.Error.Detail.Should().Contain("must contain @ and .");
+        result.Error!.Detail.Should().Contain("invalid-email");
+        result.Error!.Detail.Should().Contain("must contain @ and .");
     }
 
     #endregion
@@ -486,7 +486,7 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             value => !value.HasValue,
-            Error.Validation("Value should be null for this test"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value should be null for this test" });
 
         // Assert
         result.Should().BeSuccess("null value passes the null check");
@@ -502,7 +502,7 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             p => p.Age >= 18,
-            p => Error.Validation($"{p.Name} must be 18 or older"));
+            p => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"{p.Name} must be 18 or older" });
 
         // Assert
         result.Should().BeSuccess("person is adult")
@@ -524,21 +524,21 @@ public class Ensure_ValueTask_Left_Tests
                     executionOrder.Add(1);
                     return value > 0;
                 },
-                Error.Validation("First check failed"))
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "First check failed" })
             .EnsureAsync(
                 value =>
                 {
                     executionOrder.Add(2);
                     return value < 1000;
                 },
-                Error.Validation("Second check failed"))
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Second check failed" })
             .EnsureAsync(
                 value =>
                 {
                     executionOrder.Add(3);
                     return value % 2 == 0;
                 },
-                Error.Validation("Third check failed"));
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Third check failed" });
 
         // Assert
         result.Should().BeSuccess("all checks passed");
@@ -560,25 +560,25 @@ public class Ensure_ValueTask_Left_Tests
                     executionOrder.Add(1);
                     return value > 0;
                 },
-                Error.Validation("First check failed"))
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "First check failed" })
             .EnsureAsync(
                 value =>
                 {
                     executionOrder.Add(2);
                     return value < 50; // This will fail
                 },
-                Error.Validation("Second check failed"))
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Second check failed" })
             .EnsureAsync(
                 value =>
                 {
                     executionOrder.Add(3);
                     return value % 2 == 0;
                 },
-                Error.Validation("Third check failed"));
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Third check failed" });
 
         // Assert
         result.Should().BeFailure("second check failed")
-            .Which.Should().Be(Error.Validation("Second check failed"));
+            .Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Second check failed" });
         executionOrder.Should().Equal([1, 2], "execution stops after first failure");
     }
 
@@ -592,11 +592,11 @@ public class Ensure_ValueTask_Left_Tests
         var result = await initialResult
             .EnsureAsync(
                 value => value.Length >= 5,
-                Error.Validation("Too short"))
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Too short" })
             .EnsureAsync(
                 value => value.Contains('-') // Use char instead of string
                     ? Result.Ok(value)
-                    : Result.Fail<string>(Error.Validation("Must contain 'valid'")));
+                    : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must contain 'valid'" }));
 
         // Assert
         result.Should().BeSuccess("all validations passed")
@@ -613,13 +613,13 @@ public class Ensure_ValueTask_Left_Tests
         var result = await initialResult
             .EnsureAsync(
                 value => value.Length >= 5,
-                Error.Validation("Too short"))
+                new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Too short" })
             .EnsureAsync(
                 value => value.Contains('-'), // Use char instead of string
                 async value =>
                 {
                     await Task.Delay(1);
-                    return Error.Validation($"Value '{value}' must contain hyphen");
+                    return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Value '{value}' must contain hyphen" };
                 });
 
         // Assert
@@ -636,12 +636,12 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             value => value >= 18,
-            Error.Domain("Business rule: Must be 18 or older"));
+            new Error.Conflict(null, "domain.violation") { Detail = "Business rule: Must be 18 or older" });
 
         // Assert
         result.Should().BeFailure("validation failed")
-            .Which.Should().BeOfType<DomainError>();
-        result.Error.Code.Should().Be("domain.error");
+            .Which.Should().BeOfType<Error.Conflict>();
+        result.Error!.Code.Should().Be("domain.violation");
     }
 
     #endregion

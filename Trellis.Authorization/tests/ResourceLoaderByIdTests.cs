@@ -30,7 +30,7 @@ public class ResourceLoaderByIdTests
         var result = await loader.LoadAsync(message, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<Error.NotFound>();
     }
 
     #endregion
@@ -83,7 +83,7 @@ public class ResourceLoaderByIdTests
         protected override Task<Result<TestOrder>> GetByIdAsync(string id, CancellationToken cancellationToken) =>
             _resource is not null
                 ? Task.FromResult(Result.Ok(_resource))
-                : Task.FromResult(Result.Fail<TestOrder>(Error.NotFound($"Order '{id}' not found.")));
+                : Task.FromResult(Result.Fail<TestOrder>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"Order '{id}' not found." }));
     }
 
     private sealed class TrackingOrderLoader : ResourceLoaderById<LoadOrderMessage, TestOrder, string>
@@ -97,7 +97,7 @@ public class ResourceLoaderByIdTests
         {
             LastRequestedId = id;
             LastCancellationToken = cancellationToken;
-            return Task.FromResult(Result.Fail<TestOrder>(Error.NotFound("Not found")));
+            return Task.FromResult(Result.Fail<TestOrder>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" }));
         }
     }
 

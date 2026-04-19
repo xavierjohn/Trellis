@@ -37,7 +37,7 @@ public class HttpResultTaskTests : IDisposable
     public async Task ToHttpResultAsync_Task_WithFailure_ReturnsProblem()
     {
         // Arrange
-        var error = Error.BadRequest("Test error");
+        var error = new Error.BadRequest("bad.request") { Detail = "Test error" };
         var resultTask = Task.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
@@ -54,7 +54,7 @@ public class HttpResultTaskTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class HttpResultTaskTests : IDisposable
     public async Task ToHttpResultAsync_Task_WithNotFoundError_ReturnsNotFound()
     {
         // Arrange
-        var error = Error.NotFound("Resource not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" };
         var resultTask = Task.FromResult(Result.Fail<string>(error));
 
         // Act
@@ -92,7 +92,7 @@ public class HttpResultTaskTests : IDisposable
     public async Task ToHttpResultAsync_Task_WithConflictError_ReturnsConflict()
     {
         // Arrange
-        var error = Error.Conflict("Resource conflict");
+        var error = new Error.Conflict(null, "conflict") { Detail = "Resource conflict" };
         var resultTask = Task.FromResult(Result.Fail<string>(error));
 
         // Act
@@ -111,8 +111,8 @@ public class HttpResultTaskTests : IDisposable
     {
         // Arrange
         var options = new TrellisAspOptions();
-        options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var resultTask = Task.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+        var resultTask = Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" }));
 
         // Act
         var response = await resultTask.ToHttpResultAsync(options);
@@ -127,7 +127,7 @@ public class HttpResultTaskTests : IDisposable
     public async Task ToHttpResultAsync_Task_without_options_uses_defaults()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
+        var resultTask = Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" }));
 
         // Act
         var response = await resultTask.ToHttpResultAsync();
@@ -135,7 +135,7 @@ public class HttpResultTaskTests : IDisposable
         // Assert
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
-            .ProblemDetails.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+            .ProblemDetails.Status.Should().Be(StatusCodes.Status409Conflict);
     }
 
     #endregion

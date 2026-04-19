@@ -38,16 +38,15 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
 
-            // Should have threadCount fields (one per thread)
-            error!.FieldErrors.Should().HaveCount(threadCount);
-
-            // Each field should have exactly errorsPerThread errors
-            foreach (var fieldError in error.FieldErrors)
+            // Each thread uses a unique field name with errorsPerThread distinct messages
+            error!.Fields.Items.Should().HaveCount(threadCount * errorsPerThread);
+            error.Fields.Items.GroupBy(fv => fv.Field.Path).Should().HaveCount(threadCount);
+            foreach (var group in error.Fields.Items.GroupBy(fv => fv.Field.Path))
             {
-                fieldError.Details.Should().HaveCount(errorsPerThread);
+                group.Should().HaveCount(errorsPerThread);
             }
         }
     }
@@ -76,13 +75,12 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle();
-            error.FieldErrors[0].FieldName.Should().Be(fieldName);
+            error!.Fields.Items.Should().ContainSingle();
+            error.Fields.Items[0].Field.Path.Should().Be("/" + fieldName);
             // Should only have one copy of the error message (no duplicates)
-            error.FieldErrors[0].Details.Should().ContainSingle()
-                .Which.Should().Be(errorMessage);
+            error.Fields.Items[0].Detail.Should().Be(errorMessage);
         }
     }
 
@@ -94,21 +92,21 @@ public class ValidationErrorsContextConcurrencyTests
 
         using (ValidationErrorsContext.BeginScope())
         {
-            // Act - Add ValidationError objects from multiple tasks
+            // Act - Add Error.UnprocessableContent objects from multiple tasks
             var tasks = Enumerable.Range(0, taskCount)
                 .Select(taskId => Task.Run(() =>
                 {
-                    var validationError = Error.Validation($"Error from task {taskId}", $"Field{taskId}");
-                    ValidationErrorsContext.AddError((ValidationError)validationError);
+                    var validationError = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field{taskId}"), "validation.error") { Detail = $"Error from task {taskId}" }));
+                    ValidationErrorsContext.AddError((Error.UnprocessableContent)validationError);
                 }, TestContext.Current.CancellationToken))
                 .ToArray();
 
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(taskCount);
+            error!.Fields.Items.Should().HaveCount(taskCount);
         }
     }
 
@@ -134,7 +132,7 @@ public class ValidationErrorsContextConcurrencyTests
                 {
                     for (int i = 0; i < iterations; i++)
                     {
-                        var error = ValidationErrorsContext.GetValidationError();
+                        var error = ValidationErrorsContext.GetUnprocessableContent();
                         var hasErrors = ValidationErrorsContext.HasErrors;
                         // Just reading, verify no exception
                     }
@@ -145,9 +143,9 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(addTask);
             await Task.WhenAll(readTasks);
 
-            var finalError = ValidationErrorsContext.GetValidationError();
+            var finalError = ValidationErrorsContext.GetUnprocessableContent();
             finalError.Should().NotBeNull();
-            finalError!.FieldErrors.Should().HaveCount(iterations);
+            finalError!.Fields.Items.Should().HaveCount(iterations);
         }
     }
 
@@ -207,10 +205,10 @@ public class ValidationErrorsContextConcurrencyTests
                     await Task.Delay(5);
 
                     // Verify this scope only has its error
-                    var error = ValidationErrorsContext.GetValidationError();
+                    var error = ValidationErrorsContext.GetUnprocessableContent();
                     error.Should().NotBeNull();
-                    error!.FieldErrors.Should().ContainSingle("scope should be isolated");
-                    error.FieldErrors[0].FieldName.Should().Be($"Scope{scopeId}");
+                    error!.Fields.Items.Should().ContainSingle("scope should be isolated");
+                    error.Fields[0].Field.Path.Should().Be($"/Scope{scopeId}");
 
                     return true;
                 }
@@ -260,26 +258,26 @@ public class ValidationErrorsContextConcurrencyTests
 
         using (ValidationErrorsContext.BeginScope())
         {
-            // Act - Add complex ValidationError objects concurrently
+            // Act - Add complex Error.UnprocessableContent objects concurrently
             var tasks = Enumerable.Range(0, taskCount)
                 .Select(taskId => Task.Run(() =>
                 {
-                    // Create a ValidationError with multiple field errors
-                    var error1 = Error.Validation($"Error 1 from task {taskId}", $"Field1_{taskId}");
-                    var error2 = Error.Validation($"Error 2 from task {taskId}", $"Field2_{taskId}");
+                    // Create a Error.UnprocessableContent with multiple field errors
+                    var error1 = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field1_{taskId}"), "validation.error") { Detail = $"Error 1 from task {taskId}" }));
+                    var error2 = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field2_{taskId}"), "validation.error") { Detail = $"Error 2 from task {taskId}" }));
 
-                    ValidationErrorsContext.AddError((ValidationError)error1);
-                    ValidationErrorsContext.AddError((ValidationError)error2);
+                    ValidationErrorsContext.AddError((Error.UnprocessableContent)error1);
+                    ValidationErrorsContext.AddError((Error.UnprocessableContent)error2);
                 }, TestContext.Current.CancellationToken))
                 .ToArray();
 
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
             // Should have 2 fields per task
-            error!.FieldErrors.Should().HaveCount(taskCount * 2);
+            error!.Fields.Items.Should().HaveCount(taskCount * 2);
         }
     }
 
@@ -308,14 +306,15 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(fieldCount);
+            error!.Fields.Items.Should().HaveCount(fieldCount * errorsPerField);
 
-            // Each field should have all its errors
-            foreach (var fieldError in error.FieldErrors)
+            // Each field should appear errorsPerField times
+            error.Fields.Items.GroupBy(fv => fv.Field.Path).Should().HaveCount(fieldCount);
+            foreach (var group in error.Fields.Items.GroupBy(fv => fv.Field.Path))
             {
-                fieldError.Details.Should().HaveCount(errorsPerField);
+                group.Should().HaveCount(errorsPerField);
             }
         }
     }
@@ -334,15 +333,15 @@ public class ValidationErrorsContextConcurrencyTests
                 ValidationErrorsContext.AddError("Inner", "Inner error");
 
                 // Inner scope should only have inner error
-                var innerError = ValidationErrorsContext.GetValidationError();
-                innerError!.FieldErrors.Should().ContainSingle()
-                    .Which.FieldName.Should().Be("Inner");
+                var innerError = ValidationErrorsContext.GetUnprocessableContent();
+                innerError!.Fields.Items.Should().ContainSingle()
+                    .Which.Field.Path.Should().Be("/Inner");
             }
 
             // After inner scope disposed, outer scope should have outer error
-            var outerError = ValidationErrorsContext.GetValidationError();
-            outerError!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Outer");
+            var outerError = ValidationErrorsContext.GetUnprocessableContent();
+            outerError!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Outer");
         }
     }
 

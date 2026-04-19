@@ -66,7 +66,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_Failure_ReturnsError()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Fail<string>(Error.NotFound("gone"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" });
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 
@@ -188,7 +188,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToCreatedHttpResult_Failure_ReturnsError()
     {
         var httpContext = CreateHttpContext("POST");
-        var result = Result.Fail<string>(Error.Validation("bad", "field"));
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "bad" })));
 
         var response = result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 

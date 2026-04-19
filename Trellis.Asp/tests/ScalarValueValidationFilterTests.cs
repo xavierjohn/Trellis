@@ -494,7 +494,7 @@ public class ScalarValueValidationFilterTests
         {
             var field = fieldName ?? "orderCode";
             if (string.IsNullOrEmpty(value) || !value.StartsWith("ORD-", StringComparison.OrdinalIgnoreCase))
-                return Result.Fail<Asp.Tests.ScalarValueValidationFilterTests.TestOrderCode>(Error.Validation($"Order code must start with 'ORD-'. Got: '{value}'.", field));
+                return Result.Fail<Asp.Tests.ScalarValueValidationFilterTests.TestOrderCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = $"Order code must start with 'ORD-'. Got: '{value}'." })));
             return Result.Ok(new TestOrderCode(value));
         }
     }

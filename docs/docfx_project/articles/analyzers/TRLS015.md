@@ -41,7 +41,7 @@ static class Example
         Result.Ok(value).Bind(text =>
         {
             if (string.IsNullOrWhiteSpace(text))
-                return Result.Fail<string>(Error.Validation("Value is required.", nameof(value)));
+                return Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Value is required." })));
 
             return Result.Ok(text.Trim());
         });

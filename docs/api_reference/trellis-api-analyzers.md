@@ -10,14 +10,14 @@
 |----|----------|-------|-------------|
 | `TRLS001` | Warning | Result return value is not handled | Result<T> return values should be handled to ensure errors are not silently ignored. Use Bind, Map, Match, or assign to a variable. |
 | `TRLS002` | Info | Use Bind instead of Map when lambda returns Result | When the transformation function returns a Result<T>, use Bind (flatMap) instead of Map. Map will produce Result<Result<T>> which is likely not intended. |
-| `TRLS003` | Warning | Unsafe access to Result.Value | Result.Value throws an InvalidOperationException if the Result is in a failure state. Check IsSuccess first, use TryGetValue, or use pattern matching with Match/MatchError. |
-| `TRLS004` | Warning | Unsafe access to Result.Error | Result.Error throws an InvalidOperationException if the Result is in a success state. Check IsFailure first, use TryGetError, or use pattern matching with Match/MatchError. |
-| `TRLS005` | Info | Consider using MatchError for error type discrimination | MatchError provides type-safe pattern matching on specific error types (ValidationError, NotFoundError, etc.) with a fallback for unhandled types. |
+| `TRLS003` | Warning | Unsafe access to Result.Value | Result.Value throws an InvalidOperationException if the Result is in a failure state. Check IsSuccess first, use TryGetValue, or use pattern matching with Match. |
+| `TRLS004` | Warning | Unsafe access to Result.Error | Result.Error is `Error?` and **never throws** — it returns `null` on success. Pattern-match on the value (`if (result.Error is { } error)`) instead of asserting non-null with `!`. Or use TryGetError, Match, or an IsFailure guard. |
+| `TRLS005` | *(removed)* | *(removed in v2)* | The `UseMatchErrorAnalyzer` was deleted because `Error` is now a closed ADT — `switch` over an `Error` reference is exhaustive at the language level (per `docs/adr/ADR-001-result-api-surface.md`). Replace `MatchError(...)` calls with a `switch` expression on `Error.X` cases. |
 | `TRLS006` | Warning | Unsafe access to Maybe.Value | Maybe.Value throws an InvalidOperationException if the Maybe has no value. Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult. |
 | `TRLS007` | Warning | Use Create instead of TryCreate().Value | Using TryCreate().Value is unclear and provides poor error messages when validation fails. Use Create() when you expect success - it throws InvalidOperationException with the validation error details included. TryCreate().Value throws the same exception type but with a generic message, losing the validation error information. Or properly handle the Result returned by TryCreate() to avoid exceptions entirely. |
 | `TRLS008` | Warning | Result is double-wrapped | Result should not be wrapped inside another Result. This creates Result<Result<T>> which is almost always unintended. If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result. |
 | `TRLS009` | Warning | Incorrect async Result usage | Task<Result<T>> should be awaited, not blocked with .Result or .Wait(). Blocking can cause deadlocks and prevents proper async execution. Use await instead. |
-| `TRLS010` | Info | Use specific error type instead of base Error class | Using specific error types (ValidationError, NotFoundError, etc.) enables type-safe error handling with MatchError. Avoid instantiating the base Error class directly. |
+| `TRLS010` | Info | Use a specific Error case instead of constructing the abstract base | `Error` is an abstract closed ADT. Construct one of the nested cases — `new Error.NotFound(...)`, `new Error.UnprocessableContent(...)`, etc. The base record cannot be instantiated directly. |
 | `TRLS011` | Warning | Maybe is double-wrapped | Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. Consider converting to Result with ToResult() for better composability. |
 | `TRLS012` | Info | Consider using Result.Combine | When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result. |
 | `TRLS013` | Info | Consider using GetValueOrDefault or Match | The pattern 'result.IsSuccess ? result.Value : default' can be replaced with GetValueOrDefault() or Match() for more idiomatic and safer code. |
@@ -27,7 +27,7 @@
 | `TRLS017` | Warning | Don't compare Result or Maybe to null | Result<T> and Maybe<T> are structs and cannot be null. Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe. |
 | `TRLS018` | Warning | Unsafe access to Value in LINQ expression | When using LINQ on collections of Result<T> or Maybe<T>, filter by IsSuccess/HasValue first, or use methods like Select with Match to safely extract values. |
 | `TRLS019` | Error | Combine chain exceeds maximum supported tuple size | Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. Group related fields into intermediate value objects or sub-results, then combine those groups. |
-| `TRLS020` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result<Unit>) instead. |
+| `TRLS020` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns the non-generic `Result`) instead. |
 | `TRLS021` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
 | `TRLS022` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
 
@@ -59,19 +59,26 @@
   - `TryGetValue` / `TryGetError` branches, including negated forms
   - early-return guards such as `if (result.IsFailure) return ...;`
   - `maybe.HasValue && maybe.Value ...`
-  - safe lambda parameters inside Trellis track-aware APIs such as `Bind`, `Map`, `Tap`, `Ensure`, `Match`, `Switch`, `MatchError`, `SwitchError`, and failure-track variants
+  - safe lambda parameters inside Trellis track-aware APIs such as `Bind`, `Map`, `Tap`, `Ensure`, `Match`, `Switch`, and failure-track variants
   - for `Maybe<T>`, prior assignment from `Maybe.From(...)` when `T` is a non-nullable value type and the variable is not reassigned
 - `TRLS003` intentionally skips direct `TryCreate(...).Value`; that is handled by `TRLS007`.
 - Code fix: `AddResultGuardCodeFixProvider`.
 
-#### `UseMatchErrorAnalyzer` — `TRLS005`
-- Flags manual error-type discrimination on an `Error` value:
-  - `switch` statements with error-type patterns
-  - `switch` expressions with error-type patterns
-  - `is` pattern checks on an `Error`
-  - classic `x is SomeErrorType`
-- Only reports when the governing expression is typed as `Error` or a derived Trellis error type.
-- No code fix.
+#### `UseMatchErrorAnalyzer` — `TRLS005` *(removed in v2)*
+
+This analyzer was deleted in v2. With the closed-ADT `Error` (see `docs/adr/ADR-001-result-api-surface.md`), `switch` over an `Error` reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled — so manual error-type discrimination is the recommended pattern. Replace any remaining `result.MatchError(onValidation: ..., onNotFound: ..., ...)` calls with:
+
+```csharp
+result.Match(
+    onSuccess: value => ...,
+    onFailure: error => error switch
+    {
+        Error.NotFound nf            => ...,
+        Error.UnprocessableContent uc => ...,
+        Error.Conflict c             => ...,
+        _                            => ...,
+    });
+```
 
 #### `TryCreateValueAccessAnalyzer` — `TRLS007`
 - Flags direct `.Value` access on a static `TryCreate(...)` call that returns `Result<T>` when the created type exposes a static `Create(...)` method.
@@ -139,16 +146,11 @@
 - No code fix.
 
 #### `EmptyErrorMessageAnalyzer` — `TRLS016`
-- Flags empty or whitespace-only message arguments passed to Trellis error factory methods:
-  - `Validation`
-  - `NotFound`
-  - `Unauthorized`
-  - `Forbidden`
-  - `Conflict`
-  - `Unexpected`
-- Handles calls written as `Error.Method(...)`, alias-qualified calls, and `using static Trellis.Error;`.
+- Flags empty or whitespace-only `Detail` values supplied to `Error` cases. With v2's closed ADT there are no static factory methods; the analyzer inspects the `Detail` initializer on `new Error.X(...) { Detail = ... }` constructions.
 - Recognizes `""`, whitespace string literals, interpolated strings containing only whitespace text, and `string.Empty`.
 - No code fix.
+
+> **Note:** The analyzer source still lists v1 factory names (`Validation`, `NotFound`, `Unauthorized`, `Forbidden`, `Conflict`, `Unexpected`); a follow-up pass updates the analyzer itself to inspect the `Detail` initializer on the closed-ADT cases.
 
 #### `ComparingToNullAnalyzer` — `TRLS017`
 - Flags `== null`, `!= null`, `is null`, and `is not null` when the non-null side is a Trellis `Result<T>` or `Maybe<T>`.
@@ -180,7 +182,8 @@
 ### Error, EF Core, and value-object rules
 
 #### `ErrorBaseClassAnalyzer` — `TRLS010`
-- Flags direct construction of `new Error(...)` and implicit `new(...)` when the created type is exactly Trellis `Error`, not a derived error type.
+- Flags any attempt to construct the abstract base `Error` directly (which won't compile but is sometimes attempted via `new Error(...)` or implicit `new(...)` inference).
+- Construct one of the nested cases instead: `new Error.NotFound(resource)`, `new Error.UnprocessableContent(fields)`, etc. See `docs/api_reference/trellis-api-results.md` for the full case catalog.
 - No code fix.
 
 #### `UseSaveChangesResultAnalyzer` — `TRLS020`

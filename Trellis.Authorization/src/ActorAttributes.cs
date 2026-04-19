@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization;
+namespace Trellis.Authorization;
 
 /// <summary>
 /// Well-known attribute keys for <see cref="Actor.Attributes"/> used in

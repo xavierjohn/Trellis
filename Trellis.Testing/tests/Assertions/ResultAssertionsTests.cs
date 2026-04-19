@@ -16,7 +16,7 @@ public class ResultAssertionsTests
     public void BeSuccess_Should_Fail_When_Result_Is_Failure()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act & Assert
         var act = () => result.Should().BeSuccess();
@@ -41,7 +41,7 @@ public class ResultAssertionsTests
     public void BeFailure_Should_Pass_When_Result_Is_Failure()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act & Assert
         result.Should().BeFailure();
@@ -64,48 +64,48 @@ public class ResultAssertionsTests
     public void BeFailure_Should_Return_Error_In_Which()
     {
         // Arrange
-        var error = Error.NotFound("Not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var result = Result.Fail<int>(error);
 
         // Act & Assert
         result.Should()
             .BeFailure()
-            .Which.Should().BeOfType<NotFoundError>();
+            .Which.Should().BeOfType<Error.NotFound>();
     }
 
     [Fact]
     public void BeFailureOfType_Should_Pass_When_Error_Matches_Type()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act & Assert
-        result.Should().BeFailureOfType<NotFoundError>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     [Fact]
     public void BeFailureOfType_Should_Fail_When_Error_Type_Different()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.Validation("Invalid"));
+        var result = Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid" });
 
         // Act & Assert
-        var act = () => result.Should().BeFailureOfType<NotFoundError>();
+        var act = () => result.Should().BeFailureOfType<Error.NotFound>();
 
         act.Should().Throw<Exception>()
-            .WithMessage("*to be of type*NotFoundError*found*ValidationError*");
+            .WithMessage("*to be of type*Error.NotFound*found*Error.UnprocessableContent*");
     }
 
     [Fact]
     public void BeFailureOfType_Should_Return_Typed_Error_In_Which()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act & Assert
         result.Should()
-            .BeFailureOfType<NotFoundError>()
-            .Which.Should().BeOfType<NotFoundError>();
+            .BeFailureOfType<Error.NotFound>()
+            .Which.Should().BeOfType<Error.NotFound>();
     }
 
     [Fact]
@@ -186,17 +186,17 @@ public class ResultAssertionsTests
     public void HaveErrorCode_Should_Pass_When_Code_Matches()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act & Assert
-        result.Should().HaveErrorCode("not.found.error");
+        result.Should().HaveErrorCode("not-found");
     }
 
     [Fact]
     public void HaveErrorCode_Should_Fail_When_Code_Different()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         var act = () => result.Should().HaveErrorCode("wrong.code");
@@ -213,7 +213,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetail_Should_Pass_When_Detail_Matches()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Resource not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" });
 
         // Act & Assert
         result.Should().HaveErrorDetail("Resource not found");
@@ -223,7 +223,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetail_Should_Fail_When_Detail_Different()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Resource not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" });
 
         // Act
         var act = () => result.Should().HaveErrorDetail("Wrong detail");
@@ -240,7 +240,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetailContaining_Should_Pass_When_Contains()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("User with ID 123 not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User with ID 123 not found" });
 
         // Act & Assert
         result.Should().HaveErrorDetailContaining("123");
@@ -250,7 +250,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetailContaining_Should_Fail_When_Not_Contains()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("User not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" });
 
         // Act
         var act = () => result.Should().HaveErrorDetailContaining("456");

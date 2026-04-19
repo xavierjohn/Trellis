@@ -24,9 +24,9 @@ public class CombineBenchmarks
     {
         _successInt1 = Result.Ok(42);
         _successInt2 = Result.Ok(100);
-        _failureInt = Result.Fail<int>(Error.Validation("Invalid number", "number"));
+        _failureInt = Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("number"), "validation.error") { Detail = "Invalid number" })));
         _successString = Result.Ok("Hello");
-        _failureString = Result.Fail<string>(Error.Validation("Invalid string", "text"));
+        _failureString = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("text"), "validation.error") { Detail = "Invalid string" })));
     }
 
     [Benchmark(Baseline = true)]
@@ -148,7 +148,7 @@ public class CombineBenchmarks
     {
         return Result.Ok(1)
             .Combine(Result.Ok(2))
-            .Combine(Result.Fail<int>(Error.Validation("Error at 3")))
+            .Combine(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error at 3" }))
             .Combine(Result.Ok(4))
             .Combine(Result.Ok(5))
             .Bind((a, b, c, d, e) => Result.Ok(a + b + c + d + e));
@@ -158,10 +158,10 @@ public class CombineBenchmarks
     public Result<int> Combine_FiveResults_MultipleFailures()
     {
         return Result.Ok(1)
-            .Combine(Result.Fail<int>(Error.Validation("Error at 2")))
-            .Combine(Result.Fail<int>(Error.Validation("Error at 3")))
+            .Combine(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error at 2" }))
+            .Combine(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error at 3" }))
             .Combine(Result.Ok(4))
-            .Combine(Result.Fail<int>(Error.Validation("Error at 5")))
+            .Combine(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error at 5" }))
             .Bind((a, b, c, d, e) => Result.Ok(a + b + c + d + e));
     }
 
@@ -206,7 +206,7 @@ public class CombineBenchmarks
                 $"{first} {last}",
                 email.ToString(),
                 age)))
-            .Ensure(p => p.Age >= 18, Error.Validation("Must be adult"));
+            .Ensure(p => p.Age >= 18, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be adult" });
     }
 
     [Benchmark]

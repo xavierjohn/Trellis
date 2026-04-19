@@ -17,7 +17,7 @@ public class AsyncBenchmarks
     public void Setup()
     {
         _successResult = Result.Ok(42);
-        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
+        _failureResult = Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Test error" });
     }
 
     [Benchmark(Baseline = true)]
@@ -48,7 +48,7 @@ public class AsyncBenchmarks
     {
         return await _successResult
             .BindAsync(x => Task.FromResult(Result.Ok(x * 2)))
-            .BindAsync(x => Task.FromResult(Result.Fail<int>(Error.Validation("Failed"))))
+            .BindAsync(x => Task.FromResult(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Failed" })))
             .BindAsync(x => Task.FromResult(Result.Ok(x - 5)));
     }
 
@@ -91,16 +91,16 @@ public class AsyncBenchmarks
     {
         return await _successResult
             .EnsureAsync(x => Task.FromResult(x > 0),
-                        Error.Validation("Must be positive"));
+                        new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be positive" });
     }
 
     [Benchmark]
     public async Task<Result<int>> EnsureAsync_ThreePredicates_AllPass()
     {
         return await _successResult
-            .EnsureAsync(x => Task.FromResult(x > 0), Error.Validation("Must be positive"))
-            .EnsureAsync(x => Task.FromResult(x < 100), Error.Validation("Must be less than 100"))
-            .EnsureAsync(x => Task.FromResult(x % 2 == 0), Error.Validation("Must be even"));
+            .EnsureAsync(x => Task.FromResult(x > 0), new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be positive" })
+            .EnsureAsync(x => Task.FromResult(x < 100), new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be less than 100" })
+            .EnsureAsync(x => Task.FromResult(x % 2 == 0), new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be even" });
     }
 
     [Benchmark]
@@ -110,7 +110,7 @@ public class AsyncBenchmarks
             .MapAsync(x => Task.FromResult(x * 2))
             .BindAsync(x => Task.FromResult(Result.Ok(x + 10)))
             .TapAsync(x => Task.Run(() => { }))
-            .EnsureAsync(x => Task.FromResult(x > 50), Error.Validation("Must be > 50"));
+            .EnsureAsync(x => Task.FromResult(x > 50), new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be > 50" });
     }
 
     [Benchmark]

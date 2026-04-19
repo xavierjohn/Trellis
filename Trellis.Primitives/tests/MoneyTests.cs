@@ -34,8 +34,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Amount cannot be negative.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Amount cannot be negative.");
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("unitPrice");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/unitPrice");
     }
 
     [Fact]
@@ -139,8 +139,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Cannot add EUR to USD.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Cannot add EUR to USD.");
     }
 
     [Fact]
@@ -170,8 +170,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Subtraction would result in a negative amount.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Subtraction would result in a negative amount.");
     }
 
     [Fact]
@@ -186,8 +186,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Cannot subtract GBP from USD.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Cannot subtract GBP from USD.");
     }
 
     [Fact]
@@ -231,12 +231,12 @@ public class MoneyTests
 
         // Assert
         resultDecimal.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)resultDecimal.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Multiplier cannot be negative.");
+        var validation = (Error.UnprocessableContent)resultDecimal.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Multiplier cannot be negative.");
 
         resultInt.IsFailure.Should().BeTrue();
-        var validationInt = (ValidationError)resultInt.UnwrapError();
-        validationInt.FieldErrors[0].Details[0].Should().Be("Quantity cannot be negative.");
+        var validationInt = (Error.UnprocessableContent)resultInt.UnwrapError();
+        validationInt.Fields[0].Detail.Should().Be("Quantity cannot be negative.");
     }
 
     [Fact]
@@ -278,8 +278,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Divisor must be positive.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Divisor must be positive.");
     }
 
     [Fact]
@@ -293,8 +293,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Divisor must be positive.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Divisor must be positive.");
     }
 
     [Fact]
@@ -358,8 +358,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("At least one ratio required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("At least one ratio required.");
     }
 
     [Fact]
@@ -373,8 +373,8 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("All ratios must be positive.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("All ratios must be positive.");
     }
 
     #endregion

@@ -1,0 +1,38 @@
+﻿namespace Trellis;
+
+/// <summary>
+/// A pointer into a structured input document, expressed as an RFC 6901 JSON Pointer.
+/// Used by validation errors to identify the location of an offending value.
+/// </summary>
+/// <param name="Path">
+/// The JSON Pointer path (e.g. <c>"/email"</c>, <c>"/items/0/quantity"</c>). The root
+/// of the input is <c>""</c>.
+/// </param>
+/// <example>
+/// <code>
+/// new InputPointer("/email")
+/// new InputPointer("/items/0/quantity")
+/// new InputPointer("")            // root
+/// </code>
+/// </example>
+public readonly record struct InputPointer(string Path)
+{
+    /// <summary>
+    /// A pointer to the root of the input document.
+    /// </summary>
+    public static InputPointer Root => new("");
+
+    /// <summary>
+    /// Builds an <see cref="InputPointer"/> from a property name, prepending <c>"/"</c>
+    /// if the value is not already a JSON Pointer.
+    /// </summary>
+    /// <param name="propertyName">A simple property name or full JSON Pointer.</param>
+    /// <returns>An <see cref="InputPointer"/>.</returns>
+    public static InputPointer ForProperty(string propertyName) =>
+        string.IsNullOrEmpty(propertyName)
+            ? Root
+            : new(propertyName.StartsWith('/') ? propertyName : "/" + propertyName);
+
+    /// <inheritdoc />
+    public override string ToString() => Path;
+}

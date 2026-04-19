@@ -90,7 +90,7 @@ var result = await Result.ParallelAsync(
 
 // stage2Executed == false ✅
 // result.IsFailure == true
-// result.Error == NotFoundError
+// result.Error == Error.NotFound
 ```
 
 **Why this matters:**
@@ -157,17 +157,17 @@ var result = await Result.ParallelAsync(
 ### Stage 1 Failure
 ```csharp
 // User not found → Stage 2 & 3 never execute
-FetchUser: ❌ NotFoundError
+FetchUser: ❌ Error.NotFound
 CheckInventory: ✅ (cancelled)
-  → Result: NotFoundError
+  → Result: Error.NotFound
 ```
 
 ### Stage 2 Failure
 ```csharp
 // Fraud detected → Stage 3 never executes
 Stage 1: ✅ (user, inventory)
-Stage 2: ❌ ForbiddenError (fraud)
-  → Result: ForbiddenError
+Stage 2: ❌ Error.Forbidden (fraud)
+  → Result: Error.Forbidden
 ```
 
 ### Stage 3 Failure
@@ -175,8 +175,8 @@ Stage 2: ❌ ForbiddenError (fraud)
 // Inventory reservation fails
 Stage 1: ✅
 Stage 2: ✅
-Stage 3: ❌ ConflictError (already reserved)
-  → Result: ConflictError
+Stage 3: ❌ Error.Conflict (already reserved)
+  → Result: Error.Conflict
 ```
 
 ## Real-World Use Cases
@@ -247,7 +247,7 @@ Stage 3: Notification Service + Analytics Service (need order result)
 
 ### Test Error Composition
 ```csharp
-✅ Multiple errors in Stage 1 → AggregateError
+✅ Multiple errors in Stage 1 → Error.Aggregate
 ✅ Stage 2 error type preserved
 ✅ No Stage 3 errors if Stage 2 failed
 ```

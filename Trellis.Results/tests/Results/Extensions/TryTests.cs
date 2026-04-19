@@ -12,7 +12,7 @@ public class TryTests
         var r = Result.Try<int>(() => throw new InvalidOperationException("Boom"));
 
         r.IsFailure.Should().BeTrue();
-        r.Error.Detail.Should().Be("Boom");
+        r.Error!.Detail.Should().Be("Boom");
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class TryTests
         });
 
         r.IsFailure.Should().BeTrue();
-        r.Error.Detail.Should().Be("AsyncBoom");
+        r.Error!.Detail.Should().Be("AsyncBoom");
     }
 
     [Fact]
@@ -55,9 +55,9 @@ public class TryTests
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2201:Do not raise reserved exception types")]
     public void Custom_exception_mapper()
     {
-        var r = Result.Try<int>(() => throw new Exception("HideMe"), ex => Error.BadRequest("Mapped"));
+        var r = Result.Try<int>(() => throw new Exception("HideMe"), ex => new Error.BadRequest("bad.request") { Detail = "Mapped" });
 
         r.IsFailure.Should().BeTrue();
-        r.Error.Should().Be(Error.BadRequest("Mapped"));
+        r.Error!.Should().Be(new Error.BadRequest("bad.request") { Detail = "Mapped" });
     }
 }

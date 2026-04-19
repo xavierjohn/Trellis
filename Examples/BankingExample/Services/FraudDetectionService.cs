@@ -31,9 +31,9 @@ public class FraudDetectionService
 
         return CheckSuspiciousAmount(amount)
             .Ensure(() => !IsHighFrequencyTrading(account),
-                Error.Domain("Suspicious activity: Too many transactions in short period", "fraud.detected", account.Id.ToString(CultureInfo.InvariantCulture)))
+                new Error.Conflict(null, "fraud.detected") { Detail = "Suspicious activity: Too many transactions in short period" })
             .Ensure(() => !IsUnusualPattern(account, amount),
-                Error.Domain("Suspicious activity: Unusual transaction pattern", "fraud.detected", account.Id.ToString(CultureInfo.InvariantCulture)))
+                new Error.Conflict(null, "fraud.detected") { Detail = "Suspicious activity: Unusual transaction pattern" })
             .Tap(() => Console.WriteLine($"? Fraud check passed for {transactionType} of {amount}"));
     }
 
@@ -46,11 +46,7 @@ public class FraudDetectionService
         if (amount.Amount > SuspiciousAmountThreshold)
         {
             Console.WriteLine($"⚠️ Large transaction detected: {amount}");
-            return Result.Fail(Error.Domain(
-                $"Transaction amount {amount} exceeds threshold of ${SuspiciousAmountThreshold}. Manual review required.",
-                "fraud.detected",
-                null
-            ));
+            return Result.Fail(new Error.Conflict(null, "fraud.detected") { Detail = $"Transaction amount {amount} exceeds threshold of ${SuspiciousAmountThreshold}. Manual review required." });
         }
 
         return Result.Ok();
@@ -95,14 +91,14 @@ public class FraudDetectionService
         await Task.Delay(200, cancellationToken); // Simulate MFA verification
 
         if (string.IsNullOrWhiteSpace(verificationCode))
-            return Result.Fail(Error.Unauthorized("Verification code required for this transaction", customerId));
+            return Result.Fail(new Error.Unauthorized() { Detail = "Verification code required for this transaction" });
 
         if (verificationCode.Length != 6 || !verificationCode.All(char.IsDigit))
-            return Result.Fail(Error.Validation("Invalid verification code format", nameof(verificationCode)));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(verificationCode)), "validation.error") { Detail = "Invalid verification code format" })));
 
         // Simulate verification check
         if (verificationCode == "000000")
-            return Result.Fail(Error.Unauthorized("Invalid verification code", customerId));
+            return Result.Fail(new Error.Unauthorized() { Detail = "Invalid verification code" });
 
         Console.WriteLine($"? Customer {customerId} identity verified");
         return Result.Ok();
@@ -120,9 +116,7 @@ public class FraudDetectionService
         var random = new Random();
         if (random.Next(100) < 5) // 5% chance of service being down
         {
-            return Result.Fail(Error.ServiceUnavailable(
-                "Fraud detection service is temporarily unavailable. Please try again later.",
-                "fraud-service"));
+            return Result.Fail(new Error.ServiceUnavailable() { Detail = "Fraud detection service is temporarily unavailable. Please try again later." });
         }
 
         return Result.Ok();

@@ -52,8 +52,8 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Hostname is required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Hostname is required.");
     }
 
     [Theory]
@@ -76,8 +76,8 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Hostname must be RFC 1123 compliant.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
     [Fact]
@@ -91,8 +91,8 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Hostname must be RFC 1123 compliant.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
     [Fact]
@@ -107,8 +107,8 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Hostname must be RFC 1123 compliant.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
     [Fact]
@@ -133,8 +133,8 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("serverName");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/serverName");
     }
 
     [Fact]

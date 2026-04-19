@@ -142,7 +142,7 @@ public sealed class RegisterUserService
             return userResult;
 
         if (await _repository.EmailExistsAsync(userResult.Value.Email, ct))
-            return Error.Conflict($"Email {userResult.Value.Email} is already registered.");
+            return new Error.Conflict(null, "conflict") { Detail = $"Email {userResult.Value.Email} is already registered." };
 
         var saveResult = await _repository.AddAsync(userResult.Value, ct);
         if (saveResult.IsFailure)
@@ -279,7 +279,7 @@ public sealed class User : Aggregate<UserId>
     public Result<User> Deactivate()
     {
         if (!IsActive)
-            return Error.Domain("User is already inactive.");
+            return new Error.Conflict(null, "domain.violation") { Detail = "User is already inactive." };
 
         IsActive = false;
         return Result.Ok(this);
@@ -311,7 +311,7 @@ public sealed class RegisterUserHandler
     public async Task<Result<User>> HandleAsync(RegisterUserCommand command, CancellationToken ct)
     {
         if (await _repository.EmailExistsAsync(command.Email, ct))
-            return Error.Conflict($"Email {command.Email} is already registered.");
+            return new Error.Conflict(null, "conflict") { Detail = $"Email {command.Email} is already registered." };
 
         var userResult = User.TryCreate(command.Email, command.FirstName, command.LastName);
         if (userResult.IsFailure)

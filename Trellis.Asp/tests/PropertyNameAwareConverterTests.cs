@@ -25,9 +25,9 @@ public class PropertyNameAwareConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(Error.Validation("Email is required.", field));
+                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(Error.Validation("Email must contain @.", field));
+                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
             return Result.Ok(new Email(value));
         }
     }
@@ -41,7 +41,7 @@ public class PropertyNameAwareConverterTests
             if (value == "ok@example.com")
                 return Result.Ok(new DomainOnlyEmail(value));
 
-            return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.DomainOnlyEmail>(Error.Domain(string.Empty, code: "email.domain.invalid", instance: null));
+            return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.DomainOnlyEmail>(new Error.Conflict(null, "email.domain.invalid") { Detail = string.Empty });
         }
     }
 
@@ -93,10 +93,10 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
-                        error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("PrimaryEmail", "wrapper should set property name");
+                        error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/PrimaryEmail", "wrapper should set property name");
         }
     }
 
@@ -261,11 +261,11 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
                         // Empty string should still be set as property name
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("");
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("");
         }
     }
 
@@ -288,9 +288,9 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be(longName);
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/" + longName);
         }
     }
 
@@ -313,9 +313,9 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be(specialName);
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/" + specialName);
         }
     }
 
@@ -337,11 +337,11 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
-                        error!.FieldErrors.Should().ContainSingle();
-            error.FieldErrors[0].FieldName.Should().Be("Email");
-            error.FieldErrors[0].Details.Should().Equal(["DomainOnlyEmail is invalid."]);
+                        error!.Fields.Items.Should().ContainSingle();
+            error.Fields.Items[0].Field.Path.Should().Be("/Email");
+            error.Fields.Items[0].Detail.Should().Be("DomainOnlyEmail is invalid.");
         }
     }
 

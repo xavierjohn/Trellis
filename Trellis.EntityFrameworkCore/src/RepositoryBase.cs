@@ -217,7 +217,7 @@ public abstract class RepositoryBase<TAggregate, TId>
     {
         var entity = await DbSet.FindAsync([id], cancellationToken).ConfigureAwait(false);
         if (entity is null)
-            return Result.Fail(Error.NotFound($"{typeof(TAggregate).Name} with ID '{id}' not found."));
+            return Result.Fail(new Error.NotFound(new ResourceRef(typeof(TAggregate).Name, id?.ToString())) { Detail = $"{typeof(TAggregate).Name} with ID '{id}' not found." });
 
         DbSet.Remove(entity);
         return Result.Ok();

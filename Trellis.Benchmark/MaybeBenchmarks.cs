@@ -147,13 +147,13 @@ public class MaybeBenchmarks
     [Benchmark]
     public Result<int> ToResult_WithValue()
     {
-        return _maybeWithValue.ToResult(Error.NotFound("Value not found"));
+        return _maybeWithValue.ToResult(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Value not found" });
     }
 
     [Benchmark]
     public Result<int> ToResult_Empty()
     {
-        return _maybeEmpty.ToResult(Error.NotFound("Value not found"));
+        return _maybeEmpty.ToResult(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Value not found" });
     }
 
     [Benchmark]

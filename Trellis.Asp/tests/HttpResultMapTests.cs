@@ -39,7 +39,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public void ToHttpResult_Failure_ReturnsError()
     {
-        var result = Result.Fail<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var response = result.ToHttpResult(s => new UserDto(s));
 
@@ -52,7 +52,7 @@ public class HttpResultMapTests : IDisposable
     public void ToHttpResult_Failure_DoesNotInvokeMap()
     {
         var invoked = false;
-        var result = Result.Fail<string>(Error.BadRequest("bad"));
+        var result = Result.Fail<string>(new Error.BadRequest("bad.request") { Detail = "bad" });
 
         result.ToHttpResult(s => { invoked = true; return new UserDto(s); });
 
@@ -63,8 +63,8 @@ public class HttpResultMapTests : IDisposable
     public void ToHttpResult_WithCustomOptions_UsesCustomStatusCode()
     {
         var options = new TrellisAspOptions();
-        options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var result = Result.Fail<string>(Error.Domain("oops"));
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+        var result = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "oops" });
 
         var response = result.ToHttpResult(s => new UserDto(s), options);
 
@@ -90,7 +90,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public async Task ToHttpResultAsync_Task_Failure_ReturnsError()
     {
-        var resultTask = Task.FromResult(Result.Fail<string>(Error.NotFound("gone")));
+        var resultTask = Task.FromResult(Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" }));
 
         var response = await resultTask.ToHttpResultAsync(s => new UserDto(s));
 
@@ -115,7 +115,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public async Task ToHttpResultAsync_ValueTask_Failure_ReturnsError()
     {
-        var resultTask = new ValueTask<Result<string>>(Result.Fail<string>(Error.Conflict("exists")));
+        var resultTask = new ValueTask<Result<string>>(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "exists" }));
 
         var response = await resultTask.ToHttpResultAsync(s => new UserDto(s));
 

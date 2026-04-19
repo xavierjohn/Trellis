@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization;
+namespace Trellis.Authorization;
 
 /// <summary>
 /// Loads the resource required for resource-based authorization.
@@ -23,7 +23,7 @@ public interface IResourceLoader<in TMessage, TResource>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>
     /// A success result containing the loaded resource, or a failure result
-    /// (typically <see cref="Error.NotFound(string, string?)"/>) if the resource does not exist.
+    /// (typically <see cref="Error.NotFound"/>) if the resource does not exist.
     /// </returns>
     Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken cancellationToken);
 }

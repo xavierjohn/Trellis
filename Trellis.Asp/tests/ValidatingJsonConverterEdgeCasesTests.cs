@@ -22,7 +22,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Email>(Error.Validation("Email is required.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Email>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
             return Result.Ok(new Email(value));
         }
     }
@@ -34,7 +34,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Age>(Error.Validation("Age cannot be negative.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age cannot be negative." })));
             return Result.Ok(new Age(value));
         }
         public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
@@ -49,7 +49,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "url";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.URL>(Error.Validation("URL is required.", field));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.URL>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "URL is required." })));
 
             return Result.Ok(new URL(value));
         }
@@ -68,7 +68,7 @@ public class ValidatingJsonConverterEdgeCasesTests
 
         public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
             value == ProcessingMode.Unknown
-                ? Result.Fail<ProcessingModeVO>(Error.Validation("Processing mode is required.", fieldName ?? "processingMode"))
+                ? Result.Fail<ProcessingModeVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "processingMode"), "validation.error") { Detail = "Processing mode is required." })))
                 : Result.Ok(new ProcessingModeVO(value));
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -95,10 +95,10 @@ public class ValidatingJsonConverterEdgeCasesTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null values should produce a validation error for required value objects");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("email");
-            error.FieldErrors[0].Details.Should().Contain("Email cannot be null.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/email");
+            error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
 
@@ -121,10 +121,10 @@ public class ValidatingJsonConverterEdgeCasesTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null value should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("UserEmail");
-            error.FieldErrors[0].Details.Should().Contain("Email cannot be null.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/UserEmail");
+            error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
 
@@ -167,11 +167,11 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
             // Should use "email" (camelCase of type name)
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("email");
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/email");
         }
     }
 
@@ -190,8 +190,8 @@ public class ValidatingJsonConverterEdgeCasesTests
             var result = converter.Read(ref reader, typeof(Email), new JsonSerializerOptions());
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].FieldName.Should().Be("email");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Field.Path.Should().Be("/email");
         }
     }
 
@@ -211,10 +211,10 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("url");
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/url");
         }
     }
 
@@ -243,7 +243,7 @@ public class ValidatingJsonConverterEdgeCasesTests
 
     #endregion
 
-    #region Non-ValidationError Handling Tests
+    #region Non-Error.UnprocessableContent Handling Tests
 
     [Fact]
     public void Read_EnumStringValue_BindsSuccessfully()
@@ -271,7 +271,7 @@ public class ValidatingJsonConverterEdgeCasesTests
     [Fact]
     public void Read_NonValidationError_CollectsAsSimpleError()
     {
-        // Arrange - Create a value object that returns non-ValidationError
+        // Arrange - Create a value object that returns non-Error.UnprocessableContent
         var converter = new ValidatingJsonConverter<NonValidationErrorVO, int>();
         var json = "999"; // Will trigger unexpected error
         var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
@@ -286,11 +286,11 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle();
-            error.FieldErrors[0].FieldName.Should().Be("Test");
-            error.FieldErrors[0].Details.Should().Contain("Unexpected error");
+            error!.Fields.Items.Should().ContainSingle();
+            error.Fields[0].Field.Path.Should().Be("/Test");
+            error.Fields[0].Detail.Should().Contain("Unexpected error");
         }
     }
 
@@ -299,7 +299,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         private NonValidationErrorVO(int value) : base(value) { }
         public static Result<NonValidationErrorVO> TryCreate(int value, string? fieldName = null) =>
             // Return non-validation error
-            Result.Fail<NonValidationErrorVO>(Error.Unexpected("Unexpected error", "code"));
+            Result.Fail<NonValidationErrorVO>(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "Unexpected error" });
         public static Result<NonValidationErrorVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -326,8 +326,8 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].Details.Should().Contain("Email is required.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Detail.Should().Contain("Email is required.");
         }
     }
 
@@ -369,10 +369,10 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Age");
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Age");
         }
     }
 
@@ -557,10 +557,10 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
             // Only gets the first error (TryCreate returns on first failure)
-            error!.FieldErrors.Should().ContainSingle();
+            error!.Fields.Items.Should().ContainSingle();
         }
     }
 
@@ -570,11 +570,11 @@ public class ValidatingJsonConverterEdgeCasesTests
         public static Result<MultiValidationVO> TryCreate(string? value, string? fieldName = null)
         {
             if (string.IsNullOrEmpty(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(Error.Validation("Required", fieldName ?? "field"));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" })));
             if (value.Length < 5)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(Error.Validation("Too short", fieldName ?? "field"));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Too short" })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(Error.Validation("Must contain @", fieldName ?? "field"));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Must contain @" })));
             return Result.Ok(new MultiValidationVO(value));
         }
     }

@@ -38,14 +38,14 @@ internal sealed class ResultDebugView<TValue>
 
         public FailureView(Result<TValue> result) => _result = result;
 
-        public Error Error => _result.Error;
+        public Error? Error => _result.Error;
 
-        public string Code => _result.Error.Code;
+        public string? Code => _result.Error?.Code;
 
-        public string Detail => _result.Error.Detail;
+        public string? Detail => _result.Error?.Detail;
 
-        public string? Instance => _result.Error.Instance;
+        public string? Kind => _result.Error?.Kind;
 
-        public string ErrorType => _result.Error.GetType().Name;
+        public string? ErrorType => _result.Error?.GetType().Name;
     }
 }

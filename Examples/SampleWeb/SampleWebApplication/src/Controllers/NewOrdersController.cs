@@ -8,6 +8,7 @@ using Trellis;
 using Trellis.Asp;
 using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
+using System.Globalization;
 
 public record CreateOrderRequest(CustomerId CustomerId, OrderLineRequest[] Lines);
 public record OrderLineRequest(ProductId ProductId, int Quantity);
@@ -39,13 +40,13 @@ public class NewOrdersController(
     {
         var result = await Result.Ensure(
                 request.Lines is { Length: > 0 },
-                Error.Validation("Order must have at least one line item.", "lines"))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("lines"), "validation.error") { Detail = "Order must have at least one line item." })))
             .Bind(() => Order.TryCreate(request.CustomerId))
             .BindAsync(order =>
                 request.Lines.TraverseAsync(line =>
                     db.Products
                         .FirstOrDefaultResultAsync(p => p.Id == line.ProductId,
-                            Error.NotFound("Product not found.", line.ProductId))
+                            new Error.NotFound(new ResourceRef("Resource", line.ProductId.ToString(CultureInfo.InvariantCulture))) { Detail = "Product not found." })
                         .BindAsync<Product, Order>(product => order.AddLine(product, line.Quantity)))
                 .MapAsync(_ => order))
             .TapAsync(order => { db.Orders.Add(order); return Task.CompletedTask; })
@@ -69,7 +70,7 @@ public class NewOrdersController(
         var result = await db.Orders
             .Include(o => o.Lines)
             .FirstOrDefaultResultAsync(o => o.Id == id,
-                Error.NotFound("Order not found.", id));
+                new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Order not found." });
 
         if (result.TryGetError(out var fetchError))
             return fetchError.ToActionResult<OrderResponse>(this);
@@ -89,7 +90,7 @@ public class NewOrdersController(
         var actor = await actorProvider.GetCurrentActorAsync(ct);
         var authResult = actor.ToResult()
             .Ensure(a => a.HasPermission("orders:write"),
-                Error.Forbidden("Permission 'orders:write' required."));
+                new Error.Forbidden("authorization.forbidden") { Detail = "Permission 'orders:write' required." });
         if (authResult.TryGetError(out var authError))
             return authError.ToActionResult<OrderResponse>(this);
 
@@ -100,7 +101,7 @@ public class NewOrdersController(
         // The payment reference should also be stored on the order for refund support.
         var result = await db.Orders.Include(o => o.Lines)
             .FirstOrDefaultResultAsync(o => o.Id == id,
-                Error.NotFound("Order not found.", id), ct)
+                new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Order not found." }, ct)
             .BindAsync(order => order.Confirm())
             .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
             .BindAsync(order =>
@@ -126,7 +127,7 @@ public class NewOrdersController(
         var actor = await actorProvider.GetCurrentActorAsync(ct);
         var authResult = actor.ToResult()
             .Ensure(a => a.HasPermission("orders:write"),
-                Error.Forbidden("Permission 'orders:write' required."));
+                new Error.Forbidden("authorization.forbidden") { Detail = "Permission 'orders:write' required." });
         if (authResult.TryGetError(out var authError))
             return authError.ToActionResult<OrderResponse>(this);
 
@@ -135,7 +136,7 @@ public class NewOrdersController(
         // RefundPaymentAsync here if the order was previously confirmed with payment.
         var result = await db.Orders.Include(o => o.Lines)
             .FirstOrDefaultResultAsync(o => o.Id == id,
-                Error.NotFound("Order not found.", id), ct)
+                new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Order not found." }, ct)
             .BindAsync(order => order.Cancel())
             .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
             .CheckAsync(order =>
@@ -143,7 +144,7 @@ public class NewOrdersController(
             .RecoverOnFailureAsync(
                 error => error.Code == "unexpected.error",
                 _ => Result.Fail<Order>(
-                    Error.Unexpected("Cancellation failed. Please try again.")));
+                    new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "Cancellation failed. Please try again." }));
 
         if (result.TryGetError(out var cancelError))
             return cancelError.ToActionResult<OrderResponse>(this);

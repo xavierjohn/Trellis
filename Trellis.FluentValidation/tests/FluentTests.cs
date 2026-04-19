@@ -40,7 +40,7 @@ public class FluentTests
         var rUser = User.TryCreate(firstName, lastName, email, StrongPassword);
 
         // Assert
-        rUser.Should().BeFailureOfType<ValidationError>()
+        rUser.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldCount(3)
             .And.HaveFieldError("FirstName")
@@ -60,7 +60,7 @@ public class FluentTests
         var rUser = User.TryCreate(firstName, lastName, email, "WeakPassword");
 
         // Assert
-        rUser.Should().BeFailureOfType<ValidationError>()
+        rUser.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldCount(3)
             .And.HaveFieldError("FirstName")
@@ -88,7 +88,7 @@ public class FluentTests
         }
         else
         {
-            result.Should().BeFailureOfType<ValidationError>()
+            result.Should().BeFailureOfType<Error.UnprocessableContent>()
                 .Which.Should()
                 .HaveFieldErrorWithDetail("zipCode", errorMessage!);
         }
@@ -110,7 +110,7 @@ public class FluentTests
         var result = validator.ValidateToResult(alias);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>()
+        result.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldErrorWithDetail("alias", "'alias' must not be empty.");
     }
@@ -131,7 +131,7 @@ public class FluentTests
         var result = validator.ValidateToResult(alias, "Alias", "Hello There");
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>()
+        result.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldErrorWithDetail("Alias", "Hello There");
     }
@@ -152,7 +152,7 @@ public class FluentTests
         var result = validator.ValidateToResult(alias);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>()
+        result.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldErrorWithDetail("alias", "Alias is already taken.");
     }
@@ -200,7 +200,7 @@ public class FluentTests
         var result = await validator.ValidateToResultAsync("ab", cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -217,7 +217,7 @@ public class FluentTests
         var result = await validator.ValidateToResultAsync(value, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>()
+        result.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldErrorWithDetail("value", "'value' must not be empty.");
     }
@@ -236,7 +236,7 @@ public class FluentTests
         var result = await validator.ValidateToResultAsync(myValue, "CustomParam", "Custom error message", TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>()
+        result.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldErrorWithDetail("CustomParam", "Custom error message");
     }
@@ -257,7 +257,7 @@ public class FluentTests
         var result = await validator.ValidateToResultAsync(requestValue, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>()
+        result.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldErrorWithDetail("requestValue", "Value is already taken.");
     }

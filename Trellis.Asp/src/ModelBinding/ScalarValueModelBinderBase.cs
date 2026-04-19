@@ -59,7 +59,7 @@ public abstract class ScalarValueModelBinderBase<TResult, TValue, TPrimitive> : 
 
         if (parseResult.TryGetError(out var parseError))
         {
-            bindingContext.ModelState.AddModelError(modelName, parseError.Detail);
+            bindingContext.ModelState.AddModelError(modelName, parseError.Detail ?? parseError.Code);
             bindingContext.Result = ModelBindingResult.Failed();
             return Task.CompletedTask;
         }

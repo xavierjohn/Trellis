@@ -54,7 +54,7 @@ That registration adds these behaviors, in this order:
 
 | Behavior | Runs for | What it does |
 | --- | --- | --- |
-| `ExceptionBehavior` | all messages | Converts unhandled exceptions into `Error.Unexpected(...)` failures |
+| `ExceptionBehavior` | all messages | Converts unhandled exceptions into `new Error.InternalServerError("fault-id") { Detail = ... }` failures |
 | `TracingBehavior` | all messages | Creates an OpenTelemetry activity |
 | `LoggingBehavior` | all messages | Logs execution and failures |
 | `AuthorizationBehavior` | messages implementing `IAuthorize` | Enforces required permissions |
@@ -73,7 +73,7 @@ using Trellis;
 using Trellis.Authorization;
 
 public sealed record PublishDocumentCommand(Guid DocumentId)
-    : ICommand<Result<Unit>>, IAuthorize
+    : ICommand<Result>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions => ["Documents.Publish"];
 }
@@ -83,7 +83,7 @@ When this command goes through the pipeline:
 
 1. `AuthorizationBehavior` asks `IActorProvider` for the current actor
 2. it calls `actor.HasAllPermissions(RequiredPermissions)`
-3. if the actor is missing any permission, the pipeline returns `Error.Forbidden("Insufficient permissions.")`
+3. if the actor is missing any permission, the pipeline returns `new Error.Forbidden("policy.id") { Detail = "Insufficient permissions." }`
 
 ## Resource-based authorization
 
@@ -110,11 +110,11 @@ public sealed record RenameDocumentCommand(Guid DocumentId, string Title)
     public IResult Authorize(Actor actor, Document resource) =>
         actor.IsOwner(resource.OwnerId)
             ? Result.Ok()
-            : Result.Fail(Error.Forbidden("Only the owner can rename this document."));
+            : Result.Fail(new Error.Forbidden("policy.id") { Detail = "Only the owner can rename this document." });
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Title)
-            ? Result.Fail(Error.Validation("Title is required.", nameof(Title)))
+            ? Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Title)), "validation.error") { Detail = "Title is required." })))
             : Result.Ok();
 }
 ```
@@ -205,7 +205,7 @@ public sealed class RenameDocumentHandler(IDocumentRepository repository)
 
 Why call this out? Because the pipeline is intentionally lightweight.
 
-`ValidationBehavior` does **not** force a `ValidationError`. It returns whatever `Validate()` produced.
+`ValidationBehavior` does **not** force a `Error.UnprocessableContent`. It returns whatever `Validate()` produced.
 
 ```csharp
 using Mediator;
@@ -213,12 +213,12 @@ using Trellis;
 using Trellis.Mediator;
 
 public sealed record ArchiveDocumentCommand(Guid DocumentId, bool IsArchived)
-    : ICommand<Result<Unit>>, IValidate
+    : ICommand<Result>, IValidate
 {
     public IResult Validate() =>
         IsArchived
             ? Result.Ok()
-            : Result.Fail(Error.Domain("Only archived documents can be processed."));
+            : Result.Fail(new Error.Conflict(null, "domain.violation") { Detail = "Only archived documents can be processed." });
 }
 ```
 
@@ -228,7 +228,7 @@ That is useful when the failure is business-oriented instead of field-validation
 
 `ExceptionBehavior` is a safety net, not a design goal.
 
-- unexpected exception → logged, then returned as `Error.Unexpected(...)`
+- unexpected exception → logged, then returned as `new Error.InternalServerError("fault-id") { Detail = ... }`
 - `OperationCanceledException` → **not** swallowed; it flows through normally
 
 > [!WARNING]

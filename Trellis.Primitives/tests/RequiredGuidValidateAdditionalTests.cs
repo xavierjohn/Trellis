@@ -38,8 +38,8 @@ public class RequiredGuidValidateAdditionalTests
         var v4 = Guid.NewGuid();
         var result = V7OnlyId.TryCreate(v4);
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Only Version 7 GUIDs are allowed.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Only Version 7 GUIDs are allowed.");
     }
 
     [Fact]

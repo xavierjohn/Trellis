@@ -28,7 +28,7 @@ public static class OptionalETagRoutes
         // GET — returns ETag + Last-Modified headers; supports If-None-Match -> 304 Not Modified
         group.MapGet("/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
             db.Products
-                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), new Error.NotFound(new ResourceRef("Resource", id.ToString()?.ToString())) { Detail = "Product not found." })
                 .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From));
 
         // POST — creates product, returns 201 Created + ETag
@@ -46,7 +46,7 @@ public static class OptionalETagRoutes
         // Uses typed EntityTagValue[] via ParseIfMatch.
         group.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
             db.Products
-                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), new Error.NotFound(new ResourceRef("Resource", id.ToString()?.ToString())) { Detail = "Product not found." })
                 .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p => p.UpdatePrice(request.Price))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
@@ -67,7 +67,7 @@ public static class RequiredETagRoutes
         // GET — returns ETag header; supports If-None-Match -> 304 Not Modified
         group.MapGet("/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
             db.Products
-                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), new Error.NotFound(new ResourceRef("Resource", id.ToString()?.ToString())) { Detail = "Product not found." })
                 .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From));
 
         // POST — creates product, returns 201 Created + ETag
@@ -85,7 +85,7 @@ public static class RequiredETagRoutes
         // Uses typed EntityTagValue[] via ParseIfMatch.
         group.MapPut("/{id:guid}", (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
             db.Products
-                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), Error.NotFound("Product not found.", id.ToString()))
+                .FirstOrDefaultResultAsync(p => p.Id == ProductId.Create(id), new Error.NotFound(new ResourceRef("Resource", id.ToString()?.ToString())) { Detail = "Product not found." })
                 .RequireETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p => Task.FromResult(p.UpdatePrice(request.Price)))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())

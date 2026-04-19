@@ -42,13 +42,13 @@ public class ParallelAsyncTests : TestBase
     {
         // Act
         var result = await Result.ParallelAsync(
-            () => CreateDelayedFailureTask<int>(Error.Validation("First failed"), 10),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "First failed" }, 10),
             () => CreateDelayedSuccessTask(2, 20)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>()
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>()
             .Which.Detail.Should().Be("First failed");
     }
 
@@ -98,7 +98,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<UnexpectedError>()
+        result.Error!.Should().BeOfType<Error.InternalServerError>()
             .Which.Detail.Should().Be("sync boom");
     }
 
@@ -113,12 +113,12 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<AggregateError>();
-        var aggregateError = (AggregateError)result.Error;
-        aggregateError.Errors.Should().HaveCount(2);
-        aggregateError.Errors[0].Should().BeOfType<UnexpectedError>()
+        result.Error!.Should().BeOfType<Error.Aggregate>();
+        var aggregateError = (Error.Aggregate)result.Error!;
+        aggregateError.Errors.Items.Should().HaveCount(2);
+        aggregateError.Errors.Items[0].Should().BeOfType<Error.InternalServerError>()
             .Which.Detail.Should().Be("first sync boom");
-        aggregateError.Errors[1].Should().BeOfType<UnexpectedError>()
+        aggregateError.Errors.Items[1].Should().BeOfType<Error.InternalServerError>()
             .Which.Detail.Should().Be("second sync boom");
     }
 
@@ -146,14 +146,14 @@ public class ParallelAsyncTests : TestBase
     {
         // Act
         var result = await Result.ParallelAsync(
-            () => CreateDelayedFailureTask<int>(Error.Validation("First failed"), 10),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "First failed" }, 10),
             () => CreateDelayedSuccessTask(2, 20),
             () => CreateDelayedSuccessTask(3, 15)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>()
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>()
             .Which.Detail.Should().Be("First failed");
     }
 
@@ -163,13 +163,13 @@ public class ParallelAsyncTests : TestBase
         // Act
         var result = await Result.ParallelAsync(
             () => CreateDelayedSuccessTask(1, 10),
-            () => CreateDelayedFailureTask<int>(Error.NotFound("Second not found"), 20),
+            () => CreateDelayedFailureTask<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Second not found" }, 20),
             () => CreateDelayedSuccessTask(3, 15)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<NotFoundError>()
+        result.Error!.Should().BeOfType<Error.NotFound>()
             .Which.Detail.Should().Be("Second not found");
     }
 
@@ -180,12 +180,12 @@ public class ParallelAsyncTests : TestBase
         var result = await Result.ParallelAsync(
             () => CreateDelayedSuccessTask(1, 10),
             () => CreateDelayedSuccessTask(2, 20),
-            () => CreateDelayedFailureTask<int>(Error.Forbidden("Third forbidden"), 15)
+            () => CreateDelayedFailureTask<int>(new Error.Forbidden("authorization.forbidden") { Detail = "Third forbidden" }, 15)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ForbiddenError>()
+        result.Error!.Should().BeOfType<Error.Forbidden>()
             .Which.Detail.Should().Be("Third forbidden");
     }
 
@@ -194,19 +194,19 @@ public class ParallelAsyncTests : TestBase
     {
         // Act
         var result = await Result.ParallelAsync(
-            () => CreateDelayedFailureTask<int>(Error.Validation("First invalid", "field1"), 10),
-            () => CreateDelayedFailureTask<int>(Error.Validation("Second invalid", "field2"), 20),
-            () => CreateDelayedFailureTask<int>(Error.Validation("Third invalid", "field3"), 15)
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), "validation.error") { Detail = "First invalid" })), 10),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field2"), "validation.error") { Detail = "Second invalid" })), 20),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field3"), "validation.error") { Detail = "Third invalid" })), 15)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validationError = (ValidationError)result.Error;
-        validationError.FieldErrors.Should().HaveCount(3);
-        validationError.FieldErrors[0].FieldName.Should().Be("field1");
-        validationError.FieldErrors[1].FieldName.Should().Be("field2");
-        validationError.FieldErrors[2].FieldName.Should().Be("field3");
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
+        var validationError = (Error.UnprocessableContent)result.Error!;
+        validationError.Fields.Items.Should().HaveCount(3);
+        validationError.Fields.Items[0].Field.Path.Should().Be("/field1");
+        validationError.Fields.Items[1].Field.Path.Should().Be("/field2");
+        validationError.Fields.Items[2].Field.Path.Should().Be("/field3");
     }
 
     [Fact]
@@ -214,18 +214,18 @@ public class ParallelAsyncTests : TestBase
     {
         // Act
         var result = await Result.ParallelAsync(
-            () => CreateDelayedFailureTask<int>(Error.Validation("Validation error"), 10),
-            () => CreateDelayedFailureTask<int>(Error.NotFound("Not found"), 20),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Validation error" }, 10),
+            () => CreateDelayedFailureTask<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" }, 20),
             () => CreateDelayedSuccessTask(3, 15)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<AggregateError>();
-        var aggregateError = (AggregateError)result.Error;
-        aggregateError.Errors.Should().HaveCount(2);
-        aggregateError.Errors[0].Should().BeOfType<ValidationError>();
-        aggregateError.Errors[1].Should().BeOfType<NotFoundError>();
+        result.Error!.Should().BeOfType<Error.Aggregate>();
+        var aggregateError = (Error.Aggregate)result.Error!;
+        aggregateError.Errors.Items.Should().HaveCount(2);
+        aggregateError.Errors.Items[0].Should().BeOfType<Error.UnprocessableContent>();
+        aggregateError.Errors.Items[1].Should().BeOfType<Error.NotFound>();
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public class ParallelAsyncTests : TestBase
         // Act
         var result = await Result.ParallelAsync(
             () => CreateDelayedSuccessTask(10, 10),
-            () => CreateDelayedFailureTask<int>(Error.Unexpected("Task failed"), 20),
+            () => CreateDelayedFailureTask<int>(new Error.InternalServerError("test") { Detail = "Task failed" }, 20),
             () => CreateDelayedSuccessTask(30, 15)
         )
         .WhenAllAsync()
@@ -324,7 +324,7 @@ public class ParallelAsyncTests : TestBase
         // Assert
         bindCalled.Should().BeFalse();
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<UnexpectedError>();
+        result.Error!.Should().BeOfType<Error.InternalServerError>();
     }
 
     #endregion
@@ -354,13 +354,13 @@ public class ParallelAsyncTests : TestBase
         var result = await Result.ParallelAsync(
             () => CreateDelayedSuccessTask(1, 10),
             () => CreateDelayedSuccessTask(2, 20),
-            () => CreateDelayedFailureTask<int>(Error.Conflict("Conflict occurred"), 15),
+            () => CreateDelayedFailureTask<int>(new Error.Conflict(null, "conflict") { Detail = "Conflict occurred" }, 15),
             () => CreateDelayedSuccessTask(4, 25)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.Error!.Should().BeOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -464,19 +464,19 @@ public class ParallelAsyncTests : TestBase
         // Act
         var result = await Result.ParallelAsync(
             () => CreateDelayedSuccessTask(1, 10),
-            () => CreateDelayedFailureTask<int>(Error.Validation("Error 2"), 20),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error 2" }, 20),
             () => CreateDelayedSuccessTask(3, 15),
             () => CreateDelayedSuccessTask(4, 25),
-            () => CreateDelayedFailureTask<int>(Error.Validation("Error 5"), 30),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error 5" }, 30),
             () => CreateDelayedSuccessTask(6, 35),
             () => CreateDelayedSuccessTask(7, 40),
-            () => CreateDelayedFailureTask<int>(Error.Validation("Error 8"), 45),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error 8" }, 45),
             () => CreateDelayedSuccessTask(9, 50)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     #endregion
@@ -515,16 +515,16 @@ public class ParallelAsyncTests : TestBase
     {
         // Act
         var result = await Result.ParallelAsync(
-            () => CreateDelayedFailureTask<string>(Error.Validation("Invalid email format", "email"), 10),
-            () => CreateDelayedFailureTask<string>(Error.Validation("Invalid phone number", "phone"), 15),
-            () => CreateDelayedFailureTask<int>(Error.Validation("Age must be 18+", "age"), 20)
+            () => CreateDelayedFailureTask<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email format" })), 10),
+            () => CreateDelayedFailureTask<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("phone"), "validation.error") { Detail = "Invalid phone number" })), 15),
+            () => CreateDelayedFailureTask<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("age"), "validation.error") { Detail = "Age must be 18+" })), 20)
         ).WhenAllAsync();
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validationError = (ValidationError)result.Error;
-        validationError.FieldErrors.Should().HaveCount(3);
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
+        var validationError = (Error.UnprocessableContent)result.Error!;
+        validationError.Fields.Items.Should().HaveCount(3);
     }
 
     [Fact]
@@ -534,13 +534,13 @@ public class ParallelAsyncTests : TestBase
         var result = await Result.ParallelAsync(
             () => CreateDelayedSuccessTask("Clear", 25),
             () => CreateDelayedSuccessTask("Normal", 30),
-            () => CreateDelayedFailureTask<string>(Error.Forbidden("Suspicious location detected"), 20)
+            () => CreateDelayedFailureTask<string>(new Error.Forbidden("authorization.forbidden") { Detail = "Suspicious location detected" }, 20)
         ).WhenAllAsync();
 
         // Assert - Should fail if any check fails
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ForbiddenError>();
-        result.Error.Detail.Should().Contain("Suspicious location");
+        result.Error!.Should().BeOfType<Error.Forbidden>();
+        result.Error!.Detail.Should().Contain("Suspicious location");
     }
 
     #endregion

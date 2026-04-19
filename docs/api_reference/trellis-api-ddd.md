@@ -208,7 +208,7 @@ Notes:
 
 - Matching is always strong RFC 9110 comparison.
 - `expectedETags is null` means “no `If-Match` header supplied”.
-- `expectedETags.Length == 0` fails with `PreconditionFailedError` because the header contained only weak ETags.
+- `expectedETags.Length == 0` fails with `Error.PreconditionFailed` because the header contained only weak ETags.
 - `EntityTagValue.Wildcard()` bypasses value comparison and succeeds immediately.
 
 ## Internal types
@@ -230,13 +230,13 @@ public sealed class OrderId : ScalarValueObject<OrderId, Guid>, IScalarValue<Ord
 
     public static Result<OrderId> TryCreate(Guid value, string? fieldName = null) =>
         value == Guid.Empty
-            ? Result.Fail<OrderId>(Error.Validation("Order ID is required.", fieldName ?? "orderId"))
+            ? Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "required") { Detail = "Order ID is required." })))
             : Result.Ok(new OrderId(value));
 
     public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
         Guid.TryParse(value, out var guid)
             ? TryCreate(guid, fieldName)
-            : Result.Fail<OrderId>(Error.Validation("Order ID must be a GUID.", fieldName ?? "orderId"));
+            : Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "must_be_guid") { Detail = "Order ID must be a GUID." })));
 }
 
 public sealed record OrderPlaced(OrderId OrderId, DateTime OccurredAt) : IDomainEvent;

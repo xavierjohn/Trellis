@@ -10,7 +10,7 @@ Trellis analyzers help you keep `Result<T>`, `Maybe<T>`, EF Core integration, an
 | TRLS002 | Info | Use Bind instead of Map when lambda returns Result | [TRLS002](TRLS002.md) |
 | TRLS003 | Warning | Unsafe access to Result.Value | [TRLS003](TRLS003.md) |
 | TRLS004 | Warning | Unsafe access to Result.Error | [TRLS004](TRLS004.md) |
-| TRLS005 | Info | Consider using MatchError for error type discrimination | [TRLS005](TRLS005.md) |
+| TRLS005 | *(removed)* | Removed in V2 — see [TRLS005](TRLS005.md) | [TRLS005](TRLS005.md) |
 | TRLS006 | Warning | Unsafe access to Maybe.Value | [TRLS006](TRLS006.md) |
 | TRLS007 | Warning | Use Create instead of TryCreate().Value | [TRLS007](TRLS007.md) |
 | TRLS008 | Warning | Result is double-wrapped | [TRLS008](TRLS008.md) |

@@ -65,7 +65,7 @@ public class TracingBehaviorTests : IDisposable
         var behavior = new TracingBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Fail<string>(Error.Validation("Bad input.", "field")));
+            Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Bad input." }))));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -74,8 +74,8 @@ public class TracingBehaviorTests : IDisposable
         var activity = _activities[0];
         activity.Status.Should().Be(ActivityStatusCode.Error);
         activity.StatusDescription.Should().Be("Bad input.");
-        activity.GetTagItem("error.type").Should().Be("ValidationError");
-        activity.GetTagItem("error.code").Should().Be("validation.error");
+        activity.GetTagItem("error.type").Should().Be("Error.UnprocessableContent");
+        activity.GetTagItem("error.code").Should().Be("unprocessable-content");
     }
 
     #endregion

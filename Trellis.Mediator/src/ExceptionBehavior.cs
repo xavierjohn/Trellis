@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Pipeline behavior that catches unhandled exceptions from handlers and converts
-/// them to <see cref="Error.Unexpected(string, string?)"/> failures. This is a safety net — handlers
+/// them to <see cref="Error.InternalServerError"/> failures. This is a safety net — handlers
 /// should not throw, but if they do, this prevents unhandled exceptions from escaping
 /// the mediator pipeline.
 /// </summary>
@@ -40,7 +40,7 @@ public sealed partial class ExceptionBehavior<TMessage, TResponse>
             var messageName = typeof(TMessage).Name;
             LogUnhandledException(_logger, ex, messageName);
 
-            var error = Error.Unexpected("An unexpected error occurred while processing the request.");
+            var error = new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." };
             return TResponse.CreateFailure(error);
         }
     }

@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -6,7 +6,7 @@ using System.Diagnostics;
 /// Provides static methods for validating invariants across multiple <see cref="Maybe{T}"/> values.
 /// These methods express relationships between correlated optional values — such as "all or none",
 /// "if A then B", or "exactly one" — and return <see cref="Result{T}"/> with field-level
-/// <see cref="ValidationError"/> details when the invariant is violated.
+/// <see cref="Error.UnprocessableContent"/> details when the invariant is violated.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -48,7 +48,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value (used in validation errors).</param>
     /// <returns>
     /// <see cref="Result"/> success if all values are present or all are absent;
-    /// otherwise a <see cref="ValidationError"/> listing the fields that violate the invariant.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
     public static Result AllOrNone<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
@@ -78,7 +78,7 @@ public static class MaybeInvariant
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
     /// <see cref="Result"/> success if all values are present or all are absent;
-    /// otherwise a <see cref="ValidationError"/> listing the fields that violate the invariant.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
     public static Result AllOrNone<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
@@ -114,7 +114,7 @@ public static class MaybeInvariant
     /// <param name="fourthFieldName">Field name for the fourth value.</param>
     /// <returns>
     /// <see cref="Result"/> success if all values are present or all are absent;
-    /// otherwise a <see cref="ValidationError"/> listing the fields that violate the invariant.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
     public static Result AllOrNone<T1, T2, T3, T4>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third, Maybe<T4> fourth,
@@ -152,7 +152,7 @@ public static class MaybeInvariant
     /// <param name="requiredFieldName">Field name for the required value.</param>
     /// <returns>
     /// <see cref="Result"/> success if source is absent or both are present;
-    /// otherwise a <see cref="ValidationError"/> for the missing required field.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> for the missing required field.
     /// </returns>
     public static Result Requires<T1, T2>(
         Maybe<T1> source, Maybe<T2> required,
@@ -169,10 +169,11 @@ public static class MaybeInvariant
             return Result.Ok();
 
         return Result.Fail(
-            ValidationError.For(
-                requiredFieldName,
-                $"'{requiredFieldName}' is required when '{sourceFieldName}' is provided.",
-                ValidationErrorCode));
+            new Error.UnprocessableContent(EquatableArray.Create(
+                new FieldViolation(InputPointer.ForProperty(requiredFieldName), ValidationErrorCode)
+                {
+                    Detail = $"'{requiredFieldName}' is required when '{sourceFieldName}' is provided.",
+                })));
     }
 
     #endregion
@@ -190,7 +191,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <returns>
     /// <see cref="Result"/> success if zero or one value is present;
-    /// otherwise a <see cref="ValidationError"/> listing all present fields.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all present fields.
     /// </returns>
     public static Result MutuallyExclusive<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
@@ -220,7 +221,7 @@ public static class MaybeInvariant
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
     /// <see cref="Result"/> success if zero or one value is present;
-    /// otherwise a <see cref="ValidationError"/> listing all present fields.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all present fields.
     /// </returns>
     public static Result MutuallyExclusive<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
@@ -254,7 +255,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <returns>
     /// <see cref="Result"/> success if exactly one value is present;
-    /// otherwise a <see cref="ValidationError"/> listing all fields.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result ExactlyOne<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
@@ -284,7 +285,7 @@ public static class MaybeInvariant
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
     /// <see cref="Result"/> success if exactly one value is present;
-    /// otherwise a <see cref="ValidationError"/> listing all fields.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result ExactlyOne<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
@@ -318,7 +319,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <returns>
     /// <see cref="Result"/> success if at least one value is present;
-    /// otherwise a <see cref="ValidationError"/> listing all fields.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result AtLeastOne<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
@@ -348,7 +349,7 @@ public static class MaybeInvariant
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
     /// <see cref="Result"/> success if at least one value is present;
-    /// otherwise a <see cref="ValidationError"/> listing all fields.
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result AtLeastOne<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
@@ -386,19 +387,17 @@ public static class MaybeInvariant
             return Result.Ok();
 
         // Some present, some absent — report the missing fields as required.
-        ValidationError? error = null;
+        var violations = new List<FieldViolation>();
         for (int i = 0; i < fields.Length; i++)
         {
             if (!fields[i].hasValue)
             {
                 string message = $"'{fields[i].fieldName}' is required when related fields are provided.";
-                error = error is null
-                    ? ValidationError.For(fields[i].fieldName, message, ValidationErrorCode)
-                    : error.And(fields[i].fieldName, message);
+                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = message });
             }
         }
 
-        return Result.Fail(error!);
+        return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.From(violations)));
     }
 
     private static Result MutuallyExclusiveCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
@@ -416,19 +415,17 @@ public static class MaybeInvariant
             return Result.Ok();
 
         // Multiple present — report all present fields
-        ValidationError? error = null;
+        var violations = new List<FieldViolation>();
         for (int i = 0; i < fields.Length; i++)
         {
             if (fields[i].hasValue)
             {
                 string message = $"'{fields[i].fieldName}' cannot be provided together with other mutually exclusive fields.";
-                error = error is null
-                    ? ValidationError.For(fields[i].fieldName, message, ValidationErrorCode)
-                    : error.And(fields[i].fieldName, message);
+                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = message });
             }
         }
 
-        return Result.Fail(error!);
+        return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.From(violations)));
     }
 
     private static Result ExactlyOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
@@ -446,15 +443,13 @@ public static class MaybeInvariant
             return Result.Ok();
 
         // Build error listing relevant fields
-        ValidationError? error = null;
+        var violations = new List<FieldViolation>();
         if (presentCount == 0)
         {
             // None present — report all fields
             for (int i = 0; i < fields.Length; i++)
             {
-                error = error is null
-                    ? ValidationError.For(fields[i].fieldName, "Exactly one field must be provided.", ValidationErrorCode)
-                    : error.And(fields[i].fieldName, "Exactly one field must be provided.");
+                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = "Exactly one field must be provided." });
             }
         }
         else
@@ -464,14 +459,12 @@ public static class MaybeInvariant
             {
                 if (fields[i].hasValue)
                 {
-                    error = error is null
-                        ? ValidationError.For(fields[i].fieldName, "Only one field may be provided.", ValidationErrorCode)
-                        : error.And(fields[i].fieldName, "Only one field may be provided.");
+                    violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = "Only one field may be provided." });
                 }
             }
         }
 
-        return Result.Fail(error!);
+        return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.From(violations)));
     }
 
     private static Result AtLeastOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
@@ -485,16 +478,14 @@ public static class MaybeInvariant
         }
 
         // None present — report all fields
-        ValidationError? error = null;
+        var violations = new List<FieldViolation>();
         const string message = "At least one of the related fields must be provided.";
         for (int i = 0; i < fields.Length; i++)
         {
-            error = error is null
-                ? ValidationError.For(fields[i].fieldName, message, ValidationErrorCode)
-                : error.And(fields[i].fieldName, message);
+            violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = message });
         }
 
-        return Result.Fail(error!);
+        return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.From(violations)));
     }
 
     #endregion

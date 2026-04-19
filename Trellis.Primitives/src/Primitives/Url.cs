@@ -76,16 +76,16 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         var field = fieldName.NormalizeFieldName("url");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Url>(Error.Validation("URL is required.", field));
+            return Result.Fail<Url>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "URL is required." })));
 
         // Normalize input to avoid issues with accidental whitespace
         var trimmed = value.Trim();
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
-            return Result.Fail<Url>(Error.Validation("URL must be a valid absolute HTTP or HTTPS URL.", field));
+            return Result.Fail<Url>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "URL must be a valid absolute HTTP or HTTPS URL." })));
 
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-            return Result.Fail<Url>(Error.Validation("URL must use HTTP or HTTPS scheme.", field));
+            return Result.Fail<Url>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "URL must use HTTP or HTTPS scheme." })));
 
         return Result.Ok(new Url(uri));
     }

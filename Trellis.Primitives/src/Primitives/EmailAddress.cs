@@ -175,7 +175,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
     /// <returns>
     /// <list type="bullet">
     /// <item>Success with the EmailAddress if the string is a valid email</item>
-    /// <item>Failure with a <see cref="ValidationError"/> if the email is invalid or null</item>
+    /// <item>Failure with an <see cref="Error.UnprocessableContent"/> if the email is invalid or null</item>
     /// </list>
     /// </returns>
     /// <remarks>
@@ -221,7 +221,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
             }
         }
 
-        return Result.Fail<EmailAddress>(Error.Validation("Email address is not valid.", fieldName.NormalizeFieldName("email")));
+        return Result.Fail<EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName.NormalizeFieldName("email")), "validation.error") { Detail = "Email address is not valid." })));
     }
 
     /// <summary>

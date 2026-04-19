@@ -100,7 +100,7 @@ public class DebugRuntimeGuardTests
             ResultDebugSettings.EnableDebugTracing = false;
             var actionInvoked = false;
 
-            var result = Result.Fail<string>(Error.Unexpected("test"));
+            var result = Result.Fail<string>(new Error.InternalServerError("test") { Detail = "test" });
             result.DebugOnFailure(_ => actionInvoked = true);
 
             actionInvoked.Should().BeFalse("action should not be invoked when runtime guard is disabled");

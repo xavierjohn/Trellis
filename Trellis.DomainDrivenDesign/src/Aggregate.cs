@@ -200,7 +200,7 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     /// At the persistence layer, EF Core uses this as a concurrency token. The generated SQL
     /// includes <c>WHERE ETag = @originalETag</c>. If another process modified the aggregate,
     /// the update affects zero rows and EF Core throws <c>DbUpdateConcurrencyException</c>,
-    /// which Trellis maps to <see cref="ConflictError"/> (HTTP 409).
+    /// which Trellis maps to <see cref="Error.Conflict"/> (HTTP 409).
     /// </para>
     /// <para>
     /// The ETag is managed by <c>AggregateETagConvention</c> (marks it as a concurrency token)

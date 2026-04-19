@@ -41,7 +41,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error1);
+        result.Error!.Should().Be(Error1);
     }
 
     // Task
@@ -71,7 +71,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error1);
+        result.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error1);
+        result.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error1);
+        result.Error!.Should().Be(Error1);
     }
 
     // ValueTask
@@ -168,7 +168,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error1);
+        result.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error1);
+        result.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -224,6 +224,6 @@ public class MapTests : TestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error1);
+        result.Error!.Should().Be(Error1);
     }
 }

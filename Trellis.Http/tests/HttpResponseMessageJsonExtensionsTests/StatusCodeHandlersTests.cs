@@ -17,7 +17,7 @@ public class StatusCodeHandlersTests
     public void HandleUnauthorized_with_401_status_should_return_failure()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Authentication required");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Authentication required" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Unauthorized);
 
         // Act
@@ -32,7 +32,7 @@ public class StatusCodeHandlersTests
     public void HandleUnauthorized_with_non_401_status_should_return_success()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Authentication required");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Authentication required" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
 
         // Act
@@ -47,7 +47,7 @@ public class StatusCodeHandlersTests
     public async Task HandleUnauthorizedAsync_with_401_status_should_return_failure()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Authentication required");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Authentication required" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Unauthorized);
         var taskHttpResponseMessage = Task.FromResult(httpResponseMessage);
 
@@ -67,7 +67,7 @@ public class StatusCodeHandlersTests
     public async Task HandleUnauthorizedAsync_with_non_401_status_should_return_success(HttpStatusCode statusCode)
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Authentication required");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Authentication required" };
         using HttpResponseMessage httpResponseMessage = new(statusCode);
         var taskHttpResponseMessage = Task.FromResult(httpResponseMessage);
 
@@ -87,7 +87,7 @@ public class StatusCodeHandlersTests
     public void HandleForbidden_with_403_status_should_return_failure()
     {
         // Arrange
-        var forbiddenError = Error.Forbidden("Access denied");
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Forbidden);
 
         // Act
@@ -102,7 +102,7 @@ public class StatusCodeHandlersTests
     public void HandleForbidden_with_non_403_status_should_return_success()
     {
         // Arrange
-        var forbiddenError = Error.Forbidden("Access denied");
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
 
         // Act
@@ -117,7 +117,7 @@ public class StatusCodeHandlersTests
     public async Task HandleForbiddenAsync_with_403_status_should_return_failure()
     {
         // Arrange
-        var forbiddenError = Error.Forbidden("Access denied");
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Forbidden);
         var taskHttpResponseMessage = Task.FromResult(httpResponseMessage);
 
@@ -136,7 +136,7 @@ public class StatusCodeHandlersTests
     public async Task HandleForbiddenAsync_with_non_403_status_should_return_success(HttpStatusCode statusCode)
     {
         // Arrange
-        var forbiddenError = Error.Forbidden("Access denied");
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(statusCode);
         var taskHttpResponseMessage = Task.FromResult(httpResponseMessage);
 
@@ -156,7 +156,7 @@ public class StatusCodeHandlersTests
     public void HandleConflict_with_409_status_should_return_failure()
     {
         // Arrange
-        var conflictError = Error.Conflict("Resource already exists");
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Resource already exists" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Conflict);
 
         // Act
@@ -171,7 +171,7 @@ public class StatusCodeHandlersTests
     public void HandleConflict_with_non_409_status_should_return_success()
     {
         // Arrange
-        var conflictError = Error.Conflict("Resource already exists");
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Resource already exists" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
 
         // Act
@@ -186,7 +186,7 @@ public class StatusCodeHandlersTests
     public async Task HandleConflictAsync_with_409_status_should_return_failure()
     {
         // Arrange
-        var conflictError = Error.Conflict("Resource already exists");
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Resource already exists" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Conflict);
         var taskHttpResponseMessage = Task.FromResult(httpResponseMessage);
 
@@ -205,7 +205,7 @@ public class StatusCodeHandlersTests
     public async Task HandleConflictAsync_with_non_409_status_should_return_success(HttpStatusCode statusCode)
     {
         // Arrange
-        var conflictError = Error.Conflict("Resource already exists");
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Resource already exists" };
         using HttpResponseMessage httpResponseMessage = new(statusCode);
         var taskHttpResponseMessage = Task.FromResult(httpResponseMessage);
 
@@ -235,7 +235,7 @@ public class StatusCodeHandlersTests
         using HttpResponseMessage httpResponseMessage = new(statusCode);
 
         // Act
-        var result = httpResponseMessage.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
+        var result = httpResponseMessage.HandleClientError(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -254,7 +254,7 @@ public class StatusCodeHandlersTests
         using HttpResponseMessage httpResponseMessage = new(statusCode);
 
         // Act
-        var result = httpResponseMessage.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
+        var result = httpResponseMessage.HandleClientError(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -270,7 +270,7 @@ public class StatusCodeHandlersTests
 
         // Act
         var result = await taskHttpResponseMessage.HandleClientErrorAsync(
-            code => Error.BadRequest($"Client error: {code}"));
+            code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -288,7 +288,7 @@ public class StatusCodeHandlersTests
         var result = httpResponseMessage.HandleClientError(code =>
         {
             capturedStatusCode = code;
-            return Error.NotFound("Resource not found");
+            return new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" };
         });
 
         // Assert
@@ -312,7 +312,7 @@ public class StatusCodeHandlersTests
         using HttpResponseMessage httpResponseMessage = new(statusCode);
 
         // Act
-        var result = httpResponseMessage.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
+        var result = httpResponseMessage.HandleServerError(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -331,7 +331,7 @@ public class StatusCodeHandlersTests
         using HttpResponseMessage httpResponseMessage = new(statusCode);
 
         // Act
-        var result = httpResponseMessage.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
+        var result = httpResponseMessage.HandleServerError(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -347,7 +347,7 @@ public class StatusCodeHandlersTests
 
         // Act
         var result = await taskHttpResponseMessage.HandleServerErrorAsync(
-            code => Error.ServiceUnavailable($"Server error: {code}"));
+            code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -365,7 +365,7 @@ public class StatusCodeHandlersTests
         var result = httpResponseMessage.HandleServerError(code =>
         {
             capturedStatusCode = code;
-            return Error.ServiceUnavailable("Service unavailable");
+            return new Error.ServiceUnavailable() { Detail = "Service unavailable" };
         });
 
         // Assert
@@ -421,11 +421,11 @@ public class StatusCodeHandlersTests
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.BadRequest);
 
         // Act
-        var result = httpResponseMessage.EnsureSuccess(code => Error.Validation($"Custom error for {code}"));
+        var result = httpResponseMessage.EnsureSuccess(code => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Custom error for {code}" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
         result.UnwrapError().Detail.Should().Contain("Custom error");
         result.UnwrapError().Detail.Should().Contain("BadRequest");
     }
@@ -469,7 +469,7 @@ public class StatusCodeHandlersTests
 
         // Act
         var result = await taskHttpResponseMessage.EnsureSuccessAsync(
-            code => Error.ServiceUnavailable($"Service down: {code}"));
+            code => new Error.ServiceUnavailable() { Detail = $"Service down: {code}" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -485,8 +485,8 @@ public class StatusCodeHandlersTests
     public void Multiple_status_handlers_can_be_chained()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Auth required");
-        var forbiddenError = Error.Forbidden("Access denied");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Auth required" };
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Forbidden);
 
         // Act
@@ -503,8 +503,8 @@ public class StatusCodeHandlersTests
     public async Task Status_handlers_can_be_chained_with_async()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Auth required");
-        var forbiddenError = Error.Forbidden("Access denied");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Auth required" };
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Unauthorized);
         var taskHttpResponseMessage = Task.FromResult(httpResponseMessage);
 

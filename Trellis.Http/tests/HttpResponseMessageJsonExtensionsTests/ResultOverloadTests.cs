@@ -18,7 +18,7 @@ public class ResultOverloadTests
     public void HandleNotFound_Result_with_404_should_return_failure()
     {
         // Arrange
-        var notFoundError = Error.NotFound("Not found");
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.NotFound);
         var result = Result.Ok(httpResponseMessage);
 
@@ -34,7 +34,7 @@ public class ResultOverloadTests
     public void HandleNotFound_Result_with_200_should_return_success()
     {
         // Arrange
-        var notFoundError = Error.NotFound("Not found");
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
         var result = Result.Ok(httpResponseMessage);
 
@@ -50,8 +50,8 @@ public class ResultOverloadTests
     public void HandleNotFound_Result_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.Unauthorized("Auth required");
-        var notFoundError = Error.NotFound("Not found");
+        var originalError = new Error.Unauthorized() { Detail = "Auth required" };
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
@@ -66,7 +66,7 @@ public class ResultOverloadTests
     public async Task HandleNotFoundAsync_TaskResult_with_404_should_return_failure()
     {
         // Arrange
-        var notFoundError = Error.NotFound("Not found");
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.NotFound);
         var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
@@ -82,7 +82,7 @@ public class ResultOverloadTests
     public async Task HandleNotFoundAsync_TaskResult_with_200_should_return_success()
     {
         // Arrange
-        var notFoundError = Error.NotFound("Not found");
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
         var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
@@ -97,8 +97,8 @@ public class ResultOverloadTests
     public async Task HandleNotFoundAsync_TaskResult_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.Unauthorized("Auth required");
-        var notFoundError = Error.NotFound("Not found");
+        var originalError = new Error.Unauthorized() { Detail = "Auth required" };
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
@@ -117,7 +117,7 @@ public class ResultOverloadTests
     public void HandleUnauthorized_Result_with_401_should_return_failure()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Auth required");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Auth required" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Unauthorized);
         var result = Result.Ok(httpResponseMessage);
 
@@ -133,7 +133,7 @@ public class ResultOverloadTests
     public void HandleUnauthorized_Result_with_200_should_return_success()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Auth required");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Auth required" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
         var result = Result.Ok(httpResponseMessage);
 
@@ -148,8 +148,8 @@ public class ResultOverloadTests
     public void HandleUnauthorized_Result_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
-        var unauthorizedError = Error.Unauthorized("Auth required");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Auth required" };
         var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
@@ -164,7 +164,7 @@ public class ResultOverloadTests
     public async Task HandleUnauthorizedAsync_TaskResult_with_401_should_return_failure()
     {
         // Arrange
-        var unauthorizedError = Error.Unauthorized("Auth required");
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Auth required" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Unauthorized);
         var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
@@ -180,8 +180,8 @@ public class ResultOverloadTests
     public async Task HandleUnauthorizedAsync_TaskResult_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
-        var unauthorizedError = Error.Unauthorized("Auth required");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var unauthorizedError = new Error.Unauthorized() { Detail = "Auth required" };
         var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
@@ -200,7 +200,7 @@ public class ResultOverloadTests
     public void HandleForbidden_Result_with_403_should_return_failure()
     {
         // Arrange
-        var forbiddenError = Error.Forbidden("Access denied");
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Forbidden);
         var result = Result.Ok(httpResponseMessage);
 
@@ -216,7 +216,7 @@ public class ResultOverloadTests
     public void HandleForbidden_Result_with_200_should_return_success()
     {
         // Arrange
-        var forbiddenError = Error.Forbidden("Access denied");
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
         var result = Result.Ok(httpResponseMessage);
 
@@ -231,8 +231,8 @@ public class ResultOverloadTests
     public void HandleForbidden_Result_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
-        var forbiddenError = Error.Forbidden("Access denied");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
@@ -247,7 +247,7 @@ public class ResultOverloadTests
     public async Task HandleForbiddenAsync_TaskResult_with_403_should_return_failure()
     {
         // Arrange
-        var forbiddenError = Error.Forbidden("Access denied");
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Forbidden);
         var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
@@ -263,8 +263,8 @@ public class ResultOverloadTests
     public async Task HandleForbiddenAsync_TaskResult_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
-        var forbiddenError = Error.Forbidden("Access denied");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var forbiddenError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
@@ -283,7 +283,7 @@ public class ResultOverloadTests
     public void HandleConflict_Result_with_409_should_return_failure()
     {
         // Arrange
-        var conflictError = Error.Conflict("Already exists");
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Already exists" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Conflict);
         var result = Result.Ok(httpResponseMessage);
 
@@ -299,7 +299,7 @@ public class ResultOverloadTests
     public void HandleConflict_Result_with_200_should_return_success()
     {
         // Arrange
-        var conflictError = Error.Conflict("Already exists");
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Already exists" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
         var result = Result.Ok(httpResponseMessage);
 
@@ -314,8 +314,8 @@ public class ResultOverloadTests
     public void HandleConflict_Result_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
-        var conflictError = Error.Conflict("Already exists");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Already exists" };
         var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
@@ -330,7 +330,7 @@ public class ResultOverloadTests
     public async Task HandleConflictAsync_TaskResult_with_409_should_return_failure()
     {
         // Arrange
-        var conflictError = Error.Conflict("Already exists");
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Already exists" };
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Conflict);
         var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
@@ -346,8 +346,8 @@ public class ResultOverloadTests
     public async Task HandleConflictAsync_TaskResult_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
-        var conflictError = Error.Conflict("Already exists");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var conflictError = new Error.Conflict(null, "conflict") { Detail = "Already exists" };
         var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
@@ -370,7 +370,7 @@ public class ResultOverloadTests
         var result = Result.Ok(httpResponseMessage);
 
         // Act
-        var actual = result.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
+        var actual = result.HandleClientError(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -385,7 +385,7 @@ public class ResultOverloadTests
         var result = Result.Ok(httpResponseMessage);
 
         // Act
-        var actual = result.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
+        var actual = result.HandleClientError(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         actual.IsSuccess.Should().BeTrue();
@@ -395,11 +395,11 @@ public class ResultOverloadTests
     public void HandleClientError_Result_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.Unauthorized("Auth required");
+        var originalError = new Error.Unauthorized() { Detail = "Auth required" };
         var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
-        var actual = result.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
+        var actual = result.HandleClientError(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -414,7 +414,7 @@ public class ResultOverloadTests
         var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
-        var actual = await resultTask.HandleClientErrorAsync(code => Error.BadRequest($"Client error: {code}"));
+        var actual = await resultTask.HandleClientErrorAsync(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -425,11 +425,11 @@ public class ResultOverloadTests
     public async Task HandleClientErrorAsync_TaskResult_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.Unauthorized("Auth required");
+        var originalError = new Error.Unauthorized() { Detail = "Auth required" };
         var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
-        var actual = await resultTask.HandleClientErrorAsync(code => Error.BadRequest($"Client error: {code}"));
+        var actual = await resultTask.HandleClientErrorAsync(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -448,7 +448,7 @@ public class ResultOverloadTests
         var result = Result.Ok(httpResponseMessage);
 
         // Act
-        var actual = result.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
+        var actual = result.HandleServerError(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -463,7 +463,7 @@ public class ResultOverloadTests
         var result = Result.Ok(httpResponseMessage);
 
         // Act
-        var actual = result.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
+        var actual = result.HandleServerError(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         actual.IsSuccess.Should().BeTrue();
@@ -473,11 +473,11 @@ public class ResultOverloadTests
     public void HandleServerError_Result_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
-        var actual = result.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
+        var actual = result.HandleServerError(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -492,7 +492,7 @@ public class ResultOverloadTests
         var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
-        var actual = await resultTask.HandleServerErrorAsync(code => Error.ServiceUnavailable($"Server error: {code}"));
+        var actual = await resultTask.HandleServerErrorAsync(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -503,11 +503,11 @@ public class ResultOverloadTests
     public async Task HandleServerErrorAsync_TaskResult_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
-        var actual = await resultTask.HandleServerErrorAsync(code => Error.ServiceUnavailable($"Server error: {code}"));
+        var actual = await resultTask.HandleServerErrorAsync(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -555,11 +555,11 @@ public class ResultOverloadTests
         var result = Result.Ok(httpResponseMessage);
 
         // Act
-        var actual = result.EnsureSuccess(code => Error.Validation($"Custom: {code}"));
+        var actual = result.EnsureSuccess(code => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Custom: {code}" });
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.UnwrapError().Should().BeOfType<ValidationError>();
+        actual.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
         actual.UnwrapError().Detail.Should().Contain("Custom");
     }
 
@@ -567,7 +567,7 @@ public class ResultOverloadTests
     public void EnsureSuccess_Result_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
@@ -611,7 +611,7 @@ public class ResultOverloadTests
     public async Task EnsureSuccessAsync_TaskResult_already_failed_should_preserve_original_error()
     {
         // Arrange
-        var originalError = Error.NotFound("Not found");
+        var originalError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
@@ -634,13 +634,13 @@ public class ResultOverloadTests
 
         // Act — no Bind required
         var result = httpResponseMessage
-            .HandleUnauthorized(Error.Unauthorized("Auth required"))
-            .HandleForbidden(Error.Forbidden("Access denied"))
-            .HandleConflict(Error.Conflict("Already exists"));
+            .HandleUnauthorized(new Error.Unauthorized() { Detail = "Auth required" })
+            .HandleForbidden(new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" })
+            .HandleConflict(new Error.Conflict(null, "conflict") { Detail = "Already exists" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ForbiddenError>();
+        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
     }
 
     [Fact]
@@ -651,11 +651,11 @@ public class ResultOverloadTests
 
         // Act
         var result = httpResponseMessage
-            .HandleUnauthorized(Error.Unauthorized("Auth required"))
-            .HandleForbidden(Error.Forbidden("Access denied"))
-            .HandleConflict(Error.Conflict("Already exists"))
-            .HandleClientError(code => Error.BadRequest($"Client error: {code}"))
-            .HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
+            .HandleUnauthorized(new Error.Unauthorized() { Detail = "Auth required" })
+            .HandleForbidden(new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" })
+            .HandleConflict(new Error.Conflict(null, "conflict") { Detail = "Already exists" })
+            .HandleClientError(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" })
+            .HandleServerError(code => new Error.ServiceUnavailable() { Detail = $"Server error: {code}" });
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -670,13 +670,13 @@ public class ResultOverloadTests
 
         // Act
         var result = httpResponseMessage
-            .HandleUnauthorized(Error.Unauthorized("Auth required"))
-            .HandleForbidden(Error.Forbidden("Access denied"))
-            .HandleClientError(code => Error.BadRequest($"Client error: {code}"));
+            .HandleUnauthorized(new Error.Unauthorized() { Detail = "Auth required" })
+            .HandleForbidden(new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" })
+            .HandleClientError(code => new Error.BadRequest("bad.request") { Detail = $"Client error: {code}" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<UnauthorizedError>();
+        result.UnwrapError().Should().BeOfType<Error.Unauthorized>();
         result.UnwrapError().Detail.Should().Be("Auth required");
     }
 
@@ -689,13 +689,13 @@ public class ResultOverloadTests
 
         // Act
         var result = await responseTask
-            .HandleUnauthorizedAsync(Error.Unauthorized("Auth required"))
-            .HandleForbiddenAsync(Error.Forbidden("Access denied"))
-            .HandleConflictAsync(Error.Conflict("Already exists"));
+            .HandleUnauthorizedAsync(new Error.Unauthorized() { Detail = "Auth required" })
+            .HandleForbiddenAsync(new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" })
+            .HandleConflictAsync(new Error.Conflict(null, "conflict") { Detail = "Already exists" });
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 
     #endregion

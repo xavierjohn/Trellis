@@ -220,7 +220,7 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe<string>.None;
 
 Result<string> emailResult = maybeEmail.ToResult(
-    Error.NotFound("Primary email address was not found"));
+    new Error.NotFound(new ResourceRef("Resource")) { Detail = "Primary email address was not found" });
 ```
 
 There is also a lazy overload when creating the error is expensive or needs runtime context.
@@ -229,7 +229,7 @@ There is also a lazy overload when creating the error is expensive or needs runt
 using Trellis;
 
 var result = Maybe<string>.None.ToResult(
-    () => Error.NotFound("Primary email address was not found"));
+    () => new Error.NotFound(new ResourceRef("Resource")) { Detail = "Primary email address was not found" });
 ```
 
 ## Converting `Result<T>` to `Maybe<T>`
@@ -240,7 +240,7 @@ Sometimes you want the opposite tradeoff: “keep the value if successful, other
 using Trellis;
 
 Maybe<string> existing = Result.Ok("Ada").ToMaybe();
-Maybe<string> missing = Result.Fail<string>(Error.NotFound("User not found")).ToMaybe();
+Maybe<string> missing = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource")) { Detail = "User not found" }).ToMaybe();
 ```
 
 Use this only when dropping the error is the right thing to do.
@@ -258,7 +258,7 @@ using Trellis;
 
 static Result<string> NonEmpty(string value) =>
     string.IsNullOrWhiteSpace(value)
-        ? Result.Fail<string>(Error.Validation("Value is required", "nickname"))
+        ? Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("nickname"), "validation.error") { Detail = "Value is required" })))
         : Result.Ok(value);
 
 string? input = "Countess";
@@ -274,7 +274,7 @@ using Trellis;
 static Result<int> Positive(int value) =>
     value > 0
         ? Result.Ok(value)
-        : Result.Fail<int>(Error.Validation("Value must be positive", "quantity"));
+        : Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("quantity"), "validation.error") { Detail = "Value must be positive" })));
 
 int? input = 3;
 
@@ -363,14 +363,14 @@ Sometimes the next question is: “what if my operation has no payload?”
 
 For Trellis unit results:
 
-- prefer `Result.Ok()` for a successful `Result<Unit>`
+- prefer `Result.Ok()` for a successful `Result`
 - use `new Unit()` or `default` if you need a `Unit` value explicitly
 - do **not** use `Unit.Value` — that API does not exist
 
 ```csharp
 using Trellis;
 
-Result<Unit> ok = Result.Ok();
+Result ok = Result.Ok();
 Unit unit = new Unit();
 Unit alsoUnit = default;
 ```

@@ -38,7 +38,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         var output = result.Match(
@@ -56,7 +56,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(string, string)>(Error.Validation("Invalid email", "email"));
+        var result = Result.Fail<(string, string)>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "unprocessable-content") { Detail = "Invalid email" })));
 
         // Act
         var output = result.Match(
@@ -65,7 +65,7 @@ public class MatchTupleTracingTests : TestBase
         );
 
         // Assert
-        output.Should().Be("validation.error");
+        output.Should().Be("unprocessable-content");
         activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
     }
 
@@ -115,7 +115,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string)>(Error.Unexpected("Server error"));
+        var result = Result.Fail<(int, string)>(new Error.InternalServerError("test") { Detail = "Server error" });
         var errorLogged = false;
 
         // Act
@@ -153,7 +153,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, int)>(Error.Forbidden("Access denied"));
+        var result = Result.Fail<(int, int)>(new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" });
         var errorCode = "";
 
         // Act
@@ -163,7 +163,7 @@ public class MatchTupleTracingTests : TestBase
         );
 
         // Assert
-        errorCode.Should().Be("forbidden.error");
+        errorCode.Should().Be("authorization.forbidden");
         activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Error);
     }
 
@@ -194,7 +194,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string, double)>(Error.Conflict("Conflict"));
+        var result = Result.Fail<(int, string, double)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" });
 
         // Act
         var output = result.Match(
@@ -328,7 +328,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         var output = await result.MatchAsync(
@@ -340,7 +340,7 @@ public class MatchTupleTracingTests : TestBase
             onFailure: async err =>
             {
                 await Task.Delay(10);
-                return err.Detail;
+                return err.Detail!;
             }
         );
 
@@ -394,7 +394,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error.Unexpected("Error")));
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(new Error.InternalServerError("test") { Detail = "Error" }));
         var errorLogged = false;
 
         // Act
@@ -439,7 +439,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var combined = Result.Fail<(string, string)>(Error.Validation("Bad input", "field"));
+        var combined = Result.Fail<(string, string)>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "unprocessable-content") { Detail = "Bad input" })));
 
         // Act
         var response = combined.Match(

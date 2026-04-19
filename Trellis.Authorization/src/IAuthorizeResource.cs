@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization;
+namespace Trellis.Authorization;
 
 /// <summary>
 /// Declares resource-based authorization that requires a loaded resource.
@@ -29,7 +29,7 @@ public interface IAuthorizeResource<in TResource>
     /// <param name="resource">The loaded resource to authorize against.</param>
     /// <returns>
     /// A success result to proceed, or a failure result (typically
-    /// <see cref="Error.Forbidden(string, string?)"/>) to short-circuit the pipeline.
+    /// <see cref="Error.Forbidden"/>) to short-circuit the pipeline.
     /// </returns>
     IResult Authorize(Actor actor, TResource resource);
 }

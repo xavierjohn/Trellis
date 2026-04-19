@@ -29,21 +29,21 @@ public class MapIfTests
     [Fact]
     public void MapIf_Failure_ConditionTrue_ReturnsOriginalFailure()
     {
-        var sut = Result.Fail<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(new Error.InternalServerError("test") { Detail = "some error" });
 
         var result = sut.MapIf(true, x => x * 2);
 
-        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some error"));
+        result.Should().BeFailure().Which.Should().Be(new Error.InternalServerError("test") { Detail = "some error" });
     }
 
     [Fact]
     public void MapIf_Failure_ConditionFalse_ReturnsOriginalFailure()
     {
-        var sut = Result.Fail<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(new Error.InternalServerError("test") { Detail = "some error" });
 
         var result = sut.MapIf(false, x => x * 2);
 
-        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some error"));
+        result.Should().BeFailure().Which.Should().Be(new Error.InternalServerError("test") { Detail = "some error" });
     }
 
     #endregion
@@ -74,12 +74,12 @@ public class MapIfTests
     public void MapIf_Failure_PredicateNotInvoked()
     {
         var predicateInvoked = false;
-        var sut = Result.Fail<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(new Error.InternalServerError("test") { Detail = "some error" });
 
         var result = sut.MapIf(x => { predicateInvoked = true; return true; }, x => x * 2);
 
         predicateInvoked.Should().BeFalse();
-        result.Should().BeFailure().Which.Should().Be(Error.Unexpected("some error"));
+        result.Should().BeFailure().Which.Should().Be(new Error.InternalServerError("test") { Detail = "some error" });
     }
 
     #endregion

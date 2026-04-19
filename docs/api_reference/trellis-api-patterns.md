@@ -100,13 +100,13 @@ public readonly record struct Quantity(int Value)
 {
     public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
         value <= 0
-            ? Error.Validation("Quantity must be greater than zero.", fieldName ?? "quantity")
+            ? new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "quantity"), "must_be_positive") { Detail = "Quantity must be greater than zero." }))
             : Result.Ok(new Quantity(value));
 
     public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
         int.TryParse(value, out var parsed)
             ? TryCreate(parsed, fieldName)
-            : Error.Validation("Quantity must be a valid integer.", fieldName ?? "quantity");
+            : new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "quantity"), "must_be_integer") { Detail = "Quantity must be a valid integer." }));
 }
 ```
 
@@ -127,7 +127,7 @@ public readonly record struct Quantity(int Value)
 
 | Fact | Value |
 | --- | --- |
-| `Result.Ok()` returns | `Result<Unit>` |
+| `Result.Ok()` returns | non-generic `Result` |
 | `Unit.Value` | **does not exist** |
 | Explicit unit value when needed | `default(Unit)` or `new Unit()` |
 
@@ -167,7 +167,7 @@ public sealed record ProductName(string Value)
 {
     public static Result<ProductName> TryCreate(string value) =>
         string.IsNullOrWhiteSpace(value)
-            ? Error.Validation("Name is required.", "name")
+            ? new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "required") { Detail = "Name is required." }))
             : Result.Ok(new ProductName(value));
 }
 public sealed record ProductResponse(Guid Id, string Name)
@@ -226,8 +226,8 @@ public sealed record ProductResponse(Guid Id)
 | Result query | `public static Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Error notFoundError, CancellationToken cancellationToken = default) where T : class` | Not-found is failure |
 | Result query + predicate | `public static Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, Error notFoundError, CancellationToken cancellationToken = default) where T : class` | Predicate overload |
 | Save count | `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)` | Count on success |
-| Save unit | `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)` | Maps success with `.Map(_ => default(Unit))` |
-| Save unit + EF option | `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | Explicit EF option |
+| Save unit | `public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)` | Maps the underlying `Result<int>` to non-generic `Result` |
+| Save unit + EF option | `public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | Explicit EF option |
 | Convention scan | `public static ModelConfigurationBuilder ApplyTrellisConventions(this ModelConfigurationBuilder configurationBuilder, params Assembly[] assemblies)` | Pre-convention value-object registration |
 
 ### Compile-correct example
@@ -237,7 +237,7 @@ using Microsoft.EntityFrameworkCore;
 using Trellis;
 using Trellis.EntityFrameworkCore;
 
-public static async Task<Result<Unit>> UpdateNameAsync(
+public static async Task<Result> UpdateNameAsync(
     AppDbContext db,
     Guid id,
     string name,
@@ -246,7 +246,7 @@ public static async Task<Result<Unit>> UpdateNameAsync(
     return await db.Products
         .FirstOrDefaultResultAsync(
             p => p.Id == id,
-            Error.NotFound("Product not found.", id.ToString()),
+            new Error.NotFound(new ResourceRef("Product", id.ToString())) { Detail = "Product not found." },
             cancellationToken)
         .Tap(product => product.Name = name)
         .CheckAsync(_ => db.SaveChangesResultUnitAsync(cancellationToken));
@@ -272,10 +272,10 @@ public sealed class Product
 
 | API | Exact Signature |
 | --- | --- |
-| Not found mapping | `public static Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<HttpResponseMessage> responseTask, NotFoundError notFoundError)` |
-| Unauthorized mapping | `public static Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<HttpResponseMessage> responseTask, UnauthorizedError unauthorizedError)` |
-| Forbidden mapping | `public static Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<HttpResponseMessage> responseTask, ForbiddenError forbiddenError)` |
-| Conflict mapping | `public static Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<HttpResponseMessage> responseTask, ConflictError conflictError)` |
+| Not found mapping | `public static Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<HttpResponseMessage> responseTask, Error.NotFound notFoundError)` |
+| Unauthorized mapping | `public static Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<HttpResponseMessage> responseTask, Error.Unauthorized unauthorizedError)` |
+| Forbidden mapping | `public static Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<HttpResponseMessage> responseTask, Error.Forbidden forbiddenError)` |
+| Conflict mapping | `public static Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<HttpResponseMessage> responseTask, Error.Conflict conflictError)` |
 | Success enforcement | `EnsureSuccessAsync(...)` overloads on `Task<HttpResponseMessage>` |
 | JSON materialization | `ReadResultFromJsonAsync(...)` overloads on `Result<HttpResponseMessage>` / `Task<Result<HttpResponseMessage>>` |
 
@@ -289,7 +289,7 @@ using Trellis.Http;
 
 public static Task<Result<UserResponse>> GetUserAsync(HttpClient httpClient, Guid id, CancellationToken cancellationToken) =>
     httpClient.GetAsync($"/users/{id}", cancellationToken)
-        .HandleNotFoundAsync(Error.NotFound("User not found.", id.ToString()))
+        .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found." })
         .EnsureSuccessAsync()
         .ReadResultFromJsonAsync(UserJsonContext.Default.UserResponse, cancellationToken);
 
@@ -323,8 +323,8 @@ public sealed record CreateInvoice(string Number, decimal Amount) : IAuthorize, 
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Number)
-            ? Result.Fail(Error.Validation("Invoice number is required.", "number"))
-            : Result.Ensure(Amount > 0m, Error.Validation("Amount must be positive.", "amount"));
+            ? Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("number"), "required") { Detail = "Invoice number is required." })))
+            : Result.Ensure(Amount > 0m, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("amount"), "must_be_positive") { Detail = "Amount must be positive." })));
 }
 ```
 
@@ -339,5 +339,5 @@ public sealed record CreateInvoice(string Number, decimal Amount) : IAuthorize, 
 | `MapScalarApiReference()` is a Trellis API | It appears only in the sample MVC app setup |
 | `UseScalarValueValidation()` can be placed anywhere | Register it before routing/endpoints that deserialize request bodies |
 | `IAuthorize.RequiredPermissions` is mutable or loosely typed | Its type is `IReadOnlyList<string>` |
-| `IValidate.Validate()` returns `Result<Unit>` | Its declared return type is `IResult` |
+| `IValidate.Validate()` returns `Result` | Its declared return type is `IResult` |
 

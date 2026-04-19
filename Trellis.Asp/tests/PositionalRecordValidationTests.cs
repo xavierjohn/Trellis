@@ -31,7 +31,7 @@ public class PositionalRecordValidationTests
         private ProductName(string value) : base(value) { }
         public static Result<ProductName> TryCreate(string? value, string? fieldName = null) =>
             string.IsNullOrWhiteSpace(value)
-                ? Result.Fail<ProductName>(Error.Validation("Product name is required.", fieldName ?? "productName"))
+                ? Result.Fail<ProductName>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productName"), "validation.error") { Detail = "Product name is required." })))
                 : Result.Ok(new ProductName(value));
     }
 
@@ -41,7 +41,7 @@ public class PositionalRecordValidationTests
         public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
             value > 0
                 ? Result.Ok(new Quantity(value))
-                : Result.Fail<Quantity>(Error.Validation("Quantity must be positive.", fieldName ?? "quantity"));
+                : Result.Fail<Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "quantity"), "validation.error") { Detail = "Quantity must be positive." })));
         public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -52,7 +52,7 @@ public class PositionalRecordValidationTests
         public static Result<Price> TryCreate(decimal value, string? fieldName = null) =>
             value >= 0
                 ? Result.Ok(new Price(value))
-                : Result.Fail<Price>(Error.Validation("Price cannot be negative.", fieldName ?? "price"));
+                : Result.Fail<Price>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "price"), "validation.error") { Detail = "Price cannot be negative." })));
         public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -104,9 +104,9 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "explicit JSON null for a required string VO in a positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            var fieldError = error!.FieldErrors.Should().ContainSingle(e => e.FieldName == "name").Subject;
-            fieldError.Details.Should().Contain("ProductName cannot be null.",
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var fieldError = error!.Fields.Items.Should().ContainSingle(e => e.Field.Path == "/name").Subject;
+            fieldError.Detail.Should().Contain("ProductName cannot be null.",
                 "explicit null should be caught by the converter, not the OnDeserialized fallback");
         }
     }
@@ -123,9 +123,9 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "explicit JSON null for a required int VO in a positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            var fieldError = error!.FieldErrors.Should().ContainSingle(e => e.FieldName == "quantity").Subject;
-            fieldError.Details.Should().Contain("Quantity cannot be null.",
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var fieldError = error!.Fields.Items.Should().ContainSingle(e => e.Field.Path == "/quantity").Subject;
+            fieldError.Detail.Should().Contain("Quantity cannot be null.",
                 "explicit null should be caught by the converter, not the OnDeserialized fallback");
         }
     }
@@ -142,15 +142,15 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "all null VO properties in a positional record should produce validation errors");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().HaveCount(3,
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().HaveCount(3,
                 "each null scalar VO constructor parameter should produce a separate field error");
-            error.FieldErrors.Should().Contain(e =>
-                e.FieldName == "name" && e.Details.Any(d => d.Contains("ProductName cannot be null.")));
-            error.FieldErrors.Should().Contain(e =>
-                e.FieldName == "quantity" && e.Details.Any(d => d.Contains("Quantity cannot be null.")));
-            error.FieldErrors.Should().Contain(e =>
-                e.FieldName == "price" && e.Details.Any(d => d.Contains("Price cannot be null.")));
+            error.Fields.Items.Should().Contain(e =>
+                e.Field.Path == "/name" && e.Detail!.Contains("ProductName cannot be null."));
+            error.Fields.Items.Should().Contain(e =>
+                e.Field.Path == "/quantity" && e.Detail!.Contains("Quantity cannot be null."));
+            error.Fields.Items.Should().Contain(e =>
+                e.Field.Path == "/price" && e.Detail!.Contains("Price cannot be null."));
         }
     }
 
@@ -171,8 +171,8 @@ public class PositionalRecordValidationTests
             // Name is missing entirely — the constructor parameter should not silently be null
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "a missing required string VO in a positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().Contain(e => e.FieldName == "name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
         }
     }
 
@@ -188,8 +188,8 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "a missing required int VO in a positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().Contain(e => e.FieldName == "quantity");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().Contain(e => e.Field.Path == "/quantity");
         }
     }
 
@@ -205,11 +205,11 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an empty JSON object for a positional record with required VOs should produce validation errors");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().HaveCount(3);
-            error.FieldErrors.Should().Contain(e => e.FieldName == "name");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "quantity");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "price");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().HaveCount(3);
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/quantity");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/price");
         }
     }
 
@@ -249,9 +249,9 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an invalid value object in a positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/name");
         }
     }
 
@@ -266,26 +266,26 @@ public class PositionalRecordValidationTests
         var json = """{"Name": null, "Quantity": null, "Price": null}""";
 
         // Deserialize property-syntax record
-        ValidationError? propertyError;
+        Error.UnprocessableContent? propertyError;
         using (ValidationErrorsContext.BeginScope())
         {
             JsonSerializer.Deserialize<PropertyDto>(json, options);
-            propertyError = ValidationErrorsContext.GetValidationError();
+            propertyError = ValidationErrorsContext.GetUnprocessableContent();
         }
 
         // Deserialize positional record
-        ValidationError? positionalError;
+        Error.UnprocessableContent? positionalError;
         using (ValidationErrorsContext.BeginScope())
         {
             JsonSerializer.Deserialize<PositionalDto>(json, options);
-            positionalError = ValidationErrorsContext.GetValidationError();
+            positionalError = ValidationErrorsContext.GetUnprocessableContent();
         }
 
         // Both should produce the same validation errors
         propertyError.Should().NotBeNull("property-syntax record should collect validation errors");
         positionalError.Should().NotBeNull("positional record should collect validation errors");
 
-        positionalError!.FieldErrors.Should().HaveSameCount(propertyError!.FieldErrors,
+        positionalError!.Fields.Items.Should().HaveSameCount(propertyError!.Fields.Items,
             "positional and property-syntax records should produce the same number of validation errors");
     }
 
@@ -332,9 +332,9 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "explicit null for a single-param positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/name");
         }
     }
 
@@ -350,9 +350,9 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "missing property for a single-param positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/name");
         }
     }
 
@@ -416,11 +416,11 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "explicit JSON null for a scalar VO should produce a validation error even when the property is nullable");
-            var error = ValidationErrorsContext.GetValidationError();
-            var fieldError = error!.FieldErrors.Should().ContainSingle()
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var fieldError = error!.Fields.Items.Should().ContainSingle()
                 .Which;
-            fieldError.FieldName.Should().Be("optionalPrice");
-            fieldError.Details.Should().Contain("Price cannot be null.",
+            fieldError.Field.Path.Should().Be("/optionalPrice");
+            fieldError.Detail.Should().Contain("Price cannot be null.",
                 "explicit null should be caught by the converter, not the OnDeserialized fallback");
         }
     }
@@ -461,10 +461,10 @@ public class PositionalRecordValidationTests
             // OptionalPrice (nullable) should NOT produce a validation error
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "missing non-nullable VO should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle(
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle(
                 "only the non-nullable required VO should produce a validation error, not the nullable one")
-                .Which.FieldName.Should().Be("name");
+                .Which.Field.Path.Should().Be("/name");
         }
     }
 

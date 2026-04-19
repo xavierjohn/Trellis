@@ -22,7 +22,7 @@ Expanding a `Result<T>` in the debugger shows a structured proxy view:
 | `Value` — the wrapped value | `Error` — the `Error` object |
 | | `Code` — e.g. `"validation.error"` |
 | | `Detail` — e.g. `"Email is invalid"` |
-| | `ErrorType` — e.g. `"ValidationError"` |
+| | `ErrorType` — e.g. `"Error.UnprocessableContent"` |
 | | `Instance` — optional correlation ID |
 
 ### Error
@@ -33,7 +33,7 @@ Display:  Email address is not valid.
 
 The base `Error` type shows its `Detail` property directly.
 
-### ValidationError
+### Error.UnprocessableContent
 
 ```
 Display:  Validation: 2 field(s) — Email address is not valid; First name is required.
@@ -48,7 +48,7 @@ Expanding shows each field as a structured entry:
 
 Each field entry expands to its `Details` array of individual error messages.
 
-### AggregateError
+### Error.Aggregate
 
 ```
 Display:  Aggregate: 3 error(s)
@@ -57,9 +57,9 @@ Display:  Aggregate: 3 error(s)
 Expanding shows each contained error with its type:
 
 ```
-▶ ValidationError: Email is invalid
-▶ NotFoundError: User 123 not found
-▶ ConflictError: Order already exists
+▶ Error.UnprocessableContent: Email is invalid
+▶ Error.NotFound: User 123 not found
+▶ Error.Conflict: Order already exists
 ```
 
 ### Maybe\<T\>
@@ -104,7 +104,7 @@ spans, making it visible in .NET Aspire, Application Insights, Jaeger, and simil
 | Method | What it does |
 |--------|-------------|
 | `.Debug("label")` | Logs status + value/error as Activity tags |
-| `.DebugDetailed("label")` | Same as `Debug` plus error type, `ValidationError` fields, `AggregateError` contents |
+| `.DebugDetailed("label")` | Same as `Debug` plus error type, `Error.UnprocessableContent` fields, `Error.Aggregate` contents |
 | `.DebugWithStack("label")` | Same as `Debug` plus up to 10 stack frames |
 | `.DebugOnSuccess(v => …)` | Runs a custom action (only on success) |
 | `.DebugOnFailure(err => …)` | Runs a custom action (only on failure) |
@@ -116,7 +116,7 @@ All methods have `Task` and `ValueTask` async variants (`DebugAsync`, `DebugDeta
 ```csharp
 var result = GetUser(id)
     .Debug("After GetUser")
-    .Ensure(u => u.IsActive, Error.Validation("Inactive"))
+    .Ensure(u => u.IsActive, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Inactive" })
     .Debug("After Ensure")
     .Bind(ProcessUser)
     .DebugDetailed("Final result");
@@ -146,7 +146,7 @@ var result = await GetUserAsync(id)
 ```csharp
 var result = await GetUserAsync(id)
     .TapAsync(u => _logger.LogDebug("Found user: {Id}", u.Id))
-    .EnsureAsync(u => u.IsActive, Error.Validation("User inactive"))
+    .EnsureAsync(u => u.IsActive, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "User inactive" })
     .TapOnFailureAsync(err => _logger.LogWarning("Validation failed: {Error}", err.Detail))
     .BindAsync(u => GetOrdersAsync(u.Id))
     .TapAsync(orders => _logger.LogDebug("Found {Count} orders", orders.Count))
@@ -157,20 +157,20 @@ var result = await GetUserAsync(id)
 
 ```csharp
 var result = await GetUserAsync(id)
-    .ToResultAsync(Error.NotFound($"User {id} not found"))
-    .EnsureAsync(u => u.IsActive, Error.Validation("User account is inactive", "isActive"))
+    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
+    .EnsureAsync(u => u.IsActive, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("isActive"), "validation.error") { Detail = "User account is inactive" })))
     .BindAsync(u => GetOrdersAsync(u.Id))
-    .EnsureAsync(orders => orders.Any(), Error.NotFound($"No orders for user {id}"));
+    .EnsureAsync(orders => orders.Any(), new Error.NotFound(new ResourceRef("Resource")) { Detail = $"No orders for user {id}" });
 ```
 
 **Break the chain into named variables for breakpoints:**
 
 ```csharp
 var userResult = await GetUserAsync(id)
-    .ToResultAsync(Error.NotFound("User not found"));
+    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = "User not found" });
 
 var activeResult = userResult
-    .Ensure(u => u.IsActive, Error.Validation("Inactive"));
+    .Ensure(u => u.IsActive, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Inactive" });
 
 var ordersResult = await activeResult
     .BindAsync(u => GetOrdersAsync(u.Id));
@@ -194,8 +194,8 @@ var result = await GetUserAsync(id)
 ### Combine error inspection
 
 `Combine` aggregates all errors. The debugger proxy makes inspection easy —
-expand the error to see if it's a `ValidationError` (merged fields) or an
-`AggregateError` (mixed types). You can also log them:
+expand the error to see if it's a `Error.UnprocessableContent` (merged fields) or an
+`Error.Aggregate` (mixed types). You can also log them:
 
 ```csharp
 var result = EmailAddress.TryCreate(email)
@@ -203,10 +203,10 @@ var result = EmailAddress.TryCreate(email)
     .Combine(LastName.TryCreate(lastName))
     .TapOnFailure(error =>
     {
-        if (error is AggregateError agg)
+        if (error is Error.Aggregate agg)
             foreach (var err in agg.Errors)
                 _logger.LogWarning("{Type}: {Detail}", err.GetType().Name, err.Detail);
-        else if (error is ValidationError val)
+        else if (error is Error.UnprocessableContent val)
             foreach (var field in val.FieldErrors)
                 _logger.LogWarning("{Field}: {Details}", field.FieldName, string.Join(", ", field.Details));
         else
@@ -270,7 +270,7 @@ public void Should_Fail_With_Validation_Error()
     var result = ProcessOrder(invalidOrder);
 
     result.IsFailure.Should().BeTrue();
-    result.Error.Should().BeOfType<ValidationError>();
+    result.Error.Should().BeOfType<Error.UnprocessableContent>();
     result.Error.Detail.Should().Contain("invalid quantity");
 }
 ```
@@ -281,12 +281,12 @@ public void Should_Fail_With_Validation_Error()
 // Compose from testable pieces
 public Result<User> GetActiveUser(string id) =>
     GetUser(id)
-        .Ensure(u => u.IsActive, Error.Validation("User is inactive"));
+        .Ensure(u => u.IsActive, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "User is inactive" });
 
 public Result<User> ValidateEmail(User user) =>
     user.Email.Value.Contains('@')
         ? Result.Ok(user)
-        : Result.Fail<User>(Error.Validation("Invalid email", "email"));
+        : Result.Fail<User>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" })));
 
 // Compose
 public Result<User> ValidateAndProcess(string id) =>

@@ -56,5 +56,5 @@ dotnet_diagnostic.TRLS004.severity = none
 ```
 
 > [!TIP]
-> When you need to translate both branches, `Match` and `MatchError` usually keep the code cleaner than a manual `Error` read.
+> When you need to translate both branches, `Match` (with a `switch` expression on the closed `Error` ADT) usually keep the code cleaner than a manual `Error` read.
 

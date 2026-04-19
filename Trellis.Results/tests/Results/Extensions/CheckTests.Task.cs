@@ -23,7 +23,7 @@ public class Check_Task_Tests
     [Fact]
     public async Task CheckAsync_TaskBoth_Success_CheckFails_ReturnsCheckFailure()
     {
-        var error = Error.Validation("check failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "check failed" };
 
         var result = await Task.FromResult(Result.Ok("hello"))
             .CheckAsync(v => Task.FromResult(Result.Fail<int>(error)));
@@ -34,7 +34,7 @@ public class Check_Task_Tests
     [Fact]
     public async Task CheckAsync_TaskBoth_Failure_CheckNotInvoked()
     {
-        var error = Error.Unexpected("original error");
+        var error = new Error.InternalServerError("test") { Detail = "original error" };
         var funcInvoked = false;
 
         var result = await Task.FromResult(Result.Fail<string>(error))
@@ -60,7 +60,7 @@ public class Check_Task_Tests
     [Fact]
     public async Task CheckAsync_TaskLeft_Success_CheckFails_ReturnsCheckFailure()
     {
-        var error = Error.Validation("check failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "check failed" };
 
         var result = await Task.FromResult(Result.Ok("hello"))
             .CheckAsync((string v) => Result.Fail<int>(error));
@@ -71,7 +71,7 @@ public class Check_Task_Tests
     [Fact]
     public async Task CheckAsync_TaskLeft_Failure_CheckNotInvoked()
     {
-        var error = Error.Unexpected("original error");
+        var error = new Error.InternalServerError("test") { Detail = "original error" };
         var funcInvoked = false;
 
         var result = await Task.FromResult(Result.Fail<string>(error))
@@ -97,7 +97,7 @@ public class Check_Task_Tests
     [Fact]
     public async Task CheckAsync_TaskRight_Success_CheckFails_ReturnsCheckFailure()
     {
-        var error = Error.Validation("check failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "check failed" };
 
         var result = await Result.Ok("hello")
             .CheckAsync(v => Task.FromResult(Result.Fail<int>(error)));
@@ -108,7 +108,7 @@ public class Check_Task_Tests
     [Fact]
     public async Task CheckAsync_TaskRight_Failure_CheckNotInvoked()
     {
-        var error = Error.Unexpected("original error");
+        var error = new Error.InternalServerError("test") { Detail = "original error" };
         var funcInvoked = false;
 
         var result = await Result.Fail<string>(error)

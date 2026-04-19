@@ -182,7 +182,7 @@ public class AddResourceAuthorizationTests
         public IResult Authorize(Actor actor, TestAuthResource resource) =>
             actor.Id == resource.OwnerId
                 ? Result.Ok()
-                : Result.Fail(Error.Forbidden("Not the owner"));
+                : Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Not the owner" });
     }
 
     private sealed class TestAuthResourceLoader(TestAuthResource resource)
@@ -321,7 +321,7 @@ public class AddResourceAuthorizationScanTests
         public IResult Authorize(Actor actor, ScanTestResource resource) =>
             actor.Id == resource.OwnerId
                 ? Result.Ok()
-                : Result.Fail(Error.Forbidden("Not the owner"));
+                : Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Not the owner" });
     }
 
     public sealed record ScanTestQuery(string ResourceId)
@@ -330,7 +330,7 @@ public class AddResourceAuthorizationScanTests
         public IResult Authorize(Actor actor, ScanTestResource resource) =>
             actor.Id == resource.OwnerId
                 ? Result.Ok()
-                : Result.Fail(Error.Forbidden("Not the owner"));
+                : Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Not the owner" });
     }
 
     public abstract record AbstractScanCommand(string ResourceId)

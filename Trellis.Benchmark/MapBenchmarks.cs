@@ -17,7 +17,7 @@ public class MapBenchmarks
     public void Setup()
     {
         _successResult = Result.Ok(42);
-        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
+        _failureResult = Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Test error" });
     }
 
     [Benchmark(Baseline = true)]

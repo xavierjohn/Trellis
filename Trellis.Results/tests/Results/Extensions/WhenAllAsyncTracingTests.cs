@@ -150,21 +150,21 @@ public class WhenAllAsyncTracingTests : TestBase
     {
         var data = new TheoryData<string, Func<Task>>();
 
-        data.Add("2-tuple first failure", async () => await (Task.FromResult(Result.Fail<int>(Error.NotFound("Not found"))), Task.FromResult(Result.Ok(2))).WhenAllAsync());
-        data.Add("3-tuple one failure", async () => await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Fail<int>(Error.Validation("Invalid"))), Task.FromResult(Result.Ok(3))).WhenAllAsync());
+        data.Add("2-tuple first failure", async () => await (Task.FromResult(Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" })), Task.FromResult(Result.Ok(2))).WhenAllAsync());
+        data.Add("3-tuple one failure", async () => await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid" })), Task.FromResult(Result.Ok(3))).WhenAllAsync());
         data.Add("3-tuple all failure", async () => await (
-            Task.FromResult(Result.Fail<int>(Error.Validation("Error 1"))),
-            Task.FromResult(Result.Fail<int>(Error.Validation("Error 2"))),
-            Task.FromResult(Result.Fail<int>(Error.Validation("Error 3")))).WhenAllAsync());
+            Task.FromResult(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error 1" })),
+            Task.FromResult(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error 2" })),
+            Task.FromResult(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error 3" }))).WhenAllAsync());
         data.Add("9-tuple multiple failure", async () => await (
             Task.FromResult(Result.Ok(1)),
-            Task.FromResult(Result.Fail<int>(Error.Validation("Error 2"))),
+            Task.FromResult(Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Error 2" })),
             Task.FromResult(Result.Ok(3)),
             Task.FromResult(Result.Ok(4)),
-            Task.FromResult(Result.Fail<int>(Error.NotFound("Error 5"))),
+            Task.FromResult(Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Error 5" })),
             Task.FromResult(Result.Ok(6)),
             Task.FromResult(Result.Ok(7)),
-            Task.FromResult(Result.Fail<int>(Error.Conflict("Error 8"))),
+            Task.FromResult(Result.Fail<int>(new Error.Conflict(null, "conflict") { Detail = "Error 8" })),
             Task.FromResult(Result.Ok(9))).WhenAllAsync());
 
         return data;

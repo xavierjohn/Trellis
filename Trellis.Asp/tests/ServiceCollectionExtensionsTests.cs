@@ -29,7 +29,7 @@ public class ServiceCollectionExtensionsTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestName>(Error.Validation("Name is required.", field));
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestName>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Name is required." })));
             return Result.Ok(new TestName(value));
         }
     }
@@ -42,9 +42,9 @@ public class ServiceCollectionExtensionsTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(Error.Validation("Email is required.", field));
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(Error.Validation("Email must contain @.", field));
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
             return Result.Ok(new TestEmail(value));
         }
     }
@@ -55,7 +55,7 @@ public class ServiceCollectionExtensionsTests
 
         public static Result<TestAge> TryCreate(int value, string? fieldName = null) =>
             value is < 0 or > 150
-                ? Result.Fail<TestAge>(Error.Validation("Age must be between 0 and 150.", fieldName ?? "age"))
+                ? Result.Fail<TestAge>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "age"), "validation.error") { Detail = "Age must be between 0 and 150." })))
                 : Result.Ok(new TestAge(value));
         public static Result<TestAge> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -347,7 +347,7 @@ public class ServiceCollectionExtensionsTests
             // Assert
             result.Should().NotBeNull();
             result!.Value.Should().Be("John");
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
         }
     }
 
@@ -371,10 +371,10 @@ public class ServiceCollectionExtensionsTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Name");
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Name");
         }
     }
 
@@ -399,7 +399,7 @@ public class ServiceCollectionExtensionsTests
             result!.Name.Value.Should().Be("John");
             result.Email.Value.Should().Be("john@example.com");
             result.Age.Value.Should().Be(30);
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
         }
     }
 
@@ -420,12 +420,12 @@ public class ServiceCollectionExtensionsTests
             var result = JsonSerializer.Deserialize<MultipleValueObjectsDto>(json, httpOptions.Value.SerializerOptions);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(3);
-            error.FieldErrors.Should().Contain(e => e.FieldName == "name");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "email");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "age");
+            error!.Fields.Items.Should().HaveCount(3);
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/email");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/age");
         }
     }
 
@@ -450,7 +450,7 @@ public class ServiceCollectionExtensionsTests
             result!.Name.Value.Should().Be("Product");
             result.Description.Should().Be("A great product");
             result.Count.Should().Be(5);
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
         }
     }
 
@@ -475,7 +475,7 @@ public class ServiceCollectionExtensionsTests
             result!.Name.Value.Should().Be("John");
             result.Address.Street.Value.Should().Be("123 Main St");
             result.Address.City.Value.Should().Be("New York");
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
         }
     }
 
@@ -496,12 +496,12 @@ public class ServiceCollectionExtensionsTests
             var result = JsonSerializer.Deserialize<NestedDto>(json, httpOptions.Value.SerializerOptions);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCountGreaterOrEqualTo(2);
+            error!.Fields.Items.Should().HaveCountGreaterOrEqualTo(2);
             // Nested properties get their field names from the JSON property names (lowercase)
-            error.FieldErrors.Should().Contain(e => e.FieldName == "street");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "city");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/street");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/city");
         }
     }
 
@@ -525,11 +525,11 @@ public class ServiceCollectionExtensionsTests
             result.Should().NotBeNull();
             result!.Name.Should().BeNull();
             result.Email.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull("explicit JSON null for scalar VOs should produce validation errors");
-            error!.FieldErrors.Should().HaveCount(2);
-            error.FieldErrors.Should().Contain(e => e.FieldName == "name");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "email");
+            error!.Fields.Items.Should().HaveCount(2);
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/email");
         }
     }
 
@@ -555,7 +555,7 @@ public class ServiceCollectionExtensionsTests
             result.Name!.Value.Should().Be("John");
             result.Email.Should().NotBeNull();
             result.Email!.Value.Should().Be("john@example.com");
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
         }
     }
 
@@ -576,9 +576,9 @@ public class ServiceCollectionExtensionsTests
             var result = JsonSerializer.Deserialize<NullableValueObjectDto>(json, httpOptions.Value.SerializerOptions);
 
             // Assert
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(2);
+            error!.Fields.Items.Should().HaveCount(2);
         }
     }
 

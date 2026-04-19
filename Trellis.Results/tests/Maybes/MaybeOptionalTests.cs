@@ -111,14 +111,14 @@ public class MaybeOptionalTests
     {
         // Arrange
         string? value = "invalid";
-        var expectedError = Error.Validation("Value is invalid", "field");
+        var expectedError = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Value is invalid" }));
 
         // Act
         var result = Maybe.Optional(value, str => Result.Fail<string>(expectedError));
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(expectedError);
+        result.Error!.Should().Be(expectedError);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class MaybeOptionalTests
     {
         // Arrange
         int? value = -5;
-        var expectedError = Error.Validation("Value must be positive", "number");
+        var expectedError = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("number"), "validation.error") { Detail = "Value must be positive" }));
 
         // Act
         var result = Maybe.Optional<int, WrappedInt>(value, num =>
@@ -136,7 +136,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(expectedError);
+        result.Error!.Should().Be(expectedError);
     }
 
     #endregion
@@ -153,7 +153,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(email, str =>
             str.Contains('@')
                 ? Result.Ok(str.ToLowerInvariant())
-                : Result.Fail<string>(Error.Validation("Invalid email")));
+                : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid email" }));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -171,7 +171,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(email, str =>
             str.Contains('@')
                 ? Result.Ok(str.ToLowerInvariant())
-                : Result.Fail<string>(Error.Validation("Invalid email")));
+                : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid email" }));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -188,11 +188,11 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(email, str =>
             str.Contains('@')
                 ? Result.Ok(str.ToLowerInvariant())
-                : Result.Fail<string>(Error.Validation("Invalid email")));
+                : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid email" }));
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     #endregion
@@ -242,7 +242,7 @@ public class MaybeOptionalTests
         // Arrange
         string firstName = "John";
         string? invalidValue = "bad";
-        var validationError = Error.Validation("Invalid value", "field");
+        var validationError = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Invalid value" }));
 
         // Act
         var result = Result.Ok(firstName)
@@ -250,7 +250,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     #endregion

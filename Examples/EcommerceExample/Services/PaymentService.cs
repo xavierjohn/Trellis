@@ -15,7 +15,7 @@ public class PaymentService
     {
         return await Task.FromResult(ValidateCardNumber(cardNumber)
             .Combine(ValidateCVV(cvv))
-            .Ensure(() => order.Total.Amount >= 0.01m, Error.Validation("Payment amount must be at least 0.01")))
+            .Ensure(() => order.Total.Amount >= 0.01m, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Payment amount must be at least 0.01" }))
             .BindAsync(async () => await ChargeCardAsync(order.Total, cardNumber, cancellationToken))
             .TapAsync(async transactionId => await LogPaymentSuccessAsync(order.Id, transactionId, cancellationToken))
             .TapOnFailureAsync(async error => await LogPaymentFailureAsync(order.Id, error, cancellationToken));
@@ -24,7 +24,7 @@ public class PaymentService
     public async Task<Result> RefundPaymentAsync(string transactionId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(transactionId))
-            return Result.Fail(Error.Validation("Transaction ID is required"));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Transaction ID is required" });
 
         await Task.Delay(100, cancellationToken); // Simulate API call
 
@@ -34,12 +34,12 @@ public class PaymentService
     private static Result ValidateCardNumber(string cardNumber)
     {
         if (string.IsNullOrWhiteSpace(cardNumber))
-            return Result.Fail(Error.Validation("Card number is required", nameof(cardNumber)));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(cardNumber)), "validation.error") { Detail = "Card number is required" })));
 
         var digitsOnly = new string(cardNumber.Where(char.IsDigit).ToArray());
 
         if (digitsOnly.Length is < 13 or > 19)
-            return Result.Fail(Error.Validation("Card number must be between 13 and 19 digits", nameof(cardNumber)));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(cardNumber)), "validation.error") { Detail = "Card number must be between 13 and 19 digits" })));
 
         return Result.Ok();
     }
@@ -47,10 +47,10 @@ public class PaymentService
     private static Result ValidateCVV(string cvv)
     {
         if (string.IsNullOrWhiteSpace(cvv))
-            return Result.Fail(Error.Validation("CVV is required", nameof(cvv)));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(cvv)), "validation.error") { Detail = "CVV is required" })));
 
         if (cvv.Length < 3 || cvv.Length > 4 || !cvv.All(char.IsDigit))
-            return Result.Fail(Error.Validation("CVV must be 3 or 4 digits", nameof(cvv)));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(cvv)), "validation.error") { Detail = "CVV must be 3 or 4 digits" })));
 
         return Result.Ok();
     }
@@ -61,10 +61,10 @@ public class PaymentService
 
         // Simulate occasional failures
         if (cardNumber.EndsWith("0000", StringComparison.Ordinal))
-            return Result.Fail<string>(Error.Validation("Card declined - insufficient funds"));
+            return Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Card declined - insufficient funds" });
 
         if (cardNumber.EndsWith("9999", StringComparison.Ordinal))
-            return Result.Fail<string>(Error.Unexpected("Payment gateway timeout"));
+            return Result.Fail<string>(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "Payment gateway timeout" });
 
         return Result.Ok($"TXN-{Guid.NewGuid():N}");
     }

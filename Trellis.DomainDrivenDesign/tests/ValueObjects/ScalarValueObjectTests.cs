@@ -1,6 +1,7 @@
 namespace Trellis.DomainDrivenDesign.Tests.ValueObjects;
 
 using System.Collections.Generic;
+using System.Globalization;
 
 public class ScalarValueObjectTests
 {
@@ -372,9 +373,9 @@ public class ScalarValueObjectTests
         var guid = Guid.Parse("01234567-89ab-cdef-0123-456789abcdef");
         var customerId = new CustomerId(guid);
 
-        var error = Error.NotFound("Customer not found.", customerId);
+        var error = new Error.NotFound(new ResourceRef("Resource", customerId.ToString(CultureInfo.InvariantCulture))) { Detail = "Customer not found." };
 
-        error.Instance.Should().Be("01234567-89ab-cdef-0123-456789abcdef");
+        error.Resource.Id.Should().Be("01234567-89ab-cdef-0123-456789abcdef");
     }
 
     [Fact]
@@ -382,9 +383,9 @@ public class ScalarValueObjectTests
     {
         var quantity = new Quantity(42);
 
-        var error = Error.Domain("Insufficient quantity.", quantity);
+        var error = new Error.Conflict(null, quantity.ToString(CultureInfo.InvariantCulture)) { Detail = "Insufficient quantity." };
 
-        error.Instance.Should().Be("42");
+        error.ReasonCode.Should().Be("42");
     }
 
     [Fact]
@@ -392,9 +393,9 @@ public class ScalarValueObjectTests
     {
         var money = new MoneySimple(1234.56m);
 
-        var error = Error.Conflict("Amount mismatch.", money);
+        var error = new Error.Conflict(null, money.ToString(CultureInfo.InvariantCulture)) { Detail = "Amount mismatch." };
 
-        error.Instance.Should().Be("1234.56");
+        error.ReasonCode.Should().Be("1234.56");
     }
 
     #endregion

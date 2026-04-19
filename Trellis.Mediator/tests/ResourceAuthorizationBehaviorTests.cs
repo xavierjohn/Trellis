@@ -46,7 +46,7 @@ public class ResourceAuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ForbiddenError>();
+        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
         result.UnwrapError().Detail.Should().Contain("Only the resource owner");
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when authorization fails");
     }
@@ -66,7 +66,7 @@ public class ResourceAuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<Error.NotFound>();
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when resource is not found");
     }
 
@@ -134,7 +134,7 @@ public class ResourceAuthorizationBehaviorTests
     [Fact]
     public async Task Handle_LoaderReturnsCustomError_ErrorIsPreserved()
     {
-        var notFoundError = Error.NotFound("Order 'xyz' was not found.", "OrderId");
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", "OrderId"?.ToString())) { Detail = "Order 'xyz' was not found." };
         var behavior = CreateBehavior<ResourceOwnerCommand>("owner-1", resource: null, notFoundError: notFoundError);
         var command = new ResourceOwnerCommand("xyz");
         var (next, _) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
@@ -320,7 +320,7 @@ public class ResourceAuthorizationBehaviorTests
         public FakeResourceLoader(TestResource? resource, Error? notFoundError = null)
         {
             _resource = resource;
-            _notFoundError = notFoundError ?? Error.NotFound("Resource not found.");
+            _notFoundError = notFoundError ?? new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found." };
         }
 
         public Task<Result<TestResource>> LoadAsync(TMessage message, CancellationToken cancellationToken)

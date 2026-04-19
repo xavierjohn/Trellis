@@ -33,8 +33,8 @@ using Trellis.Testing;
 var success = Result.Ok(42);
 success.Should().BeSuccess().Which.Should().Be(42);
 
-var failure = Result.Fail<int>(Error.NotFound("Order 123 not found", "123"));
-failure.Should().BeFailureOfType<NotFoundError>();
+var failure = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", "123")) { Detail = "Order 123 not found" });
+failure.Should().BeFailureOfType<Error.NotFound>();
 failure.Should().HaveErrorCode("not.found.error");
 failure.Should().HaveErrorDetail("Order 123 not found");
 ```
@@ -74,7 +74,7 @@ maybeName.Should().HaveValue().Which.Should().Be("Ada");
 var none = Maybe<string>.None;
 none.Should().BeNone();
 
-var error = Error.Validation("Email is required.", "email");
+var error = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required." }));
 error.Should().HaveCode("validation.error");
 error.Should().HaveDetailContaining("required");
 ```
@@ -110,9 +110,9 @@ repo.Count.Should().Be(1);
 
 Important details from the current API:
 
-- `SaveAsync` returns `Task<Result<Unit>>`
-- `DeleteAsync` returns `Task<Result<Unit>>`
-- unique constraint conflicts return `ConflictError`
+- `SaveAsync` returns `Task<Result>`
+- `DeleteAsync` returns `Task<Result>`
+- unique constraint conflicts return `Error.Conflict`
 - missing aggregates use details like `"{AggregateTypeName} with ID {id} not found"`
 
 ## `TestActorProvider`: authorization tests without plumbing
@@ -147,11 +147,11 @@ Use the standard `Result` and `Error` factory methods directly — no special te
 using Trellis;
 
 var success = Result.Ok(42);
-var notFound = Result.Fail<int>(Error.NotFound("Order 123 not found", "123"));
-var forbidden = Result.Fail<int>(Error.Forbidden("Not allowed."));
+var notFound = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", "123")) { Detail = "Order 123 not found" });
+var forbidden = Result.Fail<int>(new Error.Forbidden("policy.id") { Detail = "Not allowed." });
 ```
 
-`Error.NotFound("Order 123 not found", "123")` produces:
+`new Error.NotFound(new ResourceRef("Resource", "123")) { Detail = "Order 123 not found" }` produces:
 
 - detail: `Order 123 not found`
 - instance: `123`

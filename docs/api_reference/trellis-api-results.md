@@ -8,9 +8,9 @@ See also: [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.m
 
 ---
 
-## Breaking changes from v1 (Phase 1a, in progress)
+## Breaking changes from v1 (Phase 1a)
 
-This is the running list of breaking changes the v2 redesign introduces in `Trellis.Results`. Items below are landed; remaining Phase 1a items (removal of implicit operators, non-generic `Result`, abstract `Error` base record, etc.) will be added as they ship. See `v2-redesign-plan.md` §3.1 for the full Phase 1a target.
+Running list of v2 breaking changes in `Trellis.Results`. See `docs/adr/ADR-001-result-api-surface.md` for the full V6 design rationale.
 
 | Change | v1 | v2 | Migration |
 |---|---|---|---|
@@ -21,12 +21,17 @@ This is the running list of breaking changes the v2 redesign introduces in `Trel
 | Conditional factory | `Result.SuccessIf(cond, value, error)` / `Result.SuccessIf(cond, t1, t2, error)` | *(removed)* | Use a ternary: `cond ? Result.Ok(value) : Result.Fail<T>(error)` |
 | Inverse-conditional factory | `Result.FailureIf(cond, value, error)` / `Result.FailureIf(predicate, value, error)` | *(removed)* | Use a ternary: `cond ? Result.Fail<T>(error) : Result.Ok(value)` |
 | Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `await predicate() ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed) |
-| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(Error.Unexpected(ex.Message))` or `Result.Fail<T>(...)` directly. `Result.Try`/`Result.TryAsync` continue to handle exception capture inside their lambdas. |
-| Public `Value` / `Error` properties on `Result<T>` | `result.Value` (throws if failure) / `result.Error` (throws if success) | *(now `internal`; not part of the public surface)* | Replace with one of: `result.TryGetValue(out var v)` / `result.TryGetError(out var e)` for imperative early-return, `result.Match(onSuccess, onFailure)` for transforms producing one value on both branches, `var (v, e) = result;` for destructuring, or — in test code only — `result.Unwrap()` / `result.UnwrapError()` from `Trellis.Testing` (throws `UnwrapFailedException` on wrong state). |
-| Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` (implicit `T → Result<T>` and `Error → Result<T>`) | *(removed)* | Use the explicit factory: `Result.Ok(value)` for success, `Result.Fail<T>(error)` for failure. The compiler now flags every site with CS0029 so the construction is visible at the call site. |
+| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(new Error.InternalServerError(faultId) { Detail = ex.Message, Cause = ... })` or rely on `Result.Try` / `Result.TryAsync` for inline exception capture. |
+| Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
+| Non-generic `Result` for void flows | `Result<Unit>` | `Result` (non-generic struct) | `Result<Unit>` is still accepted for source compat, but new code should write `Result`. `Unit` is retained for tuple-result interop. |
+| `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, …). Closed via `private` constructor; no static factories. | Replace `Error.X("msg")` factories with `new Error.X(payload) { Detail = "msg" }`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.UnprocessableContent`, `Error.NotFound`. See "Error API (V6 closed ADT)" below. |
+| `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.UnprocessableContent uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
+| `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.UnprocessableContent.Fields` and `.Rules`. |
+| `Error.Instance` field | `error.Instance` (string-shaped HTTP vocabulary) | *(removed)* | The ASP wire layer synthesizes `ProblemDetails.Instance` from the request URL plus any `ResourceRef` carried by the typed payload. |
+| Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). `result.Value` remains `public T` and throws on failure (required because `T` may be a struct whose `default` is indistinguishable from a real value). | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Read values with `result.Match(...)` / `result.TryGetValue(out var v)`; only call `.Value` after an `IsSuccess` guard. |
 | `WriteOutcome<T>` package + namespace | `Trellis.Asp.WriteOutcome<T>` (in `Trellis.Asp`) | `Trellis.WriteOutcome<T>` (in `Trellis.Results`) | Replace `using Trellis.Asp;` with `using Trellis;` for any file that names `WriteOutcome<T>` directly. The type, its case records, and member shapes are unchanged; only the assembly and namespace move. ASP-specific extensions (`ToActionResult`, `ToHttpResult`, `ToUpdatedActionResult*`) still live in `Trellis.Asp`. |
 
-The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form. The `SuccessIf`/`FailureIf`/`SuccessIfAsync`/`FailureIfAsync`/`Result.Success(Func<T>)`/`Result.Failure<T>(Func<Error>)`/`Result.FromException` methods have all been removed (this PR); call sites should inline a ternary or invoke the factory directly per the table above.
+The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form.
 
 ---
 
@@ -40,13 +45,15 @@ Base success/failure contract.
 
 | Name | Type | Notes |
 | --- | --- | --- |
-| `IsSuccess` | `bool` | `true` for success results |
-| `IsFailure` | `bool` | `true` for failure results |
-| `Error` | `Error` | Throws when the result is successful |
+| `IsSuccess` | `bool` | `true` for success results. Marked `[MemberNotNullWhen(false, nameof(Error))]`. |
+| `IsFailure` | `bool` | `true` for failure results. Marked `[MemberNotNullWhen(true, nameof(Error))]`. |
+| `Error` | `Error?` | `null` on success; never throws. |
 
 #### Methods
 
-None.
+| Signature | Notes |
+| --- | --- |
+| `bool TryGetError(out Error? error)` | Non-throwing failure extractor. `[NotNullWhen(true)]` on the out parameter. |
 
 #### Factory Methods
 
@@ -96,7 +103,7 @@ None.
 
 ### `public readonly partial struct Result`
 
-Static factory and helper surface for `Result<TValue>` and `Result<Unit>`.
+Static factory and helper surface for `Result<TValue>` and the non-generic `Result` (success/failure for void flows).
 
 #### Properties
 
@@ -107,12 +114,12 @@ None.
 | Signature | Notes |
 | --- | --- |
 | `public static Result<TValue> Ok<TValue>(TValue value)` | Success factory |
-| `public static Result<Unit> Ok()` | Success without payload |
+| `public static Result Ok()` | Success without payload (non-generic `Result`) |
 | `public static Result<TValue> Fail<TValue>(Error error)` | Failure factory |
-| `public static Result<Unit> Fail(Error error)` | Failure without payload |
-| `public static Result<Unit> Ensure(bool flag, Error error)` | Converts a boolean to `Result<Unit>` |
-| `public static Result<Unit> Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
-| `public static Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Error error)` | Async predicate version |
+| `public static Result Fail(Error error)` | Failure without payload (non-generic `Result`) |
+| `public static Result Ensure(bool flag, Error error)` | Converts a boolean to non-generic `Result` |
+| `public static Result Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
+| `public static Task<Result> EnsureAsync(Func<Task<bool>> predicate, Error error)` | Async predicate version |
 | `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures |
 | `public static Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)` | Async exception capture |
 | `public static Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2)` | Combines two results |
@@ -133,8 +140,8 @@ Represents either a successful `TValue` or a failure `Error`.
 
 | Name | Type | Notes |
 | --- | --- | --- |
-| `Value` | `TValue` | Throws when `IsFailure` is `true` |
-| `Error` | `Error` | Throws when `IsSuccess` is `true` |
+| `Value` | `TValue` | Throws `InvalidOperationException` when `IsFailure` is `true`. Required because `TValue` may be a struct whose `default` is indistinguishable from a real value; use `IsSuccess`/`TryGetValue`/`Match` to gate access. |
+| `Error` | `Error?` | `null` on success; never throws. Pattern-match on the value (e.g. `if (result.Error is { } error)`) for imperative branches. |
 | `IsSuccess` | `bool` | Success flag |
 | `IsFailure` | `bool` | Failure flag |
 
@@ -153,10 +160,10 @@ Represents either a successful `TValue` or a failure `Error`.
 
 #### Operators
 
+The implicit conversion operators (`TValue → Result<TValue>`, `Error → Result<TValue>`) were removed in v2. Use `Result.Ok(value)` / `Result.Fail<T>(error)`.
+
 | Signature | Notes |
 | --- | --- |
-| `public static implicit operator Result<TValue>(TValue value)` | Success conversion |
-| `public static implicit operator Result<TValue>(Error error)` | Failure conversion |
 | `public static bool operator ==(Result<TValue> left, Result<TValue> right)` | Equality |
 | `public static bool operator !=(Result<TValue> left, Result<TValue> right)` | Inequality |
 
@@ -168,7 +175,7 @@ Use the static `Result` type.
 
 ### `public record struct Unit`
 
-Represents “no value” for `Result<Unit>`.
+Represents "no value" used for tuple-result interop (e.g. `Result<(Unit, T2)>`). For void-style success/failure use the non-generic `Result` returned by `Result.Ok()` / `Result.Fail(error)`.
 
 #### Properties
 
@@ -208,17 +215,17 @@ None.
 
 ### `public static class MaybeInvariant`
 
-Multi-field validation helpers for `Maybe<T>` values. Each method returns `Result<Unit>` — success when the invariant holds, or a `ValidationError` with field-level details when it does not. All error codes use `"validation.error"`.
+Multi-field validation helpers for `Maybe<T>` values. Each method returns `Result` (non-generic) — success when the invariant holds, or an `Error.UnprocessableContent` whose `Fields` list carries one `FieldViolation` per offending field. Field paths are normalized via `InputPointer.ForProperty(name)` (RFC 6901 JSON Pointer).
 
 #### Methods
 
 | Signature | Notes |
 | --- | --- |
-| `public static Result<Unit> AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | All fields present or all absent. Arities 2, 3, 4. |
-| `public static Result<Unit> Requires<T1, T2>(Maybe<T1> source, Maybe<T2> required, string sourceFieldName, string requiredFieldName)` | If `source` is present, `required` must be too. Arity 2. |
-| `public static Result<Unit> MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At most one field may be present. Arities 2, 3. |
-| `public static Result<Unit> ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | Exactly one field must be present. Arities 2, 3. |
-| `public static Result<Unit> AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At least one field must be present. Arities 2, 3. |
+| `public static Result AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | All fields present or all absent. Arities 2, 3, 4. |
+| `public static Result Requires<T1, T2>(Maybe<T1> source, Maybe<T2> required, string sourceFieldName, string requiredFieldName)` | If `source` is present, `required` must be too. Arity 2. |
+| `public static Result MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At most one field may be present. Arities 2, 3. |
+| `public static Result ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | Exactly one field must be present. Arities 2, 3. |
+| `public static Result AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At least one field must be present. Arities 2, 3. |
 
 #### Usage
 
@@ -334,68 +341,71 @@ Inherited only.
 
 ---
 
-### `public class Error : IEquatable<Error>`
+### `public abstract record Error`
 
-Base error type for all Trellis failure flows.
+Closed discriminated union of error values. Each case is a nested `sealed record` mirroring an entry from the IANA HTTP Status Code Registry (RFC 9110, RFC 6585) and carrying a strongly-typed payload. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit, which makes `switch` over an `Error` reference exhaustive at the language level. See `docs/adr/ADR-001-result-api-surface.md` for the design rationale.
 
 #### Properties
 
 | Name | Type | Notes |
 | --- | --- | --- |
-| `Code` | `string` | Machine-readable error code |
-| `Detail` | `string` | Human-readable detail |
-| `Instance` | `string?` | Optional instance identifier |
+| `Kind` | `string` | Stable, IANA-aligned slug (e.g. `"not-found"`, `"unprocessable-content"`). Survives CLR renames. Suitable for telemetry, problem-details `type` URI synthesis, and wire serialization. Abstract; each case overrides. |
+| `Code` | `string` | Per-instance machine-readable code. Defaults to `Kind`; cases whose payload carries a per-instance `ReasonCode` (e.g. `Conflict`, `Forbidden`, `BadRequest`, `InternalServerError`) override this. |
+| `Detail` | `string?` | Human-readable detail. Init-only (`Detail = "..."`). Boundary renderer prefers it when non-null; otherwise it computes a localized message from `Kind`/`Code` plus the typed payload. |
+| `Cause` | `Error?` | Structured cause chain. **Never holds a live `System.Exception`** — wrap context as a child `Error`. Cycles are detected at `init` and throw `InvalidOperationException`. |
 
 #### Methods
 
 | Signature | Notes |
 | --- | --- |
-| `public Error(string detail, string code)` | Constructor |
-| `public Error(string detail, string code, string? instance)` | Constructor |
-| `public bool Equals(Error? other)` | **Compares only `Code`** |
-| `public override bool Equals(object? obj)` | Object equality |
-| `public override int GetHashCode()` | **Hashes only `Code`** |
-| `public override string ToString()` | Debug string |
+| `public string GetDisplayMessage()` | Computes the rendered detail. Returns `Detail` when non-null; otherwise composes from `Kind`/`Code` and the typed payload. For an `UnprocessableContent` carrying a single `FieldViolation`, returns just that violation's `Detail`. |
+| `public override bool Equals(object? obj)` / `Equals(Error? other)` | Value equality over discriminator + typed payload + `Detail`. **`Cause` is excluded** so two errors with identical surface payload compare equal regardless of how deeply they were wrapped (mirrors `System.Exception` precedent). Collection-bearing payloads use `EquatableArray<T>` for sequence equality. |
+| `public override int GetHashCode()` | Hash matches `Equals`. |
 
-#### Factory Methods
+#### Construction (no static factory methods)
 
-`Validation`, `BadRequest`, `Conflict`, `PreconditionFailed`, `PreconditionRequired`, `NotFound`, `Unauthorized`, `Forbidden`, `Unexpected`, `Domain`, `RateLimit`, `ServiceUnavailable`, `Gone`, `MethodNotAllowed`, `NotAcceptable`, `UnsupportedMediaType`, `ContentTooLarge`, and `RangeNotSatisfiable`.
-
-Factory families exist in these forms where applicable:
-
-- default-code overloads: `(string detail, string? instance = null)`
-- `IFormattable` instance overloads: `(string detail, TInstance instance) where TInstance : IFormattable`
-- custom-code overloads: `(string detail, string code, string? instance)`
-- special metadata overloads for `RateLimit`, `ServiceUnavailable`, `MethodNotAllowed`, `ContentTooLarge`, and `RangeNotSatisfiable`
+Construct cases directly: `new Error.NotFound(payload) { Detail = "..." }`. The base type intentionally exposes no static `Error.Validation(...)` / `Error.NotFound(...)` helpers — every call site names the case it produces.
 
 ---
 
-### Concrete error types
+### Concrete error cases
 
-Each concrete type mainly exposes constructors plus additional metadata where noted.
+Eighteen nested `sealed record` cases under `Error`. Each case constructor is `internal` from external code's perspective only insofar as the base ctor is `private`; cases themselves are `public sealed record`s and instantiable with `new`.
 
-| Type Declaration | Additional Public Members |
-| --- | --- |
-| `public sealed class ValidationError : Error, IEquatable<ValidationError>` | `ImmutableArray<ValidationError.FieldError> FieldErrors`, `static ValidationError For(string fieldName, string message, string code = "validation.error", string? detail = null, string? instance = null)`, `ValidationError And(string fieldName, string message)`, `ValidationError And(string fieldName, params string[] messages)`, `ValidationError Merge(ValidationError other)` |
-| `public readonly record struct ValidationError.FieldError` | `string FieldName`, `ImmutableArray<string> Details`, constructor from `IEnumerable<string>`, `override string ToString()` |
-| `public sealed class BadRequestError : Error` | constructor only |
-| `public sealed class ConflictError : Error` | constructor only |
-| `public sealed class PreconditionFailedError : Error` | constructor only |
-| `public sealed class PreconditionRequiredError : Error` | constructor only |
-| `public sealed class NotFoundError : Error` | constructor only |
-| `public sealed class UnauthorizedError : Error` | constructor only |
-| `public sealed class ForbiddenError : Error` | constructor only |
-| `public sealed class UnexpectedError : Error` | constructor only |
-| `public sealed class DomainError : Error` | constructor only |
-| `public sealed class GoneError : Error` | constructor only |
-| `public sealed class NotAcceptableError : Error` | constructor only |
-| `public sealed class UnsupportedMediaTypeError : Error` | constructor only |
-| `public sealed class RateLimitError : Error` | `RetryAfterValue? RetryAfter` |
-| `public sealed class ServiceUnavailableError : Error` | `RetryAfterValue? RetryAfter` |
-| `public sealed class MethodNotAllowedError : Error` | `IReadOnlyList<string> AllowedMethods` |
-| `public sealed class ContentTooLargeError : Error` | `RetryAfterValue? RetryAfter` |
-| `public sealed class RangeNotSatisfiableError : Error` | `long CompleteLength`, `string Unit`, `string ContentRangeHeaderValue` |
-| `public sealed class AggregateError : Error` | `IReadOnlyList<Error> Errors`, `ValidationError? FlattenValidationErrors()` |
+| Case | Constructor | Wire status | Notes |
+| --- | --- | --- | --- |
+| `Error.BadRequest` | `(string ReasonCode, InputPointer? At = null)` | 400 | `Code` returns `ReasonCode`; `At` is an optional RFC 6901 JSON Pointer to the offending input. |
+| `Error.Unauthorized` | `(EquatableArray<AuthChallenge> Challenges = default)` | 401 | Round-trips real `WWW-Authenticate` (per RFC 9110 §11.6.1). |
+| `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | 403 | `Code` returns `PolicyId`. |
+| `Error.NotFound` | `(ResourceRef Resource)` | 404 | `Resource` (e.g. `new ResourceRef("Order", "42")`) drives ProblemDetails `instance`. |
+| `Error.MethodNotAllowed` | `(EquatableArray<string> Allow)` | 405 | `Allow` populates the `Allow` response header (RFC 9110 §15.5.6). |
+| `Error.NotAcceptable` | `(EquatableArray<string> Available)` | 406 | Available media types. |
+| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | 409 | `Code` returns `ReasonCode`. |
+| `Error.Gone` | `(ResourceRef Resource)` | 410 | Soft-deleted resource. |
+| `Error.PreconditionFailed` | `(ResourceRef Resource, PreconditionKind Condition)` | 412 | Optimistic concurrency mismatch. `Condition` is the typed precondition kind (`IfMatch`, `IfNoneMatch`, `IfUnmodifiedSince`, `IfModifiedSince`). |
+| `Error.ContentTooLarge` | `(long? MaxBytes = null)` | 413 | |
+| `Error.UnsupportedMediaType` | `(EquatableArray<string> Supported)` | 415 | |
+| `Error.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | 416 | Drives `Content-Range` synthesis. |
+| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | The single domain-validation case — replaces v1's `ValidationError`. Carries both per-field violations and cross-field rule violations. |
+| `Error.PreconditionRequired` | `(PreconditionKind Condition)` | 428 | Missing concurrency token on PUT. |
+| `Error.TooManyRequests` | `(RetryAfterValue? RetryAfter = null)` | 429 | |
+| `Error.InternalServerError` | `(string FaultId)` | 500 | `Code` returns `FaultId`. **Never holds a live `Exception`**; the `FaultId` indexes into the logging/telemetry layer. |
+| `Error.NotImplemented` | `(string Feature)` | 501 | `Code` returns `Feature`. |
+| `Error.ServiceUnavailable` | `(RetryAfterValue? RetryAfter = null)` | 503 | |
+| `Error.Aggregate` | `(EquatableArray<Error> Errors)` | 207 / `extensions.errors` | Composition node. **Disallows `Cause`** (pure composition). Auto-flattens nested `Aggregate` instances at construction. |
+
+#### Supporting types
+
+| Type | Shape | Purpose |
+| --- | --- | --- |
+| `ResourceRef` | `readonly record struct (string Type, string? Id = null)` | Aggregate identity (e.g. `new ResourceRef("Order", "42")`). |
+| `InputPointer` | `readonly record struct (string Path)` | RFC 6901 JSON Pointer (e.g. `/email`). Construct via `InputPointer.ForProperty("email")`. |
+| `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null) { string? Detail }` | Single per-field violation inside `UnprocessableContent.Fields`. |
+| `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null) { string? Detail }` | Multi-field invariant or object-level rule inside `UnprocessableContent.Rules`. |
+| `AuthChallenge` | `sealed record (string Scheme, ImmutableDictionary<string,string>? Params = null)` | Carried by `Unauthorized` to round-trip `WWW-Authenticate`. |
+| `RetryAfterValue` | sealed class, see below | `Retry-After` as delay seconds or absolute date. |
+| `PreconditionKind` | `enum { IfMatch, IfNoneMatch, IfUnmodifiedSince, IfModifiedSince }` | Typed precondition vocabulary. |
+| `EquatableArray<T>` | `readonly record struct (ImmutableArray<T> Items)` | Wraps `ImmutableArray<T>` so records get sequence equality (built-in records compare arrays by reference). Construct with `EquatableArray.Create(...)` or `EquatableArray<T>.Empty`. |
 
 ---
 
@@ -658,17 +668,15 @@ The result API contains a large generated extension surface. Exact public famili
 | --- | --- |
 | `BindExtensions`, `BindExtensionsAsync` | `Bind`/`BindAsync` for `Result<T>` plus generated tuple overloads for arities 2-9 |
 | `BindZipExtensions`, `BindZipExtensionsAsync` | Zips one result into another result-producing function, with sync/`Task`/`ValueTask` combinations and tuple arities |
-| `CheckExtensions`, `CheckExtensionsAsync` | Runs side-effect validations that return `IResult`/`Result<Unit>` while preserving original success value |
+| `CheckExtensions`, `CheckExtensionsAsync` | Runs side-effect validations that return `IResult` / non-generic `Result` while preserving original success value |
 | `CheckIfExtensions`, `CheckIfExtensionsAsync` | Conditional `Check` variants |
 | `CombineExtensions`, `CombineExtensionsAsync`, `CombineErrorExtensions` | Combines results, including tuple and enumerable forms |
-| `DiscardExtensions`, `DiscardTaskExtensions`, `DiscardValueTaskExtensions` | Converts `Result<T>` to `Result<Unit>` |
+| `DiscardExtensions`, `DiscardTaskExtensions`, `DiscardValueTaskExtensions` | Converts `Result<T>` to non-generic `Result` |
 | `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync` | Predicate-based validation on successful values; includes collection-wide validation |
-| `FlattenValidationErrorsExtensions` | Flattens nested validation failures from aggregate results |
 | `GetValueOrDefaultExtensions` | Non-throwing value fallback helpers |
 | `ResultLinqExtensions` | LINQ query syntax support via `Select`/`SelectMany` |
 | `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions` | Success-path mapping, conditional mapping, and failure remapping; tuple overloads generated for arities 2-9 |
-| `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync` | Terminal branching for normal and tuple results |
-| `MatchErrorExtensions`, `MatchErrorExtensionsAsync` | Terminal branching by concrete error subtype |
+| `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync` | Terminal branching for normal and tuple results. (v1's `MatchErrorExtensions` was removed in v2 — use `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., ... })` against the closed catalog.) |
 | `NullableExtensions`, `NullableExtensionsAsync` | Converts nullable reference/value types to `Result<T>` |
 | `RecoverExtensions`, `RecoverExtensionsAsync`, `RecoverOnFailureExtensions`, `RecoverOnFailureExtensionsAsync` | Converts failures into fallback success values or results |
 | `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync` | Side effects on success or failure; tuple overloads generated for arities 2-9 |
@@ -694,29 +702,29 @@ For tuple-enabled families, generated overloads cover the declared arity ranges 
 
 ---
 
-## Error Types
+## Error Cases (V6 closed ADT)
 
-| Type | Factory Method | Default Code | HTTP Status |
+| Case | Constructor | Default `Code` | HTTP Status |
 | --- | --- | --- | --- |
-| `ValidationError` | `Error.Validation(...)` | `validation.error` | `400 Bad Request` |
-| `BadRequestError` | `Error.BadRequest(...)` | `bad.request.error` | `400 Bad Request` |
-| `ConflictError` | `Error.Conflict(...)` | `conflict.error` | `409 Conflict` |
-| `PreconditionFailedError` | `Error.PreconditionFailed(...)` | `precondition.failed.error` | `412 Precondition Failed` |
-| `PreconditionRequiredError` | `Error.PreconditionRequired(...)` | `precondition.required.error` | `428 Precondition Required` |
-| `NotFoundError` | `Error.NotFound(...)` | `not.found.error` | `404 Not Found` |
-| `UnauthorizedError` | `Error.Unauthorized(...)` | `unauthorized.error` | `401 Unauthorized` |
-| `ForbiddenError` | `Error.Forbidden(...)` | `forbidden.error` | `403 Forbidden` |
-| `UnexpectedError` | `Error.Unexpected(...)` | `unexpected.error` | `500 Internal Server Error` |
-| `DomainError` | `Error.Domain(...)` | `domain.error` | framework-specific; commonly `422 Unprocessable Content` or mapped application-specific |
-| `RateLimitError` | `Error.RateLimit(...)` | `rate.limit.error` | `429 Too Many Requests` |
-| `ServiceUnavailableError` | `Error.ServiceUnavailable(...)` | `service.unavailable.error` | `503 Service Unavailable` |
-| `GoneError` | `Error.Gone(...)` | `gone.error` | `410 Gone` |
-| `MethodNotAllowedError` | `Error.MethodNotAllowed(...)` | `method.not.allowed.error` | `405 Method Not Allowed` |
-| `NotAcceptableError` | `Error.NotAcceptable(...)` | `not.acceptable.error` | `406 Not Acceptable` |
-| `UnsupportedMediaTypeError` | `Error.UnsupportedMediaType(...)` | `unsupported.media.type.error` | `415 Unsupported Media Type` |
-| `ContentTooLargeError` | `Error.ContentTooLarge(...)` | `content.too.large.error` | `413 Content Too Large` |
-| `RangeNotSatisfiableError` | `Error.RangeNotSatisfiable(...)` | `range.not.satisfiable.error` | `416 Range Not Satisfiable` |
-| `AggregateError` | constructor | `aggregate.error` | depends on contained errors |
+| `Error.BadRequest` | `(string ReasonCode, InputPointer? At = null)` | `ReasonCode` | 400 |
+| `Error.Unauthorized` | `(EquatableArray<AuthChallenge> Challenges = default)` | `unauthorized` | 401 |
+| `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | `PolicyId` | 403 |
+| `Error.NotFound` | `(ResourceRef Resource)` | `not-found` | 404 |
+| `Error.MethodNotAllowed` | `(EquatableArray<string> Allow)` | `method-not-allowed` | 405 |
+| `Error.NotAcceptable` | `(EquatableArray<string> Available)` | `not-acceptable` | 406 |
+| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | `ReasonCode` | 409 |
+| `Error.Gone` | `(ResourceRef Resource)` | `gone` | 410 |
+| `Error.PreconditionFailed` | `(ResourceRef Resource, PreconditionKind Condition)` | `precondition-failed` | 412 |
+| `Error.ContentTooLarge` | `(long? MaxBytes = null)` | `content-too-large` | 413 |
+| `Error.UnsupportedMediaType` | `(EquatableArray<string> Supported)` | `unsupported-media-type` | 415 |
+| `Error.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | `range-not-satisfiable` | 416 |
+| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | `unprocessable-content` | 422 |
+| `Error.PreconditionRequired` | `(PreconditionKind Condition)` | `precondition-required` | 428 |
+| `Error.TooManyRequests` | `(RetryAfterValue? RetryAfter = null)` | `too-many-requests` | 429 |
+| `Error.InternalServerError` | `(string FaultId)` | `FaultId` | 500 |
+| `Error.NotImplemented` | `(string Feature)` | `Feature` | 501 |
+| `Error.ServiceUnavailable` | `(RetryAfterValue? RetryAfter = null)` | `service-unavailable` | 503 |
+| `Error.Aggregate` | `(EquatableArray<Error> Errors)` | `aggregate` | depends on contained errors; serialized via `ProblemDetails.Extensions["errors"]` (RFC 9457) |
 
 ---
 
@@ -728,7 +736,8 @@ For tuple-enabled families, generated overloads cover the declared arity ranges 
 using Trellis;
 
 Result<int> Divide(int left, int right) =>
-    Result.Ensure(right != 0, Error.BadRequest("Right operand must not be zero"))
+    Result.Ensure(right != 0, new Error.BadRequest("right_must_not_be_zero")
+        { Detail = "Right operand must not be zero" })
         .Map(_ => left / right);
 ```
 
@@ -740,6 +749,43 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe.From("user@example.com");
 
 Result<string> emailResult = maybeEmail.ToResult(
-    Error.Validation("Email is required", "email"));
+    new Error.UnprocessableContent(EquatableArray.Create(
+        new FieldViolation(InputPointer.ForProperty("email"), "required")
+        { Detail = "Email is required" })));
+```
+
+### Reading errors without throwing
+
+```csharp
+using Trellis;
+
+Result<Order> result = await mediator.SendAsync(new PlaceOrder(...));
+
+// Pattern-matching: result.Error is null on success, never throws
+if (result.Error is { } error)
+{
+    return error switch
+    {
+        Error.NotFound nf            => NotFound(nf.Resource.Id),
+        Error.UnprocessableContent uc => UnprocessableEntity(uc.Fields),
+        Error.Conflict c             => Conflict(c.ReasonCode),
+        _                            => Problem(error.GetDisplayMessage()),
+    };
+}
+
+return Ok(result.Value);
+```
+
+### Multi-field validation
+
+```csharp
+using Trellis;
+
+var streetCity = MaybeInvariant.AllOrNone(cmd.Street, cmd.City, "street", "city");
+var contact    = MaybeInvariant.ExactlyOne(cmd.Email, cmd.Phone, "email", "phone");
+
+// Combine merges any UnprocessableContent.Fields/Rules from multiple results
+return Result.Combine(streetCity, contact)
+    .Map(_ => new Address(cmd.Street, cmd.City));
 ```
 

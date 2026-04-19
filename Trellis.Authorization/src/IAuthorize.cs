@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization;
+namespace Trellis.Authorization;
 
 /// <summary>
 /// Marker interface for commands/queries that require static permissions.

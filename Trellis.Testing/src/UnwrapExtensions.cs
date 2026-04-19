@@ -62,7 +62,7 @@ public static class UnwrapExtensions
         if (!result.TryGetError(out var error))
             return $"Called Unwrap() on a Result<{typeof(T).Name}> in an unexpected state.";
         return $"Called Unwrap() on a failed Result<{typeof(T).Name}>. " +
-               $"Error: [{error.Code}] {error.Detail}";
+               $"Error: [{error.Code}] {error.GetDisplayMessage()}";
     }
 
     /// <summary>

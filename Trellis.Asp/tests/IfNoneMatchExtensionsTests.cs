@@ -25,17 +25,17 @@ public class IfNoneMatchExtensionsTests
 
         var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
 
-        actual.Should().BeFailureOfType<PreconditionFailedError>();
+        actual.Should().BeFailureOfType<Error.PreconditionFailed>();
     }
 
     [Fact]
     public void EnforceIfNoneMatchPrecondition_WildcardOnFailure_PreservesOriginalError()
     {
-        var result = Result.Fail<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
 
-        actual.Should().BeFailureOfType<NotFoundError>();
+        actual.Should().BeFailureOfType<Error.NotFound>();
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class IfNoneMatchExtensionsTests
 
         var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync([EntityTagValue.Wildcard()]);
 
-        actual.Should().BeFailureOfType<PreconditionFailedError>();
+        actual.Should().BeFailureOfType<Error.PreconditionFailed>();
     }
 
     [Fact]
@@ -77,6 +77,6 @@ public class IfNoneMatchExtensionsTests
 
         var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync([EntityTagValue.Wildcard()]);
 
-        actual.Should().BeFailureOfType<PreconditionFailedError>();
+        actual.Should().BeFailureOfType<Error.PreconditionFailed>();
     }
 }

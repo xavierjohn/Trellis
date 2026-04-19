@@ -46,8 +46,8 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AllOrNone(first, second, "first", "second");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "second");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
     }
 
     [Fact]
@@ -61,8 +61,8 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AllOrNone(first, second, "first", "second");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "first");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
     }
 
     #endregion
@@ -111,10 +111,10 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AllOrNone(a, b, c, "a", "b", "c");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "b");
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "c");
-        validation.FieldErrors.Should().NotContain(fe => fe.FieldName == "a");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/b");
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/c");
+        validation.Fields.Items.Should().NotContain(fe => fe.Field.Path == "/a");
     }
 
     #endregion
@@ -166,8 +166,8 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AllOrNone(a, b, c, d, "a", "b", "c", "d");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().ContainSingle(fe => fe.FieldName == "c");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().ContainSingle(fe => fe.Field.Path == "/c");
     }
 
     #endregion
@@ -213,8 +213,8 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.Requires(source, required, "source", "required");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().ContainSingle(fe => fe.FieldName == "required");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().ContainSingle(fe => fe.Field.Path == "/required");
     }
 
     [Fact]
@@ -288,9 +288,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.MutuallyExclusive(first, second, "first", "second");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "first");
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "second");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
     }
 
     #endregion
@@ -339,10 +339,10 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.MutuallyExclusive(a, b, c, "a", "b", "c");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "a");
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "c");
-        validation.FieldErrors.Should().NotContain(fe => fe.FieldName == "b");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/a");
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/c");
+        validation.Fields.Items.Should().NotContain(fe => fe.Field.Path == "/b");
     }
 
     #endregion
@@ -388,9 +388,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(first, second, "first", "second");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "first");
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "second");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
     }
 
     [Fact]
@@ -404,9 +404,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(first, second, "first", "second");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "first");
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "second");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
     }
 
     #endregion
@@ -440,7 +440,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(a, b, c, "a", "b", "c");
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -455,11 +455,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(a, b, c, "a", "b", "c");
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
-        var error = (ValidationError)result.Error;
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
+        var error = (Error.UnprocessableContent)result.Error!;
         // Only a and b should be listed, not c (which is absent)
-        error.FieldErrors.Should().HaveCount(2);
-        error.FieldErrors.Select(e => e.FieldName).Should().BeEquivalentTo(["a", "b"]);
+        error.Fields.Items.Should().HaveCount(2);
+        error.Fields.Items.Select(e => e.Field.Path).Should().BeEquivalentTo(["/a", "/b"]);
     }
 
     #endregion
@@ -505,9 +505,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AtLeastOne(first, second, "first", "second");
 
         // Assert
-        var validation = result.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "first");
-        validation.FieldErrors.Should().Contain(fe => fe.FieldName == "second");
+        var validation = result.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
+        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
     }
 
     #endregion
@@ -541,7 +541,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AtLeastOne(a, b, c, "a", "b", "c");
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
     }
 
     #endregion
@@ -640,7 +640,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AllOrNone(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("validation.error");
+        result.Should().BeFailure().Which.Code.Should().Be("unprocessable-content");
     }
 
     [Fact]
@@ -654,7 +654,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.Requires(source, required, "source", "required");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("validation.error");
+        result.Should().BeFailure().Which.Code.Should().Be("unprocessable-content");
     }
 
     [Fact]
@@ -668,7 +668,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.MutuallyExclusive(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("validation.error");
+        result.Should().BeFailure().Which.Code.Should().Be("unprocessable-content");
     }
 
     [Fact]
@@ -682,7 +682,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("validation.error");
+        result.Should().BeFailure().Which.Code.Should().Be("unprocessable-content");
     }
 
     [Fact]
@@ -696,7 +696,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AtLeastOne(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("validation.error");
+        result.Should().BeFailure().Which.Code.Should().Be("unprocessable-content");
     }
 
     #endregion

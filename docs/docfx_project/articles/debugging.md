@@ -71,16 +71,19 @@ static string Describe(Result<int> result)
 }
 ```
 
-### Also safe: `Match` and `MatchError`
+### Also safe: `Match` (with a `switch` expression on the closed `Error` ADT)
 
 ```csharp
 using Trellis;
 
 static string Describe(Result<int> result) =>
-    result.MatchError(
+    result.Match(
         onSuccess: value => $"Value: {value}",
-        onValidation: error => $"Validation: {error.Detail}",
-        onError: error => $"Error: {error.Code}");
+        onFailure: error => error switch
+        {
+            Error.UnprocessableContent uc => $"Validation: {uc.GetDisplayMessage()}",
+            _                              => $"Error: {error.Code}"
+        });
 ```
 
 ### Unsafe options
@@ -161,7 +164,7 @@ What to inspect:
 
 - `error.Code` — usually ends with `.error` (for example `validation.error`)
 - `error.Detail` — human-readable explanation
-- concrete error type — for example `ValidationError`
+- concrete error type — for example `Error.UnprocessableContent`
 - nested failures if the error is aggregated
 
 ## Common debugging patterns
@@ -189,7 +192,7 @@ static Result<int> DoubleIfPositive(Result<int> result) =>
 static Result<int> ValidatePositive(int value) =>
     value > 0
         ? Result.Ok(value)
-        : Error.Validation("Value must be positive.");
+        : new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be positive." };
 ```
 
 Named methods give you cleaner stack traces and more searchable logs.
@@ -244,20 +247,23 @@ You read `.Value` on a failure result.
 
 You read `.Error` on a success result.
 
-**Fix:** use `TryGetError`, `MatchError`, or check `IsFailure` first.
+**Fix:** use `TryGetError`, `Match`, or check `IsFailure` first.
 
 ### "No handler provided for error type ..."
 
-You called `MatchError(...)` without a matching handler and without an `onError` fallback.
+You called `Match` with a `switch` expression that is not exhaustive over the closed `Error` ADT.
 
 ```csharp
 using Trellis;
 
 static string Render(Result<int> result) =>
-    result.MatchError(
+    result.Match(
         onSuccess: value => $"Value: {value}",
-        onValidation: error => $"Validation: {error.Detail}",
-        onError: error => $"Fallback: {error.Detail}");
+        onFailure: error => error switch
+        {
+            Error.UnprocessableContent uc => $"Validation: {uc.GetDisplayMessage()}",
+            _                              => $"Fallback: {error.Detail}"
+        });
 ```
 
 ## Performance debugging: usually debug I/O, not the pipeline

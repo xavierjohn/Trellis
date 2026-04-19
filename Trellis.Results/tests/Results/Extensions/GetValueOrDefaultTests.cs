@@ -19,7 +19,7 @@ public class GetValueOrDefaultTests
     [Fact]
     public void GetValueOrDefault_Failure_ReturnsDefault()
     {
-        var sut = Result.Fail<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(new Error.InternalServerError("test") { Detail = "some error" });
 
         var value = sut.GetValueOrDefault(99);
 
@@ -45,7 +45,7 @@ public class GetValueOrDefaultTests
     [Fact]
     public void GetValueOrDefault_Func_Failure_ReturnsFactoryResult()
     {
-        var sut = Result.Fail<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(new Error.InternalServerError("test") { Detail = "some error" });
 
         var value = sut.GetValueOrDefault(() => 99);
 
@@ -82,7 +82,7 @@ public class GetValueOrDefaultTests
     [Fact]
     public void GetValueOrDefault_ErrorFunc_Failure_ReturnsFactoryResult_ReceivesError()
     {
-        var expectedError = Error.Unexpected("some error");
+        var expectedError = new Error.InternalServerError("test") { Detail = "some error" };
         var sut = Result.Fail<string>(expectedError);
 
         var value = sut.GetValueOrDefault(error => $"fallback: {error.Code}");

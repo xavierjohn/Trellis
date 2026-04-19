@@ -376,16 +376,16 @@ flowchart TB
 ```mermaid
 graph LR
     subgraph Errors["Error Types"]
-        VAL[ValidationError]
-        BAD[BadRequestError]
-        UNAUTH[UnauthorizedError]
-        FORBID[ForbiddenError]
-        NOTFOUND[NotFoundError]
-        CONFLICT[ConflictError]
-        DOMAIN[DomainError]
-        RATE[RateLimitError]
-        UNEXP[UnexpectedError]
-        UNAVAIL[ServiceUnavailableError]
+        VAL[Error.UnprocessableContent]
+        BAD[Error.BadRequest]
+        UNAUTH[Error.Unauthorized]
+        FORBID[Error.Forbidden]
+        NOTFOUND[Error.NotFound]
+        CONFLICT[Error.Conflict]
+        DOMAIN[Error.Conflict]
+        RATE[Error.TooManyRequests]
+        UNEXP[Error.InternalServerError]
+        UNAVAIL[Error.ServiceUnavailable]
     end
     
     subgraph HTTP["HTTP Status Codes"]
@@ -425,14 +425,14 @@ flowchart TB
     OP2 --> RES2{Result 2}
     OP3 --> RES3{Result 3}
     
-    RES1 -->|ValidationError| VAL1[Email invalid]
-    RES2 -->|ValidationError| VAL2[Password weak]
+    RES1 -->|Error.UnprocessableContent| VAL1[Email invalid]
+    RES2 -->|Error.UnprocessableContent| VAL2[Password weak]
     RES3 -->|Success| OK
     
     VAL1 --> COMBINE[Combine Errors]
     VAL2 --> COMBINE
     
-    COMBINE --> AGG[AggregateError<br/>Multiple validation errors]
+    COMBINE --> AGG[Error.Aggregate<br/>Multiple validation errors]
     
     AGG --> RESPONSE[400 Bad Request<br/>errors: {<br/>&nbsp;&nbsp;email: [...],<br/>&nbsp;&nbsp;password: [...]<br/>}]
     
@@ -663,7 +663,7 @@ sequenceDiagram
             Controller-->>Client: 200 OK + User JSON
         else Duplicate email
             Database-->>Repository: Duplicate key error
-            Repository-->>Controller: Error.Conflict()
+            Repository-->>Controller: new Error.Conflict(null, "conflict")
             Controller-->>Client: 409 Conflict
         end
     else Validation fails
@@ -695,7 +695,7 @@ sequenceDiagram
     Domain-->>CommandHandler: Result<Order>
     
     CommandHandler->>Repository: SaveAsync(order)
-    Repository-->>CommandHandler: Result<Unit>
+    Repository-->>CommandHandler: Result
     
     CommandHandler->>Domain: order.UncommittedEvents()
     Domain-->>CommandHandler: [OrderCreatedEvent]

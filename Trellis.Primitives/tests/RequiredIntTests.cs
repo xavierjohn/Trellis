@@ -22,10 +22,10 @@ public class RequiredIntTests
 
         // Assert
         ticketNumber.IsFailure.Should().BeTrue();
-        ticketNumber.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)ticketNumber.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("ticketNumber");
-        validation.FieldErrors[0].Details[0].Should().Be("Ticket Number cannot be empty.");
+        ticketNumber.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)ticketNumber.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/ticketNumber");
+        validation.Fields[0].Detail.Should().Be("Ticket Number cannot be empty.");
     }
 
     [Theory]
@@ -227,7 +227,7 @@ public class RequiredIntTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("myField");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 }

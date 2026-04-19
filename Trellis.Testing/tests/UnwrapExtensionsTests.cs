@@ -5,7 +5,7 @@ namespace Trellis.Testing.Tests;
 /// </summary>
 public class UnwrapExtensionsTests
 {
-    private static readonly Error TestError = Error.Validation("Test validation error", "TestField");
+    private static readonly Error TestError = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("TestField"), "validation.error") { Detail = "Test validation error" }));
 
     #region Result<T>.Unwrap()
 
@@ -38,20 +38,19 @@ public class UnwrapExtensionsTests
 
         act.Should().Throw<UnwrapFailedException>()
             .WithMessage("*Result<Int32>*")
-            .WithMessage("*validation.error*")
             .WithMessage("*Test validation error*");
     }
 
     [Fact]
     public void Unwrap_FailureResult_ExceptionContainsErrorCode()
     {
-        var error = Error.NotFound("Item not found.");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Item not found." };
         var result = Result.Fail<string>(error);
 
         var act = () => result.Unwrap();
 
         act.Should().Throw<UnwrapFailedException>()
-            .WithMessage("*not.found.error*");
+            .WithMessage("*not-found*");
     }
 
     #endregion

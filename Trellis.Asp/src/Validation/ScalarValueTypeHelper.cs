@@ -137,7 +137,7 @@ internal static class ScalarValueTypeHelper
         return InvokeTryCreate(primitiveTryCreateMethod, [conversionResult, parameterName], parameterName);
     }
 
-    private static IDictionary<string, string[]>? InvokeTryCreate(MethodInfo tryCreateMethod, object?[] args, string? parameterName)
+    private static Dictionary<string, string[]>? InvokeTryCreate(MethodInfo tryCreateMethod, object?[] args, string? parameterName)
     {
         object? result;
         try
@@ -152,18 +152,23 @@ internal static class ScalarValueTypeHelper
         return ExtractErrors(result, parameterName);
     }
 
-    private static IDictionary<string, string[]>? ExtractErrors(object? result, string? parameterName)
+    private static Dictionary<string, string[]>? ExtractErrors(object? result, string? parameterName)
     {
         if (result is not IResult failure || !failure.TryGetError(out var failureError))
             return null;
 
-        if (failureError is ValidationError validationError)
-            return validationError.ToDictionary();
+        if (failureError is Error.UnprocessableContent unprocessable && unprocessable.Fields.Items.Length > 0)
+        {
+            return unprocessable.Fields
+                .Items
+                .GroupBy(fv => fv.Field.Path.TrimStart('/'))
+                .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
+        }
 
         var fieldName = parameterName ?? string.Empty;
         return new Dictionary<string, string[]>
         {
-            [fieldName] = [failureError.Detail]
+            [fieldName] = [failureError!.Detail ?? failureError.Code]
         };
     }
 
@@ -192,7 +197,7 @@ internal static class ScalarValueTypeHelper
             var fieldName = parameterName ?? string.Empty;
             var detail = string.IsNullOrEmpty(rawValue)
                 ? $"'{fieldName}' is required."
-                : convError.Detail;
+                : convError!.Detail ?? convError.Code;
 
             return new Dictionary<string, string[]>
             {

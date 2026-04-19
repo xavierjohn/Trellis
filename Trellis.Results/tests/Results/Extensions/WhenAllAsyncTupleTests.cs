@@ -67,24 +67,24 @@ public class WhenAllAsyncTupleTests : TestBase
 
         data.Add("tuple2 first failure", async () =>
         {
-            var error = Error.Unexpected("error 1");
+            var error = new Error.InternalServerError("test") { Detail = "error 1" };
             var result = await (Task.FromResult(Result.Fail<int>(error)), Task.FromResult(Result.Ok("two"))).WhenAllAsync();
             result.Should().BeFailure().Which.Should().Be(error);
         });
 
         data.Add("tuple2 second failure", async () =>
         {
-            var error = Error.Unexpected("error 2");
+            var error = new Error.InternalServerError("test") { Detail = "error 2" };
             var result = await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Fail<string>(error))).WhenAllAsync();
             result.Should().BeFailure().Which.Should().Be(error);
         });
 
         data.Add("tuple2 both failures combine validation errors", async () =>
         {
-            var error1 = Error.Validation("Error 1", "field1");
-            var error2 = Error.Validation("Error 2", "field2");
+            var error1 = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), "validation.error") { Detail = "Error 1" }));
+            var error2 = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field2"), "validation.error") { Detail = "Error 2" }));
             var result = await (Task.FromResult(Result.Fail<int>(error1)), Task.FromResult(Result.Fail<string>(error2))).WhenAllAsync();
-            result.Should().BeFailureOfType<ValidationError>();
+            result.Should().BeFailureOfType<Error.UnprocessableContent>();
         });
 
         data.Add("tuple3 success", async () =>
@@ -98,7 +98,7 @@ public class WhenAllAsyncTupleTests : TestBase
 
         data.Add("tuple3 one failure", async () =>
         {
-            var error = Error.Unexpected("error 1");
+            var error = new Error.InternalServerError("test") { Detail = "error 1" };
             var result = await (
                 Task.FromResult(Result.Ok(1)),
                 Task.FromResult(Result.Fail<string>(error)),
@@ -118,7 +118,7 @@ public class WhenAllAsyncTupleTests : TestBase
 
         data.Add("tuple4 last failure", async () =>
         {
-            var error = Error.Unexpected("error 1");
+            var error = new Error.InternalServerError("test") { Detail = "error 1" };
             var result = await (
                 Task.FromResult(Result.Ok(1)),
                 Task.FromResult(Result.Ok(2)),
@@ -155,7 +155,7 @@ public class WhenAllAsyncTupleTests : TestBase
 
         data.Add("tuple9 one failure", async () =>
         {
-            var error = Error.Unexpected("error 1");
+            var error = new Error.InternalServerError("test") { Detail = "error 1" };
             var result = await (
                 Task.FromResult(Result.Ok(1)),
                 Task.FromResult(Result.Ok(2)),

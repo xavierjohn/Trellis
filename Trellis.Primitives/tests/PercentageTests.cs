@@ -36,9 +36,9 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Percentage must be between 0 and 100.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Percentage must be between 0 and 100.");
     }
 
     [Fact]
@@ -49,8 +49,8 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Percentage is required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Percentage is required.");
     }
 
     [Fact]
@@ -165,9 +165,9 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = result.UnwrapError().Should().BeOfType<ValidationError>().Subject;
-        validation.FieldErrors[0].FieldName.Should().Be("discountRate");
-        validation.FieldErrors[0].Details[0].Should().Be("Fraction must be between 0 and 1.");
+        var validation = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Subject;
+        validation.Fields[0].Field.Path.Should().Be("/discountRate");
+        validation.Fields[0].Detail.Should().Be("Fraction must be between 0 and 1.");
     }
 
     [Fact]
@@ -386,8 +386,8 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("discountRate");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/discountRate");
     }
 
     #region TryCreate from string
@@ -437,7 +437,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -448,7 +448,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -459,7 +459,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Theory]
@@ -472,7 +472,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -483,8 +483,8 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("discountRate");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/discountRate");
     }
 
     [Fact]
@@ -495,8 +495,8 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Percentage must be between 0 and 100.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Percentage must be between 0 and 100.");
     }
 
     #endregion

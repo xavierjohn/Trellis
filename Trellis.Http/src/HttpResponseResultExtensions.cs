@@ -1,4 +1,4 @@
-﻿namespace Trellis.Http;
+namespace Trellis.Http;
 
 using System.Net;
 using Trellis;
@@ -15,25 +15,25 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of NotFound.
     /// </summary>
     /// <param name="result">The result containing the HTTP response message.</param>
-    /// <param name="notFoundError">The error to return if the response has a status code of NotFound.</param>
+    /// <param name="error">The error to return if the response has a status code of NotFound.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleNotFound(
         this Result<HttpResponseMessage> result,
-        NotFoundError notFoundError)
-        => result.Bind(r => r.HandleNotFound(notFoundError));
+        Error.NotFound error)
+        => result.Bind(r => r.HandleNotFound(error));
 
     /// <summary>
     /// Handles the case when the HTTP response has a status code of NotFound asynchronously.
     /// </summary>
     /// <param name="resultTask">The task representing the result containing the HTTP response message.</param>
-    /// <param name="notFoundError">The error to return if the response has a status code of NotFound.</param>
+    /// <param name="error">The error to return if the response has a status code of NotFound.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleNotFoundAsync(
         this Task<Result<HttpResponseMessage>> resultTask,
-        NotFoundError notFoundError)
+        Error.NotFound error)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.HandleNotFound(notFoundError);
+        return result.HandleNotFound(error);
     }
 
     #endregion
@@ -44,25 +44,25 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of Unauthorized (401).
     /// </summary>
     /// <param name="result">The result containing the HTTP response message.</param>
-    /// <param name="unauthorizedError">The error to return if the response has a status code of Unauthorized.</param>
+    /// <param name="error">The error to return if the response has a status code of Unauthorized.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleUnauthorized(
         this Result<HttpResponseMessage> result,
-        UnauthorizedError unauthorizedError)
-        => result.Bind(r => r.HandleUnauthorized(unauthorizedError));
+        Error.Unauthorized error)
+        => result.Bind(r => r.HandleUnauthorized(error));
 
     /// <summary>
     /// Handles the case when the HTTP response has a status code of Unauthorized (401) asynchronously.
     /// </summary>
     /// <param name="resultTask">The task representing the result containing the HTTP response message.</param>
-    /// <param name="unauthorizedError">The error to return if the response has a status code of Unauthorized.</param>
+    /// <param name="error">The error to return if the response has a status code of Unauthorized.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(
         this Task<Result<HttpResponseMessage>> resultTask,
-        UnauthorizedError unauthorizedError)
+        Error.Unauthorized error)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.HandleUnauthorized(unauthorizedError);
+        return result.HandleUnauthorized(error);
     }
 
     #endregion
@@ -73,25 +73,25 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of Forbidden (403).
     /// </summary>
     /// <param name="result">The result containing the HTTP response message.</param>
-    /// <param name="forbiddenError">The error to return if the response has a status code of Forbidden.</param>
+    /// <param name="error">The error to return if the response has a status code of Forbidden.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleForbidden(
         this Result<HttpResponseMessage> result,
-        ForbiddenError forbiddenError)
-        => result.Bind(r => r.HandleForbidden(forbiddenError));
+        Error.Forbidden error)
+        => result.Bind(r => r.HandleForbidden(error));
 
     /// <summary>
     /// Handles the case when the HTTP response has a status code of Forbidden (403) asynchronously.
     /// </summary>
     /// <param name="resultTask">The task representing the result containing the HTTP response message.</param>
-    /// <param name="forbiddenError">The error to return if the response has a status code of Forbidden.</param>
+    /// <param name="error">The error to return if the response has a status code of Forbidden.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleForbiddenAsync(
         this Task<Result<HttpResponseMessage>> resultTask,
-        ForbiddenError forbiddenError)
+        Error.Forbidden error)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.HandleForbidden(forbiddenError);
+        return result.HandleForbidden(error);
     }
 
     #endregion
@@ -102,25 +102,25 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of Conflict (409).
     /// </summary>
     /// <param name="result">The result containing the HTTP response message.</param>
-    /// <param name="conflictError">The error to return if the response has a status code of Conflict.</param>
+    /// <param name="error">The error to return if the response has a status code of Conflict.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleConflict(
         this Result<HttpResponseMessage> result,
-        ConflictError conflictError)
-        => result.Bind(r => r.HandleConflict(conflictError));
+        Error.Conflict error)
+        => result.Bind(r => r.HandleConflict(error));
 
     /// <summary>
     /// Handles the case when the HTTP response has a status code of Conflict (409) asynchronously.
     /// </summary>
     /// <param name="resultTask">The task representing the result containing the HTTP response message.</param>
-    /// <param name="conflictError">The error to return if the response has a status code of Conflict.</param>
+    /// <param name="error">The error to return if the response has a status code of Conflict.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleConflictAsync(
         this Task<Result<HttpResponseMessage>> resultTask,
-        ConflictError conflictError)
+        Error.Conflict error)
     {
         var result = await resultTask.ConfigureAwait(false);
-        return result.HandleConflict(conflictError);
+        return result.HandleConflict(error);
     }
 
     #endregion

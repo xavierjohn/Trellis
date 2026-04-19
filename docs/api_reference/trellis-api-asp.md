@@ -377,7 +377,7 @@ public sealed class TrellisAspOptions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public TrellisAspOptions MapError<TError>(int statusCode) where TError : Error` | `TrellisAspOptions` | Overrides or adds an error-type-to-status-code mapping. Default mappings include `ValidationError=400`, `BadRequestError=400`, `UnauthorizedError=401`, `ForbiddenError=403`, `NotFoundError=404`, `MethodNotAllowedError=405`, `NotAcceptableError=406`, `ConflictError=409`, `GoneError=410`, `PreconditionFailedError=412`, `ContentTooLargeError=413`, `UnsupportedMediaTypeError=415`, `RangeNotSatisfiableError=416`, `DomainError=422`, `PreconditionRequiredError=428`, `RateLimitError=429`, `UnexpectedError=500`, `ServiceUnavailableError=503`. |
+| `public TrellisAspOptions MapError<TError>(int statusCode) where TError : Error` | `TrellisAspOptions` | Overrides or adds an error-type-to-status-code mapping. Default mappings (V6 closed-ADT): `Error.BadRequest=400`, `Error.Unauthorized=401`, `Error.Forbidden=403`, `Error.NotFound=404`, `Error.MethodNotAllowed=405`, `Error.NotAcceptable=406`, `Error.Conflict=409`, `Error.Gone=410`, `Error.PreconditionFailed=412`, `Error.ContentTooLarge=413`, `Error.UnsupportedMediaType=415`, `Error.RangeNotSatisfiable=416`, `Error.UnprocessableContent=422`, `Error.PreconditionRequired=428`, `Error.TooManyRequests=429`, `Error.InternalServerError=500`, `Error.NotImplemented=501`, `Error.ServiceUnavailable=503`. |
 
 ### `ValidationErrorsContext`
 
@@ -394,7 +394,7 @@ public static class ValidationErrorsContext
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IDisposable BeginScope()` | `IDisposable` | Starts a new async-local validation collection scope; disposing restores the previous scope and property name. |
-| `public static ValidationError? GetValidationError()` | `ValidationError?` | Returns the aggregated `ValidationError` for the current scope, or `null` when no errors were collected. |
+| `public static Error.UnprocessableContent? GetUnprocessableContent()` | `Error.UnprocessableContent?` | Returns the aggregated `Error.UnprocessableContent` for the current scope (with `Fields`/`Rules` populated from collected `FieldViolation`s), or `null` when no errors were collected. |
 
 > **Note:** `WriteOutcome<T>` and its case records (`Created`, `Updated`, `UpdatedNoContent`, `Accepted`, `AcceptedNoContent`) live in `Trellis.Results` (namespace `Trellis`) — see [`trellis-api-results.md`](./trellis-api-results.md). They are documented there because Application-layer repositories (which cannot reference `Trellis.Asp`) must declare them as return types. The `WriteOutcomeExtensions` mappers below are the ASP.NET-specific surface that translates each case to `ActionResult` / `IResult`.
 

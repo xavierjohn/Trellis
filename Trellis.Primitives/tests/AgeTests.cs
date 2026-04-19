@@ -36,9 +36,9 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Age must be non-negative.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Age must be non-negative.");
     }
 
     [Theory]
@@ -52,9 +52,9 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Age is unrealistically high.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Age is unrealistically high.");
     }
 
     [Fact]
@@ -65,8 +65,8 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("personAge");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/personAge");
     }
 
     [Fact]
@@ -259,7 +259,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Theory]
@@ -295,7 +295,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -306,8 +306,8 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("personAge");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/personAge");
     }
 
     [Fact]
@@ -318,8 +318,8 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Age is unrealistically high.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Age is unrealistically high.");
     }
 
     #endregion

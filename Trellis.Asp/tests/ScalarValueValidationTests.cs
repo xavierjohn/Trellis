@@ -28,7 +28,7 @@ public class ScalarValueValidationTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ScalarValueValidationTests.Name>(Error.Validation("Name cannot be empty.", field));
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.Name>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Name cannot be empty." })));
             return Result.Ok(new Name(value.Trim()));
         }
     }
@@ -44,9 +44,9 @@ public class ScalarValueValidationTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(Error.Validation("Email is required.", field));
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(Error.Validation("Email must contain @.", field));
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
             return Result.Ok(new TestEmail(value));
         }
     }
@@ -74,15 +74,15 @@ public class ScalarValueValidationTests
             ValidationErrorsContext.AddError("field1", "Error 1");
             ValidationErrorsContext.AddError("field2", "Error 2");
 
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
 
             // Assert
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(2);
-            error.FieldErrors[0].FieldName.Should().Be("field1");
-            error.FieldErrors[0].Details[0].Should().Be("Error 1");
-            error.FieldErrors[1].FieldName.Should().Be("field2");
-            error.FieldErrors[1].Details[0].Should().Be("Error 2");
+            error!.Fields.Items.Should().HaveCount(2);
+            error.Fields[0].Field.Path.Should().Be("/field1");
+            error.Fields[0].Detail.Should().Be("Error 1");
+            error.Fields[1].Field.Path.Should().Be("/field2");
+            error.Fields[1].Detail.Should().Be("Error 2");
         }
     }
 
@@ -90,7 +90,7 @@ public class ScalarValueValidationTests
     public void ValidationErrorsContext_ReturnsNull_WhenNoScopeIsActive()
     {
         // Act
-        var error = ValidationErrorsContext.GetValidationError();
+        var error = ValidationErrorsContext.GetUnprocessableContent();
 
         // Assert
         error.Should().BeNull();
@@ -106,7 +106,7 @@ public class ScalarValueValidationTests
         }
 
         // Act
-        var error = ValidationErrorsContext.GetValidationError();
+        var error = ValidationErrorsContext.GetUnprocessableContent();
 
         // Assert
         error.Should().BeNull();
@@ -174,7 +174,7 @@ public class ScalarValueValidationTests
             // Assert
             result.Should().NotBeNull();
             result!.Value.Should().Be("John");
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
         }
     }
 
@@ -194,11 +194,11 @@ public class ScalarValueValidationTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(1);
-            error.FieldErrors[0].FieldName.Should().Be("FirstName");
-            error.FieldErrors[0].Details[0].Should().Be("Name cannot be empty.");
+            error!.Fields.Items.Should().HaveCount(1);
+            error.Fields[0].Field.Path.Should().Be("/FirstName");
+            error.Fields[0].Detail.Should().Be("Name cannot be empty.");
         }
     }
 
@@ -219,18 +219,18 @@ public class ScalarValueValidationTests
             JsonSerializer.Deserialize<Name>("\"\"", options);
 
             // Act
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
 
             // Assert
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(2);
+            error!.Fields.Items.Should().HaveCount(2);
 
             // Both errors should have their respective property names, not "name"
-            error.FieldErrors.Should().Contain(e => e.FieldName == "FirstName");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "LastName");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/FirstName");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/LastName");
 
             // Neither should have the default type-based name
-            error.FieldErrors.Should().NotContain(e => e.FieldName == "name");
+            error.Fields.Items.Should().NotContain(e => e.Field.Path == "/name");
         }
     }
 
@@ -255,14 +255,14 @@ public class ScalarValueValidationTests
             JsonSerializer.Deserialize<TestEmail>("\"not-an-email\"", options);
 
             // Act
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
 
             // Assert
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(3);
-            error.FieldErrors.Should().Contain(e => e.FieldName == "FirstName" && e.Details[0] == "Name cannot be empty.");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "LastName" && e.Details[0] == "Name cannot be empty.");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Email" && e.Details[0] == "Email must contain @.");
+            error!.Fields.Items.Should().HaveCount(3);
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/FirstName" && e.Detail == "Name cannot be empty.");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/LastName" && e.Detail == "Name cannot be empty.");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Email" && e.Detail == "Email must contain @.");
         }
     }
 
@@ -360,38 +360,41 @@ public class ScalarValueValidationTests
 
     #endregion
 
-    #region ValidationError ToDictionary Tests
+    #region Error.UnprocessableContent ToDictionary Tests
 
     [Fact]
     public void ValidationError_ToDictionary_ReturnsCorrectDictionary()
     {
         // Arrange
-        var error = ValidationError.For("Email", "Email is required")
-            .And("Password", "Password is too short")
-            .And("Email", "Email format is invalid");
+        var error = new Error.UnprocessableContent(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty("Email"), "validation.error") { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("Password"), "validation.error") { Detail = "Password is too short" },
+            new FieldViolation(InputPointer.ForProperty("Email"), "validation.error") { Detail = "Email format is invalid" }));
 
-        // Act
-        var dict = error.ToDictionary();
+        // Act - convert to dictionary by grouping field violations
+        var dict = error.Fields.Items.GroupBy(f => f.Field.Path)
+            .ToDictionary(g => g.Key, g => g.Select(f => f.Detail ?? f.ReasonCode).ToArray());
 
         // Assert
         dict.Should().HaveCount(2);
-        dict["Email"].Should().Contain("Email is required");
-        dict["Email"].Should().Contain("Email format is invalid");
-        dict["Password"].Should().Contain("Password is too short");
+        dict["/Email"].Should().Contain("Email is required");
+        dict["/Email"].Should().Contain("Email format is invalid");
+        dict["/Password"].Should().Contain("Password is too short");
     }
 
     [Fact]
     public void ValidationError_ToDictionary_SingleFieldError()
     {
         // Arrange
-        var error = ValidationError.For("Name", "Name cannot be empty");
+        var error = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("Name"), "validation.error") { Detail = "Name cannot be empty" }));
 
         // Act
-        var dict = error.ToDictionary();
+        var dict = error.Fields.Items.GroupBy(f => f.Field.Path)
+            .ToDictionary(g => g.Key, g => g.Select(f => f.Detail ?? f.ReasonCode).ToArray());
 
         // Assert
         dict.Should().HaveCount(1);
-        dict["Name"].Should().Contain("Name cannot be empty");
+        dict["/Name"].Should().Contain("Name cannot be empty");
     }
 
     #endregion
@@ -465,7 +468,7 @@ public class ScalarValueValidationTests
         var scopeWasActive = false;
         RequestDelegate next = _ =>
         {
-            scopeWasActive = ValidationErrorsContext.HasErrors || ValidationErrorsContext.GetValidationError() is null;
+            scopeWasActive = ValidationErrorsContext.HasErrors || ValidationErrorsContext.GetUnprocessableContent() is null;
             // Add an error to verify scope is active
             ValidationErrorsContext.AddError("Test", "TestError");
             scopeWasActive = ValidationErrorsContext.HasErrors;
@@ -482,7 +485,7 @@ public class ScalarValueValidationTests
         scopeWasActive.Should().BeTrue();
 
         // Assert - scope is cleaned up after request
-        ValidationErrorsContext.GetValidationError().Should().BeNull();
+        ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
     }
 
     [Fact]
@@ -503,7 +506,7 @@ public class ScalarValueValidationTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
-        ValidationErrorsContext.GetValidationError().Should().BeNull();
+        ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
     }
 
     #endregion

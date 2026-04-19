@@ -23,12 +23,12 @@ public class EnsureAllTests
     [Fact]
     public void EnsureAll_WhenResultIsFailure_ShouldReturnOriginalFailure()
     {
-        var error = Error.Unexpected("original error");
+        var error = new Error.InternalServerError("test") { Detail = "original error" };
         var sut = Result.Fail<string>(error);
         var predicateInvoked = false;
 
         var result = sut.EnsureAll(
-            (_ => { predicateInvoked = true; return false; }, Error.Validation("should not appear")));
+            (_ => { predicateInvoked = true; return false; }, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "should not appear" }));
 
         result.Should().BeFailure().Which.Should().Be(error);
         predicateInvoked.Should().BeFalse();
@@ -40,8 +40,8 @@ public class EnsureAllTests
         var sut = Result.Ok("Hello");
 
         var result = sut.EnsureAll(
-            (v => v.Length > 0, Error.Validation("Name required", "name")),
-            (v => v.Length <= 100, Error.Validation("Name too long", "name")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
+            (v => v.Length <= 100, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name too long" }))));
 
         result.Should().BeSuccess().Which.Should().Be("Hello");
     }
@@ -52,11 +52,11 @@ public class EnsureAllTests
         var sut = Result.Ok("");
 
         var result = sut.EnsureAll(
-            (v => v.Length > 0, Error.Validation("Name required", "name")),
-            (v => true, Error.Validation("Always passes")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
+            (v => true, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Always passes" }));
 
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -65,13 +65,13 @@ public class EnsureAllTests
         var sut = Result.Ok("");
 
         var result = sut.EnsureAll(
-            (v => v.Length > 0, Error.Validation("Name required", "name")),
-            (v => v.Contains('@'), Error.Validation("Invalid email", "email")),
-            (v => true, Error.Validation("Always passes")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
+            (v => v.Contains('@'), new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }))),
+            (v => true, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Always passes" }));
 
         result.Should().BeFailure();
-        var validationError = result.Error.Should().BeOfType<ValidationError>().Subject;
-        validationError.FieldErrors.Should().HaveCount(2);
+        var validationError = result.Error!.Should().BeOfType<Error.UnprocessableContent>().Subject;
+        validationError.Fields.Items.Should().HaveCount(2);
     }
 
     [Fact]
@@ -80,11 +80,11 @@ public class EnsureAllTests
         var sut = Result.Ok("test");
 
         var result = sut.EnsureAll(
-            (_ => false, Error.Unexpected("unexpected")),
-            (_ => false, Error.NotFound("not found")));
+            (_ => false, new Error.InternalServerError("test") { Detail = "unexpected" }),
+            (_ => false, new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" }));
 
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<AggregateError>();
+        result.Error!.Should().BeOfType<Error.Aggregate>();
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class EnsureAllTests
         var sut = Task.FromResult(Result.Ok("Hello"));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, Error.Validation("required", "name")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "required" }))));
 
         result.Should().BeSuccess().Which.Should().Be("Hello");
     }
@@ -118,11 +118,11 @@ public class EnsureAllTests
         var sut = Task.FromResult(Result.Ok(""));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, Error.Validation("Name required", "name")),
-            (v => v.Contains('@'), Error.Validation("Invalid email", "email")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
+            (v => v.Contains('@'), new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }))));
 
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class EnsureAllTests
         Task<Result<string>> sut = null!;
 
         var act = async () => await sut.EnsureAllAsync(
-            (v => v.Length > 0, Error.Validation("required", "name")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "required" }))));
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
@@ -146,7 +146,7 @@ public class EnsureAllTests
         var sut = new ValueTask<Result<string>>(Result.Ok("Hello"));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, Error.Validation("required", "name")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "required" }))));
 
         result.Should().BeSuccess().Which.Should().Be("Hello");
     }
@@ -157,11 +157,11 @@ public class EnsureAllTests
         var sut = new ValueTask<Result<string>>(Result.Ok(""));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, Error.Validation("Name required", "name")),
-            (v => v.Contains('@'), Error.Validation("Invalid email", "email")));
+            (v => v.Length > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
+            (v => v.Contains('@'), new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }))));
 
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     #endregion

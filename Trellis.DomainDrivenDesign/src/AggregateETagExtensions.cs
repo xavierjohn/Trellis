@@ -26,14 +26,14 @@ public static class AggregateETagExtensions
     /// Validates that the aggregate's ETag matches one of the expected typed EntityTagValues.
     /// Uses strong comparison per RFC 9110 §13.1.1.
     /// <c>If-Match</c> is <b>required</b> — if <paramref name="expectedETags"/> is <c>null</c>,
-    /// returns <see cref="PreconditionRequiredError"/> (HTTP 428).
+    /// returns <see cref="Error.PreconditionRequired"/> (HTTP 428).
     /// </summary>
     public static Result<T> RequireETag<T>(this Result<T> result, EntityTagValue[]? expectedETags)
         where T : IAggregate
     {
         if (result.IsFailure) return result;
         return expectedETags is null
-            ? Result.Fail<T>(Error.PreconditionRequired("This operation requires an If-Match header."))
+            ? Result.Fail<T>(new Error.PreconditionRequired(PreconditionKind.IfMatch) { Detail = "This operation requires an If-Match header." })
             : MatchETag(result, expectedETags);
     }
 
@@ -63,7 +63,7 @@ public static class AggregateETagExtensions
         if (result.IsFailure) return result;
 
         if (expectedETags.Length == 0)
-            return Result.Fail<T>(Error.PreconditionFailed("If-Match header contains only weak ETags. Strong comparison is required."));
+            return Result.Fail<T>(new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfMatch) { Detail = "If-Match header contains only weak ETags. Strong comparison is required." });
 
         // Wildcard check
         if (expectedETags.Any(tag => tag.IsWildcard))
@@ -73,6 +73,6 @@ public static class AggregateETagExtensions
         return result.Ensure(
             aggregate => Array.Exists(expectedETags,
                 tag => !tag.IsWeak && string.Equals(aggregate.ETag, tag.OpaqueTag, StringComparison.Ordinal)),
-            Error.PreconditionFailed("Resource has been modified. Please reload and retry."));
+            new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfMatch) { Detail = "Resource has been modified. Please reload and retry." });
     }
 }

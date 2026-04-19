@@ -72,7 +72,7 @@ public class UsersController : ControllerBase
     [HttpGet("{id}")]
     public ActionResult<User> GetById(string id) =>
         _repository.GetById(id)
-            .ToResult(Error.NotFound($"User {id} not found"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
             .ToActionResult(this);
 
     // READ collection
@@ -87,7 +87,7 @@ public class UsersController : ControllerBase
         string id,
         [FromBody] UpdateUserRequest request) =>
         _repository.GetById(id)
-            .ToResult(Error.NotFound($"User {id} not found"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
             .Bind(user => user.UpdateName(request.FirstName, request.LastName))
             .Bind(user => user.UpdateEmail(request.Email))
             .Tap(user => _repository.Update(user))
@@ -95,10 +95,10 @@ public class UsersController : ControllerBase
 
     // DELETE with 204 No Content
     [HttpDelete("{id}")]
-    public ActionResult<Unit> Delete(string id) =>
+    public ActionResult Delete(string id) =>
         _repository.GetById(id)
-            .ToResult(Error.NotFound($"User {id} not found"))
-            .Ensure(user => user.CanDelete, Error.Conflict("User has active orders"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
+            .Ensure(user => user.CanDelete, new Error.Conflict(null, "conflict") { Detail = "User has active orders" })
             .Tap(user => _repository.Delete(user))
             .Map(_ => Result.Ok())
             .ToActionResult(this);
@@ -135,17 +135,17 @@ public class OrdersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Order>> GetOrderAsync(string id, CancellationToken ct) =>
         await _orderService.GetByIdAsync(id, ct)
-            .ToResultAsync(Error.NotFound($"Order {id} not found"))
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
             .EnsureAsync(
                 order => CanAccessOrderAsync(User, order, ct),
-                Error.Forbidden("Access denied to this order"))
+                new Error.Forbidden("policy.id") { Detail = "Access denied to this order" })
             .ToActionResultAsync(this);
 
     // Async UPDATE with multiple steps
     [HttpPut("{id}/submit")]
     public async Task<ActionResult<Order>> SubmitOrderAsync(string id, CancellationToken ct) =>
         await _orderService.GetByIdAsync(id, ct)
-            .ToResultAsync(Error.NotFound($"Order {id} not found"))
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
             .BindAsync(order => order.SubmitAsync(ct))
             .BindAsync(order => _paymentService.ProcessAsync(order, ct))
             .TapAsync(order => _orderService.SaveAsync(order, ct))
@@ -154,12 +154,12 @@ public class OrdersController : ControllerBase
 
     // Async DELETE with cleanup
     [HttpDelete("{id}")]
-    public async Task<ActionResult<Unit>> CancelOrderAsync(string id, CancellationToken ct) =>
+    public async Task<ActionResult> CancelOrderAsync(string id, CancellationToken ct) =>
         await _orderService.GetByIdAsync(id, ct)
-            .ToResultAsync(Error.NotFound($"Order {id} not found"))
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
             .EnsureAsync(
                 order => order.CanCancelAsync(ct),
-                Error.Conflict("Order cannot be cancelled"))
+                new Error.Conflict(null, "conflict") { Detail = "Order cannot be cancelled" })
             .TapAsync(order => _inventoryService.ReleaseAsync(order.Items, ct))
             .TapAsync(order => _paymentService.RefundAsync(order, ct))
             .TapAsync(order => _orderService.DeleteAsync(order, ct))
@@ -172,7 +172,7 @@ public class OrdersController : ControllerBase
         await _inventoryService.CheckAvailabilityAsync(request.Items, ct)
             .EnsureAsync(
                 available => Task.FromResult(available),
-                Error.Conflict("Some items are out of stock"))
+                new Error.Conflict(null, "conflict") { Detail = "Some items are out of stock" })
             .Map(_ => request);
 
     private async Task<bool> CanAccessOrderAsync(
@@ -207,12 +207,12 @@ public class ProductsController : ControllerBase
             // Validate category exists
             .Bind((name, description, price, quantity) =>
                 _categoryRepository.GetById(request.CategoryId)
-                    .ToResult(Error.NotFound($"Category {request.CategoryId} not found"))
+                    .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Category {request.CategoryId} not found" })
                     .Map(category => (name, description, price, quantity, category)))
             // Validate unique product name
             .Ensure(
                 tuple => !_repository.ExistsByName(tuple.name),
-                Error.Conflict("A product with this name already exists"))
+                new Error.Conflict(null, "conflict") { Detail = "A product with this name already exists" })
             // Create product
             .Bind(tuple => Product.TryCreate(
                 tuple.name,
@@ -229,7 +229,7 @@ public class ProductsController : ControllerBase
     [HttpGet("{id}")]
     public ActionResult<Product> GetById(string id) =>
         _repository.GetById(id)
-            .ToResult(Error.NotFound($"Product {id} not found"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {id} not found" })
             .ToActionResult(this);
 
     [HttpPut("{id}/price")]
@@ -237,7 +237,7 @@ public class ProductsController : ControllerBase
         string id,
         [FromBody] UpdatePriceRequest request) =>
         _repository.GetById(id)
-            .ToResult(Error.NotFound($"Product {id} not found"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {id} not found" })
             .Bind(product => Price.TryCreate(request.NewPrice)
                 .Bind(newPrice => product.UpdatePrice(newPrice)))
             .Tap(product => _repository.Update(product))
@@ -274,9 +274,9 @@ public class JobsController : ControllerBase
 
     // 204 No Content for successful operation without content
     [HttpPost("{id}/cancel")]
-    public ActionResult<Unit> CancelJob(string id) =>
+    public ActionResult CancelJob(string id) =>
         _jobService.GetById(id)
-            .ToResult(Error.NotFound($"Job {id} not found"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Job {id} not found" })
             .Bind(job => job.Cancel())
             .Map(_ => Result.Ok())
             .ToActionResult(this);
@@ -285,17 +285,17 @@ public class JobsController : ControllerBase
     [HttpPost("{id}/retry")]
     public ActionResult<Job> RetryJob(string id) =>
         _jobService.GetById(id)
-            .ToResult(Error.NotFound($"Job {id} not found"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Job {id} not found" })
             .Ensure(
                 job => job.CanRetry,
-                Error.Conflict("Job cannot be retried"))
+                new Error.Conflict(null, "conflict") { Detail = "Job cannot be retried" })
             .Bind(job => job.Retry())
             .ToActionResult(this);
 
     [HttpGet("batch/{batchId}/status")]
     public ActionResult<BatchStatus> GetBatchStatus(string batchId) =>
         _jobService.GetBatchStatus(batchId)
-            .ToResult(Error.NotFound($"Batch {batchId} not found"))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Batch {batchId} not found" })
             .ToActionResult(this);
 }
 ```
@@ -419,7 +419,7 @@ userApi.MapGet("/{id}", (
     string id,
     IUserRepository repository) =>
     repository.GetById(id)
-        .ToResult(Error.NotFound($"User {id} not found"))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
         .ToHttpResult());
 
 // UPDATE
@@ -428,7 +428,7 @@ userApi.MapPut("/{id}", (
     UpdateUserRequest request,
     IUserRepository repository) =>
     repository.GetById(id)
-        .ToResult(Error.NotFound($"User {id} not found"))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
         .Bind(user => user.UpdateName(request.FirstName, request.LastName))
         .Bind(user => user.UpdateEmail(request.Email))
         .Tap(user => repository.Update(user))
@@ -439,8 +439,8 @@ userApi.MapDelete("/{id}", (
     string id,
     IUserRepository repository) =>
     repository.GetById(id)
-        .ToResult(Error.NotFound($"User {id} not found"))
-        .Ensure(user => user.CanDelete, Error.Conflict("User has active orders"))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
+        .Ensure(user => user.CanDelete, new Error.Conflict(null, "conflict") { Detail = "User has active orders" })
         .Tap(user => repository.Delete(user))
         .Map(_ => Result.Ok())
         .ToHttpResult());
@@ -473,7 +473,7 @@ orderApi.MapGet("/{id}", async (
     IOrderService orderService,
     CancellationToken ct) =>
     await orderService.GetByIdAsync(id, ct)
-        .ToResultAsync(Error.NotFound($"Order {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
         .ToHttpResultAsync());
 
 // Async UPDATE
@@ -483,7 +483,7 @@ orderApi.MapPut("/{id}/submit", async (
     IPaymentService paymentService,
     CancellationToken ct) =>
     await orderService.GetByIdAsync(id, ct)
-        .ToResultAsync(Error.NotFound($"Order {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
         .BindAsync(order => order.SubmitAsync(ct))
         .BindAsync(order => paymentService.ProcessAsync(order, ct))
         .TapAsync(order => orderService.SaveAsync(order, ct))
@@ -497,7 +497,7 @@ orderApi.MapDelete("/{id}", async (
     IPaymentService paymentService,
     CancellationToken ct) =>
     await orderService.GetByIdAsync(id, ct)
-        .ToResultAsync(Error.NotFound($"Order {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
         .TapAsync(order => inventoryService.ReleaseAsync(order.Items, ct))
         .TapAsync(order => paymentService.RefundAsync(order, ct))
         .TapAsync(order => orderService.DeleteAsync(order, ct))
@@ -609,7 +609,7 @@ processingApi.MapPost("/order/{id}/complete", async (
     IShippingService shippingService,
     CancellationToken ct) =>
     await orderService.GetByIdAsync(id, ct)
-        .ToResultAsync(Error.NotFound($"Order {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
         .BindAsync(async order =>
         {
             if (order.RequiresPayment)
@@ -674,15 +674,15 @@ Handling authentication and authorization:
 [Authorize]
 public async Task<ActionResult<Order>> GetOrderAsync(string id, CancellationToken ct) =>
     await _orderService.GetByIdAsync(id, ct)
-        .ToResultAsync(Error.NotFound($"Order {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
         // Check ownership
         .EnsureAsync(
             order => IsOwnerAsync(User, order, ct),
-            Error.Forbidden("You don't have permission to view this order"))
+            new Error.Forbidden("policy.id") { Detail = "You don't have permission to view this order" })
         // Check subscription level
         .EnsureAsync(
             order => HasRequiredSubscriptionAsync(User, order, ct),
-            Error.Forbidden("Your subscription level doesn't allow viewing this order type"))
+            new Error.Forbidden("policy.id") { Detail = "Your subscription level doesn't allow viewing this order type" })
         .ToActionResultAsync(this);
 
 private async Task<bool> IsOwnerAsync(
@@ -714,26 +714,26 @@ Consistent 404 handling patterns:
 [HttpGet("{id}")]
 public ActionResult<Product> GetProduct(string id) =>
     _repository.GetById(id)
-        .ToResult(Error.NotFound($"Product {id} not found"))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {id} not found" })
         .ToActionResult(this);
 
 [HttpGet("category/{categoryId}/products")]
 public ActionResult<IEnumerable<Product>> GetProductsByCategory(string categoryId) =>
     _categoryRepository.GetById(categoryId)
-        .ToResult(Error.NotFound($"Category {categoryId} not found"))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Category {categoryId} not found" })
         .Bind(category => _productRepository.GetByCategory(category))
         .Ensure(
             products => products.Any(),
-            Error.NotFound($"No products found in category {categoryId}"))
+            new Error.NotFound(new ResourceRef("Resource")) { Detail = $"No products found in category {categoryId}" })
         .ToActionResult(this);
 
 // Multiple resources
 [HttpGet("order/{orderId}/items/{itemId}")]
 public ActionResult<OrderItem> GetOrderItem(string orderId, string itemId) =>
     _orderRepository.GetById(orderId)
-        .ToResult(Error.NotFound($"Order {orderId} not found"))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {orderId} not found" })
         .Bind(order => order.GetItem(itemId)
-            .ToResult(Error.NotFound($"Item {itemId} not found in order {orderId}")))
+            .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Item {itemId} not found in order {orderId}" }))
         .ToActionResult(this);
 ```
 
@@ -747,7 +747,7 @@ public ActionResult<User> Register([FromBody] RegisterRequest request) =>
     EmailAddress.TryCreate(request.Email)
         .Ensure(
             email => !_userRepository.ExistsByEmail(email),
-            Error.Conflict("A user with this email already exists"))
+            new Error.Conflict(null, "conflict") { Detail = "A user with this email already exists" })
         .Bind(email => User.TryCreate(
             request.FirstName,
             request.LastName,
@@ -760,26 +760,26 @@ public async Task<ActionResult<User>> UpdateEmailAsync(
     string id,
     [FromBody] UpdateEmailRequest request) =>
     await _userRepository.GetByIdAsync(id)
-        .ToResultAsync(Error.NotFound($"User {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
         .BindAsync(async user =>
             await EmailAddress.TryCreate(request.NewEmail)
                 .EnsureAsync(
                     async email => !await _userRepository.ExistsByEmailAsync(email),
-                    Error.Conflict("Email already in use"))
+                    new Error.Conflict(null, "conflict") { Detail = "Email already in use" })
                 .BindAsync(email => user.UpdateEmailAsync(email)))
         .TapAsync(user => _userRepository.SaveAsync(user))
         .ToActionResultAsync(this);
 
 [HttpDelete("{id}")]
-public ActionResult<Unit> DeleteUser(string id) =>
+public ActionResult DeleteUser(string id) =>
     _userRepository.GetById(id)
-        .ToResult(Error.NotFound($"User {id} not found"))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
         .Ensure(
             user => !user.HasActiveOrders,
-            Error.Conflict("Cannot delete user with active orders"))
+            new Error.Conflict(null, "conflict") { Detail = "Cannot delete user with active orders" })
         .Ensure(
             user => !user.HasPendingPayments,
-            Error.Conflict("Cannot delete user with pending payments"))
+            new Error.Conflict(null, "conflict") { Detail = "Cannot delete user with pending payments" })
         .Tap(user => _userRepository.Delete(user))
         .Map(_ => Result.Ok())
         .ToActionResult(this);
@@ -812,10 +812,10 @@ public class OrderService : IOrderService
 
     private async Task<Result<Customer>> ValidateCustomerAsync(string customerId, CancellationToken ct) =>
         await _customerRepository.GetByIdAsync(customerId, ct)
-            .ToResultAsync(Error.NotFound($"Customer {customerId} not found"))
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Customer {customerId} not found" })
             .EnsureAsync(
                 customer => customer.IsActiveAsync(ct),
-                Error.Conflict("Customer account is inactive"));
+                new Error.Conflict(null, "conflict") { Detail = "Customer account is inactive" });
 
     private async Task<Result<IEnumerable<OrderLine>>> CreateOrderLinesAsync(
         IEnumerable<OrderLineRequest> requests,
@@ -823,7 +823,7 @@ public class OrderService : IOrderService
         await requests.TraverseAsync(
             async (request, cancellationToken) =>
                 await _inventoryService.GetProductAsync(request.ProductId, cancellationToken)
-                    .ToResultAsync(Error.NotFound($"Product {request.ProductId} not found"))
+                    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {request.ProductId} not found" })
                     .BindAsync(product => 
                         OrderLine.TryCreateAsync(
                             product.Id,
@@ -869,7 +869,7 @@ public class UserRepository : IUserRepository
         var user = _context.Users.Find(id);
         return user is not null
             ? user.ToResult()
-            : Error.NotFound($"User {id} not found");
+            : new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" };
     }
 
     public async Task<Result<User>> GetByIdAsync(string id, CancellationToken ct)
@@ -877,7 +877,7 @@ public class UserRepository : IUserRepository
         var user = await _context.Users.FindAsync(new object[] { id }, ct);
         return user is not null
             ? user.ToResult()
-            : Error.NotFound($"User {id} not found");
+            : new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" };
     }
 
     public async Task<Result<User>> GetByEmailAsync(EmailAddress email, CancellationToken ct)
@@ -885,13 +885,13 @@ public class UserRepository : IUserRepository
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
         return user is not null
             ? user.ToResult()
-            : Error.NotFound($"User with email {email} not found");
+            : new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User with email {email} not found" };
     }
 
     public async Task<Result<IEnumerable<User>>> GetAllAsync(CancellationToken ct) =>
         (await _context.Users.ToListAsync(ct)).ToResult();
 
-    public async Task<Result<Unit>> AddAsync(User user, CancellationToken ct)
+    public async Task<Result> AddAsync(User user, CancellationToken ct)
     {
         try
         {
@@ -901,7 +901,7 @@ public class UserRepository : IUserRepository
         }
         catch (DbUpdateException ex)
         {
-            return Error.Unexpected("Failed to add user", ex);
+            return new Error.InternalServerError("fault-id") { Detail = "Failed to add user" };
         }
     }
 }
@@ -916,7 +916,7 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly DbContext _context;
 
-    public async Task<Result<Unit>> CommitAsync(CancellationToken ct)
+    public async Task<Result> CommitAsync(CancellationToken ct)
     {
         try
         {
@@ -925,11 +925,11 @@ public class UnitOfWork : IUnitOfWork
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            return Error.Conflict("Concurrency conflict detected", ex);
+            return new Error.Conflict(null, "conflict") { Detail = "Concurrency conflict detected" };
         }
         catch (DbUpdateException ex)
         {
-            return Error.Unexpected("Database update failed", ex);
+            return new Error.InternalServerError("fault-id") { Detail = "Database update failed" };
         }
     }
 }
@@ -940,10 +940,10 @@ public async Task<ActionResult<TransferResult>> TransferFundsAsync(
     [FromBody] TransferRequest request,
     CancellationToken ct) =>
     await _accountRepository.GetByIdAsync(request.FromAccountId, ct)
-        .ToResultAsync(Error.NotFound($"Account {request.FromAccountId} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Account {request.FromAccountId} not found" })
         .BindAsync(async fromAccount =>
             (await _accountRepository.GetByIdAsync(request.ToAccountId, ct))
-                .ToResult(Error.NotFound($"Account {request.ToAccountId} not found"))
+                .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Account {request.ToAccountId} not found" })
                 .Map(toAccount => (fromAccount, toAccount)))
         .BindAsync(async tuple =>
             (await tuple.fromAccount.WithdrawAsync(request.Amount, ct))
@@ -979,13 +979,13 @@ public async Task<ActionResult<BatchResult<User>>> CreateUsersAsync(
     .ToActionResultAsync(this);
 
 [HttpPut("batch/activate")]
-public async Task<ActionResult<Unit>> ActivateUsersAsync(
+public async Task<ActionResult> ActivateUsersAsync(
     [FromBody] List<string> userIds,
     CancellationToken ct) =>
     await userIds.TraverseAsync(
         async (id, cancellationToken) =>
             await _repository.GetByIdAsync(id, cancellationToken)
-                .ToResultAsync(Error.NotFound($"User {id} not found"))
+                .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
                 .BindAsync(user => user.ActivateAsync(cancellationToken))
                 .TapAsync(user => _repository.UpdateAsync(user, cancellationToken)),
         ct)
@@ -1001,7 +1001,7 @@ Conditional logic in pipelines:
 [HttpPost("{id}/process")]
 public async Task<ActionResult<Order>> ProcessOrderAsync(string id, CancellationToken ct) =>
     await _orderRepository.GetByIdAsync(id, ct)
-        .ToResultAsync(Error.NotFound($"Order {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {id} not found" })
         // Conditionally apply discount
         .BindAsync(async order =>
         {
@@ -1075,7 +1075,7 @@ public async Task<ActionResult<Product>> UpdateProductAsync(
     [FromBody] UpdateProductRequest request,
     CancellationToken ct) =>
     await _repository.GetByIdAsync(id, ct)
-        .ToResultAsync(Error.NotFound($"Product {id} not found"))
+        .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {id} not found" })
         .BindAsync(product => product.UpdateAsync(request, ct))
         // Save changes (critical)
         .TapAsync(product => _repository.UpdateAsync(product, ct))

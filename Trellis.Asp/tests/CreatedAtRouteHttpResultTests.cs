@@ -41,7 +41,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_Failure_ReturnsProblemDetails()
     {
         // Arrange
-        var error = Error.BadRequest("Invalid input");
+        var error = new Error.BadRequest("bad.request") { Detail = "Invalid input" };
         var result = Result.Fail<UserDto>(error);
 
         // Act
@@ -59,7 +59,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_Failure_DoesNotInvokeRouteValues()
     {
         // Arrange
-        var result = Result.Fail<UserDto>(Error.NotFound("Missing"));
+        var result = Result.Fail<UserDto>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Missing" });
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult(
@@ -97,7 +97,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_WithMap_Failure_ReturnsProblemDetails()
     {
         // Arrange
-        var result = Result.Fail<(string, string)>(Error.Conflict("Already exists"));
+        var result = Result.Fail<(string, string)>(new Error.Conflict(null, "conflict") { Detail = "Already exists" });
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult(
@@ -115,7 +115,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_WithMap_Failure_DoesNotInvokeCallbacks()
     {
         // Arrange
-        var result = Result.Fail<string>(Error.NotFound("Missing"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Missing" });
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult<string, UserDto>(

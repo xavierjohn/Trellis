@@ -47,6 +47,6 @@ public partial class OrderState : RequiredEnum<OrderState>
         var msg = allowed.Count > 0
             ? $"Cannot transition from '{this}' to '{newState}'. Allowed: {string.Join(", ", allowed)}"
             : $"Cannot transition from '{this}' — this is a terminal state.";
-        return Result.Fail<SampleUserLibrary.OrderState>(Error.Validation(msg, "state"));
+        return Result.Fail<SampleUserLibrary.OrderState>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("state"), "validation.error") { Detail = msg })));
     }
 }

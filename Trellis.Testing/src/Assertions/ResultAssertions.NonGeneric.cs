@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+namespace Trellis.Testing;
 
 using FluentAssertions;
 using FluentAssertions.Execution;
@@ -61,7 +61,7 @@ public class NonGenericResultAssertions : ReferenceTypeAssertions<Result, NonGen
             .FailWith("Expected {context:result} to be failure{reason}, but it succeeded.");
 
         Subject.TryGetError(out var error);
-        return new AndWhichConstraint<NonGenericResultAssertions, Error>(this, error);
+        return new AndWhichConstraint<NonGenericResultAssertions, Error>(this, error!);
     }
 
     /// <summary>
@@ -79,12 +79,18 @@ public class NonGenericResultAssertions : ReferenceTypeAssertions<Result, NonGen
             .BecauseOf(because, becauseArgs)
             .ForCondition(error is TError)
             .FailWith("Expected {context:result} error to be of type {0}{reason}, but found {1}",
-                typeof(TError).Name,
-                error?.GetType().Name);
+                FormatErrorTypeName(typeof(TError)),
+                error is null ? null : FormatErrorTypeName(error.GetType()));
 
         return new AndWhichConstraint<NonGenericResultAssertions, TError>(
             this,
             (TError)error!);
+    }
+
+    private static string FormatErrorTypeName(System.Type t)
+    {
+        var declaring = t.DeclaringType;
+        return declaring is null ? t.Name : $"{declaring.Name}.{t.Name}";
     }
 
     /// <summary>
@@ -98,7 +104,7 @@ public class NonGenericResultAssertions : ReferenceTypeAssertions<Result, NonGen
         BeFailure(because, becauseArgs);
 
         Subject.TryGetError(out var error);
-        error.Code.Should().Be(expectedCode, because, becauseArgs);
+        error!.Code.Should().Be(expectedCode, because, becauseArgs);
 
         return new AndConstraint<NonGenericResultAssertions>(this);
     }
@@ -114,7 +120,7 @@ public class NonGenericResultAssertions : ReferenceTypeAssertions<Result, NonGen
         BeFailure(because, becauseArgs);
 
         Subject.TryGetError(out var error);
-        error.Detail.Should().Be(expectedDetail, because, becauseArgs);
+        error!.Detail!.Should().Be(expectedDetail, because, becauseArgs);
 
         return new AndConstraint<NonGenericResultAssertions>(this);
     }
@@ -130,7 +136,7 @@ public class NonGenericResultAssertions : ReferenceTypeAssertions<Result, NonGen
         BeFailure(because, becauseArgs);
 
         Subject.TryGetError(out var error);
-        error.Detail.Should().Contain(substring, because, becauseArgs);
+        error!.Detail!.Should().Contain(substring, because, becauseArgs);
 
         return new AndConstraint<NonGenericResultAssertions>(this);
     }

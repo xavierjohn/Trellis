@@ -63,8 +63,8 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             onSuccess: WrapSuccess,
             onFailure: createError =>
             {
-                if (createError is ValidationError validationError)
-                    ValidationErrorsContext.AddError(validationError);
+                if (createError is Error.UnprocessableContent unprocessable)
+                    ValidationErrorsContext.AddError(unprocessable);
                 else
                     ValidationErrorsContext.AddError(
                         fieldName,

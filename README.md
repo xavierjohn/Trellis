@@ -61,7 +61,7 @@ using Trellis;
 
 var result = Result.Ok("ada@example.com")
     .Ensure(email => email.Contains('@'),
-        Error.Validation("Email is invalid.", "email"))
+        new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is invalid." })))
     .Map(email => email.Trim().ToLowerInvariant());
 ```
 

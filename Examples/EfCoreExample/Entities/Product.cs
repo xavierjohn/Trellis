@@ -27,8 +27,8 @@ public class Product : Entity<ProductId>
     /// </summary>
     public static Result<Product> TryCreate(string? name, decimal price, int stockQuantity) =>
         ProductName.TryCreate(name, nameof(name))
-            .Ensure(_ => price > 0, Error.Validation("Price must be greater than zero", nameof(price)))
-            .Ensure(_ => stockQuantity >= 0, Error.Validation("Stock cannot be negative", nameof(stockQuantity)))
+            .Ensure(_ => price > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(price)), "validation.error") { Detail = "Price must be greater than zero" })))
+            .Ensure(_ => stockQuantity >= 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(stockQuantity)), "validation.error") { Detail = "Stock cannot be negative" })))
             .Map(productName => new Product(
                 ProductId.NewUniqueV4(),
                 productName,
@@ -40,7 +40,7 @@ public class Product : Entity<ProductId>
     /// </summary>
     public Result<Product> ReduceStock(int quantity) =>
         this.ToResult()
-            .Ensure(_ => quantity > 0, Error.Validation("Quantity must be positive", nameof(quantity)))
-            .Ensure(_ => StockQuantity >= quantity, Error.Validation($"Insufficient stock. Available: {StockQuantity}", nameof(quantity)))
+            .Ensure(_ => quantity > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be positive" })))
+            .Ensure(_ => StockQuantity >= quantity, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = $"Insufficient stock. Available: {StockQuantity}" })))
             .Tap(_ => StockQuantity -= quantity);
 }

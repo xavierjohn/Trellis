@@ -30,7 +30,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Good() =>
-        Result.Fail<int>(Error.NotFound("Unknown customer"));
+        Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Unknown customer" });
 }
 ```
 
@@ -51,5 +51,5 @@ dotnet_diagnostic.TRLS010.severity = none
 ```
 
 > [!TIP]
-> Reach for `Error.Validation(...)`, `Error.NotFound(...)`, `Error.Conflict(...)`, and similar factories before constructing `Error` yourself.
+> Reach for `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }`, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and similar factories before constructing `Error` yourself.
 

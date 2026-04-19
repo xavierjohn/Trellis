@@ -66,8 +66,8 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Language code is required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Language code is required.");
     }
 
     [Theory]
@@ -83,8 +83,8 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
     }
 
     [Theory]
@@ -100,8 +100,8 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
     }
 
     [Fact]
@@ -112,8 +112,8 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("language");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/language");
     }
 
     [Fact]

@@ -63,7 +63,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var result = Result.Fail<string[]>(Error.NotFound("not found"));
+        var result = Result.Fail<string[]>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var response = result.ToActionResult(controller, 0, 2, 10);
 
@@ -161,7 +161,7 @@ public class ScalarPartialContentActionResultTests
     public async Task ToActionResultAsync_Task_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var resultTask = Task.FromResult(Result.Fail<string>(Error.BadRequest("bad")));
+        var resultTask = Task.FromResult(Result.Fail<string>(new Error.BadRequest("bad.request") { Detail = "bad" }));
 
         var response = await resultTask.ToActionResultAsync(controller, 0, 0, 1);
 

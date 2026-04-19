@@ -111,7 +111,7 @@ stateDiagram-v2
 ### On failure
 
 - it converts only **recognized** Stateless invalid-transition `InvalidOperationException` cases into a failed result
-- the failure is a `DomainError`
+- the failure is a `Error.Conflict`
 
 ### What it does **not** do
 
