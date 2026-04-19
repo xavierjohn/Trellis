@@ -1,4 +1,4 @@
-namespace Example.Tests;
+﻿namespace Example.Tests;
 
 using System.Diagnostics;
 using Trellis;

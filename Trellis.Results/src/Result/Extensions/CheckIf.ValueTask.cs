@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Async CheckIf extensions where BOTH input and check function are async (ValueTask).

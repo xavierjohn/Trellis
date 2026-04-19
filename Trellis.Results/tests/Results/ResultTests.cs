@@ -1,4 +1,4 @@
-namespace Trellis.Results.Tests;
+﻿namespace Trellis.Results.Tests;
 
 using Trellis.Testing;
 

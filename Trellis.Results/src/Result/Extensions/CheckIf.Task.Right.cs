@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Async CheckIf extensions where only the RIGHT (check function) is async (Task), input is sync.

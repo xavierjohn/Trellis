@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System;
 using System.Diagnostics;

@@ -1,4 +1,4 @@
-namespace SampleWebApplication.Controllers;
+﻿namespace SampleWebApplication.Controllers;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;

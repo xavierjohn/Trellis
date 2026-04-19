@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System.Collections.Immutable;
 using System.Net.Http.Headers;

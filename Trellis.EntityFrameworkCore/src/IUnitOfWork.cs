@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.EntityFrameworkCore;
 
 /// <summary>
 /// Abstraction over the commit boundary for staged changes.

@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System;
 using System.Diagnostics;
@@ -51,6 +51,7 @@ public static class ResultMapExtensionsAsync
     public static async Task<Result<TOut>> MapAsync<TOut>(this Result result, Func<Task<TOut>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultMapExtensions.Map));
         if (result.IsFailure) return Result.Fail<TOut>(result.Error);
         return Result.Ok(await func().ConfigureAwait(false));
     }
@@ -64,6 +65,7 @@ public static class ResultMapExtensionsAsync
     public static async ValueTask<Result<TOut>> MapAsync<TOut>(this Result result, Func<ValueTask<TOut>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultMapExtensions.Map));
         if (result.IsFailure) return Result.Fail<TOut>(result.Error);
         return Result.Ok(await func().ConfigureAwait(false));
     }
@@ -128,6 +130,7 @@ public static class ResultBindExtensionsAsync
     public static async Task<Result> BindAsync(this Result result, Func<Task<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
         if (result.IsFailure) return result;
         var output = await func().ConfigureAwait(false);
         output.LogActivityStatus();
@@ -146,6 +149,7 @@ public static class ResultBindExtensionsAsync
     public static async ValueTask<Result> BindAsync(this Result result, Func<ValueTask<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
         if (result.IsFailure) return result;
         var output = await func().ConfigureAwait(false);
         output.LogActivityStatus();
@@ -165,6 +169,7 @@ public static class ResultBindExtensionsAsync
     public static async Task<Result<TOut>> BindAsync<TOut>(this Result result, Func<Task<Result<TOut>>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
         if (result.IsFailure) return Result.Fail<TOut>(result.Error);
         var output = await func().ConfigureAwait(false);
         output.LogActivityStatus();
@@ -183,6 +188,7 @@ public static class ResultBindExtensionsAsync
     public static async ValueTask<Result<TOut>> BindAsync<TOut>(this Result result, Func<ValueTask<Result<TOut>>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
         if (result.IsFailure) return Result.Fail<TOut>(result.Error);
         var output = await func().ConfigureAwait(false);
         output.LogActivityStatus();
@@ -202,6 +208,7 @@ public static class ResultBindExtensionsAsync
     public static async Task<Result> BindAsync<TIn>(this Result<TIn> result, Func<TIn, Task<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
         if (result.IsFailure) return Result.Fail(result.Error);
         var output = await func(result.Value).ConfigureAwait(false);
         output.LogActivityStatus();
@@ -220,6 +227,7 @@ public static class ResultBindExtensionsAsync
     public static async ValueTask<Result> BindAsync<TIn>(this Result<TIn> result, Func<TIn, ValueTask<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
         if (result.IsFailure) return Result.Fail(result.Error);
         var output = await func(result.Value).ConfigureAwait(false);
         output.LogActivityStatus();
@@ -261,6 +269,7 @@ public static class ResultTapExtensionsAsync
     public static async Task<Result> TapAsync(this Result result, Func<Task> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapExtensions.Tap));
         if (result.IsSuccess) await func().ConfigureAwait(false);
         result.LogActivityStatus();
         return result;
@@ -278,6 +287,7 @@ public static class ResultTapExtensionsAsync
     public static async ValueTask<Result> TapAsync(this Result result, Func<ValueTask> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapExtensions.Tap));
         if (result.IsSuccess) await func().ConfigureAwait(false);
         result.LogActivityStatus();
         return result;
@@ -318,6 +328,7 @@ public static class ResultTapErrorExtensionsAsync
     public static async Task<Result> TapErrorAsync(this Result result, Func<Error, Task> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapErrorExtensions.TapError));
         if (result.IsFailure) await func(result.Error).ConfigureAwait(false);
         result.LogActivityStatus();
         return result;
@@ -335,6 +346,7 @@ public static class ResultTapErrorExtensionsAsync
     public static async ValueTask<Result> TapErrorAsync(this Result result, Func<Error, ValueTask> func)
     {
         ArgumentNullException.ThrowIfNull(func);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapErrorExtensions.TapError));
         if (result.IsFailure) await func(result.Error).ConfigureAwait(false);
         result.LogActivityStatus();
         return result;
@@ -376,6 +388,7 @@ public static class ResultEnsureExtensionsAsync
     {
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(error);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultEnsureExtensions.Ensure));
         if (result.IsFailure) return result;
         return await predicate().ConfigureAwait(false) ? Result.Ok() : Result.Fail(error);
     }
@@ -393,6 +406,7 @@ public static class ResultEnsureExtensionsAsync
     {
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(error);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultEnsureExtensions.Ensure));
         if (result.IsFailure) return result;
         return await predicate().ConfigureAwait(false) ? Result.Ok() : Result.Fail(error);
     }
@@ -497,6 +511,7 @@ public static class ResultRecoverExtensionsAsync
     public static async Task<Result> RecoverAsync(this Result result, Func<Error, Task<Result>> recovery)
     {
         ArgumentNullException.ThrowIfNull(recovery);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultRecoverExtensions.Recover));
         if (result.IsSuccess) return result;
         var output = await recovery(result.Error).ConfigureAwait(false);
         output.LogActivityStatus();
@@ -515,6 +530,7 @@ public static class ResultRecoverExtensionsAsync
     public static async ValueTask<Result> RecoverAsync(this Result result, Func<Error, ValueTask<Result>> recovery)
     {
         ArgumentNullException.ThrowIfNull(recovery);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultRecoverExtensions.Recover));
         if (result.IsSuccess) return result;
         var output = await recovery(result.Error).ConfigureAwait(false);
         output.LogActivityStatus();

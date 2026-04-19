@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System;
 using System.Diagnostics;
@@ -142,7 +142,12 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     /// <summary>
     /// Creates a successful non-generic <see cref="Result"/> (no payload).
     /// </summary>
-    public static Result Ok() => default;
+    /// <remarks>
+    /// Goes through the constructor so that <see cref="Activity.Current"/> receives the success status,
+    /// matching the tracing behavior of <see cref="Ok{TValue}(TValue)"/>. Note that <c>default(Result)</c>
+    /// is still a valid success value (per the §3.5.1 default-state invariant) but will not tag any active activity.
+    /// </remarks>
+    public static Result Ok() => new(false, null);
 
     /// <summary>
     /// Creates a failed non-generic <see cref="Result"/> with the specified <paramref name="error"/>.

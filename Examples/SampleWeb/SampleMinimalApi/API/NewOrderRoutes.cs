@@ -1,4 +1,4 @@
-namespace SampleMinimalApi.API;
+﻿namespace SampleMinimalApi.API;
 
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
