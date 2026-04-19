@@ -1,4 +1,4 @@
-﻿namespace Example.Tests;
+namespace TestingPatterns;
 
 using Trellis;
 using Xunit;

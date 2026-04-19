@@ -11,7 +11,7 @@ across a domain aggregate, an MVC HTTP API, and a unit + integration test suite.
 | `Error.Conflict` for domain rule violations | `Showcase.Domain/Aggregates/BankAccount.cs` (`Deposit`, `Withdraw`) |
 | `Error.NotFound` with `ResourceRef` | `Showcase.Api/Persistence/IAccountRepository.cs` |
 | `Error.PreconditionFailed` | `ConditionalRequestExample` (sibling sample) |
-| `Error.Forbidden` with `policyId` | `AuthorizationExample` (sibling sample) |
+| `Error.Forbidden` with `policyId` | `Showcase.Api/Services/InMemoryIdentityVerifier.cs` (verifier returns Forbidden when authorization fails) |
 | `Error.InternalServerError(faultId)` | `Showcase.Api/Controllers/DiagnosticsController.cs` |
 | `Error.Unauthorized` from a boundary adapter | `Showcase.Api/Services/InMemoryIdentityVerifier.cs` |
 | Plain ROP (`Ensure`/`Bind`/`Tap`/`Map`) | `Showcase.Domain/Aggregates/BankAccount.cs` (money operations) |

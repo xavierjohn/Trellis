@@ -1,5 +1,5 @@
 using Trellis.Testing;
-namespace Example.Tests;
+namespace TestingPatterns;
 
 using Trellis;
 using Xunit;

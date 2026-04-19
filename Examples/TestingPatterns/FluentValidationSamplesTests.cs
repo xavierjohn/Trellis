@@ -1,7 +1,7 @@
 using Trellis.Testing;
 using Trellis.FluentValidation;
 
-namespace Example.Tests;
+namespace TestingPatterns;
 
 using System.Collections.Immutable;
 using FluentValidation;
@@ -26,9 +26,9 @@ public class FluentValidationSamplesTests
         public static Result<EmailAddress> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Email cannot be empty" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Email cannot be empty" })));
             if (!value.Contains('@'))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Email must contain @" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Email must contain @" })));
             return Result.Ok(new EmailAddress(value));
         }
     }
@@ -41,9 +41,9 @@ public class FluentValidationSamplesTests
         public static Result<Username> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Username cannot be empty" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.Username>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Username cannot be empty" })));
             if (value.Length is < 3 or > 20)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Username must be between 3 and 20 characters" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.Username>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Username must be between 3 and 20 characters" })));
             return Result.Ok(new Username(value));
         }
     }
@@ -56,7 +56,7 @@ public class FluentValidationSamplesTests
         public static Result<PhoneNumber> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.PhoneNumber>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Phone number cannot be empty" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.PhoneNumber>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Phone number cannot be empty" })));
             return Result.Ok(new PhoneNumber(value));
         }
     }
@@ -300,7 +300,7 @@ public class FluentValidationSamplesTests
         public static Result<ProductId> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.ProductId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Product ID cannot be empty" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.ProductId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Product ID cannot be empty" })));
             return Result.Ok(new ProductId(value));
         }
     }
@@ -313,9 +313,9 @@ public class FluentValidationSamplesTests
         public static Result<Quantity> TryCreate(int value)
         {
             if (value <= 0)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Quantity must be positive" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Quantity must be positive" })));
             if (value > 1000)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Quantity cannot exceed 1000" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Quantity cannot exceed 1000" })));
             return Result.Ok(new Quantity(value));
         }
     }
@@ -328,7 +328,7 @@ public class FluentValidationSamplesTests
         public static Result<Price> TryCreate(decimal value)
         {
             if (value <= 0)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Price>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Price must be positive" })));
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.Price>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Price must be positive" })));
             return Result.Ok(new Price(value));
         }
     }
@@ -355,7 +355,7 @@ public class FluentValidationSamplesTests
             Quantity quantity)
         {
             if (string.IsNullOrWhiteSpace(productName))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.OrderLine>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Product name cannot be empty" });
+                return Result.Fail<TestingPatterns.FluentValidationSamplesTests.OrderLine>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Product name cannot be empty" });
 
             return Result.Ok(new OrderLine(productId, productName, price, quantity));
         }
