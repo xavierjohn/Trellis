@@ -79,7 +79,7 @@ public static partial class CombineExtensions
     /// </returns>
     /// <remarks>
     /// This overload is useful when you need to validate a condition without adding to the tuple.
-    /// The Unit result acts as a validation gate that must pass, but contributes no value.
+    /// The non-generic Result acts as a validation gate that must pass, but contributes no value.
     /// </remarks>
     /// <example>
     /// <code>
@@ -160,7 +160,7 @@ public static partial class CombineExtensionsAsync
     #region <#= i - 1 #>-Tuple Task Left-Async
 
     /// <summary>
-    /// Combine a Task-wrapped <#= i - 1 #>-tuple result with a Unit result. Left is async (Task).
+    /// Combine a Task-wrapped <#= i - 1 #>-tuple result with a non-generic <see cref="Result"/>. Left is async (Task).
     /// </summary>
     public static async Task<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
       this Task<Result<(<# WriteTs(i - 1); #>)>> tt1, Result tc)
@@ -194,7 +194,7 @@ public static partial class CombineExtensionsAsync
     #region <#= i - 1 #>-Tuple ValueTask Left-Async
 
     /// <summary>
-    /// Combine a ValueTask-wrapped <#= i - 1 #>-tuple result with a Unit result. Left is async (ValueTask).
+    /// Combine a ValueTask-wrapped <#= i - 1 #>-tuple result with a non-generic <see cref="Result"/>. Left is async (ValueTask).
     /// </summary>
     public static async ValueTask<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
       this ValueTask<Result<(<# WriteTs(i - 1); #>)>> vt1, Result tc)

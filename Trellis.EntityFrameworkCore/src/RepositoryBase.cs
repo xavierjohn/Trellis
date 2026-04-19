@@ -212,7 +212,7 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// </summary>
     /// <param name="id">The aggregate identifier to remove.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Result{Unit}"/> representing success (staged) or not-found failure.</returns>
+    /// <returns>A non-generic <see cref="Result"/> representing success (staged) or not-found failure.</returns>
     public virtual async Task<Result> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
         var entity = await DbSet.FindAsync([id], cancellationToken).ConfigureAwait(false);

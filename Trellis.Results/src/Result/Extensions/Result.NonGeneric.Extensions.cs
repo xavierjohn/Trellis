@@ -43,7 +43,10 @@ public static class ResultMapExtensions
 public static class ResultMapExtensionsAsync
 {
     public static async Task<Result<TOut>> MapAsync<TOut>(this Task<Result> resultTask, Func<TOut> func)
-        => (await resultTask.ConfigureAwait(false)).Map(func);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Map(func);
+    }
 
     public static async ValueTask<Result<TOut>> MapAsync<TOut>(this ValueTask<Result> resultTask, Func<TOut> func)
         => (await resultTask.ConfigureAwait(false)).Map(func);
@@ -58,6 +61,7 @@ public static class ResultMapExtensionsAsync
 
     public static async Task<Result<TOut>> MapAsync<TOut>(this Task<Result> resultTask, Func<Task<TOut>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.MapAsync(func).ConfigureAwait(false);
     }
@@ -125,7 +129,10 @@ public static class ResultBindExtensionsAsync
 {
     // unit → unit
     public static async Task<Result> BindAsync(this Task<Result> resultTask, Func<Result> func)
-        => (await resultTask.ConfigureAwait(false)).Bind(func);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Bind(func);
+    }
 
     public static async Task<Result> BindAsync(this Result result, Func<Task<Result>> func)
     {
@@ -139,6 +146,7 @@ public static class ResultBindExtensionsAsync
 
     public static async Task<Result> BindAsync(this Task<Result> resultTask, Func<Task<Result>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.BindAsync(func).ConfigureAwait(false);
     }
@@ -164,7 +172,10 @@ public static class ResultBindExtensionsAsync
 
     // unit → value
     public static async Task<Result<TOut>> BindAsync<TOut>(this Task<Result> resultTask, Func<Result<TOut>> func)
-        => (await resultTask.ConfigureAwait(false)).Bind(func);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Bind(func);
+    }
 
     public static async Task<Result<TOut>> BindAsync<TOut>(this Result result, Func<Task<Result<TOut>>> func)
     {
@@ -178,6 +189,7 @@ public static class ResultBindExtensionsAsync
 
     public static async Task<Result<TOut>> BindAsync<TOut>(this Task<Result> resultTask, Func<Task<Result<TOut>>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.BindAsync(func).ConfigureAwait(false);
     }
@@ -203,7 +215,10 @@ public static class ResultBindExtensionsAsync
 
     // value → unit (cross-shape)
     public static async Task<Result> BindAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Result> func)
-        => (await resultTask.ConfigureAwait(false)).Bind(func);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Bind(func);
+    }
 
     public static async Task<Result> BindAsync<TIn>(this Result<TIn> result, Func<TIn, Task<Result>> func)
     {
@@ -217,6 +232,7 @@ public static class ResultBindExtensionsAsync
 
     public static async Task<Result> BindAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Task<Result>> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.BindAsync(func).ConfigureAwait(false);
     }
@@ -264,7 +280,10 @@ public static class ResultTapExtensions
 public static class ResultTapExtensionsAsync
 {
     public static async Task<Result> TapAsync(this Task<Result> resultTask, Action action)
-        => (await resultTask.ConfigureAwait(false)).Tap(action);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Tap(action);
+    }
 
     public static async Task<Result> TapAsync(this Result result, Func<Task> func)
     {
@@ -277,6 +296,7 @@ public static class ResultTapExtensionsAsync
 
     public static async Task<Result> TapAsync(this Task<Result> resultTask, Func<Task> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.TapAsync(func).ConfigureAwait(false);
     }
@@ -323,7 +343,10 @@ public static class ResultTapErrorExtensions
 public static class ResultTapErrorExtensionsAsync
 {
     public static async Task<Result> TapErrorAsync(this Task<Result> resultTask, Action<Error> action)
-        => (await resultTask.ConfigureAwait(false)).TapError(action);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).TapError(action);
+    }
 
     public static async Task<Result> TapErrorAsync(this Result result, Func<Error, Task> func)
     {
@@ -336,6 +359,7 @@ public static class ResultTapErrorExtensionsAsync
 
     public static async Task<Result> TapErrorAsync(this Task<Result> resultTask, Func<Error, Task> func)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.TapErrorAsync(func).ConfigureAwait(false);
     }
@@ -382,7 +406,10 @@ public static class ResultEnsureExtensions
 public static class ResultEnsureExtensionsAsync
 {
     public static async Task<Result> EnsureAsync(this Task<Result> resultTask, Func<bool> predicate, Error error)
-        => (await resultTask.ConfigureAwait(false)).Ensure(predicate, error);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Ensure(predicate, error);
+    }
 
     public static async Task<Result> EnsureAsync(this Result result, Func<Task<bool>> predicate, Error error)
     {
@@ -395,6 +422,7 @@ public static class ResultEnsureExtensionsAsync
 
     public static async Task<Result> EnsureAsync(this Task<Result> resultTask, Func<Task<bool>> predicate, Error error)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.EnsureAsync(predicate, error).ConfigureAwait(false);
     }
@@ -446,7 +474,10 @@ public static class ResultMatchExtensions
 public static class ResultMatchExtensionsAsync
 {
     public static async Task<TOut> MatchAsync<TOut>(this Task<Result> resultTask, Func<TOut> onSuccess, Func<Error, TOut> onFailure)
-        => (await resultTask.ConfigureAwait(false)).Match(onSuccess, onFailure);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Match(onSuccess, onFailure);
+    }
 
     public static async Task<TOut> MatchAsync<TOut>(this Result result, Func<Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)
     {
@@ -459,6 +490,7 @@ public static class ResultMatchExtensionsAsync
 
     public static async Task<TOut> MatchAsync<TOut>(this Task<Result> resultTask, Func<Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.MatchAsync(onSuccess, onFailure).ConfigureAwait(false);
     }
@@ -506,7 +538,10 @@ public static class ResultRecoverExtensions
 public static class ResultRecoverExtensionsAsync
 {
     public static async Task<Result> RecoverAsync(this Task<Result> resultTask, Func<Error, Result> recovery)
-        => (await resultTask.ConfigureAwait(false)).Recover(recovery);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).Recover(recovery);
+    }
 
     public static async Task<Result> RecoverAsync(this Result result, Func<Error, Task<Result>> recovery)
     {
@@ -520,6 +555,7 @@ public static class ResultRecoverExtensionsAsync
 
     public static async Task<Result> RecoverAsync(this Task<Result> resultTask, Func<Error, Task<Result>> recovery)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return await result.RecoverAsync(recovery).ConfigureAwait(false);
     }
@@ -553,7 +589,10 @@ public static class ResultRecoverExtensionsAsync
 public static class ResultAsUnitExtensionsAsync
 {
     public static async Task<Result> AsUnitAsync<T>(this Task<Result<T>> resultTask)
-        => (await resultTask.ConfigureAwait(false)).AsUnit();
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).AsUnit();
+    }
 
     public static async ValueTask<Result> AsUnitAsync<T>(this ValueTask<Result<T>> resultTask)
         => (await resultTask.ConfigureAwait(false)).AsUnit();

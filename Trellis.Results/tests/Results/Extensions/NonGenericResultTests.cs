@@ -181,4 +181,117 @@ public class NonGenericResultTests : TestBase
     }
 
     #endregion
+
+    #region AsUnit
+
+    [Fact]
+    public void AsUnit_Success_ReturnsNonGenericOk()
+    {
+        var source = Result.Ok(42);
+
+        var unit = source.AsUnit();
+
+        unit.Should().BeSuccess();
+    }
+
+    [Fact]
+    public void AsUnit_Failure_PreservesError()
+    {
+        var source = Result.Fail<int>(Error1);
+
+        var unit = source.AsUnit();
+
+        var error = unit.Should().BeFailure().Which;
+        error.Code.Should().Be(Error1.Code);
+        error.Detail.Should().Be(Error1.Detail);
+        ReferenceEquals(error, Error1).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Result.Try (non-generic)
+
+    [Fact]
+    public void Try_Action_Success_ReturnsOk()
+    {
+        var ran = false;
+
+        var result = Result.Try(() => { ran = true; });
+
+        ran.Should().BeTrue();
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public void Try_Action_WhenThrows_ReturnsUnexpectedFailure()
+    {
+        var result = Result.Try(() => throw new InvalidOperationException("Boom"));
+
+        var error = result.Should().BeFailure().Which;
+        error.Should().BeOfType<UnexpectedError>();
+        error.Detail.Should().Be("Boom");
+    }
+
+    [Fact]
+    public void Try_Action_WithCustomMapper_UsesMapper()
+    {
+        var result = Result.Try(
+            () => throw new InvalidOperationException("HideMe"),
+            ex => Error.BadRequest("Mapped"));
+
+        var error = result.Should().BeFailure().Which;
+        error.Should().BeOfType<BadRequestError>();
+        error.Detail.Should().Be("Mapped");
+    }
+
+    [Fact]
+    public void Try_Action_OperationCanceled_IsRethrown()
+    {
+        Action act = () => Result.Try(() => throw new OperationCanceledException("cancel"));
+
+        act.Should().Throw<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TryAsync_Func_Success_ReturnsOk()
+    {
+        var ran = false;
+
+        var result = await Result.TryAsync(async () =>
+        {
+            await Task.Yield();
+            ran = true;
+        });
+
+        ran.Should().BeTrue();
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public async Task TryAsync_Func_WhenThrows_ReturnsUnexpectedFailure()
+    {
+        var result = await Result.TryAsync(async () =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("AsyncBoom");
+        });
+
+        var error = result.Should().BeFailure().Which;
+        error.Should().BeOfType<UnexpectedError>();
+        error.Detail.Should().Be("AsyncBoom");
+    }
+
+    [Fact]
+    public async Task TryAsync_Func_OperationCanceled_IsRethrown()
+    {
+        Func<Task> act = () => Result.TryAsync(async () =>
+        {
+            await Task.Yield();
+            throw new OperationCanceledException("cancel");
+        });
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    #endregion
 }
