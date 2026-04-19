@@ -230,13 +230,10 @@ where T : IComparable
     /// ]]></code>
     /// </example>
 #pragma warning disable CA1000 // Do not declare static members on generic types - Required by CRTP pattern
-    public static TSelf Create(T value)
-    {
-        var result = TSelf.TryCreate(value);
-        if (result.IsFailure)
-            throw new InvalidOperationException($"Failed to create {typeof(TSelf).Name}: {result.Error.Detail}");
-        return result.Value;
-    }
+    public static TSelf Create(T value) =>
+        TSelf.TryCreate(value).Match(
+            onSuccess: created => created,
+            onFailure: error => throw new InvalidOperationException($"Failed to create {typeof(TSelf).Name}: {error.Detail}"));
 #pragma warning restore CA1000
 
     // IConvertible implementation - delegates to Convert class for the wrapped value

@@ -51,14 +51,9 @@ public class MoneyJsonConverter : JsonConverter<Money>
         if (currency == null)
             throw new JsonException("Currency is required.");
 
-        var result = Money.TryCreate(amount, currency);
-        if (result.IsFailure)
-        {
-            var error = result.Error;
-            throw new JsonException(error.Detail);
-        }
-
-        return result.Value;
+        return Money.TryCreate(amount, currency).Match(
+            onSuccess: money => money,
+            onFailure: error => throw new JsonException(error.Detail));
     }
 
     /// <summary>

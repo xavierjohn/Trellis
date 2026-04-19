@@ -1,7 +1,8 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public partial class TrackingId : RequiredString<TrackingId>
 {
@@ -18,8 +19,8 @@ public class RequiredStringTests
     {
         var trackingId1 = TrackingId.TryCreate(input, null);
         trackingId1.IsFailure.Should().BeTrue();
-        trackingId1.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)trackingId1.Error;
+        trackingId1.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)trackingId1.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("trackingId");
         validation.FieldErrors[0].Details[0].Should().Be("Tracking Id cannot be empty.");
         validation.Code.Should().Be("validation.error");
@@ -62,7 +63,7 @@ public class RequiredStringTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        TrackingId trackingId1 = TrackingId.TryCreate("32141sd").Value;
+        TrackingId trackingId1 = TrackingId.TryCreate("32141sd").Unwrap();
 
         // Act
         string strTracking = trackingId1;
@@ -80,14 +81,14 @@ public class RequiredStringTests
         TrackingId trackingId1 = (TrackingId)"32141sd";
 
         // Assert
-        trackingId1.Should().Be(TrackingId.TryCreate("32141sd").Value);
+        trackingId1.Should().Be(TrackingId.TryCreate("32141sd").Unwrap());
     }
 
     [Fact]
     public void Can_use_ToString()
     {
         // Arrange
-        TrackingId trackingId1 = TrackingId.TryCreate("32141sd").Value;
+        TrackingId trackingId1 = TrackingId.TryCreate("32141sd").Unwrap();
 
         // Act
         var strTracking = trackingId1.ToString(CultureInfo.InvariantCulture);
@@ -170,8 +171,8 @@ public class RequiredStringTests
     public void Can_use_Contains()
     {
         // Arrange
-        var id1 = TrackingId.TryCreate("id1").Value;
-        var id2 = TrackingId.TryCreate("id2").Value;
+        var id1 = TrackingId.TryCreate("id1").Unwrap();
+        var id2 = TrackingId.TryCreate("id2").Unwrap();
         IReadOnlyList<TrackingId> ids = new List<TrackingId> { id1, id2 };
 
         // Act
@@ -186,7 +187,7 @@ public class RequiredStringTests
     {
         // Arrange
         var strTrackingId = "MyTrackingId";
-        TrackingId trackingId = TrackingId.TryCreate(strTrackingId).Value;
+        TrackingId trackingId = TrackingId.TryCreate(strTrackingId).Unwrap();
         var expected = JsonSerializer.Serialize(strTrackingId);
 
         // Act
@@ -230,7 +231,7 @@ public class RequiredStringTests
         var result = TrackingId.TryCreate("  ABC123  ");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be("ABC123",
+        result.Unwrap().Value.Should().Be("ABC123",
             "RequiredString should trim leading and trailing whitespace per its XML documentation");
     }
 

@@ -1,4 +1,5 @@
-﻿namespace Trellis.Primitives.Tests;
+using Trellis.Testing;
+namespace Trellis.Primitives.Tests;
 
 /// <summary>
 /// Test value object with range constraint (1–999).
@@ -31,7 +32,7 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(500);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(500);
+        result.Unwrap().Value.Should().Be(500);
     }
 
     [Fact]
@@ -39,8 +40,8 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(-10);
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("testQuantity");
         validation.FieldErrors[0].Details[0].Should().Be("Test Quantity must be at least 1.");
     }
@@ -50,8 +51,8 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(5000);
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("testQuantity");
         validation.FieldErrors[0].Details[0].Should().Be("Test Quantity must be at most 999.");
     }
@@ -61,7 +62,7 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(1);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1);
+        result.Unwrap().Value.Should().Be(1);
     }
 
     [Fact]
@@ -69,7 +70,7 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(999);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(999);
+        result.Unwrap().Value.Should().Be(999);
     }
 
     [Fact]
@@ -77,7 +78,7 @@ public class RangedIntTests
     {
         var result = TestPercentageInt.TryCreate(0);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(0);
+        result.Unwrap().Value.Should().Be(0);
     }
 
     [Fact]
@@ -103,7 +104,7 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate("500");
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(500);
+        result.Unwrap().Value.Should().Be(500);
     }
 
     [Fact]
@@ -111,8 +112,8 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate("1000");
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Test Quantity must be at most 999.");
     }
 
@@ -132,7 +133,7 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate((int?)500);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(500);
+        result.Unwrap().Value.Should().Be(500);
     }
 
     #endregion
@@ -144,7 +145,7 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(0, "myField");
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 
@@ -168,7 +169,7 @@ public class RangedIntTests
     {
         var result = FullRangeInt.TryCreate(int.MinValue);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(int.MinValue);
+        result.Unwrap().Value.Should().Be(int.MinValue);
     }
 
     [Fact]
@@ -176,7 +177,7 @@ public class RangedIntTests
     {
         var result = FullRangeInt.TryCreate(int.MaxValue);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(int.MaxValue);
+        result.Unwrap().Value.Should().Be(int.MaxValue);
     }
 
     [Fact]

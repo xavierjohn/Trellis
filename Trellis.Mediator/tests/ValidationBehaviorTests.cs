@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using Trellis.Mediator.Tests.Helpers;
@@ -20,7 +21,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Hello, Alice!");
+        result.Unwrap().Should().Be("Hello, Alice!");
         tracker.WasInvoked.Should().BeTrue();
     }
 
@@ -39,8 +40,8 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        result.Error.Detail.Should().Contain("Name");
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Detail.Should().Contain("Name");
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked for invalid messages");
     }
 
@@ -73,7 +74,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(query, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Result-42");
+        result.Unwrap().Should().Be("Result-42");
         tracker.WasInvoked.Should().BeTrue();
     }
 
@@ -88,7 +89,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(query, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Id");
+        result.UnwrapError().Detail.Should().Contain("Id");
         tracker.WasInvoked.Should().BeFalse();
     }
 

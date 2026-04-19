@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -7,6 +7,7 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
 using Xunit;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for ValidatingJsonConverter to ensure all primitive types are serialized correctly.
@@ -206,7 +207,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         // Arrange
         var converter = new ValidatingJsonConverter<StringVO, string>();
-        var vo = StringVO.TryCreate("Hello World", null).Value;
+        var vo = StringVO.TryCreate("Hello World", null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -222,7 +223,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_String_PreservesValue()
     {
-        var vo = StringVO.TryCreate("Test", null).Value;
+        var vo = StringVO.TryCreate("Test", null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<StringVO, string>());
         roundTripped!.Value.Should().Be("Test");
     }
@@ -237,7 +238,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         // Arrange
         var guid = Guid.Parse("12345678-1234-1234-1234-123456789012");
         var converter = new ValidatingJsonConverter<GuidVO, Guid>();
-        var vo = GuidVO.TryCreate(guid, null).Value;
+        var vo = GuidVO.TryCreate(guid, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -254,7 +255,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void RoundTrip_Guid_PreservesValue()
     {
         var guid = Guid.NewGuid();
-        var vo = GuidVO.TryCreate(guid, null).Value;
+        var vo = GuidVO.TryCreate(guid, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<GuidVO, Guid>());
         roundTripped!.Value.Should().Be(guid);
     }
@@ -267,7 +268,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Int_WritesCorrectly()
     {
         var converter = new ValidatingJsonConverter<IntVO, int>();
-        var vo = IntVO.TryCreate(42, null).Value;
+        var vo = IntVO.TryCreate(42, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -281,7 +282,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Int_PreservesValue()
     {
-        var vo = IntVO.TryCreate(999, null).Value;
+        var vo = IntVO.TryCreate(999, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<IntVO, int>());
         roundTripped!.Value.Should().Be(999);
     }
@@ -290,7 +291,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Int_Zero()
     {
         var converter = new ValidatingJsonConverter<IntVO, int>();
-        var vo = IntVO.TryCreate(0, null).Value;
+        var vo = IntVO.TryCreate(0, null).Unwrap();
         var json = Serialize(vo, converter);
         json.Should().Be("0");
     }
@@ -299,7 +300,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Int_MaxValue()
     {
         var converter = new ValidatingJsonConverter<IntVO, int>();
-        var vo = IntVO.TryCreate(int.MaxValue, null).Value;
+        var vo = IntVO.TryCreate(int.MaxValue, null).Unwrap();
         var json = Serialize(vo, converter);
         json.Should().Be(int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
@@ -312,7 +313,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Long_WritesCorrectly()
     {
         var converter = new ValidatingJsonConverter<LongVO, long>();
-        var vo = LongVO.TryCreate(9223372036854775807L, null).Value;
+        var vo = LongVO.TryCreate(9223372036854775807L, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -326,7 +327,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Long_PreservesValue()
     {
-        var vo = LongVO.TryCreate(123456789012345L, null).Value;
+        var vo = LongVO.TryCreate(123456789012345L, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<LongVO, long>());
         roundTripped!.Value.Should().Be(123456789012345L);
     }
@@ -339,7 +340,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Double_WritesCorrectly()
     {
         var converter = new ValidatingJsonConverter<DoubleVO, double>();
-        var vo = DoubleVO.TryCreate(3.14159, null).Value;
+        var vo = DoubleVO.TryCreate(3.14159, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -353,7 +354,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Double_PreservesValue()
     {
-        var vo = DoubleVO.TryCreate(2.71828, null).Value;
+        var vo = DoubleVO.TryCreate(2.71828, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<DoubleVO, double>());
         roundTripped!.Value.Should().BeApproximately(2.71828, 0.00001);
     }
@@ -369,7 +370,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Float_WritesCorrectly()
     {
         var converter = new ValidatingJsonConverter<FloatVO, float>();
-        var vo = FloatVO.TryCreate(1.23f, null).Value;
+        var vo = FloatVO.TryCreate(1.23f, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -383,7 +384,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Float_PreservesValue()
     {
-        var vo = FloatVO.TryCreate(9.99f, null).Value;
+        var vo = FloatVO.TryCreate(9.99f, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<FloatVO, float>());
         roundTripped!.Value.Should().BeApproximately(9.99f, 0.01f);
     }
@@ -396,7 +397,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Decimal_WritesCorrectly()
     {
         var converter = new ValidatingJsonConverter<DecimalVO, decimal>();
-        var vo = DecimalVO.TryCreate(99.99m, null).Value;
+        var vo = DecimalVO.TryCreate(99.99m, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -410,7 +411,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Decimal_PreservesValue()
     {
-        var vo = DecimalVO.TryCreate(123.456m, null).Value;
+        var vo = DecimalVO.TryCreate(123.456m, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<DecimalVO, decimal>());
         roundTripped!.Value.Should().Be(123.456m);
     }
@@ -419,7 +420,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Decimal_HighPrecision()
     {
         var converter = new ValidatingJsonConverter<DecimalVO, decimal>();
-        var vo = DecimalVO.TryCreate(0.123456789012345678901234567890m, null).Value;
+        var vo = DecimalVO.TryCreate(0.123456789012345678901234567890m, null).Unwrap();
         var json = Serialize(vo, converter);
         // JSON serialization preserves significant digits but may round the last few digits
         json.Should().StartWith("0.123456789012345678901234");
@@ -433,7 +434,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Bool_True()
     {
         var converter = new ValidatingJsonConverter<BoolVO, bool>();
-        var vo = BoolVO.TryCreate(true, null).Value;
+        var vo = BoolVO.TryCreate(true, null).Unwrap();
         var json = Serialize(vo, converter);
         json.Should().Be("true");
     }
@@ -442,7 +443,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Bool_False()
     {
         var converter = new ValidatingJsonConverter<BoolVO, bool>();
-        var vo = BoolVO.TryCreate(false, null).Value;
+        var vo = BoolVO.TryCreate(false, null).Unwrap();
         var json = Serialize(vo, converter);
         json.Should().Be("false");
     }
@@ -450,7 +451,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Bool_PreservesValue()
     {
-        var vo = BoolVO.TryCreate(true, null).Value;
+        var vo = BoolVO.TryCreate(true, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<BoolVO, bool>());
         roundTripped!.Value.Should().BeTrue();
     }
@@ -464,7 +465,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         var converter = new ValidatingJsonConverter<DateTimeVO, DateTime>();
         var dt = new DateTime(2024, 1, 15, 10, 30, 45, DateTimeKind.Utc);
-        var vo = DateTimeVO.TryCreate(dt, null).Value;
+        var vo = DateTimeVO.TryCreate(dt, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -479,7 +480,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void RoundTrip_DateTime_PreservesValue()
     {
         var dt = new DateTime(2024, 6, 15, 14, 30, 0, DateTimeKind.Utc);
-        var vo = DateTimeVO.TryCreate(dt, null).Value;
+        var vo = DateTimeVO.TryCreate(dt, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<DateTimeVO, DateTime>());
         // Note: DateTime round-trip may lose some precision, so we check for closeness
         roundTripped!.Value.Should().BeCloseTo(dt, TimeSpan.FromSeconds(1));
@@ -494,7 +495,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         var converter = new ValidatingJsonConverter<DateTimeOffsetVO, DateTimeOffset>();
         var dto = new DateTimeOffset(2024, 1, 15, 10, 30, 45, TimeSpan.FromHours(-5));
-        var vo = DateTimeOffsetVO.TryCreate(dto, null).Value;
+        var vo = DateTimeOffsetVO.TryCreate(dto, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -510,7 +511,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void RoundTrip_DateTimeOffset_PreservesValue()
     {
         var dto = new DateTimeOffset(2024, 12, 25, 18, 0, 0, TimeSpan.FromHours(2));
-        var vo = DateTimeOffsetVO.TryCreate(dto, null).Value;
+        var vo = DateTimeOffsetVO.TryCreate(dto, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<DateTimeOffsetVO, DateTimeOffset>());
         roundTripped!.Value.Should().Be(dto);
     }
@@ -524,7 +525,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         var converter = new ValidatingJsonConverter<DateOnlyVO, DateOnly>();
         var date = new DateOnly(2024, 3, 15);
-        var vo = DateOnlyVO.TryCreate(date, null).Value;
+        var vo = DateOnlyVO.TryCreate(date, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -539,7 +540,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void RoundTrip_DateOnly_PreservesValue()
     {
         var date = new DateOnly(2024, 7, 4);
-        var vo = DateOnlyVO.TryCreate(date, null).Value;
+        var vo = DateOnlyVO.TryCreate(date, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<DateOnlyVO, DateOnly>());
         roundTripped!.Value.Should().Be(date);
     }
@@ -553,7 +554,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         var converter = new ValidatingJsonConverter<TimeOnlyVO, TimeOnly>();
         var time = new TimeOnly(14, 30, 45);
-        var vo = TimeOnlyVO.TryCreate(time, null).Value;
+        var vo = TimeOnlyVO.TryCreate(time, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -568,7 +569,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void RoundTrip_TimeOnly_PreservesValue()
     {
         var time = new TimeOnly(9, 15, 30);
-        var vo = TimeOnlyVO.TryCreate(time, null).Value;
+        var vo = TimeOnlyVO.TryCreate(time, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<TimeOnlyVO, TimeOnly>());
         roundTripped!.Value.Should().Be(time);
     }
@@ -582,7 +583,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         var converter = new ValidatingJsonConverter<TimeSpanVO, TimeSpan>();
         var value = TimeSpan.FromHours(1) + TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(3);
-        var vo = TimeSpanVO.TryCreate(value, null).Value;
+        var vo = TimeSpanVO.TryCreate(value, null).Unwrap();
 
         var json = Serialize(vo, converter);
 
@@ -593,7 +594,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void RoundTrip_TimeSpan_PreservesValue()
     {
         var value = TimeSpan.FromDays(1) + TimeSpan.FromMilliseconds(456);
-        var vo = TimeSpanVO.TryCreate(value, null).Value;
+        var vo = TimeSpanVO.TryCreate(value, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<TimeSpanVO, TimeSpan>());
 
         roundTripped!.Value.Should().Be(value);
@@ -607,7 +608,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Short_WritesNumber()
     {
         var converter = new ValidatingJsonConverter<ShortVO, short>();
-        var vo = ShortVO.TryCreate(123, null).Value;
+        var vo = ShortVO.TryCreate(123, null).Unwrap();
 
         var json = Serialize(vo, converter);
 
@@ -617,7 +618,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Short_PreservesValue()
     {
-        var vo = ShortVO.TryCreate(321, null).Value;
+        var vo = ShortVO.TryCreate(321, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ShortVO, short>());
 
         roundTripped!.Value.Should().Be((short)321);
@@ -631,7 +632,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_Byte_WritesNumber()
     {
         var converter = new ValidatingJsonConverter<ByteVO, byte>();
-        var vo = ByteVO.TryCreate(200, null).Value;
+        var vo = ByteVO.TryCreate(200, null).Unwrap();
 
         var json = Serialize(vo, converter);
 
@@ -641,7 +642,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_Byte_PreservesValue()
     {
-        var vo = ByteVO.TryCreate(201, null).Value;
+        var vo = ByteVO.TryCreate(201, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ByteVO, byte>());
 
         roundTripped!.Value.Should().Be((byte)201);
@@ -655,7 +656,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_SByte_WritesNumber()
     {
         var converter = new ValidatingJsonConverter<SByteVO, sbyte>();
-        var vo = SByteVO.TryCreate(100, null).Value;
+        var vo = SByteVO.TryCreate(100, null).Unwrap();
 
         var json = Serialize(vo, converter);
 
@@ -665,7 +666,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_SByte_PreservesValue()
     {
-        var vo = SByteVO.TryCreate(101, null).Value;
+        var vo = SByteVO.TryCreate(101, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<SByteVO, sbyte>());
 
         roundTripped!.Value.Should().Be((sbyte)101);
@@ -679,7 +680,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_UShort_WritesNumber()
     {
         var converter = new ValidatingJsonConverter<UShortVO, ushort>();
-        var vo = UShortVO.TryCreate(65000, null).Value;
+        var vo = UShortVO.TryCreate(65000, null).Unwrap();
 
         var json = Serialize(vo, converter);
 
@@ -689,7 +690,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_UShort_PreservesValue()
     {
-        var vo = UShortVO.TryCreate(65001, null).Value;
+        var vo = UShortVO.TryCreate(65001, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<UShortVO, ushort>());
 
         roundTripped!.Value.Should().Be((ushort)65001);
@@ -703,7 +704,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_UInt_WritesNumber()
     {
         var converter = new ValidatingJsonConverter<UIntVO, uint>();
-        var vo = UIntVO.TryCreate(4000000000u, null).Value;
+        var vo = UIntVO.TryCreate(4000000000u, null).Unwrap();
 
         var json = Serialize(vo, converter);
 
@@ -713,7 +714,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_UInt_PreservesValue()
     {
-        var vo = UIntVO.TryCreate(4000000001u, null).Value;
+        var vo = UIntVO.TryCreate(4000000001u, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<UIntVO, uint>());
 
         roundTripped!.Value.Should().Be(4000000001u);
@@ -727,7 +728,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     public void Write_ULong_WritesNumber()
     {
         var converter = new ValidatingJsonConverter<ULongVO, ulong>();
-        var vo = ULongVO.TryCreate(18446744073709551614ul, null).Value;
+        var vo = ULongVO.TryCreate(18446744073709551614ul, null).Unwrap();
 
         var json = Serialize(vo, converter);
 
@@ -737,7 +738,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     [Fact]
     public void RoundTrip_ULong_PreservesValue()
     {
-        var vo = ULongVO.TryCreate(18446744073709551615ul, null).Value;
+        var vo = ULongVO.TryCreate(18446744073709551615ul, null).Unwrap();
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ULongVO, ulong>());
 
         roundTripped!.Value.Should().Be(18446744073709551615ul);

@@ -1,4 +1,5 @@
-﻿namespace Trellis.Primitives.Tests;
+using Trellis.Testing;
+namespace Trellis.Primitives.Tests;
 
 /// <summary>
 /// Test value object with range constraint (1–999).
@@ -36,7 +37,7 @@ public class RangedDecimalTests
     {
         var result = TestPrice.TryCreate(99.99m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(99.99m);
+        result.Unwrap().Value.Should().Be(99.99m);
     }
 
     [Fact]
@@ -44,7 +45,7 @@ public class RangedDecimalTests
     {
         var result = TestPrice.TryCreate(0m);
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Test Price must be at least 1.");
     }
 
@@ -53,7 +54,7 @@ public class RangedDecimalTests
     {
         var result = TestPrice.TryCreate(1000m);
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Test Price must be at most 999.");
     }
 
@@ -76,7 +77,7 @@ public class RangedDecimalTests
     {
         var result = TestPrice.TryCreate(1m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1m);
+        result.Unwrap().Value.Should().Be(1m);
     }
 
     [Fact]
@@ -84,7 +85,7 @@ public class RangedDecimalTests
     {
         var result = TestPrice.TryCreate(999m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(999m);
+        result.Unwrap().Value.Should().Be(999m);
     }
 
     [Fact]
@@ -158,7 +159,7 @@ public class RangedDecimalTests
     {
         var result = TestPrice.TryCreate(0m, "myField");
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 
@@ -182,7 +183,7 @@ public class RangedDecimalTests
     {
         var result = LargeRangeDecimal.TryCreate(-1_000_000_000_000_000m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(-1_000_000_000_000_000m);
+        result.Unwrap().Value.Should().Be(-1_000_000_000_000_000m);
     }
 
     [Fact]
@@ -190,7 +191,7 @@ public class RangedDecimalTests
     {
         var result = LargeRangeDecimal.TryCreate(1_000_000_000_000_000m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1_000_000_000_000_000m);
+        result.Unwrap().Value.Should().Be(1_000_000_000_000_000m);
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -7,6 +7,7 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
 using Xunit;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="MaybeScalarValueJsonConverter{TValue, TPrimitive}"/> and
@@ -432,7 +433,7 @@ public class MaybeScalarValueJsonConverterTests
     {
         // Arrange
         var converter = new MaybeScalarValueJsonConverter<Email, string>();
-        var email = Email.TryCreate("test@example.com", null).Value;
+        var email = Email.TryCreate("test@example.com", null).Unwrap();
         var maybe = Maybe.From(email);
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
@@ -469,7 +470,7 @@ public class MaybeScalarValueJsonConverterTests
     {
         // Arrange
         var converter = new MaybeScalarValueJsonConverter<Age, int>();
-        var age = Age.TryCreate(42, null).Value;
+        var age = Age.TryCreate(42, null).Unwrap();
         var maybe = Maybe.From(age);
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
@@ -506,7 +507,7 @@ public class MaybeScalarValueJsonConverterTests
     {
         // Arrange
         var converter = new MaybeScalarValueJsonConverter<Percentage, decimal>();
-        var percentage = Percentage.TryCreate(99.99m, null).Value;
+        var percentage = Percentage.TryCreate(99.99m, null).Unwrap();
         var maybe = Maybe.From(percentage);
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
@@ -526,7 +527,7 @@ public class MaybeScalarValueJsonConverterTests
         // Arrange
         var converter = new MaybeScalarValueJsonConverter<ItemId, Guid>();
         var guid = Guid.NewGuid();
-        var itemId = ItemId.TryCreate(guid, null).Value;
+        var itemId = ItemId.TryCreate(guid, null).Unwrap();
         var maybe = Maybe.From(itemId);
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
@@ -557,7 +558,7 @@ public class MaybeScalarValueJsonConverterTests
     public void RoundTrip_MaybeEmail_PreservesValue()
     {
         // Arrange
-        var email = Email.TryCreate("user@domain.com", null).Value;
+        var email = Email.TryCreate("user@domain.com", null).Unwrap();
         var maybe = Maybe.From(email);
 
         // Act

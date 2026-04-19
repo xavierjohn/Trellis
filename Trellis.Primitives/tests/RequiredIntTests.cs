@@ -1,7 +1,8 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public partial class TicketNumber : RequiredInt<TicketNumber>
 {
@@ -21,8 +22,8 @@ public class RequiredIntTests
 
         // Assert
         ticketNumber.IsFailure.Should().BeTrue();
-        ticketNumber.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)ticketNumber.Error;
+        ticketNumber.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)ticketNumber.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("ticketNumber");
         validation.FieldErrors[0].Details[0].Should().Be("Ticket Number cannot be empty.");
     }
@@ -41,8 +42,8 @@ public class RequiredIntTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeOfType<InternalTicketNumber>();
-        result.Value.Value.Should().Be(value);
+        result.Unwrap().Should().BeOfType<InternalTicketNumber>();
+        result.Unwrap().Value.Should().Be(value);
     }
 
     [Fact]
@@ -72,7 +73,7 @@ public class RequiredIntTests
     public void Can_implicitly_cast_to_int()
     {
         // Arrange
-        TicketNumber ticketNumber = TicketNumber.TryCreate(12345).Value;
+        TicketNumber ticketNumber = TicketNumber.TryCreate(12345).Unwrap();
 
         // Act
         int intValue = ticketNumber;
@@ -88,14 +89,14 @@ public class RequiredIntTests
         TicketNumber ticketNumber = (TicketNumber)12345;
 
         // Assert
-        ticketNumber.Should().Be(TicketNumber.TryCreate(12345).Value);
+        ticketNumber.Should().Be(TicketNumber.TryCreate(12345).Unwrap());
     }
 
     [Fact]
     public void Can_use_ToString()
     {
         // Arrange
-        TicketNumber ticketNumber = TicketNumber.TryCreate(12345).Value;
+        TicketNumber ticketNumber = TicketNumber.TryCreate(12345).Unwrap();
 
         // Act
         var strValue = ticketNumber.ToString(CultureInfo.InvariantCulture);
@@ -165,8 +166,8 @@ public class RequiredIntTests
     public void Can_use_Contains()
     {
         // Arrange
-        var id1 = TicketNumber.TryCreate(1).Value;
-        var id2 = TicketNumber.TryCreate(2).Value;
+        var id1 = TicketNumber.TryCreate(1).Unwrap();
+        var id2 = TicketNumber.TryCreate(2).Unwrap();
         IReadOnlyList<TicketNumber> ids = new List<TicketNumber> { id1, id2 };
 
         // Act
@@ -181,7 +182,7 @@ public class RequiredIntTests
     {
         // Arrange
         var intValue = 12345;
-        TicketNumber ticketNumber = TicketNumber.TryCreate(intValue).Value;
+        TicketNumber ticketNumber = TicketNumber.TryCreate(intValue).Unwrap();
 
         // Act
         var actual = JsonSerializer.Serialize(ticketNumber);
@@ -226,7 +227,7 @@ public class RequiredIntTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 }

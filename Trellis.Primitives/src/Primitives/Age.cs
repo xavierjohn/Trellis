@@ -81,13 +81,10 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     /// <summary>
     /// Parses an age.
     /// </summary>
-    public static Age Parse(string? s, IFormatProvider? provider)
-    {
-        var result = TryCreate(s, provider);
-        if (result.IsFailure)
-            throw new FormatException(result.Error.Detail);
-        return result.Value;
-    }
+    public static Age Parse(string? s, IFormatProvider? provider) =>
+        TryCreate(s, provider).Match(
+            onSuccess: value => value,
+            onFailure: error => throw new FormatException(error.Detail));
 
     /// <summary>
     /// Tries to parse an age.
@@ -95,9 +92,9 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Age result)
     {
         var r = TryCreate(s, provider);
-        if (r.IsSuccess)
+        if (r.TryGetValue(out var value))
         {
-            result = r.Value;
+            result = value;
             return true;
         }
 

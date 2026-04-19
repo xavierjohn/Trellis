@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class LanguageCodeTests
 {
@@ -22,7 +23,7 @@ public class LanguageCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(code.ToLowerInvariant());
+        result.Unwrap().Value.Should().Be(code.ToLowerInvariant());
     }
 
     [Theory]
@@ -38,7 +39,7 @@ public class LanguageCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -51,7 +52,7 @@ public class LanguageCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -65,7 +66,7 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Language code is required.");
     }
 
@@ -82,7 +83,7 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
     }
 
@@ -99,7 +100,7 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
     }
 
@@ -111,7 +112,7 @@ public class LanguageCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("language");
     }
 
@@ -139,8 +140,8 @@ public class LanguageCodeTests
     public void Two_LanguageCode_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = LanguageCode.TryCreate("en").Value;
-        var b = LanguageCode.TryCreate("EN").Value;
+        var a = LanguageCode.TryCreate("en").Unwrap();
+        var b = LanguageCode.TryCreate("EN").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -152,8 +153,8 @@ public class LanguageCodeTests
     public void Two_LanguageCode_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = LanguageCode.TryCreate("en").Value;
-        var b = LanguageCode.TryCreate("fr").Value;
+        var a = LanguageCode.TryCreate("en").Unwrap();
+        var b = LanguageCode.TryCreate("fr").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -164,7 +165,7 @@ public class LanguageCodeTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        LanguageCode value = LanguageCode.TryCreate("en").Value;
+        LanguageCode value = LanguageCode.TryCreate("en").Unwrap();
 
         // Act
         string stringValue = value;
@@ -231,7 +232,7 @@ public class LanguageCodeTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = LanguageCode.TryCreate("en").Value;
+        var value = LanguageCode.TryCreate("en").Unwrap();
         var expected = JsonSerializer.Serialize("en");
 
         // Act

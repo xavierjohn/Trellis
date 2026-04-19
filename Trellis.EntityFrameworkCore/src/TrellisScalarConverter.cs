@@ -174,11 +174,8 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
         }
     }
 
-    private static TModel MaterializeResult(Result<TModel> result, object? persistedValue, string factoryMethod)
-    {
-        if (result.IsFailure)
-            throw new TrellisPersistenceMappingException(typeof(TModel), persistedValue, factoryMethod, result.Error.Detail);
-
-        return result.Value;
-    }
+    private static TModel MaterializeResult(Result<TModel> result, object? persistedValue, string factoryMethod) =>
+        result.Match(
+            onSuccess: v => v,
+            onFailure: error => throw new TrellisPersistenceMappingException(typeof(TModel), persistedValue, factoryMethod, error.Detail));
 }

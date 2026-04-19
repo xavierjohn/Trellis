@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -8,6 +8,7 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
 using Xunit;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for PropertyNameAwareConverter to ensure proper property name tracking.
@@ -93,8 +94,8 @@ public class PropertyNameAwareConverterTests
             // Assert
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetValidationError();
-            error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle()
+            error!.Should().NotBeNull();
+                        error!.FieldErrors.Should().ContainSingle()
                 .Which.FieldName.Should().Be("PrimaryEmail", "wrapper should set property name");
         }
     }
@@ -210,7 +211,7 @@ public class PropertyNameAwareConverterTests
         var innerConverter = new ValidatingJsonConverter<Email, string>();
         var wrapper = new PropertyNameAwareConverter<Email>(innerConverter, "Email");
 
-        var email = Email.TryCreate("test@example.com", null).Value;
+        var email = Email.TryCreate("test@example.com", null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -261,8 +262,8 @@ public class PropertyNameAwareConverterTests
             // Assert
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetValidationError();
-            error.Should().NotBeNull();
-            // Empty string should still be set as property name
+            error!.Should().NotBeNull();
+                        // Empty string should still be set as property name
             error!.FieldErrors.Should().ContainSingle()
                 .Which.FieldName.Should().Be("");
         }
@@ -337,8 +338,8 @@ public class PropertyNameAwareConverterTests
             // Assert
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetValidationError();
-            error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle();
+            error!.Should().NotBeNull();
+                        error!.FieldErrors.Should().ContainSingle();
             error.FieldErrors[0].FieldName.Should().Be("Email");
             error.FieldErrors[0].Details.Should().Equal(["DomainOnlyEmail is invalid."]);
         }

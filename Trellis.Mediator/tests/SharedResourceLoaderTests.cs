@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
@@ -185,7 +186,7 @@ public class SharedResourceLoaderTests
             new SharedCancelCommand("order-1"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Id.Should().Be("order-1");
+        result.Unwrap().Id.Should().Be("order-1");
     }
 
     #endregion
@@ -223,7 +224,7 @@ public class SharedResourceLoaderTests
             new SharedCancelCommand("order-42"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Id.Should().Be("order-42");
+        result.Unwrap().Id.Should().Be("order-42");
     }
 
     #endregion

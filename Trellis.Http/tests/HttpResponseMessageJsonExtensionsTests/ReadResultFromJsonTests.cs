@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
 using System.Net;
@@ -27,8 +28,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().Be("Xavier");
-        result.Value.age.Should().Be(50);
+        result.Unwrap().firstName.Should().Be("Xavier");
+        result.Unwrap().age.Should().Be(50);
     }
 
     [Fact]
@@ -45,8 +46,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
+        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]
@@ -63,7 +64,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Be("HTTP response is in a failed state for value camelcasePerson. Status code: BadGateway.");
+        result.UnwrapError().Detail.Should().Be("HTTP response is in a failed state for value camelcasePerson. Status code: BadGateway.");
     }
 
     [Fact]
@@ -80,8 +81,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
+        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]
@@ -98,8 +99,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().Be("HTTP response was null for value camelcasePerson.");
+        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Detail.Should().Be("HTTP response was null for value camelcasePerson.");
     }
 
     [Theory]
@@ -122,13 +123,13 @@ public class ReadResultFromJsonTests
         result.IsSuccess.Should().BeTrue();
         if (propertyNameCaseInsensitive)
         {
-            result.Value.FirstName.Should().Be("Xavier");
-            result.Value.Age.Should().Be(50);
+            result.Unwrap().FirstName.Should().Be("Xavier");
+            result.Unwrap().Age.Should().Be(50);
         }
         else
         {
-            result.Value.FirstName.Should().Be(string.Empty);
-            result.Value.Age.Should().Be(0);
+            result.Unwrap().FirstName.Should().Be(string.Empty);
+            result.Unwrap().Age.Should().Be(0);
         }
     }
 
@@ -147,8 +148,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().Be("Xavier");
-        result.Value.age.Should().Be(50);
+        result.Unwrap().firstName.Should().Be("Xavier");
+        result.Unwrap().age.Should().Be(50);
     }
 
     [Fact]
@@ -175,7 +176,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.NotFound("Bad request"));
+        result.UnwrapError().Should().Be(Error.NotFound("Bad request"));
         callbackCalled.Should().BeTrue();
     }
 
@@ -204,7 +205,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.NotFound("Bad request"));
+        result.UnwrapError().Should().Be(Error.NotFound("Bad request"));
         callbackCalled.Should().BeTrue();
     }
 
@@ -225,8 +226,8 @@ public class ReadResultFromJsonTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         _callbackCalled.Should().BeFalse();
-        result.Value.firstName.Should().Be("Chris");
-        result.Value.age.Should().Be(18);
+        result.Unwrap().firstName.Should().Be("Chris");
+        result.Unwrap().age.Should().Be(18);
     }
 
     [Fact]
@@ -247,8 +248,8 @@ public class ReadResultFromJsonTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         _callbackCalled.Should().BeFalse();
-        result.Value.firstName.Should().Be("Chris");
-        result.Value.age.Should().Be(18);
+        result.Unwrap().firstName.Should().Be("Chris");
+        result.Unwrap().age.Should().Be(18);
     }
 
     private Task<Error> CallbackFailedStatusCode(HttpResponseMessage response, string context, CancellationToken cancellationToken)
@@ -332,7 +333,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain(statusCode.ToString());
+        result.UnwrapError().Detail.Should().Contain(statusCode.ToString());
     }
 
     [Theory]
@@ -354,8 +355,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().Be("Xavier");
-        result.Value.age.Should().Be(50);
+        result.Unwrap().firstName.Should().Be("Xavier");
+        result.Unwrap().age.Should().Be(50);
     }
 
     [Theory]
@@ -376,7 +377,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Be("HTTP response was null for value camelcasePerson.");
+        result.UnwrapError().Detail.Should().Be("HTTP response was null for value camelcasePerson.");
     }
 
     #endregion
@@ -399,8 +400,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
+        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]
@@ -419,8 +420,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
+        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
     [Fact]
@@ -445,8 +446,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().HaveLength(10000);
-        result.Value.age.Should().Be(50);
+        result.Unwrap().firstName.Should().HaveLength(10000);
+        result.Unwrap().age.Should().Be(50);
     }
 
     [Fact]
@@ -466,8 +467,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().Be("Xavier");
-        result.Value.age.Should().Be(50);
+        result.Unwrap().firstName.Should().Be("Xavier");
+        result.Unwrap().age.Should().Be(50);
     }
 
     [Fact]
@@ -489,7 +490,7 @@ public class ReadResultFromJsonTests
 
         // Assert - Should still work despite wrong content type
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().Be("Xavier");
+        result.Unwrap().firstName.Should().Be("Xavier");
     }
 
     #endregion
@@ -513,8 +514,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().Be("Alice");
-        result.Value.age.Should().Be(30);
+        result.Unwrap().firstName.Should().Be("Alice");
+        result.Unwrap().age.Should().Be(30);
     }
 
     [Fact]
@@ -531,7 +532,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.UnwrapError().Should().Be(error);
     }
 
     [Fact]
@@ -551,8 +552,8 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.firstName.Should().Be("Bob");
-        result.Value.age.Should().Be(25);
+        result.Unwrap().firstName.Should().Be("Bob");
+        result.Unwrap().age.Should().Be(25);
     }
 
     #endregion

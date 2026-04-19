@@ -69,14 +69,10 @@ public class Money : ValueObject
     /// Use this method when you know the values are valid (e.g., in tests or with constants).
     /// For user input, use <see cref="TryCreate"/> instead.
     /// </remarks>
-    public static Money Create(decimal amount, string currencyCode)
-    {
-        var result = TryCreate(amount, currencyCode);
-        if (result.IsFailure)
-            throw new InvalidOperationException($"Failed to create Money: {result.Error.Detail}");
-
-        return result.Value;
-    }
+    public static Money Create(decimal amount, string currencyCode) =>
+        TryCreate(amount, currencyCode).Match(
+            onSuccess: money => money,
+            onFailure: error => throw new InvalidOperationException($"Failed to create Money: {error.Detail}"));
 
     /// <summary>
     /// Adds two Money amounts if they have the same currency.

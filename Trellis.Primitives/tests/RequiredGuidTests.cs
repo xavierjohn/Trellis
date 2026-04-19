@@ -1,9 +1,10 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System;
 using System.Globalization;
 using System.Text.Json;
 using Xunit;
+using Trellis.Testing;
 
 public partial class EmployeeId : RequiredGuid<EmployeeId>
 {
@@ -16,8 +17,8 @@ public class RequiredGuidTests
     {
         var guidId1 = EmployeeId.TryCreate(default(Guid));
         guidId1.IsFailure.Should().BeTrue();
-        guidId1.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)guidId1.Error;
+        guidId1.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)guidId1.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("employeeId");
         validation.FieldErrors[0].Details[0].Should().Be("Employee Id cannot be empty.");
         validation.Code.Should().Be("validation.error");
@@ -31,7 +32,7 @@ public class RequiredGuidTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 
@@ -95,7 +96,7 @@ public class RequiredGuidTests
     {
         // Arrange
         var guid = Guid.NewGuid();
-        var myGuid = EmployeeId.TryCreate(guid).Value;
+        var myGuid = EmployeeId.TryCreate(guid).Unwrap();
 
         // Act
         var actual = myGuid.ToString(CultureInfo.InvariantCulture);
@@ -109,7 +110,7 @@ public class RequiredGuidTests
     {
         // Arrange
         Guid myGuid = Guid.NewGuid();
-        EmployeeId myGuidId1 = EmployeeId.TryCreate(myGuid).Value;
+        EmployeeId myGuidId1 = EmployeeId.TryCreate(myGuid).Unwrap();
 
         // Act
         Guid primGuid = myGuidId1;
@@ -156,8 +157,8 @@ public class RequiredGuidTests
 
         // Assert
         myGuidResult.IsFailure.Should().BeTrue();
-        myGuidResult.Error.Should().BeOfType<ValidationError>();
-        ValidationError ve = (ValidationError)myGuidResult.Error;
+        myGuidResult.UnwrapError().Should().BeOfType<ValidationError>();
+        ValidationError ve = (ValidationError)myGuidResult.UnwrapError();
         ve.FieldErrors[0].FieldName.Should().Be("employeeId");
         ve.FieldErrors[0].Details[0].Should().Be("Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)");
 
@@ -173,8 +174,8 @@ public class RequiredGuidTests
 
         // Assert
         myGuidResult.IsFailure.Should().BeTrue();
-        myGuidResult.Error.Should().BeOfType<ValidationError>();
-        ValidationError ve = (ValidationError)myGuidResult.Error;
+        myGuidResult.UnwrapError().Should().BeOfType<ValidationError>();
+        ValidationError ve = (ValidationError)myGuidResult.UnwrapError();
         ve.FieldErrors[0].FieldName.Should().Be("employeeId");
         ve.FieldErrors[0].Details[0].Should().Be("Employee Id cannot be empty.");
     }

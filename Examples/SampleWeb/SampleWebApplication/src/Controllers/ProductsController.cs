@@ -87,8 +87,8 @@ public class ProductsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultResultAsync(p => p.Id == id,
                 Error.NotFound("Product not found.", id));
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<ProductResponse>(this);
+        if (result.TryGetError(out var fetchError))
+            return fetchError.ToActionResult<ProductResponse>(this);
 
         return result.ToActionResult(this, product => RepresentationMetadata.WithStrongETag(product.ETag), ProductResponse.From);
     }
@@ -104,13 +104,14 @@ public class ProductsController(AppDbContext db) : ControllerBase
             .Tap(product => db.Products.Add(product))
             .CheckAsync(_ => db.SaveChangesResultUnitAsync());
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<ProductResponse>(this);
-
-        var product = result.Value;
-        var response = ProductResponse.From(product);
-        Response.Headers.ETag = $"\"{product.ETag}\"";
-        return CreatedAtAction(nameof(GetProduct), new { id = product.Id.Value }, response);
+        return result.Match<Product, ActionResult<ProductResponse>>(
+            onSuccess: product =>
+            {
+                var response = ProductResponse.From(product);
+                Response.Headers.ETag = $"\"{product.ETag}\"";
+                return CreatedAtAction(nameof(GetProduct), new { id = product.Id.Value }, response);
+            },
+            onFailure: error => error.ToActionResult<ProductResponse>(this));
     }
 
     // PUT /products/{id} — update with If-Match + Prefer header

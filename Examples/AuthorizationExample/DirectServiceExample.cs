@@ -26,7 +26,9 @@ public static class DirectServiceExample
         // 1. Alice creates a document
         var createResult = service.CreateDocument(Actors.Alice, "Design Doc", "Initial draft");
         Print("Alice creates 'Design Doc'", createResult);
-        var docId = createResult.Value.Id;
+        if (!createResult.TryGetValue(out var createdDoc))
+            throw new InvalidOperationException("Expected create to succeed.");
+        var docId = createdDoc.Id;
 
         // 2. Alice edits her own document (owner)
         Print("Alice edits her document",

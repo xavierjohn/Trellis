@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Example.Tests;
 
 using Trellis;
@@ -28,9 +29,9 @@ public class ParallelExamples : IClassFixture<TraceFixture>
             new Dashboard(profile, orders, prefs));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Profile.Should().Be("Profile for user-123");
-        result.Value.Orders.Should().Be("Orders for user-123");
-        result.Value.Preferences.Should().Be("Preferences for user-123");
+        result.Unwrap().Profile.Should().Be("Profile for user-123");
+        result.Unwrap().Orders.Should().Be("Orders for user-123");
+        result.Unwrap().Preferences.Should().Be("Preferences for user-123");
     }
 
     #endregion
@@ -55,7 +56,7 @@ public class ParallelExamples : IClassFixture<TraceFixture>
 
         result.IsSuccess.Should().BeTrue();
         logged.Should().BeTrue("Tap should execute on the success path");
-        result.Value.Should().Contain("order-42");
+        result.Unwrap().Should().Contain("order-42");
     }
 
     #endregion
@@ -84,7 +85,7 @@ public class ParallelExamples : IClassFixture<TraceFixture>
         });
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Invalid payment");
+        result.UnwrapError().Detail.Should().Contain("Invalid payment");
         tapInvoked.Should().BeFalse("Tap should not execute on the failure path");
         bindInvoked.Should().BeFalse("Bind should not execute on the failure path");
     }
@@ -109,7 +110,7 @@ public class ParallelExamples : IClassFixture<TraceFixture>
         .BindAsync(CreateOrderSummaryAsync);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Contain("order-99");
+        result.Unwrap().Should().Contain("order-99");
     }
 
     #endregion
@@ -134,7 +135,7 @@ public class ParallelExamples : IClassFixture<TraceFixture>
         .BindAsync(SaveDashboardAsync);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Contain("Saved dashboard for user-456");
+        result.Unwrap().Should().Contain("Saved dashboard for user-456");
     }
 
     #endregion

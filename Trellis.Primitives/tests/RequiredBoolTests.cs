@@ -1,6 +1,7 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Text.Json;
+using Trellis.Testing;
 
 public partial class GiftWrap : RequiredBool<GiftWrap>
 {
@@ -18,7 +19,7 @@ public class RequiredBoolTests
         var result = GiftWrap.TryCreate(true);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().BeTrue();
+        result.Unwrap().Value.Should().BeTrue();
     }
 
     [Fact]
@@ -28,7 +29,7 @@ public class RequiredBoolTests
         var result = GiftWrap.TryCreate(false);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().BeFalse();
+        result.Unwrap().Value.Should().BeFalse();
     }
 
     [Fact]
@@ -37,8 +38,8 @@ public class RequiredBoolTests
         var result = GiftWrap.TryCreate((bool?)null);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("giftWrap");
         validation.FieldErrors[0].Details[0].Should().Be("Gift Wrap cannot be empty.");
     }
@@ -49,7 +50,7 @@ public class RequiredBoolTests
         var result = GiftWrap.TryCreate("true");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().BeTrue();
+        result.Unwrap().Value.Should().BeTrue();
     }
 
     [Fact]
@@ -58,7 +59,7 @@ public class RequiredBoolTests
         var result = GiftWrap.TryCreate("false");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().BeFalse();
+        result.Unwrap().Value.Should().BeFalse();
     }
 
     [Theory]
@@ -99,7 +100,7 @@ public class RequiredBoolTests
     [Fact]
     public void Can_use_ToString()
     {
-        GiftWrap giftWrap = GiftWrap.TryCreate(true).Value;
+        GiftWrap giftWrap = GiftWrap.TryCreate(true).Unwrap();
         giftWrap.ToString(System.Globalization.CultureInfo.InvariantCulture).Should().Be("True");
     }
 
@@ -107,14 +108,14 @@ public class RequiredBoolTests
     public void Can_explicitly_cast_to_RequiredBool()
     {
         GiftWrap giftWrap = (GiftWrap)true;
-        giftWrap.Should().Be(GiftWrap.TryCreate(true).Value);
+        giftWrap.Should().Be(GiftWrap.TryCreate(true).Unwrap());
     }
 
     [Fact]
     public void Can_use_Contains()
     {
-        var b1 = GiftWrap.TryCreate(true).Value;
-        var b2 = GiftWrap.TryCreate(false).Value;
+        var b1 = GiftWrap.TryCreate(true).Unwrap();
+        var b2 = GiftWrap.TryCreate(false).Unwrap();
         IReadOnlyList<GiftWrap> items = new List<GiftWrap> { b1, b2 };
 
         items.Contains(b1).Should().BeTrue();
@@ -123,7 +124,7 @@ public class RequiredBoolTests
     [Fact]
     public void ConvertToJson()
     {
-        GiftWrap giftWrap = GiftWrap.TryCreate(true).Value;
+        GiftWrap giftWrap = GiftWrap.TryCreate(true).Unwrap();
         var actual = JsonSerializer.Serialize(giftWrap);
         actual.Should().Be("\"True\"");
     }
@@ -150,7 +151,7 @@ public class RequiredBoolTests
         var result = GiftWrap.TryCreate((bool?)null, "myField");
 
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 
@@ -160,7 +161,7 @@ public class RequiredBoolTests
         var result = InternalFlag.TryCreate(true);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeOfType<InternalFlag>();
+        result.Unwrap().Should().BeOfType<InternalFlag>();
     }
 
     [Fact]

@@ -1,6 +1,5 @@
-namespace Trellis.EntityFrameworkCore.Tests;
-
 using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 public class TransactionalCommandBehaviorTests
 {
@@ -21,7 +20,7 @@ public class TransactionalCommandBehaviorTests
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be("done");
+        result.Unwrap().Should().Be("done");
         uow.CommitCount.Should().Be(1);
     }
 
@@ -62,7 +61,7 @@ public class TransactionalCommandBehaviorTests
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
         uow.CommitCount.Should().Be(1);
     }
 

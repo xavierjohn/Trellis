@@ -10,4 +10,7 @@
       <ProjectReference Include="..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
       <ProjectReference Include="..\..\Trellis.DomainDrivenDesign\src\Trellis.DomainDrivenDesign.csproj" />
    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+  </ItemGroup>
 </Project>

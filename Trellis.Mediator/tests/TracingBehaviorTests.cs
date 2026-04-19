@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using System.Diagnostics;
@@ -96,7 +97,7 @@ public class TracingBehaviorTests : IDisposable
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Hello!");
+        result.Unwrap().Should().Be("Hello!");
     }
 
     #endregion

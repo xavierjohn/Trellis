@@ -57,11 +57,11 @@ public class OrderWorkflow
                         predicate: error => error is ValidationError,
                         funcAsync: () => SuggestAlternativeProductsAsync(order, ct));
 
-                if (reserveResult.IsFailure)
+                if (reserveResult.TryGetError(out var reserveError))
                 {
                     order.Cancel("Inventory unavailable");
                     // Don't publish events for cancelled orders due to inventory issues
-                    return reserveResult.Error;
+                    return reserveError;
                 }
 
                 return Result.Ok(order);
@@ -80,14 +80,14 @@ public class OrderWorkflow
             {
                 var paymentResult = await ProcessPaymentWithrecoveryAsync(order, paymentInfo, ct);
 
-                if (paymentResult.IsFailure)
+                if (paymentResult.TryGetError(out var paymentError))
                 {
                     await ReleaseInventoryAsync(order, ct);
                     order.Cancel("Payment failed");
                     // Publish events including cancellation
                     await PublishEventsAndAcceptChangesAsync(order, ct);
                     await _notificationService.SendPaymentFailedEmailAsync(customerId, order.Id, ct);
-                    return paymentResult.Error;
+                    return paymentError;
                 }
 
                 return Result.Ok(order);
@@ -121,8 +121,8 @@ public class OrderWorkflow
         );
 
         // If any validation failed, return aggregated errors
-        if (validationResult.IsFailure)
-            return validationResult.Error;
+        if (validationResult.TryGetError(out var validationError))
+            return validationError;
 
         // Add all items to order
         var currentOrder = Result.Ok(order);

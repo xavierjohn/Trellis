@@ -18,12 +18,15 @@ using System.Diagnostics;
 /// Result&lt;User&gt; success = Result.Ok(user);
 /// Result&lt;User&gt; failure = Error.NotFound("User not found");
 /// 
-/// // Pattern matching
-/// var message = result switch
-/// {
-///     { IsSuccess: true } => $"Found user: {result.Value.Name}",
-///     { IsFailure: true } => $"Error: {result.Error.Detail}"
-/// };
+/// // Pattern matching with Deconstruct
+/// var (isSuccess, value, error) = result;
+/// var message = isSuccess
+///     ? $"Found user: {value!.Name}"
+///     : $"Error: {error!.Detail}";
+/// 
+/// // Or use the safe accessors
+/// if (result.TryGetValue(out var user)) Console.WriteLine(user.Name);
+/// else if (result.TryGetError(out var err)) Console.WriteLine(err.Detail);
 /// 
 /// // Chaining operations
 /// var finalResult = GetUser(id)
@@ -35,32 +38,6 @@ using System.Diagnostics;
 [DebuggerTypeProxy(typeof(ResultDebugView<>))]
 public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValue>>, IFailureFactory<Result<TValue>>
 {
-    /// <summary>
-    /// Gets the underlying value if the result is successful; otherwise throws.
-    /// </summary>
-    /// <value>The success value.</value>
-    /// <exception cref="InvalidOperationException">Thrown when accessing Value on a failed result.</exception>
-    /// <remarks>
-    /// Always check <see cref="IsSuccess"/> before accessing this property, or use <see cref="TryGetValue"/> instead.
-    /// </remarks>
-    public TValue Value =>
-        IsSuccess
-            ? _value!
-            : throw new InvalidOperationException("Attempted to access the Value for a failed result. A failed result has no Value.");
-
-    /// <summary>
-    /// Gets the error if the result is a failure; otherwise throws.
-    /// </summary>
-    /// <value>The error describing why the result failed.</value>
-    /// <exception cref="InvalidOperationException">Thrown when accessing Error on a successful result.</exception>
-    /// <remarks>
-    /// Always check <see cref="IsFailure"/> before accessing this property, or use <see cref="TryGetError"/> instead.
-    /// </remarks>
-    public Error Error =>
-        IsFailure
-            ? _error!
-            : throw new InvalidOperationException("Attempted to access the Error property for a successful result. A successful result has no Error.");
-
     /// <summary>
     /// True when the result represents success.
     /// </summary>
@@ -128,6 +105,22 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
 
     private readonly TValue? _value;
     private readonly Error? _error;
+
+    // ------------- Internal accessors for in-assembly use -------------
+    // These intentionally mirror the v1 public Value/Error properties so that
+    // ROP combinator extensions in this assembly stay readable and avoid the
+    // (out param) cost of TryGet*. They are not part of the public API; external
+    // consumers must use TryGetValue/TryGetError/Deconstruct (see plan §3.1).
+
+    internal TValue Value =>
+        IsSuccess
+            ? _value!
+            : throw new InvalidOperationException("Cannot access Value on a failed result.");
+
+    internal Error Error =>
+        IsFailure
+            ? _error!
+            : throw new InvalidOperationException("Cannot access Error on a successful result.");
 
     // ------------- Convenience / ergonomic APIs ------------
 

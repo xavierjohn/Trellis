@@ -1,4 +1,5 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -174,7 +175,7 @@ public class AggregateETagTests : IDisposable
         var result = await _context.SaveChangesResultAsync(ct);
 
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
     }
 
     [Fact]
@@ -197,7 +198,7 @@ public class AggregateETagTests : IDisposable
         var result = await _context.SaveChangesResultUnitAsync(ct);
 
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
     }
 
     #endregion

@@ -59,21 +59,21 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             return OnValidationFailure();
         }
 
-        var result = TValue.TryCreate(primitiveValue, fieldName);
+        return TValue.TryCreate(primitiveValue, fieldName).Match(
+            onSuccess: WrapSuccess,
+            onFailure: createError =>
+            {
+                if (createError is ValidationError validationError)
+                    ValidationErrorsContext.AddError(validationError);
+                else
+                    ValidationErrorsContext.AddError(
+                        fieldName,
+                        string.IsNullOrWhiteSpace(createError.Detail)
+                            ? $"{typeof(TValue).Name} is invalid."
+                            : createError.Detail);
 
-        if (result.IsSuccess)
-            return WrapSuccess(result.Value);
-
-        if (result.Error is ValidationError validationError)
-            ValidationErrorsContext.AddError(validationError);
-        else
-            ValidationErrorsContext.AddError(
-                fieldName,
-                string.IsNullOrWhiteSpace(result.Error.Detail)
-                    ? $"{typeof(TValue).Name} is invalid."
-                    : result.Error.Detail);
-
-        return OnValidationFailure();
+                return OnValidationFailure();
+            });
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]

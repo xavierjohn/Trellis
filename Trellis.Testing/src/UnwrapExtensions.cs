@@ -29,13 +29,33 @@ public static class UnwrapExtensions
     /// <returns>The success value.</returns>
     /// <exception cref="UnwrapFailedException">Thrown when the result is a failure.</exception>
     public static T Unwrap<T>(this Result<T> result) =>
-        result.IsSuccess
-#pragma warning disable TRLS003 // Guarded by IsSuccess check above
-            ? result.Value
-#pragma warning restore TRLS003
+        result.TryGetValue(out var value)
+            ? value
             : throw new UnwrapFailedException(
-                $"Called Unwrap() on a failed Result<{typeof(T).Name}>. " +
-                $"Error: [{result.Error.Code}] {result.Error.Detail}");
+                BuildUnwrapErrorMessage<T>(result));
+
+    /// <summary>
+    /// Extracts the error from a failed result, or throws <see cref="UnwrapFailedException"/>
+    /// if the result is a success.
+    /// </summary>
+    /// <typeparam name="T">Type of the result value.</typeparam>
+    /// <param name="result">The result to unwrap the error from.</param>
+    /// <returns>The error.</returns>
+    /// <exception cref="UnwrapFailedException">Thrown when the result is a success.</exception>
+    public static Error UnwrapError<T>(this Result<T> result) =>
+        result.TryGetError(out var error)
+            ? error
+            : throw new UnwrapFailedException(
+                $"Called UnwrapError() on a successful Result<{typeof(T).Name}>.");
+
+    private static string BuildUnwrapErrorMessage<T>(Result<T> result)
+    {
+        // Caller (Unwrap) only invokes this when the result is known to be a failure.
+        if (!result.TryGetError(out var error))
+            return $"Called Unwrap() on a Result<{typeof(T).Name}> in an unexpected state.";
+        return $"Called Unwrap() on a failed Result<{typeof(T).Name}>. " +
+               $"Error: [{error.Code}] {error.Detail}";
+    }
 
     /// <summary>
     /// Extracts the value from a Maybe that has a value, or throws <see cref="UnwrapFailedException"/>

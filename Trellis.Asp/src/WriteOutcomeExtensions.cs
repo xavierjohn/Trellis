@@ -129,14 +129,10 @@ public static class WriteOutcomeExtensions
         this Result<TIn> result,
         ControllerBase controller,
         RepresentationMetadata? metadata,
-        Func<TIn, TOut> map)
-    {
-        if (result.IsFailure)
-            return result.Error.ToActionResult<TOut>(controller);
-
-        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
-        return outcome.ToActionResult(controller, map);
-    }
+        Func<TIn, TOut> map) =>
+        result.Match<TIn, ActionResult<TOut>>(
+            onSuccess: inValue => new WriteOutcome<TIn>.Updated(inValue, metadata).ToActionResult(controller, map),
+            onFailure: error => error.ToActionResult<TOut>(controller));
 
     /// <summary>
     /// Async Task variant of <see cref="ToUpdatedActionResult{TIn,TOut}(Result{TIn}, ControllerBase, RepresentationMetadata, Func{TIn, TOut})"/>.
@@ -179,15 +175,10 @@ public static class WriteOutcomeExtensions
         this Result<TIn> result,
         ControllerBase controller,
         Func<TIn, RepresentationMetadata> metadataSelector,
-        Func<TIn, TOut> map)
-    {
-        if (result.IsFailure)
-            return result.Error.ToActionResult<TOut>(controller);
-
-        var metadata = metadataSelector(result.Value);
-        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
-        return outcome.ToActionResult(controller, map);
-    }
+        Func<TIn, TOut> map) =>
+        result.Match<TIn, ActionResult<TOut>>(
+            onSuccess: inValue => new WriteOutcome<TIn>.Updated(inValue, metadataSelector(inValue)).ToActionResult(controller, map),
+            onFailure: error => error.ToActionResult<TOut>(controller));
 
     /// <summary>
     /// Async Task variant of <see cref="ToUpdatedActionResult{TIn,TOut}(Result{TIn}, ControllerBase, Func{TIn, RepresentationMetadata}, Func{TIn, TOut})"/>.

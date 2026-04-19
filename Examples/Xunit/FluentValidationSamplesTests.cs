@@ -1,3 +1,4 @@
+using Trellis.Testing;
 using Trellis.FluentValidation;
 
 namespace Example.Tests;
@@ -173,7 +174,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(request);
+        result.Unwrap().Should().Be(request);
     }
 
     [Fact]
@@ -193,7 +194,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Email" && e.Details.Contains("Email is already registered"));
     }
@@ -215,7 +216,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Email" && e.Details.Contains("Email domain is not allowed"));
     }
@@ -237,7 +238,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Username" && e.Details.Contains("Username is already taken"));
     }
@@ -259,7 +260,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e => e.FieldName == "Username");
     }
 
@@ -379,9 +380,9 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.ProductId.Value.Should().Be("PROD-001");
-        result.Value.Quantity.Value.Should().Be(5);
-        result.Value.Price.Amount.Should().Be(29.99m);
+        result.Unwrap().ProductId.Value.Should().Be("PROD-001");
+        result.Unwrap().Quantity.Value.Should().Be(5);
+        result.Unwrap().Price.Amount.Should().Be(29.99m);
     }
 
     [Fact]
@@ -403,7 +404,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "value" && e.Details.Contains("Quantity must be positive"));
     }
@@ -427,7 +428,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         // Combine groups all errors into a single FieldError with Details array
         validationError.FieldErrors.Should().HaveCount(1);
         validationError.FieldErrors[0].Details.Should().HaveCount(3);
@@ -457,7 +458,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(3);
+        result.Unwrap().Should().HaveCount(3);
     }
 
     [Fact]
@@ -571,7 +572,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "ShippingAddress" &&
             e.Details.Contains("Shipping address is required for physical orders"));
@@ -617,7 +618,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         // FluentValidation's default message is "'Email' must not be empty."
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Email" &&
@@ -643,7 +644,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "TotalAmount" &&
             e.Details.Contains("Express shipping not available for orders over $10,000"));
@@ -689,7 +690,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "TaxId" &&
             e.Details.Contains("Tax ID required for business orders"));
@@ -743,7 +744,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Price" &&
             e.Details.Any(d => d.Contains("$-5") && d.Contains("must be greater than $0")));
@@ -761,7 +762,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Stock" &&
             e.Details.Any(d => d.Contains("15000") && d.Contains("exceeds maximum of 10,000")));
@@ -779,7 +780,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Name" &&
             e.Details.Any(d => d.Contains("current: 2")));
@@ -797,7 +798,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Discount" &&
             e.Details.Any(d => d.Contains("$60") && d.Contains("$100")));
@@ -854,7 +855,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "OrderIds" &&
             e.Details.Contains("Batch must contain at least one order"));
@@ -873,7 +874,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "OrderIds" &&
             e.Details.Any(d => d.Contains("101") && d.Contains("maximum is 100")));
@@ -891,7 +892,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "OrderIds" &&
             e.Details.Contains("Batch contains duplicate order IDs"));
@@ -1007,7 +1008,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         // Both Email and Phone should have validation errors
         validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Email"));
         validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Phone"));
@@ -1028,7 +1029,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Street"));
         validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("PostalCode"));
         validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Country"));
@@ -1049,7 +1050,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "ContactInfo" &&
             e.Details.Contains("Contact information is required"));
@@ -1075,7 +1076,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "value" &&
             e.Details.Contains("'value' must not be empty."));
@@ -1097,7 +1098,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         // ValidateToResult uses custom paramName and message for null values
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "Alias" &&
@@ -1120,7 +1121,7 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.Error;
+        var validationError = (ValidationError)result.UnwrapError();
         validationError.FieldErrors.Should().Contain(e =>
             e.FieldName == "value" &&
             e.Details.Contains("'value' must not be empty."));

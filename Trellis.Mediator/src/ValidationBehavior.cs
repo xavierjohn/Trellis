@@ -21,8 +21,8 @@ public sealed class ValidationBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         var validationResult = message.Validate();
-        if (validationResult.IsFailure)
-            return new ValueTask<TResponse>(TResponse.CreateFailure(validationResult.Error));
+        if (validationResult.TryGetError(out var error))
+            return new ValueTask<TResponse>(TResponse.CreateFailure(error));
 
         return next(message, cancellationToken);
     }

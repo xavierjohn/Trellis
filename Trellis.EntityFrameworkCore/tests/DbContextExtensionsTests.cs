@@ -1,4 +1,5 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -45,7 +46,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(1);
+        result.Unwrap().Should().Be(1);
     }
 
     [Fact]
@@ -73,7 +74,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(2);
+        result.Unwrap().Should().Be(2);
     }
 
     #endregion
@@ -109,7 +110,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
     }
 
     [Fact]
@@ -142,7 +143,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
     }
 
     #endregion
@@ -168,7 +169,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<DomainError>();
+        result.UnwrapError().Should().BeOfType<DomainError>();
     }
 
     #endregion
@@ -217,7 +218,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(1);
+        result.Unwrap().Should().Be(1);
     }
 
     [Fact]
@@ -238,7 +239,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(1);
+        result.Unwrap().Should().Be(1);
         _context.ChangeTracker.HasChanges().Should().BeTrue("acceptAllChangesOnSuccess: false should preserve tracker state");
     }
 
@@ -270,7 +271,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
     }
 
     [Fact]
@@ -292,7 +293,7 @@ public class DbContextExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<DomainError>();
+        result.UnwrapError().Should().BeOfType<DomainError>();
     }
 
     #endregion

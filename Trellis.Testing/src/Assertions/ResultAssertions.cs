@@ -45,13 +45,15 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
         string because = "",
         params object[] becauseArgs)
     {
+        Subject.TryGetError(out var error);
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
             .ForCondition(Subject.IsSuccess)
             .FailWith("Expected {context:result} to be success{reason}, but it failed with error: {0}",
-                Subject.IsFailure ? Subject.Error : null);
+                error);
 
-        return new AndWhichConstraint<ResultAssertions<TValue>, TValue>(this, Subject.Value);
+        Subject.TryGetValue(out var value);
+        return new AndWhichConstraint<ResultAssertions<TValue>, TValue>(this, value);
     }
 
     /// <summary>
@@ -67,13 +69,15 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
         string because = "",
         params object[] becauseArgs)
     {
+        Subject.TryGetValue(out var value);
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
             .ForCondition(Subject.IsFailure)
             .FailWith("Expected {context:result} to be failure{reason}, but it succeeded with value: {0}",
-                Subject.IsSuccess ? Subject.Value : default);
+                value);
 
-        return new AndWhichConstraint<ResultAssertions<TValue>, Error>(this, Subject.Error);
+        Subject.TryGetError(out var error);
+        return new AndWhichConstraint<ResultAssertions<TValue>, Error>(this, error);
     }
 
     /// <summary>
@@ -93,16 +97,17 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeFailure(because, becauseArgs);
 
+        Subject.TryGetError(out var error);
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(Subject.Error is TError)
+            .ForCondition(error is TError)
             .FailWith("Expected {context:result} error to be of type {0}{reason}, but found {1}",
                 typeof(TError).Name,
-                Subject.Error.GetType().Name);
+                error?.GetType().Name);
 
         return new AndWhichConstraint<ResultAssertions<TValue>, TError>(
             this,
-            (TError)Subject.Error);
+            (TError)error!);
     }
 
     /// <summary>
@@ -122,7 +127,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeSuccess(because, becauseArgs);
 
-        Subject.Value.Should().Be(expectedValue, because, becauseArgs);
+        Subject.TryGetValue(out var actualValue);
+        actualValue.Should().Be(expectedValue, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -144,11 +150,12 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeSuccess(because, becauseArgs);
 
+        Subject.TryGetValue(out var actualValue);
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(predicate(Subject.Value))
+            .ForCondition(predicate(actualValue))
             .FailWith("Expected {context:result} value to match predicate{reason}, but it did not. Value: {0}",
-                Subject.Value);
+                actualValue);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -170,7 +177,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeSuccess(because, becauseArgs);
 
-        Subject.Value.Should().BeEquivalentTo(expectedValue, because, becauseArgs);
+        Subject.TryGetValue(out var actualValue);
+        actualValue.Should().BeEquivalentTo(expectedValue, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -192,7 +200,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeFailure(because, becauseArgs);
 
-        Subject.Error.Code.Should().Be(expectedCode, because, becauseArgs);
+        Subject.TryGetError(out var error);
+        error.Code.Should().Be(expectedCode, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -214,7 +223,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeFailure(because, becauseArgs);
 
-        Subject.Error.Detail.Should().Be(expectedDetail, because, becauseArgs);
+        Subject.TryGetError(out var error);
+        error.Detail.Should().Be(expectedDetail, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -236,7 +246,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeFailure(because, becauseArgs);
 
-        Subject.Error.Detail.Should().Contain(substring, because, becauseArgs);
+        Subject.TryGetError(out var error);
+        error.Detail.Should().Contain(substring, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }

@@ -1,9 +1,9 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.EntityFrameworkCore;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 using Trellis.Primitives;
-using Trellis.Testing;
 
 /// <summary>
 /// SQL Server integration tests for <c>MaybeConvention</c> and source-generated

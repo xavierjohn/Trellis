@@ -44,11 +44,11 @@ public sealed class TracingBehavior<TMessage, TResponse>
 
         if (activity is not null)
         {
-            if (response.IsFailure)
+            if (response.TryGetError(out var error))
             {
-                activity.SetStatus(ActivityStatusCode.Error, response.Error.Detail);
-                activity.SetTag("error.type", response.Error.GetType().Name);
-                activity.SetTag("error.code", response.Error.Code);
+                activity.SetStatus(ActivityStatusCode.Error, error.Detail);
+                activity.SetTag("error.type", error.GetType().Name);
+                activity.SetTag("error.code", error.Code);
             }
             else
             {

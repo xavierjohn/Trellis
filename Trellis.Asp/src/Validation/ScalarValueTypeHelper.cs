@@ -154,16 +154,16 @@ internal static class ScalarValueTypeHelper
 
     private static IDictionary<string, string[]>? ExtractErrors(object? result, string? parameterName)
     {
-        if (result is not IResult { IsFailure: true } failure)
+        if (result is not IResult failure || !failure.TryGetError(out var failureError))
             return null;
 
-        if (failure.Error is ValidationError validationError)
+        if (failureError is ValidationError validationError)
             return validationError.ToDictionary();
 
         var fieldName = parameterName ?? string.Empty;
         return new Dictionary<string, string[]>
         {
-            [fieldName] = [failure.Error.Detail]
+            [fieldName] = [failureError.Detail]
         };
     }
 
@@ -187,12 +187,12 @@ internal static class ScalarValueTypeHelper
             return null;
         }
 
-        if (conversionResult is IResult { IsFailure: true } failure)
+        if (conversionResult is IResult failure && failure.TryGetError(out var convError))
         {
             var fieldName = parameterName ?? string.Empty;
             var detail = string.IsNullOrEmpty(rawValue)
                 ? $"'{fieldName}' is required."
-                : failure.Error.Detail;
+                : convError.Detail;
 
             return new Dictionary<string, string[]>
             {
@@ -200,8 +200,28 @@ internal static class ScalarValueTypeHelper
             };
         }
 
-        var valueProperty = conversionResult?.GetType().GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
-        return valueProperty?.GetValue(conversionResult);
+        // Extract the value via TryGetValue(out _) since the public Value property was removed.
+        return ExtractSuccessValue(conversionResult);
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "TryGetValue is preserved by being public on IResult<TValue> implementations used here.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "TryGetValue is preserved by being public on IResult<TValue> implementations used here.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Reflection-based validation fallback is not Native AOT compatible.")]
+    private static object? ExtractSuccessValue(object? conversionResult)
+    {
+        if (conversionResult is null)
+            return null;
+
+        var tryGetValue = conversionResult.GetType().GetMethod(
+            "TryGetValue",
+            BindingFlags.Public | BindingFlags.Instance);
+
+        if (tryGetValue is null)
+            return null;
+
+        var args = new object?[] { null };
+        var ok = tryGetValue.Invoke(conversionResult, args) as bool?;
+        return ok == true ? args[0] : null;
     }
 
     /// <summary>

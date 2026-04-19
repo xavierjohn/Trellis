@@ -49,11 +49,8 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     private static TRequiredEnum ReadFromString(ref Utf8JsonReader reader)
     {
         var name = reader.GetString();
-        var result = RequiredEnum<TRequiredEnum>.TryFromName(name);
-
-        if (result.IsFailure)
-            throw new JsonException($"Invalid {typeof(TRequiredEnum).Name} value: '{name}'. {result.Error.Detail}");
-
-        return result.Value;
+        return RequiredEnum<TRequiredEnum>.TryFromName(name).Match(
+            onSuccess: value => value,
+            onFailure: error => throw new JsonException($"Invalid {typeof(TRequiredEnum).Name} value: '{name}'. {error.Detail}"));
     }
 }

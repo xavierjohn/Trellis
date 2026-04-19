@@ -1,4 +1,5 @@
-﻿namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
+using Trellis.Testing;
+namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
 using System.Net;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(unauthorizedError);
+        result.UnwrapError().Should().Be(unauthorizedError);
     }
 
     [Fact]
@@ -39,7 +40,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.Unwrap().StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -55,7 +56,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(unauthorizedError);
+        result.UnwrapError().Should().Be(unauthorizedError);
     }
 
     [Theory]
@@ -75,7 +76,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(statusCode);
+        result.Unwrap().StatusCode.Should().Be(statusCode);
     }
 
     #endregion
@@ -94,7 +95,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(forbiddenError);
+        result.UnwrapError().Should().Be(forbiddenError);
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.Unwrap().StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -125,7 +126,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(forbiddenError);
+        result.UnwrapError().Should().Be(forbiddenError);
     }
 
     [Theory]
@@ -144,7 +145,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(statusCode);
+        result.Unwrap().StatusCode.Should().Be(statusCode);
     }
 
     #endregion
@@ -163,7 +164,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(conflictError);
+        result.UnwrapError().Should().Be(conflictError);
     }
 
     [Fact]
@@ -178,7 +179,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.Unwrap().StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -194,7 +195,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(conflictError);
+        result.UnwrapError().Should().Be(conflictError);
     }
 
     [Theory]
@@ -213,7 +214,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(statusCode);
+        result.Unwrap().StatusCode.Should().Be(statusCode);
     }
 
     #endregion
@@ -238,7 +239,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain(statusCode.ToString());
+        result.UnwrapError().Detail.Should().Contain(statusCode.ToString());
     }
 
     [Theory]
@@ -257,7 +258,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(statusCode);
+        result.Unwrap().StatusCode.Should().Be(statusCode);
     }
 
     [Fact]
@@ -273,7 +274,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("BadRequest");
+        result.UnwrapError().Detail.Should().Contain("BadRequest");
     }
 
     [Fact]
@@ -315,7 +316,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain(statusCode.ToString());
+        result.UnwrapError().Detail.Should().Contain(statusCode.ToString());
     }
 
     [Theory]
@@ -334,7 +335,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(statusCode);
+        result.Unwrap().StatusCode.Should().Be(statusCode);
     }
 
     [Fact]
@@ -350,7 +351,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("InternalServerError");
+        result.UnwrapError().Detail.Should().Contain("InternalServerError");
     }
 
     [Fact]
@@ -391,7 +392,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(statusCode);
+        result.Unwrap().StatusCode.Should().Be(statusCode);
     }
 
     [Theory]
@@ -410,7 +411,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain(statusCode.ToString());
+        result.UnwrapError().Detail.Should().Contain(statusCode.ToString());
     }
 
     [Fact]
@@ -424,9 +425,9 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        result.Error.Detail.Should().Contain("Custom error");
-        result.Error.Detail.Should().Contain("BadRequest");
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Detail.Should().Contain("Custom error");
+        result.UnwrapError().Detail.Should().Contain("BadRequest");
     }
 
     [Fact]
@@ -441,7 +442,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.Unwrap().StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -456,7 +457,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("InternalServerError");
+        result.UnwrapError().Detail.Should().Contain("InternalServerError");
     }
 
     [Fact]
@@ -472,8 +473,8 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Service down");
-        result.Error.Detail.Should().Contain("ServiceUnavailable");
+        result.UnwrapError().Detail.Should().Contain("Service down");
+        result.UnwrapError().Detail.Should().Contain("ServiceUnavailable");
     }
 
     #endregion
@@ -495,7 +496,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(forbiddenError);
+        result.UnwrapError().Should().Be(forbiddenError);
     }
 
     [Fact]
@@ -513,7 +514,7 @@ public class StatusCodeHandlersTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(unauthorizedError);
+        result.UnwrapError().Should().Be(unauthorizedError);
     }
 
     #endregion

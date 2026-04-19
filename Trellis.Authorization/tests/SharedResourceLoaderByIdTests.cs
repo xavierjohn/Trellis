@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Authorization.Tests;
 
 /// <summary>
@@ -16,7 +17,7 @@ public class SharedResourceLoaderByIdTests
         var result = await loader.GetByIdAsync("order-1", CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeSameAs(order);
+        result.Unwrap().Should().BeSameAs(order);
     }
 
     [Fact]
@@ -27,7 +28,7 @@ public class SharedResourceLoaderByIdTests
         var result = await loader.GetByIdAsync("nonexistent", CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<NotFoundError>();
     }
 
     #endregion

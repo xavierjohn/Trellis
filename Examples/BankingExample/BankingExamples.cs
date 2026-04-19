@@ -1,4 +1,4 @@
-﻿using BankingExample.Aggregates;
+using BankingExample.Aggregates;
 using BankingExample.Services;
 using BankingExample.ValueObjects;
 using BankingExample.Workflows;
@@ -20,6 +20,14 @@ namespace BankingExample;
 /// </summary>
 public static class BankingExamples
 {
+    /// <summary>
+    /// Demo helper: returns the success value or throws if the result is a failure.
+    /// Use <c>Match</c> or <c>TryGetValue</c> in production code instead.
+    /// </summary>
+    private static T OrThrow<T>(this Result<T> result) =>
+        result.Match(
+            onSuccess: v => v,
+            onFailure: e => throw new InvalidOperationException(e.Detail));
     public static async Task RunExamplesAsync()
     {
         Console.WriteLine("=== Banking Transaction Examples ===");
@@ -96,7 +104,7 @@ public static class BankingExamples
             Money.Create(1000m, "USD"),
             Money.Create(500m, "USD"),
             Money.Create(0m, "USD")
-        ).Value;
+        ).OrThrow();
 
         var account2 = BankAccount.TryCreate(
             customer2,
@@ -104,7 +112,7 @@ public static class BankingExamples
             Money.Create(500m, "USD"),
             Money.Create(500m, "USD"),
             Money.Create(0m, "USD")
-        ).Value;
+        ).OrThrow();
 
         // Clear initial creation events for cleaner demo output
         account1.AcceptChanges();
@@ -145,7 +153,7 @@ public static class BankingExamples
             Money.Create(10000m, "USD"),
             Money.Create(10000m, "USD"),
             Money.Create(0m, "USD")
-        ).Value;
+        ).OrThrow();
 
         account.AcceptChanges(); // Clear creation event
 
@@ -186,25 +194,25 @@ public static class BankingExamples
             Money.Create(2000m, "USD"),
             dailyLimit,
             Money.Create(0m, "USD")
-        ).Value;
+        ).OrThrow();
 
         account.AcceptChanges(); // Clear creation event
 
         // Make multiple withdrawals
         var result1 = account.Withdraw(Money.Create(200m, "USD"), "ATM withdrawal");
-        Console.WriteLine(result1.IsSuccess ? "✅ First withdrawal: $200" : $"❌ {result1.Error.Detail}");
+        Console.WriteLine(result1.Match(onSuccess: _ => "✅ First withdrawal: $200", onFailure: e => $"❌ {e.Detail}"));
 
         var result2 = account.Withdraw(Money.Create(200m, "USD"), "ATM withdrawal");
-        Console.WriteLine(result2.IsSuccess ? "✅ Second withdrawal: $200" : $"❌ {result2.Error.Detail}");
+        Console.WriteLine(result2.Match(onSuccess: _ => "✅ Second withdrawal: $200", onFailure: e => $"❌ {e.Detail}"));
 
         // This should exceed daily limit - demonstrates Error.Domain
         var result3 = account.Withdraw(Money.Create(200m, "USD"), "ATM withdrawal");
-        if (result3.IsFailure)
+        if (result3.TryGetError(out var thirdError))
         {
             Console.WriteLine($"⚠️ Third withdrawal blocked:");
-            Console.WriteLine($"   Error Type: {result3.Error.GetType().Name}");
-            Console.WriteLine($"   Code: {result3.Error.Code}");
-            Console.WriteLine($"   Detail: {result3.Error.Detail}");
+            Console.WriteLine($"   Error Type: {thirdError.GetType().Name}");
+            Console.WriteLine($"   Code: {thirdError.Code}");
+            Console.WriteLine($"   Detail: {thirdError.Detail}");
         }
 
         Console.WriteLine($"Final balance: {account.Balance}");
@@ -229,7 +237,7 @@ public static class BankingExamples
             Money.Create(10000m, "USD"),
             Money.Create(100m, "USD"),
             Money.Create(0m, "USD")
-        ).Value;
+        ).OrThrow();
 
         account.AcceptChanges(); // Clear creation event
 
@@ -276,13 +284,13 @@ public static class BankingExamples
             Money.Create(100m, "USD")
         );
 
-        if (accountResult.IsFailure)
+        if (accountResult.TryGetError(out var creationError))
         {
-            Console.WriteLine($"❌ Account creation failed: {accountResult.Error.Detail}");
+            Console.WriteLine($"❌ Account creation failed: {creationError.Detail}");
             return;
         }
 
-        var account = accountResult.Value;
+        var account = accountResult.OrThrow();
 
         Console.WriteLine("After account creation:");
         Console.WriteLine($"  IsChanged: {account.IsChanged}");

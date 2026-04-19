@@ -1,6 +1,7 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Text.Json;
+using Trellis.Testing;
 
 public partial class OrderDate : RequiredDateTime<OrderDate>
 {
@@ -19,7 +20,7 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate(date);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(date);
+        result.Unwrap().Value.Should().Be(date);
     }
 
     [Fact]
@@ -29,7 +30,7 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate(now);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(now);
+        result.Unwrap().Value.Should().Be(now);
     }
 
     [Fact]
@@ -38,8 +39,8 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate(DateTime.MinValue);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("orderDate");
         validation.FieldErrors[0].Details[0].Should().Be("Order Date cannot be empty.");
     }
@@ -49,7 +50,7 @@ public class RequiredDateTimeTests
     {
         var result = OrderDate.TryCreate(DateTime.MaxValue);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(DateTime.MaxValue);
+        result.Unwrap().Value.Should().Be(DateTime.MaxValue);
     }
 
     [Fact]
@@ -58,8 +59,8 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate((DateTime?)null);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("orderDate");
         validation.FieldErrors[0].Details[0].Should().Be("Order Date cannot be empty.");
     }
@@ -70,9 +71,9 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate("2026-01-15T12:00:00Z");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Year.Should().Be(2026);
-        result.Value.Value.Month.Should().Be(1);
-        result.Value.Value.Day.Should().Be(15);
+        result.Unwrap().Value.Year.Should().Be(2026);
+        result.Unwrap().Value.Month.Should().Be(1);
+        result.Unwrap().Value.Day.Should().Be(15);
     }
 
     [Theory]
@@ -121,7 +122,7 @@ public class RequiredDateTimeTests
     public void Can_use_ToString()
     {
         var date = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
-        OrderDate orderDate = OrderDate.TryCreate(date).Value;
+        OrderDate orderDate = OrderDate.TryCreate(date).Unwrap();
         orderDate.ToString(System.Globalization.CultureInfo.InvariantCulture).Should().NotBeNullOrWhiteSpace();
     }
 
@@ -130,14 +131,14 @@ public class RequiredDateTimeTests
     {
         var date = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
         OrderDate orderDate = (OrderDate)date;
-        orderDate.Should().Be(OrderDate.TryCreate(date).Value);
+        orderDate.Should().Be(OrderDate.TryCreate(date).Unwrap());
     }
 
     [Fact]
     public void ConvertToJson()
     {
         var date = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
-        OrderDate orderDate = OrderDate.TryCreate(date).Value;
+        OrderDate orderDate = OrderDate.TryCreate(date).Unwrap();
 
         var actual = JsonSerializer.Serialize(orderDate);
         actual.Should().NotBeNullOrWhiteSpace();
@@ -147,7 +148,7 @@ public class RequiredDateTimeTests
     public void JsonRoundTrip()
     {
         var date = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
-        OrderDate original = OrderDate.TryCreate(date).Value;
+        OrderDate original = OrderDate.TryCreate(date).Unwrap();
 
         var json = JsonSerializer.Serialize(original);
         var deserialized = JsonSerializer.Deserialize<OrderDate>(json);
@@ -159,7 +160,7 @@ public class RequiredDateTimeTests
     public void JsonRoundTrip_PreservesUtcKind()
     {
         var utcDate = new DateTime(2026, 6, 15, 9, 30, 0, DateTimeKind.Utc);
-        OrderDate original = OrderDate.TryCreate(utcDate).Value;
+        OrderDate original = OrderDate.TryCreate(utcDate).Unwrap();
 
         var json = JsonSerializer.Serialize(original);
         var deserialized = JsonSerializer.Deserialize<OrderDate>(json)!;
@@ -172,7 +173,7 @@ public class RequiredDateTimeTests
     public void ToString_ProducesIso8601RoundTrippableFormat()
     {
         var date = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
-        OrderDate orderDate = OrderDate.TryCreate(date).Value;
+        OrderDate orderDate = OrderDate.TryCreate(date).Unwrap();
 
         // ParsableJsonConverter uses ToString() — must produce round-trippable output
 #pragma warning disable CA1305 // Testing the parameterless ToString used by JSON serialization
@@ -192,7 +193,7 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate((DateTime?)null, "myField");
 
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 
@@ -202,7 +203,7 @@ public class RequiredDateTimeTests
         var result = InternalDate.TryCreate(DateTime.UtcNow);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeOfType<InternalDate>();
+        result.Unwrap().Should().BeOfType<InternalDate>();
     }
 
     [Fact]

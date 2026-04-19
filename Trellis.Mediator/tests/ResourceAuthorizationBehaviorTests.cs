@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +26,7 @@ public class ResourceAuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Done");
+        result.Unwrap().Should().Be("Done");
         tracker.WasInvoked.Should().BeTrue();
     }
 
@@ -45,8 +46,8 @@ public class ResourceAuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ForbiddenError>();
-        result.Error.Detail.Should().Contain("Only the resource owner");
+        result.UnwrapError().Should().BeOfType<ForbiddenError>();
+        result.UnwrapError().Detail.Should().Contain("Only the resource owner");
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when authorization fails");
     }
 
@@ -65,7 +66,7 @@ public class ResourceAuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<NotFoundError>();
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when resource is not found");
     }
 
@@ -122,7 +123,7 @@ public class ResourceAuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Cannot modify another user's resource");
+        result.UnwrapError().Detail.Should().Contain("Cannot modify another user's resource");
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -142,7 +143,7 @@ public class ResourceAuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Order 'xyz' was not found.");
+        result.UnwrapError().Detail.Should().Contain("Order 'xyz' was not found.");
     }
 
     #endregion

@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class SlugTests
 {
@@ -23,7 +24,7 @@ public class SlugTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(slug);
+        result.Unwrap().Value.Should().Be(slug);
     }
 
     [Theory]
@@ -36,7 +37,7 @@ public class SlugTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -50,7 +51,7 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Slug is required.");
     }
 
@@ -67,7 +68,7 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -82,7 +83,7 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -98,7 +99,7 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -116,7 +117,7 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -128,7 +129,7 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("articleSlug");
     }
 
@@ -156,8 +157,8 @@ public class SlugTests
     public void Two_Slug_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = Slug.TryCreate("hello-world").Value;
-        var b = Slug.TryCreate("hello-world").Value;
+        var a = Slug.TryCreate("hello-world").Unwrap();
+        var b = Slug.TryCreate("hello-world").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -169,8 +170,8 @@ public class SlugTests
     public void Two_Slug_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = Slug.TryCreate("hello-world").Value;
-        var b = Slug.TryCreate("goodbye-world").Value;
+        var a = Slug.TryCreate("hello-world").Unwrap();
+        var b = Slug.TryCreate("goodbye-world").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -181,7 +182,7 @@ public class SlugTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        Slug value = Slug.TryCreate("hello-world").Value;
+        Slug value = Slug.TryCreate("hello-world").Unwrap();
 
         // Act
         string stringValue = value;
@@ -249,7 +250,7 @@ public class SlugTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = Slug.TryCreate("hello-world").Value;
+        var value = Slug.TryCreate("hello-world").Unwrap();
         var expected = JsonSerializer.Serialize("hello-world");
 
         // Act

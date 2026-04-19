@@ -1,8 +1,9 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Text.Json;
 using Trellis;
 using Xunit;
+using Trellis.Testing;
 
 /// <summary>
 /// Test enum value object for order states.
@@ -79,7 +80,7 @@ public class RequiredEnumTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(TestOrderState.Draft);
+        result.Unwrap().Should().Be(TestOrderState.Draft);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public class RequiredEnumTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(TestOrderState.Confirmed);
+        result.Unwrap().Should().Be(TestOrderState.Confirmed);
     }
 
     [Fact]
@@ -101,8 +102,8 @@ public class RequiredEnumTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Contain("'InvalidState' is not a valid TestOrderState");
     }
 
@@ -114,7 +115,7 @@ public class RequiredEnumTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -125,7 +126,7 @@ public class RequiredEnumTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -136,7 +137,7 @@ public class RequiredEnumTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("orderStatus");
     }
 
@@ -355,7 +356,7 @@ public class RequiredEnumTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Fee.Should().Be(0.005m);
+        result.Unwrap().Fee.Should().Be(0.005m);
     }
 
     [Fact]
@@ -366,7 +367,7 @@ public class RequiredEnumTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(TestOverriddenOrderState.AwaitingPayment);
+        result.Unwrap().Should().Be(TestOverriddenOrderState.AwaitingPayment);
     }
 
     #endregion

@@ -97,7 +97,8 @@ public class LazyStateMachineTests
         var result = lazy.FireResult(Trigger.Submit);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(State.Submitted);
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Submitted);
         status.Should().Be(State.Submitted);
     }
 
@@ -110,8 +111,9 @@ public class LazyStateMachineTests
         var result = lazy.FireResult(Trigger.Ship);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<DomainError>();
-        result.Error.Code.Should().Be("state.machine.invalid.transition");
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Should().BeOfType<DomainError>();
+        err.Code.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -184,7 +186,8 @@ public class LazyStateMachineTests
         // Now it's safe to use
         var result = lazy.FireResult(Trigger.Submit);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(State.Submitted);
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Submitted);
     }
 
     #endregion
@@ -221,7 +224,8 @@ public class LazyStateMachineTests
         var result = lazy.FireResult(Trigger.Submit);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<DomainError>();
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Should().BeOfType<DomainError>();
     }
 
     #endregion
@@ -240,7 +244,8 @@ public class LazyStateMachineTests
         var result = lazy.FireResult("Publish");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Published");
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be("Published");
         status.Should().Be("Published");
     }
 
@@ -256,7 +261,8 @@ public class LazyStateMachineTests
         var result = lazy.FireResult("Archive");
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<DomainError>();
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Should().BeOfType<DomainError>();
     }
 
     #endregion

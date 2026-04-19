@@ -1,10 +1,10 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 using Trellis.Primitives;
-using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="MaybeQueryableExtensions"/> — WhereNone, WhereHasValue, WhereEquals.

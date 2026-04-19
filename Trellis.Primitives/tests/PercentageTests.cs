@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class PercentageTests
 {
@@ -20,7 +21,7 @@ public class PercentageTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(value);
+        result.Unwrap().Value.Should().Be(value);
     }
 
     [Theory]
@@ -35,8 +36,8 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Percentage must be between 0 and 100.");
     }
 
@@ -48,7 +49,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Percentage is required.");
     }
 
@@ -102,7 +103,7 @@ public class PercentageTests
     public void AsFraction_returns_correct_value(decimal percentage, decimal expectedFraction)
     {
         // Arrange
-        var pct = Percentage.TryCreate(percentage).Value;
+        var pct = Percentage.TryCreate(percentage).Unwrap();
 
         // Act
         var fraction = pct.AsFraction();
@@ -120,7 +121,7 @@ public class PercentageTests
     public void Of_calculates_correct_percentage(decimal percentage, decimal amount, decimal expected)
     {
         // Arrange
-        var pct = Percentage.TryCreate(percentage).Value;
+        var pct = Percentage.TryCreate(percentage).Unwrap();
 
         // Act
         var result = pct.Of(amount);
@@ -141,7 +142,7 @@ public class PercentageTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expectedPercentage);
+        result.Unwrap().Value.Should().Be(expectedPercentage);
     }
 
     [Theory]
@@ -164,7 +165,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = result.Error.Should().BeOfType<ValidationError>().Subject;
+        var validation = result.UnwrapError().Should().BeOfType<ValidationError>().Subject;
         validation.FieldErrors[0].FieldName.Should().Be("discountRate");
         validation.FieldErrors[0].Details[0].Should().Be("Fraction must be between 0 and 1.");
     }
@@ -173,8 +174,8 @@ public class PercentageTests
     public void Two_Percentage_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = Percentage.TryCreate(50m).Value;
-        var b = Percentage.TryCreate(50m).Value;
+        var a = Percentage.TryCreate(50m).Unwrap();
+        var b = Percentage.TryCreate(50m).Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -186,8 +187,8 @@ public class PercentageTests
     public void Two_Percentage_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = Percentage.TryCreate(25m).Value;
-        var b = Percentage.TryCreate(75m).Value;
+        var a = Percentage.TryCreate(25m).Unwrap();
+        var b = Percentage.TryCreate(75m).Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -198,7 +199,7 @@ public class PercentageTests
     public void Can_implicitly_cast_to_decimal()
     {
         // Arrange
-        Percentage value = Percentage.TryCreate(50m).Value;
+        Percentage value = Percentage.TryCreate(50m).Unwrap();
 
         // Act
         decimal decimalValue = value;
@@ -300,7 +301,7 @@ public class PercentageTests
     public void ToString_returns_percentage_format()
     {
         // Arrange
-        var pct = Percentage.TryCreate(50.5m).Value;
+        var pct = Percentage.TryCreate(50.5m).Unwrap();
 
         // Act
         var result = pct.ToString();
@@ -313,7 +314,7 @@ public class PercentageTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = Percentage.TryCreate(50m).Value;
+        var value = Percentage.TryCreate(50m).Unwrap();
         var expected = "\"50%\"";  // Percentage.ToString() adds % suffix
 
         // Act
@@ -385,7 +386,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("discountRate");
     }
 
@@ -403,7 +404,7 @@ public class PercentageTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Fact]
@@ -414,7 +415,7 @@ public class PercentageTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(50m);
+        result.Unwrap().Value.Should().Be(50m);
     }
 
     [Fact]
@@ -425,7 +426,7 @@ public class PercentageTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(75m);
+        result.Unwrap().Value.Should().Be(75m);
     }
 
     [Fact]
@@ -436,7 +437,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -447,7 +448,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -458,7 +459,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Theory]
@@ -471,7 +472,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -482,7 +483,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("discountRate");
     }
 
@@ -494,7 +495,7 @@ public class PercentageTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Percentage must be between 0 and 100.");
     }
 
