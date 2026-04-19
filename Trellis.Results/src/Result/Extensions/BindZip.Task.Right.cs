@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Async BindZip extension where the input is synchronous and the function returns a Task.
@@ -22,7 +22,7 @@ public static partial class BindZipExtensionsAsync
 
         if (result.IsFailure)
         {
-            var failure = Result.Failure<(T1, T2)>(result.Error);
+            var failure = Result.Fail<(T1, T2)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -30,12 +30,12 @@ public static partial class BindZipExtensionsAsync
         var nextResult = await func(result.Value).ConfigureAwait(false);
         if (nextResult.IsFailure)
         {
-            var failure = Result.Failure<(T1, T2)>(nextResult.Error);
+            var failure = Result.Fail<(T1, T2)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success((result.Value, nextResult.Value));
+        var success = Result.Ok((result.Value, nextResult.Value));
         success.LogActivityStatus();
         return success;
     }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing;
 using Trellis.Asp;
 using Trellis.Primitives;
 
@@ -42,23 +42,23 @@ public static class UserRoutes
                     routeValues: user => new RouteValueDictionary { { "name", user.FirstName } }));
 
         userApi.MapGet("/notfound/{id}", (int id) =>
-            Result.Failure(Error.NotFound("User not found", id))
+            Result.Fail(Error.NotFound("User not found", id))
             .ToHttpResult());
 
         userApi.MapGet("/conflict/{id}", (int id) =>
-            Result.Failure(Error.Conflict("Record has changed.", id))
+            Result.Fail(Error.Conflict("Record has changed.", id))
             .ToHttpResult());
 
         userApi.MapGet("/forbidden/{id}", (int id) =>
-            Result.Failure(Error.Forbidden("You do not have access.", id))
+            Result.Fail(Error.Forbidden("You do not have access.", id))
             .ToHttpResult());
 
         userApi.MapGet("/unauthorized/{id}", (int id) =>
-            Result.Failure(Error.Unauthorized("You have not been authorized.", id))
+            Result.Fail(Error.Unauthorized("You have not been authorized.", id))
             .ToHttpResult());
 
         userApi.MapGet("/unexpected/{id}", (int id) =>
-            Result.Failure(Error.Unexpected("Internal server error.", id))
+            Result.Fail(Error.Unexpected("Internal server error.", id))
             .ToHttpResult());
 
         // Auto-validating routes using value object DTOs

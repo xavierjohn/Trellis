@@ -30,10 +30,10 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 
-var success = Result.Success(42);
+var success = Result.Ok(42);
 success.Should().BeSuccess().Which.Should().Be(42);
 
-var failure = Result.Failure<int>(Error.NotFound("Order 123 not found", "123"));
+var failure = Result.Fail<int>(Error.NotFound("Order 123 not found", "123"));
 failure.Should().BeFailureOfType<NotFoundError>();
 failure.Should().HaveErrorCode("not.found.error");
 failure.Should().HaveErrorDetail("Order 123 not found");
@@ -49,8 +49,8 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 
-Task<Result<int>> taskResult = Task.FromResult(Result.Success(42));
-ValueTask<Result<int>> valueTaskResult = ValueTask.FromResult(Result.Success(7));
+Task<Result<int>> taskResult = Task.FromResult(Result.Ok(42));
+ValueTask<Result<int>> valueTaskResult = ValueTask.FromResult(Result.Ok(7));
 
 (await taskResult.BeSuccessAsync()).Which.Should().Be(42);
 (await valueTaskResult.BeSuccessAsync()).Which.Should().Be(7);
@@ -146,9 +146,9 @@ Use the standard `Result` and `Error` factory methods directly — no special te
 ```csharp
 using Trellis;
 
-var success = Result.Success(42);
-var notFound = Result.Failure<int>(Error.NotFound("Order 123 not found", "123"));
-var forbidden = Result.Failure<int>(Error.Forbidden("Not allowed."));
+var success = Result.Ok(42);
+var notFound = Result.Fail<int>(Error.NotFound("Order 123 not found", "123"));
+var forbidden = Result.Fail<int>(Error.Forbidden("Not allowed."));
 ```
 
 `Error.NotFound("Order 123 not found", "123")` produces:
@@ -263,7 +263,7 @@ public sealed class FakeOrderLoader : IResourceLoader<GetOrderQuery, OrderResour
     public Task<Result<OrderResource>> LoadAsync(
         GetOrderQuery message,
         CancellationToken cancellationToken) =>
-        Task.FromResult(Result.Success(new OrderResource(message.OrderId)));
+        Task.FromResult(Result.Ok(new OrderResource(message.OrderId)));
 }
 
 var services = new ServiceCollection();

@@ -10,7 +10,7 @@ Flags `Map` and `MapAsync` when the transformation already returns `Result<T>`, 
 `Map` wraps the transformation result as a value, which leads to `Result<Result<T>>` or async equivalents. `Bind` and `BindAsync` flatten the pipeline correctly.
 
 > [!WARNING]
-> This rule is broader than a simple `x => Result.Success(...)` lambda. A method group like `Map(ParseAsync)` can trigger it too if `ParseAsync` already returns a `Result`.
+> This rule is broader than a simple `x => Result.Ok(...)` lambda. A method group like `Map(ParseAsync)` can trigger it too if `ParseAsync` already returns a `Result`.
 
 ## Bad example
 ```csharp
@@ -20,12 +20,12 @@ static class Example
 {
     public static Result<int> Bad()
     {
-        var result = Result.Success("Ada");
+        var result = Result.Ok("Ada");
         return result.Map(ParseLength);
     }
 
     static Result<int> ParseLength(string value) =>
-        Result.Success(value.Length);
+        Result.Ok(value.Length);
 }
 ```
 
@@ -37,12 +37,12 @@ static class Example
 {
     public static Result<int> Good()
     {
-        var result = Result.Success("Ada");
+        var result = Result.Ok("Ada");
         return result.Bind(ParseLength);
     }
 
     static Result<int> ParseLength(string value) =>
-        Result.Success(value.Length);
+        Result.Ok(value.Length);
 }
 ```
 

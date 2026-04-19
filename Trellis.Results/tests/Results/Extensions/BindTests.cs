@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions.Bind;
+namespace Trellis.Results.Tests.Results.Extensions.Bind;
 
 using Trellis.Testing;
 
@@ -8,7 +8,7 @@ public partial class BindTests : TestBase
     [Fact]
     public void Bind_WithNullFunc_ShouldThrowArgumentNullException()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var act = () => result.Bind<int, string>(null!);
 
@@ -20,14 +20,14 @@ public partial class BindTests : TestBase
     public void Bind_WithSuccessResult_ShouldReturnNewResult()
     {
         // Arrange
-        var result = Result.Success<int>(42);
+        var result = Result.Ok<int>(42);
         var functionCalled = false;
 
         // Act
         var newResult = result.Bind(value =>
         {
             functionCalled = true;
-            return Result.Success<string>($"Value: {value}");
+            return Result.Ok<string>($"Value: {value}");
         });
 
         // Assert
@@ -40,14 +40,14 @@ public partial class BindTests : TestBase
     public void Bind_WithFailureResult_ShouldReturnFailedResult()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
         var functionCalled = false;
 
         // Act
         var newResult = result.Bind(value =>
         {
             functionCalled = true;
-            return Result.Success<string>($"Value: {value}");
+            return Result.Ok<string>($"Value: {value}");
         });
 
         // Assert
@@ -60,14 +60,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Left_Task_ShouldReturnResult()
     {
         // Arrange
-        var result = Result.Success("Hello").AsTask();
+        var result = Result.Ok("Hello").AsTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}");
+            return Result.Ok($"{str}");
         });
 
         // Assert
@@ -80,14 +80,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Left_Task_ShouldReturnFailedResult()
     {
         // Arrange
-        var result = Result.Failure<string>(Error1).AsTask();
+        var result = Result.Fail<string>(Error1).AsTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}");
+            return Result.Ok($"{str}");
         });
 
         // Assert
@@ -100,14 +100,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Right_Task_ShouldReturnResult()
     {
         // Arrange
-        var result = Result.Success("Hello");
+        var result = Result.Ok("Hello");
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsTask();
+            return Result.Ok($"{str}").AsTask();
         });
 
         // Assert
@@ -120,14 +120,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Right_Task_ShouldReturnFailedResult()
     {
         // Arrange
-        var result = Result.Failure<string>(Error1);
+        var result = Result.Fail<string>(Error1);
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsTask();
+            return Result.Ok($"{str}").AsTask();
         });
 
         // Assert
@@ -139,7 +139,7 @@ public partial class BindTests : TestBase
     [Fact]
     public async Task BindAsync_Right_Task_WithNullFunc_ShouldThrowArgumentNullException()
     {
-        var result = Result.Success("Hello");
+        var result = Result.Ok("Hello");
 
         var act = async () => await result.BindAsync((Func<string, Task<Result<string>>>)null!);
 
@@ -151,14 +151,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Both_Task_ShouldReturnResult()
     {
         // Arrange
-        var result = Result.Success("Hello").AsTask();
+        var result = Result.Ok("Hello").AsTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsTask();
+            return Result.Ok($"{str}").AsTask();
         });
 
         // Assert
@@ -171,14 +171,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Both_Task_ShouldReturnFailedResult()
     {
         // Arrange
-        var result = Result.Failure<string>(Error1).AsTask();
+        var result = Result.Fail<string>(Error1).AsTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsTask();
+            return Result.Ok($"{str}").AsTask();
         });
 
         // Assert
@@ -192,14 +192,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Left_ValueTask_ShouldReturnResult()
     {
         // Arrange
-        var result = Result.Success("Hello").AsValueTask();
+        var result = Result.Ok("Hello").AsValueTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}");
+            return Result.Ok($"{str}");
         });
 
         // Assert
@@ -212,14 +212,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Left_ValueTask_ShouldReturnFailedResult()
     {
         // Arrange
-        var result = Result.Failure<string>(Error1).AsValueTask();
+        var result = Result.Fail<string>(Error1).AsValueTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}");
+            return Result.Ok($"{str}");
         });
 
         // Assert
@@ -232,14 +232,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Right_ValueTask_ShouldReturnResult()
     {
         // Arrange
-        var result = Result.Success("Hello");
+        var result = Result.Ok("Hello");
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsValueTask();
+            return Result.Ok($"{str}").AsValueTask();
         });
 
         // Assert
@@ -252,14 +252,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Right_ValueTask_ShouldReturnFailedResult()
     {
         // Arrange
-        var result = Result.Failure<string>(Error1);
+        var result = Result.Fail<string>(Error1);
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsValueTask();
+            return Result.Ok($"{str}").AsValueTask();
         });
 
         // Assert
@@ -272,14 +272,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Both_ValueTask_ShouldReturnResult()
     {
         // Arrange
-        var result = Result.Success("Hello").AsValueTask();
+        var result = Result.Ok("Hello").AsValueTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsValueTask();
+            return Result.Ok($"{str}").AsValueTask();
         });
 
         // Assert
@@ -292,14 +292,14 @@ public partial class BindTests : TestBase
     public async Task BindAsync_Both_ValueTask_ShouldReturnFailedResult()
     {
         // Arrange
-        var result = Result.Failure<string>(Error1).AsValueTask();
+        var result = Result.Fail<string>(Error1).AsValueTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync(str =>
         {
             functionCalled = true;
-            return Result.Success($"{str}").AsValueTask();
+            return Result.Ok($"{str}").AsValueTask();
         });
 
         // Assert

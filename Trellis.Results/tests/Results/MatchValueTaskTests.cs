@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests;
+namespace Trellis.Results.Tests;
 
 /// <summary>
 /// Tests for Match/Switch ValueTask extension methods.
@@ -15,7 +15,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Left_Success_CallsOnSuccess()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success(42));
+        var resultTask = ValueTask.FromResult(Result.Ok(42));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -31,7 +31,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Left_Failure_CallsOnFailure()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = ValueTask.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -47,7 +47,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Left_Success_ReturnsTransformed()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success("hello"));
+        var resultTask = ValueTask.FromResult(Result.Ok("hello"));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -67,7 +67,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Right_Success_CallsOnSuccess()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var output = await result.MatchAsync(
@@ -83,7 +83,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Right_Failure_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         var output = await result.MatchAsync(
@@ -99,7 +99,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Right_Success_CorrectHandlerCalled()
     {
         // Arrange
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var successCalled = false;
         var failureCalled = false;
 
@@ -127,7 +127,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Right_Failure_CorrectHandlerCalled()
     {
         // Arrange
-        var result = Result.Failure<string>(Error.Validation("Invalid"));
+        var result = Result.Fail<string>(Error.Validation("Invalid"));
         var successCalled = false;
         var failureCalled = false;
 
@@ -159,7 +159,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Both_Success_CallsOnSuccess()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success(42));
+        var resultTask = ValueTask.FromResult(Result.Ok(42));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -175,7 +175,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Both_Failure_CallsOnFailure()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = ValueTask.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -191,7 +191,7 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Both_DifferentReturnType()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success("hello world"));
+        var resultTask = ValueTask.FromResult(Result.Ok("hello world"));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -211,7 +211,7 @@ public class MatchValueTaskTests
     public async Task SwitchAsync_ValueTask_Both_Success_CallsOnSuccess()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success(42));
+        var resultTask = ValueTask.FromResult(Result.Ok(42));
         var output = "";
 
         // Act
@@ -236,7 +236,7 @@ public class MatchValueTaskTests
     public async Task SwitchAsync_ValueTask_Both_Failure_CallsOnFailure()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = ValueTask.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
         var output = "";
 
         // Act
@@ -261,7 +261,7 @@ public class MatchValueTaskTests
     public async Task SwitchAsync_ValueTask_Both_Success_OnlySuccessHandlerCalled()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success("test"));
+        var resultTask = ValueTask.FromResult(Result.Ok("test"));
         var successCalled = false;
         var failureCalled = false;
 
@@ -288,7 +288,7 @@ public class MatchValueTaskTests
     public async Task SwitchAsync_ValueTask_Both_Failure_OnlyFailureHandlerCalled()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<string>(Error.Unexpected("Boom")));
+        var resultTask = ValueTask.FromResult(Result.Fail<string>(Error.Unexpected("Boom")));
         var successCalled = false;
         var failureCalled = false;
 
@@ -320,7 +320,7 @@ public class MatchValueTaskTests
     {
         // Arrange
         var record = new TestData("Alice", 30);
-        var result = Result.Success(record);
+        var result = Result.Ok(record);
 
         // Act
         var output = await result.MatchAsync(
@@ -336,8 +336,8 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Both_ChainedAfterPipeline()
     {
         // Arrange & Act — Match at the end of a ValueTask pipeline
-        var output = await ValueTask.FromResult(Result.Success(10))
-            .BindAsync(v => Result.Success(v * 2))
+        var output = await ValueTask.FromResult(Result.Ok(10))
+            .BindAsync(v => Result.Ok(v * 2))
             .MatchAsync(
                 onSuccess: v => ValueTask.FromResult($"Result: {v}"),
                 onFailure: err => ValueTask.FromResult($"Error: {err.Detail}")
@@ -351,8 +351,8 @@ public class MatchValueTaskTests
     public async Task MatchAsync_ValueTask_Both_ChainedAfterFailedPipeline()
     {
         // Arrange & Act
-        var output = await ValueTask.FromResult(Result.Failure<int>(Error.Validation("Invalid input")))
-            .BindAsync(v => Result.Success(v * 2))
+        var output = await ValueTask.FromResult(Result.Fail<int>(Error.Validation("Invalid input")))
+            .BindAsync(v => Result.Ok(v * 2))
             .MatchAsync(
                 onSuccess: v => ValueTask.FromResult($"Result: {v}"),
                 onFailure: err => ValueTask.FromResult($"Error: {err.Detail}")

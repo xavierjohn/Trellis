@@ -1,4 +1,4 @@
-﻿using Mediator;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,8 +20,8 @@ public sealed record CreateDocumentCommand(string Title, string Content)
 {
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Title)
-            ? Result.Failure<Document>(Error.Validation("Title is required", "Title"))
-            : Result.Success();
+            ? Result.Fail<Document>(Error.Validation("Title is required", "Title"))
+            : Result.Ok();
 }
 
 /// <summary>
@@ -35,13 +35,13 @@ public sealed record EditDocumentCommand(string DocumentId, string NewContent)
 {
     public IResult Authorize(Actor actor, Document document) =>
         actor.Id == document.OwnerId || actor.HasPermission("Documents.EditAny")
-            ? Result.Success()
-            : Result.Failure(Error.Forbidden("Only the owner can edit this document"));
+            ? Result.Ok()
+            : Result.Fail(Error.Forbidden("Only the owner can edit this document"));
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(NewContent)
-            ? Result.Failure<Document>(Error.Validation("Content is required", "Content"))
-            : Result.Success();
+            ? Result.Fail<Document>(Error.Validation("Content is required", "Content"))
+            : Result.Ok();
 }
 
 /// <summary>
@@ -55,8 +55,8 @@ public sealed class EditDocumentResourceLoader(DocumentStore store)
     {
         var doc = store.Get(message.DocumentId);
         return doc is not null
-            ? Task.FromResult(Result.Success(doc))
-            : Task.FromResult(Result.Failure<Document>(Error.NotFound("Document not found")));
+            ? Task.FromResult(Result.Ok(doc))
+            : Task.FromResult(Result.Fail<Document>(Error.NotFound("Document not found")));
     }
 }
 
@@ -84,7 +84,7 @@ public sealed class CreateDocumentHandler(DocumentStore store, IActorProvider ac
         var actor = await actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
         var doc = new Document(Guid.NewGuid().ToString(), actor.Id, command.Title, command.Content);
         store.Add(doc);
-        return Result.Success(doc);
+        return Result.Ok(doc);
     }
 }
 
@@ -97,11 +97,11 @@ public sealed class EditDocumentHandler(DocumentStore store)
         var doc = store.Get(command.DocumentId);
         if (doc is null)
             return new ValueTask<Result<Document>>(
-                Result.Failure<Document>(Error.NotFound("Document not found")));
+                Result.Fail<Document>(Error.NotFound("Document not found")));
 
         var updated = doc with { Content = command.NewContent };
         store.Update(updated);
-        return new ValueTask<Result<Document>>(Result.Success(updated));
+        return new ValueTask<Result<Document>>(Result.Ok(updated));
     }
 }
 
@@ -114,11 +114,11 @@ public sealed class PublishDocumentHandler(DocumentStore store)
         var doc = store.Get(command.DocumentId);
         if (doc is null)
             return new ValueTask<Result<Document>>(
-                Result.Failure<Document>(Error.NotFound("Document not found")));
+                Result.Fail<Document>(Error.NotFound("Document not found")));
 
         var published = doc with { IsPublished = true };
         store.Update(published);
-        return new ValueTask<Result<Document>>(Result.Success(published));
+        return new ValueTask<Result<Document>>(Result.Ok(published));
     }
 }
 

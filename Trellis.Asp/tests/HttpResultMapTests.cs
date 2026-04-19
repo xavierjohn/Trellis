@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +26,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public void ToHttpResult_Success_ReturnsMappedOk()
     {
-        var result = Result.Success("alice");
+        var result = Result.Ok("alice");
 
         var response = result.ToHttpResult(s => new UserDto(s.ToUpperInvariant()));
 
@@ -39,7 +39,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public void ToHttpResult_Failure_ReturnsError()
     {
-        var result = Result.Failure<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(Error.NotFound("not found"));
 
         var response = result.ToHttpResult(s => new UserDto(s));
 
@@ -52,7 +52,7 @@ public class HttpResultMapTests : IDisposable
     public void ToHttpResult_Failure_DoesNotInvokeMap()
     {
         var invoked = false;
-        var result = Result.Failure<string>(Error.BadRequest("bad"));
+        var result = Result.Fail<string>(Error.BadRequest("bad"));
 
         result.ToHttpResult(s => { invoked = true; return new UserDto(s); });
 
@@ -64,7 +64,7 @@ public class HttpResultMapTests : IDisposable
     {
         var options = new TrellisAspOptions();
         options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var result = Result.Failure<string>(Error.Domain("oops"));
+        var result = Result.Fail<string>(Error.Domain("oops"));
 
         var response = result.ToHttpResult(s => new UserDto(s), options);
 
@@ -79,7 +79,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public async Task ToHttpResultAsync_Task_Success_ReturnsMappedOk()
     {
-        var resultTask = Task.FromResult(Result.Success("bob"));
+        var resultTask = Task.FromResult(Result.Ok("bob"));
 
         var response = await resultTask.ToHttpResultAsync(s => new UserDto(s.ToUpperInvariant()));
 
@@ -90,7 +90,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public async Task ToHttpResultAsync_Task_Failure_ReturnsError()
     {
-        var resultTask = Task.FromResult(Result.Failure<string>(Error.NotFound("gone")));
+        var resultTask = Task.FromResult(Result.Fail<string>(Error.NotFound("gone")));
 
         var response = await resultTask.ToHttpResultAsync(s => new UserDto(s));
 
@@ -104,7 +104,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public async Task ToHttpResultAsync_ValueTask_Success_ReturnsMappedOk()
     {
-        var resultTask = new ValueTask<Result<string>>(Result.Success("carol"));
+        var resultTask = new ValueTask<Result<string>>(Result.Ok("carol"));
 
         var response = await resultTask.ToHttpResultAsync(s => new UserDto(s.ToUpperInvariant()));
 
@@ -115,7 +115,7 @@ public class HttpResultMapTests : IDisposable
     [Fact]
     public async Task ToHttpResultAsync_ValueTask_Failure_ReturnsError()
     {
-        var resultTask = new ValueTask<Result<string>>(Result.Failure<string>(Error.Conflict("exists")));
+        var resultTask = new ValueTask<Result<string>>(Result.Fail<string>(Error.Conflict("exists")));
 
         var response = await resultTask.ToHttpResultAsync(s => new UserDto(s));
 

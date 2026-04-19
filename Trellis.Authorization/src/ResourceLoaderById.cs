@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization;
+namespace Trellis.Authorization;
 
 /// <summary>
 /// Convenience base class for resource loaders that extract a typed ID from the message
@@ -39,7 +39,7 @@ public abstract class ResourceLoaderById<TMessage, TResource, TId>
 
     /// <summary>
     /// Loads the resource by ID.
-    /// Return <c>Result.Failure</c> with a <see cref="NotFoundError"/> if the resource does not exist.
+    /// Return <c>Result.Fail</c> with a <see cref="NotFoundError"/> if the resource does not exist.
     /// </summary>
     /// <param name="id">The resource identifier extracted by <see cref="GetId"/>.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

@@ -1,4 +1,4 @@
-﻿namespace Trellis.FluentValidation;
+namespace Trellis.FluentValidation;
 
 using System.Collections.Immutable;
 using System.Linq;
@@ -188,14 +188,14 @@ public static class FluentValidationResultExtensions
         ArgumentNullException.ThrowIfNull(validationResult);
 
         if (validationResult.IsValid)
-            return Result.Success(value);
+            return Result.Ok(value);
 
         ImmutableArray<FieldError> errors = validationResult.Errors
             .GroupBy(e => string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName)
             .Select(g => new FieldError(g.Key, g.Select(e => e.ErrorMessage).ToArray()))
             .ToImmutableArray();
 
-        return Result.Failure<T>(Error.Validation(errors));
+        return Result.Fail<T>(Error.Validation(errors));
     }
 
     /// <summary>

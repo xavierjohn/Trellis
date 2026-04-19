@@ -25,7 +25,7 @@ public sealed class Order : Aggregate<OrderId>
     {
         var order = new Order(new OrderId(Guid.NewGuid()));
         order.DomainEvents.Add(new OrderPlaced(order.Id, DateTime.UtcNow));
-        return Result.Success(order);
+        return Result.Ok(order);
     }
 }
 ```

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using System.Diagnostics;
 using Trellis.Mediator.Tests.Helpers;
@@ -43,7 +43,7 @@ public class TracingBehaviorTests : IDisposable
         var behavior = new TracingBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Success("Hello, Alice!"));
+            Result.Ok("Hello, Alice!"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -64,7 +64,7 @@ public class TracingBehaviorTests : IDisposable
         var behavior = new TracingBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Failure<string>(Error.Validation("Bad input.", "field")));
+            Result.Fail<string>(Error.Validation("Bad input.", "field")));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -91,7 +91,7 @@ public class TracingBehaviorTests : IDisposable
         var behavior = new TracingBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Success("Hello!"));
+            Result.Ok("Hello!"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -109,7 +109,7 @@ public class TracingBehaviorTests : IDisposable
         var behavior = new TracingBehavior<AdminCommand, Result<string>>();
         var command = new AdminCommand("data");
         var next = NextDelegate.ReturningAsync<AdminCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         await behavior.Handle(command, next, CancellationToken.None);
 

@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace EcommerceExample.Workflows;
 
@@ -64,7 +64,7 @@ public class OrderWorkflow
                     return reserveResult.Error;
                 }
 
-                return Result.Success(order);
+                return Result.Ok(order);
             })
             .BindAsync(async order =>
             {
@@ -90,7 +90,7 @@ public class OrderWorkflow
                     return paymentResult.Error;
                 }
 
-                return Result.Success(order);
+                return Result.Ok(order);
             })
             .BindAsync(order => Task.FromResult(order.Confirm()))
             .TapAsync(async order =>
@@ -125,7 +125,7 @@ public class OrderWorkflow
             return validationResult.Error;
 
         // Add all items to order
-        var currentOrder = Result.Success(order);
+        var currentOrder = Result.Ok(order);
         foreach (var item in items)
         {
             currentOrder = currentOrder.Bind(o =>
@@ -160,7 +160,7 @@ public class OrderWorkflow
             }
         }
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     /// <summary>

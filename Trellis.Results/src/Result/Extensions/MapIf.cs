@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -29,7 +29,7 @@ public static class MapIfExtensions
             return result;
         }
 
-        var mapped = Result.Success(func(result.Value));
+        var mapped = Result.Ok(func(result.Value));
         mapped.LogActivityStatus();
         return mapped;
     }
@@ -56,7 +56,7 @@ public static class MapIfExtensions
             return result;
         }
 
-        var mapped = Result.Success(func(result.Value));
+        var mapped = Result.Ok(func(result.Value));
         mapped.LogActivityStatus();
         return mapped;
     }

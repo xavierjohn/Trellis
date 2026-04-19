@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -19,7 +19,7 @@ public class CreatedAtRouteHttpResultValueTaskTests
     {
         // Arrange
         var dto = new UserDto("42", "Alice");
-        var resultTask = ValueTask.FromResult(Result.Success(dto));
+        var resultTask = ValueTask.FromResult(Result.Ok(dto));
 
         // Act
         var response = await resultTask.ToCreatedAtRouteHttpResultAsync(
@@ -37,7 +37,7 @@ public class CreatedAtRouteHttpResultValueTaskTests
     public async Task ToCreatedAtRouteHttpResultAsync_ValueTask_Failure_ReturnsProblemDetails()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<UserDto>(Error.BadRequest("Bad")));
+        var resultTask = ValueTask.FromResult(Result.Fail<UserDto>(Error.BadRequest("Bad")));
 
         // Act
         var response = await resultTask.ToCreatedAtRouteHttpResultAsync(
@@ -53,7 +53,7 @@ public class CreatedAtRouteHttpResultValueTaskTests
     public async Task ToCreatedAtRouteHttpResultAsync_ValueTask_WithMap_Success_Returns201()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success(("42", "Alice")));
+        var resultTask = ValueTask.FromResult(Result.Ok(("42", "Alice")));
 
         // Act
         var response = await resultTask.ToCreatedAtRouteHttpResultAsync(
@@ -72,7 +72,7 @@ public class CreatedAtRouteHttpResultValueTaskTests
     public async Task ToCreatedAtRouteHttpResultAsync_ValueTask_WithMap_Failure_ReturnsProblemDetails()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<(string, string)>(Error.Conflict("Exists")));
+        var resultTask = ValueTask.FromResult(Result.Fail<(string, string)>(Error.Conflict("Exists")));
 
         // Act
         var response = await resultTask.ToCreatedAtRouteHttpResultAsync(

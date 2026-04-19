@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.Logging;
 using Trellis.Mediator.Tests.Helpers;
@@ -116,7 +116,7 @@ public class ExceptionBehaviorTests
         var behavior = new ExceptionBehavior<TestCommand, Result<string>>(logger);
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Success("Hello, Alice!"));
+            Result.Ok("Hello, Alice!"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -134,7 +134,7 @@ public class ExceptionBehaviorTests
         var command = new TestCommand("Alice");
         var error = Error.Validation("Business rule failed.", "field");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Failure<string>(error));
+            Result.Fail<string>(error));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 

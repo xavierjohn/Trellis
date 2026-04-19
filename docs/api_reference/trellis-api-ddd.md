@@ -1,4 +1,4 @@
-﻿# Trellis.DomainDrivenDesign
+# Trellis.DomainDrivenDesign
 
 **Package:** `Trellis.DomainDrivenDesign`  
 **Namespace:** `Trellis`  
@@ -230,13 +230,13 @@ public sealed class OrderId : ScalarValueObject<OrderId, Guid>, IScalarValue<Ord
 
     public static Result<OrderId> TryCreate(Guid value, string? fieldName = null) =>
         value == Guid.Empty
-            ? Result.Failure<OrderId>(Error.Validation("Order ID is required.", fieldName ?? "orderId"))
-            : Result.Success(new OrderId(value));
+            ? Result.Fail<OrderId>(Error.Validation("Order ID is required.", fieldName ?? "orderId"))
+            : Result.Ok(new OrderId(value));
 
     public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
         Guid.TryParse(value, out var guid)
             ? TryCreate(guid, fieldName)
-            : Result.Failure<OrderId>(Error.Validation("Order ID must be a GUID.", fieldName ?? "orderId"));
+            : Result.Fail<OrderId>(Error.Validation("Order ID must be a GUID.", fieldName ?? "orderId"));
 }
 
 public sealed record OrderPlaced(OrderId OrderId, DateTime OccurredAt) : IDomainEvent;
@@ -251,7 +251,7 @@ public sealed class Order : Aggregate<OrderId>
     {
         var order = new Order(OrderId.Create(Guid.NewGuid()), description);
         order.DomainEvents.Add(new OrderPlaced(order.Id, DateTime.UtcNow));
-        return Result.Success(order);
+        return Result.Ok(order);
     }
 }
 

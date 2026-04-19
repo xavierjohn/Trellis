@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
@@ -13,8 +13,8 @@ public class UseResultCombineAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result1 = Result.Success(1);
-                    Result<int> result2 = Result.Success(2);
+                    Result<int> result1 = Result.Ok(1);
+                    Result<int> result2 = Result.Ok(2);
                     
                     if (result1.IsSuccess && result2.IsSuccess)
                     {
@@ -40,9 +40,9 @@ public class UseResultCombineAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result1 = Result.Success(1);
-                    Result<int> result2 = Result.Success(2);
-                    Result<int> result3 = Result.Success(3);
+                    Result<int> result1 = Result.Ok(1);
+                    Result<int> result2 = Result.Ok(2);
+                    Result<int> result3 = Result.Ok(3);
                     
                     if (result1.IsSuccess && result2.IsSuccess && result3.IsSuccess)
                     {
@@ -68,8 +68,8 @@ public class UseResultCombineAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result1 = Result.Success(1);
-                    Result<int> result2 = Result.Success(2);
+                    Result<int> result1 = Result.Ok(1);
+                    Result<int> result2 = Result.Ok(2);
 
                     if (result1.IsFailure || result2.IsFailure)
                     {
@@ -95,8 +95,8 @@ public class UseResultCombineAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result1 = Result.Success(1);
-                    Result<int> result2 = Result.Success(2);
+                    Result<int> result1 = Result.Ok(1);
+                    Result<int> result2 = Result.Ok(2);
                     
                     var combined = result1.Combine(result2);
                 }
@@ -115,8 +115,8 @@ public class UseResultCombineAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result1 = Result.Success(1);
-                    Result<int> result2 = Result.Success(2);
+                    Result<int> result1 = Result.Ok(1);
+                    Result<int> result2 = Result.Ok(2);
                     
                     var combined = Result.Combine(result1, result2);
                 }
@@ -135,7 +135,7 @@ public class UseResultCombineAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result = Result.Success(1);
+                    Result<int> result = Result.Ok(1);
                     
                     if (result.IsSuccess)
                     {
@@ -180,7 +180,7 @@ public class UseResultCombineAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result = Result.Success(1);
+                    Result<int> result = Result.Ok(1);
                     bool condition = true;
                     
                     if (result.IsSuccess && condition)

@@ -1,4 +1,4 @@
-﻿# Setting Up Single Sign-On (SSO)
+# Setting Up Single Sign-On (SSO)
 
 **Level:** Intermediate | **Time:** 30-45 min | **Prerequisites:** [ASP.NET Core Authorization](integration-asp-authorization.md), [Testing with Entra ID Tokens](integration-entra-testing.md)
 
@@ -367,14 +367,14 @@ Then use Trellis permissions in application code:
 
 ```csharp
 if (!actor.HasPermission("todos:read"))
-    return Result.Failure(Error.Forbidden("Missing todos:read permission."));
+    return Result.Fail(Error.Forbidden("Missing todos:read permission."));
 ```
 
 For tenant-scoped permissions, keep using `':'` as the separator:
 
 ```csharp
 if (!actor.HasPermission("todos:read", tenantId))
-    return Result.Failure(Error.Forbidden("Missing tenant-scoped permission."));
+    return Result.Fail(Error.Forbidden("Missing tenant-scoped permission."));
 ```
 
 ### Step 6: Test It

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
@@ -19,7 +19,7 @@ public class AsyncResultMisuseAnalyzerTests
                     var result = task.Result;
                 }
 
-                private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Success(42));
+                private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Ok(42));
             }
             """;
 
@@ -46,7 +46,7 @@ public class AsyncResultMisuseAnalyzerTests
                     task.Wait();
                 }
 
-                private Task<Result<string>> GetValueAsync() => Task.FromResult(Result.Success("test"));
+                private Task<Result<string>> GetValueAsync() => Task.FromResult(Result.Ok("test"));
             }
             """;
 
@@ -73,7 +73,7 @@ public class AsyncResultMisuseAnalyzerTests
                     var result = task.Result;
                 }
 
-                private ValueTask<Result<User>> GetUserAsync() => new(Result.Success(new User()));
+                private ValueTask<Result<User>> GetUserAsync() => new(Result.Ok(new User()));
             }
 
             public class User { }
@@ -102,7 +102,7 @@ public class AsyncResultMisuseAnalyzerTests
                     var result = await task;
                 }
 
-                private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Success(42));
+                private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Ok(42));
             }
             """;
 
@@ -138,7 +138,7 @@ public class AsyncResultMisuseAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result = Result.Success(42);
+                    Result<int> result = Result.Ok(42);
                     var value = result.Value;
                 }
             }
@@ -161,7 +161,7 @@ public class AsyncResultMisuseAnalyzerTests
                     var userResult = GetUserAsync().Result;
                 }
 
-                private Task<Result<User>> GetUserAsync() => Task.FromResult(Result.Success(new User()));
+                private Task<Result<User>> GetUserAsync() => Task.FromResult(Result.Ok(new User()));
             }
 
             public class User { public string Name { get; set; } }
@@ -193,8 +193,8 @@ public class AsyncResultMisuseAnalyzerTests
                     task2.Wait();
                 }
 
-                private Task<Result<int>> GetIntAsync() => Task.FromResult(Result.Success(42));
-                private Task<Result<string>> GetStringAsync() => Task.FromResult(Result.Success("test"));
+                private Task<Result<int>> GetIntAsync() => Task.FromResult(Result.Ok(42));
+                private Task<Result<string>> GetStringAsync() => Task.FromResult(Result.Ok("test"));
             }
             """;
 
@@ -224,7 +224,7 @@ public class AsyncResultMisuseAnalyzerTests
                     var result = task.GetAwaiter().GetResult();
                 }
 
-                private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Success(42));
+                private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Ok(42));
             }
             """;
 

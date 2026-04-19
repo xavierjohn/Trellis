@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -34,9 +34,9 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Age) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("age");
         if (value < 0)
-            return Result.Failure<Age>(Error.Validation("Age must be non-negative.", field));
+            return Result.Fail<Age>(Error.Validation("Age must be non-negative.", field));
         if (value > 150)
-            return Result.Failure<Age>(Error.Validation("Age is unrealistically high.", field));
+            return Result.Fail<Age>(Error.Validation("Age is unrealistically high.", field));
         return new Age(value);
     }
 
@@ -49,10 +49,10 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         var field = fieldName.NormalizeFieldName("age");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<Age>(Error.Validation("Age is required.", field));
+            return Result.Fail<Age>(Error.Validation("Age is required.", field));
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Failure<Age>(Error.Validation("Age must be a valid integer.", field));
+            return Result.Fail<Age>(Error.Validation("Age must be a valid integer.", field));
 
         return TryCreate(parsed, fieldName);
     }
@@ -70,10 +70,10 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         var field = fieldName.NormalizeFieldName("age");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<Age>(Error.Validation("Age is required.", field));
+            return Result.Fail<Age>(Error.Validation("Age is required.", field));
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Failure<Age>(Error.Validation("Age must be a valid integer.", field));
+            return Result.Fail<Age>(Error.Validation("Age must be a valid integer.", field));
 
         return TryCreate(parsed, fieldName);
     }

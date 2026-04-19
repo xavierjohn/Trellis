@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -21,7 +21,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Validation("Validation failed"));
+        var result = Result.Fail<(int, string)>(Error.Validation("Validation failed"));
 
         // Act
         var actual = result.TapOnFailure(() => { /* Log error */ });
@@ -36,7 +36,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = result.TapOnFailure(() => { /* Should not execute */ });
@@ -51,7 +51,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
 
         // Act
         var actual = result.TapOnFailure(error => { /* Log error */ });
@@ -66,7 +66,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Unexpected("Error"));
+        var result = Result.Fail<(int, string)>(Error.Unexpected("Error"));
 
         // Act
         var actual = result
@@ -85,7 +85,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(string, string)>(Error.Validation("Invalid email", "email"));
+        var result = Result.Fail<(string, string)>(Error.Validation("Invalid email", "email"));
 
         // Act
         var actual = result.TapOnFailure(error => { /* Log validation error */ });
@@ -102,17 +102,17 @@ public class TapOnFailureTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act & Assert - NotFoundError
-        Result.Failure<(int, string)>(Error.NotFound("Not found"))
+        Result.Fail<(int, string)>(Error.NotFound("Not found"))
             .TapOnFailure(() => { })
             .Should().BeFailure();
 
         // Act & Assert - ForbiddenError
-        Result.Failure<(int, string)>(Error.Forbidden("Forbidden"))
+        Result.Fail<(int, string)>(Error.Forbidden("Forbidden"))
             .TapOnFailure(() => { })
             .Should().BeFailure();
 
         // Act & Assert - ConflictError
-        Result.Failure<(int, string)>(Error.Conflict("Conflict"))
+        Result.Fail<(int, string)>(Error.Conflict("Conflict"))
             .TapOnFailure(() => { })
             .Should().BeFailure();
 
@@ -129,7 +129,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Task.FromResult(Result.Failure<(int, string)>(Error.Validation("Failed")));
+        var result = Task.FromResult(Result.Fail<(int, string)>(Error.Validation("Failed")));
 
         // Act
         await result.TapOnFailureAsync(() => { });
@@ -143,7 +143,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Unexpected("Error"));
+        var result = Result.Fail<(int, string)>(Error.Unexpected("Error"));
 
         // Act
         await result.TapOnFailureAsync(() => Task.CompletedTask);
@@ -157,7 +157,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.BadRequest("Bad request"));
+        var result = Result.Fail<(int, string)>(Error.BadRequest("Bad request"));
 
         // Act
         await result.TapOnFailureAsync(error => Task.CompletedTask);
@@ -171,7 +171,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Conflict("Conflict"));
+        var result = Result.Fail<(int, string)>(Error.Conflict("Conflict"));
 
         // Act
         await result.TapOnFailureAsync(() => ValueTask.CompletedTask);
@@ -189,7 +189,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string, bool)>(Error.Validation("Failed"));
+        var result = Result.Fail<(int, string, bool)>(Error.Validation("Failed"));
 
         // Act
         result.TapOnFailure(() => { });
@@ -203,7 +203,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, int, int, int)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, int, int, int)>(Error.NotFound("Not found"));
 
         // Act
         result.TapOnFailure(() => { });
@@ -217,7 +217,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, int, int, int, int)>(Error.Forbidden("Forbidden"));
+        var result = Result.Fail<(int, int, int, int, int)>(Error.Forbidden("Forbidden"));
 
         // Act
         result.TapOnFailure(() => { });
@@ -231,7 +231,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, int, int, int, int, int, int, int, int)>(Error.Unexpected("Error"));
+        var result = Result.Fail<(int, int, int, int, int, int, int, int, int)>(Error.Unexpected("Error"));
 
         // Act
         result.TapOnFailure(() => { });
@@ -251,8 +251,8 @@ public class TapOnFailureTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<string>(Error.Validation("Invalid email", "email"))
-            .Combine(Result.Success("data"))
+        var result = Result.Fail<string>(Error.Validation("Invalid email", "email"))
+            .Combine(Result.Ok("data"))
             .TapOnFailure(error => { /* Log error */ });
 
         // Assert
@@ -272,8 +272,8 @@ public class TapOnFailureTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<string>(Error.NotFound("User not found"))
-            .Combine(Result.Success("permissions"))
+        var result = Result.Fail<string>(Error.NotFound("User not found"))
+            .Combine(Result.Ok("permissions"))
             .TapOnFailure(error => { /* Log error */ })
             .Match(
                 onSuccess: (user, permissions) => "Success",
@@ -294,8 +294,8 @@ public class TapOnFailureTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<string>(Error.Validation("Bad email", "email"))
-            .Combine(Result.Failure<string>(Error.Validation("Bad phone", "phone")))
+        var result = Result.Fail<string>(Error.Validation("Bad email", "email"))
+            .Combine(Result.Fail<string>(Error.Validation("Bad phone", "phone")))
             .TapOnFailure(error => { /* Log validation errors */ });
 
         // Assert
@@ -314,10 +314,10 @@ public class TapOnFailureTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<string>(Error.Unexpected("Error"))
-            .Combine(Result.Success("data"))
+        var result = Result.Fail<string>(Error.Unexpected("Error"))
+            .Combine(Result.Ok("data"))
             .TapOnFailure(error => { /* Log */ })
-            .Bind((a, b) => Result.Success("processed"));
+            .Bind((a, b) => Result.Ok("processed"));
 
         // Assert
         result.Should().BeFailure();
@@ -336,7 +336,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Validation("Error"));
+        var result = Result.Fail<(int, string)>(Error.Validation("Error"));
 
         // Act
         result.TapOnFailure(() => { });
@@ -351,7 +351,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
 
         // Act
         result.TapOnFailure(error => { });

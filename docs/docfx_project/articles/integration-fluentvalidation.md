@@ -49,7 +49,7 @@ var request = new CreateUserRequest("sam@example.com", "Sam", "Taylor");
 Result<CreateUserRequest> result = validator.ValidateToResult(request);
 ```
 
-On success, you get `Result.Success(request)`. On failure, you get a Trellis validation failure with grouped field errors.
+On success, you get `Result.Ok(request)`. On failure, you get a Trellis validation failure with grouped field errors.
 
 ## What the adapter gives you
 
@@ -208,9 +208,9 @@ public sealed class UserService(RegisterUserRequestValidator validator)
             cancellationToken: cancellationToken);
 
         if (validated.IsFailure)
-            return Result.Failure<RegisterUserRequest>(validated.Error);
+            return Result.Fail<RegisterUserRequest>(validated.Error);
 
-        return Result.Success(validated.Value);
+        return Result.Ok(validated.Value);
     }
 }
 ```

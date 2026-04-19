@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Trellis;
@@ -265,7 +265,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Success_NoPrefer_Returns200()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Success("updated");
+        var result = Result.Ok("updated");
         var metadata = RepresentationMetadata.WithStrongETag("etag1");
 
         var response = result.ToUpdatedHttpResult(httpContext, metadata, (string s) => s.ToUpperInvariant());
@@ -279,7 +279,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Success_ReturnMinimal_Returns204()
     {
         var httpContext = CreateHttpContext("return=minimal");
-        var result = Result.Success("updated");
+        var result = Result.Ok("updated");
         var metadata = RepresentationMetadata.WithStrongETag("etag2");
 
         var response = result.ToUpdatedHttpResult(httpContext, metadata, (string s) => s);
@@ -294,7 +294,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Success_ReturnRepresentation_Returns200()
     {
         var httpContext = CreateHttpContext("return=representation");
-        var result = Result.Success("updated");
+        var result = Result.Ok("updated");
         var metadata = RepresentationMetadata.WithStrongETag("etag3");
 
         var response = result.ToUpdatedHttpResult(httpContext, metadata, (string s) => s);
@@ -307,7 +307,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Failure_ReturnsError()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Failure<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(Error.NotFound("not found"));
 
         var response = result.ToUpdatedHttpResult(httpContext, (RepresentationMetadata?)null, (string s) => s);
 
@@ -322,7 +322,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Selector_Success_ReturnMinimal_Returns204()
     {
         var httpContext = CreateHttpContext("return=minimal");
-        var result = Result.Success("updated");
+        var result = Result.Ok("updated");
 
         var response = result.ToUpdatedHttpResult(
             httpContext,
@@ -337,7 +337,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Selector_Failure_DoesNotInvokeSelector()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Failure<string>(Error.NotFound("gone"));
+        var result = Result.Fail<string>(Error.NotFound("gone"));
         var selectorInvoked = false;
 
         result.ToUpdatedHttpResult(
@@ -356,7 +356,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public async Task ToUpdatedHttpResultAsync_Task_StaticMetadata_Success_Returns200()
     {
         var httpContext = CreateHttpContext();
-        var resultTask = Task.FromResult(Result.Success("updated"));
+        var resultTask = Task.FromResult(Result.Ok("updated"));
         var metadata = RepresentationMetadata.WithStrongETag("etag-async");
 
         var response = await resultTask.ToUpdatedHttpResultAsync(httpContext, metadata, (string s) => s);
@@ -369,7 +369,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public async Task ToUpdatedHttpResultAsync_Task_Selector_ReturnMinimal_Returns204()
     {
         var httpContext = CreateHttpContext("return=minimal");
-        var resultTask = Task.FromResult(Result.Success("updated"));
+        var resultTask = Task.FromResult(Result.Ok("updated"));
 
         var response = await resultTask.ToUpdatedHttpResultAsync(
             httpContext,
@@ -388,7 +388,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public async Task ToUpdatedHttpResultAsync_ValueTask_StaticMetadata_Success_Returns200()
     {
         var httpContext = CreateHttpContext();
-        var resultTask = ValueTask.FromResult(Result.Success("updated"));
+        var resultTask = ValueTask.FromResult(Result.Ok("updated"));
         var metadata = RepresentationMetadata.WithStrongETag("etag-vt");
 
         var response = await resultTask.ToUpdatedHttpResultAsync(httpContext, metadata, (string s) => s);
@@ -401,7 +401,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public async Task ToUpdatedHttpResultAsync_ValueTask_Selector_ReturnMinimal_Returns204()
     {
         var httpContext = CreateHttpContext("return=minimal");
-        var resultTask = ValueTask.FromResult(Result.Success("updated"));
+        var resultTask = ValueTask.FromResult(Result.Ok("updated"));
 
         var response = await resultTask.ToUpdatedHttpResultAsync(
             httpContext,

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -12,7 +12,7 @@ public class ToMaybeTests
     [Fact]
     public void ToMaybe_WhenResultIsSuccess_ShouldReturnSomeWithValue()
     {
-        var sut = Result.Success("Hello");
+        var sut = Result.Ok("Hello");
 
         var maybe = sut.ToMaybe();
 
@@ -23,7 +23,7 @@ public class ToMaybeTests
     [Fact]
     public void ToMaybe_WhenResultIsFailure_ShouldReturnNone()
     {
-        var sut = Result.Failure<string>(Error.Unexpected("some error"));
+        var sut = Result.Fail<string>(Error.Unexpected("some error"));
 
         var maybe = sut.ToMaybe();
 
@@ -34,7 +34,7 @@ public class ToMaybeTests
     public void ToMaybe_WhenResultIsSuccessWithComplexType_ShouldReturnSomeWithValue()
     {
         var value = new TestRecord("test", 42);
-        var sut = Result.Success(value);
+        var sut = Result.Ok(value);
 
         var maybe = sut.ToMaybe();
 
@@ -49,7 +49,7 @@ public class ToMaybeTests
     [Fact]
     public async Task ToMaybeAsync_Task_WhenResultIsSuccess_ShouldReturnSomeWithValue()
     {
-        var sut = Task.FromResult(Result.Success("Hello"));
+        var sut = Task.FromResult(Result.Ok("Hello"));
 
         var maybe = await sut.ToMaybeAsync();
 
@@ -60,7 +60,7 @@ public class ToMaybeTests
     [Fact]
     public async Task ToMaybeAsync_Task_WhenResultIsFailure_ShouldReturnNone()
     {
-        var sut = Task.FromResult(Result.Failure<string>(Error.Unexpected("error")));
+        var sut = Task.FromResult(Result.Fail<string>(Error.Unexpected("error")));
 
         var maybe = await sut.ToMaybeAsync();
 
@@ -84,7 +84,7 @@ public class ToMaybeTests
     [Fact]
     public async Task ToMaybeAsync_ValueTask_WhenResultIsSuccess_ShouldReturnSomeWithValue()
     {
-        var sut = new ValueTask<Result<string>>(Result.Success("Hello"));
+        var sut = new ValueTask<Result<string>>(Result.Ok("Hello"));
 
         var maybe = await sut.ToMaybeAsync();
 
@@ -95,7 +95,7 @@ public class ToMaybeTests
     [Fact]
     public async Task ToMaybeAsync_ValueTask_WhenResultIsFailure_ShouldReturnNone()
     {
-        var sut = new ValueTask<Result<string>>(Result.Failure<string>(Error.Unexpected("error")));
+        var sut = new ValueTask<Result<string>>(Result.Fail<string>(Error.Unexpected("error")));
 
         var maybe = await sut.ToMaybeAsync();
 

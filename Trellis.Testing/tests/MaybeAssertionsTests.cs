@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests;
+namespace Trellis.Testing.Tests;
 
 using Trellis;
 using Trellis.Testing;
@@ -414,7 +414,7 @@ public class MaybeAssertionsTests
     public void MaybeAssertions_WithResultToMaybe_WorksCorrectly()
     {
         // Arrange
-        var result = Result.Success("test");
+        var result = Result.Ok("test");
         var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe<string>.None;
 
         // Act & Assert
@@ -425,7 +425,7 @@ public class MaybeAssertionsTests
     public void MaybeAssertions_FromFailedResult_IsNone()
     {
         // Arrange
-        var result = Result.Failure<string>(Error.NotFound("Not found"));
+        var result = Result.Fail<string>(Error.NotFound("Not found"));
         var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe<string>.None;
 
         // Act & Assert

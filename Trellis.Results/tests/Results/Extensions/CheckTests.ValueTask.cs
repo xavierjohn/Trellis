@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -14,8 +14,8 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskBoth_Success_CheckPasses_ReturnsOriginalValue()
     {
-        var result = await new ValueTask<Result<string>>(Result.Success("hello"))
-            .CheckAsync(v => new ValueTask<Result<int>>(Result.Success(v.Length)));
+        var result = await new ValueTask<Result<string>>(Result.Ok("hello"))
+            .CheckAsync(v => new ValueTask<Result<int>>(Result.Ok(v.Length)));
 
         result.Should().BeSuccess().Which.Should().Be("hello");
     }
@@ -25,8 +25,8 @@ public class Check_ValueTask_Tests
     {
         var error = Error.Validation("check failed");
 
-        var result = await new ValueTask<Result<string>>(Result.Success("hello"))
-            .CheckAsync(v => new ValueTask<Result<int>>(Result.Failure<int>(error)));
+        var result = await new ValueTask<Result<string>>(Result.Ok("hello"))
+            .CheckAsync(v => new ValueTask<Result<int>>(Result.Fail<int>(error)));
 
         result.Should().BeFailure().Which.Should().Be(error);
     }
@@ -37,8 +37,8 @@ public class Check_ValueTask_Tests
         var error = Error.Unexpected("original error");
         var funcInvoked = false;
 
-        var result = await new ValueTask<Result<string>>(Result.Failure<string>(error))
-            .CheckAsync(v => { funcInvoked = true; return new ValueTask<Result<int>>(Result.Success(42)); });
+        var result = await new ValueTask<Result<string>>(Result.Fail<string>(error))
+            .CheckAsync(v => { funcInvoked = true; return new ValueTask<Result<int>>(Result.Ok(42)); });
 
         funcInvoked.Should().BeFalse();
         result.Should().BeFailure().Which.Should().Be(error);
@@ -51,8 +51,8 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskLeft_Success_CheckPasses_ReturnsOriginalValue()
     {
-        var result = await new ValueTask<Result<string>>(Result.Success("hello"))
-            .CheckAsync((string v) => Result.Success(v.Length));
+        var result = await new ValueTask<Result<string>>(Result.Ok("hello"))
+            .CheckAsync((string v) => Result.Ok(v.Length));
 
         result.Should().BeSuccess().Which.Should().Be("hello");
     }
@@ -62,8 +62,8 @@ public class Check_ValueTask_Tests
     {
         var error = Error.Validation("check failed");
 
-        var result = await new ValueTask<Result<string>>(Result.Success("hello"))
-            .CheckAsync((string v) => Result.Failure<int>(error));
+        var result = await new ValueTask<Result<string>>(Result.Ok("hello"))
+            .CheckAsync((string v) => Result.Fail<int>(error));
 
         result.Should().BeFailure().Which.Should().Be(error);
     }
@@ -74,8 +74,8 @@ public class Check_ValueTask_Tests
         var error = Error.Unexpected("original error");
         var funcInvoked = false;
 
-        var result = await new ValueTask<Result<string>>(Result.Failure<string>(error))
-            .CheckAsync((string v) => { funcInvoked = true; return Result.Success(42); });
+        var result = await new ValueTask<Result<string>>(Result.Fail<string>(error))
+            .CheckAsync((string v) => { funcInvoked = true; return Result.Ok(42); });
 
         funcInvoked.Should().BeFalse();
         result.Should().BeFailure().Which.Should().Be(error);
@@ -88,8 +88,8 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskRight_Success_CheckPasses_ReturnsOriginalValue()
     {
-        var result = await Result.Success("hello")
-            .CheckAsync(v => new ValueTask<Result<int>>(Result.Success(v.Length)));
+        var result = await Result.Ok("hello")
+            .CheckAsync(v => new ValueTask<Result<int>>(Result.Ok(v.Length)));
 
         result.Should().BeSuccess().Which.Should().Be("hello");
     }
@@ -99,8 +99,8 @@ public class Check_ValueTask_Tests
     {
         var error = Error.Validation("check failed");
 
-        var result = await Result.Success("hello")
-            .CheckAsync(v => new ValueTask<Result<int>>(Result.Failure<int>(error)));
+        var result = await Result.Ok("hello")
+            .CheckAsync(v => new ValueTask<Result<int>>(Result.Fail<int>(error)));
 
         result.Should().BeFailure().Which.Should().Be(error);
     }
@@ -111,8 +111,8 @@ public class Check_ValueTask_Tests
         var error = Error.Unexpected("original error");
         var funcInvoked = false;
 
-        var result = await Result.Failure<string>(error)
-            .CheckAsync(v => { funcInvoked = true; return new ValueTask<Result<int>>(Result.Success(42)); });
+        var result = await Result.Fail<string>(error)
+            .CheckAsync(v => { funcInvoked = true; return new ValueTask<Result<int>>(Result.Ok(42)); });
 
         funcInvoked.Should().BeFalse();
         result.Should().BeFailure().Which.Should().Be(error);

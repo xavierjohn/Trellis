@@ -1,4 +1,4 @@
-﻿# Aggregate Factory Pattern
+# Aggregate Factory Pattern
 
 When an aggregate can be both **created from scratch** and **reconstituted from existing data**, one factory method is not enough.
 
@@ -64,13 +64,13 @@ public sealed class Product : Aggregate<ProductId>
     {
         var product = new Product(ProductId.NewUniqueV7(), name, sku);
         product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
-        return Result.Success(product);
+        return Result.Ok(product);
     }
 
     public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku)
     {
         var product = new Product(id, name, sku);
-        return Result.Success(product);
+        return Result.Ok(product);
     }
 
     public static Product Create(ProductName name, Sku sku)
@@ -140,7 +140,7 @@ public static Result<Product> TryCreate(ProductName name, Sku sku)
 
     var product = new Product(ProductId.NewUniqueV7(), name, sku);
     product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
-    return Result.Success(product);
+    return Result.Ok(product);
 }
 
 public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku)
@@ -149,7 +149,7 @@ public static Result<Product> TryCreateExisting(ProductId id, ProductName name, 
     if (validation.IsFailure)
         return validation.Error;
 
-    return Result.Success(new Product(id, name, sku));
+    return Result.Ok(new Product(id, name, sku));
 }
 
 private static Result Validate(ProductName name, Sku sku)
@@ -157,7 +157,7 @@ private static Result Validate(ProductName name, Sku sku)
     if (sku.Value.StartsWith("LEGACY-", StringComparison.OrdinalIgnoreCase))
         return Error.Validation("SKU cannot start with LEGACY.", nameof(sku));
 
-    return Result.Success();
+    return Result.Ok();
 }
 ```
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -22,7 +22,7 @@ public class CreatedAtRouteHttpResultTests
     {
         // Arrange
         var dto = new UserDto("42", "Alice");
-        var result = Result.Success(dto);
+        var result = Result.Ok(dto);
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult(
@@ -42,7 +42,7 @@ public class CreatedAtRouteHttpResultTests
     {
         // Arrange
         var error = Error.BadRequest("Invalid input");
-        var result = Result.Failure<UserDto>(error);
+        var result = Result.Fail<UserDto>(error);
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult(
@@ -59,7 +59,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_Failure_DoesNotInvokeRouteValues()
     {
         // Arrange
-        var result = Result.Failure<UserDto>(Error.NotFound("Missing"));
+        var result = Result.Fail<UserDto>(Error.NotFound("Missing"));
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult(
@@ -78,7 +78,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_WithMap_Success_Returns201WithMappedValue()
     {
         // Arrange
-        var result = Result.Success(("42", "Alice"));
+        var result = Result.Ok(("42", "Alice"));
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult(
@@ -97,7 +97,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_WithMap_Failure_ReturnsProblemDetails()
     {
         // Arrange
-        var result = Result.Failure<(string, string)>(Error.Conflict("Already exists"));
+        var result = Result.Fail<(string, string)>(Error.Conflict("Already exists"));
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult(
@@ -115,7 +115,7 @@ public class CreatedAtRouteHttpResultTests
     public void ToCreatedAtRouteHttpResult_WithMap_Failure_DoesNotInvokeCallbacks()
     {
         // Arrange
-        var result = Result.Failure<string>(Error.NotFound("Missing"));
+        var result = Result.Fail<string>(Error.NotFound("Missing"));
 
         // Act
         var response = result.ToCreatedAtRouteHttpResult<string, UserDto>(

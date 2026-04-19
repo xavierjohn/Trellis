@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using System.Net;
@@ -47,7 +47,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         )
         .WhenAllAsync()
         .BindAsync((user, inventory, payment, shipping) =>
-            Result.Success(new CheckoutResult(user, inventory, payment, shipping))
+            Result.Ok(new CheckoutResult(user, inventory, payment, shipping))
         );
 
         // Assert
@@ -171,7 +171,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
             // Retry succeeds
             await Task.Delay(10);
-            return Result.Success(new InventoryResponse(productId, 100, true));
+            return Result.Ok(new InventoryResponse(productId, 100, true));
         }
 
         var request = new CheckoutRequest("user-123", "prod-456", "pm-789", "123 Main St");
@@ -214,7 +214,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
             // Third attempt succeeds
             await Task.Delay(10);
-            return Result.Success(new PaymentResponse(paymentId, true));
+            return Result.Ok(new PaymentResponse(paymentId, true));
         }
 
         // Act - chain RecoverOnFailureAsync for multiple retries
@@ -295,7 +295,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             }
 
             await Task.Delay(50);
-            return Result.Success(name);
+            return Result.Ok(name);
         }
 
         // Act - 4 tasks should all start at approximately the same time
@@ -353,7 +353,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             )
             .WhenAllAsync()
             .BindAsync((fraudCheck, shipping) =>
-                Result.Success(new
+                Result.Ok(new
                 {
                     User = user,
                     Inventory = inventory,
@@ -473,7 +473,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
                 .WhenAllAsync()  // Stage 3 complete
 
                 .BindAsync((shipping, reservation) =>
-                    Result.Success(new
+                    Result.Ok(new
                     {
                         User = user,
                         Inventory = inventory,
@@ -501,7 +501,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
                     .BindAsync(inventory => ValidatePaymentAsync("pm-789")
                         .BindAsync(payment => RunFraudDetectionAsync(user, payment, inventory)
                             .BindAsync(fraudCheck => CalculateShippingWithWeightAsync("123 Main St", inventory)
-                                .BindAsync(shipping => Result.Success((fraudCheck, shipping)))))));
+                                .BindAsync(shipping => Result.Ok((fraudCheck, shipping)))))));
 
         static Task<Result<(FraudCheckResponse FraudCheck, ShippingResponse Shipping)>> RunParallelAsync() =>
             Result.ParallelAsync(
@@ -562,7 +562,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         if (inventory.ProductId == "prod-expensive" && inventory.StockLevel < 10)
             return Error.Forbidden("Suspicious transaction: expensive item with low stock");
 
-        return Result.Success(new FraudCheckResponse(true, "Low"));
+        return Result.Ok(new FraudCheckResponse(true, "Low"));
     }
 
     private static async Task<Result<ShippingResponse>> CalculateShippingWithWeightAsync(
@@ -576,7 +576,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Calculate based on inventory (heavier items cost more)
         var rate = inventory.StockLevel > 50 ? 12.99m : 9.99m;
-        return Result.Success(new ShippingResponse("USPS", rate));
+        return Result.Ok(new ShippingResponse("USPS", rate));
     }
 
     private static async Task<Result<InventoryReservation>> ReserveInventoryAsync(
@@ -587,7 +587,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         if (!inventory.Available)
             return Error.Conflict("Cannot reserve unavailable inventory");
 
-        return Result.Success(new InventoryReservation($"res-{Guid.NewGuid():N}", true));
+        return Result.Ok(new InventoryReservation($"res-{Guid.NewGuid():N}", true));
     }
 
     private static async Task<Result<UserResponse>> FetchUserAsync(string userId)
@@ -597,8 +597,8 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         return userId switch
         {
             "nonexistent-user" => Error.NotFound($"User not found: {userId}"),
-            "user-123" => Result.Success(new UserResponse(userId, "user@example.com", true)),
-            "user-high-risk" => Result.Success(new UserResponse(userId, "highrisk@example.com", true)),
+            "user-123" => Result.Ok(new UserResponse(userId, "user@example.com", true)),
+            "user-high-risk" => Result.Ok(new UserResponse(userId, "highrisk@example.com", true)),
             _ => Error.Unexpected("Unknown user ID")
         };
     }
@@ -610,8 +610,8 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         return productId switch
         {
             "prod-out-of-stock" => Error.Conflict("Out of stock: product is unavailable"),
-            "prod-456" => Result.Success(new InventoryResponse(productId, 100, true)),
-            "prod-expensive" => Result.Success(new InventoryResponse(productId, 5, true)),
+            "prod-456" => Result.Ok(new InventoryResponse(productId, 100, true)),
+            "prod-expensive" => Result.Ok(new InventoryResponse(productId, 5, true)),
             _ => Error.NotFound($"Product not found: {productId}")
         };
     }
@@ -623,7 +623,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         return paymentMethodId switch
         {
             "pm-expired" => Error.Validation("Payment method expired"),
-            "pm-789" => Result.Success(new PaymentResponse(paymentMethodId, true)),
+            "pm-789" => Result.Ok(new PaymentResponse(paymentMethodId, true)),
             _ => Error.NotFound($"Payment method not found: {paymentMethodId}")
         };
     }
@@ -635,7 +635,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         if (string.IsNullOrWhiteSpace(address))
             return Error.Validation("Shipping address required");
 
-        return Result.Success(new ShippingResponse("USPS", 9.99m));
+        return Result.Ok(new ShippingResponse("USPS", 9.99m));
     }
 
     #endregion

@@ -1,4 +1,4 @@
-﻿namespace Trellis.DomainDrivenDesign.Tests.ValueObjects;
+namespace Trellis.DomainDrivenDesign.Tests.ValueObjects;
 
 using FluentAssertions;
 using Xunit;
@@ -467,8 +467,8 @@ internal class StreetName : ScalarValueObject<StreetName, string>, IScalarValue<
 
     public static Result<StreetName> TryCreate(string? value, string? fieldName = null) =>
         string.IsNullOrWhiteSpace(value)
-            ? Result.Failure<StreetName>(Error.Validation("Street is required", fieldName ?? "street"))
-            : Result.Success(new StreetName(value));
+            ? Result.Fail<StreetName>(Error.Validation("Street is required", fieldName ?? "street"))
+            : Result.Ok(new StreetName(value));
 }
 
 internal class CityName : ScalarValueObject<CityName, string>, IScalarValue<CityName, string>
@@ -477,6 +477,6 @@ internal class CityName : ScalarValueObject<CityName, string>, IScalarValue<City
 
     public static Result<CityName> TryCreate(string? value, string? fieldName = null) =>
         string.IsNullOrWhiteSpace(value)
-            ? Result.Failure<CityName>(Error.Validation("City is required", fieldName ?? "city"))
-            : Result.Success(new CityName(value));
+            ? Result.Fail<CityName>(Error.Validation("City is required", fieldName ?? "city"))
+            : Result.Ok(new CityName(value));
 }

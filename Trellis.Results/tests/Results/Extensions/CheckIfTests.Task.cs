@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -15,9 +15,9 @@ public class CheckIfTests_Task
     [Fact]
     public async Task CheckIfAsync_Task_Both_Bool_ConditionTrue_CheckPasses_ReturnsOriginal()
     {
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(true, v => Task.FromResult(Result.Success("ok")));
+        var sut = await resultTask.CheckIfAsync(true, v => Task.FromResult(Result.Ok("ok")));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
     }
@@ -25,9 +25,9 @@ public class CheckIfTests_Task
     [Fact]
     public async Task CheckIfAsync_Task_Both_Bool_ConditionTrue_CheckFails_ReturnsFailure()
     {
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(true, _ => Task.FromResult(Result.Failure<string>(CheckError)));
+        var sut = await resultTask.CheckIfAsync(true, _ => Task.FromResult(Result.Fail<string>(CheckError)));
 
         sut.Should().BeFailure().Which.Should().Be(CheckError);
     }
@@ -36,12 +36,12 @@ public class CheckIfTests_Task
     public async Task CheckIfAsync_Task_Both_Bool_ConditionFalse_SkipsCheck()
     {
         var checkInvoked = false;
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         var sut = await resultTask.CheckIfAsync(false, v =>
         {
             checkInvoked = true;
-            return Task.FromResult(Result.Success("ok"));
+            return Task.FromResult(Result.Ok("ok"));
         });
 
         sut.Should().BeSuccess().Which.Should().Be(42);
@@ -52,12 +52,12 @@ public class CheckIfTests_Task
     public async Task CheckIfAsync_Task_Both_Bool_FailureResult_CheckNotInvoked()
     {
         var checkInvoked = false;
-        var resultTask = Task.FromResult(Result.Failure<int>(TestError));
+        var resultTask = Task.FromResult(Result.Fail<int>(TestError));
 
         var sut = await resultTask.CheckIfAsync(true, v =>
         {
             checkInvoked = true;
-            return Task.FromResult(Result.Success("ok"));
+            return Task.FromResult(Result.Ok("ok"));
         });
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
@@ -71,9 +71,9 @@ public class CheckIfTests_Task
     [Fact]
     public async Task CheckIfAsync_Task_Both_Predicate_True_CheckPasses()
     {
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(v => v > 0, v => Task.FromResult(Result.Success("ok")));
+        var sut = await resultTask.CheckIfAsync(v => v > 0, v => Task.FromResult(Result.Ok("ok")));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
     }
@@ -82,12 +82,12 @@ public class CheckIfTests_Task
     public async Task CheckIfAsync_Task_Both_Predicate_False_SkipsCheck()
     {
         var checkInvoked = false;
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         var sut = await resultTask.CheckIfAsync(v => v < 0, v =>
         {
             checkInvoked = true;
-            return Task.FromResult(Result.Success("ok"));
+            return Task.FromResult(Result.Ok("ok"));
         });
 
         sut.Should().BeSuccess().Which.Should().Be(42);

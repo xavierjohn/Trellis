@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -16,40 +16,40 @@ public class AsyncBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successResult = Result.Success(42);
-        _failureResult = Result.Failure<int>(Error.Validation("Test error"));
+        _successResult = Result.Ok(42);
+        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
     }
 
     [Benchmark(Baseline = true)]
     public async Task<Result<int>> BindAsync_SingleChain_Success()
     {
         return await _successResult
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)));
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)));
     }
 
     [Benchmark]
     public async Task<Result<int>> BindAsync_SingleChain_Failure()
     {
         return await _failureResult
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)));
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)));
     }
 
     [Benchmark]
     public async Task<Result<int>> BindAsync_ThreeChains_Success()
     {
         return await _successResult
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)))
-            .BindAsync(x => Task.FromResult(Result.Success(x + 10)))
-            .BindAsync(x => Task.FromResult(Result.Success(x - 5)));
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x + 10)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x - 5)));
     }
 
     [Benchmark]
     public async Task<Result<int>> BindAsync_ThreeChains_FailAtSecond()
     {
         return await _successResult
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)))
-            .BindAsync(x => Task.FromResult(Result.Failure<int>(Error.Validation("Failed"))))
-            .BindAsync(x => Task.FromResult(Result.Success(x - 5)));
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)))
+            .BindAsync(x => Task.FromResult(Result.Fail<int>(Error.Validation("Failed"))))
+            .BindAsync(x => Task.FromResult(Result.Ok(x - 5)));
     }
 
     [Benchmark]
@@ -108,7 +108,7 @@ public class AsyncBenchmarks
     {
         return await _successResult
             .MapAsync(x => Task.FromResult(x * 2))
-            .BindAsync(x => Task.FromResult(Result.Success(x + 10)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x + 10)))
             .TapAsync(x => Task.Run(() => { }))
             .EnsureAsync(x => Task.FromResult(x > 50), Error.Validation("Must be > 50"));
     }
@@ -122,7 +122,7 @@ public class AsyncBenchmarks
                 return Task.Run(async () =>
                 {
                     await Task.Delay(1);
-                    return Result.Success(x * 2);
+                    return Result.Ok(x * 2);
                 });
             });
     }
@@ -131,34 +131,34 @@ public class AsyncBenchmarks
     public async Task<Result<int>> BindAsync_FiveChains_Success()
     {
         return await _successResult
-            .BindAsync(x => Task.FromResult(Result.Success(x + 1)))
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)))
-            .BindAsync(x => Task.FromResult(Result.Success(x + 10)))
-            .BindAsync(x => Task.FromResult(Result.Success(x - 5)))
-            .BindAsync(x => Task.FromResult(Result.Success(x / 2)));
+            .BindAsync(x => Task.FromResult(Result.Ok(x + 1)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x + 10)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x - 5)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x / 2)));
     }
 
     [Benchmark]
     public async Task<Result<string>> BindAsync_TypeTransformation()
     {
         return await _successResult
-            .BindAsync(x => Task.FromResult(Result.Success(x.ToString())))
-            .BindAsync(s => Task.FromResult(Result.Success($"Value: {s}")));
+            .BindAsync(x => Task.FromResult(Result.Ok(x.ToString())))
+            .BindAsync(s => Task.FromResult(Result.Ok($"Value: {s}")));
     }
 
     [Benchmark]
     public async Task<Result<int>> TaskResult_BindAsync_Success()
     {
         return await Task.FromResult(_successResult)
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)))
-            .BindAsync(x => Task.FromResult(Result.Success(x + 10)));
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x + 10)));
     }
 
     [Benchmark]
     public async Task<Result<int>> RecoverOnFailureAsync_OnFailure()
     {
         return await _failureResult
-            .RecoverOnFailureAsync(() => Task.FromResult(Result.Success(100)));
+            .RecoverOnFailureAsync(() => Task.FromResult(Result.Ok(100)));
     }
 
     [Benchmark]

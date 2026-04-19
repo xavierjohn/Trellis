@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions.TapOnFailure;
+namespace Trellis.Results.Tests.Results.Extensions.TapOnFailure;
 
 using Trellis.Testing;
 
@@ -18,7 +18,7 @@ public class TapOnFailureTests : TestBase
     [Fact]
     public void TapOnFailure_WithNullAction_ThrowsArgumentNullException()
     {
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         var act = () => result.TapOnFailure((Action)null!);
 
@@ -30,7 +30,7 @@ public class TapOnFailureTests : TestBase
     public void TapOnFailure_WithAction_FailureResult_ExecutesAction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -45,7 +45,7 @@ public class TapOnFailureTests : TestBase
     public void TapOnFailure_WithAction_SuccessResult_DoesNotExecuteAction()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -64,7 +64,7 @@ public class TapOnFailureTests : TestBase
     public void TapOnFailure_WithActionError_FailureResult_ExecutesActionWithError()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         // Act
         var actual = result.TapOnFailure(error =>
@@ -85,7 +85,7 @@ public class TapOnFailureTests : TestBase
     public void TapOnFailure_WithActionError_SuccessResult_DoesNotExecuteAction()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = result.TapOnFailure(error =>
@@ -119,7 +119,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_TaskResult_WithAction_FailureResult_ExecutesAction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1).AsTask();
+        var result = Result.Fail<int>(Error1).AsTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(() => _actionExecuted = true);
@@ -133,7 +133,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_TaskResult_WithAction_SuccessResult_DoesNotExecuteAction()
     {
         // Arrange
-        var result = Result.Success(42).AsTask();
+        var result = Result.Ok(42).AsTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(() => _actionExecuted = true);
@@ -147,7 +147,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_TaskResult_WithActionError_FailureResult_ExecutesAction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1).AsTask();
+        var result = Result.Fail<int>(Error1).AsTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -169,7 +169,7 @@ public class TapOnFailureTests : TestBase
     [Fact]
     public async Task TapOnFailureAsync_Result_WithNullFuncTask_ThrowsArgumentNullException()
     {
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         Func<Task<Result<int>>> act = () => result.TapOnFailureAsync((Func<Task>)null!);
 
@@ -181,7 +181,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_Result_WithFuncTask_FailureResult_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -199,7 +199,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_Result_WithFuncTask_SuccessResult_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -217,7 +217,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_Result_WithFuncErrorTask_FailureResult_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -241,7 +241,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_TaskResult_WithFuncTask_FailureResult_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1).AsTask();
+        var result = Result.Fail<int>(Error1).AsTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -259,7 +259,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_TaskResult_WithFuncErrorTask_FailureResult_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1).AsTask();
+        var result = Result.Fail<int>(Error1).AsTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -283,7 +283,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_ValueTaskResult_WithAction_FailureResult_ExecutesAction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1).AsValueTask();
+        var result = Result.Fail<int>(Error1).AsValueTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(() => _actionExecuted = true);
@@ -297,7 +297,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_ValueTaskResult_WithAction_SuccessResult_DoesNotExecuteAction()
     {
         // Arrange
-        var result = Result.Success(42).AsValueTask();
+        var result = Result.Ok(42).AsValueTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(() => _actionExecuted = true);
@@ -311,7 +311,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_ValueTaskResult_WithActionError_FailureResult_ExecutesAction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1).AsValueTask();
+        var result = Result.Fail<int>(Error1).AsValueTask();
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -334,7 +334,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_Result_WithFuncValueTask_FailureResult_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -352,7 +352,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_Result_WithFuncValueTask_SuccessResult_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -370,7 +370,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_Result_WithFuncErrorValueTask_FailureResult_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -394,7 +394,7 @@ public class TapOnFailureTests : TestBase
     public void TapOnFailure_LoggingErrorDetails()
     {
         // Arrange
-        var result = Result.Failure<string>(Error.NotFound("User not found", "user-123"));
+        var result = Result.Fail<string>(Error.NotFound("User not found", "user-123"));
         var loggedMessage = string.Empty;
 
         // Act
@@ -416,7 +416,7 @@ public class TapOnFailureTests : TestBase
     public async Task TapOnFailureAsync_IncrementErrorMetrics()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.ServiceUnavailable("External service down"));
+        var result = Result.Fail<int>(Error.ServiceUnavailable("External service down"));
         var errorCount = 0;
 
         // Act
@@ -439,7 +439,7 @@ public class TapOnFailureTests : TestBase
         var errorMessages = new List<string>();
 
         // Act
-        var result = Result.Failure<int>(Error.Validation("Invalid input"))
+        var result = Result.Fail<int>(Error.Validation("Invalid input"))
             .TapOnFailure(error => errorMessages.Add("First handler"))
             .TapOnFailure(error => errorMessages.Add("Second handler"))
             .TapOnFailure(error => errorMessages.Add("Third handler"));

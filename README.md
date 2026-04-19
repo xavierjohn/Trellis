@@ -59,7 +59,7 @@ dotnet add package Trellis.Results
 ```csharp
 using Trellis;
 
-var result = Result.Success("ada@example.com")
+var result = Result.Ok("ada@example.com")
     .Ensure(email => email.Contains('@'),
         Error.Validation("Email is invalid.", "email"))
     .Map(email => email.Trim().ToLowerInvariant());

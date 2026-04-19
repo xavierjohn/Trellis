@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +20,7 @@ public class CreatedAtActionResultValueTaskTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var dto = new UserDto("42", "Alice");
-        var resultTask = ValueTask.FromResult(Result.Success(dto));
+        var resultTask = ValueTask.FromResult(Result.Ok(dto));
 
         // Act
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
@@ -40,7 +40,7 @@ public class CreatedAtActionResultValueTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var resultTask = ValueTask.FromResult(Result.Failure<UserDto>(Error.BadRequest("Bad")));
+        var resultTask = ValueTask.FromResult(Result.Fail<UserDto>(Error.BadRequest("Bad")));
 
         // Act
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
@@ -60,7 +60,7 @@ public class CreatedAtActionResultValueTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var resultTask = ValueTask.FromResult(Result.Success(("42", "Alice")));
+        var resultTask = ValueTask.FromResult(Result.Ok(("42", "Alice")));
 
         // Act
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
@@ -79,7 +79,7 @@ public class CreatedAtActionResultValueTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var resultTask = ValueTask.FromResult(Result.Failure<(string, string)>(Error.Conflict("Exists")));
+        var resultTask = ValueTask.FromResult(Result.Fail<(string, string)>(Error.Conflict("Exists")));
 
         // Act
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,

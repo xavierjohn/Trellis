@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions.Tap;
+namespace Trellis.Results.Tests.Results.Extensions.Tap;
 
 public partial class TapTests : TestBase
 {
@@ -35,7 +35,7 @@ public partial class TapTests : TestBase
     [Fact]
     public void Tap_WithNullAction_ShouldThrowArgumentNullException()
     {
-        Result<T> result = Result.Success(T.Value1);
+        Result<T> result = Result.Ok(T.Value1);
 
         var act = () => result.Tap((Action)null!);
 
@@ -151,7 +151,7 @@ public partial class TapTests : TestBase
     [Fact]
     public async Task TapAsync_Right_Task_WithNullFunc_ShouldThrowArgumentNullException()
     {
-        Result<T> result = Result.Success(T.Value1);
+        Result<T> result = Result.Ok(T.Value1);
 
         var act = async () => await result.TapAsync((Func<Task>)null!);
 
@@ -308,7 +308,7 @@ public partial class TapTests : TestBase
     [Fact]
     public async Task TapAsync_ValueTaskResult_FuncValueTask_ExecutesOnSuccess()
     {
-        var resultTask = Result.Success(T.Value1).AsValueTask();
+        var resultTask = Result.Ok(T.Value1).AsValueTask();
 
         var returned = await resultTask.TapAsync(ValueTask_Action);
 
@@ -318,7 +318,7 @@ public partial class TapTests : TestBase
     [Fact]
     public async Task TapAsync_ValueTaskResult_FuncValueTaskT_ExecutesOnSuccess()
     {
-        var resultTask = Result.Success(T.Value1).AsValueTask();
+        var resultTask = Result.Ok(T.Value1).AsValueTask();
 
         var returned = await resultTask.TapAsync(ValueTask_Action_T);
 

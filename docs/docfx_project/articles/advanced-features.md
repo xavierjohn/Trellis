@@ -15,8 +15,8 @@ This article covers the Trellis features that help when you need to:
 ```csharp
 using Trellis;
 
-var result = Result.Success("Ada")
-    .Combine(Result.Success("Lovelace"))
+var result = Result.Ok("Ada")
+    .Combine(Result.Ok("Lovelace"))
     .Map((first, last) => $"{first} {last}")
     .Match(
         onSuccess: name => $"Hello, {name}",
@@ -38,7 +38,7 @@ The problem pattern matching solves is simple: after a chain of operations, you 
 ```csharp
 using Trellis;
 
-var description = Result.Success("Ada")
+var description = Result.Ok("Ada")
     .Match(
         onSuccess: value => $"Success: {value}",
         onFailure: error => $"Failure: {error.Code}");
@@ -53,8 +53,8 @@ public record User(string Id, string Name);
 
 static Task<Result<User>> GetUserAsync(string id) =>
     Task.FromResult(id == "42"
-        ? Result.Success(new User(id, "Ada"))
-        : Result.Failure<User>(Error.NotFound($"User {id} not found", id)));
+        ? Result.Ok(new User(id, "Ada"))
+        : Result.Fail<User>(Error.NotFound($"User {id} not found", id)));
 
 var message = await GetUserAsync("42").MatchAsync(
     onSuccess: user => $"Loaded {user.Name}",
@@ -75,11 +75,11 @@ using Trellis;
 
 public record OrderDraft(string CustomerId, string Sku, int Quantity);
 
-var draft = Result.Success("customer-42")
-    .Combine(Result.Success("sku-123"))
-    .Combine(Result.Success(3))
+var draft = Result.Ok("customer-42")
+    .Combine(Result.Ok("sku-123"))
+    .Combine(Result.Ok(3))
     .Bind((customerId, sku, quantity) =>
-        Result.Success(new OrderDraft(customerId, sku, quantity)));
+        Result.Ok(new OrderDraft(customerId, sku, quantity)));
 ```
 
 ### `Combine(...)` + `Map(...)`
@@ -87,9 +87,9 @@ var draft = Result.Success("customer-42")
 ```csharp
 using Trellis;
 
-var summary = Result.Success("Ada")
-    .Combine(Result.Success("Lovelace"))
-    .Combine(Result.Success("admin"))
+var summary = Result.Ok("Ada")
+    .Combine(Result.Ok("Lovelace"))
+    .Combine(Result.Ok("admin"))
     .Map((first, last, role) => $"{first} {last} ({role})");
 ```
 
@@ -98,8 +98,8 @@ var summary = Result.Success("Ada")
 ```csharp
 using Trellis;
 
-var message = Result.Success("Ada")
-    .Combine(Result.Success("Lovelace"))
+var message = Result.Ok("Ada")
+    .Combine(Result.Ok("Lovelace"))
     .Match(
         onSuccess: (first, last) => $"User: {first} {last}",
         onFailure: error => error.Detail);
@@ -169,13 +169,13 @@ public record Preferences(bool DarkMode);
 public record Dashboard(User User, IReadOnlyList<Order> Orders, Preferences Preferences);
 
 static Task<Result<User>> GetUserAsync(string userId) =>
-    Task.FromResult(Result.Success(new User(userId, "Ada")));
+    Task.FromResult(Result.Ok(new User(userId, "Ada")));
 
 static Task<Result<IReadOnlyList<Order>>> GetOrdersAsync(string userId) =>
-    Task.FromResult(Result.Success<IReadOnlyList<Order>>([new Order("ord-1")]));
+    Task.FromResult(Result.Ok<IReadOnlyList<Order>>([new Order("ord-1")]));
 
 static Task<Result<Preferences>> GetPreferencesAsync(string userId) =>
-    Task.FromResult(Result.Success(new Preferences(true)));
+    Task.FromResult(Result.Ok(new Preferences(true)));
 
 var combined = await Result.ParallelAsync(
     () => GetUserAsync("42"),
@@ -184,7 +184,7 @@ var combined = await Result.ParallelAsync(
     .WhenAllAsync();
 
 var dashboard = combined.Bind((user, orders, preferences) =>
-    Result.Success(new Dashboard(user, orders, preferences)));
+    Result.Ok(new Dashboard(user, orders, preferences)));
 ```
 
 ### What `ParallelAsync(...)` actually does
@@ -224,9 +224,9 @@ LINQ syntax is handy when your pipeline is conceptually “do this, then that, t
 using Trellis;
 
 var confirmation =
-    from customerId in Result.Success("customer-42")
-    from sku in Result.Success("sku-123")
-    from quantity in Result.Success(3)
+    from customerId in Result.Ok("customer-42")
+    from sku in Result.Ok("sku-123")
+    from quantity in Result.Ok(3)
         .Ensure(value => value > 0, Error.Validation("Quantity must be positive", "quantity"))
     select $"{customerId}:{sku}:{quantity}";
 ```
@@ -237,7 +237,7 @@ var confirmation =
 using Trellis;
 
 var result =
-    from name in Result.Success("Ada")
+    from name in Result.Ok("Ada")
     where name.Length >= 3
     select name.ToUpperInvariant();
 ```
@@ -268,8 +268,8 @@ Sometimes the only question is “did I get a value?” — not “why did it fa
 ```csharp
 using Trellis;
 
-Maybe<string> cachedName = Result.Success("Ada").ToMaybe();
-Maybe<string> missingName = Result.Failure<string>(Error.NotFound("User not found")).ToMaybe();
+Maybe<string> cachedName = Result.Ok("Ada").ToMaybe();
+Maybe<string> missingName = Result.Fail<string>(Error.NotFound("User not found")).ToMaybe();
 ```
 
 And the async version:
@@ -277,7 +277,7 @@ And the async version:
 ```csharp
 using Trellis;
 
-Maybe<string> value = await Task.FromResult(Result.Success("Ada")).ToMaybeAsync();
+Maybe<string> value = await Task.FromResult(Result.Ok("Ada")).ToMaybeAsync();
 ```
 
 ## Practical Rules of Thumb

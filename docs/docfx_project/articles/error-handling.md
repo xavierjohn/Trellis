@@ -20,8 +20,8 @@ public record User(string Id, string Email);
 
 static Result<User> GetUser(string id) =>
     id == "42"
-        ? Result.Success(new User("42", "ada@example.com"))
-        : Result.Failure<User>(Error.NotFound($"User {id} not found", id));
+        ? Result.Ok(new User("42", "ada@example.com"))
+        : Result.Fail<User>(Error.NotFound($"User {id} not found", id));
 
 var response = GetUser("42").MatchError(
     onSuccess: user => $"200 OK: {user.Email}",
@@ -200,8 +200,8 @@ public record User(string Id, string Email);
 
 static Result<User> LoadUser(string id) =>
     id == "42"
-        ? Result.Success(new User(id, "ada@example.com"))
-        : Result.Failure<User>(Error.NotFound($"User {id} not found", id));
+        ? Result.Ok(new User(id, "ada@example.com"))
+        : Result.Fail<User>(Error.NotFound($"User {id} not found", id));
 
 var message = LoadUser("42").MatchError(
     onSuccess: user => $"Found {user.Email}",
@@ -216,7 +216,7 @@ var message = LoadUser("42").MatchError(
 ```csharp
 using Trellis;
 
-Result<string> result = Result.Failure<string>(Error.Conflict("Email address is already in use"));
+Result<string> result = Result.Fail<string>(Error.Conflict("Email address is already in use"));
 
 result.SwitchError(
     onConflict: error => Console.WriteLine($"Conflict: {error.Detail}"),
@@ -237,7 +237,7 @@ Sometimes you want to log, increment metrics, or notify another system **without
 ```csharp
 using Trellis;
 
-var result = Result.Failure<string>(Error.ServiceUnavailable("Search is temporarily offline"))
+var result = Result.Fail<string>(Error.ServiceUnavailable("Search is temporarily offline"))
     .TapOnFailure(error => Console.WriteLine($"Log: {error.Code} - {error.Detail}"));
 ```
 
@@ -246,7 +246,7 @@ var result = Result.Failure<string>(Error.ServiceUnavailable("Search is temporar
 ```csharp
 using Trellis;
 
-var result = await Result.Failure<string>(Error.RateLimit("Too many requests"))
+var result = await Result.Fail<string>(Error.RateLimit("Too many requests"))
     .TapOnFailureAsync(error =>
     {
         Console.WriteLine($"Audit: {error.Code}");
@@ -263,7 +263,7 @@ As results move across layers, you may want to translate infrastructure failures
 ```csharp
 using Trellis;
 
-var result = Result.Failure<string>(Error.Unexpected("Timeout while calling CRM"))
+var result = Result.Fail<string>(Error.Unexpected("Timeout while calling CRM"))
     .MapOnFailure(error => error switch
     {
         UnexpectedError => Error.ServiceUnavailable("Customer service is temporarily unavailable"),
@@ -279,10 +279,10 @@ Use recovery when a fallback path is legitimate, not when you are hiding a bug.
 using Trellis;
 
 static Result<string> GetFromCache() =>
-    Result.Failure<string>(Error.NotFound("Cache miss"));
+    Result.Fail<string>(Error.NotFound("Cache miss"));
 
 static Result<string> GetFromDatabase() =>
-    Result.Success("Ada Lovelace");
+    Result.Ok("Ada Lovelace");
 
 var result = GetFromCache()
     .RecoverOnFailure(error => GetFromDatabase());
@@ -327,7 +327,7 @@ using Trellis;
 var combinedError = Error.Validation("Email is invalid", "email")
     .Combine(Error.Conflict("Email address is already in use"));
 
-var combinedResult = Result.Failure<string>(combinedError);
+var combinedResult = Result.Fail<string>(combinedError);
 
 var validationOnly = combinedResult.FlattenValidationErrors();
 ```
@@ -347,8 +347,8 @@ public record User(string Id, string Email);
 
 static Task<Result<User>> GetUserAsync(string id) =>
     Task.FromResult(id == "42"
-        ? Result.Success(new User(id, "ada@example.com"))
-        : Result.Failure<User>(Error.NotFound($"User {id} not found", id)));
+        ? Result.Ok(new User(id, "ada@example.com"))
+        : Result.Fail<User>(Error.NotFound($"User {id} not found", id)));
 
 var message = await GetUserAsync("42").MatchErrorAsync(
     onSuccess: user => $"Loaded {user.Email}",
@@ -361,7 +361,7 @@ var message = await GetUserAsync("42").MatchErrorAsync(
 ```csharp
 using Trellis;
 
-await Task.FromResult(Result.Failure<string>(Error.Validation("Email is required", "email")))
+await Task.FromResult(Result.Fail<string>(Error.Validation("Email is required", "email")))
     .SwitchErrorAsync(
         onValidation: (error, ct) =>
         {

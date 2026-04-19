@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Maybes;
+namespace Trellis.Results.Tests.Maybes;
 
 using Trellis;
 
@@ -57,8 +57,8 @@ public class OptionalTests
 
         public static Result<ZipCode> TryCreate(string zipCode)
         {
-            if (string.IsNullOrEmpty(zipCode)) return Result.Failure<ZipCode>(Error.BadRequest("ZipCode is required."));
-            if (zipCode.Length != 5) return Result.Failure<ZipCode>(Error.BadRequest("Invalid ZipCode."));
+            if (string.IsNullOrEmpty(zipCode)) return Result.Fail<ZipCode>(Error.BadRequest("ZipCode is required."));
+            if (zipCode.Length != 5) return Result.Fail<ZipCode>(Error.BadRequest("Invalid ZipCode."));
 
             return new ZipCode(zipCode);
         }

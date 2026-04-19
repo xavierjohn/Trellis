@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -21,10 +21,10 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Hostname) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("hostname");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<Hostname>(Error.Validation("Hostname is required.", field));
+            return Result.Fail<Hostname>(Error.Validation("Hostname is required.", field));
         var trimmed = value.Trim();
         if (!HostnameRegex().IsMatch(trimmed))
-            return Result.Failure<Hostname>(Error.Validation("Hostname must be RFC 1123 compliant.", field));
+            return Result.Fail<Hostname>(Error.Validation("Hostname must be RFC 1123 compliant.", field));
         return new Hostname(trimmed);
     }
 

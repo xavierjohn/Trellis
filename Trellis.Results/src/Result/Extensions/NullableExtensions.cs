@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -41,9 +41,9 @@ public static class NullableExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (!nullable.HasValue)
-            return Result.Failure<T>(error);
+            return Result.Fail<T>(error);
 
-        return Result.Success<T>(nullable.Value);
+        return Result.Ok<T>(nullable.Value);
     }
 
     /// <summary>
@@ -58,9 +58,9 @@ public static class NullableExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (!nullable.HasValue)
-            return Result.Failure<T>(errorFactory());
+            return Result.Fail<T>(errorFactory());
 
-        return Result.Success<T>(nullable.Value);
+        return Result.Ok<T>(nullable.Value);
     }
 
     /// <summary>
@@ -75,9 +75,9 @@ public static class NullableExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (obj == null)
-            return Result.Failure<T>(error);
+            return Result.Fail<T>(error);
 
-        return Result.Success<T>(obj);
+        return Result.Ok<T>(obj);
     }
 
     /// <summary>
@@ -92,9 +92,9 @@ public static class NullableExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (obj == null)
-            return Result.Failure<T>(errorFactory());
+            return Result.Fail<T>(errorFactory());
 
-        return Result.Success<T>(obj);
+        return Result.Ok<T>(obj);
     }
 }
 

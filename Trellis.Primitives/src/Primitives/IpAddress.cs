@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
@@ -32,10 +32,10 @@ public class IpAddress : ScalarValueObject<IpAddress, string>, IScalarValue<IpAd
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(IpAddress) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("ipAddress");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<IpAddress>(Error.Validation("IP address is required.", field));
+            return Result.Fail<IpAddress>(Error.Validation("IP address is required.", field));
         var trimmed = value.Trim();
         if (!IPAddress.TryParse(trimmed, out var ip))
-            return Result.Failure<IpAddress>(Error.Validation("IP address must be a valid IPv4 or IPv6.", field));
+            return Result.Fail<IpAddress>(Error.Validation("IP address must be a valid IPv4 or IPv6.", field));
         return new IpAddress(trimmed, ip);
     }
 

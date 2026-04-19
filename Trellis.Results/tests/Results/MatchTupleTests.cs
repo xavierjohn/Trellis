@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests;
+namespace Trellis.Results.Tests;
 
 using FluentAssertions;
 using Trellis.Testing;
@@ -18,7 +18,7 @@ public class MatchTupleTests
     public void Match_WithSuccessTuple2_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var output = result.Match(
@@ -34,7 +34,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple2_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
 
         // Act
         var output = result.Match(
@@ -50,7 +50,7 @@ public class MatchTupleTests
     public void Match_WithSuccessTuple2_DifferentTypes_DestructuresCorrectly()
     {
         // Arrange
-        var result = Result.Success((true, 3.14));
+        var result = Result.Ok((true, 3.14));
 
         // Act
         var output = result.Match(
@@ -66,7 +66,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple2_ValidationError_ReturnsErrorDetail()
     {
         // Arrange
-        var result = Result.Failure<(int, string)>(Error.Validation("Invalid input", "field1"));
+        var result = Result.Fail<(int, string)>(Error.Validation("Invalid input", "field1"));
 
         // Act
         var output = result.Match(
@@ -82,7 +82,7 @@ public class MatchTupleTests
     public void Match_WithSuccessTuple2_ComplexTransformation()
     {
         // Arrange
-        var result = Result.Success(("John", "Doe"));
+        var result = Result.Ok(("John", "Doe"));
 
         // Act
         var output = result.Match(
@@ -104,7 +104,7 @@ public class MatchTupleTests
     public void Switch_WithSuccessTuple2_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
         var output = "";
 
         // Act
@@ -121,7 +121,7 @@ public class MatchTupleTests
     public void Switch_WithFailureTuple2_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
         var output = "";
 
         // Act
@@ -138,7 +138,7 @@ public class MatchTupleTests
     public void Switch_WithSuccessTuple2_SideEffects()
     {
         // Arrange
-        var result = Result.Success((5, 10));
+        var result = Result.Ok((5, 10));
         var sum = 0;
         var product = 0;
 
@@ -161,7 +161,7 @@ public class MatchTupleTests
     public void Switch_WithFailureTuple2_ExecutesFailureAction()
     {
         // Arrange
-        var result = Result.Failure<(int, int)>(Error.Unexpected("Server error"));
+        var result = Result.Fail<(int, int)>(Error.Unexpected("Server error"));
         var errorLogged = false;
         var errorMessage = "";
 
@@ -192,7 +192,7 @@ public class MatchTupleTests
     public void Match_WithSuccessTuple3_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((1, "two", 3.0));
+        var result = Result.Ok((1, "two", 3.0));
 
         // Act
         var output = result.Match(
@@ -208,7 +208,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple3_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<(int, string, double)>(Error.Forbidden("Access denied"));
+        var result = Result.Fail<(int, string, double)>(Error.Forbidden("Access denied"));
 
         // Act
         var output = result.Match(
@@ -224,7 +224,7 @@ public class MatchTupleTests
     public void Match_WithSuccessTuple4_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4));
+        var result = Result.Ok((1, 2, 3, 4));
 
         // Act
         var output = result.Match(
@@ -240,7 +240,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple4_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<(int, int, int, int)>(Error.Conflict("Conflict occurred"));
+        var result = Result.Fail<(int, int, int, int)>(Error.Conflict("Conflict occurred"));
 
         // Act - Use base Match since tuple destructuring is only for success
         var output = result.Match(
@@ -256,7 +256,7 @@ public class MatchTupleTests
     public void Match_WithSuccessTuple5_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5));
+        var result = Result.Ok((1, 2, 3, 4, 5));
 
         // Act
         var output = result.Match(
@@ -272,7 +272,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple5_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<(int, int, int, int, int)>(Error.BadRequest("Bad request"));
+        var result = Result.Fail<(int, int, int, int, int)>(Error.BadRequest("Bad request"));
 
         // Act
         var output = result.Match(
@@ -288,7 +288,7 @@ public class MatchTupleTests
     public void Switch_WithSuccessTuple3_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((1, "two", 3.0));
+        var result = Result.Ok((1, "two", 3.0));
         var output = "";
 
         // Act
@@ -305,7 +305,7 @@ public class MatchTupleTests
     public void Switch_WithFailureTuple3_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<(int, string, double)>(Error.RateLimit("Too many requests"));
+        var result = Result.Fail<(int, string, double)>(Error.RateLimit("Too many requests"));
         var output = "";
 
         // Act
@@ -322,7 +322,7 @@ public class MatchTupleTests
     public void Switch_WithSuccessTuple4_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4));
+        var result = Result.Ok((1, 2, 3, 4));
         var sum = 0;
 
         // Act
@@ -339,7 +339,7 @@ public class MatchTupleTests
     public void Switch_WithSuccessTuple5_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5));
+        var result = Result.Ok((1, 2, 3, 4, 5));
         var sum = 0;
 
         // Act
@@ -360,7 +360,7 @@ public class MatchTupleTests
     public async Task MatchAsync_WithSuccessTuple2_SyncHandlers_DestructuresValues()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success((42, "hello")));
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -376,7 +376,7 @@ public class MatchTupleTests
     public async Task MatchAsync_WithFailureTuple2_SyncHandlers_CallsOnFailure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<(int, string)>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error.NotFound("Not found")));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -392,7 +392,7 @@ public class MatchTupleTests
     public async Task MatchAsync_WithSuccessTuple2_AsyncHandlers_DestructuresValues()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var output = await result.MatchAsync(
@@ -416,7 +416,7 @@ public class MatchTupleTests
     public async Task MatchAsync_WithFailureTuple2_AsyncHandlers_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<(int, string)>(Error.Validation("Invalid", "field"));
+        var result = Result.Fail<(int, string)>(Error.Validation("Invalid", "field"));
 
         // Act
         var output = await result.MatchAsync(
@@ -440,7 +440,7 @@ public class MatchTupleTests
     public async Task MatchAsync_TaskResult_AsyncHandlers_Success()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success((10, 20)));
+        var resultTask = Task.FromResult(Result.Ok((10, 20)));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -464,7 +464,7 @@ public class MatchTupleTests
     public async Task MatchAsync_TaskResult_AsyncHandlers_Failure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<(int, int)>(Error.Unexpected("Error")));
+        var resultTask = Task.FromResult(Result.Fail<(int, int)>(Error.Unexpected("Error")));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -492,7 +492,7 @@ public class MatchTupleTests
     public async Task SwitchAsync_WithSuccessTuple2_ExecutesSuccessAction()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success((42, "hello")));
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
         var output = "";
 
         // Act
@@ -517,7 +517,7 @@ public class MatchTupleTests
     public async Task SwitchAsync_WithFailureTuple2_ExecutesFailureAction()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<(int, string)>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error.NotFound("Not found")));
         var errorLogged = false;
 
         // Act
@@ -538,7 +538,7 @@ public class MatchTupleTests
     public async Task SwitchAsync_WithSuccessTuple3_DestructuresValues()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success((1, 2, 3)));
+        var resultTask = Task.FromResult(Result.Ok((1, 2, 3)));
         var sum = 0;
 
         // Act
@@ -563,8 +563,8 @@ public class MatchTupleTests
     public void Match_CombinedValidation_ToDto()
     {
         // Arrange
-        var emailResult = Result.Success("user@example.com");
-        var nameResult = Result.Success("John Doe");
+        var emailResult = Result.Ok("user@example.com");
+        var nameResult = Result.Ok("John Doe");
         var combined = emailResult.Combine(nameResult);
 
         // Act
@@ -583,8 +583,8 @@ public class MatchTupleTests
     public void Match_CombinedValidation_Failure_ToErrorDto()
     {
         // Arrange
-        var emailResult = Result.Failure<string>(Error.Validation("Invalid email", "email"));
-        var nameResult = Result.Success("John Doe");
+        var emailResult = Result.Fail<string>(Error.Validation("Invalid email", "email"));
+        var nameResult = Result.Ok("John Doe");
         var combined = emailResult.Combine(nameResult);
 
         // Act
@@ -602,7 +602,7 @@ public class MatchTupleTests
     public void Switch_CombinedResults_Logging()
     {
         // Arrange
-        var result = Result.Success((100, 200, 300));
+        var result = Result.Ok((100, 200, 300));
         var loggedValues = new List<int>();
 
         // Act

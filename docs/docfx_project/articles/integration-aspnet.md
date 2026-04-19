@@ -408,7 +408,7 @@ app.MapGet("/products", async (ProductDbContext db, int? page, int? pageSize) =>
         return Results.Ok(items);
 
     var to = from + items.Length - 1;
-    return Result.Success(items).ToHttpResult(from, to, total);
+    return Result.Ok(items).ToHttpResult(from, to, total);
 });
 ```
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -20,7 +20,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var output = result.Match(
@@ -38,7 +38,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
 
         // Act
         var output = result.Match(
@@ -56,7 +56,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(string, string)>(Error.Validation("Invalid email", "email"));
+        var result = Result.Fail<(string, string)>(Error.Validation("Invalid email", "email"));
 
         // Act
         var output = result.Match(
@@ -74,7 +74,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((true, 3.14));
+        var result = Result.Ok((true, 3.14));
 
         // Act
         var output = result.Match(
@@ -96,7 +96,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
         var executed = false;
 
         // Act
@@ -115,7 +115,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Unexpected("Server error"));
+        var result = Result.Fail<(int, string)>(Error.Unexpected("Server error"));
         var errorLogged = false;
 
         // Act
@@ -134,7 +134,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((5, 10));
+        var result = Result.Ok((5, 10));
         var sum = 0;
 
         // Act
@@ -153,7 +153,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, int)>(Error.Forbidden("Access denied"));
+        var result = Result.Fail<(int, int)>(Error.Forbidden("Access denied"));
         var errorCode = "";
 
         // Act
@@ -176,7 +176,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, "two", 3.0));
+        var result = Result.Ok((1, "two", 3.0));
 
         // Act
         var output = result.Match(
@@ -194,7 +194,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string, double)>(Error.Conflict("Conflict"));
+        var result = Result.Fail<(int, string, double)>(Error.Conflict("Conflict"));
 
         // Act
         var output = result.Match(
@@ -212,7 +212,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, 2, 3, 4));
+        var result = Result.Ok((1, 2, 3, 4));
 
         // Act
         var sum = result.Match(
@@ -230,7 +230,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, 2, 3, 4, 5));
+        var result = Result.Ok((1, 2, 3, 4, 5));
 
         // Act
         var sum = result.Match(
@@ -248,7 +248,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, "two", 3.0));
+        var result = Result.Ok((1, "two", 3.0));
         var output = "";
 
         // Act
@@ -284,7 +284,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var resultTask = Task.FromResult(Result.Success((42, "hello")));
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -302,7 +302,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var output = await result.MatchAsync(
@@ -328,7 +328,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
 
         // Act
         var output = await result.MatchAsync(
@@ -371,7 +371,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var resultTask = Task.FromResult(Result.Success((42, "hello")));
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
         var executed = false;
 
         // Act
@@ -394,7 +394,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var resultTask = Task.FromResult(Result.Failure<(int, string)>(Error.Unexpected("Error")));
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error.Unexpected("Error")));
         var errorLogged = false;
 
         // Act
@@ -421,7 +421,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var combined = Result.Success(("user@example.com", "John Doe"));
+        var combined = Result.Ok(("user@example.com", "John Doe"));
 
         // Act
         var dto = combined.Match(
@@ -439,7 +439,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var combined = Result.Failure<(string, string)>(Error.Validation("Bad input", "field"));
+        var combined = Result.Fail<(string, string)>(Error.Validation("Bad input", "field"));
 
         // Act
         var response = combined.Match(
@@ -459,8 +459,8 @@ public class MatchTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"))
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"))
             .Match(
                 onSuccess: (a, b) => $"{a} {b}",
                 onFailure: err => "Error"
@@ -479,7 +479,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((100, 200));
+        var result = Result.Ok((100, 200));
         var logged = new List<int>();
 
         // Act
@@ -506,7 +506,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         result.Match(
@@ -524,7 +524,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         result.Switch(

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis;
 using Trellis.Testing;
@@ -11,7 +11,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_NoParam_StaticError_SuccessResult_PredicateTrue_ReturnsSuccess()
     {
         // Arrange
-        var initialResult = Result.Success("Initial value");
+        var initialResult = Result.Ok("Initial value");
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -27,7 +27,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_NoParam_StaticError_SuccessResult_PredicateFalse_ReturnsFailure()
     {
         // Arrange
-        var initialResult = Result.Success("Initial value");
+        var initialResult = Result.Ok("Initial value");
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -44,7 +44,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var initialError = Error.NotFound("Initial error");
-        var initialResult = Result.Failure<string>(initialError);
+        var initialResult = Result.Fail<string>(initialError);
         var predicateInvoked = false;
 
         // Act
@@ -66,7 +66,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_NoParam_StaticError_WithComplexAsyncPredicate_WorksCorrectly()
     {
         // Arrange
-        var initialResult = Result.Success(42);
+        var initialResult = Result.Ok(42);
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -86,7 +86,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_StaticError_SuccessResult_PredicateTrue_ReturnsSuccess()
     {
         // Arrange
-        var initialResult = Result.Success("test");
+        var initialResult = Result.Ok("test");
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -102,7 +102,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_StaticError_SuccessResult_PredicateFalse_ReturnsFailure()
     {
         // Arrange
-        var initialResult = Result.Success("abc");
+        var initialResult = Result.Ok("abc");
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -119,7 +119,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var initialError = Error.Conflict("Initial conflict");
-        var initialResult = Result.Failure<string>(initialError);
+        var initialResult = Result.Fail<string>(initialError);
         var predicateInvoked = false;
 
         // Act
@@ -141,7 +141,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_StaticError_PredicateUsesValue_WorksCorrectly()
     {
         // Arrange
-        var initialResult = Result.Success(25);
+        var initialResult = Result.Ok(25);
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -161,7 +161,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_ErrorFactory_SuccessResult_PredicateTrue_ReturnsSuccess()
     {
         // Arrange
-        var initialResult = Result.Success(100);
+        var initialResult = Result.Ok(100);
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -177,7 +177,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_ErrorFactory_SuccessResult_PredicateFalse_ReturnsContextualError()
     {
         // Arrange
-        var initialResult = Result.Success(-5);
+        var initialResult = Result.Ok(-5);
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -194,7 +194,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var initialError = Error.Unauthorized("Initial error");
-        var initialResult = Result.Failure<int>(initialError);
+        var initialResult = Result.Fail<int>(initialError);
         var errorFactoryInvoked = false;
 
         // Act
@@ -216,7 +216,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_ErrorFactory_ErrorFactoryReceivesValue()
     {
         // Arrange
-        var initialResult = Result.Success("test@example");
+        var initialResult = Result.Ok("test@example");
         var capturedValue = string.Empty;
 
         // Act
@@ -242,7 +242,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_AsyncErrorFactory_SuccessResult_PredicateTrue_ReturnsSuccess()
     {
         // Arrange
-        var initialResult = Result.Success("valid-username");
+        var initialResult = Result.Ok("valid-username");
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -262,7 +262,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_AsyncErrorFactory_SuccessResult_PredicateFalse_ReturnsAsyncError()
     {
         // Arrange
-        var initialResult = Result.Success("ab");
+        var initialResult = Result.Ok("ab");
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -284,7 +284,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var initialError = Error.Forbidden("Initial error");
-        var initialResult = Result.Failure<string>(initialError);
+        var initialResult = Result.Fail<string>(initialError);
         var asyncErrorFactoryInvoked = false;
 
         // Act
@@ -307,7 +307,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_AsyncErrorFactory_ComplexAsyncOperation_WorksCorrectly()
     {
         // Arrange
-        var initialResult = Result.Success(DateTime.UtcNow.AddDays(-1));
+        var initialResult = Result.Ok(DateTime.UtcNow.AddDays(-1));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -330,11 +330,11 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_NoParam_SuccessResult_PredicateSuccess_ReturnsOriginalSuccess()
     {
         // Arrange
-        var initialResult = Result.Success("Initial message");
+        var initialResult = Result.Ok("Initial message");
 
         // Act
         var result = await initialResult.EnsureAsync(
-            () => ValueTask.FromResult(Result.Success<string>("Validation passed")));
+            () => ValueTask.FromResult(Result.Ok<string>("Validation passed")));
 
         // Assert
         result.Should().BeSuccess("initial result and predicate succeeded")
@@ -345,12 +345,12 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_NoParam_SuccessResult_PredicateFailure_ReturnsPredicateError()
     {
         // Arrange
-        var initialResult = Result.Success("Initial value");
+        var initialResult = Result.Ok("Initial value");
         var predicateError = Error.Validation("System validation failed");
 
         // Act
         var result = await initialResult.EnsureAsync(
-            () => ValueTask.FromResult(Result.Failure<string>(predicateError)));
+            () => ValueTask.FromResult(Result.Fail<string>(predicateError)));
 
         // Assert
         result.Should().BeFailure("predicate returned failure")
@@ -362,7 +362,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var initialError = Error.RateLimit("Initial error");
-        var initialResult = Result.Failure<string>(initialError);
+        var initialResult = Result.Fail<string>(initialError);
         var predicateInvoked = false;
 
         // Act
@@ -370,7 +370,7 @@ public class Ensure_ValueTask_Right_Tests
             () =>
             {
                 predicateInvoked = true;
-                return ValueTask.FromResult(Result.Success<string>("Should not reach"));
+                return ValueTask.FromResult(Result.Ok<string>("Should not reach"));
             });
 
         // Assert
@@ -383,14 +383,14 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_NoParam_ComplexAsyncPredicate_WorksCorrectly()
     {
         // Arrange
-        var initialResult = Result.Success(42);
+        var initialResult = Result.Ok(42);
 
         // Act
         var result = await initialResult.EnsureAsync(
             () => new ValueTask<Result<int>>(
                 Random.Shared.Next(0, 100) >= 0
-                    ? Result.Success(Random.Shared.Next(0, 100))
-                    : Result.Failure<int>(Error.ServiceUnavailable("System unavailable"))));
+                    ? Result.Ok(Random.Shared.Next(0, 100))
+                    : Result.Fail<int>(Error.ServiceUnavailable("System unavailable"))));
 
         // Assert
         result.Should().BeSuccess("system check passed")
@@ -405,11 +405,11 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_WithParam_SuccessResult_PredicateSuccess_ReturnsOriginalSuccess()
     {
         // Arrange
-        var initialResult = Result.Success("Initial message");
+        var initialResult = Result.Ok("Initial message");
 
         // Act
         var result = await initialResult.EnsureAsync(
-            value => ValueTask.FromResult(Result.Success<string>($"Validated: {value}")));
+            value => ValueTask.FromResult(Result.Ok<string>($"Validated: {value}")));
 
         // Assert
         result.Should().BeSuccess("initial result and predicate succeeded")
@@ -420,15 +420,15 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_WithParam_SuccessResult_PredicateFailure_ReturnsPredicateError()
     {
         // Arrange
-        var initialResult = Result.Success(15);
+        var initialResult = Result.Ok(15);
         var predicateError = Error.Validation("Age must be 18 or older");
 
         // Act
         var result = await initialResult.EnsureAsync(
             age => ValueTask.FromResult(
                 age >= 18
-                    ? Result.Success(age)
-                    : Result.Failure<int>(predicateError)));
+                    ? Result.Ok(age)
+                    : Result.Fail<int>(predicateError)));
 
         // Assert
         result.Should().BeFailure("age validation failed")
@@ -440,7 +440,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var initialError = Error.Domain("Initial domain error");
-        var initialResult = Result.Failure<int>(initialError);
+        var initialResult = Result.Fail<int>(initialError);
         var predicateInvoked = false;
 
         // Act
@@ -448,7 +448,7 @@ public class Ensure_ValueTask_Right_Tests
             value =>
             {
                 predicateInvoked = true;
-                return ValueTask.FromResult(Result.Success<int>(value));
+                return ValueTask.FromResult(Result.Ok<int>(value));
             });
 
         // Assert
@@ -461,14 +461,14 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_WithParam_PredicateUsesValue_WorksCorrectly()
     {
         // Arrange
-        var initialResult = Result.Success("user@example.com");
+        var initialResult = Result.Ok("user@example.com");
 
         // Act
         var result = await initialResult.EnsureAsync(
             email => new ValueTask<Result<string>>(
                 email.Contains('@') && email.Contains('.')
-                    ? Result.Success(email)
-                    : Result.Failure<string>(Error.Validation($"Email '{email}' is invalid"))));
+                    ? Result.Ok(email)
+                    : Result.Fail<string>(Error.Validation($"Email '{email}' is invalid"))));
 
         // Assert
         result.Should().BeSuccess("email is valid")
@@ -479,14 +479,14 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_WithParam_PredicateFailsWithContextualError_ReturnsContextualError()
     {
         // Arrange
-        var initialResult = Result.Success("invalid-email");
+        var initialResult = Result.Ok("invalid-email");
 
         // Act
         var result = await initialResult.EnsureAsync(
             email => new ValueTask<Result<string>>(
                 email.Contains('@') && email.Contains('.')
-                    ? Result.Success(email)
-                    : Result.Failure<string>(Error.Validation($"Email '{email}' must contain @ and ."))));
+                    ? Result.Ok(email)
+                    : Result.Fail<string>(Error.Validation($"Email '{email}' must contain @ and ."))));
 
         // Assert
         result.Should().BeFailure("email validation failed");
@@ -498,15 +498,15 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_WithParam_ChainedEnsures_WorkCorrectly()
     {
         // Arrange
-        var initialResult = Result.Success("valid-password-123");
+        var initialResult = Result.Ok("valid-password-123");
 
         // Act
         var result = await initialResult
             .EnsureAsync(
                 pwd => ValueTask.FromResult(
                     pwd.Length >= 8
-                        ? Result.Success(pwd)
-                        : Result.Failure<string>(Error.Validation("Password must be at least 8 characters"))))
+                        ? Result.Ok(pwd)
+                        : Result.Fail<string>(Error.Validation("Password must be at least 8 characters"))))
             .EnsureAsync(
                 pwd => ValueTask.FromResult(pwd.Any(char.IsDigit)),
                 Error.Validation("Password must contain at least one digit"));
@@ -525,7 +525,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         int? nullValue = null;
-        var initialResult = Result.Success(nullValue);
+        var initialResult = Result.Ok(nullValue);
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -541,7 +541,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var person = new Person("John", 25);
-        var initialResult = Result.Success(person);
+        var initialResult = Result.Ok(person);
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -558,7 +558,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var executionOrder = new List<int>();
-        var initialResult = Result.Success(100);
+        var initialResult = Result.Ok(100);
 
         // Act
         var result = await initialResult
@@ -594,7 +594,7 @@ public class Ensure_ValueTask_Right_Tests
     {
         // Arrange
         var executionOrder = new List<int>();
-        var initialResult = Result.Success(100);
+        var initialResult = Result.Ok(100);
 
         // Act
         var result = await initialResult
@@ -630,7 +630,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_WithAsyncException_ThrowsException()
     {
         // Arrange
-        var initialResult = Result.Success("test");
+        var initialResult = Result.Ok("test");
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -649,7 +649,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_MixingResultAndBooleanPredicates_WorksCorrectly()
     {
         // Arrange
-        var initialResult = Result.Success("valid-input");
+        var initialResult = Result.Ok("valid-input");
 
         // Act
         var result = await initialResult
@@ -659,8 +659,8 @@ public class Ensure_ValueTask_Right_Tests
             .EnsureAsync(
                 value => new ValueTask<Result<string>>(
                     value.Contains("valid")
-                        ? Result.Success(value)
-                        : Result.Failure<string>(Error.Validation("Must contain 'valid'")))); // Explicitly use ValueTask
+                        ? Result.Ok(value)
+                        : Result.Fail<string>(Error.Validation("Must contain 'valid'")))); // Explicitly use ValueTask
 
         // Assert
         result.Should().BeSuccess("all validations passed")

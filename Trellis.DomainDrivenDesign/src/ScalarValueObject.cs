@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Base class for value objects that wrap a single scalar value.
@@ -50,7 +50,7 @@
 ///     public static Result<CustomerId> TryCreate(string? stringOrNull) =>
 ///         stringOrNull.ToResult(Error.Validation("Customer ID cannot be empty"))
 ///             .Bind(s => Guid.TryParse(s, out var guid)
-///                 ? Result.Success(guid)
+///                 ? Result.Ok(guid)
 ///                 : Error.Validation("Invalid GUID format"))
 ///             .Bind(TryCreate);
 /// }

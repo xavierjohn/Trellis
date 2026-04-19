@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 using Xunit;
@@ -22,7 +22,7 @@ public class WhenAllAsyncTupleTests : TestBase
     {
         // Arrange
         var task1 = Task.FromException<Result<int>>(new InvalidOperationException("boom"));
-        var task2 = Task.FromResult(Result.Success("two"));
+        var task2 = Task.FromResult(Result.Ok("two"));
 
         // Act
         var act = () => (task1, task2).WhenAllAsync();
@@ -40,14 +40,14 @@ public class WhenAllAsyncTupleTests : TestBase
     public async Task WhenAllAsync_Tuple3_ChainedWithBind_ProcessesTuple()
     {
         // Arrange
-        var task1 = Task.FromResult(Result.Success(10));
-        var task2 = Task.FromResult(Result.Success(20));
-        var task3 = Task.FromResult(Result.Success(30));
+        var task1 = Task.FromResult(Result.Ok(10));
+        var task2 = Task.FromResult(Result.Ok(20));
+        var task3 = Task.FromResult(Result.Ok(30));
 
         // Act
         var result = await (task1, task2, task3)
             .WhenAllAsync()
-            .BindAsync((a, b, c) => Result.Success(a + b + c));
+            .BindAsync((a, b, c) => Result.Ok(a + b + c));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(60);
@@ -61,21 +61,21 @@ public class WhenAllAsyncTupleTests : TestBase
 
         data.Add("tuple2 success", async () =>
         {
-            var result = await (Task.FromResult(Result.Success(1)), Task.FromResult(Result.Success("two"))).WhenAllAsync();
+            var result = await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Ok("two"))).WhenAllAsync();
             result.Should().BeSuccess().Which.Should().Be((1, "two"));
         });
 
         data.Add("tuple2 first failure", async () =>
         {
             var error = Error.Unexpected("error 1");
-            var result = await (Task.FromResult(Result.Failure<int>(error)), Task.FromResult(Result.Success("two"))).WhenAllAsync();
+            var result = await (Task.FromResult(Result.Fail<int>(error)), Task.FromResult(Result.Ok("two"))).WhenAllAsync();
             result.Should().BeFailure().Which.Should().Be(error);
         });
 
         data.Add("tuple2 second failure", async () =>
         {
             var error = Error.Unexpected("error 2");
-            var result = await (Task.FromResult(Result.Success(1)), Task.FromResult(Result.Failure<string>(error))).WhenAllAsync();
+            var result = await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Fail<string>(error))).WhenAllAsync();
             result.Should().BeFailure().Which.Should().Be(error);
         });
 
@@ -83,16 +83,16 @@ public class WhenAllAsyncTupleTests : TestBase
         {
             var error1 = Error.Validation("Error 1", "field1");
             var error2 = Error.Validation("Error 2", "field2");
-            var result = await (Task.FromResult(Result.Failure<int>(error1)), Task.FromResult(Result.Failure<string>(error2))).WhenAllAsync();
+            var result = await (Task.FromResult(Result.Fail<int>(error1)), Task.FromResult(Result.Fail<string>(error2))).WhenAllAsync();
             result.Should().BeFailureOfType<ValidationError>();
         });
 
         data.Add("tuple3 success", async () =>
         {
             var result = await (
-                Task.FromResult(Result.Success(1)),
-                Task.FromResult(Result.Success("two")),
-                Task.FromResult(Result.Success(3.0))).WhenAllAsync();
+                Task.FromResult(Result.Ok(1)),
+                Task.FromResult(Result.Ok("two")),
+                Task.FromResult(Result.Ok(3.0))).WhenAllAsync();
             result.Should().BeSuccess().Which.Should().Be((1, "two", 3.0));
         });
 
@@ -100,19 +100,19 @@ public class WhenAllAsyncTupleTests : TestBase
         {
             var error = Error.Unexpected("error 1");
             var result = await (
-                Task.FromResult(Result.Success(1)),
-                Task.FromResult(Result.Failure<string>(error)),
-                Task.FromResult(Result.Success(3.0))).WhenAllAsync();
+                Task.FromResult(Result.Ok(1)),
+                Task.FromResult(Result.Fail<string>(error)),
+                Task.FromResult(Result.Ok(3.0))).WhenAllAsync();
             result.Should().BeFailure().Which.Should().Be(error);
         });
 
         data.Add("tuple4 success", async () =>
         {
             var result = await (
-                Task.FromResult(Result.Success(1)),
-                Task.FromResult(Result.Success(2)),
-                Task.FromResult(Result.Success(3)),
-                Task.FromResult(Result.Success(4))).WhenAllAsync();
+                Task.FromResult(Result.Ok(1)),
+                Task.FromResult(Result.Ok(2)),
+                Task.FromResult(Result.Ok(3)),
+                Task.FromResult(Result.Ok(4))).WhenAllAsync();
             result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4));
         });
 
@@ -120,36 +120,36 @@ public class WhenAllAsyncTupleTests : TestBase
         {
             var error = Error.Unexpected("error 1");
             var result = await (
-                Task.FromResult(Result.Success(1)),
-                Task.FromResult(Result.Success(2)),
-                Task.FromResult(Result.Success(3)),
-                Task.FromResult(Result.Failure<int>(error))).WhenAllAsync();
+                Task.FromResult(Result.Ok(1)),
+                Task.FromResult(Result.Ok(2)),
+                Task.FromResult(Result.Ok(3)),
+                Task.FromResult(Result.Fail<int>(error))).WhenAllAsync();
             result.Should().BeFailure().Which.Should().Be(error);
         });
 
         data.Add("tuple5 success", async () =>
         {
             var result = await (
-                Task.FromResult(Result.Success(1)),
-                Task.FromResult(Result.Success(2)),
-                Task.FromResult(Result.Success(3)),
-                Task.FromResult(Result.Success(4)),
-                Task.FromResult(Result.Success(5))).WhenAllAsync();
+                Task.FromResult(Result.Ok(1)),
+                Task.FromResult(Result.Ok(2)),
+                Task.FromResult(Result.Ok(3)),
+                Task.FromResult(Result.Ok(4)),
+                Task.FromResult(Result.Ok(5))).WhenAllAsync();
             result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5));
         });
 
         data.Add("tuple9 success", async () =>
         {
             var result = await (
-                Task.FromResult(Result.Success(1)),
-                Task.FromResult(Result.Success(2)),
-                Task.FromResult(Result.Success(3)),
-                Task.FromResult(Result.Success(4)),
-                Task.FromResult(Result.Success(5)),
-                Task.FromResult(Result.Success(6)),
-                Task.FromResult(Result.Success(7)),
-                Task.FromResult(Result.Success(8)),
-                Task.FromResult(Result.Success(9))).WhenAllAsync();
+                Task.FromResult(Result.Ok(1)),
+                Task.FromResult(Result.Ok(2)),
+                Task.FromResult(Result.Ok(3)),
+                Task.FromResult(Result.Ok(4)),
+                Task.FromResult(Result.Ok(5)),
+                Task.FromResult(Result.Ok(6)),
+                Task.FromResult(Result.Ok(7)),
+                Task.FromResult(Result.Ok(8)),
+                Task.FromResult(Result.Ok(9))).WhenAllAsync();
             result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5, 6, 7, 8, 9));
         });
 
@@ -157,15 +157,15 @@ public class WhenAllAsyncTupleTests : TestBase
         {
             var error = Error.Unexpected("error 1");
             var result = await (
-                Task.FromResult(Result.Success(1)),
-                Task.FromResult(Result.Success(2)),
-                Task.FromResult(Result.Success(3)),
-                Task.FromResult(Result.Success(4)),
-                Task.FromResult(Result.Failure<int>(error)),
-                Task.FromResult(Result.Success(6)),
-                Task.FromResult(Result.Success(7)),
-                Task.FromResult(Result.Success(8)),
-                Task.FromResult(Result.Success(9))).WhenAllAsync();
+                Task.FromResult(Result.Ok(1)),
+                Task.FromResult(Result.Ok(2)),
+                Task.FromResult(Result.Ok(3)),
+                Task.FromResult(Result.Ok(4)),
+                Task.FromResult(Result.Fail<int>(error)),
+                Task.FromResult(Result.Ok(6)),
+                Task.FromResult(Result.Ok(7)),
+                Task.FromResult(Result.Ok(8)),
+                Task.FromResult(Result.Ok(9))).WhenAllAsync();
             result.Should().BeFailure().Which.Should().Be(error);
         });
 

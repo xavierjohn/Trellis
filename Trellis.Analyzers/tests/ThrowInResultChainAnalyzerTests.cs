@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
@@ -16,10 +16,10 @@ public class ThrowInResultChainAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Bind(x =>
+                    var result = Result.Ok(1).Bind(x =>
                     {
                         if (x < 0) throw new ArgumentException("Must be positive");
-                        return Result.Success(x);
+                        return Result.Ok(x);
                     });
                 }
             }
@@ -42,7 +42,7 @@ public class ThrowInResultChainAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Map(x =>
+                    var result = Result.Ok(1).Map(x =>
                     {
                         if (x < 0) throw new InvalidOperationException();
                         return x * 2;
@@ -68,7 +68,7 @@ public class ThrowInResultChainAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Tap(x =>
+                    var result = Result.Ok(1).Tap(x =>
                     {
                         if (x < 0) throw new Exception("Error");
                     });
@@ -93,8 +93,8 @@ public class ThrowInResultChainAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Bind(x =>
-                        x < 0 ? throw new ArgumentException() : Result.Success(x));
+                    var result = Result.Ok(1).Bind(x =>
+                        x < 0 ? throw new ArgumentException() : Result.Ok(x));
                 }
             }
             """;
@@ -156,7 +156,7 @@ public class ThrowInResultChainAnalyzerTests
                 public void TestMethod()
                 {
                     var error = Error.Validation("Invalid");
-                    var result = Result.Failure<int>(error)
+                    var result = Result.Fail<int>(error)
                         .TapOnFailure(err => throw new ApplicationException(err.Detail));
                 }
             }

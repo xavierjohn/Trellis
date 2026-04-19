@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -30,7 +30,7 @@ public static partial class BindExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var output = func(result.Value);
         output.LogActivityStatus();
@@ -58,7 +58,7 @@ public static partial class BindExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var output = await func(result.Value).ConfigureAwait(false);
         output.LogActivityStatus();
@@ -145,7 +145,7 @@ public static partial class BindExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var output = await valueTask(result.Value).ConfigureAwait(false);
         output.LogActivityStatus();

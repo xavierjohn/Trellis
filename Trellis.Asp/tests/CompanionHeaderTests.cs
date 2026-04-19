@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +21,7 @@ public class CompanionHeaderTests : IDisposable
         // Arrange
         var controller = CreateControllerWithHttpContext();
         var error = Error.MethodNotAllowed("DELETE is not supported.", ["GET", "PUT"]);
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -37,7 +37,7 @@ public class CompanionHeaderTests : IDisposable
         // Arrange
         var controller = CreateControllerWithHttpContext();
         var error = Error.RateLimit("Too many requests", RetryAfterValue.FromSeconds(60));
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -53,7 +53,7 @@ public class CompanionHeaderTests : IDisposable
         // Arrange
         var controller = CreateControllerWithHttpContext();
         var error = Error.RateLimit("Too many requests");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -69,7 +69,7 @@ public class CompanionHeaderTests : IDisposable
         // Arrange
         var controller = CreateControllerWithHttpContext();
         var error = Error.ServiceUnavailable("Service is down", RetryAfterValue.FromSeconds(120));
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -85,7 +85,7 @@ public class CompanionHeaderTests : IDisposable
         // Arrange
         var controller = CreateControllerWithHttpContext();
         var error = Error.ContentTooLarge("Request body too large", RetryAfterValue.FromSeconds(30));
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -101,7 +101,7 @@ public class CompanionHeaderTests : IDisposable
         // Arrange
         var controller = CreateControllerWithHttpContext();
         var error = Error.RangeNotSatisfiable("Requested range not satisfiable", 1024);
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);

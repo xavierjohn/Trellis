@@ -1,4 +1,4 @@
-﻿namespace SampleWebApplication.Controllers;
+namespace SampleWebApplication.Controllers;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
@@ -69,7 +69,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
         if (products.Count > 0 && products.Count < totalCount)
         {
             var to = from + products.Count - 1;
-            return Result.Success(items)
+            return Result.Ok(items)
                 .ToActionResult(this,
                     _ => new ContentRangeHeaderValue(from, to, totalCount) { Unit = "items" },
                     static r => r);

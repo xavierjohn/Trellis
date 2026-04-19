@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Extension methods for ETag-based optimistic concurrency validation on aggregate results.
@@ -33,7 +33,7 @@ public static class AggregateETagExtensions
     {
         if (result.IsFailure) return result;
         return expectedETags is null
-            ? Result.Failure<T>(Error.PreconditionRequired("This operation requires an If-Match header."))
+            ? Result.Fail<T>(Error.PreconditionRequired("This operation requires an If-Match header."))
             : MatchETag(result, expectedETags);
     }
 
@@ -63,7 +63,7 @@ public static class AggregateETagExtensions
         if (result.IsFailure) return result;
 
         if (expectedETags.Length == 0)
-            return Result.Failure<T>(Error.PreconditionFailed("If-Match header contains only weak ETags. Strong comparison is required."));
+            return Result.Fail<T>(Error.PreconditionFailed("If-Match header contains only weak ETags. Strong comparison is required."));
 
         // Wildcard check
         if (expectedETags.Any(tag => tag.IsWildcard))

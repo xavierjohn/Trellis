@@ -135,7 +135,7 @@ using Trellis;
 
 var unit1 = default(Unit);
 var unit2 = new Unit();
-var success = Result.Success();
+var success = Result.Ok();
 ```
 
 ### Error-code comparisons should use the current Trellis codes

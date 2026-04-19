@@ -46,7 +46,7 @@ public sealed class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> Create(CustomerName name, EmailAddress email) =>
-        Result.Success(new Customer
+        Result.Ok(new Customer
         {
             Name = name,
             Email = email

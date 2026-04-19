@@ -21,7 +21,7 @@ static class Example
 {
     public static Result<Task<int>> Bad()
     {
-        var result = Result.Success("Ada");
+        var result = Result.Ok("Ada");
         return result.Map(LookupLengthAsync);
     }
 
@@ -39,7 +39,7 @@ static class Example
 {
     public static Task<Result<int>> Good()
     {
-        var result = Result.Success("Ada");
+        var result = Result.Ok("Ada");
         return result.MapAsync(LookupLengthAsync);
     }
 

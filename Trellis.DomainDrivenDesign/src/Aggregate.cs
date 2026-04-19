@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Text.Json.Serialization;
 
@@ -144,7 +144,7 @@ using System.Text.Json.Serialization;
 ///         // 3. Mark changes as committed
 ///         order.AcceptChanges();
 ///         
-///         return Result.Success();
+///         return Result.Ok();
 ///     }
 /// }
 /// 
@@ -323,7 +323,7 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     ///         order.AcceptChanges();
     ///         
     ///         await transaction.CommitAsync(ct);
-    ///         return Result.Success();
+    ///         return Result.Ok();
     ///     }
     ///     catch (Exception ex)
     ///     {

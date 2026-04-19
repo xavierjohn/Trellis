@@ -137,7 +137,7 @@ static Result<string> Register(string first, string last, string email)
     return nameResult
         .Combine(emailResult)
         .Bind((firstName, lastName, emailAddress) =>
-            Result.Success($"{firstName} {lastName} <{emailAddress}>"));
+            Result.Ok($"{firstName} {lastName} <{emailAddress}>"));
 }
 ```
 
@@ -188,7 +188,7 @@ static Result<int> DoubleIfPositive(Result<int> result) =>
 
 static Result<int> ValidatePositive(int value) =>
     value > 0
-        ? Result.Success(value)
+        ? Result.Ok(value)
         : Error.Validation("Value must be positive.");
 ```
 

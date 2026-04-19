@@ -1,4 +1,4 @@
-﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ template debug="false" hostspecific="false" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
@@ -62,7 +62,7 @@ public static partial class BindExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var (<# WriteArgs(i); #>) = result.Value;
         return func(<# WriteArgs(i); #>);
@@ -119,7 +119,7 @@ public static partial class BindExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var (<# WriteArgs(i); #>) = result.Value;
         return await func(<# WriteArgs(i); #>).ConfigureAwait(false);
@@ -143,7 +143,7 @@ public static partial class BindExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var (<# WriteArgs(i); #>) = result.Value;
         return await func(<# WriteArgs(i); #>).ConfigureAwait(false);
@@ -169,7 +169,7 @@ public static partial class BindExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var (<# WriteArgs(i); #>) = result.Value;
         return func(<# WriteArgs(i); #>);
@@ -194,7 +194,7 @@ public static partial class BindExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var (<# WriteArgs(i); #>) = result.Value;
         return func(<# WriteArgs(i); #>);
@@ -220,7 +220,7 @@ public static partial class BindExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var (<# WriteArgs(i); #>) = result.Value;
         return await func(<# WriteArgs(i); #>).ConfigureAwait(false);
@@ -245,7 +245,7 @@ public static partial class BindExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsFailure)
-            return Result.Failure<TResult>(result.Error);
+            return Result.Fail<TResult>(result.Error);
 
         var (<# WriteArgs(i); #>) = result.Value;
         return await func(<# WriteArgs(i); #>).ConfigureAwait(false);

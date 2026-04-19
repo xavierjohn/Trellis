@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+namespace Trellis.Testing;
 
 using Trellis;
 
@@ -50,9 +50,9 @@ public class FakeRepository<TAggregate, TId>
     public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
         if (_store.TryGetValue(id, out var aggregate))
-            return Task.FromResult(Result.Success(aggregate));
+            return Task.FromResult(Result.Ok(aggregate));
 
-        return Task.FromResult(Result.Failure<TAggregate>(
+        return Task.FromResult(Result.Fail<TAggregate>(
             Error.NotFound($"{typeof(TAggregate).Name} with ID {id} not found")));
     }
 
@@ -89,14 +89,14 @@ public class FakeRepository<TAggregate, TId>
                 .FirstOrDefault(existing => !existing.Id.Equals(id) && Equals(constraint(existing), value));
 
             if (conflict is not null)
-                return Task.FromResult(Result.Failure<Unit>(
+                return Task.FromResult(Result.Fail<Unit>(
                     Error.Conflict($"A {typeof(TAggregate).Name} with the same value already exists.")));
         }
 
         _store[id] = aggregate;
         _publishedEvents.AddRange(aggregate.UncommittedEvents());
         aggregate.AcceptChanges();
-        return Task.FromResult(Result.Success());
+        return Task.FromResult(Result.Ok());
     }
 
     /// <summary>
@@ -108,9 +108,9 @@ public class FakeRepository<TAggregate, TId>
     public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default)
     {
         if (_store.Remove(id))
-            return Task.FromResult(Result.Success());
+            return Task.FromResult(Result.Ok());
 
-        return Task.FromResult(Result.Failure<Unit>(
+        return Task.FromResult(Result.Fail<Unit>(
             Error.NotFound($"{typeof(TAggregate).Name} with ID {id} not found")));
     }
 

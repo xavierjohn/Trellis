@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -13,7 +13,7 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = result.Ensure(x => x > 40, Error.Validation("Value must be > 40"));
@@ -46,7 +46,7 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = result.Ensure(x => x > 40, Error.Validation("Value must be > 40"));
@@ -61,7 +61,7 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success("test");
+        var result = Result.Ok("test");
 
         // Act
         var actual = result.Ensure(() => true, Error.Validation("Must be true"));
@@ -94,7 +94,7 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = result.Ensure(x => x < 40, Error.Validation("Value must be < 40"));
@@ -110,7 +110,7 @@ public class EnsureTracingTests
         // Arrange
         using var activityTest = new ActivityTestHelper();
         var error = Error.NotFound("Not found");
-        var result = Result.Failure<int>(error);
+        var result = Result.Fail<int>(error);
 
         // Act
         var actual = result.Ensure(x => x > 40, Error.Validation("Value must be > 40"));
@@ -125,7 +125,7 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(5);
+        var result = Result.Ok(5);
 
         // Act
         var actual = result.Ensure(x => x > 10, Error.Validation("Value must be > 10"));
@@ -140,7 +140,7 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = result.Ensure(x => x > 100, Error.Validation("Predicate failed"));
@@ -155,7 +155,7 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var actual = result.Ensure(
@@ -207,10 +207,10 @@ public class EnsureTracingTests
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success(42)
+        var result = Result.Ok(42)
             .Ensure(x => x > 0, Error.Validation("Must be positive"))
             .Ensure(x => x < 100, Error.Validation("Must be < 100"))
-            .Bind(x => Result.Success(x * 2));
+            .Bind(x => Result.Ok(x * 2));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(84);

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis;
 using Trellis.Testing;
@@ -11,7 +11,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_StaticError_SuccessResult_PredicateTrue_ReturnsSuccess()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("Initial value"));
+        var initialResult = ValueTask.FromResult(Result.Ok("Initial value"));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -27,7 +27,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_StaticError_SuccessResult_PredicateFalse_ReturnsFailure()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("Initial value"));
+        var initialResult = ValueTask.FromResult(Result.Ok("Initial value"));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -44,7 +44,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var initialError = Error.NotFound("Initial error");
-        var initialResult = ValueTask.FromResult(Result.Failure<string>(initialError));
+        var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
 
         // Act
@@ -66,7 +66,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_StaticError_WithComplexPredicate_ReturnsExpectedResult()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success(42));
+        var initialResult = ValueTask.FromResult(Result.Ok(42));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -90,7 +90,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_ErrorFactory_SuccessResult_PredicateTrue_ReturnsSuccess()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success(100));
+        var initialResult = ValueTask.FromResult(Result.Ok(100));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -106,7 +106,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_ErrorFactory_SuccessResult_PredicateFalse_ReturnsFailureWithContextualError()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success(-5));
+        var initialResult = ValueTask.FromResult(Result.Ok(-5));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -123,7 +123,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var initialError = Error.Conflict("Initial error");
-        var initialResult = ValueTask.FromResult(Result.Failure<int>(initialError));
+        var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
         var errorFactoryInvoked = false;
 
         // Act
@@ -145,7 +145,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_ErrorFactory_PredicateFalse_ErrorFactoryReceivesValue()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("test@example"));
+        var initialResult = ValueTask.FromResult(Result.Ok("test@example"));
         var capturedValue = string.Empty;
 
         // Act
@@ -171,7 +171,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_AsyncErrorFactory_SuccessResult_PredicateTrue_ReturnsSuccess()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("valid-username"));
+        var initialResult = ValueTask.FromResult(Result.Ok("valid-username"));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -191,7 +191,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_AsyncErrorFactory_SuccessResult_PredicateFalse_ReturnsFailureWithAsyncError()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("ab"));
+        var initialResult = ValueTask.FromResult(Result.Ok("ab"));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -213,7 +213,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var initialError = Error.Unauthorized("Initial error");
-        var initialResult = ValueTask.FromResult(Result.Failure<string>(initialError));
+        var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var asyncErrorFactoryInvoked = false;
 
         // Act
@@ -236,7 +236,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_AsyncErrorFactory_ComplexAsyncOperation_WorksCorrectly()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success(DateTime.UtcNow.AddDays(-1)));
+        var initialResult = ValueTask.FromResult(Result.Ok(DateTime.UtcNow.AddDays(-1)));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -263,11 +263,11 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_NoParam_SuccessResult_PredicateSuccess_ReturnsOriginalSuccess()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("Initial message"));
+        var initialResult = ValueTask.FromResult(Result.Ok("Initial message"));
 
         // Act
         var result = await initialResult.EnsureAsync(
-            () => ValueTask.FromResult(Result.Success<string>("Validation passed")));
+            () => ValueTask.FromResult(Result.Ok<string>("Validation passed")));
 
         // Assert
         result.Should().BeSuccess("initial result and predicate succeeded")
@@ -278,12 +278,12 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_NoParam_SuccessResult_PredicateFailure_ReturnsPredicateError()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("Initial value"));
+        var initialResult = ValueTask.FromResult(Result.Ok("Initial value"));
         var predicateError = Error.Validation("Validation failed");
 
         // Act
         var result = await initialResult.EnsureAsync(
-            () => ValueTask.FromResult(Result.Failure<string>(predicateError)));
+            () => ValueTask.FromResult(Result.Fail<string>(predicateError)));
 
         // Assert
         result.Should().BeFailure("predicate returned failure")
@@ -295,7 +295,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var initialError = Error.NotFound("Initial error");
-        var initialResult = ValueTask.FromResult(Result.Failure<string>(initialError));
+        var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
 
         // Act
@@ -303,7 +303,7 @@ public class Ensure_ValueTask_Tests
             () =>
             {
                 predicateInvoked = true;
-                return ValueTask.FromResult(Result.Success<string>("Should not reach"));
+                return ValueTask.FromResult(Result.Ok<string>("Should not reach"));
             });
 
         // Assert
@@ -316,7 +316,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_NoParam_ComplexAsyncPredicate_WorksCorrectly()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success(42));
+        var initialResult = ValueTask.FromResult(Result.Ok(42));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -325,8 +325,8 @@ public class Ensure_ValueTask_Tests
                 await Task.Delay(1); // Simulate async validation
                 var systemCheck = Random.Shared.Next(0, 100);
                 return systemCheck >= 0
-                    ? Result.Success(systemCheck)
-                    : Result.Failure<int>(Error.ServiceUnavailable("System unavailable"));
+                    ? Result.Ok(systemCheck)
+                    : Result.Fail<int>(Error.ServiceUnavailable("System unavailable"));
             });
 
         // Assert
@@ -342,11 +342,11 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_WithParam_SuccessResult_PredicateSuccess_ReturnsOriginalSuccess()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("Initial message"));
+        var initialResult = ValueTask.FromResult(Result.Ok("Initial message"));
 
         // Act
         var result = await initialResult.EnsureAsync(
-            value => ValueTask.FromResult(Result.Success<string>($"Validated: {value}")));
+            value => ValueTask.FromResult(Result.Ok<string>($"Validated: {value}")));
 
         // Assert
         result.Should().BeSuccess("initial result and predicate succeeded")
@@ -357,15 +357,15 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_WithParam_SuccessResult_PredicateFailure_ReturnsPredicateError()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success(15));
+        var initialResult = ValueTask.FromResult(Result.Ok(15));
         var predicateError = Error.Validation("Age must be 18 or older");
 
         // Act
         var result = await initialResult.EnsureAsync(
             age => ValueTask.FromResult(
                 age >= 18
-                    ? Result.Success(age)
-                    : Result.Failure<int>(predicateError)));
+                    ? Result.Ok(age)
+                    : Result.Fail<int>(predicateError)));
 
         // Assert
         result.Should().BeFailure("age validation failed")
@@ -377,7 +377,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var initialError = Error.Conflict("Initial conflict");
-        var initialResult = ValueTask.FromResult(Result.Failure<int>(initialError));
+        var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
         var predicateInvoked = false;
 
         // Act
@@ -385,7 +385,7 @@ public class Ensure_ValueTask_Tests
             value =>
             {
                 predicateInvoked = true;
-                return ValueTask.FromResult(Result.Success<int>(value));
+                return ValueTask.FromResult(Result.Ok<int>(value));
             });
 
         // Assert
@@ -398,7 +398,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_WithParam_PredicateUsesValue_WorksCorrectly()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("user@example.com"));
+        var initialResult = ValueTask.FromResult(Result.Ok("user@example.com"));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -407,8 +407,8 @@ public class Ensure_ValueTask_Tests
                 await Task.Delay(1); // Simulate async email validation
                 var isValid = email.Contains('@') && email.Contains('.');
                 return isValid
-                    ? Result.Success(email)
-                    : Result.Failure<string>(Error.Validation($"Email '{email}' is invalid"));
+                    ? Result.Ok(email)
+                    : Result.Fail<string>(Error.Validation($"Email '{email}' is invalid"));
             });
 
         // Assert
@@ -420,7 +420,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_WithParam_PredicateFailsWithContextualError_ReturnsContextualError()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("invalid-email"));
+        var initialResult = ValueTask.FromResult(Result.Ok("invalid-email"));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -428,8 +428,8 @@ public class Ensure_ValueTask_Tests
             {
                 await Task.Delay(1);
                 return email.Contains('@') && email.Contains('.')
-                    ? Result.Success(email)
-                    : Result.Failure<string>(Error.Validation($"Email '{email}' must contain @ and ."));
+                    ? Result.Ok(email)
+                    : Result.Fail<string>(Error.Validation($"Email '{email}' must contain @ and ."));
             });
 
         // Assert
@@ -442,15 +442,15 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_WithParam_ChainedEnsures_WorkCorrectly()
     {
         // Arrange
-        var initialResult = ValueTask.FromResult(Result.Success("valid-password-123"));
+        var initialResult = ValueTask.FromResult(Result.Ok("valid-password-123"));
 
         // Act
         var result = await initialResult
             .EnsureAsync(
                 pwd => ValueTask.FromResult(
                     pwd.Length >= 8
-                        ? Result.Success(pwd)
-                        : Result.Failure<string>(Error.Validation("Password must be at least 8 characters"))))
+                        ? Result.Ok(pwd)
+                        : Result.Fail<string>(Error.Validation("Password must be at least 8 characters"))))
             .EnsureAsync(
                 pwd => ValueTask.FromResult(pwd.Any(char.IsDigit)),
                 Error.Validation("Password must contain at least one digit"));
@@ -469,7 +469,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         int? nullValue = null;
-        var initialResult = ValueTask.FromResult(Result.Success(nullValue));
+        var initialResult = ValueTask.FromResult(Result.Ok(nullValue));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -485,7 +485,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var person = new Person("John", 25);
-        var initialResult = ValueTask.FromResult(Result.Success(person));
+        var initialResult = ValueTask.FromResult(Result.Ok(person));
 
         // Act
         var result = await initialResult.EnsureAsync(
@@ -506,7 +506,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var executionOrder = new List<int>();
-        var initialResult = ValueTask.FromResult(Result.Success(100));
+        var initialResult = ValueTask.FromResult(Result.Ok(100));
 
         // Act
         var result = await initialResult
@@ -545,7 +545,7 @@ public class Ensure_ValueTask_Tests
     {
         // Arrange
         var executionOrder = new List<int>();
-        var initialResult = ValueTask.FromResult(Result.Success(100));
+        var initialResult = ValueTask.FromResult(Result.Ok(100));
 
         // Act
         var result = await initialResult

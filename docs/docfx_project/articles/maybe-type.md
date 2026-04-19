@@ -239,8 +239,8 @@ Sometimes you want the opposite tradeoff: “keep the value if successful, other
 ```csharp
 using Trellis;
 
-Maybe<string> existing = Result.Success("Ada").ToMaybe();
-Maybe<string> missing = Result.Failure<string>(Error.NotFound("User not found")).ToMaybe();
+Maybe<string> existing = Result.Ok("Ada").ToMaybe();
+Maybe<string> missing = Result.Fail<string>(Error.NotFound("User not found")).ToMaybe();
 ```
 
 Use this only when dropping the error is the right thing to do.
@@ -258,8 +258,8 @@ using Trellis;
 
 static Result<string> NonEmpty(string value) =>
     string.IsNullOrWhiteSpace(value)
-        ? Result.Failure<string>(Error.Validation("Value is required", "nickname"))
-        : Result.Success(value);
+        ? Result.Fail<string>(Error.Validation("Value is required", "nickname"))
+        : Result.Ok(value);
 
 string? input = "Countess";
 
@@ -273,8 +273,8 @@ using Trellis;
 
 static Result<int> Positive(int value) =>
     value > 0
-        ? Result.Success(value)
-        : Result.Failure<int>(Error.Validation("Value must be positive", "quantity"));
+        ? Result.Ok(value)
+        : Result.Fail<int>(Error.Validation("Value must be positive", "quantity"));
 
 int? input = 3;
 
@@ -363,14 +363,14 @@ Sometimes the next question is: “what if my operation has no payload?”
 
 For Trellis unit results:
 
-- prefer `Result.Success()` for a successful `Result<Unit>`
+- prefer `Result.Ok()` for a successful `Result<Unit>`
 - use `new Unit()` or `default` if you need a `Unit` value explicitly
 - do **not** use `Unit.Value` — that API does not exist
 
 ```csharp
 using Trellis;
 
-Result<Unit> ok = Result.Success();
+Result<Unit> ok = Result.Ok();
 Unit unit = new Unit();
 Unit alsoUnit = default;
 ```

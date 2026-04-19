@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+namespace Trellis.EntityFrameworkCore;
 
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
@@ -220,7 +220,7 @@ public abstract class RepositoryBase<TAggregate, TId>
             return Error.NotFound($"{typeof(TAggregate).Name} with ID '{id}' not found.");
 
         DbSet.Remove(entity);
-        return Result.Success();
+        return Result.Ok();
     }
 
     // ──────────────────────────────────────────────

@@ -1,4 +1,4 @@
-﻿namespace Trellis.DomainDrivenDesign.Tests.ValueObjects;
+namespace Trellis.DomainDrivenDesign.Tests.ValueObjects;
 
 internal class Money : ScalarValueObject<Money, decimal>, IScalarValue<Money, decimal>
 {
@@ -7,7 +7,7 @@ internal class Money : ScalarValueObject<Money, decimal>, IScalarValue<Money, de
     }
 
     public static Result<Money> TryCreate(decimal value, string? fieldName = null) =>
-        Result.Success(new Money(value));
+        Result.Ok(new Money(value));
 
     public static Result<Money> TryCreate(string? value, string? fieldName = null) =>
         throw new NotImplementedException();

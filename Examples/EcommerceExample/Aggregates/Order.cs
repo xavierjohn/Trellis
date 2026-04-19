@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace EcommerceExample.Aggregates;
 
@@ -282,6 +282,6 @@ public class Order : Aggregate<OrderId>
         }
 
         Total = total;
-        return Result.Success();
+        return Result.Ok();
     }
 }

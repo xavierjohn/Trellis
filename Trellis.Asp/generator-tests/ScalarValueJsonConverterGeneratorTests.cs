@@ -1,4 +1,4 @@
-﻿namespace Trellis.AspSourceGenerator.Tests;
+namespace Trellis.AspSourceGenerator.Tests;
 
 using System.Reflection;
 using Microsoft.CodeAnalysis;
@@ -165,7 +165,7 @@ public class ScalarValueJsonConverterGeneratorTests
 
                     public static Result<Quantity> TryCreate(int value, string? fieldName = null) => new Quantity(value);
                     public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
-                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Failure<Quantity>(Error.Validation("Invalid", fieldName));
+                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Fail<Quantity>(Error.Validation("Invalid", fieldName));
                 }
             }
 
@@ -177,7 +177,7 @@ public class ScalarValueJsonConverterGeneratorTests
 
                     public static Result<Quantity> TryCreate(int value, string? fieldName = null) => new Quantity(value);
                     public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
-                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Failure<Quantity>(Error.Validation("Invalid", fieldName));
+                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Fail<Quantity>(Error.Validation("Invalid", fieldName));
                 }
             }
             """;

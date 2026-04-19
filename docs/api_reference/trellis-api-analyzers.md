@@ -22,7 +22,7 @@
 | `TRLS012` | Info | Consider using Result.Combine | When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result. |
 | `TRLS013` | Info | Consider using GetValueOrDefault or Match | The pattern 'result.IsSuccess ? result.Value : default' can be replaced with GetValueOrDefault() or Match() for more idiomatic and safer code. |
 | `TRLS014` | Warning | Use async method variant for async lambda | When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited. |
-| `TRLS015` | Warning | Don't throw exceptions in Result chains | Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. Return Result.Failure<T>() to signal errors and keep the error on the failure track. |
+| `TRLS015` | Warning | Don't throw exceptions in Result chains | Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. Return Result.Fail<T>() to signal errors and keep the error on the failure track. |
 | `TRLS016` | Warning | Error message should not be empty | Error messages should provide context for debugging and user feedback. Empty error messages make it difficult to diagnose issues. |
 | `TRLS017` | Warning | Don't compare Result or Maybe to null | Result<T> and Maybe<T> are structs and cannot be null. Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe. |
 | `TRLS018` | Warning | Unsafe access to Value in LINQ expression | When using LINQ on collections of Result<T> or Maybe<T>, filter by IsSuccess/HasValue first, or use methods like Select with Match to safely extract values. |
@@ -84,7 +84,7 @@
   - properties
   - method return types
   - parameters
-- Also flags `Result.Success(existingResult)` and `Result.Failure(existingResult)` when the argument is already a `Result<T>`.
+- Also flags `Result.Ok(existingResult)` and `Result.Fail(existingResult)` when the argument is already a `Result<T>`.
 - No code fix.
 
 #### `AsyncResultMisuseAnalyzer` — `TRLS009`
@@ -229,17 +229,17 @@ using Trellis;
 
 public static class AnalyzerExamples
 {
-    public static Result<int> Parse(string text) => Result.Success(text.Length);
+    public static Result<int> Parse(string text) => Result.Ok(text.Length);
 
     public static Result<int> Valid()
     {
         var result = Parse("abc");
-        return result.Map(length => Result.Success(length + 1)); // TRLS002
+        return result.Map(length => Result.Ok(length + 1)); // TRLS002
     }
 
     public static async Task<Result<int>> ValidAsync()
     {
-        Task<Result<int>> task = Task.FromResult(Result.Success(42));
+        Task<Result<int>> task = Task.FromResult(Result.Ok(42));
         var result = await task; // preferred over task.Result / task.Wait() / task.GetAwaiter().GetResult()
         return result;
     }

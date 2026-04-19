@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Represents the absence of a meaningful value, used for operations that have no return value.
@@ -23,8 +23,8 @@
 /// <para>
 /// The <see cref="Result"/> class provides convenience methods for working with <c>Unit</c>:
 /// <list type="bullet">
-/// <item><see cref="Result.Success()"/> - Creates a successful <c>Result&lt;Unit&gt;</c></item>
-/// <item><see cref="Result.Failure(Error)"/> - Creates a failed <c>Result&lt;Unit&gt;</c></item>
+/// <item><see cref="Result.Ok()"/> - Creates a successful <c>Result&lt;Unit&gt;</c></item>
+/// <item><see cref="Result.Fail(Error)"/> - Creates a failed <c>Result&lt;Unit&gt;</c></item>
 /// </list>
 /// </para>
 /// <para>
@@ -43,7 +43,7 @@
 ///         return Error.NotFound($"User {userId} not found");
 ///     
 ///     _repository.Delete(user);
-///     return Result.Success(); // Returns Result&lt;Unit&gt;
+///     return Result.Ok(); // Returns Result&lt;Unit&gt;
 /// }
 /// 
 /// // Usage

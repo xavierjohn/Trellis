@@ -1,4 +1,4 @@
-﻿namespace Example.Tests;
+namespace Example.Tests;
 
 using System.Diagnostics;
 using Trellis;
@@ -70,7 +70,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
     {
     }
 
-    static Task<Result<Customer>> AskManagerAsync(long id) => Task.FromResult(Result.Success(new Customer(true)));
+    static Task<Result<Customer>> AskManagerAsync(long id) => Task.FromResult(Result.Ok(new Customer(true)));
 
     public static Task<Customer?> GetCustomerByIdAsync(long id)
     {
@@ -105,7 +105,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
 
     public static class EmailGateway
     {
-        public static Result<Unit> SendPromotionNotification(string email) => Result.Success<Unit>(new Unit());
+        public static Result<Unit> SendPromotionNotification(string email) => Result.Ok<Unit>(new Unit());
 
         public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) => Task.FromResult(SendPromotionNotification(email));
     }

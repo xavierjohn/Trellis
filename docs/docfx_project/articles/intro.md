@@ -98,7 +98,7 @@ public sealed record RegisterUserInput(string FirstName, string LastName, string
 public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
 {
     public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
-        Result.Success(new User(firstName, lastName, email));
+        Result.Ok(new User(firstName, lastName, email));
 }
 
 public static Result<User> RegisterUser(

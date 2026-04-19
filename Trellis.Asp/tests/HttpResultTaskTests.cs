@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +21,7 @@ public class HttpResultTaskTests : IDisposable
     public async Task ToHttpResultAsync_Task_WithSuccess_ReturnsOk()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success("Test"));
+        var resultTask = Task.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await resultTask.ToHttpResultAsync();
@@ -38,7 +38,7 @@ public class HttpResultTaskTests : IDisposable
     {
         // Arrange
         var error = Error.BadRequest("Test error");
-        var resultTask = Task.FromResult(Result.Failure<string>(error));
+        var resultTask = Task.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
             Title = "Bad Request",
@@ -61,7 +61,7 @@ public class HttpResultTaskTests : IDisposable
     public async Task ToHttpResultAsync_Task_WithUnitSuccess_ReturnsNoContent()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success());
+        var resultTask = Task.FromResult(Result.Ok());
 
         // Act
         var response = await resultTask.ToHttpResultAsync();
@@ -77,7 +77,7 @@ public class HttpResultTaskTests : IDisposable
     {
         // Arrange
         var error = Error.NotFound("Resource not found");
-        var resultTask = Task.FromResult(Result.Failure<string>(error));
+        var resultTask = Task.FromResult(Result.Fail<string>(error));
 
         // Act
         var response = await resultTask.ToHttpResultAsync();
@@ -93,7 +93,7 @@ public class HttpResultTaskTests : IDisposable
     {
         // Arrange
         var error = Error.Conflict("Resource conflict");
-        var resultTask = Task.FromResult(Result.Failure<string>(error));
+        var resultTask = Task.FromResult(Result.Fail<string>(error));
 
         // Act
         var response = await resultTask.ToHttpResultAsync();
@@ -112,7 +112,7 @@ public class HttpResultTaskTests : IDisposable
         // Arrange
         var options = new TrellisAspOptions();
         options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var resultTask = Task.FromResult(Result.Failure<string>(Error.Domain("Business rule")));
+        var resultTask = Task.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
 
         // Act
         var response = await resultTask.ToHttpResultAsync(options);
@@ -127,7 +127,7 @@ public class HttpResultTaskTests : IDisposable
     public async Task ToHttpResultAsync_Task_without_options_uses_defaults()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<string>(Error.Domain("Business rule")));
+        var resultTask = Task.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
 
         // Act
         var response = await resultTask.ToHttpResultAsync();

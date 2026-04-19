@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -13,9 +13,9 @@ public class CheckIfTests_ValueTask_Left
     [Fact]
     public async Task CheckIfAsync_ValueTask_Left_Bool_ConditionTrue_CheckPasses()
     {
-        var resultTask = new ValueTask<Result<int>>(Result.Success(42));
+        var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(true, v => Result.Success("ok"));
+        var sut = await resultTask.CheckIfAsync(true, v => Result.Ok("ok"));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
     }
@@ -23,9 +23,9 @@ public class CheckIfTests_ValueTask_Left
     [Fact]
     public async Task CheckIfAsync_ValueTask_Left_Bool_ConditionTrue_CheckFails()
     {
-        var resultTask = new ValueTask<Result<int>>(Result.Success(42));
+        var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(true, _ => Result.Failure<string>(CheckError));
+        var sut = await resultTask.CheckIfAsync(true, _ => Result.Fail<string>(CheckError));
 
         sut.Should().BeFailure().Which.Should().Be(CheckError);
     }
@@ -34,12 +34,12 @@ public class CheckIfTests_ValueTask_Left
     public async Task CheckIfAsync_ValueTask_Left_Bool_ConditionFalse_SkipsCheck()
     {
         var checkInvoked = false;
-        var resultTask = new ValueTask<Result<int>>(Result.Success(42));
+        var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
         var sut = await resultTask.CheckIfAsync(false, v =>
         {
             checkInvoked = true;
-            return Result.Success("ok");
+            return Result.Ok("ok");
         });
 
         sut.Should().BeSuccess().Which.Should().Be(42);
@@ -50,12 +50,12 @@ public class CheckIfTests_ValueTask_Left
     public async Task CheckIfAsync_ValueTask_Left_FailureResult_CheckNotInvoked()
     {
         var checkInvoked = false;
-        var resultTask = new ValueTask<Result<int>>(Result.Failure<int>(TestError));
+        var resultTask = new ValueTask<Result<int>>(Result.Fail<int>(TestError));
 
         var sut = await resultTask.CheckIfAsync(true, v =>
         {
             checkInvoked = true;
-            return Result.Success("ok");
+            return Result.Ok("ok");
         });
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
@@ -65,9 +65,9 @@ public class CheckIfTests_ValueTask_Left
     [Fact]
     public async Task CheckIfAsync_ValueTask_Left_Predicate_True_CheckPasses()
     {
-        var resultTask = new ValueTask<Result<int>>(Result.Success(42));
+        var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(v => v > 0, v => Result.Success("ok"));
+        var sut = await resultTask.CheckIfAsync(v => v > 0, v => Result.Ok("ok"));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
     }
@@ -76,12 +76,12 @@ public class CheckIfTests_ValueTask_Left
     public async Task CheckIfAsync_ValueTask_Left_Predicate_False_SkipsCheck()
     {
         var checkInvoked = false;
-        var resultTask = new ValueTask<Result<int>>(Result.Success(42));
+        var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
         var sut = await resultTask.CheckIfAsync(v => v < 0, v =>
         {
             checkInvoked = true;
-            return Result.Success("ok");
+            return Result.Ok("ok");
         });
 
         sut.Should().BeSuccess().Which.Should().Be(42);

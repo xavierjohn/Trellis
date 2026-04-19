@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -17,8 +17,8 @@ public class TapBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successResult = Result.Success(42);
-        _failureResult = Result.Failure<int>(Error.Validation("Test error"));
+        _successResult = Result.Ok(42);
+        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
         _sideEffectCounter = 0;
     }
 
@@ -113,9 +113,9 @@ public class TapBenchmarks
     {
         return _successResult
             .Tap(x => _sideEffectCounter++)
-            .Bind(x => Result.Success(x * 2))
+            .Bind(x => Result.Ok(x * 2))
             .Tap(x => _sideEffectCounter += x)
-            .Bind(x => Result.Success(x + 10));
+            .Bind(x => Result.Ok(x + 10));
     }
 
     private void LogValue(int value)

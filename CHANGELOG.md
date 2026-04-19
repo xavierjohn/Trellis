@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to the Trellis project will be documented in this file.
 
@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Trellis.Testing — Package Restructure
 
-- **Removed `ResultBuilder`** — Use `Result.Success(value)` and `Result.Failure<T>(Error.XYZ(...))` directly. `ResultBuilder` was a thin wrapper that added no value over the existing API.
+- **Removed `ResultBuilder`** — Use `Result.Ok(value)` and `Result.Fail<T>(Error.XYZ(...))` directly. `ResultBuilder` was a thin wrapper that added no value over the existing API.
 - **Removed `ValidationErrorBuilder`** — Use `Error.Validation(detail, fieldName).And(fieldName, detail)` directly.
 - **Removed `Trellis.Testing.Builders` namespace** — All builder types have been removed.
 - **Removed `Trellis.Testing.Fakes` namespace** — `FakeRepository`, `FakeSharedResourceLoader`, `TestActorProvider`, and `TestActorScope` now live in the `Trellis.Testing` namespace. Replace `using Trellis.Testing.Fakes;` with `using Trellis.Testing;`.

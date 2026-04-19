@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,7 +87,7 @@ public class AddResourceLoadersTests
     public sealed class TestLoader : IResourceLoader<TestMessage, TestEntity>
     {
         public Task<Result<TestEntity>> LoadAsync(TestMessage message, CancellationToken cancellationToken)
-            => Task.FromResult(Result.Success(new TestEntity(message.Id)));
+            => Task.FromResult(Result.Ok(new TestEntity(message.Id)));
     }
 
     public abstract class AbstractLoader : IResourceLoader<TestMessage, TestEntity>
@@ -180,15 +180,15 @@ public class AddResourceAuthorizationTests
     {
         public IResult Authorize(Actor actor, TestAuthResource resource) =>
             actor.Id == resource.OwnerId
-                ? Result.Success()
-                : Result.Failure(Error.Forbidden("Not the owner"));
+                ? Result.Ok()
+                : Result.Fail(Error.Forbidden("Not the owner"));
     }
 
     private sealed class TestAuthResourceLoader(TestAuthResource resource)
         : IResourceLoader<TestAuthCommand, TestAuthResource>
     {
         public Task<Result<TestAuthResource>> LoadAsync(TestAuthCommand message, CancellationToken cancellationToken)
-            => Task.FromResult(Result.Success(resource));
+            => Task.FromResult(Result.Ok(resource));
     }
 
     #endregion
@@ -319,8 +319,8 @@ public class AddResourceAuthorizationScanTests
     {
         public IResult Authorize(Actor actor, ScanTestResource resource) =>
             actor.Id == resource.OwnerId
-                ? Result.Success()
-                : Result.Failure(Error.Forbidden("Not the owner"));
+                ? Result.Ok()
+                : Result.Fail(Error.Forbidden("Not the owner"));
     }
 
     public sealed record ScanTestQuery(string ResourceId)
@@ -328,21 +328,21 @@ public class AddResourceAuthorizationScanTests
     {
         public IResult Authorize(Actor actor, ScanTestResource resource) =>
             actor.Id == resource.OwnerId
-                ? Result.Success()
-                : Result.Failure(Error.Forbidden("Not the owner"));
+                ? Result.Ok()
+                : Result.Fail(Error.Forbidden("Not the owner"));
     }
 
     public abstract record AbstractScanCommand(string ResourceId)
         : ICommand<Result<string>>, IAuthorizeResource<ScanTestResource>
     {
         public IResult Authorize(Actor actor, ScanTestResource resource) =>
-            Result.Success();
+            Result.Ok();
     }
 
     public sealed class ScanTestLoader : IResourceLoader<ScanTestCommand, ScanTestResource>
     {
         public Task<Result<ScanTestResource>> LoadAsync(ScanTestCommand message, CancellationToken cancellationToken)
-            => Task.FromResult(Result.Success(new ScanTestResource(message.ResourceId, "owner-1")));
+            => Task.FromResult(Result.Ok(new ScanTestResource(message.ResourceId, "owner-1")));
     }
 
     #endregion

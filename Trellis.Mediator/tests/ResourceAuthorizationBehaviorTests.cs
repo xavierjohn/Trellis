@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
@@ -20,7 +20,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehavior<ResourceOwnerCommand>("owner-1", resource);
         var command = new ResourceOwnerCommand("res-1");
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -40,7 +40,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehavior<ResourceOwnerCommand>("other-user", resource);
         var command = new ResourceOwnerCommand("res-1");
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -60,7 +60,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehavior<ResourceOwnerCommand>("owner-1", resource: null);
         var command = new ResourceOwnerCommand("nonexistent");
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -79,7 +79,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehavior<TrackingAuthCommand>("owner-1", resource: null);
         var command = new TrackingAuthCommand("nonexistent");
         var (next, _) = NextDelegate.TrackingAsync<TrackingAuthCommand, Result<string>>(
-            Result.Success("done"));
+            Result.Ok("done"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -98,7 +98,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehavior<FullAuthResourceCommand>("admin-user", resource, "Resources.WriteAny");
         var command = new FullAuthResourceCommand("res-1");
         var (next, tracker) = NextDelegate.TrackingAsync<FullAuthResourceCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -117,7 +117,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehavior<FullAuthResourceCommand>("other-user", resource);
         var command = new FullAuthResourceCommand("res-1");
         var (next, tracker) = NextDelegate.TrackingAsync<FullAuthResourceCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -137,7 +137,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehavior<ResourceOwnerCommand>("owner-1", resource: null, notFoundError: notFoundError);
         var command = new ResourceOwnerCommand("xyz");
         var (next, _) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -158,7 +158,7 @@ public class ResourceAuthorizationBehaviorTests
         var behavior = CreateBehaviorWithLoader<ResourceOwnerCommand>("owner-1", loader);
         var command = new ResourceOwnerCommand("res-1");
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         await behavior.Handle(command, next, cts.Token);
 
@@ -176,7 +176,7 @@ public class ResourceAuthorizationBehaviorTests
             serviceProvider);
         var command = new ResourceOwnerCommand("res-1");
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var act = async () => await behavior.Handle(command, next, CancellationToken.None);
 
@@ -196,7 +196,7 @@ public class ResourceAuthorizationBehaviorTests
             services.BuildServiceProvider());
         var command = new ResourceOwnerCommand("res-1");
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var act = async () => await behavior.Handle(command, next, CancellationToken.None);
 
@@ -224,7 +224,7 @@ public class ResourceAuthorizationBehaviorTests
             capturingProvider, sp);
         var command = new ResourceOwnerCommand("res-1");
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         await behavior.Handle(command, next, cts.Token);
 
@@ -285,7 +285,7 @@ public class ResourceAuthorizationBehaviorTests
         public IResult Authorize(Actor actor, TestResource resource)
         {
             AuthorizeWasCalled = true;
-            return Result.Success();
+            return Result.Ok();
         }
     }
 
@@ -326,8 +326,8 @@ public class ResourceAuthorizationBehaviorTests
         {
             LastCancellationToken = cancellationToken;
             return _resource is not null
-                ? Task.FromResult(Result.Success(_resource))
-                : Task.FromResult(Result.Failure<TestResource>(_notFoundError));
+                ? Task.FromResult(Result.Ok(_resource))
+                : Task.FromResult(Result.Fail<TestResource>(_notFoundError));
         }
     }
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests;
+namespace Trellis.Results.Tests;
 
 public class MatchTests
 {
@@ -8,7 +8,7 @@ public class MatchTests
     public void Match_WithSuccess_CallsOnSuccess()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var output = result.Match(
@@ -24,7 +24,7 @@ public class MatchTests
     public void Match_WithFailure_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         var output = result.Match(
@@ -40,7 +40,7 @@ public class MatchTests
     public void Match_WithSuccess_ReturnsTransformedValue()
     {
         // Arrange
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         // Act
         var output = result.Match(
@@ -56,7 +56,7 @@ public class MatchTests
     public void Match_WithFailure_ReturnsDefaultValue()
     {
         // Arrange
-        var result = Result.Failure<string>(Error.Validation("Invalid"));
+        var result = Result.Fail<string>(Error.Validation("Invalid"));
 
         // Act
         var output = result.Match(
@@ -76,7 +76,7 @@ public class MatchTests
     public void Switch_WithSuccess_CallsOnSuccess()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
         var output = "";
 
         // Act
@@ -93,7 +93,7 @@ public class MatchTests
     public void Switch_WithFailure_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
         var output = "";
 
         // Act
@@ -114,7 +114,7 @@ public class MatchTests
     public async Task MatchAsync_WithTaskResult_Success_CallsOnSuccess()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -130,7 +130,7 @@ public class MatchTests
     public async Task MatchAsync_WithTaskResult_Failure_CallsOnFailure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -146,7 +146,7 @@ public class MatchTests
     public async Task MatchAsync_WithAsyncHandlers_Success_CallsOnSuccess()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         Func<int, Task<string>> onSuccess = async value =>
@@ -169,7 +169,7 @@ public class MatchTests
     public async Task MatchAsync_WithAsyncHandlers_Failure_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         Func<int, Task<string>> onSuccess = async value =>
@@ -192,7 +192,7 @@ public class MatchTests
     public async Task MatchAsync_WithCancellationToken_Success_CallsOnSuccess()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
         using var cts = new CancellationTokenSource();
 
         // Act
@@ -218,7 +218,7 @@ public class MatchTests
     public async Task MatchAsync_WithCancellationToken_Failure_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
         using var cts = new CancellationTokenSource();
 
         // Act
@@ -244,7 +244,7 @@ public class MatchTests
     public async Task MatchAsync_TaskWithAsyncHandlersAndCancellationToken_Success()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
         using var cts = new CancellationTokenSource();
 
         // Act
@@ -270,7 +270,7 @@ public class MatchTests
     public async Task MatchAsync_TaskWithAsyncHandlers_Success()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         // Act
         var output = await resultTask.MatchAsync(
@@ -298,7 +298,7 @@ public class MatchTests
     public async Task SwitchAsync_WithCancellationToken_Success_CallsOnSuccess()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
         var output = "";
         using var cts = new CancellationTokenSource();
 
@@ -325,7 +325,7 @@ public class MatchTests
     public async Task SwitchAsync_WithCancellationToken_Failure_CallsOnFailure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
         var output = "";
         using var cts = new CancellationTokenSource();
 
@@ -352,7 +352,7 @@ public class MatchTests
     public async Task SwitchAsync_WithAsyncHandlers_Success_CallsOnSuccess()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
         var output = "";
 
         // Act
@@ -377,7 +377,7 @@ public class MatchTests
     public async Task SwitchAsync_WithAsyncHandlers_Failure_CallsOnFailure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
         var output = "";
 
         // Act

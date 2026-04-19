@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -12,7 +12,7 @@ public class EnsureAllTests
     [Fact]
     public void EnsureAll_WithNullChecks_ShouldThrowArgumentNullException()
     {
-        var sut = Result.Success("Hello");
+        var sut = Result.Ok("Hello");
 
         var act = () => sut.EnsureAll(null!);
 
@@ -24,7 +24,7 @@ public class EnsureAllTests
     public void EnsureAll_WhenResultIsFailure_ShouldReturnOriginalFailure()
     {
         var error = Error.Unexpected("original error");
-        var sut = Result.Failure<string>(error);
+        var sut = Result.Fail<string>(error);
         var predicateInvoked = false;
 
         var result = sut.EnsureAll(
@@ -37,7 +37,7 @@ public class EnsureAllTests
     [Fact]
     public void EnsureAll_WhenAllPredicatesPass_ShouldReturnOriginalSuccess()
     {
-        var sut = Result.Success("Hello");
+        var sut = Result.Ok("Hello");
 
         var result = sut.EnsureAll(
             (v => v.Length > 0, Error.Validation("Name required", "name")),
@@ -49,7 +49,7 @@ public class EnsureAllTests
     [Fact]
     public void EnsureAll_WhenOnePredicateFails_ShouldReturnFailureWithThatError()
     {
-        var sut = Result.Success("");
+        var sut = Result.Ok("");
 
         var result = sut.EnsureAll(
             (v => v.Length > 0, Error.Validation("Name required", "name")),
@@ -62,7 +62,7 @@ public class EnsureAllTests
     [Fact]
     public void EnsureAll_WhenMultiplePredicatesFail_ShouldAccumulateAllErrors()
     {
-        var sut = Result.Success("");
+        var sut = Result.Ok("");
 
         var result = sut.EnsureAll(
             (v => v.Length > 0, Error.Validation("Name required", "name")),
@@ -77,7 +77,7 @@ public class EnsureAllTests
     [Fact]
     public void EnsureAll_WithMixedErrorTypes_ShouldCreateAggregateError()
     {
-        var sut = Result.Success("test");
+        var sut = Result.Ok("test");
 
         var result = sut.EnsureAll(
             (_ => false, Error.Unexpected("unexpected")),
@@ -90,7 +90,7 @@ public class EnsureAllTests
     [Fact]
     public void EnsureAll_WithEmptyChecks_ShouldReturnOriginalSuccess()
     {
-        var sut = Result.Success("Hello");
+        var sut = Result.Ok("Hello");
 
         var result = sut.EnsureAll();
 
@@ -104,7 +104,7 @@ public class EnsureAllTests
     [Fact]
     public async Task EnsureAllAsync_Task_WhenAllPredicatesPass_ShouldReturnSuccess()
     {
-        var sut = Task.FromResult(Result.Success("Hello"));
+        var sut = Task.FromResult(Result.Ok("Hello"));
 
         var result = await sut.EnsureAllAsync(
             (v => v.Length > 0, Error.Validation("required", "name")));
@@ -115,7 +115,7 @@ public class EnsureAllTests
     [Fact]
     public async Task EnsureAllAsync_Task_WhenMultipleFail_ShouldAccumulate()
     {
-        var sut = Task.FromResult(Result.Success(""));
+        var sut = Task.FromResult(Result.Ok(""));
 
         var result = await sut.EnsureAllAsync(
             (v => v.Length > 0, Error.Validation("Name required", "name")),
@@ -143,7 +143,7 @@ public class EnsureAllTests
     [Fact]
     public async Task EnsureAllAsync_ValueTask_WhenAllPredicatesPass_ShouldReturnSuccess()
     {
-        var sut = new ValueTask<Result<string>>(Result.Success("Hello"));
+        var sut = new ValueTask<Result<string>>(Result.Ok("Hello"));
 
         var result = await sut.EnsureAllAsync(
             (v => v.Length > 0, Error.Validation("required", "name")));
@@ -154,7 +154,7 @@ public class EnsureAllTests
     [Fact]
     public async Task EnsureAllAsync_ValueTask_WhenMultipleFail_ShouldAccumulate()
     {
-        var sut = new ValueTask<Result<string>>(Result.Success(""));
+        var sut = new ValueTask<Result<string>>(Result.Ok(""));
 
         var result = await sut.EnsureAllAsync(
             (v => v.Length > 0, Error.Validation("Name required", "name")),

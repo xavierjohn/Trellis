@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -166,9 +166,9 @@ public static class MaybeInvariant
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Requires));
 
         if (source.HasNoValue || required.HasValue)
-            return Result.Success();
+            return Result.Ok();
 
-        return Result.Failure<Unit>(
+        return Result.Fail<Unit>(
             ValidationError.For(
                 requiredFieldName,
                 $"'{requiredFieldName}' is required when '{sourceFieldName}' is provided.",
@@ -383,7 +383,7 @@ public static class MaybeInvariant
         }
 
         if (presentCount == 0 || presentCount == fields.Length)
-            return Result.Success();
+            return Result.Ok();
 
         // Some present, some absent — report the missing fields as required.
         ValidationError? error = null;
@@ -398,7 +398,7 @@ public static class MaybeInvariant
             }
         }
 
-        return Result.Failure<Unit>(error!);
+        return Result.Fail<Unit>(error!);
     }
 
     private static Result<Unit> MutuallyExclusiveCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
@@ -413,7 +413,7 @@ public static class MaybeInvariant
         }
 
         if (presentCount <= 1)
-            return Result.Success();
+            return Result.Ok();
 
         // Multiple present — report all present fields
         ValidationError? error = null;
@@ -428,7 +428,7 @@ public static class MaybeInvariant
             }
         }
 
-        return Result.Failure<Unit>(error!);
+        return Result.Fail<Unit>(error!);
     }
 
     private static Result<Unit> ExactlyOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
@@ -443,7 +443,7 @@ public static class MaybeInvariant
         }
 
         if (presentCount == 1)
-            return Result.Success();
+            return Result.Ok();
 
         // Build error listing relevant fields
         ValidationError? error = null;
@@ -471,7 +471,7 @@ public static class MaybeInvariant
             }
         }
 
-        return Result.Failure<Unit>(error!);
+        return Result.Fail<Unit>(error!);
     }
 
     private static Result<Unit> AtLeastOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
@@ -481,7 +481,7 @@ public static class MaybeInvariant
         for (int i = 0; i < fields.Length; i++)
         {
             if (fields[i].hasValue)
-                return Result.Success();
+                return Result.Ok();
         }
 
         // None present — report all fields
@@ -494,7 +494,7 @@ public static class MaybeInvariant
                 : error.And(fields[i].fieldName, message);
         }
 
-        return Result.Failure<Unit>(error!);
+        return Result.Fail<Unit>(error!);
     }
 
     #endregion

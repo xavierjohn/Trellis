@@ -1,4 +1,4 @@
-﻿namespace Trellis.Http;
+namespace Trellis.Http;
 
 using System;
 using System.Net;
@@ -48,9 +48,9 @@ public static partial class HttpResponseExtensions
         NotFoundError notFoundError)
     {
         if (response.StatusCode == HttpStatusCode.NotFound)
-            return Result.Failure<HttpResponseMessage>(notFoundError);
+            return Result.Fail<HttpResponseMessage>(notFoundError);
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -78,9 +78,9 @@ public static partial class HttpResponseExtensions
         UnauthorizedError unauthorizedError)
     {
         if (response.StatusCode == HttpStatusCode.Unauthorized)
-            return Result.Failure<HttpResponseMessage>(unauthorizedError);
+            return Result.Fail<HttpResponseMessage>(unauthorizedError);
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -108,9 +108,9 @@ public static partial class HttpResponseExtensions
         ForbiddenError forbiddenError)
     {
         if (response.StatusCode == HttpStatusCode.Forbidden)
-            return Result.Failure<HttpResponseMessage>(forbiddenError);
+            return Result.Fail<HttpResponseMessage>(forbiddenError);
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -138,9 +138,9 @@ public static partial class HttpResponseExtensions
         ConflictError conflictError)
     {
         if (response.StatusCode == HttpStatusCode.Conflict)
-            return Result.Failure<HttpResponseMessage>(conflictError);
+            return Result.Fail<HttpResponseMessage>(conflictError);
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -181,9 +181,9 @@ public static partial class HttpResponseExtensions
     {
         var statusCode = (int)response.StatusCode;
         if (statusCode is >= 400 and < 500)
-            return Result.Failure<HttpResponseMessage>(errorFactory(response.StatusCode));
+            return Result.Fail<HttpResponseMessage>(errorFactory(response.StatusCode));
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -224,9 +224,9 @@ public static partial class HttpResponseExtensions
     {
         var statusCode = (int)response.StatusCode;
         if (statusCode is >= 500 and < 600)
-            return Result.Failure<HttpResponseMessage>(errorFactory(response.StatusCode));
+            return Result.Fail<HttpResponseMessage>(errorFactory(response.StatusCode));
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -270,10 +270,10 @@ public static partial class HttpResponseExtensions
         {
             var error = errorFactory?.Invoke(response.StatusCode)
                 ?? Error.Unexpected($"HTTP request failed with status code {response.StatusCode}.");
-            return Result.Failure<HttpResponseMessage>(error);
+            return Result.Fail<HttpResponseMessage>(error);
         }
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -309,10 +309,10 @@ public static partial class HttpResponseExtensions
         if (!response.IsSuccessStatusCode)
         {
             var error = await callbackFailedStatusCode(response, context, cancellationToken).ConfigureAwait(false);
-            return Result.Failure<HttpResponseMessage>(error);
+            return Result.Fail<HttpResponseMessage>(error);
         }
 
-        return Result.Success(response);
+        return Result.Ok(response);
     }
 
     /// <summary>
@@ -353,10 +353,10 @@ public static partial class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
         if (response.IsSuccessStatusCode == false)
-            return Result.Failure<TValue>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
+            return Result.Fail<TValue>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
 
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
-            return Result.Failure<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."));
+            return Result.Fail<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."));
 
         TValue? value;
         try
@@ -365,12 +365,12 @@ public static partial class HttpResponseExtensions
         }
         catch (JsonException ex)
         {
-            return Result.Failure<TValue>(Error.Unexpected($"Failed to deserialize HTTP response to {typeof(TValue).Name}: {ex.Message}"));
+            return Result.Fail<TValue>(Error.Unexpected($"Failed to deserialize HTTP response to {typeof(TValue).Name}: {ex.Message}"));
         }
 
         return value is null
-            ? Result.Failure<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."))
-            : Result.Success(value);
+            ? Result.Fail<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."))
+            : Result.Ok(value);
     }
 
     /// <summary>
@@ -449,21 +449,21 @@ public static partial class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
         if (response.IsSuccessStatusCode == false)
-            return Result.Failure<Maybe<TValue>>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
+            return Result.Fail<Maybe<TValue>>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
 
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
-            return Result.Success(Maybe<TValue>.None);
+            return Result.Ok(Maybe<TValue>.None);
 
         if (response.Content is null)
-            return Result.Success(Maybe<TValue>.None);
+            return Result.Ok(Maybe<TValue>.None);
 
         var contentBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         if (contentBytes.Length == 0)
-            return Result.Success(Maybe<TValue>.None);
+            return Result.Ok(Maybe<TValue>.None);
 
         var value = JsonSerializer.Deserialize(contentBytes, jsonTypeInfo);
 
-        return Result.Success(value is null ? Maybe<TValue>.None : Maybe.From(value));
+        return Result.Ok(value is null ? Maybe<TValue>.None : Maybe.From(value));
     }
 
     /// <summary>

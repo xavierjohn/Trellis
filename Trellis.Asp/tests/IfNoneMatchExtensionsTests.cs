@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Trellis.Testing;
 
@@ -10,7 +10,7 @@ public class IfNoneMatchExtensionsTests
     [Fact]
     public void EnforceIfNoneMatchPrecondition_NullETags_ReturnsOriginalResult()
     {
-        var result = Result.Success("value");
+        var result = Result.Ok("value");
 
         var actual = result.EnforceIfNoneMatchPrecondition(null);
 
@@ -21,7 +21,7 @@ public class IfNoneMatchExtensionsTests
     [Fact]
     public void EnforceIfNoneMatchPrecondition_WildcardOnSuccess_ReturnsPreconditionFailed()
     {
-        var result = Result.Success("value");
+        var result = Result.Ok("value");
 
         var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
 
@@ -31,7 +31,7 @@ public class IfNoneMatchExtensionsTests
     [Fact]
     public void EnforceIfNoneMatchPrecondition_WildcardOnFailure_PreservesOriginalError()
     {
-        var result = Result.Failure<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(Error.NotFound("not found"));
 
         var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
 
@@ -41,7 +41,7 @@ public class IfNoneMatchExtensionsTests
     [Fact]
     public void EnforceIfNoneMatchPrecondition_NonWildcardTags_ReturnsOriginalResult()
     {
-        var result = Result.Success("value");
+        var result = Result.Ok("value");
 
         var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Strong("abc123"), EntityTagValue.Strong("def456")]);
 
@@ -52,7 +52,7 @@ public class IfNoneMatchExtensionsTests
     [Fact]
     public void EnforceIfNoneMatchPrecondition_EmptyArray_ReturnsOriginalResult()
     {
-        var result = Result.Success("value");
+        var result = Result.Ok("value");
 
         var actual = result.EnforceIfNoneMatchPrecondition([]);
 
@@ -63,7 +63,7 @@ public class IfNoneMatchExtensionsTests
     [Fact]
     public async Task EnforceIfNoneMatchPreconditionAsync_Task_WildcardOnSuccess_ReturnsPreconditionFailed()
     {
-        var resultTask = Task.FromResult(Result.Success("value"));
+        var resultTask = Task.FromResult(Result.Ok("value"));
 
         var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync([EntityTagValue.Wildcard()]);
 
@@ -73,7 +73,7 @@ public class IfNoneMatchExtensionsTests
     [Fact]
     public async Task EnforceIfNoneMatchPreconditionAsync_ValueTask_WildcardOnSuccess_ReturnsPreconditionFailed()
     {
-        var resultTask = new ValueTask<Result<string>>(Result.Success("value"));
+        var resultTask = new ValueTask<Result<string>>(Result.Ok("value"));
 
         var actual = await resultTask.EnforceIfNoneMatchPreconditionAsync([EntityTagValue.Wildcard()]);
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -34,10 +34,10 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(CountryCode) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("countryCode");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<CountryCode>(Error.Validation("Country code is required.", field));
+            return Result.Fail<CountryCode>(Error.Validation("Country code is required.", field));
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsLetter))
-            return Result.Failure<CountryCode>(Error.Validation("Country code must be an ISO 3166-1 alpha-2 code.", field));
+            return Result.Fail<CountryCode>(Error.Validation("Country code must be an ISO 3166-1 alpha-2 code.", field));
         return new CountryCode(code.ToUpperInvariant());
     }
 

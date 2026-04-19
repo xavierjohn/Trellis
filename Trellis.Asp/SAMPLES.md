@@ -100,7 +100,7 @@ public class UsersController : ControllerBase
             .ToResult(Error.NotFound($"User {id} not found"))
             .Ensure(user => user.CanDelete, Error.Conflict("User has active orders"))
             .Tap(user => _repository.Delete(user))
-            .Map(_ => Result.Success())
+            .Map(_ => Result.Ok())
             .ToActionResult(this);
 }
 ```
@@ -163,7 +163,7 @@ public class OrdersController : ControllerBase
             .TapAsync(order => _inventoryService.ReleaseAsync(order.Items, ct))
             .TapAsync(order => _paymentService.RefundAsync(order, ct))
             .TapAsync(order => _orderService.DeleteAsync(order, ct))
-            .Map(_ => Result.Success())
+            .Map(_ => Result.Ok())
             .ToActionResultAsync(this);
 
     private async Task<Result<CreateOrderRequest>> ValidateOrderAsync(
@@ -278,7 +278,7 @@ public class JobsController : ControllerBase
         _jobService.GetById(id)
             .ToResult(Error.NotFound($"Job {id} not found"))
             .Bind(job => job.Cancel())
-            .Map(_ => Result.Success())
+            .Map(_ => Result.Ok())
             .ToActionResult(this);
 
     // Custom error codes
@@ -442,7 +442,7 @@ userApi.MapDelete("/{id}", (
         .ToResult(Error.NotFound($"User {id} not found"))
         .Ensure(user => user.CanDelete, Error.Conflict("User has active orders"))
         .Tap(user => repository.Delete(user))
-        .Map(_ => Result.Success())
+        .Map(_ => Result.Ok())
         .ToHttpResult());
 
 app.Run();
@@ -501,7 +501,7 @@ orderApi.MapDelete("/{id}", async (
         .TapAsync(order => inventoryService.ReleaseAsync(order.Items, ct))
         .TapAsync(order => paymentService.RefundAsync(order, ct))
         .TapAsync(order => orderService.DeleteAsync(order, ct))
-        .Map(_ => Result.Success())
+        .Map(_ => Result.Ok())
         .ToHttpResultAsync());
 ```
 
@@ -539,7 +539,7 @@ productApi.MapDelete("/{id}", (
     string id,
     IProductRepository repository) =>
     repository.Delete(id)
-        .Map(_ => Result.Success())
+        .Map(_ => Result.Ok())
         .Finally(
             _ => Results.NoContent(),
             err => err.ToErrorResult()));
@@ -781,7 +781,7 @@ public ActionResult<Unit> DeleteUser(string id) =>
             user => !user.HasPendingPayments,
             Error.Conflict("Cannot delete user with pending payments"))
         .Tap(user => _userRepository.Delete(user))
-        .Map(_ => Result.Success())
+        .Map(_ => Result.Ok())
         .ToActionResult(this);
 ```
 
@@ -897,7 +897,7 @@ public class UserRepository : IUserRepository
         {
             _context.Users.Add(user);
             await _context.SaveChangesAsync(ct);
-            return Result.Success();
+            return Result.Ok();
         }
         catch (DbUpdateException ex)
         {
@@ -921,7 +921,7 @@ public class UnitOfWork : IUnitOfWork
         try
         {
             await _context.SaveChangesAsync(ct);
-            return Result.Success();
+            return Result.Ok();
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -989,7 +989,7 @@ public async Task<ActionResult<Unit>> ActivateUsersAsync(
                 .BindAsync(user => user.ActivateAsync(cancellationToken))
                 .TapAsync(user => _repository.UpdateAsync(user, cancellationToken)),
         ct)
-    .Map(_ => Result.Success())
+    .Map(_ => Result.Ok())
     .ToActionResultAsync(this);
 ```
 

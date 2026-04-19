@@ -1,4 +1,4 @@
-﻿namespace SampleMinimalApi.API;
+namespace SampleMinimalApi.API;
 
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
@@ -132,7 +132,7 @@ public static class NewOrderRoutes
                     notificationService.SendOrderCancellationAsync(order.Id, order.CustomerId, ct))
                 .RecoverOnFailureAsync(
                     error => error.Code == "unexpected.error",
-                    _ => Result.Failure<Order>(
+                    _ => Result.Fail<Order>(
                         Error.Unexpected("Cancellation failed. Please try again.")));
 
             return result.ToHttpResult(httpContext, o => RepresentationMetadata.WithStrongETag(o.ETag), OrderResponse.From);

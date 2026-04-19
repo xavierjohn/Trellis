@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -9,8 +9,8 @@ using Trellis.Testing;
 /// Verifies that Combine methods create proper OpenTelemetry activities with correct status codes.
 /// 
 /// Note: The Result constructor automatically sets Activity.Current status based on success/failure.
-/// When Combine returns Result.Failure(), the activity status is set to Error.
-/// When Combine returns Result.Success(), the activity status is set to Ok.
+/// When Combine returns Result.Fail(), the activity status is set to Error.
+/// When Combine returns Result.Ok(), the activity status is set to Ok.
 /// This ensures proper visual representation in observability tools like .NET Aspire.
 /// </summary>
 public class CombineTracingTests : TestBase
@@ -24,8 +24,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"));
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"));
 
         // Assert
         result.Should().BeSuccess();
@@ -39,8 +39,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<string>(Error.Validation("Bad first"))
-            .Combine(Result.Success("Second"));
+        var result = Result.Fail<string>(Error.Validation("Bad first"))
+            .Combine(Result.Ok("Second"));
 
         // Assert
         result.Should().BeFailure();
@@ -60,8 +60,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Failure<string>(Error.Validation("Bad second")));
+        var result = Result.Ok("First")
+            .Combine(Result.Fail<string>(Error.Validation("Bad second")));
 
         // Assert
         result.Should().BeFailure();
@@ -75,8 +75,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<string>(Error.Validation("Bad first"))
-            .Combine(Result.Failure<string>(Error.Validation("Bad second")));
+        var result = Result.Fail<string>(Error.Validation("Bad first"))
+            .Combine(Result.Fail<string>(Error.Validation("Bad second")));
 
         // Assert
         result.Should().BeFailure();
@@ -95,8 +95,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("Value")
-            .Combine(Result.Success());
+        var result = Result.Ok("Value")
+            .Combine(Result.Ok());
 
         // Assert
         result.Should().BeSuccess();
@@ -110,8 +110,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("Value")
-            .Combine(Result.Failure(Error.Validation("Unit validation failed")));
+        var result = Result.Ok("Value")
+            .Combine(Result.Fail(Error.Validation("Unit validation failed")));
 
         // Assert
         result.Should().BeFailure();
@@ -132,9 +132,9 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"))
-            .Combine(Result.Success("Third"));
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"))
+            .Combine(Result.Ok("Third"));
 
         // Assert
         result.Should().BeSuccess();
@@ -151,9 +151,9 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Failure<string>(Error.Validation("Bad second")))
-            .Combine(Result.Success("Third"));
+        var result = Result.Ok("First")
+            .Combine(Result.Fail<string>(Error.Validation("Bad second")))
+            .Combine(Result.Ok("Third"));
 
         // Assert
         result.Should().BeFailure();
@@ -171,9 +171,9 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"))
-            .Combine(Result.Failure<string>(Error.Validation("Bad third")));
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"))
+            .Combine(Result.Fail<string>(Error.Validation("Bad third")));
 
         // Assert
         result.Should().BeFailure();
@@ -195,9 +195,9 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"))
-            .Combine(Result.Success()); // Unit validation
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"))
+            .Combine(Result.Ok()); // Unit validation
 
         // Assert
         result.Should().BeSuccess();
@@ -219,10 +219,10 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"))
-            .Combine(Result.Success("Third"))
-            .Combine(Result.Success("Fourth"));
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"))
+            .Combine(Result.Ok("Third"))
+            .Combine(Result.Ok("Fourth"));
 
         // Assert
         result.Should().BeSuccess();
@@ -239,10 +239,10 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"))
-            .Combine(Result.Success("Third"))
-            .Bind((a, b, c) => Result.Success($"{a} {b} {c}"));
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"))
+            .Combine(Result.Ok("Third"))
+            .Bind((a, b, c) => Result.Ok($"{a} {b} {c}"));
 
         // Assert
         result.Should().BeSuccess();
@@ -263,9 +263,9 @@ public class CombineTracingTests : TestBase
         var tapExecuted = false;
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Failure<string>(Error.Validation("Bad second")))
-            .Combine(Result.Success("Third"))
+        var result = Result.Ok("First")
+            .Combine(Result.Fail<string>(Error.Validation("Bad second")))
+            .Combine(Result.Ok("Third"))
             .TapOnFailure(() => tapExecuted = true);
 
         // Assert
@@ -291,8 +291,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Task.FromResult(Result.Success("First"))
-            .CombineAsync(Result.Success("Second"));
+        var result = await Task.FromResult(Result.Ok("First"))
+            .CombineAsync(Result.Ok("Second"));
 
         // Assert
         result.Should().BeSuccess();
@@ -306,8 +306,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad first")))
-            .CombineAsync(Result.Success("Second"));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad first")))
+            .CombineAsync(Result.Ok("Second"));
 
         // Assert
         result.Should().BeFailure();
@@ -321,9 +321,9 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Task.FromResult(Result.Success("First"))
-            .CombineAsync(Result.Success("Second"))
-            .BindAsync((a, b) => Task.FromResult(Result.Success($"{a} {b}")));
+        var result = await Task.FromResult(Result.Ok("First"))
+            .CombineAsync(Result.Ok("Second"))
+            .BindAsync((a, b) => Task.FromResult(Result.Ok($"{a} {b}")));
 
         // Assert
         result.Should().BeSuccess();
@@ -338,8 +338,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await ValueTask.FromResult(Result.Success("First"))
-            .CombineAsync(ValueTask.FromResult(Result.Success("Second")));
+        var result = await ValueTask.FromResult(Result.Ok("First"))
+            .CombineAsync(ValueTask.FromResult(Result.Ok("Second")));
 
         // Assert
         result.Should().BeSuccess();
@@ -353,8 +353,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad first")))
-            .CombineAsync(ValueTask.FromResult(Result.Success("Second")));
+        var result = await ValueTask.FromResult(Result.Fail<string>(Error.Validation("Bad first")))
+            .CombineAsync(ValueTask.FromResult(Result.Ok("Second")));
 
         // Assert
         result.Should().BeFailure();
@@ -368,8 +368,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await ValueTask.FromResult(Result.Success("First"))
-            .CombineAsync(Result.Success());
+        var result = await ValueTask.FromResult(Result.Ok("First"))
+            .CombineAsync(Result.Ok());
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be("First");
@@ -387,11 +387,11 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act - Simulate real-world validation scenario
-        var result = Result.Success("user@example.com")
-            .Combine(Result.Success("John"))
-            .Combine(Result.Success("Doe"))
+        var result = Result.Ok("user@example.com")
+            .Combine(Result.Ok("John"))
+            .Combine(Result.Ok("Doe"))
             .Bind((email, firstName, lastName) =>
-                Result.Success($"{firstName} {lastName} <{email}>"));
+                Result.Ok($"{firstName} {lastName} <{email}>"));
 
         // Assert
         result.Should().BeSuccess()
@@ -412,9 +412,9 @@ public class CombineTracingTests : TestBase
         var errorLogged = false;
 
         // Act - Multiple validations fail
-        var result = Result.Failure<string>(Error.Validation("Invalid email", "email"))
-            .Combine(Result.Failure<string>(Error.Validation("Invalid first name", "firstName")))
-            .Combine(Result.Success("Doe"))
+        var result = Result.Fail<string>(Error.Validation("Invalid email", "email"))
+            .Combine(Result.Fail<string>(Error.Validation("Invalid first name", "firstName")))
+            .Combine(Result.Ok("Doe"))
             .TapOnFailure(error => errorLogged = true);
 
         // Assert
@@ -439,9 +439,9 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<string>(Error.Validation("Validation error"))
-            .Combine(Result.Failure<string>(Error.NotFound("Not found")))
-            .Combine(Result.Success("Third"));
+        var result = Result.Fail<string>(Error.Validation("Validation error"))
+            .Combine(Result.Fail<string>(Error.NotFound("Not found")))
+            .Combine(Result.Ok("Third"));
 
         // Assert
         result.Should().BeFailureOfType<AggregateError>();
@@ -461,12 +461,12 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act - Simulate combining many validations
-        var result = Result.Success("1")
-            .Combine(Result.Success("2"))
-            .Combine(Result.Success("3"))
-            .Combine(Result.Success("4"))
-            .Combine(Result.Success("5"))
-            .Combine(Result.Success("6"));
+        var result = Result.Ok("1")
+            .Combine(Result.Ok("2"))
+            .Combine(Result.Ok("3"))
+            .Combine(Result.Ok("4"))
+            .Combine(Result.Ok("5"))
+            .Combine(Result.Ok("6"));
 
         // Assert
         result.Should().BeSuccess();
@@ -487,8 +487,8 @@ public class CombineTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("First")
-            .Combine(Result.Success("Second"));
+        var result = Result.Ok("First")
+            .Combine(Result.Ok("Second"));
 
         // Assert
         var activity = activityTest.AssertActivityCaptured("Combine");

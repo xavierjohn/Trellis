@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Trellis.Testing;
 
@@ -11,7 +11,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var expected = Result.Success("done");
+        var expected = Result.Ok("done");
 
         // Act
         var result = await behavior.Handle(
@@ -32,7 +32,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var failure = Result.Failure<string>(Error.Domain("bad"));
+        var failure = Result.Fail<string>(Error.Domain("bad"));
 
         // Act
         var result = await behavior.Handle(
@@ -52,7 +52,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork { CommitResult = Error.Conflict("concurrency") };
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var handlerResult = Result.Success("staged");
+        var handlerResult = Result.Ok("staged");
 
         // Act
         var result = await behavior.Handle(
@@ -73,7 +73,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
         var behavior = new TransactionalCommandBehavior<FakeUnitCommand, Result<Unit>>(uow);
-        var expected = Result.Success(default(Unit));
+        var expected = Result.Ok(default(Unit));
 
         // Act
         var result = await behavior.Handle(
@@ -96,7 +96,7 @@ public class TransactionalCommandBehaviorTests
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
         {
             CommitCount++;
-            return Task.FromResult(CommitResult ?? Result.Success());
+            return Task.FromResult(CommitResult ?? Result.Ok());
         }
     }
 

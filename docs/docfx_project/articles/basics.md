@@ -67,7 +67,7 @@ public sealed record RegisterUserInput(string FirstName, string LastName, string
 public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
 {
     public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
-        Result.Success(new User(firstName, lastName, email));
+        Result.Ok(new User(firstName, lastName, email));
 }
 
 public static Result<User> RegisterUser(RegisterUserInput input, Func<CustomerEmail, bool> emailExists)
@@ -191,7 +191,7 @@ Use `Bind` when the next step already returns `Result<T>`.
 
 ```csharp
 public static Result<Person> CreatePerson(FirstName firstName, LastName lastName) =>
-    Result.Success(new Person(firstName, lastName));
+    Result.Ok(new Person(firstName, lastName));
 
 var result = FirstName.TryCreate("Jane")
     .Combine(LastName.TryCreate("Smith"))
@@ -246,7 +246,7 @@ Use `EnsureAll` when showing all rule violations is better than stopping at the 
 ```csharp
 public sealed record CheckoutRequest(string CouponCode, decimal Subtotal, string Currency);
 
-var result = Result.Success(new CheckoutRequest("SPRING25", 125m, "USD"))
+var result = Result.Ok(new CheckoutRequest("SPRING25", 125m, "USD"))
     .EnsureAll(
         (request => request.Subtotal > 0m, Error.Validation("Subtotal must be greater than zero.", "subtotal")),
         (request => request.Currency.Length == 3, Error.Validation("Currency must be a 3-letter code.", "currency")),
@@ -261,7 +261,7 @@ Use `RecoverOnFailure` when a failure should trigger another attempt.
 public sealed record CustomerProfile(string Source);
 
 Result<CustomerProfile> fromCache = Error.NotFound("Customer not found in cache.");
-Result<CustomerProfile> fromDatabase = Result.Success(new CustomerProfile("database"));
+Result<CustomerProfile> fromDatabase = Result.Ok(new CustomerProfile("database"));
 
 Result<CustomerProfile> result = fromCache.RecoverOnFailure(
     predicate: error => error is NotFoundError,
@@ -296,7 +296,7 @@ public sealed record RegisterUserInput(string FirstName, string LastName, string
 public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
 {
     public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
-        Result.Success(new User(firstName, lastName, email));
+        Result.Ok(new User(firstName, lastName, email));
 }
 
 public static Result<User> RegisterUser(
@@ -351,7 +351,7 @@ public static Task<Customer?> GetCustomerByIdAsync(long id) =>
     Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
 
 public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) =>
-    Task.FromResult(Result.Success(new Unit()));
+    Task.FromResult(Result.Ok(new Unit()));
 
 string message = await GetCustomerByIdAsync(1)
     .ToResultAsync(Error.NotFound("Customer not found."))
@@ -364,7 +364,7 @@ string message = await GetCustomerByIdAsync(1)
 ```
 
 > [!NOTE]
-> `Unit` has no `Value` property. When you need a successful `Result<Unit>`, use `Result.Success()` or create a `Unit` with `new Unit()` / `default`.
+> `Unit` has no `Value` property. When you need a successful `Result<Unit>`, use `Result.Ok()` or create a `Unit` with `new Unit()` / `default`.
 
 ### Parallel async work
 
@@ -376,13 +376,13 @@ using Trellis;
 public sealed record Dashboard(string Profile, string Orders, string Preferences);
 
 static Task<Result<string>> FetchUserProfileAsync(string userId) =>
-    Task.FromResult(Result.Success($"Profile for {userId}"));
+    Task.FromResult(Result.Ok($"Profile for {userId}"));
 
 static Task<Result<string>> FetchUserOrdersAsync(string userId) =>
-    Task.FromResult(Result.Success($"Orders for {userId}"));
+    Task.FromResult(Result.Ok($"Orders for {userId}"));
 
 static Task<Result<string>> FetchUserPreferencesAsync(string userId) =>
-    Task.FromResult(Result.Success($"Preferences for {userId}"));
+    Task.FromResult(Result.Ok($"Preferences for {userId}"));
 
 Result<Dashboard> dashboard = await Result.ParallelAsync(
         () => FetchUserProfileAsync("user-123"),
@@ -406,7 +406,7 @@ using Trellis;
 
 public sealed record Person(long Id, string Name);
 
-Result<Person> LoadPerson(long id) => Result.Success(new Person(id, "Jane"));
+Result<Person> LoadPerson(long id) => Result.Ok(new Person(id, "Jane"));
 ```
 
 Use **`Map`** when your function returns a plain value.

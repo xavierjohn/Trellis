@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -15,9 +15,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Bool_SuccessResult_ConditionTrue_CheckPasses_ReturnsOriginal()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
-        var sut = result.CheckIf(true, v => Result.Success("ok"));
+        var sut = result.CheckIf(true, v => Result.Ok("ok"));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
     }
@@ -25,9 +25,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Bool_SuccessResult_ConditionTrue_CheckFails_ReturnsCheckFailure()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
-        var sut = result.CheckIf(true, _ => Result.Failure<string>(CheckError));
+        var sut = result.CheckIf(true, _ => Result.Fail<string>(CheckError));
 
         sut.Should().BeFailure().Which.Should().Be(CheckError);
     }
@@ -36,12 +36,12 @@ public class CheckIfTests
     public void CheckIf_Bool_SuccessResult_ConditionFalse_CheckSkipped_ReturnsOriginal()
     {
         var checkInvoked = false;
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var sut = result.CheckIf(false, v =>
         {
             checkInvoked = true;
-            return Result.Success("ok");
+            return Result.Ok("ok");
         });
 
         sut.Should().BeSuccess().Which.Should().Be(42);
@@ -56,12 +56,12 @@ public class CheckIfTests
     public void CheckIf_Bool_FailureResult_ConditionTrue_CheckNotInvoked_ReturnsOriginalFailure()
     {
         var checkInvoked = false;
-        var result = Result.Failure<int>(TestError);
+        var result = Result.Fail<int>(TestError);
 
         var sut = result.CheckIf(true, v =>
         {
             checkInvoked = true;
-            return Result.Success("ok");
+            return Result.Ok("ok");
         });
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
@@ -71,9 +71,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Bool_FailureResult_ConditionFalse_ReturnsOriginalFailure()
     {
-        var result = Result.Failure<int>(TestError);
+        var result = Result.Fail<int>(TestError);
 
-        var sut = result.CheckIf(false, _ => Result.Success("ok"));
+        var sut = result.CheckIf(false, _ => Result.Ok("ok"));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
     }
@@ -85,9 +85,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Predicate_SuccessResult_PredicateTrue_CheckPasses_ReturnsOriginal()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
-        var sut = result.CheckIf(v => v > 0, v => Result.Success("ok"));
+        var sut = result.CheckIf(v => v > 0, v => Result.Ok("ok"));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
     }
@@ -95,9 +95,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Predicate_SuccessResult_PredicateTrue_CheckFails_ReturnsCheckFailure()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
-        var sut = result.CheckIf(v => v > 0, _ => Result.Failure<string>(CheckError));
+        var sut = result.CheckIf(v => v > 0, _ => Result.Fail<string>(CheckError));
 
         sut.Should().BeFailure().Which.Should().Be(CheckError);
     }
@@ -106,12 +106,12 @@ public class CheckIfTests
     public void CheckIf_Predicate_SuccessResult_PredicateFalse_CheckSkipped_ReturnsOriginal()
     {
         var checkInvoked = false;
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var sut = result.CheckIf(v => v < 0, v =>
         {
             checkInvoked = true;
-            return Result.Success("ok");
+            return Result.Ok("ok");
         });
 
         sut.Should().BeSuccess().Which.Should().Be(42);
@@ -126,13 +126,13 @@ public class CheckIfTests
     public void CheckIf_Predicate_FailureResult_PredicateNotInvoked()
     {
         var predicateInvoked = false;
-        var result = Result.Failure<int>(TestError);
+        var result = Result.Fail<int>(TestError);
 
         var sut = result.CheckIf(v =>
         {
             predicateInvoked = true;
             return v > 0;
-        }, _ => Result.Success("ok"));
+        }, _ => Result.Ok("ok"));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
         predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
@@ -145,9 +145,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Bool_Unit_SuccessResult_ConditionTrue_CheckPasses_ReturnsOriginal()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
-        var sut = result.CheckIf(true, _ => Result.Success());
+        var sut = result.CheckIf(true, _ => Result.Ok());
 
         sut.Should().BeSuccess().Which.Should().Be(42);
     }
@@ -155,9 +155,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Predicate_Unit_SuccessResult_PredicateTrue_CheckFails_ReturnsFailure()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
-        var sut = result.CheckIf(v => v > 0, _ => Result.Failure<Unit>(CheckError));
+        var sut = result.CheckIf(v => v > 0, _ => Result.Fail<Unit>(CheckError));
 
         sut.Should().BeFailure().Which.Should().Be(CheckError);
     }
@@ -169,7 +169,7 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Bool_NullFunc_ThrowsArgumentNullException()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var act = () => result.CheckIf(true, (Func<int, Result<string>>)null!);
 
@@ -179,9 +179,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Predicate_NullPredicate_ThrowsArgumentNullException()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
-        var act = () => result.CheckIf(null!, _ => Result.Success("ok"));
+        var act = () => result.CheckIf(null!, _ => Result.Ok("ok"));
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -189,7 +189,7 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Predicate_NullFunc_ThrowsArgumentNullException()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var act = () => result.CheckIf(v => v > 0, (Func<int, Result<string>>)null!);
 
@@ -203,9 +203,9 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_InChain_ConditionFalse_OriginalValuePreserved()
     {
-        var result = Result.Success("hello")
+        var result = Result.Ok("hello")
             .Map(s => s.ToUpperInvariant())
-            .CheckIf(false, _ => Result.Failure<string>(CheckError))
+            .CheckIf(false, _ => Result.Fail<string>(CheckError))
             .Map(s => s + "!");
 
         result.Should().BeSuccess().Which.Should().Be("HELLO!");
@@ -216,8 +216,8 @@ public class CheckIfTests
     {
         var mapInvoked = false;
 
-        var result = Result.Success("hello")
-            .CheckIf(true, _ => Result.Failure<string>(CheckError))
+        var result = Result.Ok("hello")
+            .CheckIf(true, _ => Result.Fail<string>(CheckError))
             .Map(s =>
             {
                 mapInvoked = true;

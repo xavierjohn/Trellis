@@ -1,4 +1,4 @@
-﻿using Trellis.FluentValidation;
+using Trellis.FluentValidation;
 
 namespace Example.Tests;
 
@@ -28,7 +28,7 @@ public class FluentValidationSamplesTests
                 return Error.Validation("Email cannot be empty", nameof(value));
             if (!value.Contains('@'))
                 return Error.Validation("Email must contain @", nameof(value));
-            return Result.Success(new EmailAddress(value));
+            return Result.Ok(new EmailAddress(value));
         }
     }
 
@@ -43,7 +43,7 @@ public class FluentValidationSamplesTests
                 return Error.Validation("Username cannot be empty", nameof(value));
             if (value.Length is < 3 or > 20)
                 return Error.Validation("Username must be between 3 and 20 characters", nameof(value));
-            return Result.Success(new Username(value));
+            return Result.Ok(new Username(value));
         }
     }
 
@@ -56,7 +56,7 @@ public class FluentValidationSamplesTests
         {
             if (string.IsNullOrWhiteSpace(value))
                 return Error.Validation("Phone number cannot be empty", nameof(value));
-            return Result.Success(new PhoneNumber(value));
+            return Result.Ok(new PhoneNumber(value));
         }
     }
 
@@ -300,7 +300,7 @@ public class FluentValidationSamplesTests
         {
             if (string.IsNullOrWhiteSpace(value))
                 return Error.Validation("Product ID cannot be empty", nameof(value));
-            return Result.Success(new ProductId(value));
+            return Result.Ok(new ProductId(value));
         }
     }
 
@@ -315,7 +315,7 @@ public class FluentValidationSamplesTests
                 return Error.Validation("Quantity must be positive", nameof(value));
             if (value > 1000)
                 return Error.Validation("Quantity cannot exceed 1000", nameof(value));
-            return Result.Success(new Quantity(value));
+            return Result.Ok(new Quantity(value));
         }
     }
 
@@ -328,7 +328,7 @@ public class FluentValidationSamplesTests
         {
             if (value <= 0)
                 return Error.Validation("Price must be positive", nameof(value));
-            return Result.Success(new Price(value));
+            return Result.Ok(new Price(value));
         }
     }
 
@@ -356,7 +356,7 @@ public class FluentValidationSamplesTests
             if (string.IsNullOrWhiteSpace(productName))
                 return Error.Validation("Product name cannot be empty");
 
-            return Result.Success(new OrderLine(productId, productName, price, quantity));
+            return Result.Ok(new OrderLine(productId, productName, price, quantity));
         }
     }
 

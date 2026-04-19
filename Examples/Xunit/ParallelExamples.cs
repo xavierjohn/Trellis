@@ -1,4 +1,4 @@
-﻿namespace Example.Tests;
+namespace Example.Tests;
 
 using Trellis;
 using Xunit;
@@ -146,31 +146,31 @@ public class ParallelExamples : IClassFixture<TraceFixture>
     // ----- Helper methods -----
 
     private static Task<Result<string>> CheckInventoryAsync(string orderId) =>
-        Task.FromResult(Result.Success($"Inventory OK for {orderId}"));
+        Task.FromResult(Result.Ok($"Inventory OK for {orderId}"));
 
     private static Task<Result<string>> ValidatePaymentAsync(string orderId)
     {
         if (orderId == "invalid-payment")
-            return Task.FromResult(Result.Failure<string>(Error.Validation("Invalid payment")));
+            return Task.FromResult(Result.Fail<string>(Error.Validation("Invalid payment")));
 
-        return Task.FromResult(Result.Success($"Payment OK for {orderId}"));
+        return Task.FromResult(Result.Ok($"Payment OK for {orderId}"));
     }
 
     private static Task<Result<string>> CalculateShippingAsync(string orderId) =>
-        Task.FromResult(Result.Success($"Shipping OK for {orderId}"));
+        Task.FromResult(Result.Ok($"Shipping OK for {orderId}"));
 
     private static Task<Result<string>> FetchUserProfileAsync(string userId) =>
-        Task.FromResult(Result.Success($"Profile for {userId}"));
+        Task.FromResult(Result.Ok($"Profile for {userId}"));
 
     private static Task<Result<string>> FetchUserOrdersAsync(string userId) =>
-        Task.FromResult(Result.Success($"Orders for {userId}"));
+        Task.FromResult(Result.Ok($"Orders for {userId}"));
 
     private static Task<Result<string>> FetchUserPreferencesAsync(string userId) =>
-        Task.FromResult(Result.Success($"Preferences for {userId}"));
+        Task.FromResult(Result.Ok($"Preferences for {userId}"));
 
     private static Task<Result<string>> CreateOrderSummaryAsync(string inventory, string payment, string shipping) =>
-        Task.FromResult(Result.Success($"Order summary: {inventory}, {payment}, {shipping}"));
+        Task.FromResult(Result.Ok($"Order summary: {inventory}, {payment}, {shipping}"));
 
     private static Task<Result<string>> SaveDashboardAsync(Dashboard dashboard) =>
-        Task.FromResult(Result.Success($"Saved dashboard for {dashboard.Profile.Split(' ').Last()}"));
+        Task.FromResult(Result.Ok($"Saved dashboard for {dashboard.Profile.Split(' ').Last()}"));
 }

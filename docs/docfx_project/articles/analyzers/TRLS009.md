@@ -26,7 +26,7 @@ static class Example
     }
 
     static ValueTask<Result<int>> GetCountAsync() =>
-        new(Result.Success(42));
+        new(Result.Ok(42));
 }
 ```
 
@@ -41,7 +41,7 @@ static class Example
         await GetCountAsync();
 
     static ValueTask<Result<int>> GetCountAsync() =>
-        new(Result.Success(42));
+        new(Result.Ok(42));
 }
 ```
 

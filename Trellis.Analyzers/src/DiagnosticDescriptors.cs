@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers;
+namespace Trellis.Analyzers;
 
 using Microsoft.CodeAnalysis;
 
@@ -220,7 +220,7 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. " +
-                     "Return Result.Failure<T>() to signal errors and keep the error on the failure track.",
+                     "Return Result.Fail<T>() to signal errors and keep the error on the failure track.",
         helpLinkUri: HelpLinkBase + "TRLS015");
 
     /// <summary>

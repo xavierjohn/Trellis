@@ -1,4 +1,4 @@
-﻿namespace SampleWebApplication.Controllers;
+namespace SampleWebApplication.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -140,7 +140,7 @@ public class NewOrdersController(
                 notificationService.SendOrderCancellationAsync(order.Id, order.CustomerId, ct))
             .RecoverOnFailureAsync(
                 error => error.Code == "unexpected.error",
-                _ => Result.Failure<Order>(
+                _ => Result.Fail<Order>(
                     Error.Unexpected("Cancellation failed. Please try again.")));
 
         if (result.IsFailure)

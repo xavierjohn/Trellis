@@ -19,7 +19,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Bad() =>
-        Result.Failure<int>(new Error("Unknown customer", "customer.not_found"));
+        Result.Fail<int>(new Error("Unknown customer", "customer.not_found"));
 }
 ```
 
@@ -30,7 +30,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Good() =>
-        Result.Failure<int>(Error.NotFound("Unknown customer"));
+        Result.Fail<int>(Error.NotFound("Unknown customer"));
 }
 ```
 

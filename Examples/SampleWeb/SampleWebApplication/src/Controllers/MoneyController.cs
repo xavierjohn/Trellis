@@ -1,4 +1,4 @@
-﻿using Trellis.Asp;
+using Trellis.Asp;
 using Trellis.Primitives;
 
 namespace SampleWebApplication.Controllers;
@@ -76,7 +76,7 @@ public class MoneyController : ControllerBase
     public ActionResult<Money> CartTotal([FromBody] CartTotalRequest request)
     {
         if (request.Items.Length == 0)
-            return Result.Failure<Money>(Error.Validation("Cart cannot be empty")).ToActionResult(this);
+            return Result.Fail<Money>(Error.Validation("Cart cannot be empty")).ToActionResult(this);
 
         var firstItem = Money.TryCreate(request.Items[0].Amount, request.Items[0].Currency);
         if (firstItem.IsFailure)
@@ -94,7 +94,7 @@ public class MoneyController : ControllerBase
             total = itemResult.Value;
         }
 
-        return Result.Success(total).ToActionResult(this);
+        return Result.Ok(total).ToActionResult(this);
     }
 
     [HttpPost("[action]")]
@@ -121,7 +121,7 @@ public class MoneyController : ControllerBase
     {
         var totalPercent = request.PlatformPercent + request.CreatorPercent + request.ReferrerPercent;
         if (totalPercent != 100)
-            return Result.Failure<RevenueShareResponse>(
+            return Result.Fail<RevenueShareResponse>(
                 Error.Validation($"Percentages must sum to 100, got {totalPercent}")).ToActionResult(this);
 
         return Money.TryCreate(request.Revenue.Amount, request.Revenue.Currency)

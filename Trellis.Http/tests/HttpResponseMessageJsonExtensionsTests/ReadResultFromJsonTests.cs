@@ -1,4 +1,4 @@
-﻿namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
+namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
 using System.Net;
 using System.Net.Http.Json;
@@ -504,7 +504,7 @@ public class ReadResultFromJsonTests
         {
             Content = JsonContent.Create(new camelcasePerson() { firstName = "Alice", age = 30 }, SourceGenerationContext.Default.camelcasePerson)
         };
-        var resultResponse = Result.Success(httpResponseMessage);
+        var resultResponse = Result.Ok(httpResponseMessage);
 
         // Act
         var result = await resultResponse.ReadResultFromJsonAsync(
@@ -522,7 +522,7 @@ public class ReadResultFromJsonTests
     {
         // Arrange
         var error = Error.Validation("Initial validation failed");
-        var resultResponse = Result.Failure<HttpResponseMessage>(error);
+        var resultResponse = Result.Fail<HttpResponseMessage>(error);
 
         // Act
         var result = await resultResponse.ReadResultFromJsonAsync(
@@ -542,7 +542,7 @@ public class ReadResultFromJsonTests
         {
             Content = JsonContent.Create(new camelcasePerson() { firstName = "Bob", age = 25 }, SourceGenerationContext.Default.camelcasePerson)
         };
-        var taskResultResponse = Task.FromResult(Result.Success(httpResponseMessage));
+        var taskResultResponse = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var result = await taskResultResponse.ReadResultFromJsonAsync(

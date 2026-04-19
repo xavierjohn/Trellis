@@ -624,7 +624,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
             public static class Result
             {
-                public static Result<T> Success<T>(T value) => value;
+                public static Result<T> Ok<T>(T value) => value;
             }
         }
         """;

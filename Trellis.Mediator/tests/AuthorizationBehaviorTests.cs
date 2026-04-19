@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using Trellis.Mediator.Tests.Helpers;
 
@@ -16,7 +16,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider);
         var command = new AdminCommand("data");
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -36,7 +36,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider);
         var command = new AdminCommand("data");
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -54,7 +54,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<MultiPermissionCommand, Result<string>>(actorProvider);
         var command = new MultiPermissionCommand("data");
         var (next, tracker) = NextDelegate.TrackingAsync<MultiPermissionCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -75,7 +75,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<NoPermissionsCommand, Result<string>>(actorProvider);
         var command = new NoPermissionsCommand("data");
         var (next, tracker) = NextDelegate.TrackingAsync<NoPermissionsCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -94,7 +94,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider);
         var command = new AdminCommand("data");
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -108,7 +108,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(new NullActorProvider());
         var command = new AdminCommand("data");
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var act = async () => await behavior.Handle(command, next, CancellationToken.None);
 
@@ -129,7 +129,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(capturingProvider);
         var command = new AdminCommand("data");
         var next = NextDelegate.ReturningAsync<AdminCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         await behavior.Handle(command, next, cts.Token);
 
@@ -148,7 +148,7 @@ public class AuthorizationBehaviorTests
         var behavior = new AuthorizationBehavior<AdminCommand, Result<string>>(delayedProvider);
         var command = new AdminCommand("data");
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 

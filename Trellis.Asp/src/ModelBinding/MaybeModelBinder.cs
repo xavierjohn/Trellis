@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.ModelBinding;
+namespace Trellis.Asp.ModelBinding;
 
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Trellis;

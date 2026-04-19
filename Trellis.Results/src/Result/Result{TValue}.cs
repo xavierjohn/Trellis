@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System;
 using System.Diagnostics;
@@ -15,7 +15,7 @@ using System.Diagnostics;
 /// <example>
 /// <code>
 /// // Creating results
-/// Result&lt;User&gt; success = Result.Success(user);
+/// Result&lt;User&gt; success = Result.Ok(user);
 /// Result&lt;User&gt; failure = Error.NotFound("User not found");
 /// 
 /// // Pattern matching
@@ -78,14 +78,14 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// </summary>
     /// <param name="value">The value to wrap in a success result.</param>
     /// <returns>A successful result containing the value.</returns>
-    public static implicit operator Result<TValue>(TValue value) => Result.Success(value);
+    public static implicit operator Result<TValue>(TValue value) => Result.Ok(value);
 
     /// <summary>
     /// Implicitly converts an error to a failed result.
     /// </summary>
     /// <param name="error">The error to wrap in a failed result.</param>
     /// <returns>A failed result containing the error.</returns>
-    public static implicit operator Result<TValue>(Error error) => Result.Failure<TValue>(error);
+    public static implicit operator Result<TValue>(Error error) => Result.Fail<TValue>(error);
 
     /// <summary>
     /// Creates a failure result wrapping the given error.
@@ -95,7 +95,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <param name="error">The error describing the failure.</param>
     /// <returns>A failed <see cref="Result{TValue}"/>.</returns>
 #pragma warning disable CA1000 // Do not declare static members on generic types — required by IFailureFactory<TSelf>
-    public static Result<TValue> CreateFailure(Error error) => Result.Failure<TValue>(error);
+    public static Result<TValue> CreateFailure(Error error) => Result.Fail<TValue>(error);
 #pragma warning restore CA1000
 
     internal Result(bool isFailure, TValue? ok, Error? error)

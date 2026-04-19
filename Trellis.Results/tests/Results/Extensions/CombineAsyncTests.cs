@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -15,8 +15,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_BothSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success("World"));
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok("World"));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
@@ -26,8 +26,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(Result.Success("World"));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(Result.Ok("World"));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -39,8 +39,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_RightFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad right", "right")));
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad right", "right")));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -52,8 +52,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_BothFail_CombinesValidationErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad right", "right")));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad right", "right")));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -66,8 +66,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_DifferentTypes_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("text"))
-            .CombineAsync(Result.Success(42));
+        var result = await Task.FromResult(Result.Ok("text"))
+            .CombineAsync(Result.Ok(42));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("text", 42));
@@ -77,8 +77,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_MixedErrorTypes_ReturnsAggregateError()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Invalid", "field")))
-            .CombineAsync(Result.Failure<string>(Error.NotFound("Not found")));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Invalid", "field")))
+            .CombineAsync(Result.Fail<string>(Error.NotFound("Not found")));
 
         // Assert
         var aggregate = result.Should().BeFailureOfType<AggregateError>().Which;
@@ -89,9 +89,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_CanChainWithBind()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success("World"))
-            .BindAsync((hello, world) => Result.Success($"{hello} {world}"));
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok("World"))
+            .BindAsync((hello, world) => Result.Ok($"{hello} {world}"));
 
         // Assert
         result.Should().BeSuccess()
@@ -106,8 +106,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Right_BothSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Result.Success("Hello")
-            .CombineAsync(Task.FromResult(Result.Success("World")));
+        var result = await Result.Ok("Hello")
+            .CombineAsync(Task.FromResult(Result.Ok("World")));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
@@ -117,8 +117,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Right_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Result.Failure<string>(Error.Validation("Bad left", "left"))
-            .CombineAsync(Task.FromResult(Result.Success("World")));
+        var result = await Result.Fail<string>(Error.Validation("Bad left", "left"))
+            .CombineAsync(Task.FromResult(Result.Ok("World")));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -128,8 +128,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Right_RightFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Result.Success("Hello")
-            .CombineAsync(Task.FromResult(Result.Failure<string>(Error.Validation("Bad right", "right"))));
+        var result = await Result.Ok("Hello")
+            .CombineAsync(Task.FromResult(Result.Fail<string>(Error.Validation("Bad right", "right"))));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -139,8 +139,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Right_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Result.Failure<string>(Error.Validation("Bad left", "left"))
-            .CombineAsync(Task.FromResult(Result.Failure<string>(Error.Validation("Bad right", "right"))));
+        var result = await Result.Fail<string>(Error.Validation("Bad left", "left"))
+            .CombineAsync(Task.FromResult(Result.Fail<string>(Error.Validation("Bad right", "right"))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -155,8 +155,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Both_BothSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Task.FromResult(Result.Success("World")));
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Task.FromResult(Result.Ok("World")));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
@@ -166,8 +166,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Both_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(Task.FromResult(Result.Success("World")));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(Task.FromResult(Result.Ok("World")));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -177,8 +177,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Both_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(Task.FromResult(Result.Failure<string>(Error.Validation("Bad right", "right"))));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(Task.FromResult(Result.Fail<string>(Error.Validation("Bad right", "right"))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -189,8 +189,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Both_DifferentTypes_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success(42))
-            .CombineAsync(Task.FromResult(Result.Success(true)));
+        var result = await Task.FromResult(Result.Ok(42))
+            .CombineAsync(Task.FromResult(Result.Ok(true)));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be((42, true));
@@ -204,8 +204,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Unit_BothSuccess_ReturnsValue()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success());
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok());
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be("Hello");
@@ -215,8 +215,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Unit_UnitFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Failure(Error.Validation("Must be valid", "check")));
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Fail(Error.Validation("Must be valid", "check")));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -226,8 +226,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Unit_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad", "field")))
-            .CombineAsync(Result.Success());
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad", "field")))
+            .CombineAsync(Result.Ok());
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -237,8 +237,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Unit_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(Result.Failure(Error.Validation("Bad right", "right")));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(Result.Fail(Error.Validation("Bad right", "right")));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -253,8 +253,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Left_BothSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success("World"));
+        var result = await ValueTask.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok("World"));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
@@ -264,8 +264,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Left_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(Result.Success("World"));
+        var result = await ValueTask.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(Result.Ok("World"));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -275,8 +275,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Left_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad right", "right")));
+        var result = await ValueTask.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad right", "right")));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -287,8 +287,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Left_DifferentTypes_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success("text"))
-            .CombineAsync(Result.Success(3.14m));
+        var result = await ValueTask.FromResult(Result.Ok("text"))
+            .CombineAsync(Result.Ok(3.14m));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("text", 3.14m));
@@ -298,9 +298,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Left_CanChainWithBind()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success(10))
-            .CombineAsync(Result.Success(20))
-            .BindAsync((a, b) => Result.Success(a + b));
+        var result = await ValueTask.FromResult(Result.Ok(10))
+            .CombineAsync(Result.Ok(20))
+            .BindAsync((a, b) => Result.Ok(a + b));
 
         // Assert
         result.Should().BeSuccess()
@@ -315,8 +315,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Right_BothSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Result.Success("Hello")
-            .CombineAsync(ValueTask.FromResult(Result.Success("World")));
+        var result = await Result.Ok("Hello")
+            .CombineAsync(ValueTask.FromResult(Result.Ok("World")));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
@@ -326,8 +326,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Right_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Result.Failure<string>(Error.Validation("Bad left", "left"))
-            .CombineAsync(ValueTask.FromResult(Result.Success("World")));
+        var result = await Result.Fail<string>(Error.Validation("Bad left", "left"))
+            .CombineAsync(ValueTask.FromResult(Result.Ok("World")));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -337,8 +337,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Right_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Result.Failure<string>(Error.Validation("Bad", "left"))
-            .CombineAsync(ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad", "right"))));
+        var result = await Result.Fail<string>(Error.Validation("Bad", "left"))
+            .CombineAsync(ValueTask.FromResult(Result.Fail<string>(Error.Validation("Bad", "right"))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -353,8 +353,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Both_BothSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success("Hello"))
-            .CombineAsync(ValueTask.FromResult(Result.Success("World")));
+        var result = await ValueTask.FromResult(Result.Ok("Hello"))
+            .CombineAsync(ValueTask.FromResult(Result.Ok("World")));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
@@ -364,8 +364,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Both_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad left", "left")))
-            .CombineAsync(ValueTask.FromResult(Result.Failure<string>(Error.Validation("Bad right", "right"))));
+        var result = await ValueTask.FromResult(Result.Fail<string>(Error.Validation("Bad left", "left")))
+            .CombineAsync(ValueTask.FromResult(Result.Fail<string>(Error.Validation("Bad right", "right"))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -380,8 +380,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Unit_BothSuccess_ReturnsValue()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success());
+        var result = await ValueTask.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok());
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be("Hello");
@@ -391,8 +391,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Unit_UnitFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Failure(Error.Validation("Bad", "check")));
+        var result = await ValueTask.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Fail(Error.Validation("Bad", "check")));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -406,9 +406,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Chain_AllSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("a"))
-            .CombineAsync(Result.Success("b"))
-            .CombineAsync(Result.Success("c"));
+        var result = await Task.FromResult(Result.Ok("a"))
+            .CombineAsync(Result.Ok("b"))
+            .CombineAsync(Result.Ok("c"));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("a", "b", "c"));
@@ -418,9 +418,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Chain_MiddleFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("a"))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad b", "b")))
-            .CombineAsync(Result.Success("c"));
+        var result = await Task.FromResult(Result.Ok("a"))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad b", "b")))
+            .CombineAsync(Result.Ok("c"));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -430,9 +430,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Chain_LastFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("a"))
-            .CombineAsync(Result.Success("b"))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad c", "c")));
+        var result = await Task.FromResult(Result.Ok("a"))
+            .CombineAsync(Result.Ok("b"))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad c", "c")));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -442,9 +442,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Chain_MultipleFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad a", "a")))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad b", "b")))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad c", "c")));
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad a", "a")))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad b", "b")))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad c", "c")));
 
         // Assert
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
@@ -455,10 +455,10 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Chain_CanBindWithDestructuring()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success("Beautiful"))
-            .CombineAsync(Result.Success("World"))
-            .BindAsync((a, b, c) => Result.Success($"{a} {b} {c}"));
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok("Beautiful"))
+            .CombineAsync(Result.Ok("World"))
+            .BindAsync((a, b, c) => Result.Ok($"{a} {b} {c}"));
 
         // Assert
         result.Should().BeSuccess()
@@ -469,9 +469,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Unit_AllSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success("World"))
-            .CombineAsync(Result.Success());
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok("World"))
+            .CombineAsync(Result.Ok());
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
@@ -481,9 +481,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Unit_UnitFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success("World"))
-            .CombineAsync(Result.Failure(Error.Validation("Gate failed")));
+        var result = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok("World"))
+            .CombineAsync(Result.Fail(Error.Validation("Gate failed")));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -497,9 +497,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_3Tuple_Chain_AllSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success("a"))
-            .CombineAsync(Result.Success("b"))
-            .CombineAsync(Result.Success("c"));
+        var result = await ValueTask.FromResult(Result.Ok("a"))
+            .CombineAsync(Result.Ok("b"))
+            .CombineAsync(Result.Ok("c"));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("a", "b", "c"));
@@ -509,9 +509,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_3Tuple_Chain_Failure_ReturnsError()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success("a"))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad", "b")))
-            .CombineAsync(Result.Success("c"));
+        var result = await ValueTask.FromResult(Result.Ok("a"))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad", "b")))
+            .CombineAsync(Result.Ok("c"));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -525,17 +525,17 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_9Tuple_Chain_AllSuccess()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("1"))
-            .CombineAsync(Result.Success("2"))
-            .CombineAsync(Result.Success("3"))
-            .CombineAsync(Result.Success("4"))
-            .CombineAsync(Result.Success("5"))
-            .CombineAsync(Result.Success("6"))
-            .CombineAsync(Result.Success("7"))
-            .CombineAsync(Result.Success("8"))
-            .CombineAsync(Result.Success("9"))
+        var result = await Task.FromResult(Result.Ok("1"))
+            .CombineAsync(Result.Ok("2"))
+            .CombineAsync(Result.Ok("3"))
+            .CombineAsync(Result.Ok("4"))
+            .CombineAsync(Result.Ok("5"))
+            .CombineAsync(Result.Ok("6"))
+            .CombineAsync(Result.Ok("7"))
+            .CombineAsync(Result.Ok("8"))
+            .CombineAsync(Result.Ok("9"))
             .BindAsync((one, two, three, four, five, six, seven, eight, nine) =>
-                Result.Success($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
+                Result.Ok($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
 
         // Assert
         result.Should().BeSuccess()
@@ -546,15 +546,15 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_9Tuple_Chain_WithFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success("1"))
-            .CombineAsync(Result.Success("2"))
-            .CombineAsync(Result.Success("3"))
-            .CombineAsync(Result.Success("4"))
-            .CombineAsync(Result.Success("5"))
-            .CombineAsync(Result.Success("6"))
-            .CombineAsync(Result.Success("7"))
-            .CombineAsync(Result.Success("8"))
-            .CombineAsync(Result.Failure<string>(Error.Validation("Bad 9")));
+        var result = await Task.FromResult(Result.Ok("1"))
+            .CombineAsync(Result.Ok("2"))
+            .CombineAsync(Result.Ok("3"))
+            .CombineAsync(Result.Ok("4"))
+            .CombineAsync(Result.Ok("5"))
+            .CombineAsync(Result.Ok("6"))
+            .CombineAsync(Result.Ok("7"))
+            .CombineAsync(Result.Ok("8"))
+            .CombineAsync(Result.Fail<string>(Error.Validation("Bad 9")));
 
         // Assert
         result.Should().BeFailure();
@@ -564,11 +564,11 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_5Tuple_Chain_AllSuccess()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Success(1))
-            .CombineAsync(Result.Success(2))
-            .CombineAsync(Result.Success(3))
-            .CombineAsync(Result.Success(4))
-            .CombineAsync(Result.Success(5));
+        var result = await ValueTask.FromResult(Result.Ok(1))
+            .CombineAsync(Result.Ok(2))
+            .CombineAsync(Result.Ok(3))
+            .CombineAsync(Result.Ok(4))
+            .CombineAsync(Result.Ok(5));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5));
@@ -582,8 +582,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_WithNullableTypes_Success()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Success<string?>("value"))
-            .CombineAsync(Result.Success<int?>(42));
+        var result = await Task.FromResult(Result.Ok<string?>("value"))
+            .CombineAsync(Result.Ok<int?>(42));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(("value", (int?)42));
@@ -597,8 +597,8 @@ public class CombineAsyncTests
         var record2 = new TestRecord("Bob", 25);
 
         // Act
-        var result = await Task.FromResult(Result.Success(record1))
-            .CombineAsync(Result.Success(record2));
+        var result = await Task.FromResult(Result.Ok(record1))
+            .CombineAsync(Result.Ok(record2));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be((record1, record2));
@@ -609,15 +609,15 @@ public class CombineAsyncTests
     {
         // Simulates: first result comes from an async operation,
         // subsequent validations are sync
-        var asyncResult = Task.FromResult(Result.Success("user@example.com"));
-        var firstName = Result.Success("John");
-        var lastName = Result.Success("Doe");
+        var asyncResult = Task.FromResult(Result.Ok("user@example.com"));
+        var firstName = Result.Ok("John");
+        var lastName = Result.Ok("Doe");
 
         // Act
         var result = await asyncResult
             .CombineAsync(firstName)
             .CombineAsync(lastName)
-            .BindAsync((email, first, last) => Result.Success($"{first} {last} <{email}>"));
+            .BindAsync((email, first, last) => Result.Ok($"{first} {last} <{email}>"));
 
         // Assert
         result.Should().BeSuccess()
@@ -628,9 +628,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_RealWorldScenario_CollectsAllValidationErrors()
     {
         // Simulates: async lookup succeeds but sync validations fail
-        var asyncResult = Task.FromResult(Result.Success("valid@email.com"));
-        var badFirst = Result.Failure<string>(Error.Validation("First name required", "firstName"));
-        var badLast = Result.Failure<string>(Error.Validation("Last name required", "lastName"));
+        var asyncResult = Task.FromResult(Result.Ok("valid@email.com"));
+        var badFirst = Result.Fail<string>(Error.Validation("First name required", "firstName"));
+        var badLast = Result.Fail<string>(Error.Validation("Last name required", "lastName"));
 
         // Act
         var result = await asyncResult
@@ -651,12 +651,12 @@ public class CombineAsyncTests
         var bindCalled = false;
 
         // Act
-        var result = await Task.FromResult(Result.Failure<string>(Error.Validation("Bad")))
-            .CombineAsync(Result.Success("World"))
+        var result = await Task.FromResult(Result.Fail<string>(Error.Validation("Bad")))
+            .CombineAsync(Result.Ok("World"))
             .BindAsync((a, b) =>
             {
                 bindCalled = true;
-                return Result.Success($"{a} {b}");
+                return Result.Ok($"{a} {b}");
             });
 
         // Assert

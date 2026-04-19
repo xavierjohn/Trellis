@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Collections.Immutable;
 using System.Net.Http.Headers;
@@ -15,7 +15,7 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Task.FromResult(Result.Success("Test"));
+        var result = Task.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -33,7 +33,7 @@ public class ActionResultTaskTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.BadRequest("Test", "Jackson");
-        var result = Task.FromResult(Result.Failure<string>(error));
+        var result = Task.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
             Detail = "Test",
@@ -63,7 +63,7 @@ public class ActionResultTaskTests
             Status = StatusCodes.Status403Forbidden,
             Instance = "xavier"
         };
-        var result = Task.FromResult(Result.Failure<string>(error));
+        var result = Task.FromResult(Result.Fail<string>(error));
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -87,7 +87,7 @@ public class ActionResultTaskTests
             Status = StatusCodes.Status401Unauthorized,
             Instance = "xavier"
         };
-        var result = Task.FromResult(Result.Failure<string>(error));
+        var result = Task.FromResult(Result.Fail<string>(error));
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -113,7 +113,7 @@ public class ActionResultTaskTests
             Instance = "Micheal",
             Errors = new Dictionary<string, string[]> { { "firstName", ["First name required."] } }
         };
-        var result = Task.FromResult(Result.Failure<string>(error));
+        var result = Task.FromResult(Result.Fail<string>(error));
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -138,7 +138,7 @@ public class ActionResultTaskTests
             Status = StatusCodes.Status409Conflict,
             Instance = "Micheal"
         };
-        var result = Task.FromResult(Result.Failure<string>(error));
+        var result = Task.FromResult(Result.Fail<string>(error));
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -162,7 +162,7 @@ public class ActionResultTaskTests
             Status = StatusCodes.Status500InternalServerError,
             Instance = "Micheal"
         };
-        var result = Task.FromResult(Result.Failure<string>(error));
+        var result = Task.FromResult(Result.Fail<string>(error));
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -179,7 +179,7 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Task.FromResult(Result.Success("Test"));
+        var result = Task.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await result.ToActionResultAsync(controller,
@@ -201,7 +201,7 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Task.FromResult(Result.Success("Test"));
+        var result = Task.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await result.ToActionResultAsync(
@@ -220,7 +220,7 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Task.FromResult(Result.Success());
+        var result = Task.FromResult(Result.Ok());
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -236,7 +236,7 @@ public class ActionResultTaskTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.NotFound("Resource not found");
-        var result = Task.FromResult(Result.Failure<Unit>(error));
+        var result = Task.FromResult(Result.Fail<Unit>(error));
         var expected = new ProblemDetails
         {
             Detail = "Resource not found",

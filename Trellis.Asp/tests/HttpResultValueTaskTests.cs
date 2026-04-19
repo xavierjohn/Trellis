@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +21,7 @@ public class HttpResultValueTaskTests : IDisposable
     public async Task Will_return_Ok_Result_Async()
     {
         // Arrange
-        var result = ValueTask.FromResult(Result.Success("Test"));
+        var result = ValueTask.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await result.ToHttpResultAsync();
@@ -38,7 +38,7 @@ public class HttpResultValueTaskTests : IDisposable
     {
         // Arrange
         var error = Error.BadRequest("Test");
-        var result = ValueTask.FromResult(Result.Failure<string>(error));
+        var result = ValueTask.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
             Title = "Bad Request",
@@ -61,7 +61,7 @@ public class HttpResultValueTaskTests : IDisposable
     public async Task Will_return_NoContent_for_Unit_success_async()
     {
         // Arrange
-        var result = ValueTask.FromResult(Result.Success());
+        var result = ValueTask.FromResult(Result.Ok());
 
         // Act
         var response = await result.ToHttpResultAsync();
@@ -77,7 +77,7 @@ public class HttpResultValueTaskTests : IDisposable
     {
         // Arrange
         var error = Error.Conflict("Conflict occurred");
-        var result = ValueTask.FromResult(Result.Failure<Unit>(error));
+        var result = ValueTask.FromResult(Result.Fail<Unit>(error));
         var expected = new ProblemDetails
         {
             Title = "Conflict",
@@ -104,7 +104,7 @@ public class HttpResultValueTaskTests : IDisposable
         // Arrange
         var options = new TrellisAspOptions();
         options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var resultTask = ValueTask.FromResult(Result.Failure<string>(Error.Domain("Business rule")));
+        var resultTask = ValueTask.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
 
         // Act
         var response = await resultTask.ToHttpResultAsync(options);
@@ -119,7 +119,7 @@ public class HttpResultValueTaskTests : IDisposable
     public async Task ToHttpResultAsync_ValueTask_without_options_uses_defaults()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<string>(Error.Domain("Business rule")));
+        var resultTask = ValueTask.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
 
         // Act
         var response = await resultTask.ToHttpResultAsync();

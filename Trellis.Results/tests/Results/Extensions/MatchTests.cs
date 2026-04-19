@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -9,7 +9,7 @@ public class MatchTests : TestBase
     [Fact]
     public void Match_WithNullOnSuccess_ThrowsArgumentNullException()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var act = () => result.Match<int, string>((Func<int, string>)null!, _ => "error");
 
@@ -33,7 +33,7 @@ public class MatchTests : TestBase
     [Fact]
     public void Match_Success_InvokesSuccessHandler()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var output = result.Match(
             onSuccess: value => $"success:{value}",
@@ -45,7 +45,7 @@ public class MatchTests : TestBase
     [Fact]
     public void Match_Failure_InvokesFailureHandler()
     {
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
 
         var output = result.Match(
             onSuccess: value => $"success:{value}",
@@ -57,7 +57,7 @@ public class MatchTests : TestBase
     [Fact]
     public void Switch_Success_InvokesOnlySuccessHandler()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
         var successValue = 0;
         Error? failureError = null;
 
@@ -72,7 +72,7 @@ public class MatchTests : TestBase
     [Fact]
     public void Switch_Failure_InvokesOnlyFailureHandler()
     {
-        var result = Result.Failure<int>(Error1);
+        var result = Result.Fail<int>(Error1);
         var successCalled = false;
         Error? failureError = null;
 
@@ -88,7 +88,7 @@ public class MatchTests : TestBase
     [Fact]
     public async Task MatchAsync_Result_WithCancellationToken_InvokesSuccessHandlerWithToken()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
         using var cts = new CancellationTokenSource();
 
         var output = await result.MatchAsync(
@@ -103,7 +103,7 @@ public class MatchTests : TestBase
     public async Task MatchAsync_Result_WhenSuccessHandlerFaults_TracesErrorStatus()
     {
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         Func<Task> act = async () => await result.MatchAsync(
             onSuccess: _ => Task.FromException<string>(new InvalidOperationException("boom")),
@@ -119,7 +119,7 @@ public class MatchTests : TestBase
     [Fact]
     public async Task SwitchAsync_TaskResult_Failure_InvokesFailureHandler()
     {
-        var resultTask = Task.FromResult(Result.Failure<int>(Error1));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error1));
         var successCalled = false;
         Error? failureError = null;
 

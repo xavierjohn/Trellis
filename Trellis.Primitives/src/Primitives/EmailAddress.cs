@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -221,7 +221,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
             }
         }
 
-        return Result.Failure<EmailAddress>(Error.Validation("Email address is not valid.", fieldName.NormalizeFieldName("email")));
+        return Result.Fail<EmailAddress>(Error.Validation("Email address is not valid.", fieldName.NormalizeFieldName("email")));
     }
 
     /// <summary>

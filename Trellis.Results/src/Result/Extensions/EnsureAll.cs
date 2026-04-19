@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -53,7 +53,7 @@ public static class EnsureAllExtensions
 
         if (accumulated is not null)
         {
-            var output = Result.Failure<TValue>(accumulated);
+            var output = Result.Fail<TValue>(accumulated);
             output.LogActivityStatus();
             return output;
         }

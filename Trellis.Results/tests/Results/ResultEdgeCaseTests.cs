@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests;
+namespace Trellis.Results.Tests;
 
 using Xunit;
 
@@ -13,7 +13,7 @@ public class ResultEdgeCaseTests
     public void TryGetValue_OnSuccessWithNull_ShouldReturnTrueWithNullValue()
     {
         // Arrange
-        var result = Result.Success(default(string));
+        var result = Result.Ok(default(string));
 
         // Act
         bool success = result.TryGetValue(out var value);
@@ -27,7 +27,7 @@ public class ResultEdgeCaseTests
     public void TryGetValue_OnFailure_ShouldReturnFalseWithDefaultValue()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         bool success = result.TryGetValue(out var value);
@@ -41,7 +41,7 @@ public class ResultEdgeCaseTests
     public void TryGetError_OnSuccess_ShouldReturnFalseWithNullError()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         bool hasError = result.TryGetError(out var error);
@@ -56,7 +56,7 @@ public class ResultEdgeCaseTests
     {
         // Arrange
         var expectedError = Error.Validation("Invalid input");
-        var result = Result.Failure<int>(expectedError);
+        var result = Result.Fail<int>(expectedError);
 
         // Act
         bool hasError = result.TryGetError(out var error);
@@ -74,7 +74,7 @@ public class ResultEdgeCaseTests
     public void Deconstruct_OnSuccessWithNull_ShouldDeconstructCorrectly()
     {
         // Arrange
-        var result = Result.Success(default(string));
+        var result = Result.Ok(default(string));
 
         // Act
         var (isSuccess, value, error) = result;
@@ -90,7 +90,7 @@ public class ResultEdgeCaseTests
     {
         // Arrange
         var expectedError = Error.Conflict("Conflict");
-        var result = Result.Failure<int>(expectedError);
+        var result = Result.Fail<int>(expectedError);
 
         // Act
         var (isSuccess, value, error) = result;
@@ -105,7 +105,7 @@ public class ResultEdgeCaseTests
     public void Deconstruct_CanBeUsedInSwitchExpression()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         string message = result switch
@@ -127,8 +127,8 @@ public class ResultEdgeCaseTests
     public void Equals_TwoSuccessResultsWithNullValues_ShouldBeEqual()
     {
         // Arrange
-        var result1 = Result.Success(default(string));
-        var result2 = Result.Success(default(string));
+        var result1 = Result.Ok(default(string));
+        var result2 = Result.Ok(default(string));
 
         // Act & Assert
         result1.Should().Be(result2);
@@ -140,8 +140,8 @@ public class ResultEdgeCaseTests
     public void Equals_SuccessResultWithNullAndNonNull_ShouldNotBeEqual()
     {
         // Arrange
-        var result1 = Result.Success(default(string));
-        var result2 = Result.Success("value");
+        var result1 = Result.Ok(default(string));
+        var result2 = Result.Ok("value");
 
         // Act & Assert
         result1.Should().NotBe(result2);
@@ -151,8 +151,8 @@ public class ResultEdgeCaseTests
     public void Equals_TwoFailuresWithSameErrorCode_ShouldBeEqual()
     {
         // Arrange
-        var result1 = Result.Failure<int>(Error.NotFound("User not found"));
-        var result2 = Result.Failure<int>(Error.NotFound("Resource not found"));
+        var result1 = Result.Fail<int>(Error.NotFound("User not found"));
+        var result2 = Result.Fail<int>(Error.NotFound("Resource not found"));
 
         // Act & Assert
         // Errors are equal based on Code, not Detail
@@ -163,8 +163,8 @@ public class ResultEdgeCaseTests
     public void Equals_SuccessAndFailure_ShouldNotBeEqual()
     {
         // Arrange
-        var result1 = Result.Success(42);
-        var result2 = Result.Failure<int>(Error.NotFound("Not found"));
+        var result1 = Result.Ok(42);
+        var result2 = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act & Assert
         result1.Should().NotBe(result2);
@@ -175,7 +175,7 @@ public class ResultEdgeCaseTests
     public void Equals_CompareWithNull_ShouldReturnFalse()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         result.Equals((object?)null).Should().BeFalse();
@@ -185,7 +185,7 @@ public class ResultEdgeCaseTests
     public void Equals_CompareWithDifferentType_ShouldReturnFalse()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
         object otherObject = "string";
 
         // Act & Assert
@@ -200,8 +200,8 @@ public class ResultEdgeCaseTests
     public void GetHashCode_SuccessResultsWithNullValues_ShouldHaveSameHashCode()
     {
         // Arrange
-        var result1 = Result.Success(default(string));
-        var result2 = Result.Success(default(string));
+        var result1 = Result.Ok(default(string));
+        var result2 = Result.Ok(default(string));
 
         // Act
         int hash1 = result1.GetHashCode();
@@ -216,8 +216,8 @@ public class ResultEdgeCaseTests
     {
         // Arrange
         var error = Error.Validation("Invalid");
-        var result1 = Result.Failure<int>(error);
-        var result2 = Result.Failure<int>(error);
+        var result1 = Result.Fail<int>(error);
+        var result2 = Result.Fail<int>(error);
 
         // Act
         int hash1 = result1.GetHashCode();
@@ -235,7 +235,7 @@ public class ResultEdgeCaseTests
     public void ToString_SuccessWithNull_ShouldFormatCorrectly()
     {
         // Arrange
-        var result = Result.Success(default(string));
+        var result = Result.Ok(default(string));
 
         // Act
         string str = result.ToString();
@@ -248,7 +248,7 @@ public class ResultEdgeCaseTests
     public void ToString_SuccessWithValue_ShouldFormatCorrectly()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         string str = result.ToString();
@@ -261,7 +261,7 @@ public class ResultEdgeCaseTests
     public void ToString_Failure_ShouldFormatCorrectly()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("User not found"));
+        var result = Result.Fail<int>(Error.NotFound("User not found"));
 
         // Act
         string str = result.ToString();
@@ -309,7 +309,7 @@ public class ResultEdgeCaseTests
     public void Value_OnFailure_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         Action act = () => { var _ = result.Value; };
@@ -323,7 +323,7 @@ public class ResultEdgeCaseTests
     public void Error_OnSuccess_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         Action act = () => { var _ = result.Error; };
@@ -553,7 +553,7 @@ public class ResultEdgeCaseTests
     public void Success_WithDefaultStructValue_ShouldWorkCorrectly()
     {
         // Act
-        var result = Result.Success(default(DateTime));
+        var result = Result.Ok(default(DateTime));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -564,7 +564,7 @@ public class ResultEdgeCaseTests
     public void Success_WithNullableStructWithValue_ShouldWorkCorrectly()
     {
         // Act
-        var result = Result.Success<DateTime?>(DateTime.Now);
+        var result = Result.Ok<DateTime?>(DateTime.Now);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -575,7 +575,7 @@ public class ResultEdgeCaseTests
     public void Success_WithNullableStructWithoutValue_ShouldWorkCorrectly()
     {
         // Act
-        var result = Result.Success(default(DateTime?));
+        var result = Result.Ok(default(DateTime?));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -590,7 +590,7 @@ public class ResultEdgeCaseTests
     public void Success_Unit_ShouldCreateSuccessResultWithUnitValue()
     {
         // Act
-        var result = Result.Success();
+        var result = Result.Ok();
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -604,7 +604,7 @@ public class ResultEdgeCaseTests
         var error = Error.BadRequest("Bad request");
 
         // Act
-        var result = Result.Failure(error);
+        var result = Result.Fail(error);
 
         // Assert
         result.IsFailure.Should().BeTrue();

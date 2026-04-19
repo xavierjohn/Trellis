@@ -364,10 +364,10 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 
-var success = Result.Success(42);
+var success = Result.Ok(42);
 success.Should().BeSuccess().Which.Should().Be(42);
 
-var notFound = Result.Failure<int>(Error.NotFound("Order 123 not found", "123"));
+var notFound = Result.Fail<int>(Error.NotFound("Order 123 not found", "123"));
 notFound.Should().BeFailure()
     .Which.Detail.Should().Be("Order 123 not found");
 ```
@@ -380,8 +380,8 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 
-Task<Result<int>> resultTask = Task.FromResult(Result.Success(42));
-ValueTask<Result<int>> valueTaskResult = ValueTask.FromResult(Result.Success(7));
+Task<Result<int>> resultTask = Task.FromResult(Result.Ok(42));
+ValueTask<Result<int>> valueTaskResult = ValueTask.FromResult(Result.Ok(7));
 
 (await resultTask.BeSuccessAsync()).Which.Should().Be(42);
 (await valueTaskResult.BeSuccessAsync()).Which.Should().Be(7);

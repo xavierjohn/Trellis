@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization;
+namespace Trellis.Authorization;
 
 /// <summary>
 /// Shared resource loader that loads a resource by ID. Register one per resource type
@@ -32,7 +32,7 @@ public abstract class SharedResourceLoaderById<TResource, TId>
 {
     /// <summary>
     /// Loads the resource by ID.
-    /// Return <c>Result.Failure</c> with a <see cref="NotFoundError"/> if the resource does not exist.
+    /// Return <c>Result.Fail</c> with a <see cref="NotFoundError"/> if the resource does not exist.
     /// </summary>
     /// <param name="id">The resource identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

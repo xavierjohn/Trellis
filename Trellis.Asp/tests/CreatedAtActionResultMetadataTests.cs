@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
@@ -29,7 +29,7 @@ public class CreatedAtActionResultMetadataTests
     {
         var controller = CreateController();
         var order = new Order("42", 1, "Widget");
-        var result = Result.Success(order);
+        var result = Result.Ok(order);
 
         var response = result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -51,7 +51,7 @@ public class CreatedAtActionResultMetadataTests
     {
         var controller = CreateController();
         var order = new Order("7", 2, "Gadget");
-        var result = Result.Success(order);
+        var result = Result.Ok(order);
         var lastModified = new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero);
 
         var response = result.ToCreatedAtActionResult(controller,
@@ -72,7 +72,7 @@ public class CreatedAtActionResultMetadataTests
     {
         var controller = CreateController();
         var order = new Order("1", 1, "Test");
-        var result = Result.Success(order);
+        var result = Result.Ok(order);
 
         var response = result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -89,7 +89,7 @@ public class CreatedAtActionResultMetadataTests
     public void ToCreatedAtActionResult_Failure_ReturnsProblemDetails()
     {
         var controller = CreateController();
-        var result = Result.Failure<Order>(Error.BadRequest("bad input"));
+        var result = Result.Fail<Order>(Error.BadRequest("bad input"));
 
         var response = result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -106,7 +106,7 @@ public class CreatedAtActionResultMetadataTests
     {
         var invoked = false;
         var controller = CreateController();
-        var result = Result.Failure<Order>(Error.NotFound("gone"));
+        var result = Result.Fail<Order>(Error.NotFound("gone"));
 
         result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -121,7 +121,7 @@ public class CreatedAtActionResultMetadataTests
     public void ToCreatedAtActionResult_Failure_DoesNotSetMetadataHeaders()
     {
         var controller = CreateController();
-        var result = Result.Failure<Order>(Error.NotFound("gone"));
+        var result = Result.Fail<Order>(Error.NotFound("gone"));
 
         result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -141,7 +141,7 @@ public class CreatedAtActionResultMetadataTests
     {
         var controller = CreateController();
         var order = new Order("99", 3, "Async");
-        var resultTask = Task.FromResult(Result.Success(order));
+        var resultTask = Task.FromResult(Result.Ok(order));
 
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
             actionName: "GetOrder",
@@ -157,7 +157,7 @@ public class CreatedAtActionResultMetadataTests
     public async Task ToCreatedAtActionResultAsync_Task_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var resultTask = Task.FromResult(Result.Failure<Order>(Error.Conflict("exists")));
+        var resultTask = Task.FromResult(Result.Fail<Order>(Error.Conflict("exists")));
 
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
             actionName: "GetOrder",
@@ -178,7 +178,7 @@ public class CreatedAtActionResultMetadataTests
     {
         var controller = CreateController();
         var order = new Order("55", 5, "VTask");
-        var resultTask = new ValueTask<Result<Order>>(Result.Success(order));
+        var resultTask = new ValueTask<Result<Order>>(Result.Ok(order));
 
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
             actionName: "GetOrder",
@@ -194,7 +194,7 @@ public class CreatedAtActionResultMetadataTests
     public async Task ToCreatedAtActionResultAsync_ValueTask_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var resultTask = new ValueTask<Result<Order>>(Result.Failure<Order>(Error.Forbidden("denied")));
+        var resultTask = new ValueTask<Result<Order>>(Result.Fail<Order>(Error.Forbidden("denied")));
 
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
             actionName: "GetOrder",

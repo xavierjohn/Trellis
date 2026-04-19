@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions.Bind;
+namespace Trellis.Results.Tests.Results.Extensions.Bind;
 
 using Trellis.Testing;
 
@@ -15,7 +15,7 @@ public class BindTsTests : TestBase
     [Fact]
     public void Bind_2Tuple_WithNullFunc_ThrowsArgumentNullException()
     {
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
 
         var act = () => result.Bind<T, K, string>(null!);
 
@@ -27,14 +27,14 @@ public class BindTsTests : TestBase
     public void Bind_2Tuple_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
         var functionCalled = false;
 
         // Act
         var actual = result.Bind((t, k) =>
         {
             functionCalled = true;
-            return Result.Success($"{t}-{k}");
+            return Result.Ok($"{t}-{k}");
         });
 
         // Assert
@@ -47,14 +47,14 @@ public class BindTsTests : TestBase
     public void Bind_2Tuple_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K)>(Error1);
+        var result = Result.Fail<(T, K)>(Error1);
         var functionCalled = false;
 
         // Act
         var actual = result.Bind((t, k) =>
         {
             functionCalled = true;
-            return Result.Success($"{t}-{k}");
+            return Result.Ok($"{t}-{k}");
         });
 
         // Assert
@@ -71,14 +71,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_2Tuple_ResultWithTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k) =>
         {
             functionCalled = true;
-            return Task.FromResult(Result.Success($"{t}-{k}"));
+            return Task.FromResult(Result.Ok($"{t}-{k}"));
         });
 
         // Assert
@@ -90,14 +90,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_2Tuple_ResultWithTaskFunc_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K)>(Error1);
+        var result = Result.Fail<(T, K)>(Error1);
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k) =>
         {
             functionCalled = true;
-            return Task.FromResult(Result.Success($"{t}-{k}"));
+            return Task.FromResult(Result.Ok($"{t}-{k}"));
         });
 
         // Assert
@@ -108,7 +108,7 @@ public class BindTsTests : TestBase
     [Fact]
     public async Task BindAsync_2Tuple_ResultWithTaskFunc_NullFunc_ThrowsArgumentNullException()
     {
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
 
         var act = async () => await result.BindAsync((Func<T, K, Task<Result<string>>>)null!);
 
@@ -119,7 +119,7 @@ public class BindTsTests : TestBase
     [Fact]
     public async Task BindAsync_2Tuple_TaskResultWithFunc_NullResultTask_ThrowsArgumentNullException()
     {
-        var act = async () => await ((Task<Result<(T, K)>>)null!).BindAsync((t, k) => Result.Success($"{t}-{k}"));
+        var act = async () => await ((Task<Result<(T, K)>>)null!).BindAsync((t, k) => Result.Ok($"{t}-{k}"));
 
         await act.Should().ThrowAsync<ArgumentNullException>()
             .Where(exception => exception.ParamName == "resultTask");
@@ -129,14 +129,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_2Tuple_TaskResultWithFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k) =>
         {
             functionCalled = true;
-            return Result.Success($"{t}-{k}");
+            return Result.Ok($"{t}-{k}");
         });
 
         // Assert
@@ -148,14 +148,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_2Tuple_TaskResultWithTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k) =>
         {
             functionCalled = true;
-            return Task.FromResult(Result.Success($"{t}-{k}"));
+            return Task.FromResult(Result.Ok($"{t}-{k}"));
         });
 
         // Assert
@@ -171,14 +171,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_2Tuple_ResultWithValueTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k) =>
         {
             functionCalled = true;
-            return ValueTask.FromResult(Result.Success($"{t}-{k}"));
+            return ValueTask.FromResult(Result.Ok($"{t}-{k}"));
         });
 
         // Assert
@@ -190,14 +190,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_2Tuple_ValueTaskResultWithFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsValueTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsValueTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k) =>
         {
             functionCalled = true;
-            return Result.Success($"{t}-{k}");
+            return Result.Ok($"{t}-{k}");
         });
 
         // Assert
@@ -209,14 +209,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_2Tuple_ValueTaskResultWithValueTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsValueTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsValueTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k) =>
         {
             functionCalled = true;
-            return ValueTask.FromResult(Result.Success($"{t}-{k}"));
+            return ValueTask.FromResult(Result.Ok($"{t}-{k}"));
         });
 
         // Assert
@@ -232,14 +232,14 @@ public class BindTsTests : TestBase
     public void Bind_3Tuple_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1, 42));
+        var result = Result.Ok((T.Value1, K.Value1, 42));
         var functionCalled = false;
 
         // Act
         var actual = result.Bind((t, k, num) =>
         {
             functionCalled = true;
-            return Result.Success($"{t}-{k}-{num}");
+            return Result.Ok($"{t}-{k}-{num}");
         });
 
         // Assert
@@ -252,14 +252,14 @@ public class BindTsTests : TestBase
     public void Bind_3Tuple_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K, int)>(Error1);
+        var result = Result.Fail<(T, K, int)>(Error1);
         var functionCalled = false;
 
         // Act
         var actual = result.Bind((t, k, num) =>
         {
             functionCalled = true;
-            return Result.Success($"{t}-{k}-{num}");
+            return Result.Ok($"{t}-{k}-{num}");
         });
 
         // Assert
@@ -271,14 +271,14 @@ public class BindTsTests : TestBase
     public async Task BindAsync_3Tuple_TaskResultWithTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1, 42)).AsTask();
+        var result = Result.Ok((T.Value1, K.Value1, 42)).AsTask();
         var functionCalled = false;
 
         // Act
         var actual = await result.BindAsync((t, k, num) =>
         {
             functionCalled = true;
-            return Task.FromResult(Result.Success($"{t}-{k}-{num}"));
+            return Task.FromResult(Result.Ok($"{t}-{k}-{num}"));
         });
 
         // Assert
@@ -294,13 +294,13 @@ public class BindTsTests : TestBase
     public void Bind_2Tuple_AfterCombine_CreateEntity()
     {
         // Arrange
-        var firstNameResult = Result.Success("John");
-        var lastNameResult = Result.Success("Doe");
+        var firstNameResult = Result.Ok("John");
+        var lastNameResult = Result.Ok("Doe");
 
         // Act
         var result = firstNameResult
             .Combine(lastNameResult)
-            .Bind((first, last) => Result.Success($"{first} {last}"));
+            .Bind((first, last) => Result.Ok($"{first} {last}"));
 
         // Assert
         result.Should().BeSuccess()
@@ -311,13 +311,13 @@ public class BindTsTests : TestBase
     public void Bind_2Tuple_AfterCombine_OneFailure_ReturnsFailure()
     {
         // Arrange
-        var firstNameResult = Result.Failure<string>(Error.Validation("First name required"));
-        var lastNameResult = Result.Success("Doe");
+        var firstNameResult = Result.Fail<string>(Error.Validation("First name required"));
+        var lastNameResult = Result.Ok("Doe");
 
         // Act
         var result = firstNameResult
             .Combine(lastNameResult)
-            .Bind((first, last) => Result.Success($"{first} {last}"));
+            .Bind((first, last) => Result.Ok($"{first} {last}"));
 
         // Assert
         result.Should().BeFailureOfType<ValidationError>();
@@ -327,16 +327,16 @@ public class BindTsTests : TestBase
     public async Task BindAsync_3Tuple_AfterCombine_ChainedOperations()
     {
         // Arrange
-        var emailResult = Result.Success("user@example.com");
-        var firstNameResult = Result.Success("John");
-        var lastNameResult = Result.Success("Doe");
+        var emailResult = Result.Ok("user@example.com");
+        var firstNameResult = Result.Ok("John");
+        var lastNameResult = Result.Ok("Doe");
 
         // Act
         var result = await emailResult
             .Combine(firstNameResult)
             .Combine(lastNameResult)
             .BindAsync((email, first, last) =>
-                Task.FromResult(Result.Success($"{first} {last} <{email}>"))
+                Task.FromResult(Result.Ok($"{first} {last} <{email}>"))
             );
 
         // Assert

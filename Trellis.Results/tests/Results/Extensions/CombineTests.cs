@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -8,9 +8,9 @@ public class CombineTests
     public void Combine_one_result_and_Unit_where_both_are_success()
     {
         // Arrange
-        var rHello = Result.Success("Hello")
-            .Combine(Result.Success())
-            .Bind(hello => Result.Success($"{hello}"));
+        var rHello = Result.Ok("Hello")
+            .Combine(Result.Ok())
+            .Bind(hello => Result.Ok($"{hello}"));
 
         // Act
 
@@ -22,9 +22,9 @@ public class CombineTests
     public void Combine_one_result_and_Unit_where_one_is_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Failure(Error.Validation("Bad World", "key")))
-            .Bind(hello => Result.Success($"{hello}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Fail(Error.Validation("Bad World", "key")))
+            .Bind(hello => Result.Ok($"{hello}"));
 
         // Act
 
@@ -38,9 +38,9 @@ public class CombineTests
     public void Combine_two_results_where_both_are_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Success("World"))
-            .Bind((hello, world) => Result.Success($"{hello} {world}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Ok("World"))
+            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
 
         // Act
 
@@ -52,9 +52,9 @@ public class CombineTests
     public void Combine_two_results_where_one_is_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Failure<string>(Error.Validation("Bad World", "key")))
-            .Bind((hello, world) => Result.Success($"{hello} {world}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Fail<string>(Error.Validation("Bad World", "key")))
+            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
 
         // Act
 
@@ -68,9 +68,9 @@ public class CombineTests
     public void Combine_two_results_where_2nd_is_success()
     {
         // Arrange
-        var rHelloWorld = Result.Failure<string>(Error.Validation("Bad World", "key"))
-            .Combine(Result.Success("World"))
-            .Bind((hello, world) => Result.Success($"{hello} {world}"));
+        var rHelloWorld = Result.Fail<string>(Error.Validation("Bad World", "key"))
+            .Combine(Result.Ok("World"))
+            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
 
         // Act
 
@@ -84,10 +84,10 @@ public class CombineTests
     public void Combine_two_result_and_Unit_where_both_are_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Success("World"))
-            .Combine(Result.Success())
-            .Bind((hello, world) => Result.Success($"{hello} {world}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Ok("World"))
+            .Combine(Result.Ok())
+            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
 
         // Act
 
@@ -99,10 +99,10 @@ public class CombineTests
     public void Combine_two_result_and_Unit_where_one_is_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Success("World"))
-            .Combine(Result.Failure(Error.Validation("Bad World", "key")))
-            .Bind((hello, world) => Result.Success($"{hello} {world}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Ok("World"))
+            .Combine(Result.Fail(Error.Validation("Bad World", "key")))
+            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
 
         // Act
 
@@ -116,10 +116,10 @@ public class CombineTests
     public void Combine_three_results_where_all_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Success("First"))
-            .Combine(Result.Success("Last"))
-            .Bind((hello, first, last) => Result.Success($"{hello} {first} {last}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Ok("First"))
+            .Combine(Result.Ok("Last"))
+            .Bind((hello, first, last) => Result.Ok($"{hello} {first} {last}"));
 
         // Act
 
@@ -131,10 +131,10 @@ public class CombineTests
     public void Combine_three_results_where_one_is_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Failure<string>(Error.Validation("Bad First", "First")))
-            .Combine(Result.Failure<string>(Error.Validation("Bad Last", "Last")))
-            .Bind((hello, first, last) => Result.Success($"{hello} {first} {last}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Fail<string>(Error.Validation("Bad First", "First")))
+            .Combine(Result.Fail<string>(Error.Validation("Bad Last", "Last")))
+            .Bind((hello, first, last) => Result.Ok($"{hello} {first} {last}"));
 
         // Act
 
@@ -149,16 +149,16 @@ public class CombineTests
     public void Combine_nine_results_where_all_success()
     {
         // Arrange
-        var rHelloWorld = Result.Success("1")
-            .Combine(Result.Success("2"))
-            .Combine(Result.Success("3"))
-            .Combine(Result.Success("4"))
-            .Combine(Result.Success("5"))
-            .Combine(Result.Success("6"))
-            .Combine(Result.Success("7"))
-            .Combine(Result.Success("8"))
-            .Combine(Result.Success("9"))
-            .Bind((one, two, three, four, five, six, seven, eight, nine) => Result.Success($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
+        var rHelloWorld = Result.Ok("1")
+            .Combine(Result.Ok("2"))
+            .Combine(Result.Ok("3"))
+            .Combine(Result.Ok("4"))
+            .Combine(Result.Ok("5"))
+            .Combine(Result.Ok("6"))
+            .Combine(Result.Ok("7"))
+            .Combine(Result.Ok("8"))
+            .Combine(Result.Ok("9"))
+            .Bind((one, two, three, four, five, six, seven, eight, nine) => Result.Ok($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
 
         // Act
 
@@ -170,16 +170,16 @@ public class CombineTests
     public void Combine_nine_results_with_one_failure()
     {
         // Arrange
-        var rHelloWorld = Result.Success("1")
-            .Combine(Result.Success("2"))
-            .Combine(Result.Success("3"))
-            .Combine(Result.Success("4"))
-            .Combine(Result.Success("5"))
-            .Combine(Result.Success("6"))
-            .Combine(Result.Success("7"))
-            .Combine(Result.Success("8"))
-            .Combine(Result.Failure<string>(Error.Validation("Bad 9")))
-            .Bind((one, two, three, four, five, six, seven, eight, nine) => Result.Success($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
+        var rHelloWorld = Result.Ok("1")
+            .Combine(Result.Ok("2"))
+            .Combine(Result.Ok("3"))
+            .Combine(Result.Ok("4"))
+            .Combine(Result.Ok("5"))
+            .Combine(Result.Ok("6"))
+            .Combine(Result.Ok("7"))
+            .Combine(Result.Ok("8"))
+            .Combine(Result.Fail<string>(Error.Validation("Bad 9")))
+            .Bind((one, two, three, four, five, six, seven, eight, nine) => Result.Ok($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
 
         // Act
 
@@ -193,16 +193,16 @@ public class CombineTests
     public void Combine_nine_results_with_two_failure()
     {
         // Arrange
-        var rHelloWorld = Result.Success("1")
-            .Combine(Result.Success("2"))
-            .Combine(Result.Failure<string>(Error.Validation("Bad 3")))
-            .Combine(Result.Success("4"))
-            .Combine(Result.Success("5"))
-            .Combine(Result.Success("6"))
-            .Combine(Result.Success("7"))
-            .Combine(Result.Success("8"))
-            .Combine(Result.Failure<string>(Error.Validation("Bad 9")))
-            .Bind((one, two, three, four, five, six, seven, eight, nine) => Result.Success($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
+        var rHelloWorld = Result.Ok("1")
+            .Combine(Result.Ok("2"))
+            .Combine(Result.Fail<string>(Error.Validation("Bad 3")))
+            .Combine(Result.Ok("4"))
+            .Combine(Result.Ok("5"))
+            .Combine(Result.Ok("6"))
+            .Combine(Result.Ok("7"))
+            .Combine(Result.Ok("8"))
+            .Combine(Result.Fail<string>(Error.Validation("Bad 9")))
+            .Bind((one, two, three, four, five, six, seven, eight, nine) => Result.Ok($"{one}{two}{three}{four}{five}{six}{seven}{eight}{nine}"));
 
         // Act
 
@@ -219,10 +219,10 @@ public class CombineTests
         var called = false;
 
         // Act
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Failure<string>(Error.Validation("Bad First", "First")))
-            .Combine(Result.Failure<string>(Error.Unexpected("Server error")))
-            .Bind((hello, first, last) => Result.Success($"{hello} {first} {last}"));
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Fail<string>(Error.Validation("Bad First", "First")))
+            .Combine(Result.Fail<string>(Error.Unexpected("Server error")))
+            .Bind((hello, first, last) => Result.Ok($"{hello} {first} {last}"));
 
         // Assert
         called.Should().BeFalse();
@@ -240,13 +240,13 @@ public class CombineTests
         var called = false;
 
         // Act
-        var rHelloWorld = Result.Success("Hello")
-            .Combine(Result.Failure<string>(Error.Forbidden("You can't touch this.")))
-            .Combine(Result.Failure<string>(Error.Unexpected("Server error")))
+        var rHelloWorld = Result.Ok("Hello")
+            .Combine(Result.Fail<string>(Error.Forbidden("You can't touch this.")))
+            .Combine(Result.Fail<string>(Error.Unexpected("Server error")))
             .Bind((hello, first, last) =>
             {
                 called = true;
-                return Result.Success($"{hello} {first} {last}");
+                return Result.Ok($"{hello} {first} {last}");
             });
 
         // Assert
@@ -262,9 +262,9 @@ public class CombineTests
     public async Task Combine_async_task_results_where_both_are_success()
     {
         // Arrange
-        var rHelloWorld = await Task.FromResult(Result.Success("Hello"))
-            .CombineAsync(Result.Success("World"))
-            .BindAsync((hello, world) => Result.Success($"{hello} {world}"));
+        var rHelloWorld = await Task.FromResult(Result.Ok("Hello"))
+            .CombineAsync(Result.Ok("World"))
+            .BindAsync((hello, world) => Result.Ok($"{hello} {world}"));
 
         // Act
 
@@ -291,15 +291,15 @@ public class CombineTests
         var error8 = Error.Validation("Message F", "Field3");
         var error9 = Error.Validation("Message E", "Field3"); // duplicate message
 
-        var result1 = Result.Failure<string>(error1);
-        var result2 = Result.Failure<string>(error2);
-        var result3 = Result.Failure<string>(error3);
-        var result4 = Result.Failure<string>(error4);
-        var result5 = Result.Failure<string>(error5);
-        var result6 = Result.Failure<string>(error6);
-        var result7 = Result.Failure<string>(error7);
-        var result8 = Result.Failure<string>(error8);
-        var result9 = Result.Failure<string>(error9);
+        var result1 = Result.Fail<string>(error1);
+        var result2 = Result.Fail<string>(error2);
+        var result3 = Result.Fail<string>(error3);
+        var result4 = Result.Fail<string>(error4);
+        var result5 = Result.Fail<string>(error5);
+        var result6 = Result.Fail<string>(error6);
+        var result7 = Result.Fail<string>(error7);
+        var result8 = Result.Fail<string>(error8);
+        var result9 = Result.Fail<string>(error9);
 
         // Act
         var merged = result1
@@ -327,8 +327,8 @@ public class CombineTests
     [Fact]
     public void StaticCombine_2Tuple_AllSuccess_ReturnsTuple()
     {
-        var r1 = Result.Success("Hello");
-        var r2 = Result.Success("World");
+        var r1 = Result.Ok("Hello");
+        var r2 = Result.Ok("World");
 
         var result = Result.Combine(r1, r2);
 
@@ -338,8 +338,8 @@ public class CombineTests
     [Fact]
     public void StaticCombine_2Tuple_FirstFails_ReturnsFailure()
     {
-        var r1 = Result.Failure<string>(Error.Validation("bad", "f1"));
-        var r2 = Result.Success("World");
+        var r1 = Result.Fail<string>(Error.Validation("bad", "f1"));
+        var r2 = Result.Ok("World");
 
         var result = Result.Combine(r1, r2);
 
@@ -349,8 +349,8 @@ public class CombineTests
     [Fact]
     public void StaticCombine_2Tuple_SecondFails_ReturnsFailure()
     {
-        var r1 = Result.Success("Hello");
-        var r2 = Result.Failure<string>(Error.Validation("bad", "f2"));
+        var r1 = Result.Ok("Hello");
+        var r2 = Result.Fail<string>(Error.Validation("bad", "f2"));
 
         var result = Result.Combine(r1, r2);
 
@@ -360,8 +360,8 @@ public class CombineTests
     [Fact]
     public void StaticCombine_2Tuple_BothFail_AggregatesErrors()
     {
-        var r1 = Result.Failure<string>(Error.Validation("e1", "f1"));
-        var r2 = Result.Failure<string>(Error.Validation("e2", "f2"));
+        var r1 = Result.Fail<string>(Error.Validation("e1", "f1"));
+        var r2 = Result.Fail<string>(Error.Validation("e2", "f2"));
 
         var result = Result.Combine(r1, r2);
 
@@ -372,8 +372,8 @@ public class CombineTests
     [Fact]
     public void StaticCombine_2Tuple_DifferentTypes_ReturnsTypedTuple()
     {
-        var r1 = Result.Success(42);
-        var r2 = Result.Success("text");
+        var r1 = Result.Ok(42);
+        var r2 = Result.Ok("text");
 
         var result = Result.Combine(r1, r2);
 
@@ -383,11 +383,11 @@ public class CombineTests
     [Fact]
     public void StaticCombine_2Tuple_CanChainBind()
     {
-        var r1 = Result.Success("Hello");
-        var r2 = Result.Success("World");
+        var r1 = Result.Ok("Hello");
+        var r2 = Result.Ok("World");
 
         var result = Result.Combine(r1, r2)
-            .Bind((hello, world) => Result.Success($"{hello} {world}"));
+            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
 
         result.Should().BeSuccess().Which.Should().Be("Hello World");
     }
@@ -395,9 +395,9 @@ public class CombineTests
     [Fact]
     public void StaticCombine_3Tuple_AllSuccess_ReturnsTuple()
     {
-        var r1 = Result.Success("a");
-        var r2 = Result.Success("b");
-        var r3 = Result.Success("c");
+        var r1 = Result.Ok("a");
+        var r2 = Result.Ok("b");
+        var r3 = Result.Ok("c");
 
         var result = Result.Combine(r1, r2, r3);
 
@@ -407,9 +407,9 @@ public class CombineTests
     [Fact]
     public void StaticCombine_3Tuple_OneFails_ReturnsFailure()
     {
-        var r1 = Result.Success("a");
-        var r2 = Result.Failure<string>(Error.Validation("bad", "f"));
-        var r3 = Result.Success("c");
+        var r1 = Result.Ok("a");
+        var r2 = Result.Fail<string>(Error.Validation("bad", "f"));
+        var r3 = Result.Ok("c");
 
         var result = Result.Combine(r1, r2, r3);
 
@@ -420,15 +420,15 @@ public class CombineTests
     public void StaticCombine_9Tuple_AllSuccess_ReturnsTuple()
     {
         var result = Result.Combine(
-            Result.Success(1),
-            Result.Success(2),
-            Result.Success(3),
-            Result.Success(4),
-            Result.Success(5),
-            Result.Success(6),
-            Result.Success(7),
-            Result.Success(8),
-            Result.Success(9));
+            Result.Ok(1),
+            Result.Ok(2),
+            Result.Ok(3),
+            Result.Ok(4),
+            Result.Ok(5),
+            Result.Ok(6),
+            Result.Ok(7),
+            Result.Ok(8),
+            Result.Ok(9));
 
         result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5, 6, 7, 8, 9));
     }
@@ -437,15 +437,15 @@ public class CombineTests
     public void StaticCombine_9Tuple_MultipleFail_AggregatesErrors()
     {
         var result = Result.Combine(
-            Result.Success(1),
-            Result.Failure<int>(Error.Validation("e1", "f1")),
-            Result.Success(3),
-            Result.Success(4),
-            Result.Failure<int>(Error.Validation("e2", "f2")),
-            Result.Success(6),
-            Result.Success(7),
-            Result.Success(8),
-            Result.Failure<int>(Error.Validation("e3", "f3")));
+            Result.Ok(1),
+            Result.Fail<int>(Error.Validation("e1", "f1")),
+            Result.Ok(3),
+            Result.Ok(4),
+            Result.Fail<int>(Error.Validation("e2", "f2")),
+            Result.Ok(6),
+            Result.Ok(7),
+            Result.Ok(8),
+            Result.Fail<int>(Error.Validation("e3", "f3")));
 
         var validation = result.Should().BeFailureOfType<ValidationError>().Which;
         validation.FieldErrors.Should().HaveCount(3);
@@ -454,9 +454,9 @@ public class CombineTests
     [Fact]
     public void StaticCombine_CanBeUsedInPipeline()
     {
-        var emailResult = Result.Success("user@example.com");
-        var nameResult = Result.Success("John");
-        var ageResult = Result.Success(30);
+        var emailResult = Result.Ok("user@example.com");
+        var nameResult = Result.Ok("John");
+        var ageResult = Result.Ok(30);
 
         var result = Result.Combine(emailResult, nameResult, ageResult)
             .Map((email, name, age) => $"{name} ({email}), age {age}");

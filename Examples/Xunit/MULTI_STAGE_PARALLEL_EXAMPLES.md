@@ -1,4 +1,4 @@
-﻿# Multi-Stage ParallelAsync Examples - Real World Usage
+# Multi-Stage ParallelAsync Examples - Real World Usage
 
 This document demonstrates **advanced ParallelAsync patterns** showing how to chain multiple stages of parallel execution, where later stages depend on results from earlier stages.
 
@@ -41,7 +41,7 @@ var result = await Result.ParallelAsync(
     )
     .WhenAllAsync()
     .BindAsync((fraudCheck, shipping) =>
-        Result.Success(new CheckoutResult(
+        Result.Ok(new CheckoutResult(
             user, 
             inventory, 
             payment, 
@@ -146,7 +146,7 @@ var result = await Result.ParallelAsync(
         .WhenAllAsync()  // Stage 3 done
         
         .BindAsync((shipping, reservation) =>
-            Result.Success(new OrderConfirmation(/*...*/))
+            Result.Ok(new OrderConfirmation(/*...*/))
         )
     )
 );

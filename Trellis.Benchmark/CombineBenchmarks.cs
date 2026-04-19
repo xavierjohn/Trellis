@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Benchmark;
 
@@ -22,11 +22,11 @@ public class CombineBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successInt1 = Result.Success(42);
-        _successInt2 = Result.Success(100);
-        _failureInt = Result.Failure<int>(Error.Validation("Invalid number", "number"));
-        _successString = Result.Success("Hello");
-        _failureString = Result.Failure<string>(Error.Validation("Invalid string", "text"));
+        _successInt1 = Result.Ok(42);
+        _successInt2 = Result.Ok(100);
+        _failureInt = Result.Fail<int>(Error.Validation("Invalid number", "number"));
+        _successString = Result.Ok("Hello");
+        _failureString = Result.Fail<string>(Error.Validation("Invalid string", "text"));
     }
 
     [Benchmark(Baseline = true)]
@@ -58,7 +58,7 @@ public class CombineBenchmarks
     {
         return _successInt1
             .Combine(_successInt2)
-            .Combine(Result.Success(200));
+            .Combine(Result.Ok(200));
     }
 
     [Benchmark]
@@ -94,7 +94,7 @@ public class CombineBenchmarks
     {
         return _successInt1
             .Combine(_successInt2)
-            .Bind((a, b) => Result.Success($"{a} + {b} = {a + b}"));
+            .Bind((a, b) => Result.Ok($"{a} + {b} = {a + b}"));
     }
 
     [Benchmark]
@@ -102,7 +102,7 @@ public class CombineBenchmarks
     {
         return _successInt1
             .Combine(_failureInt)
-            .Bind((a, b) => Result.Success($"{a} + {b} = {a + b}"));
+            .Bind((a, b) => Result.Ok($"{a} + {b} = {a + b}"));
     }
 
     [Benchmark]
@@ -111,7 +111,7 @@ public class CombineBenchmarks
         return FirstName.TryCreate("John")
             .Combine(LastName.TryCreate("Doe"))
             .Combine(EmailAddress.TryCreate("john@example.com"))
-            .Bind((first, last, email) => Result.Success($"{first} {last} <{email}>"));
+            .Bind((first, last, email) => Result.Ok($"{first} {last} <{email}>"));
     }
 
     [Benchmark]
@@ -120,7 +120,7 @@ public class CombineBenchmarks
         return FirstName.TryCreate("John")
             .Combine(LastName.TryCreate(""))
             .Combine(EmailAddress.TryCreate("john@example.com"))
-            .Bind((first, last, email) => Result.Success($"{first} {last} <{email}>"));
+            .Bind((first, last, email) => Result.Ok($"{first} {last} <{email}>"));
     }
 
     [Benchmark]
@@ -129,40 +129,40 @@ public class CombineBenchmarks
         return FirstName.TryCreate("")
             .Combine(LastName.TryCreate(""))
             .Combine(EmailAddress.TryCreate("invalid-email"))
-            .Bind((first, last, email) => Result.Success($"{first} {last} <{email}>"));
+            .Bind((first, last, email) => Result.Ok($"{first} {last} <{email}>"));
     }
 
     [Benchmark]
     public Result<int> Combine_FiveResults_AllSuccess()
     {
-        return Result.Success(1)
-            .Combine(Result.Success(2))
-            .Combine(Result.Success(3))
-            .Combine(Result.Success(4))
-            .Combine(Result.Success(5))
-            .Bind((a, b, c, d, e) => Result.Success(a + b + c + d + e));
+        return Result.Ok(1)
+            .Combine(Result.Ok(2))
+            .Combine(Result.Ok(3))
+            .Combine(Result.Ok(4))
+            .Combine(Result.Ok(5))
+            .Bind((a, b, c, d, e) => Result.Ok(a + b + c + d + e));
     }
 
     [Benchmark]
     public Result<int> Combine_FiveResults_OneFailure()
     {
-        return Result.Success(1)
-            .Combine(Result.Success(2))
-            .Combine(Result.Failure<int>(Error.Validation("Error at 3")))
-            .Combine(Result.Success(4))
-            .Combine(Result.Success(5))
-            .Bind((a, b, c, d, e) => Result.Success(a + b + c + d + e));
+        return Result.Ok(1)
+            .Combine(Result.Ok(2))
+            .Combine(Result.Fail<int>(Error.Validation("Error at 3")))
+            .Combine(Result.Ok(4))
+            .Combine(Result.Ok(5))
+            .Bind((a, b, c, d, e) => Result.Ok(a + b + c + d + e));
     }
 
     [Benchmark]
     public Result<int> Combine_FiveResults_MultipleFailures()
     {
-        return Result.Success(1)
-            .Combine(Result.Failure<int>(Error.Validation("Error at 2")))
-            .Combine(Result.Failure<int>(Error.Validation("Error at 3")))
-            .Combine(Result.Success(4))
-            .Combine(Result.Failure<int>(Error.Validation("Error at 5")))
-            .Bind((a, b, c, d, e) => Result.Success(a + b + c + d + e));
+        return Result.Ok(1)
+            .Combine(Result.Fail<int>(Error.Validation("Error at 2")))
+            .Combine(Result.Fail<int>(Error.Validation("Error at 3")))
+            .Combine(Result.Ok(4))
+            .Combine(Result.Fail<int>(Error.Validation("Error at 5")))
+            .Bind((a, b, c, d, e) => Result.Ok(a + b + c + d + e));
     }
 
     [Benchmark]
@@ -177,7 +177,7 @@ public class CombineBenchmarks
     {
         var result = await Task.FromResult(_successInt1)
             .CombineAsync(_successInt2)
-            .CombineAsync(Result.Success(200));
+            .CombineAsync(Result.Ok(200));
 
         return result.Map(tuple => tuple.Item1 + tuple.Item2 + tuple.Item3);
     }
@@ -188,8 +188,8 @@ public class CombineBenchmarks
         return FirstName.TryCreate("John")
             .Combine(LastName.TryCreate("Doe"))
             .Combine(EmailAddress.TryCreate("john@example.com"))
-            .Combine(Result.Success(30))
-            .Bind((first, last, email, age) => Result.Success(new Person(
+            .Combine(Result.Ok(30))
+            .Bind((first, last, email, age) => Result.Ok(new Person(
                 $"{first} {last}",
                 email.ToString(),
                 age)));
@@ -201,8 +201,8 @@ public class CombineBenchmarks
         return FirstName.TryCreate("John")
             .Combine(LastName.TryCreate("Doe"))
             .Combine(EmailAddress.TryCreate("john@example.com"))
-            .Combine(Result.Success(30))
-            .Bind((first, last, email, age) => Result.Success(new Person(
+            .Combine(Result.Ok(30))
+            .Bind((first, last, email, age) => Result.Ok(new Person(
                 $"{first} {last}",
                 email.ToString(),
                 age)))
@@ -213,7 +213,7 @@ public class CombineBenchmarks
     public Result<Unit> Combine_WithUnit_Success()
     {
         return _successInt1
-            .Combine(Result.Success())
+            .Combine(Result.Ok())
             .Map((tuple) => new Unit());
     }
 
