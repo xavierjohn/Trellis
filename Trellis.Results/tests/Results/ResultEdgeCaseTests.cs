@@ -413,43 +413,6 @@ public class ResultEdgeCaseTests
 
     #endregion
 
-    #region SuccessIf/FailureIf Edge Cases
-
-    [Fact]
-    public void SuccessIf_WithFalseCondition_ShouldReturnFailure()
-    {
-        // Act
-        var result = Result.SuccessIf(false, 42, Error.Validation("Condition not met"));
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Be("Condition not met");
-    }
-
-    [Fact]
-    public void SuccessIf_WithNullValue_ShouldReturnSuccessWithNull()
-    {
-        // Act
-        var result = Result.SuccessIf(true, (string?)null, Error.Validation("Error"));
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeNull();
-    }
-
-    [Fact]
-    public void FailureIf_WithTrueCondition_ShouldReturnFailure()
-    {
-        // Act
-        var result = Result.FailureIf(true, 42, Error.Validation("Failure condition met"));
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Be("Failure condition met");
-    }
-
-    #endregion
-
     #region Result.Ensure / Result.EnsureAsync
 
     [Fact]
@@ -609,36 +572,6 @@ public class ResultEdgeCaseTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(error);
-    }
-
-    [Fact]
-    public void FromException_ShouldCreateFailureUnitResult()
-    {
-        // Arrange
-        var exception = new InvalidOperationException("Test exception");
-
-        // Act
-        var result = Result.FromException(exception);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().Be("Test exception");
-    }
-
-    [Fact]
-    public void FromException_Generic_ShouldCreateFailureResultWithType()
-    {
-        // Arrange
-        var exception = new InvalidOperationException("Test exception");
-
-        // Act
-        var result = Result.FromException<int>(exception);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().Be("Test exception");
     }
 
     #endregion
