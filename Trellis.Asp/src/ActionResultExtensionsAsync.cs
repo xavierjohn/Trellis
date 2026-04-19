@@ -521,4 +521,22 @@ public static class ActionResultExtensionsAsync
         return result.ToCreatedAtActionResult(controllerBase, actionName, routeValues, metadataSelector, map, controllerName);
     }
 
+    /// <summary>
+    /// Converts a Task-wrapped non-generic <see cref="Result"/> to an <see cref="ActionResult"/>.
+    /// </summary>
+    public static async Task<ActionResult> ToActionResultAsync(this Task<Result> resultTask, ControllerBase controllerBase)
+    {
+        Result result = await resultTask.ConfigureAwait(false);
+        return result.ToActionResult(controllerBase);
+    }
+
+    /// <summary>
+    /// Converts a ValueTask-wrapped non-generic <see cref="Result"/> to an <see cref="ActionResult"/>.
+    /// </summary>
+    public static async ValueTask<ActionResult> ToActionResultAsync(this ValueTask<Result> resultTask, ControllerBase controllerBase)
+    {
+        Result result = await resultTask.ConfigureAwait(false);
+        return result.ToActionResult(controllerBase);
+    }
+
 }

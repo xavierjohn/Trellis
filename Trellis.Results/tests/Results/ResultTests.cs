@@ -1,4 +1,4 @@
-namespace Trellis.Results.Tests;
+﻿namespace Trellis.Results.Tests;
 
 using Trellis.Testing;
 
@@ -29,8 +29,7 @@ public class ResultTests
         var result = Result.Ok();
 
         // Assert
-        result.Should().BeSuccess()
-            .Which.Should().Be(default(Unit));
+        result.Should().BeSuccess();
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-using Trellis.Asp;
+﻿using Trellis.Asp;
 
 namespace SampleWebApplication.Controllers;
 
@@ -55,28 +55,28 @@ public class WeatherForecastController : ControllerBase
     }
 
     [HttpGet("Forbidden")]
-    public ActionResult<Unit> Forbidden(string instance)
-        => Error.Forbidden("You are forbidden.", instance).ToActionResult<Unit>(this);
+    public ActionResult Forbidden(string instance)
+        => Error.Forbidden("You are forbidden.", instance).ToActionResult(this);
 
     [HttpGet("Unauthorized")]
-    public ActionResult<Unit> Unauthorized(string instance)
-        => Error.Unauthorized("You are not authorized.", instance).ToActionResult<Unit>(this);
+    public ActionResult Unauthorized(string instance)
+        => Error.Unauthorized("You are not authorized.", instance).ToActionResult(this);
 
     [HttpGet("Conflict")]
-    public ActionResult<Unit> Conflict(string instance)
-        => Error.Conflict("There is a conflict. " + instance, instance).ToActionResult<Unit>(this);
+    public ActionResult Conflict(string instance)
+        => Error.Conflict("There is a conflict. " + instance, instance).ToActionResult(this);
 
     [HttpGet("NotFound")]
-    public ActionResult<Unit> NotFound(string? instance)
-        => Error.NotFound("Record not found. " + instance, instance).ToActionResult<Unit>(this);
+    public ActionResult NotFound(string? instance)
+        => Error.NotFound("Record not found. " + instance, instance).ToActionResult(this);
 
     [HttpGet("ValidationError")]
-    public ActionResult<Unit> ValidationError(string? instance, string? detail)
+    public ActionResult ValidationError(string? instance, string? detail)
     {
         ImmutableArray<FieldError> errors = [
             new("Field1",["Field is required.", "It cannot be empty."]),
             new("Field2",["Field is required."])
         ];
-        return Error.Validation(errors, detail ?? string.Empty, instance).ToActionResult<Unit>(this);
+        return Error.Validation(errors, detail ?? string.Empty, instance).ToActionResult(this);
     }
 }

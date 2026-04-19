@@ -1,4 +1,4 @@
-namespace Trellis.Results.Tests;
+﻿namespace Trellis.Results.Tests;
 
 using Xunit;
 
@@ -557,7 +557,6 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(default(Unit));
     }
 
     [Fact]

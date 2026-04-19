@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System;
 using System.Diagnostics;
@@ -221,6 +221,18 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <param name="right">The second result to compare.</param>
     /// <returns>True if the results are not equal; otherwise false.</returns>
     public static bool operator !=(Result<TValue> left, Result<TValue> right) => !left.Equals(right);
+
+    /// <summary>
+    /// Converts this <see cref="Result{TValue}"/> to a non-generic <see cref="Result"/>, discarding the success value.
+    /// Failures preserve their <see cref="Error"/>.
+    /// </summary>
+    /// <remarks>
+    /// Use <see cref="AsUnit"/> when a pipeline returns a value but the next step only cares about success/failure
+    /// (e.g., bridging a value-producing operation into a void/Unit-shaped consumer). Replaces the v1 idiom
+    /// <c>result.Map(_ =&gt; Unit.Default)</c> / <c>Result&lt;Unit&gt;</c>.
+    /// </remarks>
+    /// <returns>A non-generic <see cref="Result"/> mirroring this result's success/failure state.</returns>
+    public Result AsUnit() => IsFailure ? Result.Fail(_error!) : Result.Ok();
 
     /// <summary>
     /// Returns a string representation of the result.

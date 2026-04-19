@@ -14,6 +14,6 @@ public class EfUnitOfWork<TContext>(TContext context) : IUnitOfWork
     where TContext : DbContext
 {
     /// <inheritdoc />
-    public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
+    public Task<Result> CommitAsync(CancellationToken cancellationToken = default)
         => context.SaveChangesResultUnitAsync(cancellationToken);
 }

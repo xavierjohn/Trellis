@@ -99,24 +99,37 @@ public static class ActionResultExtensions
     /// </code>
     /// </example>
     /// <example>
-    /// DELETE endpoint returning Unit:
+    /// DELETE endpoint returning a non-generic <see cref="Result"/>:
     /// <code>
     /// [HttpDelete("{id}")]
-    /// public ActionResult&lt;Unit&gt; DeleteUser(Guid id) =>
+    /// public ActionResult DeleteUser(Guid id) =>
     ///     UserId.TryCreate(id)
     ///         .Bind(_repository.DeleteAsync)
     ///         .ToActionResult(this);
     /// 
-    /// // Success: 204 No Content (automatic for Unit)
+    /// // Success: 204 No Content (automatic for non-generic Result)
     /// // Not found: 404 Not Found
     /// </code>
     /// </example>
     public static ActionResult<TValue> ToActionResult<TValue>(this Result<TValue> result, ControllerBase controllerBase) =>
         result.Match<TValue, ActionResult<TValue>>(
-            onSuccess: value => typeof(TValue) == typeof(Unit)
-                ? (ActionResult<TValue>)controllerBase.NoContent()
-                : (ActionResult<TValue>)controllerBase.Ok(value),
+            onSuccess: value => (ActionResult<TValue>)controllerBase.Ok(value),
             onFailure: error => error.ToActionResult<TValue>(controllerBase));
+
+    /// <summary>
+    /// Converts a non-generic <see cref="Result"/> to an <see cref="ActionResult"/>.
+    /// On success returns 204 No Content; on failure returns an error result.
+    /// </summary>
+    public static ActionResult ToActionResult(this Result result, ControllerBase controllerBase) =>
+        result.Match(
+            onSuccess: () => (ActionResult)controllerBase.NoContent(),
+            onFailure: error => error.ToActionResult(controllerBase));
+
+    /// <summary>
+    /// Converts a domain <see cref="Error"/> directly to a non-generic <see cref="ActionResult"/> with appropriate HTTP status code and Problem Details format.
+    /// </summary>
+    public static ActionResult ToActionResult(this Error error, ControllerBase controllerBase) =>
+        error.ToActionResult<object>(controllerBase).Result!;
 
     /// <summary>
     /// Converts a domain <see cref="Error"/> to an <see cref="ActionResult{TValue}"/> with appropriate HTTP status code and Problem Details format.
@@ -343,10 +356,6 @@ public static class ActionResultExtensions
         result.Match<TValue, ActionResult<TValue>>(
             onSuccess: value =>
             {
-                // If TValue is Unit, return 204 No Content
-                if (typeof(TValue) == typeof(Unit))
-                    return (ActionResult<TValue>)controllerBase.NoContent();
-
                 // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
                 if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
                     return (ActionResult<TValue>)controllerBase.Ok(value);

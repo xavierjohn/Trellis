@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System.Diagnostics;
 
@@ -206,5 +206,33 @@ public static class TraverseExtensions
         }
 
         return Result.Ok<IReadOnlyList<TOut>>(results);
+    }
+
+    /// <summary>
+    /// Asynchronously transforms a collection of items using a non-generic Result selector.
+    /// Short-circuits on the first failure. Returns a non-generic Result (no collected values).
+    /// </summary>
+    public static async Task<Result> TraverseAsync<TIn>(
+        this IEnumerable<TIn> source,
+        Func<TIn, CancellationToken, Task<Result>> selector,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(selector);
+
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        foreach (var item in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await selector(item, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                return Result.Fail(result.Error);
+            }
+        }
+
+        return Result.Ok();
     }
 }

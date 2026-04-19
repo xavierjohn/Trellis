@@ -1,4 +1,4 @@
-namespace SampleMinimalApiNoAot.API;
+﻿namespace SampleMinimalApiNoAot.API;
 
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
@@ -36,7 +36,7 @@ public static class NewOrderRoutes
             var result = await Result.Ensure(
                     request.Lines is { Length: > 0 },
                     Error.Validation("Order must have at least one line item.", "lines"))
-                .Bind(_ => Order.TryCreate(request.CustomerId))
+                .Bind(() => Order.TryCreate(request.CustomerId))
                 .BindAsync(order =>
                     request.Lines.TraverseAsync(line =>
                         db.Products

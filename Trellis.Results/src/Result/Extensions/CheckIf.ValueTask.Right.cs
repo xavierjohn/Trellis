@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Async CheckIf extensions where only the RIGHT (check function) is async (ValueTask), input is sync.
@@ -40,8 +40,29 @@ public static partial class CheckIfExtensionsAsync
     }
 
     /// <inheritdoc cref="CheckIfAsync{T,TK}(Result{T}, bool, Func{T, ValueTask{Result{TK}}})"/>
-    public static ValueTask<Result<T>> CheckIfAsync<T>(this Result<T> result, bool condition, Func<T, ValueTask<Result<Unit>>> func)
-        => CheckIfAsync<T, Unit>(result, condition, func);
+    public static async ValueTask<Result<T>> CheckIfAsync<T>(this Result<T> result, bool condition, Func<T, ValueTask<Result>> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
+
+        if (result.IsFailure || !condition)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = await func(result.Value).ConfigureAwait(false);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Fail<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
 
     /// <summary>
     /// Conditionally runs an async validation function when the predicate returns true.
@@ -79,6 +100,28 @@ public static partial class CheckIfExtensionsAsync
     }
 
     /// <inheritdoc cref="CheckIfAsync{T,TK}(Result{T}, Func{T, bool}, Func{T, ValueTask{Result{TK}}})"/>
-    public static ValueTask<Result<T>> CheckIfAsync<T>(this Result<T> result, Func<T, bool> predicate, Func<T, ValueTask<Result<Unit>>> func)
-        => CheckIfAsync<T, Unit>(result, predicate, func);
+    public static async ValueTask<Result<T>> CheckIfAsync<T>(this Result<T> result, Func<T, bool> predicate, Func<T, ValueTask<Result>> func)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
+
+        if (result.IsFailure || !predicate(result.Value))
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = await func(result.Value).ConfigureAwait(false);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Fail<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
 }

@@ -1,4 +1,4 @@
-namespace SampleWebApplication.Controllers;
+﻿namespace SampleWebApplication.Controllers;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
@@ -136,17 +136,17 @@ public class ProductsController(AppDbContext db) : ControllerBase
 
     // DELETE /products/{id}
     [HttpDelete("{id}")]
-    public async Task<ActionResult<Unit>> Delete(ProductId id)
+    public async Task<ActionResult> Delete(ProductId id)
     {
         var product = await db.Products.FindAsync(id);
         if (product is null)
-            return Error.NotFound("Product not found.", id).ToActionResult<Unit>(this);
+            return Error.NotFound("Product not found.", id).ToActionResult(this);
 
         db.Products.Remove(product);
         var saveResult = await db.SaveChangesResultUnitAsync();
         return saveResult.Match(
-            _ => (ActionResult<Unit>)new NoContentResult(),
-            error => error.ToActionResult<Unit>(this));
+            () => (ActionResult)new NoContentResult(),
+            error => error.ToActionResult(this));
     }
 
     // GET /products/legacy/{id} — redirect demo

@@ -1,4 +1,4 @@
-namespace Example.Tests;
+﻿namespace Example.Tests;
 
 using System.Diagnostics;
 using Trellis;
@@ -18,7 +18,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
             .EnsureAsync(customer => customer.CanBePromoted, Error.Validation("The customer has the highest status possible"))
             .TapAsync(customer => customer.Promote())
             .BindAsync(customer => EmailGateway.SendPromotionNotification(customer.Email))
-            .MatchAsync(ok => "Okay", error => "Failed");
+            .MatchAsync(() => "Okay", error => "Failed");
 
         if (id == 1)
             result.Should().Be("Okay");
@@ -37,7 +37,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
             .EnsureAsync(static customer => customer.CanBePromoted, Error.Validation("The customer has the highest status possible"))
             .TapAsync(static customer => customer.PromoteAsync())
             .BindAsync(static customer => EmailGateway.SendPromotionNotificationAsync(customer.Email))
-            .MatchAsync(static ok => "Okay", static error => error.Detail);
+            .MatchAsync(static () => "Okay", static error => error.Detail);
 
         result.Should().Be("Okay");
     }
@@ -57,7 +57,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
             .TapAsync(static customer => Log("Manager approved promotion"))
             .TapAsync(static customer => customer.PromoteAsync())
             .BindAsync(static customer => EmailGateway.SendPromotionNotificationAsync(customer.Email))
-            .MatchAsync(static ok => "Okay", static error => error.Detail);
+            .MatchAsync(static () => "Okay", static error => error.Detail);
 
         result.Should().Be("Okay");
     }
@@ -105,8 +105,8 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
 
     public static class EmailGateway
     {
-        public static Result<Unit> SendPromotionNotification(string email) => Result.Ok<Unit>(new Unit());
+        public static Result SendPromotionNotification(string email) => Result.Ok();
 
-        public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) => Task.FromResult(SendPromotionNotification(email));
+        public static Task<Result> SendPromotionNotificationAsync(string email) => Task.FromResult(SendPromotionNotification(email));
     }
 }

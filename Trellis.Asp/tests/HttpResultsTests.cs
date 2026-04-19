@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System;
 using Microsoft.AspNetCore.Http;
@@ -231,7 +231,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_NotFound_for_Unit_failure()
     {
         // Arrange
-        var result = Result.Fail<Unit>(Error.NotFound("Resource not found", "UnitResource"));
+        var result = Result.Fail(Error.NotFound("Resource not found", "UnitResource"));
         var expected = new ProblemDetails
         {
             Title = "Not Found",

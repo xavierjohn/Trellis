@@ -232,7 +232,7 @@ graph TB
     
     subgraph Repository["Repository Layer"]
         QUERY[Query Methods<br/>return Maybe&lt;T&gt;]
-        COMMAND[Command Methods<br/>return Result&lt;Unit&gt;]
+        COMMAND[Command Methods<br/>return Result]
     end
     
     subgraph Database["Database"]

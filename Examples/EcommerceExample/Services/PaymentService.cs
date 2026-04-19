@@ -1,4 +1,4 @@
-using Trellis.Primitives;
+﻿using Trellis.Primitives;
 
 namespace EcommerceExample.Services;
 
@@ -15,42 +15,42 @@ public class PaymentService
     {
         return await Task.FromResult(ValidateCardNumber(cardNumber)
             .Combine(ValidateCVV(cvv))
-            .Ensure(_ => order.Total.Amount >= 0.01m, Error.Validation("Payment amount must be at least 0.01")))
-            .BindAsync(async _ => await ChargeCardAsync(order.Total, cardNumber, cancellationToken))
+            .Ensure(() => order.Total.Amount >= 0.01m, Error.Validation("Payment amount must be at least 0.01")))
+            .BindAsync(async () => await ChargeCardAsync(order.Total, cardNumber, cancellationToken))
             .TapAsync(async transactionId => await LogPaymentSuccessAsync(order.Id, transactionId, cancellationToken))
             .TapOnFailureAsync(async error => await LogPaymentFailureAsync(order.Id, error, cancellationToken));
     }
 
-    public async Task<Result<Unit>> RefundPaymentAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<Result> RefundPaymentAsync(string transactionId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(transactionId))
-            return Result.Fail<Unit>(Error.Validation("Transaction ID is required"));
+            return Result.Fail(Error.Validation("Transaction ID is required"));
 
         await Task.Delay(100, cancellationToken); // Simulate API call
 
         return Result.Ok();
     }
 
-    private static Result<Unit> ValidateCardNumber(string cardNumber)
+    private static Result ValidateCardNumber(string cardNumber)
     {
         if (string.IsNullOrWhiteSpace(cardNumber))
-            return Result.Fail<Unit>(Error.Validation("Card number is required", nameof(cardNumber)));
+            return Result.Fail(Error.Validation("Card number is required", nameof(cardNumber)));
 
         var digitsOnly = new string(cardNumber.Where(char.IsDigit).ToArray());
 
         if (digitsOnly.Length is < 13 or > 19)
-            return Result.Fail<Unit>(Error.Validation("Card number must be between 13 and 19 digits", nameof(cardNumber)));
+            return Result.Fail(Error.Validation("Card number must be between 13 and 19 digits", nameof(cardNumber)));
 
         return Result.Ok();
     }
 
-    private static Result<Unit> ValidateCVV(string cvv)
+    private static Result ValidateCVV(string cvv)
     {
         if (string.IsNullOrWhiteSpace(cvv))
-            return Result.Fail<Unit>(Error.Validation("CVV is required", nameof(cvv)));
+            return Result.Fail(Error.Validation("CVV is required", nameof(cvv)));
 
         if (cvv.Length < 3 || cvv.Length > 4 || !cvv.All(char.IsDigit))
-            return Result.Fail<Unit>(Error.Validation("CVV must be 3 or 4 digits", nameof(cvv)));
+            return Result.Fail(Error.Validation("CVV must be 3 or 4 digits", nameof(cvv)));
 
         return Result.Ok();
     }

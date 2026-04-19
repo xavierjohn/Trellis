@@ -34,7 +34,8 @@ public static class DatabaseSeeder
                   .TapOnFailure(error => throw new InvalidOperationException($"Seed data failed: {error.Detail}"));
         }
 
-        (await context.SaveChangesResultUnitAsync())
-            .TapOnFailure(error => throw new InvalidOperationException($"Seed save failed: {error.Detail}"));
+        var saveResult = await context.SaveChangesResultUnitAsync();
+        if (saveResult.TryGetError(out var saveError))
+            throw new InvalidOperationException($"Seed save failed: {saveError.Detail}");
     }
 }

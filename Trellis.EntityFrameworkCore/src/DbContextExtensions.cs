@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -83,23 +83,23 @@ public static class DbContextExtensions
     }
 
     /// <summary>
-    /// Convenience overload: calls <see cref="SaveChangesResultAsync(DbContext, CancellationToken)"/> and maps success to <see cref="Result{Unit}"/>.
+    /// Convenience overload: calls <see cref="SaveChangesResultAsync(DbContext, CancellationToken)"/> and maps success to <see cref="Result"/>.
     /// Use when callers don't need the affected row count.
     /// </summary>
     /// <param name="context">The <see cref="DbContext"/> to save changes on.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Result{Unit}"/> representing success or failure.</returns>
-    public static async Task<Result<Unit>> SaveChangesResultUnitAsync(
+    /// <returns>A <see cref="Result"/> representing success or failure.</returns>
+    public static async Task<Result> SaveChangesResultUnitAsync(
         this DbContext context,
         CancellationToken cancellationToken = default)
     {
         var result = await context.SaveChangesResultAsync(cancellationToken).ConfigureAwait(false);
-        return result.Map(_ => default(Unit));
+        return result.AsUnit();
     }
 
     /// <summary>
     /// Convenience overload: calls <see cref="SaveChangesResultAsync(DbContext, bool, CancellationToken)"/>
-    /// and maps success to <see cref="Result{Unit}"/>.
+    /// and maps success to <see cref="Result"/>.
     /// Use when callers don't need the affected row count.
     /// </summary>
     /// <param name="context">The <see cref="DbContext"/> to save changes on.</param>
@@ -108,13 +108,13 @@ public static class DbContextExtensions
     /// <see langword="false"/> to leave the change tracker state unchanged.
     /// </param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Result{Unit}"/> representing success or failure.</returns>
-    public static async Task<Result<Unit>> SaveChangesResultUnitAsync(
+    /// <returns>A <see cref="Result"/> representing success or failure.</returns>
+    public static async Task<Result> SaveChangesResultUnitAsync(
         this DbContext context,
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {
         var result = await context.SaveChangesResultAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
-        return result.Map(_ => default(Unit));
+        return result.AsUnit();
     }
 }

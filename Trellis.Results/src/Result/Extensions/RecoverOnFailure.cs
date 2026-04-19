@@ -593,4 +593,26 @@ public static class RecoverOnFailureExtensionsAsync
         result.LogActivityStatus();
         return result;
     }
+
+    /// <summary>Recovers from a failed non-generic result with predicate and async recovery function.</summary>
+    [RailwayTrack(TrackBehavior.Failure)]
+    public static async Task<Result> RecoverOnFailureAsync(this Task<Result> resultTask, Func<Error, bool> predicate, Func<Task<Result>> funcAsync)
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(funcAsync);
+
+        Result result = await resultTask.ConfigureAwait(false);
+        if (result.IsSuccess) return result;
+
+        if (predicate(result.Error))
+        {
+            var output = await funcAsync().ConfigureAwait(false);
+            output.LogActivityStatus();
+            return output;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
 }

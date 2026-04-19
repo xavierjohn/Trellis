@@ -528,5 +528,22 @@ public static class HttpResultExtensionsAsync
         return result.ToUpdatedHttpResult(httpContext, metadataSelector, map, options);
     }
 
+    /// <summary>
+    /// Converts a Task-wrapped non-generic <see cref="Result"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/>.
+    /// </summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync(this Task<Result> resultTask, TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(options);
+    }
+
+    /// <summary>
+    /// Converts a ValueTask-wrapped non-generic <see cref="Result"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/>.
+    /// </summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync(this ValueTask<Result> resultTask, TrellisAspOptions? options = null)
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.ToHttpResult(options);
+    }
     #endregion
 }

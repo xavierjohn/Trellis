@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System.Diagnostics;
 
@@ -9,13 +9,9 @@ using System.Diagnostics;
 public static partial class CombineExtensions
 {
     /// <summary>
-    /// Combine a <see cref="Result{TValue}"/> with <see cref="Result{Unit}"/> return <see cref="Result{TValue}"/>.
+    /// Combine a <see cref="Result{TValue}"/> with a non-generic <see cref="Result"/> (unit-shaped), returning <see cref="Result{TValue}"/>.
     /// </summary>
-    /// <typeparam name="T1"></typeparam>
-    /// <param name="t1"></param>
-    /// <param name="t2"></param>
-    /// <returns>Tuple containing both the results.</returns>
-    public static Result<T1> Combine<T1>(this Result<T1> t1, Result<Unit> t2)
+    public static Result<T1> Combine<T1>(this Result<T1> t1, Result t2)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
@@ -23,6 +19,19 @@ public static partial class CombineExtensions
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<T1>(error);
         return Result.Ok(t1.Value);
+    }
+
+    /// <summary>
+    /// Combine two non-generic <see cref="Result"/> values into one.
+    /// </summary>
+    public static Result Combine(this Result r1, Result r2)
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
+        Error? error = null;
+        if (r1.IsFailure) error = error.Combine(r1.Error);
+        if (r2.IsFailure) error = error.Combine(r2.Error);
+        if (error is not null) return Result.Fail(error);
+        return Result.Ok();
     }
 
     /// <summary>
@@ -96,9 +105,9 @@ public static partial class CombineExtensionsAsync
     }
 
     /// <summary>
-    /// Combine a Task result with a Unit result.
+    /// Combine a Task result with a non-generic unit result.
     /// </summary>
-    public static async Task<Result<T1>> CombineAsync<T1>(this Task<Result<T1>> tt1, Result<Unit> t2)
+    public static async Task<Result<T1>> CombineAsync<T1>(this Task<Result<T1>> tt1, Result t2)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
@@ -157,9 +166,9 @@ public static partial class CombineExtensionsAsync
     }
 
     /// <summary>
-    /// Combine a ValueTask result with a Unit result.
+    /// Combine a ValueTask result with a non-generic unit result.
     /// </summary>
-    public static async ValueTask<Result<T1>> CombineAsync<T1>(this ValueTask<Result<T1>> vt1, Result<Unit> t2)
+    public static async ValueTask<Result<T1>> CombineAsync<T1>(this ValueTask<Result<T1>> vt1, Result t2)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;

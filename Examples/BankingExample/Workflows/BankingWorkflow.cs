@@ -1,4 +1,4 @@
-using Trellis.Primitives;
+﻿using Trellis.Primitives;
 
 namespace BankingExample.Workflows;
 
@@ -80,11 +80,11 @@ public class BankingWorkflow
         string description,
         CancellationToken cancellationToken = default)
     {
-        // Validate both accounts in parallel using Result.ParallelAsync
-        var validationResult = await Result.ParallelAsync(
-            () => _fraudDetection.AnalyzeTransactionAsync(fromAccount, amount, "transfer-out", cancellationToken),
-            () => _fraudDetection.AnalyzeTransactionAsync(toAccount, amount, "transfer-in", cancellationToken)
-        ).WhenAllAsync();
+        // Validate both accounts in parallel
+        var fromTask = _fraudDetection.AnalyzeTransactionAsync(fromAccount, amount, "transfer-out", cancellationToken);
+        var toTask = _fraudDetection.AnalyzeTransactionAsync(toAccount, amount, "transfer-in", cancellationToken);
+        await Task.WhenAll(fromTask, toTask);
+        var validationResult = fromTask.Result.Combine(toTask.Result);
 
         if (validationResult.TryGetError(out var validationError))
             return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(validationError);

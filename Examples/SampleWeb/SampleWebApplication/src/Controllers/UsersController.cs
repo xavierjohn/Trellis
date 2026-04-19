@@ -1,4 +1,4 @@
-using Trellis.Asp;
+﻿using Trellis.Asp;
 using Trellis.Primitives;
 
 namespace SampleWebApplication.Controllers;
@@ -55,35 +55,35 @@ public class UsersController : ControllerBase
     public ActionResult<string> Get(string name) => Ok($"Hello {name}!");
 
     [HttpGet("notfound/{id}")]
-    public ActionResult<Unit> NotFound(int id) =>
-        Result.Fail<Unit>(Error.NotFound("User not found", id))
+    public ActionResult NotFound(int id) =>
+        Result.Fail(Error.NotFound("User not found", id))
             .ToActionResult(this);
 
     [HttpGet("conflict/{id}")]
-    public ActionResult<Unit> Conflict(int id) =>
-        Result.Fail<Unit>(Error.Conflict("Record has changed.", id))
+    public ActionResult Conflict(int id) =>
+        Result.Fail(Error.Conflict("Record has changed.", id))
             .ToActionResult(this);
 
     [HttpGet("forbidden/{id}")]
-    public ActionResult<Unit> Forbidden(int id) =>
-        Result.Fail<Unit>(Error.Forbidden("You do not have access.", id))
+    public ActionResult Forbidden(int id) =>
+        Result.Fail(Error.Forbidden("You do not have access.", id))
             .ToActionResult(this);
 
     [HttpGet("unauthorized/{id}")]
-    public ActionResult<Unit> Unauthorized(int id) =>
-        Result.Fail<Unit>(Error.Unauthorized("Please log in."))
+    public ActionResult Unauthorized(int id) =>
+        Result.Fail(Error.Unauthorized("Please log in."))
             .ToActionResult(this);
 
     [HttpGet("unexpected/{id}")]
-    public ActionResult<Unit> Unexpected(int id) =>
-        Result.Fail<Unit>(Error.Unexpected("Something went wrong."))
+    public ActionResult Unexpected(int id) =>
+        Result.Fail(Error.Unexpected("Something went wrong."))
             .ToActionResult(this);
 
     [HttpDelete("{id}")]
-    public ActionResult<Unit> Delete(string id) =>
+    public ActionResult Delete(string id) =>
         UserId.TryCreate(id).Match(
             onSuccess: ok => NoContent(),
-            onFailure: err => err.ToActionResult<Unit>(this));
+            onFailure: err => err.ToActionResult(this));
 
     /// <summary>
     /// Registers a new user with automatic value object validation.

@@ -1,4 +1,4 @@
-namespace SampleWebApplication.Controllers;
+﻿namespace SampleWebApplication.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -40,13 +40,13 @@ public class NewOrdersController(
         var result = await Result.Ensure(
                 request.Lines is { Length: > 0 },
                 Error.Validation("Order must have at least one line item.", "lines"))
-            .Bind(_ => Order.TryCreate(request.CustomerId))
+            .Bind(() => Order.TryCreate(request.CustomerId))
             .BindAsync(order =>
                 request.Lines.TraverseAsync(line =>
                     db.Products
                         .FirstOrDefaultResultAsync(p => p.Id == line.ProductId,
                             Error.NotFound("Product not found.", line.ProductId))
-                        .BindAsync(product => order.AddLine(product, line.Quantity)))
+                        .BindAsync<Product, Order>(product => order.AddLine(product, line.Quantity)))
                 .MapAsync(_ => order))
             .TapAsync(order => { db.Orders.Add(order); return Task.CompletedTask; })
             .CheckAsync(_ => db.SaveChangesResultUnitAsync());

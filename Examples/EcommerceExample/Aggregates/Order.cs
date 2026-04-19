@@ -1,4 +1,4 @@
-using Trellis.Primitives;
+﻿using Trellis.Primitives;
 
 namespace EcommerceExample.Aggregates;
 
@@ -92,7 +92,7 @@ public class Order : Aggregate<OrderId>
                     DateTime.UtcNow));
             })
             .Bind(_ => RecalculateTotal())
-            .Map(_ => this);
+            .Map(() => this);
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public class Order : Aggregate<OrderId>
                 DomainEvents.Add(new OrderLineRemoved(Id, productId, DateTime.UtcNow));
             })
             .Bind(_ => RecalculateTotal())
-            .Map(_ => this);
+            .Map(() => this);
     }
 
     /// <summary>
@@ -266,7 +266,7 @@ public class Order : Aggregate<OrderId>
             .Map(_ => this);
     }
 
-    private Result<Unit> RecalculateTotal()
+    private Result RecalculateTotal()
     {
         var total = Money.Create(0, "USD");
 
@@ -274,7 +274,7 @@ public class Order : Aggregate<OrderId>
         {
             var addResult = total.Add(line.LineTotal);
             if (addResult.TryGetError(out var addError))
-                return Result.Fail<Unit>(addError);
+                return Result.Fail(addError);
 
             // Safe: TryGetError returned false above, so addResult is success.
             if (!addResult.TryGetValue(out var newTotal))

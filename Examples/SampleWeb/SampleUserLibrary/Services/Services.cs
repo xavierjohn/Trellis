@@ -1,4 +1,4 @@
-namespace SampleUserLibrary;
+﻿namespace SampleUserLibrary;
 
 using Trellis;
 
@@ -9,7 +9,7 @@ using Trellis;
 public interface IPaymentService
 {
     Task<Result<string>> ProcessPaymentAsync(OrderId orderId, decimal amount, CancellationToken ct = default);
-    Task<Result<Unit>> RefundPaymentAsync(string paymentReference, CancellationToken ct = default);
+    Task<Result> RefundPaymentAsync(string paymentReference, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -17,8 +17,8 @@ public interface IPaymentService
 /// </summary>
 public interface INotificationService
 {
-    Task<Result<Unit>> SendOrderConfirmationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default);
-    Task<Result<Unit>> SendOrderCancellationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default);
+    Task<Result> SendOrderConfirmationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default);
+    Task<Result> SendOrderCancellationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -34,10 +34,10 @@ public class FakePaymentService : IPaymentService
         return Result.Ok(paymentRef);
     }
 
-    public async Task<Result<Unit>> RefundPaymentAsync(string paymentReference, CancellationToken ct = default)
+    public async Task<Result> RefundPaymentAsync(string paymentReference, CancellationToken ct = default)
     {
         await Task.Delay(30, ct);
-        return Result.Ok(new Unit());
+        return Result.Ok();
     }
 }
 
@@ -47,15 +47,15 @@ public class FakePaymentService : IPaymentService
 /// </summary>
 public class FakeNotificationService : INotificationService
 {
-    public async Task<Result<Unit>> SendOrderConfirmationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default)
+    public async Task<Result> SendOrderConfirmationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default)
     {
         await Task.Delay(20, ct);
-        return Result.Ok(new Unit());
+        return Result.Ok();
     }
 
-    public async Task<Result<Unit>> SendOrderCancellationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default)
+    public async Task<Result> SendOrderCancellationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default)
     {
         await Task.Delay(20, ct);
-        return Result.Ok(new Unit());
+        return Result.Ok();
     }
 }
