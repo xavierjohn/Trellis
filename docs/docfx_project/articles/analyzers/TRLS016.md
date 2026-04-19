@@ -19,7 +19,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Bad(string quantity) =>
-        Result.Failure<int>(Error.Validation("", nameof(quantity)));
+        Result.Fail<int>(Error.Validation("", nameof(quantity)));
 }
 ```
 
@@ -30,7 +30,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Good(string quantity) =>
-        Result.Failure<int>(Error.Validation("Quantity must be a whole number.", nameof(quantity)));
+        Result.Fail<int>(Error.Validation("Quantity must be a whole number.", nameof(quantity)));
 }
 ```
 

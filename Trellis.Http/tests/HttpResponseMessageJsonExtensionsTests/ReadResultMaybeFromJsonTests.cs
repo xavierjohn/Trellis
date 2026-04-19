@@ -1,4 +1,4 @@
-﻿namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
+namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
 using System.IO;
 using System.Net;
@@ -357,7 +357,7 @@ public class ReadResultMaybeFromJsonTests
         {
             Content = JsonContent.Create(new camelcasePerson() { firstName = "Anna", age = 25 }, SourceGenerationContext.Default.camelcasePerson)
         };
-        var resultHttpResponseMessage = Result.Success(httpResponseMessage);
+        var resultHttpResponseMessage = Result.Ok(httpResponseMessage);
 
         // Act
         var result = await resultHttpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
@@ -375,7 +375,7 @@ public class ReadResultMaybeFromJsonTests
     {
         // Arrange
         var error = Error.Validation("Validation failed");
-        var resultHttpResponseMessage = Result.Failure<HttpResponseMessage>(error);
+        var resultHttpResponseMessage = Result.Fail<HttpResponseMessage>(error);
 
         // Act
         var result = await resultHttpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
@@ -393,7 +393,7 @@ public class ReadResultMaybeFromJsonTests
         {
             Content = JsonContent.Create(new camelcasePerson() { firstName = "Bob", age = 30 }, SourceGenerationContext.Default.camelcasePerson)
         };
-        var taskResultHttpResponseMessage = Task.FromResult(Result.Success(httpResponseMessage));
+        var taskResultHttpResponseMessage = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var result = await taskResultHttpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
@@ -411,7 +411,7 @@ public class ReadResultMaybeFromJsonTests
     {
         // Arrange
         var error = Error.Unauthorized("Unauthorized access");
-        var taskResultHttpResponseMessage = Task.FromResult(Result.Failure<HttpResponseMessage>(error));
+        var taskResultHttpResponseMessage = Task.FromResult(Result.Fail<HttpResponseMessage>(error));
 
         // Act
         var result = await taskResultHttpResponseMessage.ReadResultMaybeFromJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);

@@ -97,8 +97,8 @@ public static partial class CombineExtensions
         Error? error = null;
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Failure<(<# WriteTs(i - 1); #>)>(error);
-        return Result.Success((<# WriteT1Values(i - 1); #>));
+        if (error is not null) return Result.Fail<(<# WriteTs(i - 1); #>)>(error);
+        return Result.Ok((<# WriteT1Values(i - 1); #>));
     }
 
     /// <summary>
@@ -137,8 +137,8 @@ public static partial class CombineExtensions
         Error? error = null;
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Failure<(<# WriteTs(i); #>)>(error);
-        return Result.Success((<# WriteT1Values(i - 1); #>, tc.Value));
+        if (error is not null) return Result.Fail<(<# WriteTs(i); #>)>(error);
+        return Result.Ok((<# WriteT1Values(i - 1); #>, tc.Value));
     }
 
 <#
@@ -170,8 +170,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await tt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Failure<(<# WriteTs(i - 1); #>)>(error);
-        return Result.Success((<# WriteT1Values(i - 1); #>));
+        if (error is not null) return Result.Fail<(<# WriteTs(i - 1); #>)>(error);
+        return Result.Ok((<# WriteT1Values(i - 1); #>));
     }
 
     /// <summary>
@@ -185,8 +185,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await tt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Failure<(<# WriteTs(i); #>)>(error);
-        return Result.Success((<# WriteT1Values(i - 1); #>, tc.Value));
+        if (error is not null) return Result.Fail<(<# WriteTs(i); #>)>(error);
+        return Result.Ok((<# WriteT1Values(i - 1); #>, tc.Value));
     }
 
     #endregion
@@ -204,8 +204,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await vt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Failure<(<# WriteTs(i - 1); #>)>(error);
-        return Result.Success((<# WriteT1Values(i - 1); #>));
+        if (error is not null) return Result.Fail<(<# WriteTs(i - 1); #>)>(error);
+        return Result.Ok((<# WriteT1Values(i - 1); #>));
     }
 
     /// <summary>
@@ -219,8 +219,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await vt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Failure<(<# WriteTs(i); #>)>(error);
-        return Result.Success((<# WriteT1Values(i - 1); #>, tc.Value));
+        if (error is not null) return Result.Fail<(<# WriteTs(i); #>)>(error);
+        return Result.Ok((<# WriteT1Values(i - 1); #>, tc.Value));
     }
 
     #endregion

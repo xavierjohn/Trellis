@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
@@ -13,7 +13,7 @@ public class ActionResultValueTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = ValueTask.FromResult(Result.Success("Test"));
+        var result = ValueTask.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await result.ToActionResultAsync(controller);
@@ -30,7 +30,7 @@ public class ActionResultValueTaskTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.BadRequest("Test", "Jackson");
-        var result = ValueTask.FromResult(Result.Failure<string>(error));
+        var result = ValueTask.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
             Detail = "Test",
@@ -53,7 +53,7 @@ public class ActionResultValueTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = ValueTask.FromResult(Result.Success("Test"));
+        var result = ValueTask.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await result.ToActionResultAsync(
@@ -76,7 +76,7 @@ public class ActionResultValueTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = ValueTask.FromResult(Result.Success("Test"));
+        var result = ValueTask.FromResult(Result.Ok("Test"));
 
         // Act
         var response = await result.ToActionResultAsync(

@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -29,9 +29,9 @@ public static partial class MapExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (result.IsFailure)
-            return Result.Failure<TOut>(result.Error);
+            return Result.Fail<TOut>(result.Error);
 
-        return Result.Success<TOut>(func(result.Value));
+        return Result.Ok<TOut>(func(result.Value));
     }
 }
 
@@ -55,11 +55,11 @@ public static partial class MapExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapExtensions.Map));
         if (result.IsFailure)
-            return Result.Failure<TOut>(result.Error);
+            return Result.Fail<TOut>(result.Error);
 
         TOut value = await func(result.Value).ConfigureAwait(false);
 
-        return Result.Success<TOut>(value);
+        return Result.Ok<TOut>(value);
     }
 
     /// <summary>
@@ -112,11 +112,11 @@ public static partial class MapExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapExtensions.Map));
         if (result.IsFailure)
-            return Result.Failure<TOut>(result.Error);
+            return Result.Fail<TOut>(result.Error);
 
         TOut value = await func(result.Value).ConfigureAwait(false);
 
-        return Result.Success<TOut>(value);
+        return Result.Ok<TOut>(value);
     }
 
     /// <summary>

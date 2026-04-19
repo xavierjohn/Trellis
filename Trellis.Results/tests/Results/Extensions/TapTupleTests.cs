@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -27,7 +27,7 @@ public class TapTupleTests : TestBase
     [Fact]
     public void Tap_2Tuple_WithNullAction_ThrowsArgumentNullException()
     {
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         var act = () => result.Tap<int, string>((Action<int, string>)null!);
 
@@ -39,7 +39,7 @@ public class TapTupleTests : TestBase
     public void Tap_2Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = result.Tap((a, b) => _actionExecuted = true);
@@ -54,7 +54,7 @@ public class TapTupleTests : TestBase
     public void Tap_2Tuple_Failure_DoesNotExecute()
     {
         // Arrange
-        var result = Result.Failure<(int, string)>(Error.Validation("Validation failed"));
+        var result = Result.Fail<(int, string)>(Error.Validation("Validation failed"));
 
         // Act
         var actual = result.Tap((a, b) => _actionExecuted = true);
@@ -69,7 +69,7 @@ public class TapTupleTests : TestBase
     public void Tap_2Tuple_Success_DestructuresTuple()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = result.Tap((num, str) => _capturedTuple = (num, str));
@@ -84,7 +84,7 @@ public class TapTupleTests : TestBase
     public void Tap_2Tuple_PreservesOriginalResult()
     {
         // Arrange
-        var originalResult = Result.Success((42, "hello"));
+        var originalResult = Result.Ok((42, "hello"));
 
         // Act
         var actual = originalResult.Tap((a, b) => _actionExecuted = true);
@@ -99,7 +99,7 @@ public class TapTupleTests : TestBase
     public void Tap_2Tuple_ChainedActions_ExecutesAll()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = result
@@ -116,7 +116,7 @@ public class TapTupleTests : TestBase
     public void Tap_2Tuple_DifferentTypes_Works()
     {
         // Arrange
-        var result = Result.Success(("text", 123));
+        var result = Result.Ok(("text", 123));
         var capturedString = string.Empty;
         var capturedInt = 0;
 
@@ -140,8 +140,8 @@ public class TapTupleTests : TestBase
         var loggedValues = new List<string>();
 
         // Act
-        var result = Result.Success("John")
-            .Combine(Result.Success("Doe"))
+        var result = Result.Ok("John")
+            .Combine(Result.Ok("Doe"))
             .Tap((first, last) => loggedValues.Add($"{first} {last}"));
 
         // Assert
@@ -158,7 +158,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_TaskResult_Success_ExecutesAction()
     {
         // Arrange
-        var result = Task.FromResult(Result.Success((42, "hello")));
+        var result = Task.FromResult(Result.Ok((42, "hello")));
 
         // Act
         var actual = await result.TapAsync((a, b) => _actionExecuted = true);
@@ -172,7 +172,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_TaskResult_Failure_DoesNotExecute()
     {
         // Arrange
-        var result = Task.FromResult(Result.Failure<(int, string)>(Error.NotFound("Not found")));
+        var result = Task.FromResult(Result.Fail<(int, string)>(Error.NotFound("Not found")));
 
         // Act
         var actual = await result.TapAsync((a, b) => _actionExecuted = true);
@@ -197,7 +197,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_WithFuncTask_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = await result.TapAsync((a, b) =>
@@ -215,7 +215,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_WithFuncTask_Failure_DoesNotExecute()
     {
         // Arrange
-        var result = Result.Failure<(int, string)>(Error.Unexpected("Error"));
+        var result = Result.Fail<(int, string)>(Error.Unexpected("Error"));
 
         // Act
         var actual = await result.TapAsync((a, b) =>
@@ -233,7 +233,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_TaskResult_WithFuncTask_Success()
     {
         // Arrange
-        var result = Task.FromResult(Result.Success((42, "hello")));
+        var result = Task.FromResult(Result.Ok((42, "hello")));
 
         // Act
         var actual = await result.TapAsync((a, b) =>
@@ -251,7 +251,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_ValueTask_WithAction_Success()
     {
         // Arrange
-        var result = ValueTask.FromResult(Result.Success((42, "hello")));
+        var result = ValueTask.FromResult(Result.Ok((42, "hello")));
 
         // Act
         var actual = await result.TapAsync((a, b) => _actionExecuted = true);
@@ -265,7 +265,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_WithFuncValueTask_Success()
     {
         // Arrange
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = await result.TapAsync((a, b) =>
@@ -283,7 +283,7 @@ public class TapTupleTests : TestBase
     public async Task TapAsync_2Tuple_ValueTaskResult_WithFuncValueTask_Success()
     {
         // Arrange
-        var result = ValueTask.FromResult(Result.Success((42, "hello")));
+        var result = ValueTask.FromResult(Result.Ok((42, "hello")));
 
         // Act
         var actual = await result.TapAsync((a, b) =>
@@ -305,7 +305,7 @@ public class TapTupleTests : TestBase
     public void Tap_3Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((1, "two", true));
+        var result = Result.Ok((1, "two", true));
 
         // Act
         var actual = result.Tap((a, b, c) => _actionExecuted = true);
@@ -320,7 +320,7 @@ public class TapTupleTests : TestBase
     public void Tap_4Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4));
+        var result = Result.Ok((1, 2, 3, 4));
 
         // Act
         var actual = result.Tap((a, b, c, d) => _actionExecuted = true);
@@ -334,7 +334,7 @@ public class TapTupleTests : TestBase
     public void Tap_5Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5));
+        var result = Result.Ok((1, 2, 3, 4, 5));
 
         // Act
         var actual = result.Tap((a, b, c, d, e) => _actionExecuted = true);
@@ -348,7 +348,7 @@ public class TapTupleTests : TestBase
     public void Tap_6Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5, 6));
+        var result = Result.Ok((1, 2, 3, 4, 5, 6));
 
         // Act
         var actual = result.Tap((a, b, c, d, e, f) => _actionExecuted = true);
@@ -362,7 +362,7 @@ public class TapTupleTests : TestBase
     public void Tap_7Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5, 6, 7));
+        var result = Result.Ok((1, 2, 3, 4, 5, 6, 7));
 
         // Act
         var actual = result.Tap((a, b, c, d, e, f, g) => _actionExecuted = true);
@@ -376,7 +376,7 @@ public class TapTupleTests : TestBase
     public void Tap_8Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5, 6, 7, 8));
+        var result = Result.Ok((1, 2, 3, 4, 5, 6, 7, 8));
 
         // Act
         var actual = result.Tap((a, b, c, d, e, f, g, h) => _actionExecuted = true);
@@ -390,7 +390,7 @@ public class TapTupleTests : TestBase
     public void Tap_9Tuple_Success_ExecutesAction()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5, 6, 7, 8, 9));
+        var result = Result.Ok((1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         // Act
         var actual = result.Tap((a, b, c, d, e, f, g, h, i) => _actionExecuted = true);
@@ -404,7 +404,7 @@ public class TapTupleTests : TestBase
     public void Tap_9Tuple_Failure_DoesNotExecute()
     {
         // Arrange
-        var result = Result.Failure<(int, int, int, int, int, int, int, int, int)>(Error.Validation("Invalid"));
+        var result = Result.Fail<(int, int, int, int, int, int, int, int, int)>(Error.Validation("Invalid"));
 
         // Act
         var actual = result.Tap((a, b, c, d, e, f, g, h, i) => _actionExecuted = true);
@@ -425,9 +425,9 @@ public class TapTupleTests : TestBase
         var loggedValues = new List<string>();
 
         // Act
-        var result = Result.Success("user@example.com")
-            .Combine(Result.Success("John"))
-            .Combine(Result.Success("Doe"))
+        var result = Result.Ok("user@example.com")
+            .Combine(Result.Ok("John"))
+            .Combine(Result.Ok("Doe"))
             .Tap((email, first, last) =>
                 loggedValues.Add($"{first} {last} <{email}>"));
 
@@ -444,8 +444,8 @@ public class TapTupleTests : TestBase
         var notificationsSent = new List<string>();
 
         // Act
-        var result = await Result.Success("user@example.com")
-            .Combine(Result.Success("Welcome"))
+        var result = await Result.Ok("user@example.com")
+            .Combine(Result.Ok("Welcome"))
             .TapAsync((string email, string message) =>
             {
                 notificationsSent.Add($"Sent '{message}' to {email}");
@@ -465,15 +465,15 @@ public class TapTupleTests : TestBase
         var metrics = new Dictionary<string, int>();
 
         // Act
-        var result = Result.Success(("CREATE", "User"))
+        var result = Result.Ok(("CREATE", "User"))
             .Tap((action, entity) =>
                 metrics[$"{action}_{entity}"] = metrics.GetValueOrDefault($"{action}_{entity}") + 1);
 
-        Result.Success(("CREATE", "User"))
+        Result.Ok(("CREATE", "User"))
             .Tap((action, entity) =>
                 metrics[$"{action}_{entity}"] = metrics.GetValueOrDefault($"{action}_{entity}") + 1);
 
-        Result.Success(("UPDATE", "User"))
+        Result.Ok(("UPDATE", "User"))
             .Tap((action, entity) =>
                 metrics[$"{action}_{entity}"] = metrics.GetValueOrDefault($"{action}_{entity}") + 1);
 
@@ -489,13 +489,13 @@ public class TapTupleTests : TestBase
         var executionOrder = new List<string>();
 
         // Act
-        var result = Result.Success("John")
-            .Combine(Result.Success("Doe"))
+        var result = Result.Ok("John")
+            .Combine(Result.Ok("Doe"))
             .Tap((first, last) => executionOrder.Add($"Tap: {first} {last}"))
             .Bind((first, last) =>
             {
                 executionOrder.Add($"Bind: {first} {last}");
-                return Result.Success($"{first} {last}".ToUpperInvariant());
+                return Result.Ok($"{first} {last}".ToUpperInvariant());
             })
             .Tap(fullName => executionOrder.Add($"Tap2: {fullName}"));
 
@@ -515,8 +515,8 @@ public class TapTupleTests : TestBase
         var loggedMessages = new List<string>();
 
         // Act
-        var result = Result.Success("valid")
-            .Combine(Result.Failure<string>(Error.Validation("Invalid")))
+        var result = Result.Ok("valid")
+            .Combine(Result.Fail<string>(Error.Validation("Invalid")))
             .Tap((a, b) => loggedMessages.Add("Should not execute"));
 
         // Assert
@@ -531,14 +531,14 @@ public class TapTupleTests : TestBase
         var logs = new List<string>();
 
         // Act
-        var result = await Result.Success("user@example.com")
-            .Combine(Result.Success("password123"))
+        var result = await Result.Ok("user@example.com")
+            .Combine(Result.Ok("password123"))
             .TapAsync((email, password) =>
             {
                 logs.Add($"Validating {email}");
                 return Task.CompletedTask;
             })
-            .BindAsync((email, password) => Task.FromResult(Result.Success($"User_{email}")))
+            .BindAsync((email, password) => Task.FromResult(Result.Ok($"User_{email}")))
             .TapAsync(userId =>
             {
                 logs.Add($"Created {userId}");

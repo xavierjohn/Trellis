@@ -21,11 +21,11 @@ static class Example
     public static Result<int> Bad(Result<int> first, Result<int> second)
     {
         if (first.IsSuccess && second.IsSuccess)
-            return Result.Success(first.Value + second.Value);
+            return Result.Ok(first.Value + second.Value);
 
         return first.IsFailure
-            ? Result.Failure<int>(first.Error)
-            : Result.Failure<int>(second.Error);
+            ? Result.Fail<int>(first.Error)
+            : Result.Fail<int>(second.Error);
     }
 }
 ```

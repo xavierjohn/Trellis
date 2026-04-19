@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Async Ensure extensions where only the LEFT (input) is async (ValueTask), predicates are sync.
@@ -82,7 +82,7 @@ public static partial class EnsureExtensionsAsync
             return result;
         }
 
-        return Result.Failure<TValue>(await errorPredicate(result.Value).ConfigureAwait(false));
+        return Result.Fail<TValue>(await errorPredicate(result.Value).ConfigureAwait(false));
     }
 
     /// <summary>

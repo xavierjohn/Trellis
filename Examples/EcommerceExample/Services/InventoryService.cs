@@ -1,4 +1,4 @@
-﻿namespace EcommerceExample.Services;
+namespace EcommerceExample.Services;
 
 using EcommerceExample.ValueObjects;
 using Trellis;
@@ -36,7 +36,7 @@ public class InventoryService
         if (available < quantity)
             return Error.Validation($"Insufficient stock. Available: {available}, Requested: {quantity}");
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     /// <summary>
@@ -67,7 +67,7 @@ public class InventoryService
         _stock[productId] += quantity;
         Console.WriteLine($"Released {quantity} units of product {productId}. New total: {_stock[productId]}");
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     /// <summary>

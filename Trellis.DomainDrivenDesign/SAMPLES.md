@@ -835,7 +835,7 @@ public class UnitOfWork : IUnitOfWork
                 aggregate.AcceptChanges();
             }
             
-            return Result.Success();
+            return Result.Ok();
         }
         catch (Exception ex)
         {

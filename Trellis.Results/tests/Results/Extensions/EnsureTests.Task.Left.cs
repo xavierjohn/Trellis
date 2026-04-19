@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Functional.Results.Extensions;
+namespace Trellis.Results.Tests.Functional.Results.Extensions;
 
 using Trellis;
 using Trellis.Testing;
@@ -8,30 +8,30 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_errorPredicate_does_not_throw_when_given_result_failure()
     {
-        var result = Task.FromResult(Result.Failure<string>(Error.Conflict("initial error message")));
+        var result = Task.FromResult(Result.Fail<string>(Error.Conflict("initial error message")));
         Func<Task> ensure = () => result.EnsureAsync(
             x => x != "",
             x => Error.Validation("new error message: string should not be empty"));
 
-        await ensure.Should().NotThrowAsync<Exception>("passing in a Result.Failure is a valid use case");
+        await ensure.Should().NotThrowAsync<Exception>("passing in a Result.Fail is a valid use case");
     }
 
     [Fact]
     public async Task Ensure_Task_Left_with_errorPredicate_initial_result_has_failure_state()
     {
-        var tResult = Task.FromResult(Result.Failure<string>(Error.Conflict("initial error message")));
+        var tResult = Task.FromResult(Result.Fail<string>(Error.Conflict("initial error message")));
 
         var result = await tResult.EnsureAsync(x => x != "",
             x => Error.Validation("new error message: string should not be empty"));
 
-        result.Should().BeFailure("Input Result.Failure should be returned")
+        result.Should().BeFailure("Input Result.Fail should be returned")
             .Which.Should().Be(Error.Conflict("initial error message"));
     }
 
     [Fact]
     public async Task Ensure_Task_Left_with_errorPredicate_predicate_passes()
     {
-        var tResult = Task.FromResult(Result.Success<string>("initial ok"));
+        var tResult = Task.FromResult(Result.Ok<string>("initial ok"));
 
         var result = await tResult.EnsureAsync(x => x != "",
             x => Error.Validation("new error message: string should not be empty"));
@@ -43,7 +43,7 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_errorPredicate_does_not_execute_error_predicate_when_predicate_passes()
     {
-        var tResult = Task.FromResult(Result.Success<int?>(default(int?)));
+        var tResult = Task.FromResult(Result.Ok<int?>(default(int?)));
 
         Result<int?> result = await tResult.EnsureAsync(value => !value.HasValue, value => Error.Validation($"should be null but found {value}"));
 
@@ -54,7 +54,7 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_errorPredicate_using_errorPredicate()
     {
-        var tResult = Task.FromResult(Result.Success<string>(""));
+        var tResult = Task.FromResult(Result.Ok<string>(""));
 
         var result = await tResult.EnsureAsync(x => x != "",
             x => Error.Validation("new error message: string should not be empty"));
@@ -66,9 +66,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_successInput_and_successPredicate()
     {
-        var initialResult = Task.FromResult(Result.Success<string>("Initial message"));
+        var initialResult = Task.FromResult(Result.Ok<string>("Initial message"));
 
-        var result = await initialResult.EnsureAsync(() => Result.Success<string>("Success message"));
+        var result = await initialResult.EnsureAsync(() => Result.Ok<string>("Success message"));
 
         result.Should().BeSuccess("Initial result and predicate succeeded")
             .Which.Should().Be("Initial message");
@@ -77,9 +77,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_successInput_and_failurePredicate()
     {
-        var initialResult = Task.FromResult(Result.Success<string>("Initial Result"));
+        var initialResult = Task.FromResult(Result.Ok<string>("Initial Result"));
 
-        var result = await initialResult.EnsureAsync(() => Result.Failure<string>(Error.Unexpected("Error message")));
+        var result = await initialResult.EnsureAsync(() => Result.Fail<string>(Error.Unexpected("Error message")));
 
         result.Should().BeFailure("Predicate is failure result")
             .Which.Should().Be(Error.Unexpected("Error message"));
@@ -88,9 +88,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_failureInput_and_successPredicate()
     {
-        var initialResult = Task.FromResult(Result.Failure<string>(Error.Unexpected("Initial Error message")));
+        var initialResult = Task.FromResult(Result.Fail<string>(Error.Unexpected("Initial Error message")));
 
-        var result = await initialResult.EnsureAsync(() => Result.Success<string>("Success message"));
+        var result = await initialResult.EnsureAsync(() => Result.Ok<string>("Success message"));
 
         result.Should().BeFailure("Initial result is failure result")
             .Which.Should().Be(Error.Unexpected("Initial Error message"));
@@ -99,9 +99,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_failureInput_and_failurePredicate()
     {
-        var initialResult = Task.FromResult(Result.Failure<string>(Error.Unexpected("Initial Error message")));
+        var initialResult = Task.FromResult(Result.Fail<string>(Error.Unexpected("Initial Error message")));
 
-        var result = await initialResult.EnsureAsync(() => Result.Failure<string>(Error.Unexpected("Error message")));
+        var result = await initialResult.EnsureAsync(() => Result.Fail<string>(Error.Unexpected("Error message")));
 
         result.Should().BeFailure("Initial result is failure result")
             .Which.Should().Be(Error.Unexpected("Initial Error message"));
@@ -110,9 +110,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_successInput_and_parameterisedFailurePredicate()
     {
-        var initialResult = Task.FromResult(Result.Success<string>("Initial Success message"));
+        var initialResult = Task.FromResult(Result.Ok<string>("Initial Success message"));
 
-        var result = await initialResult.EnsureAsync(_ => Result.Failure<string>(Error.Unexpected("Error Message")));
+        var result = await initialResult.EnsureAsync(_ => Result.Fail<string>(Error.Unexpected("Error Message")));
 
         result.Should().BeFailure("Predicate is failure result")
             .Which.Should().Be(Error.Unexpected("Error Message"));
@@ -121,9 +121,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_successInput_and_parameterisedSuccessPredicate()
     {
-        var initialResult = Task.FromResult(Result.Success<string>("Initial Success message"));
+        var initialResult = Task.FromResult(Result.Ok<string>("Initial Success message"));
 
-        var result = await initialResult.EnsureAsync(_ => Result.Success<string>("Success Message"));
+        var result = await initialResult.EnsureAsync(_ => Result.Ok<string>("Success Message"));
 
         result.Should().BeSuccess("Initial result and predicate succeeded")
             .Which.Should().Be("Initial Success message");
@@ -132,9 +132,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_failureInput_and_parameterisedSuccessPredicate()
     {
-        var initialResult = Task.FromResult(Result.Failure<string>(Error.Unexpected("Initial Error message")));
+        var initialResult = Task.FromResult(Result.Fail<string>(Error.Unexpected("Initial Error message")));
 
-        var result = await initialResult.EnsureAsync(_ => Result.Success<string>("Success Message"));
+        var result = await initialResult.EnsureAsync(_ => Result.Ok<string>("Success Message"));
 
         result.Should().BeFailure("Initial result is failure result")
             .Which.Should().Be(Error.Unexpected("Initial Error message"));
@@ -143,9 +143,9 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_failureInput_and_parameterisedFailurePredicate()
     {
-        var initialResult = Task.FromResult(Result.Failure<string>(Error.Unexpected("Initial Error message")));
+        var initialResult = Task.FromResult(Result.Fail<string>(Error.Unexpected("Initial Error message")));
 
-        var result = await initialResult.EnsureAsync(_ => Result.Failure<string>(Error.NotFound("Success Message")));
+        var result = await initialResult.EnsureAsync(_ => Result.Fail<string>(Error.NotFound("Success Message")));
 
         result.Should().BeFailure("Initial result and predicate is failure result")
             .Which.Should().Be(Error.Unexpected("Initial Error message"));
@@ -155,7 +155,7 @@ public class EnsureTests_Task_Left
     public async Task Ensure_Task_Left_with_asyncErrorPredicate_does_not_execute_when_initial_result_is_failure()
     {
         var initialError = Error.Conflict("initial error message");
-        var tResult = Task.FromResult(Result.Failure<string>(initialError));
+        var tResult = Task.FromResult(Result.Fail<string>(initialError));
         bool predicateCalled = false;
         bool errorPredicateCalled = false;
 
@@ -172,7 +172,7 @@ public class EnsureTests_Task_Left
                 return Error.Validation("new error message");
             });
 
-        result.Should().BeFailure("Input Result.Failure should be returned")
+        result.Should().BeFailure("Input Result.Fail should be returned")
             .Which.Should().Be(initialError);
         predicateCalled.Should().BeFalse("Predicate should not be called when initial result is failure");
         errorPredicateCalled.Should().BeFalse("Error predicate should not be called when initial result is failure");
@@ -181,7 +181,7 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_asyncErrorPredicate_predicate_passes()
     {
-        var tResult = Task.FromResult(Result.Success<string>("initial ok"));
+        var tResult = Task.FromResult(Result.Ok<string>("initial ok"));
         bool errorPredicateCalled = false;
 
         var result = await tResult.EnsureAsync(
@@ -201,7 +201,7 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_asyncErrorPredicate_predicate_fails()
     {
-        var tResult = Task.FromResult(Result.Success<string>(""));
+        var tResult = Task.FromResult(Result.Ok<string>(""));
 
         var result = await tResult.EnsureAsync(
             x => x != "",

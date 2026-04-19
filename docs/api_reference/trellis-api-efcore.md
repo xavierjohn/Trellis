@@ -1,4 +1,4 @@
-﻿# Trellis.EntityFrameworkCore
+# Trellis.EntityFrameworkCore
 
 **Package:** `Trellis.EntityFrameworkCore`  
 **Namespace:** `Trellis.EntityFrameworkCore`  
@@ -511,13 +511,13 @@ public sealed class CustomerId : ScalarValueObject<CustomerId, Guid>, IScalarVal
 
     public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
         value == Guid.Empty
-            ? Result.Failure<CustomerId>(Error.Validation("Customer ID is required.", fieldName ?? "customerId"))
-            : Result.Success(new CustomerId(value));
+            ? Result.Fail<CustomerId>(Error.Validation("Customer ID is required.", fieldName ?? "customerId"))
+            : Result.Ok(new CustomerId(value));
 
     public static Result<CustomerId> TryCreate(string? value, string? fieldName = null) =>
         Guid.TryParse(value, out var guid)
             ? TryCreate(guid, fieldName)
-            : Result.Failure<CustomerId>(Error.Validation("Customer ID must be a GUID.", fieldName ?? "customerId"));
+            : Result.Fail<CustomerId>(Error.Validation("Customer ID must be a GUID.", fieldName ?? "customerId"));
 }
 
 public partial class Customer : Aggregate<CustomerId>

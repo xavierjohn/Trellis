@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions.Map;
+namespace Trellis.Results.Tests.Results.Extensions.Map;
 
 using System.Globalization;
 using Xunit;
@@ -8,7 +8,7 @@ public class MapTests : TestBase
     [Fact]
     public void Map_WithNullFunc_ShouldThrowArgumentNullException()
     {
-        var result = Result.Success(5);
+        var result = Result.Ok(5);
 
         var act = () => result.Map<int, string>(null!);
 
@@ -20,7 +20,7 @@ public class MapTests : TestBase
     public void Map_ShouldReturnResult()
     {
         // Arrange
-        var i = Result.Success(5);
+        var i = Result.Ok(5);
 
         // Act
         var result = i.Map(x => x.ToString(CultureInfo.InvariantCulture));
@@ -34,7 +34,7 @@ public class MapTests : TestBase
     public void Map_ShouldReturnFailedResult()
     {
         // Arrange
-        var i = Result.Failure<int>(Error1);
+        var i = Result.Fail<int>(Error1);
 
         // Act
         var result = i.Map(x => x.ToString(CultureInfo.InvariantCulture));
@@ -50,7 +50,7 @@ public class MapTests : TestBase
     public async Task Map_Left_Task_ShouldReturnResult()
     {
         // Arrange
-        var i = Result.Success(5).AsTask();
+        var i = Result.Ok(5).AsTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
@@ -64,7 +64,7 @@ public class MapTests : TestBase
     public async Task Map_Left_Task_ShouldReturnFailedResult()
     {
         // Arrange
-        var i = Result.Failure<int>(Error1).AsTask();
+        var i = Result.Fail<int>(Error1).AsTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
@@ -78,7 +78,7 @@ public class MapTests : TestBase
     public async Task Map_Right_Task_ShouldReturnResult()
     {
         // Arrange
-        var i = Result.Success(5);
+        var i = Result.Ok(5);
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
@@ -92,7 +92,7 @@ public class MapTests : TestBase
     public async Task Map_Right_Task_ShouldReturnFailedResult()
     {
         // Arrange
-        var i = Result.Failure<int>(Error1);
+        var i = Result.Fail<int>(Error1);
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
@@ -105,7 +105,7 @@ public class MapTests : TestBase
     [Fact]
     public async Task MapAsync_Right_Task_WithNullFunc_ShouldThrowArgumentNullException()
     {
-        var result = Result.Success(5);
+        var result = Result.Ok(5);
 
         var act = async () => await result.MapAsync((Func<int, Task<string>>)null!);
 
@@ -117,7 +117,7 @@ public class MapTests : TestBase
     public async Task Map_Both_Task_ShouldReturnResult()
     {
         // Arrange
-        var i = Result.Success(5).AsTask();
+        var i = Result.Ok(5).AsTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
@@ -131,7 +131,7 @@ public class MapTests : TestBase
     public async Task Map_Both_Task_ShouldReturnFailedResult()
     {
         // Arrange
-        var i = Result.Failure<int>(Error1).AsTask();
+        var i = Result.Fail<int>(Error1).AsTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
@@ -147,7 +147,7 @@ public class MapTests : TestBase
     public async Task Map_Left_ValueTask_ShouldReturnResult()
     {
         // Arrange
-        var i = Result.Success(5).AsValueTask();
+        var i = Result.Ok(5).AsValueTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
@@ -161,7 +161,7 @@ public class MapTests : TestBase
     public async Task Map_Left_ValueTask_ShouldReturnFailedResult()
     {
         // Arrange
-        var i = Result.Failure<int>(Error1).AsValueTask();
+        var i = Result.Fail<int>(Error1).AsValueTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
@@ -175,7 +175,7 @@ public class MapTests : TestBase
     public async Task Map_Right_ValueTask_ShouldReturnResult()
     {
         // Arrange
-        var i = Result.Success(5);
+        var i = Result.Ok(5);
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());
@@ -189,7 +189,7 @@ public class MapTests : TestBase
     public async Task Map_Right_ValueTask_ShouldReturnFailedResult()
     {
         // Arrange
-        var i = Result.Failure<int>(Error1);
+        var i = Result.Fail<int>(Error1);
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());
@@ -203,7 +203,7 @@ public class MapTests : TestBase
     public async Task Map_Both_ValueTask_ShouldReturnResult()
     {
         // Arrange
-        var i = Result.Success(5).AsValueTask();
+        var i = Result.Ok(5).AsValueTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());
@@ -217,7 +217,7 @@ public class MapTests : TestBase
     public async Task Map_Both_ValueTask_ShouldReturnFailedResult()
     {
         // Arrange
-        var i = Result.Failure<int>(Error1).AsValueTask();
+        var i = Result.Fail<int>(Error1).AsValueTask();
 
         // Act
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());

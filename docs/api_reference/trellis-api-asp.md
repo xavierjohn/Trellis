@@ -820,7 +820,7 @@ public sealed class WidgetsController : ControllerBase
     [HttpGet("{id}")]
     public ActionResult<WidgetResponse> Get(string id)
     {
-        Result<string> result = Result.Success(id);
+        Result<string> result = Result.Ok(id);
         return result.ToActionResult(this, value => new WidgetResponse(value));
     }
 }
@@ -846,7 +846,7 @@ app.UseScalarValueValidation();
 
 app.MapGet("/widgets/{id}", (string id) =>
 {
-    Result<string> result = Result.Success(id);
+    Result<string> result = Result.Ok(id);
     return result.ToHttpResult();
 }).WithScalarValueValidation();
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests.Assertions;
+namespace Trellis.Testing.Tests.Assertions;
 
 public class ResultAssertionsAsyncTests
 {
@@ -6,7 +6,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeSuccessAsync_Should_Pass_When_Success()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         // Act & Assert
         var constraint = await resultTask.BeSuccessAsync();
@@ -17,7 +17,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeSuccessAsync_Should_Fail_When_Failure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act
         var act = async () => await resultTask.BeSuccessAsync();
@@ -30,7 +30,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeFailureAsync_Should_Pass_When_Failure()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act & Assert
         var constraint = await resultTask.BeFailureAsync();
@@ -41,7 +41,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeFailureAsync_Should_Fail_When_Success()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         // Act
         var act = async () => await resultTask.BeFailureAsync();
@@ -54,7 +54,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeFailureOfTypeAsync_Should_Pass_When_Type_Matches()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act & Assert
         var constraint = await resultTask.BeFailureOfTypeAsync<int, NotFoundError>();
@@ -65,7 +65,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeFailureOfTypeAsync_Should_Fail_When_Type_Different()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act
         var act = async () => await resultTask.BeFailureOfTypeAsync<int, ValidationError>();
@@ -80,7 +80,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeSuccessAsync_ValueTask_Should_Pass_When_Success()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Success(42));
+        var resultTask = ValueTask.FromResult(Result.Ok(42));
 
         // Act & Assert
         var constraint = await resultTask.BeSuccessAsync();
@@ -91,7 +91,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeSuccessAsync_ValueTask_Should_Fail_When_Failure()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = ValueTask.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act
         var act = async () => await resultTask.BeSuccessAsync();
@@ -104,7 +104,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeFailureAsync_ValueTask_Should_Pass_When_Failure()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = ValueTask.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act & Assert
         var constraint = await resultTask.BeFailureAsync();
@@ -115,7 +115,7 @@ public class ResultAssertionsAsyncTests
     public async Task BeFailureOfTypeAsync_ValueTask_Should_Pass_When_Type_Matches()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Failure<int>(Error.NotFound("Not found")));
+        var resultTask = ValueTask.FromResult(Result.Fail<int>(Error.NotFound("Not found")));
 
         // Act & Assert
         var constraint = await resultTask.BeFailureOfTypeAsync<int, NotFoundError>();

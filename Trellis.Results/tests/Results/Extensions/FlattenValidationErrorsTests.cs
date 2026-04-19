@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 public class FlattenValidationErrorsTests
 {
@@ -6,7 +6,7 @@ public class FlattenValidationErrorsTests
     public void FlattenValidationErrors_WithValidationError_ReturnsSameError()
     {
         var validationError = ValidationError.For("email", "Email is required");
-        var result = Result.Failure<string>(validationError);
+        var result = Result.Fail<string>(validationError);
 
         var flattened = result.FlattenValidationErrors();
 
@@ -19,7 +19,7 @@ public class FlattenValidationErrorsTests
         var ve1 = ValidationError.For("email", "Email is required");
         var ve2 = ValidationError.For("name", "Name is required");
         var aggregate = new AggregateError([ve1, ve2]);
-        var result = Result.Failure<string>(aggregate);
+        var result = Result.Fail<string>(aggregate);
 
         var flattened = result.FlattenValidationErrors();
 
@@ -36,7 +36,7 @@ public class FlattenValidationErrorsTests
         var ve2 = ValidationError.For("name", "Name is required");
         var innerAggregate = new AggregateError([ve2]);
         var outerAggregate = new AggregateError([ve1, innerAggregate]);
-        var result = Result.Failure<string>(outerAggregate);
+        var result = Result.Fail<string>(outerAggregate);
 
         var flattened = result.FlattenValidationErrors();
 
@@ -50,7 +50,7 @@ public class FlattenValidationErrorsTests
     public void FlattenValidationErrors_AggregateWithNoValidationErrors_ReturnsNull()
     {
         var aggregate = new AggregateError([Error.Unexpected("something broke")]);
-        var result = Result.Failure<string>(aggregate);
+        var result = Result.Fail<string>(aggregate);
 
         var flattened = result.FlattenValidationErrors();
 
@@ -60,7 +60,7 @@ public class FlattenValidationErrorsTests
     [Fact]
     public void FlattenValidationErrors_NonAggregateNonValidationError_ReturnsNull()
     {
-        var result = Result.Failure<string>(Error.Unexpected("something broke"));
+        var result = Result.Fail<string>(Error.Unexpected("something broke"));
 
         var flattened = result.FlattenValidationErrors();
 
@@ -70,7 +70,7 @@ public class FlattenValidationErrorsTests
     [Fact]
     public void FlattenValidationErrors_SuccessResult_ReturnsNull()
     {
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var flattened = result.FlattenValidationErrors();
 
@@ -83,7 +83,7 @@ public class FlattenValidationErrorsTests
         var ve = ValidationError.For("email", "Email is required");
         var unexpected = Error.Unexpected("something broke");
         var aggregate = new AggregateError([ve, unexpected]);
-        var result = Result.Failure<string>(aggregate);
+        var result = Result.Fail<string>(aggregate);
 
         var flattened = result.FlattenValidationErrors();
 

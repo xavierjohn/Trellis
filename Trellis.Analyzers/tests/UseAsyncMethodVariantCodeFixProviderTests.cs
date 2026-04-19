@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
@@ -16,7 +16,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -28,7 +28,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).MapAsync(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).MapAsync(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -40,7 +40,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 44));
+                .WithLocation(11, 39));
 
         await test.RunAsync();
     }

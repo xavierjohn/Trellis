@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -237,7 +237,7 @@ public class SharedResourceLoaderTests
     public sealed class TestSharedOrderLoader : SharedResourceLoaderById<SharedOrder, string>
     {
         public override Task<Result<SharedOrder>> GetByIdAsync(string id, CancellationToken cancellationToken) =>
-            Task.FromResult(Result.Success(new SharedOrder(id, "owner-1")));
+            Task.FromResult(Result.Ok(new SharedOrder(id, "owner-1")));
     }
 
     // -- Commands that use IIdentifyResource (should be auto-bridged)
@@ -246,14 +246,14 @@ public class SharedResourceLoaderTests
         : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
     {
         public string GetResourceId() => OrderId;
-        public IResult Authorize(Actor actor, SharedOrder order) => Result.Success();
+        public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
     }
 
     public sealed record SharedReturnCommand(string OrderId)
         : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
     {
         public string GetResourceId() => OrderId;
-        public IResult Authorize(Actor actor, SharedOrder order) => Result.Success();
+        public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
     }
 
     // -- Command WITHOUT IIdentifyResource (should NOT be auto-bridged)
@@ -261,7 +261,7 @@ public class SharedResourceLoaderTests
     public sealed record NonIdentifyCommand(string OrderId)
         : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>
     {
-        public IResult Authorize(Actor actor, SharedOrder order) => Result.Success();
+        public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
     }
 
     // -- Command with explicit loader (explicit should win)
@@ -270,13 +270,13 @@ public class SharedResourceLoaderTests
         : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
     {
         public string GetResourceId() => OrderId;
-        public IResult Authorize(Actor actor, SharedOrder order) => Result.Success();
+        public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
     }
 
     public sealed class ExplicitOrderLoader : IResourceLoader<ExplicitLoaderCommand, SharedOrder>
     {
         public Task<Result<SharedOrder>> LoadAsync(ExplicitLoaderCommand message, CancellationToken cancellationToken) =>
-            Task.FromResult(Result.Success(new SharedOrder(message.OrderId, "explicit-owner")));
+            Task.FromResult(Result.Ok(new SharedOrder(message.OrderId, "explicit-owner")));
     }
 
     // -- Loader for pre-registration tests (scanning will also discover this via Assembly.GetTypes(),
@@ -285,7 +285,7 @@ public class SharedResourceLoaderTests
     private sealed class TestSharedOrderInlineLoader : IResourceLoader<SharedReturnCommand, SharedOrder>
     {
         public Task<Result<SharedOrder>> LoadAsync(SharedReturnCommand message, CancellationToken cancellationToken) =>
-            Task.FromResult(Result.Success(new SharedOrder(message.OrderId, "inline")));
+            Task.FromResult(Result.Ok(new SharedOrder(message.OrderId, "inline")));
     }
 
     // -- Command with mismatched TId (shared loader uses string, command uses int)
@@ -294,7 +294,7 @@ public class SharedResourceLoaderTests
         : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, int>
     {
         public int GetResourceId() => OrderNumber;
-        public IResult Authorize(Actor actor, SharedOrder order) => Result.Success();
+        public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
     }
 
     #endregion

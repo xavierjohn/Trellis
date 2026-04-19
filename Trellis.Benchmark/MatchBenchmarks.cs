@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -17,8 +17,8 @@ public class MatchBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successResult = Result.Success(42);
-        _failureResult = Result.Failure<int>(Error.Validation("Test error"));
+        _successResult = Result.Ok(42);
+        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
         _sideEffectCounter = 0;
     }
 

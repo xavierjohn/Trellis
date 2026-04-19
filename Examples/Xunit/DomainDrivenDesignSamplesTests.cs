@@ -1,4 +1,4 @@
-﻿namespace Example.Tests;
+namespace Example.Tests;
 
 using Trellis;
 using Xunit;
@@ -21,7 +21,7 @@ public class DomainDrivenDesignSamplesTests
         public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
             value == Guid.Empty
                 ? Error.Validation("Customer ID cannot be empty", fieldName ?? "customerId")
-                : Result.Success(new CustomerId(value));
+                : Result.Ok(new CustomerId(value));
 
         public static Result<CustomerId> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -41,7 +41,7 @@ public class DomainDrivenDesignSamplesTests
         public static Result<OrderId> TryCreate(Guid value, string? fieldName = null) =>
             value == Guid.Empty
                 ? Error.Validation("Order ID cannot be empty", fieldName ?? "orderId")
-                : Result.Success(new OrderId(value));
+                : Result.Ok(new OrderId(value));
 
         public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();

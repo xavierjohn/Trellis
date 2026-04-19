@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -51,7 +51,7 @@ public class Money : ValueObject
         var field = fieldName.NormalizeFieldName("amount");
 
         if (amount < 0)
-            return Result.Failure<Money>(Error.Validation("Amount cannot be negative.", field));
+            return Result.Fail<Money>(Error.Validation("Amount cannot be negative.", field));
 
         return CurrencyCode.TryCreate(currencyCode, fieldName.NormalizeFieldName("currencyCode"))
             .Map(currency => new Money(Math.Round(amount, GetDecimalPlaces(currency), MidpointRounding.AwayFromZero), currency));
@@ -84,11 +84,11 @@ public class Money : ValueObject
     public Result<Money> Add(Money other)
     {
         if (!Currency.Equals(other.Currency))
-            return Result.Failure<Money>(
+            return Result.Fail<Money>(
                 Error.Validation($"Cannot add {other.Currency} to {Currency}.", "currency"));
 
         try { return TryCreate(Amount + other.Amount, Currency); }
-        catch (OverflowException) { return Result.Failure<Money>(Error.Validation("Addition would overflow.", "amount")); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.Validation("Addition would overflow.", "amount")); }
     }
 
     /// <summary>
@@ -97,11 +97,11 @@ public class Money : ValueObject
     public Result<Money> Subtract(Money other)
     {
         if (!Currency.Equals(other.Currency))
-            return Result.Failure<Money>(
+            return Result.Fail<Money>(
                 Error.Validation($"Cannot subtract {other.Currency} from {Currency}.", "currency"));
 
         if (Amount < other.Amount)
-            return Result.Failure<Money>(
+            return Result.Fail<Money>(
                 Error.Validation("Subtraction would result in a negative amount.", "money"));
 
         return TryCreate(Amount - other.Amount, Currency);
@@ -113,7 +113,7 @@ public class Money : ValueObject
     public Result<Money> Multiply(decimal multiplier)
     {
         if (multiplier < 0)
-            return Result.Failure<Money>(
+            return Result.Fail<Money>(
                 Error.Validation("Multiplier cannot be negative.", nameof(multiplier)));
 
         return TryCreate(Amount * multiplier, Currency);
@@ -125,7 +125,7 @@ public class Money : ValueObject
     public Result<Money> Multiply(int quantity)
     {
         if (quantity < 0)
-            return Result.Failure<Money>(
+            return Result.Fail<Money>(
                 Error.Validation("Quantity cannot be negative.", nameof(quantity)));
 
         return TryCreate(Amount * quantity, Currency);
@@ -137,7 +137,7 @@ public class Money : ValueObject
     public Result<Money> Divide(decimal divisor)
     {
         if (divisor <= 0)
-            return Result.Failure<Money>(
+            return Result.Fail<Money>(
                 Error.Validation("Divisor must be positive.", nameof(divisor)));
 
         return TryCreate(Amount / divisor, Currency);
@@ -149,7 +149,7 @@ public class Money : ValueObject
     public Result<Money> Divide(int divisor)
     {
         if (divisor <= 0)
-            return Result.Failure<Money>(
+            return Result.Fail<Money>(
                 Error.Validation("Divisor must be positive.", nameof(divisor)));
 
         return TryCreate(Amount / divisor, Currency);
@@ -164,10 +164,10 @@ public class Money : ValueObject
     public Result<Money[]> Allocate(params int[] ratios)
     {
         if (ratios.Length == 0)
-            return Result.Failure<Money[]>(Error.Validation("At least one ratio required.", nameof(ratios)));
+            return Result.Fail<Money[]>(Error.Validation("At least one ratio required.", nameof(ratios)));
 
         if (ratios.Any(r => r <= 0))
-            return Result.Failure<Money[]>(Error.Validation("All ratios must be positive.", nameof(ratios)));
+            return Result.Fail<Money[]>(Error.Validation("All ratios must be positive.", nameof(ratios)));
 
         var decimalPlaces = GetDecimalPlaces(Currency);
         var multiplier = (decimal)Math.Pow(10, decimalPlaces);
@@ -188,7 +188,7 @@ public class Money : ValueObject
         for (var i = 0; i < Math.Abs(remainder) && i < results.Length; i++)
             results[i] = new Money(results[i].Amount + adjustment, Currency);
 
-        return Result.Success(results);
+        return Result.Ok(results);
     }
 
     /// <summary>
@@ -262,7 +262,7 @@ public class Money : ValueObject
         using var enumerator = values.GetEnumerator();
 
         if (!enumerator.MoveNext())
-            return Result.Failure<Money>(Error.Validation("Cannot sum an empty collection.", nameof(values)));
+            return Result.Fail<Money>(Error.Validation("Cannot sum an empty collection.", nameof(values)));
 
         var first = enumerator.Current;
         var currency = first.Currency;
@@ -275,7 +275,7 @@ public class Money : ValueObject
                 var current = enumerator.Current;
 
                 if (!currency.Equals(current.Currency))
-                    return Result.Failure<Money>(
+                    return Result.Fail<Money>(
                         Error.Validation($"Cannot add {current.Currency} to {currency}.", "currency"));
 
                 totalAmount += current.Amount;
@@ -283,7 +283,7 @@ public class Money : ValueObject
         }
         catch (OverflowException)
         {
-            return Result.Failure<Money>(Error.Validation("Addition would overflow.", "amount"));
+            return Result.Fail<Money>(Error.Validation("Addition would overflow.", "amount"));
         }
 
         return TryCreate(totalAmount, currency.Value);

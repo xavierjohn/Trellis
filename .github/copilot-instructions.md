@@ -1,4 +1,4 @@
-﻿# GitHub Copilot Instructions for Trellis
+# GitHub Copilot Instructions for Trellis
 
 ## Project Overview
 
@@ -249,15 +249,15 @@ Applies to: Ensure, Bind, Map, Tap, Match, Combine, and all other async extensio
 
 ```csharp
 // Both async → EnsureTests.ValueTask.cs
-await ValueTask.FromResult(Result.Success("test"))
+await ValueTask.FromResult(Result.Ok("test"))
     .EnsureAsync(v => ValueTask.FromResult(v.Length > 0), Error.Validation("Empty"));
 
 // Left only → EnsureTests.ValueTask.Left.cs
-await ValueTask.FromResult(Result.Success("test"))
+await ValueTask.FromResult(Result.Ok("test"))
     .EnsureAsync(v => v.Length > 0, Error.Validation("Empty"));
 
 // Right only → EnsureTests.ValueTask.Right.cs
-await Result.Success("test")
+await Result.Ok("test")
     .EnsureAsync(v => ValueTask.FromResult(v.Length > 0), Error.Validation("Empty"));
 ```
 
@@ -306,7 +306,7 @@ Example: `EnsureAsync_ValueTask_Bool_StaticError_SuccessResult_PredicateTrue_Ret
 ```csharp
 // ✅ Always verify early exit
 var predicateInvoked = false;
-var result = await Result.Failure<int>(error)
+var result = await Result.Fail<int>(error)
     .EnsureAsync(v => { predicateInvoked = true; return v > 0; }, error);
 
 predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
@@ -438,7 +438,7 @@ public static Result<EmailAddress> TryCreate(string? value, string? fieldName = 
     using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity("EmailAddress.TryCreate");
     if (value is not null && EmailRegEx().IsMatch(value))
         return new EmailAddress(value);  // Result constructor sets Activity.Current (== activity)
-    return Result.Failure<EmailAddress>(Error.Validation("Email address is not valid.", field));
+    return Result.Fail<EmailAddress>(Error.Validation("Email address is not valid.", field));
 }
 ```
 
@@ -499,14 +499,14 @@ Projects referencing both `Trellis.Results` and `Mediator` will encounter ambigu
 **Workarounds:**
 
 ```csharp
-// Preferred: Use parameterless Result.Success() — avoids referencing Unit entirely
-return Result.Success();  // instead of Result.Success(Unit.Value)
+// Preferred: Use parameterless Result.Ok() — avoids referencing Unit entirely
+return Result.Ok();  // instead of Result.Ok(Unit.Value)
 
 // Alternative: Using alias (if you need to reference Unit directly)
 using Unit = Trellis.Unit;
 ```
 
-The parameterless `Result.Success()` is preferred — it avoids the type name entirely.
+The parameterless `Result.Ok()` is preferred — it avoids the type name entirely.
 
 ## Pre-Submission Checklist
 

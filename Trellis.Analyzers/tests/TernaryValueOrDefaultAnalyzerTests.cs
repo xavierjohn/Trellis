@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
@@ -13,7 +13,7 @@ public class TernaryValueOrDefaultAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result = Result.Success(42);
+                    Result<int> result = Result.Ok(42);
                     var value = result.IsSuccess ? result.Value : 0;
                 }
             }
@@ -35,7 +35,7 @@ public class TernaryValueOrDefaultAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<string> result = Result.Success("test");
+                    Result<string> result = Result.Ok("test");
                     var value = result.IsSuccess ? result.Value : "default";
                 }
             }
@@ -57,7 +57,7 @@ public class TernaryValueOrDefaultAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<User> result = Result.Success(new User());
+                    Result<User> result = Result.Ok(new User());
                     var value = result.IsSuccess ? result.Value : null;
                 }
             }
@@ -81,7 +81,7 @@ public class TernaryValueOrDefaultAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result = Result.Success(42);
+                    Result<int> result = Result.Ok(42);
                     var value = result.Match(v => v, _ => 0);
                 }
             }
@@ -99,8 +99,8 @@ public class TernaryValueOrDefaultAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result1 = Result.Success(1);
-                    Result<int> result2 = Result.Success(2);
+                    Result<int> result1 = Result.Ok(1);
+                    Result<int> result2 = Result.Ok(2);
                     var value = result1.IsSuccess ? result2.Value : 0;
                 }
             }
@@ -121,7 +121,7 @@ public class TernaryValueOrDefaultAnalyzerTests
                     var value = GetResult().IsSuccess ? GetResult().Value : 0;
                 }
 
-                private Result<int> GetResult() => Result.Success(42);
+                private Result<int> GetResult() => Result.Ok(42);
             }
             """;
 
@@ -155,7 +155,7 @@ public class TernaryValueOrDefaultAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result = Result.Success(42);
+                    Result<int> result = Result.Ok(42);
                     var value = result.IsFailure ? 0 : result.Value;
                 }
             }
@@ -173,8 +173,8 @@ public class TernaryValueOrDefaultAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> result1 = Result.Success(1);
-                    Result<string> result2 = Result.Success("test");
+                    Result<int> result1 = Result.Ok(1);
+                    Result<string> result2 = Result.Ok("test");
                     
                     var value1 = result1.IsSuccess ? result1.Value : 0;
                     var value2 = result2.IsSuccess ? result2.Value : "default";

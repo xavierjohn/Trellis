@@ -1,4 +1,4 @@
-﻿namespace Trellis.DomainDrivenDesign.Tests.Aggregates;
+namespace Trellis.DomainDrivenDesign.Tests.Aggregates;
 
 using Trellis;
 
@@ -182,7 +182,7 @@ public class AggregateTests
     public void OptionalETag_TypedNull_SkipsValidation()
     {
         var aggregate = TestAggregate.Create("1");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         result.OptionalETag((EntityTagValue[]?)null).IsSuccess.Should().BeTrue();
     }
@@ -192,7 +192,7 @@ public class AggregateTests
     {
         var aggregate = TestAggregate.Create("1");
         aggregate.SetTestETag("abc123");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         result.OptionalETag([EntityTagValue.Strong("abc123")]).IsSuccess.Should().BeTrue();
     }
@@ -202,7 +202,7 @@ public class AggregateTests
     {
         var aggregate = TestAggregate.Create("1");
         aggregate.SetTestETag("abc123");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         // Weak tags should not match via strong comparison
         var ensured = result.OptionalETag([EntityTagValue.Weak("abc123")]);
@@ -215,7 +215,7 @@ public class AggregateTests
     {
         var aggregate = TestAggregate.Create("1");
         aggregate.SetTestETag("anything");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         result.OptionalETag([EntityTagValue.Wildcard()]).IsSuccess.Should().BeTrue();
     }
@@ -225,7 +225,7 @@ public class AggregateTests
     {
         var aggregate = TestAggregate.Create("1");
         aggregate.SetTestETag("abc123");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         var ensured = result.OptionalETag(Array.Empty<EntityTagValue>());
         ensured.IsSuccess.Should().BeFalse();
@@ -237,7 +237,7 @@ public class AggregateTests
     {
         var aggregate = TestAggregate.Create("1");
         aggregate.SetTestETag("current");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         result.OptionalETag([EntityTagValue.Strong("stale"), EntityTagValue.Strong("current")]).IsSuccess.Should().BeTrue();
     }
@@ -250,7 +250,7 @@ public class AggregateTests
     public void RequireETag_TypedNull_ReturnsPreconditionRequired()
     {
         var aggregate = TestAggregate.Create("1");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         var ensured = result.RequireETag((EntityTagValue[]?)null);
         ensured.IsSuccess.Should().BeFalse();
@@ -262,7 +262,7 @@ public class AggregateTests
     {
         var aggregate = TestAggregate.Create("1");
         aggregate.SetTestETag("abc123");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         result.RequireETag([EntityTagValue.Strong("abc123")]).IsSuccess.Should().BeTrue();
     }
@@ -270,7 +270,7 @@ public class AggregateTests
     [Fact]
     public void RequireETag_TypedFailedResult_PreservesOriginalError()
     {
-        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+        var result = Result.Fail<TestAggregate>(Error.NotFound("not found"));
 
         var ensured = result.RequireETag((EntityTagValue[]?)null);
         ensured.IsSuccess.Should().BeFalse();
@@ -280,7 +280,7 @@ public class AggregateTests
     [Fact]
     public void OptionalETag_TypedFailedResult_PreservesOriginalError()
     {
-        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+        var result = Result.Fail<TestAggregate>(Error.NotFound("not found"));
 
         var ensured = result.OptionalETag([EntityTagValue.Strong("abc123")]);
         ensured.IsSuccess.Should().BeFalse();
@@ -290,7 +290,7 @@ public class AggregateTests
     [Fact]
     public void RequireETag_TypedFailedResult_WithETags_PreservesOriginalError()
     {
-        var result = Result.Failure<TestAggregate>(Error.NotFound("not found"));
+        var result = Result.Fail<TestAggregate>(Error.NotFound("not found"));
 
         var ensured = result.RequireETag([EntityTagValue.Strong("abc123")]);
         ensured.IsSuccess.Should().BeFalse();
@@ -302,7 +302,7 @@ public class AggregateTests
     {
         var aggregate = TestAggregate.Create("1");
         aggregate.SetTestETag("current");
-        var result = Result.Success(aggregate);
+        var result = Result.Ok(aggregate);
 
         var ensured = result.OptionalETag([EntityTagValue.Strong("stale")]);
         ensured.IsSuccess.Should().BeFalse();

@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -16,8 +16,8 @@ public class EnsureBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successResult = Result.Success(42);
-        _failureResult = Result.Failure<int>(Error.Validation("Test error"));
+        _successResult = Result.Ok(42);
+        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
     }
 
     [Benchmark(Baseline = true)]
@@ -95,7 +95,7 @@ public class EnsureBenchmarks
     public Result<Person> Ensure_ComplexObject_MultipleRules()
     {
         var person = new Person(42, "John Doe", 30, "john@example.com");
-        return Result.Success(person)
+        return Result.Ok(person)
             .Ensure(p => p.Age >= 18, Error.Validation("Must be adult"))
             .Ensure(p => p.Name.Length > 0, Error.Validation("Name required"))
             .Ensure(p => p.Email.Contains('@'), Error.Validation("Valid email required"));
@@ -118,7 +118,7 @@ public class EnsureBenchmarks
         return _successResult
             .Map(x => x * 2)
             .Ensure(x => x > 50, Error.Validation("Must be greater than 50"))
-            .Bind(x => Result.Success(x + 10))
+            .Bind(x => Result.Ok(x + 10))
             .Ensure(x => x < 200, Error.Validation("Must be less than 200"));
     }
 

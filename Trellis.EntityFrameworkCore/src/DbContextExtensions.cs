@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+namespace Trellis.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -59,7 +59,7 @@ public static class DbContextExtensions
         try
         {
             var count = await context.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
-            return Result.Success(count);
+            return Result.Ok(count);
         }
         catch (DbUpdateConcurrencyException ex)
         {

@@ -30,7 +30,7 @@ public sealed record RegisterUserRequest(string FirstName, string LastName, stri
 public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
 {
     public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
-        Result.Success(new User(firstName, lastName, email));
+        Result.Ok(new User(firstName, lastName, email));
 }
 
 public static Result<User> RegisterUser(
@@ -84,7 +84,7 @@ public sealed class UsersController : ControllerBase
     {
         return string.IsNullOrWhiteSpace(request.Email)
             ? Error.Validation("Email is required.", "email")
-            : Result.Success(new UserResponse(request.Email));
+            : Result.Ok(new UserResponse(request.Email));
     }
 }
 
@@ -119,7 +119,7 @@ public static class UserRoutes
     {
         return string.IsNullOrWhiteSpace(request.Email)
             ? Error.Validation("Email is required.", "email")
-            : Result.Success(new UserResponse(request.Email));
+            : Result.Ok(new UserResponse(request.Email));
     }
 }
 
@@ -142,9 +142,9 @@ using Trellis;
 
 public sealed record DashboardResponse(int ProductCount, int OrderCount, decimal TotalRevenue);
 
-static Task<Result<int>> GetProductCountAsync() => Task.FromResult(Result.Success(42));
-static Task<Result<int>> GetOrderCountAsync() => Task.FromResult(Result.Success(12));
-static Task<Result<decimal>> GetRevenueAsync() => Task.FromResult(Result.Success(1850.50m));
+static Task<Result<int>> GetProductCountAsync() => Task.FromResult(Result.Ok(42));
+static Task<Result<int>> GetOrderCountAsync() => Task.FromResult(Result.Ok(12));
+static Task<Result<decimal>> GetRevenueAsync() => Task.FromResult(Result.Ok(1850.50m));
 
 Result<DashboardResponse> result = await Result.ParallelAsync(
         () => GetProductCountAsync(),
@@ -199,7 +199,7 @@ using Trellis;
 public sealed record PricingSnapshot(string Source);
 
 Result<PricingSnapshot> cacheResult = Error.NotFound("Price not found in cache.");
-Result<PricingSnapshot> databaseResult = Result.Success(new PricingSnapshot("database"));
+Result<PricingSnapshot> databaseResult = Result.Ok(new PricingSnapshot("database"));
 
 Result<PricingSnapshot> finalResult = cacheResult.RecoverOnFailure(
     predicate: error => error is NotFoundError,
@@ -234,7 +234,7 @@ static Task<Customer?> GetCustomerByIdAsync(long id) =>
     Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
 
 static Task<Result<Unit>> SendPromotionNotificationAsync(string email) =>
-    Task.FromResult(Result.Success(new Unit()));
+    Task.FromResult(Result.Ok(new Unit()));
 
 string message = await GetCustomerByIdAsync(1)
     .ToResultAsync(Error.NotFound("Customer not found."))

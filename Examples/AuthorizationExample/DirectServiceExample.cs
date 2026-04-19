@@ -1,4 +1,4 @@
-﻿using Trellis;
+using Trellis;
 using Trellis.Authorization;
 
 namespace AuthorizationExample;
@@ -69,36 +69,36 @@ public sealed class DocumentService
     {
         var doc = new Document(Guid.NewGuid().ToString(), actor.Id, title, content);
         _store.Add(doc);
-        return Result.Success(doc);
+        return Result.Ok(doc);
     }
 
     public Result<Document> EditDocument(Actor actor, string documentId, string newContent)
     {
         var doc = _store.Get(documentId);
         if (doc is null)
-            return Result.Failure<Document>(Error.NotFound("Document not found"));
+            return Result.Fail<Document>(Error.NotFound("Document not found"));
 
         // ⚠️ Auth logic mixed with business logic
         if (actor.Id != doc.OwnerId && !actor.HasPermission("Documents.EditAny"))
-            return Result.Failure<Document>(Error.Forbidden("Only the owner can edit this document"));
+            return Result.Fail<Document>(Error.Forbidden("Only the owner can edit this document"));
 
         var updated = doc with { Content = newContent };
         _store.Update(updated);
-        return Result.Success(updated);
+        return Result.Ok(updated);
     }
 
     public Result<Document> PublishDocument(Actor actor, string documentId)
     {
         var doc = _store.Get(documentId);
         if (doc is null)
-            return Result.Failure<Document>(Error.NotFound("Document not found"));
+            return Result.Fail<Document>(Error.NotFound("Document not found"));
 
         // ⚠️ Auth logic mixed with business logic
         if (!actor.HasPermission("Documents.Publish"))
-            return Result.Failure<Document>(Error.Forbidden("Missing required permission: Documents.Publish"));
+            return Result.Fail<Document>(Error.Forbidden("Missing required permission: Documents.Publish"));
 
         var published = doc with { IsPublished = true };
         _store.Update(published);
-        return Result.Success(published);
+        return Result.Ok(published);
     }
 }

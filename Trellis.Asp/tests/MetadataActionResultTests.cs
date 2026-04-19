@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -48,7 +48,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithMetadata_Returns200_WithAllHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.Create()
             .SetStrongETag("abc123")
             .SetLastModified(new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero))
@@ -74,7 +74,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithWeakETag_SetsWeakETagHeader()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.Create()
             .SetWeakETag("abc123")
             .Build();
@@ -92,7 +92,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithETag_MatchingIfNoneMatch_OnGET_Returns304()
     {
         var controller = CreateControllerWithHttpContext("GET", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);
@@ -105,7 +105,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithETag_MatchingIfNoneMatch_OnHEAD_Returns304()
     {
         var controller = CreateControllerWithHttpContext("HEAD", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);
@@ -118,7 +118,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithETag_NonMatchingIfNoneMatch_Returns200()
     {
         var controller = CreateControllerWithHttpContext("GET", "\"different\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);
@@ -130,7 +130,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithETag_MatchingIfNoneMatch_OnPOST_ReturnsOk()
     {
         var controller = CreateControllerWithHttpContext("POST", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);
@@ -148,7 +148,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithETag_NonMatchingIfMatch_OnPUT_ReturnsOk()
     {
         var controller = CreateControllerWithHttpContext("PUT", ifMatch: "\"different\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);
@@ -161,7 +161,7 @@ public class MetadataActionResultTests : IDisposable
     public void Success_WithETag_MatchingIfMatch_Returns200()
     {
         var controller = CreateControllerWithHttpContext("PUT", ifMatch: "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);
@@ -179,7 +179,7 @@ public class MetadataActionResultTests : IDisposable
         var lastModified = new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var controller = CreateControllerWithHttpContext("PUT",
             ifUnmodifiedSince: lastModified.AddHours(-1));
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.Create()
             .SetLastModified(lastModified)
             .Build();
@@ -196,7 +196,7 @@ public class MetadataActionResultTests : IDisposable
         var lastModified = new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var controller = CreateControllerWithHttpContext("PUT",
             ifUnmodifiedSince: lastModified.AddHours(1));
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.Create()
             .SetLastModified(lastModified)
             .Build();
@@ -216,7 +216,7 @@ public class MetadataActionResultTests : IDisposable
         var lastModified = new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var controller = CreateControllerWithHttpContext("GET",
             ifModifiedSince: lastModified.AddHours(1));
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.Create()
             .SetLastModified(lastModified)
             .Build();
@@ -233,7 +233,7 @@ public class MetadataActionResultTests : IDisposable
         var lastModified = new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero);
         var controller = CreateControllerWithHttpContext("GET",
             ifModifiedSince: lastModified.AddHours(-1));
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
         var metadata = RepresentationMetadata.Create()
             .SetLastModified(lastModified)
             .Build();
@@ -251,7 +251,7 @@ public class MetadataActionResultTests : IDisposable
     public void Failure_ReturnsErrorStatus_NoMetadataHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Failure<string>(Error.NotFound("gone"));
+        var result = Result.Fail<string>(Error.NotFound("gone"));
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);
@@ -269,7 +269,7 @@ public class MetadataActionResultTests : IDisposable
     public async Task TaskOverload_Success_Returns200WithHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var resultTask = Task.FromResult(Result.Success("hello"));
+        var resultTask = Task.FromResult(Result.Ok("hello"));
         var metadata = RepresentationMetadata.WithStrongETag("etag1");
 
         var response = await resultTask.ToActionResultAsync(controller, _ => metadata, s => s.ToUpperInvariant());
@@ -282,7 +282,7 @@ public class MetadataActionResultTests : IDisposable
     public async Task ValueTaskOverload_Success_Returns200WithHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var resultTask = new ValueTask<Result<string>>(Result.Success("hello"));
+        var resultTask = new ValueTask<Result<string>>(Result.Ok("hello"));
         var metadata = RepresentationMetadata.WithStrongETag("etag2");
 
         var response = await resultTask.ToActionResultAsync(controller, _ => metadata, s => s.ToUpperInvariant());

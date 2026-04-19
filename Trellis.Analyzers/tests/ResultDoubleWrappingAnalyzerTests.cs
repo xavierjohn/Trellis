@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
@@ -99,8 +99,8 @@ public class ResultDoubleWrappingAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<int> existingResult = Result.Success(42);
-                    ProcessResult(Result.Success(existingResult));
+                    Result<int> existingResult = Result.Ok(42);
+                    ProcessResult(Result.Ok(existingResult));
                 }
                 
                 private void ProcessResult(Result<Result<int>> result) { }
@@ -110,7 +110,7 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(12, 38)
+                .WithLocation(12, 33)
                 .WithArguments("int"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
                 .WithLocation(15, 32)
@@ -129,10 +129,10 @@ public class ResultDoubleWrappingAnalyzerTests
                 {
                     // This creates a Result<Result<string>> when inferred from the generic parameter
                     var error = Error.Validation("error");
-                    var result = Result.Failure<string>(error);
+                    var result = Result.Fail<string>(error);
                     
                     // Now wrapping it creates Result<Result<Result<string>>> which contains Result<Result<string>>
-                    ProcessResult(Result.Success(result));
+                    ProcessResult(Result.Ok(result));
                 }
                 
                 private void ProcessResult(Result<Result<string>> doubleWrapped) { }
@@ -142,7 +142,7 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(16, 38)
+                .WithLocation(16, 33)
                 .WithArguments("string"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
                 .WithLocation(19, 32)
@@ -157,11 +157,11 @@ public class ResultDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Result<string> GetValue() => Result.Success("test");
+                public Result<string> GetValue() => Result.Ok("test");
                 
                 public void TestMethod()
                 {
-                    Result<int> singleWrapped = Result.Success(42);
+                    Result<int> singleWrapped = Result.Ok(42);
                     var value = GetValue();
                 }
             }
@@ -179,8 +179,8 @@ public class ResultDoubleWrappingAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(42);
-                    var result2 = Result.Success("test");
+                    var result = Result.Ok(42);
+                    var result2 = Result.Ok("test");
                 }
             }
             """;

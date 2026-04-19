@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System;
 using System.Diagnostics;
@@ -41,7 +41,7 @@ public static class CheckIfExtensions
         var checkResult = func(result.Value);
         if (checkResult.IsFailure)
         {
-            var failure = Result.Failure<T>(checkResult.Error);
+            var failure = Result.Fail<T>(checkResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -88,7 +88,7 @@ public static class CheckIfExtensions
         var checkResult = func(result.Value);
         if (checkResult.IsFailure)
         {
-            var failure = Result.Failure<T>(checkResult.Error);
+            var failure = Result.Fail<T>(checkResult.Error);
             failure.LogActivityStatus();
             return failure;
         }

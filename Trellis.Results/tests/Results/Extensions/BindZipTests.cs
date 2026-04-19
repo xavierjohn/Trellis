@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -10,8 +10,8 @@ public class BindZipTests : TestBase
     public void BindZip_Success_FuncSuccess_ReturnsTuple()
     {
         // Arrange & Act
-        var result = Result.Success("hello")
-            .BindZip(s => Result.Success(s.Length));
+        var result = Result.Ok("hello")
+            .BindZip(s => Result.Ok(s.Length));
 
         // Assert
         result.Should().BeSuccess()
@@ -22,8 +22,8 @@ public class BindZipTests : TestBase
     public void BindZip_Success_FuncFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = Result.Success("hello")
-            .BindZip(_ => Result.Failure<int>(Error1));
+        var result = Result.Ok("hello")
+            .BindZip(_ => Result.Fail<int>(Error1));
 
         // Assert
         result.Should().BeFailure();
@@ -37,8 +37,8 @@ public class BindZipTests : TestBase
         var funcInvoked = false;
 
         // Act
-        var result = Result.Failure<string>(Error1)
-            .BindZip(v => { funcInvoked = true; return Result.Success(42); });
+        var result = Result.Fail<string>(Error1)
+            .BindZip(v => { funcInvoked = true; return Result.Ok(42); });
 
         // Assert
         funcInvoked.Should().BeFalse();
@@ -54,9 +54,9 @@ public class BindZipTests : TestBase
     public void BindZip_Chain_AllSuccess_Returns3Tuple()
     {
         // Arrange & Act
-        var result = Result.Success("hello")
-            .BindZip(s => Result.Success(s.Length))
-            .BindZip((s, len) => Result.Success(s.ToUpperInvariant()));
+        var result = Result.Ok("hello")
+            .BindZip(s => Result.Ok(s.Length))
+            .BindZip((s, len) => Result.Ok(s.ToUpperInvariant()));
 
         // Assert
         result.Should().BeSuccess()
@@ -67,9 +67,9 @@ public class BindZipTests : TestBase
     public void BindZip_Chain_SecondFails_ReturnsSecondFailure()
     {
         // Arrange & Act
-        var result = Result.Success("hello")
-            .BindZip(_ => Result.Failure<int>(Error1))
-            .BindZip((s, len) => Result.Success(s.ToUpperInvariant()));
+        var result = Result.Ok("hello")
+            .BindZip(_ => Result.Fail<int>(Error1))
+            .BindZip((s, len) => Result.Ok(s.ToUpperInvariant()));
 
         // Assert
         result.Should().BeFailure();
@@ -80,9 +80,9 @@ public class BindZipTests : TestBase
     public void BindZip_Chain_ThirdFails_ReturnsThirdFailure()
     {
         // Arrange & Act
-        var result = Result.Success("hello")
-            .BindZip(s => Result.Success(s.Length))
-            .BindZip((s, len) => Result.Failure<string>(Error2));
+        var result = Result.Ok("hello")
+            .BindZip(s => Result.Ok(s.Length))
+            .BindZip((s, len) => Result.Fail<string>(Error2));
 
         // Assert
         result.Should().BeFailure();
@@ -97,9 +97,9 @@ public class BindZipTests : TestBase
         var thirdInvoked = false;
 
         // Act
-        var result = Result.Failure<string>(Error1)
-            .BindZip(s => { secondInvoked = true; return Result.Success(s.Length); })
-            .BindZip((s, len) => { thirdInvoked = true; return Result.Success(s.ToUpperInvariant()); });
+        var result = Result.Fail<string>(Error1)
+            .BindZip(s => { secondInvoked = true; return Result.Ok(s.Length); })
+            .BindZip((s, len) => { thirdInvoked = true; return Result.Ok(s.ToUpperInvariant()); });
 
         // Assert
         secondInvoked.Should().BeFalse();
@@ -116,10 +116,10 @@ public class BindZipTests : TestBase
     public void BindZip_Chain_AllSuccess_Returns4Tuple()
     {
         // Arrange & Act
-        var result = Result.Success("hello")
-            .BindZip(s => Result.Success(s.Length))
-            .BindZip((s, len) => Result.Success(s.ToUpperInvariant()))
-            .BindZip((s, len, upper) => Result.Success(len * 2));
+        var result = Result.Ok("hello")
+            .BindZip(s => Result.Ok(s.Length))
+            .BindZip((s, len) => Result.Ok(s.ToUpperInvariant()))
+            .BindZip((s, len, upper) => Result.Ok(len * 2));
 
         // Assert
         result.Should().BeSuccess()
@@ -134,8 +134,8 @@ public class BindZipTests : TestBase
     public async Task BindZipAsync_TaskLeft_Success_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Result.Success("hello").AsTask()
-            .BindZipAsync(s => Result.Success(s.Length));
+        var result = await Result.Ok("hello").AsTask()
+            .BindZipAsync(s => Result.Ok(s.Length));
 
         // Assert
         result.Should().BeSuccess()
@@ -146,8 +146,8 @@ public class BindZipTests : TestBase
     public async Task BindZipAsync_TaskBoth_Success_ReturnsTuple()
     {
         // Arrange & Act
-        var result = await Result.Success("hello").AsTask()
-            .BindZipAsync(s => Task.FromResult(Result.Success(s.Length)));
+        var result = await Result.Ok("hello").AsTask()
+            .BindZipAsync(s => Task.FromResult(Result.Ok(s.Length)));
 
         // Assert
         result.Should().BeSuccess()
@@ -162,7 +162,7 @@ public class BindZipTests : TestBase
     public void BindZip_NullFunc_ThrowsArgumentNullException()
     {
         // Arrange
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         // Act
         var act = () => result.BindZip<string, int>(null!);
@@ -193,9 +193,9 @@ public class BindZipTests : TestBase
             .Which.Should().Be(($"Order-{orderId}", $"Customer-{customerId}", $"Inventory-{productId}"));
     }
 
-    private static Result<string> GetOrder(int id) => Result.Success($"Order-{id}");
-    private static Result<string> GetCustomer(int id) => Result.Success($"Customer-{id}");
-    private static Result<string> GetInventory(int id) => Result.Success($"Inventory-{id}");
+    private static Result<string> GetOrder(int id) => Result.Ok($"Order-{id}");
+    private static Result<string> GetCustomer(int id) => Result.Ok($"Customer-{id}");
+    private static Result<string> GetInventory(int id) => Result.Ok($"Inventory-{id}");
 
     #endregion
 }

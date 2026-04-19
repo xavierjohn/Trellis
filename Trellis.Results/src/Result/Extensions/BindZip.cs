@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -27,7 +27,7 @@ public static partial class BindZipExtensions
 
         if (result.IsFailure)
         {
-            var failure = Result.Failure<(T1, T2)>(result.Error);
+            var failure = Result.Fail<(T1, T2)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -35,12 +35,12 @@ public static partial class BindZipExtensions
         var nextResult = func(result.Value);
         if (nextResult.IsFailure)
         {
-            var failure = Result.Failure<(T1, T2)>(nextResult.Error);
+            var failure = Result.Fail<(T1, T2)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success((result.Value, nextResult.Value));
+        var success = Result.Ok((result.Value, nextResult.Value));
         success.LogActivityStatus();
         return success;
     }

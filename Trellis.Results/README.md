@@ -13,7 +13,7 @@ dotnet add package Trellis.Results
 ```csharp
 using Trellis;
 
-Result<string> email = Result.Success("ada@example.com")
+Result<string> email = Result.Ok("ada@example.com")
     .Ensure(value => value.Contains('@'),
         Error.Validation("Email is invalid.", "email"))
     .Map(value => value.Trim().ToLowerInvariant());

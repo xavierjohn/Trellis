@@ -102,7 +102,7 @@ app.MapPost("/users/register", (RegisterUserRequest request) =>
         .Combine(LastName.TryCreate(request.LastName))
         .Combine(EmailAddress.TryCreate(request.Email))
         .Bind((firstName, lastName, emailAddress) =>
-            Result.Success(new RegisterUserResponse(
+            Result.Ok(new RegisterUserResponse(
                 firstName.Value,
                 lastName.Value,
                 emailAddress.Value)))

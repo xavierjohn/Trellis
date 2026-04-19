@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
 using Trellis.Testing;
 
@@ -9,7 +9,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public void MapOnFailure_WithNullMap_ThrowsArgumentNullException()
     {
-        var original = Result.Failure<int>(Error1);
+        var original = Result.Fail<int>(Error1);
 
         var act = () => original.MapOnFailure((Func<Error, Error>)null!);
 
@@ -31,7 +31,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public void MapOnFailure_transforms_failure_error()
     {
-        var original = Result.Failure<int>(Error1);
+        var original = Result.Fail<int>(Error1);
 
         var mapped = original.MapOnFailure(e => Error.Conflict($"Wrapped: {e.Detail}"));
 
@@ -42,7 +42,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public void MapOnFailure_does_not_touch_success()
     {
-        var success = Result.Success(42);
+        var success = Result.Ok(42);
 
         var mapped = success.MapOnFailure(e => Error.Unexpected("ShouldNotHappen"));
 
@@ -55,7 +55,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_TaskResult_WithFunc_TransformsError()
     {
-        var original = Result.Failure<int>(Error1).AsTask();
+        var original = Result.Fail<int>(Error1).AsTask();
 
         var mapped = await original.MapOnFailureAsync(e => Error.Conflict($"Wrapped: {e.Detail}"));
 
@@ -66,7 +66,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_TaskResult_WithFunc_DoesNotTouchSuccess()
     {
-        var original = Result.Success(42).AsTask();
+        var original = Result.Ok(42).AsTask();
 
         var mapped = await original.MapOnFailureAsync(e => Error.Unexpected("ShouldNotHappen"));
 
@@ -81,7 +81,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_Result_WithAsyncFunc_TransformsError()
     {
-        var original = Result.Failure<int>(Error1);
+        var original = Result.Fail<int>(Error1);
 
         Func<Error, Task<Error>> mapper = async e =>
         {
@@ -98,7 +98,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_Result_WithAsyncFunc_DoesNotTouchSuccess()
     {
-        var original = Result.Success(42);
+        var original = Result.Ok(42);
 
         Func<Error, Task<Error>> mapper = async e =>
         {
@@ -119,7 +119,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_TaskResult_WithAsyncFunc_TransformsError()
     {
-        var original = Result.Failure<int>(Error1).AsTask();
+        var original = Result.Fail<int>(Error1).AsTask();
 
         var mapped = await original.MapOnFailureAsync(async e =>
         {
@@ -138,7 +138,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_ValueTaskResult_WithFunc_TransformsError()
     {
-        var original = Result.Failure<int>(Error1).AsValueTask();
+        var original = Result.Fail<int>(Error1).AsValueTask();
 
         var mapped = await original.MapOnFailureAsync(e => Error.Conflict($"Wrapped: {e.Detail}"));
 
@@ -149,7 +149,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_ValueTaskResult_WithFunc_DoesNotTouchSuccess()
     {
-        var original = Result.Success(42).AsValueTask();
+        var original = Result.Ok(42).AsValueTask();
 
         var mapped = await original.MapOnFailureAsync(e => Error.Unexpected("ShouldNotHappen"));
 
@@ -164,7 +164,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_Result_WithValueTaskFunc_TransformsError()
     {
-        var original = Result.Failure<int>(Error1);
+        var original = Result.Fail<int>(Error1);
 
         var mapped = await original.MapOnFailureAsync(e =>
             ValueTask.FromResult<Error>(Error.Conflict($"Wrapped: {e.Detail}")));
@@ -176,7 +176,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_Result_WithValueTaskFunc_DoesNotTouchSuccess()
     {
-        var original = Result.Success(42);
+        var original = Result.Ok(42);
 
         var mapped = await original.MapOnFailureAsync(e =>
             ValueTask.FromResult<Error>(Error.Unexpected("ShouldNotHappen")));
@@ -192,7 +192,7 @@ public class MapOnFailureTests : TestBase
     [Fact]
     public async Task MapOnFailureAsync_ValueTaskResult_WithValueTaskFunc_TransformsError()
     {
-        var original = Result.Failure<int>(Error1).AsValueTask();
+        var original = Result.Fail<int>(Error1).AsValueTask();
 
         var mapped = await original.MapOnFailureAsync(e =>
             ValueTask.FromResult<Error>(Error.Conflict($"Wrapped: {e.Detail}")));
@@ -209,7 +209,7 @@ public class MapOnFailureTests : TestBase
     public void MapOnFailure_ConvertsDomainErrorToApiError()
     {
         // Arrange
-        var domainResult = Result.Failure<string>(Error.Domain("Insufficient balance"));
+        var domainResult = Result.Fail<string>(Error.Domain("Insufficient balance"));
 
         // Act
         var apiResult = domainResult.MapOnFailure(e => Error.BadRequest($"API Error: {e.Detail}"));
@@ -224,7 +224,7 @@ public class MapOnFailureTests : TestBase
     public void MapOnFailure_AddsContextToError()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Entity not found"));
+        var result = Result.Fail<int>(Error.NotFound("Entity not found"));
 
         // Act
         var enriched = result.MapOnFailure(e =>
@@ -239,7 +239,7 @@ public class MapOnFailureTests : TestBase
     public async Task MapOnFailureAsync_ChainedErrorTransformations()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Unexpected("Internal error")).AsTask();
+        var result = Result.Fail<int>(Error.Unexpected("Internal error")).AsTask();
 
         // Act
         var transformed = await result
@@ -255,7 +255,7 @@ public class MapOnFailureTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = Result.Success(42)
+        var result = Result.Ok(42)
             .MapOnFailure(error => Error.Unexpected($"Wrapped: {error.Detail}"));
 
         result.Should().BeSuccess()
@@ -268,7 +268,7 @@ public class MapOnFailureTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = await Result.Failure<int>(Error.Validation("Bad input"))
+        var result = await Result.Fail<int>(Error.Validation("Bad input"))
             .MapOnFailureAsync(error => Task.FromResult<Error>(Error.Conflict($"Wrapped: {error.Detail}")));
 
         result.Should().BeFailureOfType<ConflictError>();

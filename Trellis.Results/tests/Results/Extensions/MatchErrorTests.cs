@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -7,7 +7,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void MatchError_WithNullOnSuccess_ThrowsArgumentNullException()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var act = () => result.MatchError<int, string>((Func<int, string>)null!);
 
@@ -30,7 +30,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void MatchError_Success_InvokesSuccessHandler()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var output = result.MatchError(
             onSuccess: value => $"success:{value}",
@@ -42,7 +42,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void MatchError_SpecificHandler_UsesMatchingErrorType()
     {
-        var result = Result.Failure<int>(Error.Validation("Invalid input", "value"));
+        var result = Result.Fail<int>(Error.Validation("Invalid input", "value"));
 
         var output = result.MatchError(
             onSuccess: value => $"success:{value}",
@@ -55,7 +55,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void MatchError_CatchAll_HandlesUnhandledErrorTypes()
     {
-        var result = Result.Failure<int>(Error.NotFound("Missing entity"));
+        var result = Result.Fail<int>(Error.NotFound("Missing entity"));
 
         var output = result.MatchError(
             onSuccess: value => $"success:{value}",
@@ -68,7 +68,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void MatchError_WithoutMatchingHandlerOrCatchAll_ThrowsInvalidOperationException()
     {
-        var result = Result.Failure<int>(Error.NotFound("Missing entity"));
+        var result = Result.Fail<int>(Error.NotFound("Missing entity"));
 
         var act = () => result.MatchError(
             onSuccess: value => $"success:{value}",
@@ -81,7 +81,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void SwitchError_SpecificHandler_InvokesMatchingAction()
     {
-        var result = Result.Failure<int>(Error.Conflict("Already exists"));
+        var result = Result.Fail<int>(Error.Conflict("Already exists"));
         var successCalled = false;
         string? outcome = null;
 
@@ -97,7 +97,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public async Task MatchErrorAsync_TaskResult_WithCancellationToken_InvokesMatchingHandler()
     {
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.ServiceUnavailable("Service down")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.ServiceUnavailable("Service down")));
         using var cts = new CancellationTokenSource();
 
         var output = await resultTask.MatchErrorAsync(
@@ -113,7 +113,7 @@ public class MatchErrorTests : TestBase
     public void MatchError_AggregateError_WithOnAggregateHandler_InvokesHandler()
     {
         var errors = new List<Error> { Error.Validation("field error", "field") };
-        var result = Result.Failure<int>(new AggregateError(errors));
+        var result = Result.Fail<int>(new AggregateError(errors));
 
         var output = result.MatchError(
             onSuccess: value => $"success:{value}",
@@ -127,7 +127,7 @@ public class MatchErrorTests : TestBase
     public void MatchError_AggregateError_WithoutOnAggregateHandler_FallsThroughToOnError()
     {
         var errors = new List<Error> { Error.Validation("field error", "field") };
-        var result = Result.Failure<int>(new AggregateError(errors));
+        var result = Result.Fail<int>(new AggregateError(errors));
 
         var output = result.MatchError(
             onSuccess: value => $"success:{value}",
@@ -139,7 +139,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void MatchError_NonAggregateError_WithOnAggregateProvided_OnAggregateNotCalled()
     {
-        var result = Result.Failure<int>(Error.NotFound("Missing entity"));
+        var result = Result.Fail<int>(Error.NotFound("Missing entity"));
 
         var output = result.MatchError(
             onSuccess: value => $"success:{value}",
@@ -153,7 +153,7 @@ public class MatchErrorTests : TestBase
     public void SwitchError_AggregateError_WithOnAggregateHandler_InvokesHandler()
     {
         var errors = new List<Error> { Error.Domain("domain error") };
-        var result = Result.Failure<int>(new AggregateError(errors));
+        var result = Result.Fail<int>(new AggregateError(errors));
         string? outcome = null;
 
         result.SwitchError(
@@ -168,7 +168,7 @@ public class MatchErrorTests : TestBase
     public void SwitchError_AggregateError_WithoutOnAggregateHandler_FallsThroughToOnError()
     {
         var errors = new List<Error> { Error.Domain("domain error") };
-        var result = Result.Failure<int>(new AggregateError(errors));
+        var result = Result.Fail<int>(new AggregateError(errors));
         string? outcome = null;
 
         result.SwitchError(
@@ -181,7 +181,7 @@ public class MatchErrorTests : TestBase
     [Fact]
     public void SwitchError_NonAggregateError_WithOnAggregateProvided_OnAggregateNotCalled()
     {
-        var result = Result.Failure<int>(Error.Conflict("Already exists"));
+        var result = Result.Fail<int>(Error.Conflict("Already exists"));
         string? outcome = null;
 
         result.SwitchError(
@@ -196,7 +196,7 @@ public class MatchErrorTests : TestBase
     public async Task MatchErrorAsync_TaskResult_AggregateError_WithOnAggregateHandler_InvokesHandler()
     {
         var errors = new List<Error> { Error.Validation("field error", "field") };
-        var resultTask = Task.FromResult(Result.Failure<int>(new AggregateError(errors)));
+        var resultTask = Task.FromResult(Result.Fail<int>(new AggregateError(errors)));
 
         var output = await resultTask.MatchErrorAsync(
             onSuccess: value => $"success:{value}",
@@ -210,7 +210,7 @@ public class MatchErrorTests : TestBase
     public async Task SwitchErrorAsync_TaskResult_AggregateError_WithOnAggregateHandler_InvokesHandler()
     {
         var errors = new List<Error> { Error.Domain("domain error") };
-        var resultTask = Task.FromResult(Result.Failure<int>(new AggregateError(errors)));
+        var resultTask = Task.FromResult(Result.Fail<int>(new AggregateError(errors)));
         string? outcome = null;
 
         await resultTask.SwitchErrorAsync(

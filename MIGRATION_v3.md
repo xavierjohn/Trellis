@@ -1,4 +1,4 @@
-﻿# Migration Guide: v2.x → v3.0
+# Migration Guide: v2.x → v3.0
 
 ## Breaking Changes Summary
 
@@ -234,7 +234,7 @@ public async Task<IActionResult> ProcessOrder(CreateOrderRequest request)
         
         .Compensate(err => err is ConflictError 
             ? SuggestAlternativeProductsAsync(request.ProductId)
-            : Result.Failure<Order>(err))
+            : Result.Fail<Order>(err))
         
         .MapError(err => Error.Domain($"Order processing failed: {err.Detail}"))
         
@@ -267,7 +267,7 @@ public async Task<IActionResult> ProcessOrder(CreateOrderRequest request)
         
         .RecoverOnFailure(err => err is ConflictError                           // ✅ Changed
             ? SuggestAlternativeProductsAsync(request.ProductId)
-            : Result.Failure<Order>(err))
+            : Result.Fail<Order>(err))
         
         .MapOnFailure(err => Error.Domain($"Order processing failed: {err.Detail}")) // ✅ Changed
         
@@ -294,7 +294,7 @@ Test method names should also be updated for clarity:
 [Fact]
 public void TapError_WithAction_FailureResult_ExecutesAction()
 {
-    var result = Result.Failure<int>(Error.Unexpected("Error"));
+    var result = Result.Fail<int>(Error.Unexpected("Error"));
     
     var actual = result.TapError(() => _actionExecuted = true);
     
@@ -307,7 +307,7 @@ public void TapError_WithAction_FailureResult_ExecutesAction()
 [Fact]
 public void TapOnFailure_WithAction_FailureResult_ExecutesAction()  // ✅ Test name changed
 {
-    var result = Result.Failure<int>(Error.Unexpected("Error"));
+    var result = Result.Fail<int>(Error.Unexpected("Error"));
     
     var actual = result.TapOnFailure(() => _actionExecuted = true);  // ✅ Method changed
     

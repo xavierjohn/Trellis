@@ -1,4 +1,4 @@
-﻿namespace SampleMinimalApiNoAot.API;
+namespace SampleMinimalApiNoAot.API;
 
 using Microsoft.EntityFrameworkCore;
 using SampleDataAccess;
@@ -71,7 +71,7 @@ public static class ProductRoutes
                 return Results.Ok(items);
 
             var to = from + items.Length - 1;
-            return Result.Success(items).ToHttpResult(from, to, totalCount);
+            return Result.Ok(items).ToHttpResult(from, to, totalCount);
         });
 
         // GET /products/{id} — conditional GET with ETag

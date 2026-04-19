@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
@@ -167,7 +167,7 @@ public class UnsafeValueInLinqAnalyzerTests
                     var lengths = values.Select(v => GetResult(v).Value);
                 }
 
-                private Result<int> GetResult(string value) => Result.Success(value.Length);
+                private Result<int> GetResult(string value) => Result.Ok(value.Length);
             }
             """;
 

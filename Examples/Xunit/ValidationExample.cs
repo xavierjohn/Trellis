@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Example;
 
@@ -19,7 +19,7 @@ public class ValidationExample
             .Combine(FirstName.TryCreate("Xavier"))
             .Combine(LastName.TryCreate("John"))
             .Combine(Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt")))
-            .Bind((email, firstName, lastName) => Result.Success(string.Join(" ", firstName, lastName, email)));
+            .Bind((email, firstName, lastName) => Result.Ok(string.Join(" ", firstName, lastName, email)));
 
         actual.Value.Should().Be("Xavier John xavier@somewhere.com");
     }
@@ -45,7 +45,7 @@ public class ValidationExample
             .Bind((firstName, lastName, email) =>
             {
                 true.Should().BeFalse("this code should not get executed");
-                return Result.Success(string.Join(" ", firstName, lastName, email));
+                return Result.Ok(string.Join(" ", firstName, lastName, email));
             });
         // Assert
         actual.IsFailure.Should().BeTrue();

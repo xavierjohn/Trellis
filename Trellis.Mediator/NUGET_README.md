@@ -19,8 +19,8 @@ public sealed record GetOrderQuery(string Id) : IQuery<Result<string>>, IValidat
 {
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Id)
-            ? Result.Failure(Error.Validation("Order ID is required.", nameof(Id)))
-            : Result.Success();
+            ? Result.Fail(Error.Validation("Order ID is required.", nameof(Id)))
+            : Result.Ok();
 }
 
 builder.Services.AddMediator();

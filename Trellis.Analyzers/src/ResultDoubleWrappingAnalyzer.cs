@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers;
+namespace Trellis.Analyzers;
 
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
@@ -68,7 +68,7 @@ public sealed class ResultDoubleWrappingAnalyzer : DiagnosticAnalyzer
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
 
-        // Check for Result.Success(result) or Result.Failure(result)
+        // Check for Result.Ok(result) or Result.Fail(result)
         if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
             return;
 
@@ -76,7 +76,7 @@ public sealed class ResultDoubleWrappingAnalyzer : DiagnosticAnalyzer
         if (methodSymbol == null)
             return;
 
-        // Check if it's Result.Success or Result.Failure
+        // Check if it's Result.Ok or Result.Fail
         if (!IsResultFactoryMethod(methodSymbol))
             return;
 
@@ -100,7 +100,7 @@ public sealed class ResultDoubleWrappingAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    // Check if method is Result.Success or Result.Failure
+    // Check if method is Result.Ok or Result.Fail
     private static bool IsResultFactoryMethod(IMethodSymbol methodSymbol)
     {
         if (methodSymbol.ContainingType?.Name != "Result")
@@ -109,6 +109,6 @@ public sealed class ResultDoubleWrappingAnalyzer : DiagnosticAnalyzer
         if (methodSymbol.ContainingType.ContainingNamespace?.ToDisplayString() != "Trellis")
             return false;
 
-        return methodSymbol.Name is "Success" or "Failure";
+        return methodSymbol.Name is "Ok" or "Fail";
     }
 }

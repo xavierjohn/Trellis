@@ -1,4 +1,4 @@
-﻿namespace Trellis.Authorization.Tests;
+namespace Trellis.Authorization.Tests;
 
 /// <summary>
 /// Tests for <see cref="SharedResourceLoaderById{TResource, TId}"/>.
@@ -73,8 +73,8 @@ public class SharedResourceLoaderByIdTests
 
         public override Task<Result<TestOrder>> GetByIdAsync(string id, CancellationToken cancellationToken) =>
             _resource is not null
-                ? Task.FromResult(Result.Success(_resource))
-                : Task.FromResult(Result.Failure<TestOrder>(Error.NotFound($"Order '{id}' not found.")));
+                ? Task.FromResult(Result.Ok(_resource))
+                : Task.FromResult(Result.Fail<TestOrder>(Error.NotFound($"Order '{id}' not found.")));
     }
 
     private sealed class TrackingSharedLoader : SharedResourceLoaderById<TestOrder, string>
@@ -86,7 +86,7 @@ public class SharedResourceLoaderByIdTests
         {
             LastRequestedId = id;
             LastCancellationToken = cancellationToken;
-            return Task.FromResult(Result.Failure<TestOrder>(Error.NotFound("Not found")));
+            return Task.FromResult(Result.Fail<TestOrder>(Error.NotFound("Not found")));
         }
     }
 

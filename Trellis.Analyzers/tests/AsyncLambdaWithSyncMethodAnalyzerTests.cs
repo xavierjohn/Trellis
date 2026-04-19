@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
@@ -16,7 +16,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -27,7 +27,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 40));
+                .WithLocation(11, 35));
 
         await test.RunAsync();
     }
@@ -40,7 +40,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Tap(async x => await LogAsync(x));
+                    var result = Result.Ok(1).Tap(async x => await LogAsync(x));
                 }
 
                 private Task LogAsync(int x) => Task.CompletedTask;
@@ -51,7 +51,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("TapAsync", "Tap")
-                .WithLocation(11, 40));
+                .WithLocation(11, 35));
 
         await test.RunAsync();
     }
@@ -64,7 +64,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             {
                 public async Task TestMethod()
                 {
-                    var result = await Result.Success(1).MapAsync(async x => await ProcessAsync(x));
+                    var result = await Result.Ok(1).MapAsync(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -83,7 +83,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Success(1).Map(x => x * 2);
+                    var result = Result.Ok(1).Map(x => x * 2);
                 }
             }
             """;

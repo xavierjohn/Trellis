@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Net.Http.Headers;
@@ -24,7 +24,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success("Test");
+        var result = Result.Ok("Test");
 
         // Act
         var response = result.ToActionResult(controller);
@@ -39,7 +39,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.BadRequest("Test");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
         var expected = new ProblemDetails
         {
             Detail = "Test",
@@ -61,7 +61,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success("Test");
+        var result = Result.Ok("Test");
 
         // Act
         var response = result.ToActionResult(controller,
@@ -83,7 +83,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Failure<string>(Error.NotFound("Can't find it"));
+        var result = Result.Fail<string>(Error.NotFound("Can't find it"));
 
         // Act
         Func<string, ContentRangeHeaderValue> rangeFunc = static r => throw new InvalidOperationException();
@@ -99,7 +99,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success();
+        var result = Result.Ok();
 
         // Act
         var response = result.ToActionResult(controller);
@@ -115,7 +115,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.BadRequest("Operation failed");
-        var result = Result.Failure<Unit>(error);
+        var result = Result.Fail<Unit>(error);
         var expected = new ProblemDetails
         {
             Detail = "Operation failed",
@@ -140,7 +140,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.NotFound("Resource not found");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -157,7 +157,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.Unauthorized("Not authenticated");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -174,7 +174,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.Forbidden("Access denied");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -191,7 +191,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.Conflict("Resource already exists");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -208,7 +208,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.Domain("Business rule violation");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -225,7 +225,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.RateLimit("Too many requests");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -242,7 +242,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.Unexpected("Something went wrong");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -259,7 +259,7 @@ public class ActionResultTests : IDisposable
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.ServiceUnavailable("Service is down");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         // Act
         var response = result.ToActionResult(controller);
@@ -279,7 +279,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success("Test");
+        var result = Result.Ok("Test");
 
         // Act
         var response = result.ToActionResult(controller,
@@ -303,7 +303,7 @@ public class ActionResultTests : IDisposable
         var options = new TrellisAspOptions();
         options.MapError<DomainError>(StatusCodes.Status400BadRequest);
         var controller = CreateControllerWithOptions(options);
-        var result = Result.Failure<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(Error.Domain("Business rule"));
 
         // Act
         var response = result.ToActionResult(controller);
@@ -318,7 +318,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange — mock controller with no HttpContext (null-safe fallback)
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Failure<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(Error.Domain("Business rule"));
 
         // Act
         var response = result.ToActionResult(controller);
@@ -335,7 +335,7 @@ public class ActionResultTests : IDisposable
         var options = new TrellisAspOptions();
         options.MapError<DomainError>(StatusCodes.Status400BadRequest);
         var controller = CreateControllerWithOptions(options);
-        var result = Result.Failure<string>(Error.NotFound("Missing"));
+        var result = Result.Fail<string>(Error.NotFound("Missing"));
 
         // Act
         var response = result.ToActionResult(controller);

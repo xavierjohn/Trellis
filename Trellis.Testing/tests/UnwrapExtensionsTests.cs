@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests;
+namespace Trellis.Testing.Tests;
 
 /// <summary>
 /// Tests for <see cref="UnwrapExtensions"/> — Result and Maybe unwrap helpers for test code.
@@ -12,7 +12,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public void Unwrap_SuccessResult_ReturnsValue()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var value = result.Unwrap();
 
@@ -22,7 +22,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public void Unwrap_SuccessResult_StringValue_ReturnsValue()
     {
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var value = result.Unwrap();
 
@@ -32,7 +32,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public void Unwrap_FailureResult_ThrowsUnwrapFailedException()
     {
-        var result = Result.Failure<int>(TestError);
+        var result = Result.Fail<int>(TestError);
 
         var act = () => result.Unwrap();
 
@@ -46,7 +46,7 @@ public class UnwrapExtensionsTests
     public void Unwrap_FailureResult_ExceptionContainsErrorCode()
     {
         var error = Error.NotFound("Item not found.");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
 
         var act = () => result.Unwrap();
 
@@ -86,7 +86,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public async Task UnwrapAsync_Task_SuccessResult_ReturnsValue()
     {
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         var value = await resultTask.UnwrapAsync();
 
@@ -96,7 +96,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public async Task UnwrapAsync_Task_FailureResult_ThrowsUnwrapFailedException()
     {
-        var resultTask = Task.FromResult(Result.Failure<int>(TestError));
+        var resultTask = Task.FromResult(Result.Fail<int>(TestError));
 
         var act = () => resultTask.UnwrapAsync();
 
@@ -120,7 +120,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public async Task UnwrapAsync_ValueTask_SuccessResult_ReturnsValue()
     {
-        var resultTask = new ValueTask<Result<int>>(Result.Success(42));
+        var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
         var value = await resultTask.UnwrapAsync();
 
@@ -130,7 +130,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public async Task UnwrapAsync_ValueTask_FailureResult_ThrowsUnwrapFailedException()
     {
-        var resultTask = new ValueTask<Result<int>>(Result.Failure<int>(TestError));
+        var resultTask = new ValueTask<Result<int>>(Result.Fail<int>(TestError));
 
         var act = async () => await resultTask.UnwrapAsync();
 
@@ -144,7 +144,7 @@ public class UnwrapExtensionsTests
     [Fact]
     public void Unwrap_AfterFluentAssertionGuard_WorksCleanly()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Typical test pattern: assert success, then extract
         result.Should().BeSuccess();

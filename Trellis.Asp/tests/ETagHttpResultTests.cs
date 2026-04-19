@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Trellis;
@@ -33,7 +33,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_Success_SetsQuotedETagHeader()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
@@ -44,7 +44,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_Success_EmptyETag_DoesNotSetHeader()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         result.ToHttpResult(httpContext, _ => RepresentationMetadata.Create().Build(), s => s);
 
@@ -55,7 +55,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_Success_ReturnsOkWithMappedValue()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("etag"), s => s.ToUpperInvariant());
 
@@ -66,7 +66,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_Failure_ReturnsError()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Failure<string>(Error.NotFound("gone"));
+        var result = Result.Fail<string>(Error.NotFound("gone"));
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 
@@ -82,7 +82,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_GET_IfNoneMatchMatches_Returns304()
     {
         var httpContext = CreateHttpContext("GET", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
@@ -94,7 +94,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_HEAD_IfNoneMatchMatches_Returns304()
     {
         var httpContext = CreateHttpContext("HEAD", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
@@ -105,7 +105,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_GET_IfNoneMatchDoesNotMatch_Returns200()
     {
         var httpContext = CreateHttpContext("GET", "\"other\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
@@ -117,7 +117,7 @@ public class ETagHttpResultTests : IDisposable
     {
         // 304 is only for GET/HEAD
         var httpContext = CreateHttpContext("PUT", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
@@ -128,7 +128,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_GET_Wildcard_Returns304()
     {
         var httpContext = CreateHttpContext("GET", "*");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("any-etag"), s => s);
 
@@ -140,7 +140,7 @@ public class ETagHttpResultTests : IDisposable
     {
         // RFC 9110 §13.1.2: If-None-Match uses weak comparison
         var httpContext = CreateHttpContext("GET", "W/\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
@@ -151,7 +151,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToHttpResult_GET_NoIfNoneMatch_Returns200()
     {
         var httpContext = CreateHttpContext("GET");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToHttpResult(httpContext, _ => RepresentationMetadata.WithStrongETag("abc123"), s => s);
 
@@ -166,7 +166,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToCreatedHttpResult_Success_SetsETagHeader()
     {
         var httpContext = CreateHttpContext("POST");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag-created"), s => s);
 
@@ -177,7 +177,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToCreatedHttpResult_Success_ReturnsCreated()
     {
         var httpContext = CreateHttpContext("POST");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 
@@ -188,7 +188,7 @@ public class ETagHttpResultTests : IDisposable
     public void ToCreatedHttpResult_Failure_ReturnsError()
     {
         var httpContext = CreateHttpContext("POST");
-        var result = Result.Failure<string>(Error.Validation("bad", "field"));
+        var result = Result.Fail<string>(Error.Validation("bad", "field"));
 
         var response = result.ToCreatedHttpResult(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag"), s => s);
 
@@ -203,7 +203,7 @@ public class ETagHttpResultTests : IDisposable
     public async Task ToHttpResultAsync_Task_SetsETagAndReturns200()
     {
         var httpContext = CreateHttpContext();
-        var resultTask = Task.FromResult(Result.Success("hello"));
+        var resultTask = Task.FromResult(Result.Ok("hello"));
 
         var response = await resultTask.ToHttpResultAsync(httpContext, _ => RepresentationMetadata.WithStrongETag("etag-async"), s => s);
 
@@ -215,7 +215,7 @@ public class ETagHttpResultTests : IDisposable
     public async Task ToHttpResultAsync_Task_GET_IfNoneMatchMatches_Returns304()
     {
         var httpContext = CreateHttpContext("GET", "\"match\"");
-        var resultTask = Task.FromResult(Result.Success("hello"));
+        var resultTask = Task.FromResult(Result.Ok("hello"));
 
         var response = await resultTask.ToHttpResultAsync(httpContext, _ => RepresentationMetadata.WithStrongETag("match"), s => s);
 
@@ -226,7 +226,7 @@ public class ETagHttpResultTests : IDisposable
     public async Task ToCreatedHttpResultAsync_Task_SetsETag()
     {
         var httpContext = CreateHttpContext("POST");
-        var resultTask = Task.FromResult(Result.Success("hello"));
+        var resultTask = Task.FromResult(Result.Ok("hello"));
 
         await resultTask.ToCreatedHttpResultAsync(httpContext, _ => "/items/1", _ => RepresentationMetadata.WithStrongETag("etag-cr"), s => s);
 

@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -18,31 +18,31 @@ public class RecoverBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successResult = Result.Success(42);
-        _failureResult = Result.Failure<int>(Error.Unexpected("Unexpected error"));
-        _notFoundFailure = Result.Failure<int>(Error.NotFound("Resource not found"));
-        _validationFailure = Result.Failure<int>(Error.Validation("Validation failed"));
+        _successResult = Result.Ok(42);
+        _failureResult = Result.Fail<int>(Error.Unexpected("Unexpected error"));
+        _notFoundFailure = Result.Fail<int>(Error.NotFound("Resource not found"));
+        _validationFailure = Result.Fail<int>(Error.Validation("Validation failed"));
     }
 
     [Benchmark(Baseline = true)]
     public Result<int> RecoverOnFailure_OnSuccess()
     {
         return _successResult
-            .RecoverOnFailure(() => Result.Success(100));
+            .RecoverOnFailure(() => Result.Ok(100));
     }
 
     [Benchmark]
     public Result<int> RecoverOnFailure_OnFailure()
     {
         return _failureResult
-            .RecoverOnFailure(() => Result.Success(100));
+            .RecoverOnFailure(() => Result.Ok(100));
     }
 
     [Benchmark]
     public Result<int> RecoverOnFailure_OnFailure_WithErrorAccess()
     {
         return _failureResult
-            .RecoverOnFailure(error => Result.Success(100));
+            .RecoverOnFailure(error => Result.Ok(100));
     }
 
     [Benchmark]
@@ -51,7 +51,7 @@ public class RecoverBenchmarks
         return _notFoundFailure
             .RecoverOnFailure(
                 predicate: error => error is NotFoundError,
-                func: () => Result.Success(100));
+                func: () => Result.Ok(100));
     }
 
     [Benchmark]
@@ -60,7 +60,7 @@ public class RecoverBenchmarks
         return _validationFailure
             .RecoverOnFailure(
                 predicate: error => error is NotFoundError,
-                func: () => Result.Success(100));
+                func: () => Result.Ok(100));
     }
 
     [Benchmark]
@@ -69,24 +69,24 @@ public class RecoverBenchmarks
         return _notFoundFailure
             .RecoverOnFailure(
                 predicate: error => error is NotFoundError,
-                func: error => Result.Success(100));
+                func: error => Result.Ok(100));
     }
 
     [Benchmark]
     public Result<int> RecoverOnFailure_Chain_TwoLevels()
     {
         return _failureResult
-            .RecoverOnFailure(() => Result.Failure<int>(Error.NotFound("Still failing")))
-            .RecoverOnFailure(() => Result.Success(100));
+            .RecoverOnFailure(() => Result.Fail<int>(Error.NotFound("Still failing")))
+            .RecoverOnFailure(() => Result.Ok(100));
     }
 
     [Benchmark]
     public Result<int> RecoverOnFailure_Chain_ThreeLevels()
     {
         return _failureResult
-            .RecoverOnFailure(() => Result.Failure<int>(Error.NotFound("Fail 1")))
-            .RecoverOnFailure(() => Result.Failure<int>(Error.Validation("Fail 2")))
-            .RecoverOnFailure(() => Result.Success(100));
+            .RecoverOnFailure(() => Result.Fail<int>(Error.NotFound("Fail 1")))
+            .RecoverOnFailure(() => Result.Fail<int>(Error.Validation("Fail 2")))
+            .RecoverOnFailure(() => Result.Ok(100));
     }
 
     [Benchmark]
@@ -100,9 +100,9 @@ public class RecoverBenchmarks
     public Result<int> RecoverOnFailure_Multiple_DifferentErrorTypes()
     {
         return _failureResult
-            .RecoverOnFailure(error => error is NotFoundError, () => Result.Success(10))
-            .RecoverOnFailure(error => error is ValidationError, () => Result.Success(20))
-            .RecoverOnFailure(error => error is UnexpectedError, () => Result.Success(30));
+            .RecoverOnFailure(error => error is NotFoundError, () => Result.Ok(10))
+            .RecoverOnFailure(error => error is ValidationError, () => Result.Ok(20))
+            .RecoverOnFailure(error => error is UnexpectedError, () => Result.Ok(30));
     }
 
     [Benchmark]
@@ -116,33 +116,33 @@ public class RecoverBenchmarks
     public Result<int> RecoverOnFailure_MixedWithBind_Success()
     {
         return _successResult
-            .Bind(x => Result.Success(x * 2))
-            .RecoverOnFailure(() => Result.Success(0))
-            .Bind(x => Result.Success(x + 10));
+            .Bind(x => Result.Ok(x * 2))
+            .RecoverOnFailure(() => Result.Ok(0))
+            .Bind(x => Result.Ok(x + 10));
     }
 
     [Benchmark]
     public Result<int> RecoverOnFailure_MixedWithBind_Failure()
     {
         return _failureResult
-            .Bind(x => Result.Success(x * 2))
-            .RecoverOnFailure(() => Result.Success(0))
-            .Bind(x => Result.Success(x + 10));
+            .Bind(x => Result.Ok(x * 2))
+            .RecoverOnFailure(() => Result.Ok(0))
+            .Bind(x => Result.Ok(x + 10));
     }
 
     [Benchmark]
     public Result<int> RecoverOnFailure_WithDefaultValue()
     {
         return _failureResult
-            .RecoverOnFailure(() => Result.Success(0));
+            .RecoverOnFailure(() => Result.Ok(0));
     }
 
     [Benchmark]
     public Result<string> RecoverOnFailure_TypeTransformation()
     {
-        var failureString = Result.Failure<string>(Error.NotFound("String not found"));
+        var failureString = Result.Fail<string>(Error.NotFound("String not found"));
         return failureString
-            .RecoverOnFailure(() => Result.Success("Default Value"));
+            .RecoverOnFailure(() => Result.Ok("Default Value"));
     }
 
     [Benchmark]
@@ -151,20 +151,20 @@ public class RecoverBenchmarks
         return _failureResult
             .RecoverOnFailure(
                 predicate: error => error is NotFoundError || error is ValidationError,
-                func: () => Result.Success(50))
+                func: () => Result.Ok(50))
             .RecoverOnFailure(
                 predicate: error => error is UnexpectedError,
-                func: () => Result.Success(100));
+                func: () => Result.Ok(100));
     }
 
     private static Result<int> RecoverFromError(Error error)
     {
         return error switch
         {
-            NotFoundError => Result.Success(10),
-            ValidationError => Result.Success(20),
-            UnexpectedError => Result.Success(30),
-            _ => Result.Success(0)
+            NotFoundError => Result.Ok(10),
+            ValidationError => Result.Ok(20),
+            UnexpectedError => Result.Ok(30),
+            _ => Result.Ok(0)
         };
     }
 
@@ -176,6 +176,6 @@ public class RecoverBenchmarks
             sum += i * i;
         }
 
-        return Result.Success(sum);
+        return Result.Ok(sum);
     }
 }

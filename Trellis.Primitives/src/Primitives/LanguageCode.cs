@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -23,10 +23,10 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(LanguageCode) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("languageCode");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<LanguageCode>(Error.Validation("Language code is required.", field));
+            return Result.Fail<LanguageCode>(Error.Validation("Language code is required.", field));
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsLetter))
-            return Result.Failure<LanguageCode>(Error.Validation("Language code must be an ISO 639-1 alpha-2 code.", field));
+            return Result.Fail<LanguageCode>(Error.Validation("Language code must be an ISO 639-1 alpha-2 code.", field));
         return new LanguageCode(code.ToLowerInvariant());
     }
 

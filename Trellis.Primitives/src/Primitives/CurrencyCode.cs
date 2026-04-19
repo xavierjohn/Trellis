@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -36,11 +36,11 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
         var field = fieldName.NormalizeFieldName("currencyCode");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<CurrencyCode>(Error.Validation("Currency code is required.", field));
+            return Result.Fail<CurrencyCode>(Error.Validation("Currency code is required.", field));
 
         var code = value.Trim();
         if (code.Length != 3 || !code.All(char.IsLetter))
-            return Result.Failure<CurrencyCode>(Error.Validation("Currency code must be a 3-letter ISO 4217 code.", field));
+            return Result.Fail<CurrencyCode>(Error.Validation("Currency code must be a 3-letter ISO 4217 code.", field));
 
         var upper = code.ToUpperInvariant();
         return new CurrencyCode(upper);

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +21,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_Ok_Result()
     {
         // Arrange
-        var result = Result.Success("Test");
+        var result = Result.Ok("Test");
 
         // Act
         var response = result.ToHttpResult();
@@ -38,7 +38,7 @@ public class HttpResultsTests : IDisposable
     {
         // Arrange
         var error = Error.BadRequest("Test");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
         var expected = new ProblemDetails
         {
             Title = "Bad Request",
@@ -64,7 +64,7 @@ public class HttpResultsTests : IDisposable
         ValidationError.FieldError field1 = new("MyField1", ["Detail 1"]);
         ValidationError.FieldError field2 = new("MyField2", ["Detail 2", "More Detail 2"]);
         Error errors = Error.Validation([field1, field2], "Some validation failed.", "magicInstance");
-        var result = Result.Failure(errors);
+        var result = Result.Fail(errors);
         var expected = new HttpValidationProblemDetails
         {
             Title = "One or more validation errors occurred.",
@@ -96,7 +96,7 @@ public class HttpResultsTests : IDisposable
     public void Will_retun_NotFound()
     {
         // Arrange
-        var result = Result.Failure(Error.NotFound("User not found", "Chris"));
+        var result = Result.Fail(Error.NotFound("User not found", "Chris"));
         var expected = new ProblemDetails
         {
             Title = "Not Found",
@@ -120,7 +120,7 @@ public class HttpResultsTests : IDisposable
     public void Will_retun_Conflict()
     {
         // Arrange
-        var result = Result.Failure(Error.Conflict("Record has changed.", "Jon"));
+        var result = Result.Fail(Error.Conflict("Record has changed.", "Jon"));
         var expected = new ProblemDetails
         {
             Title = "Conflict",
@@ -144,7 +144,7 @@ public class HttpResultsTests : IDisposable
     public void Will_retun_Unauthorized()
     {
         // Arrange
-        var result = Result.Failure(Error.Unauthorized("You do not have access.", "Donald"));
+        var result = Result.Fail(Error.Unauthorized("You do not have access.", "Donald"));
         var expected = new ProblemDetails
         {
             Title = "Unauthorized",
@@ -168,7 +168,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_Forbidden()
     {
         // Arrange
-        var result = Result.Failure(Error.Forbidden("Access is forbidden.", "Alice"));
+        var result = Result.Fail(Error.Forbidden("Access is forbidden.", "Alice"));
         var expected = new ProblemDetails
         {
             Title = "Forbidden",
@@ -192,7 +192,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_InternalServerError()
     {
         // Arrange
-        var result = Result.Failure(Error.Unexpected("An unexpected error occurred.", "Server"));
+        var result = Result.Fail(Error.Unexpected("An unexpected error occurred.", "Server"));
         var expected = new ProblemDetails
         {
             Title = "An error occurred while processing your request.",
@@ -216,7 +216,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_NoContent_for_Unit_success()
     {
         // Arrange
-        var result = Result.Success();
+        var result = Result.Ok();
 
         // Act
         var response = result.ToHttpResult();
@@ -231,7 +231,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_NotFound_for_Unit_failure()
     {
         // Arrange
-        var result = Result.Failure<Unit>(Error.NotFound("Resource not found", "UnitResource"));
+        var result = Result.Fail<Unit>(Error.NotFound("Resource not found", "UnitResource"));
         var expected = new ProblemDetails
         {
             Title = "Not Found",
@@ -255,7 +255,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_UnprocessableEntity_for_Domain_error()
     {
         // Arrange
-        var result = Result.Failure(Error.Domain("Cannot withdraw more than account balance", "account-123"));
+        var result = Result.Fail(Error.Domain("Cannot withdraw more than account balance", "account-123"));
 
         // Act
         var response = result.ToHttpResult();
@@ -274,7 +274,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_TooManyRequests_for_RateLimit_error()
     {
         // Arrange
-        var result = Result.Failure(Error.RateLimit("API rate limit exceeded. Please try again in 60 seconds", "user-456"));
+        var result = Result.Fail(Error.RateLimit("API rate limit exceeded. Please try again in 60 seconds", "user-456"));
 
         // Act
         var response = result.ToHttpResult();
@@ -292,7 +292,7 @@ public class HttpResultsTests : IDisposable
     public void Will_return_ServiceUnavailable_for_ServiceUnavailable_error()
     {
         // Arrange
-        var result = Result.Failure(Error.ServiceUnavailable("Service is under maintenance. Please try again later", "payment-service"));
+        var result = Result.Fail(Error.ServiceUnavailable("Service is under maintenance. Please try again later", "payment-service"));
 
         // Act
         var response = result.ToHttpResult();
@@ -314,7 +314,7 @@ public class HttpResultsTests : IDisposable
         // Arrange
         var options = new TrellisAspOptions();
         options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var result = Result.Failure<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(Error.Domain("Business rule"));
 
         // Act
         var response = result.ToHttpResult(options);
@@ -329,7 +329,7 @@ public class HttpResultsTests : IDisposable
     public void ToHttpResult_without_options_uses_defaults()
     {
         // Arrange
-        var result = Result.Failure<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(Error.Domain("Business rule"));
 
         // Act
         var response = result.ToHttpResult();
@@ -363,7 +363,7 @@ public class HttpResultsTests : IDisposable
         // Arrange — override DomainError only
         var options = new TrellisAspOptions();
         options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var result = Result.Failure<string>(Error.NotFound("Missing"));
+        var result = Result.Fail<string>(Error.NotFound("Missing"));
 
         // Act
         var response = result.ToHttpResult(options);
@@ -385,7 +385,7 @@ public class HttpResultsTests : IDisposable
         services.AddTrellisAsp(options =>
             options.MapError<DomainError>(StatusCodes.Status400BadRequest));
 
-        var result = Result.Failure<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(Error.Domain("Business rule"));
 
         var response = result.ToHttpResult();
 
@@ -402,7 +402,7 @@ public class HttpResultsTests : IDisposable
         services.AddTrellisAsp(options =>
             options.MapError<DomainError>(StatusCodes.Status400BadRequest));
 
-        var result = Result.Failure<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(Error.Domain("Business rule"));
 
         Task<Microsoft.AspNetCore.Http.IResult> responseTask;
         using (ExecutionContext.SuppressFlow())
@@ -423,7 +423,7 @@ public class HttpResultsTests : IDisposable
     [Fact]
     public void ToHttpResult_5xx_error_should_not_leak_internal_detail()
     {
-        var result = Result.Failure<string>(
+        var result = Result.Fail<string>(
             Error.Unexpected("NullReferenceException at MyService.GetUser line 45"));
 
         var response = result.ToHttpResult();

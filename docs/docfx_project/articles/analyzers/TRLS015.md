@@ -20,7 +20,7 @@ using Trellis;
 static class Example
 {
     public static Result<string> Bad(string value) =>
-        Result.Success(value).Map(text =>
+        Result.Ok(value).Map(text =>
         {
             if (string.IsNullOrWhiteSpace(text))
                 throw new InvalidOperationException("Value is required.");
@@ -38,12 +38,12 @@ using Trellis;
 static class Example
 {
     public static Result<string> Good(string value) =>
-        Result.Success(value).Bind(text =>
+        Result.Ok(value).Bind(text =>
         {
             if (string.IsNullOrWhiteSpace(text))
-                return Result.Failure<string>(Error.Validation("Value is required.", nameof(value)));
+                return Result.Fail<string>(Error.Validation("Value is required.", nameof(value)));
 
-            return Result.Success(text.Trim());
+            return Result.Ok(text.Trim());
         });
 }
 ```
@@ -65,5 +65,5 @@ dotnet_diagnostic.TRLS015.severity = none
 ```
 
 > [!TIP]
-> Return `Result.Failure<T>(...)` when the callback discovers a business or validation problem. Reserve exceptions for truly exceptional situations.
+> Return `Result.Fail<T>(...)` when the callback discovers a business or validation problem. Reserve exceptions for truly exceptional situations.
 

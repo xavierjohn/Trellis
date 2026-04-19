@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -151,8 +151,8 @@ public static class CodeFixTestHelper
             // Static Result factory class
             public static class Result
             {
-                public static Result<T> Success<T>(T value) => value;
-                public static Result<T> Failure<T>(Error error) => error;
+                public static Result<T> Ok<T>(T value) => value;
+                public static Result<T> Fail<T>(Error error) => error;
             }
 
             // Result extensions stub (safe - no unsafe access)
@@ -161,28 +161,28 @@ public static class CodeFixTestHelper
                 public static Result<TResult> Map<T, TResult>(this Result<T> result, Func<T, TResult> func)
                 {
                     if (!result.IsSuccess)
-                        return Result.Failure<TResult>(default!);
-                    return Result.Success(func(result.Value));
+                        return Result.Fail<TResult>(default!);
+                    return Result.Ok(func(result.Value));
                 }
 
                 public static Result<TResult> Bind<T, TResult>(this Result<T> result, Func<T, Result<TResult>> func)
                 {
                     if (!result.IsSuccess)
-                        return Result.Failure<TResult>(default!);
+                        return Result.Fail<TResult>(default!);
                     return func(result.Value);
                 }
 
                 public static Task<Result<TResult>> MapAsync<T, TResult>(this Result<T> result, Func<T, Task<TResult>> func)
                 {
                     if (!result.IsSuccess)
-                        return Task.FromResult(Result.Failure<TResult>(default!));
-                    return func(result.Value).ContinueWith(t => Result.Success(t.Result));
+                        return Task.FromResult(Result.Fail<TResult>(default!));
+                    return func(result.Value).ContinueWith(t => Result.Ok(t.Result));
                 }
 
                 public static Task<Result<TResult>> BindAsync<T, TResult>(this Result<T> result, Func<T, Task<Result<TResult>>> func)
                 {
                     if (!result.IsSuccess)
-                        return Task.FromResult(Result.Failure<TResult>(default!));
+                        return Task.FromResult(Result.Fail<TResult>(default!));
                     return func(result.Value);
                 }
             }
@@ -217,8 +217,8 @@ public static class CodeFixTestHelper
                 public static Result<EmailAddress> TryCreate(string value, string? fieldName = null)
                 {
                     if (string.IsNullOrEmpty(value) || !value.Contains('@'))
-                        return Result.Failure<EmailAddress>(Error.Validation("Invalid email"));
-                    return Result.Success(new EmailAddress(value));
+                        return Result.Fail<EmailAddress>(Error.Validation("Invalid email"));
+                    return Result.Ok(new EmailAddress(value));
                 }
 
                 public static EmailAddress Create(string value)

@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Contains static methods to create a <see cref="Maybe{T}"/> object.
@@ -19,7 +19,7 @@ public static class Maybe
     /// </summary>
     /// <typeparam name="TIn">The nullable reference input type.</typeparam>
     /// <typeparam name="TOut">The validated output type.</typeparam>
-    /// <param name="value">The nullable input. If null, returns <c>Result.Success(Maybe&lt;TOut&gt;.None)</c>.</param>
+    /// <param name="value">The nullable input. If null, returns <c>Result.Ok(Maybe&lt;TOut&gt;.None)</c>.</param>
     /// <param name="function">A function that validates the input and returns a <see cref="Result{TOut}"/>.</param>
     /// <returns>
     ///     <list type="table">
@@ -62,7 +62,7 @@ public static class Maybe
     /// </summary>
     /// <typeparam name="TIn">The nullable value input type.</typeparam>
     /// <typeparam name="TOut">The validated output type.</typeparam>
-    /// <param name="value">The nullable input. If null, returns <c>Result.Success(Maybe&lt;TOut&gt;.None)</c>.</param>
+    /// <param name="value">The nullable input. If null, returns <c>Result.Ok(Maybe&lt;TOut&gt;.None)</c>.</param>
     /// <param name="function">A function that validates the input and returns a <see cref="Result{TOut}"/>.</param>
     /// <returns>
     ///     <list type="table">

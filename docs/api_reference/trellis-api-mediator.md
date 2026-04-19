@@ -268,19 +268,19 @@ public sealed record GetOrderQuery(string Id)
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Id)
-            ? Result.Failure(Error.Validation("Order ID is required.", nameof(Id)))
-            : Result.Success();
+            ? Result.Fail(Error.Validation("Order ID is required.", nameof(Id)))
+            : Result.Ok();
 
     public IResult Authorize(Actor actor, Order resource) =>
         actor.IsOwner(resource.OwnerId)
-            ? Result.Success()
-            : Result.Failure(Error.Forbidden("Only the owner can view the order."));
+            ? Result.Ok()
+            : Result.Fail(Error.Forbidden("Only the owner can view the order."));
 }
 
 public sealed class GetOrderResourceLoader : IResourceLoader<GetOrderQuery, Order>
 {
     public Task<Result<Order>> LoadAsync(GetOrderQuery message, CancellationToken cancellationToken) =>
-        Task.FromResult(Result.Success(new Order(message.Id, "user-1")));
+        Task.FromResult(Result.Ok(new Order(message.Id, "user-1")));
 }
 
 public sealed class StaticActorProvider : IActorProvider

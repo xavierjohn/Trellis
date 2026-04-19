@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +26,7 @@ public class ScalarPartialContentActionResultTests
     {
         var controller = CreateController();
         var data = new[] { "a", "b", "c" };
-        var result = Result.Success(data);
+        var result = Result.Ok(data);
 
         var response = result.ToActionResult(controller, 0, 2, 10);
 
@@ -41,7 +41,7 @@ public class ScalarPartialContentActionResultTests
     {
         var controller = CreateController();
         var data = new[] { "a", "b", "c" };
-        var result = Result.Success(data);
+        var result = Result.Ok(data);
 
         var response = result.ToActionResult(controller, 0, 2, 3);
 
@@ -52,7 +52,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_SingleItemOfOne_Returns200()
     {
         var controller = CreateController();
-        var result = Result.Success("only");
+        var result = Result.Ok("only");
 
         var response = result.ToActionResult(controller, 0, 0, 1);
 
@@ -63,7 +63,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var result = Result.Failure<string[]>(Error.NotFound("not found"));
+        var result = Result.Fail<string[]>(Error.NotFound("not found"));
 
         var response = result.ToActionResult(controller, 0, 2, 10);
 
@@ -75,7 +75,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_NegativeFrom_Returns200()
     {
         var controller = CreateController();
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToActionResult(controller, -1, 0, 10);
 
@@ -86,7 +86,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_ToLessThanFrom_Returns200()
     {
         var controller = CreateController();
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToActionResult(controller, 5, 4, 10);
 
@@ -97,7 +97,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_ZeroTotalLength_Returns200()
     {
         var controller = CreateController();
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToActionResult(controller, 0, 0, 0);
 
@@ -108,7 +108,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_FromBeyondTotal_Returns200()
     {
         var controller = CreateController();
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToActionResult(controller, 10, 15, 5);
 
@@ -119,7 +119,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_ToClamped_ToTotalLengthMinusOne()
     {
         var controller = CreateController();
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToActionResult(controller, 0, 100, 5);
 
@@ -131,7 +131,7 @@ public class ScalarPartialContentActionResultTests
     public void ToActionResult_PartialRange_ClampsTo()
     {
         var controller = CreateController();
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToActionResult(controller, 2, 100, 5);
 
@@ -150,7 +150,7 @@ public class ScalarPartialContentActionResultTests
     public async Task ToActionResultAsync_Task_PartialRange_Returns206()
     {
         var controller = CreateController();
-        var resultTask = Task.FromResult(Result.Success(TaskItems));
+        var resultTask = Task.FromResult(Result.Ok(TaskItems));
 
         var response = await resultTask.ToActionResultAsync(controller, 0, 1, 10);
 
@@ -161,7 +161,7 @@ public class ScalarPartialContentActionResultTests
     public async Task ToActionResultAsync_Task_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var resultTask = Task.FromResult(Result.Failure<string>(Error.BadRequest("bad")));
+        var resultTask = Task.FromResult(Result.Fail<string>(Error.BadRequest("bad")));
 
         var response = await resultTask.ToActionResultAsync(controller, 0, 0, 1);
 
@@ -178,7 +178,7 @@ public class ScalarPartialContentActionResultTests
     public async Task ToActionResultAsync_ValueTask_PartialRange_Returns206()
     {
         var controller = CreateController();
-        var resultTask = new ValueTask<Result<string[]>>(Result.Success(ValueTaskItems));
+        var resultTask = new ValueTask<Result<string[]>>(Result.Ok(ValueTaskItems));
 
         var response = await resultTask.ToActionResultAsync(controller, 0, 0, 5);
 
@@ -189,7 +189,7 @@ public class ScalarPartialContentActionResultTests
     public async Task ToActionResultAsync_ValueTask_CompleteRange_Returns200()
     {
         var controller = CreateController();
-        var resultTask = new ValueTask<Result<string>>(Result.Success("data"));
+        var resultTask = new ValueTask<Result<string>>(Result.Ok("data"));
 
         var response = await resultTask.ToActionResultAsync(controller, 0, 0, 1);
 

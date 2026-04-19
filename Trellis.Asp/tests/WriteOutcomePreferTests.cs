@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -218,7 +218,7 @@ public class WriteOutcomePreferTests
     public void ToUpdatedActionResult_Success_NoPrefer_Returns200WithBody()
     {
         var (controller, _) = CreateControllerWithPrefer();
-        var result = Result.Success("updated-value");
+        var result = Result.Ok("updated-value");
         var metadata = RepresentationMetadata.WithStrongETag("etag1");
 
         var actionResult = result.ToUpdatedActionResult(controller, metadata, (string s) => s.ToUpperInvariant());
@@ -232,7 +232,7 @@ public class WriteOutcomePreferTests
     public void ToUpdatedActionResult_Success_ReturnMinimal_Returns204()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var result = Result.Success("updated-value");
+        var result = Result.Ok("updated-value");
         var metadata = RepresentationMetadata.WithStrongETag("etag2");
 
         var actionResult = result.ToUpdatedActionResult(controller, metadata, (string s) => s.ToUpperInvariant());
@@ -247,7 +247,7 @@ public class WriteOutcomePreferTests
     public void ToUpdatedActionResult_Success_ReturnRepresentation_Returns200()
     {
         var (controller, _) = CreateControllerWithPrefer("return=representation");
-        var result = Result.Success("updated-value");
+        var result = Result.Ok("updated-value");
         var metadata = RepresentationMetadata.WithStrongETag("etag3");
 
         var actionResult = result.ToUpdatedActionResult(controller, metadata, (string s) => s.ToUpperInvariant());
@@ -261,7 +261,7 @@ public class WriteOutcomePreferTests
     public void ToUpdatedActionResult_Failure_ReturnsError()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var result = Result.Failure<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(Error.NotFound("not found"));
 
         var actionResult = result.ToUpdatedActionResult(controller, (RepresentationMetadata?)null, (string s) => s);
 
@@ -273,7 +273,7 @@ public class WriteOutcomePreferTests
     public void ToUpdatedActionResult_MetadataSelector_Success_ReturnMinimal_Returns204()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var result = Result.Success("updated-value");
+        var result = Result.Ok("updated-value");
 
         var actionResult = result.ToUpdatedActionResult(
             controller,
@@ -293,7 +293,7 @@ public class WriteOutcomePreferTests
     public async Task ToUpdatedActionResultAsync_Task_StaticMetadata_ReturnMinimal_Returns204()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var resultTask = Task.FromResult(Result.Success("async-value"));
+        var resultTask = Task.FromResult(Result.Ok("async-value"));
         var metadata = RepresentationMetadata.WithStrongETag("task-etag");
 
         var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, metadata, (string s) => s.ToUpperInvariant());
@@ -307,7 +307,7 @@ public class WriteOutcomePreferTests
     public async Task ToUpdatedActionResultAsync_Task_StaticMetadata_NoPrefer_Returns200()
     {
         var (controller, _) = CreateControllerWithPrefer();
-        var resultTask = Task.FromResult(Result.Success("async-value"));
+        var resultTask = Task.FromResult(Result.Ok("async-value"));
         var metadata = RepresentationMetadata.WithStrongETag("task-etag2");
 
         var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, metadata, (string s) => s.ToUpperInvariant());
@@ -320,7 +320,7 @@ public class WriteOutcomePreferTests
     public async Task ToUpdatedActionResultAsync_Task_StaticMetadata_Failure_ReturnsError()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var resultTask = Task.FromResult(Result.Failure<string>(Error.NotFound("gone")));
+        var resultTask = Task.FromResult(Result.Fail<string>(Error.NotFound("gone")));
 
         var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, (RepresentationMetadata?)null, (string s) => s);
 
@@ -332,7 +332,7 @@ public class WriteOutcomePreferTests
     public async Task ToUpdatedActionResultAsync_ValueTask_StaticMetadata_ReturnMinimal_Returns204()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var resultTask = new ValueTask<Result<string>>(Result.Success("vtask-value"));
+        var resultTask = new ValueTask<Result<string>>(Result.Ok("vtask-value"));
         var metadata = RepresentationMetadata.WithStrongETag("vtask-etag");
 
         var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, metadata, (string s) => s.ToUpperInvariant());
@@ -346,7 +346,7 @@ public class WriteOutcomePreferTests
     public async Task ToUpdatedActionResultAsync_ValueTask_StaticMetadata_Failure_ReturnsError()
     {
         var (controller, _) = CreateControllerWithPrefer();
-        var resultTask = new ValueTask<Result<string>>(Result.Failure<string>(Error.Conflict("exists")));
+        var resultTask = new ValueTask<Result<string>>(Result.Fail<string>(Error.Conflict("exists")));
 
         var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, (RepresentationMetadata?)null, (string s) => s);
 

@@ -101,7 +101,7 @@ public readonly record struct Quantity(int Value)
     public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
         value <= 0
             ? Error.Validation("Quantity must be greater than zero.", fieldName ?? "quantity")
-            : Result.Success(new Quantity(value));
+            : Result.Ok(new Quantity(value));
 
     public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
         int.TryParse(value, out var parsed)
@@ -127,7 +127,7 @@ public readonly record struct Quantity(int Value)
 
 | Fact | Value |
 | --- | --- |
-| `Result.Success()` returns | `Result<Unit>` |
+| `Result.Ok()` returns | `Result<Unit>` |
 | `Unit.Value` | **does not exist** |
 | Explicit unit value when needed | `default(Unit)` or `new Unit()` |
 
@@ -158,7 +158,7 @@ public sealed class ProductsController : ControllerBase
     public ActionResult<string> GetById(Guid id) => Ok(id.ToString());
 
     private static Task<Result<Product>> CreateProductAsync(ProductName name, CancellationToken cancellationToken) =>
-        Task.FromResult(Result.Success(new Product(Guid.NewGuid(), name)));
+        Task.FromResult(Result.Ok(new Product(Guid.NewGuid(), name)));
 }
 
 public sealed record CreateProductRequest(string Name);
@@ -168,7 +168,7 @@ public sealed record ProductName(string Value)
     public static Result<ProductName> TryCreate(string value) =>
         string.IsNullOrWhiteSpace(value)
             ? Error.Validation("Name is required.", "name")
-            : Result.Success(new ProductName(value));
+            : Result.Ok(new ProductName(value));
 }
 public sealed record ProductResponse(Guid Id, string Name)
 {
@@ -204,7 +204,7 @@ app.MapGet("/products/{id:guid}", (Guid id, HttpContext httpContext) =>
             ProductResponse.From));
 
 static Task<Result<Product>> LoadProductAsync(Guid id) =>
-    Task.FromResult(Result.Success(new Product(id, "sample-etag")));
+    Task.FromResult(Result.Ok(new Product(id, "sample-etag")));
 
 public sealed record Product(Guid Id, string ETag);
 public sealed record ProductResponse(Guid Id)
@@ -323,7 +323,7 @@ public sealed record CreateInvoice(string Number, decimal Amount) : IAuthorize, 
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Number)
-            ? Result.Failure(Error.Validation("Invoice number is required.", "number"))
+            ? Result.Fail(Error.Validation("Invoice number is required.", "number"))
             : Result.Ensure(Amount > 0m, Error.Validation("Amount must be positive.", "amount"));
 }
 ```
@@ -334,7 +334,7 @@ public sealed record CreateInvoice(string Number, decimal Amount) : IAuthorize, 
 
 | Incorrect claim | Correct source-backed statement |
 | --- | --- |
-| `Unit.Value` exists | `Unit` is a `record struct`; use `Result.Success()` or `default(Unit)` |
+| `Unit.Value` exists | `Unit` is a `record struct`; use `Result.Ok()` or `default(Unit)` |
 | `WithDocumentPerVersion()` is part of Trellis | No such API exists in this workspace |
 | `MapScalarApiReference()` is a Trellis API | It appears only in the sample MVC app setup |
 | `UseScalarValueValidation()` can be placed anywhere | Register it before routing/endpoints that deserialize request bodies |

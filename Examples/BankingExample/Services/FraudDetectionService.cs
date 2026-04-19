@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace BankingExample.Services;
 
@@ -53,7 +53,7 @@ public class FraudDetectionService
             );
         }
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     /// <summary>
@@ -105,7 +105,7 @@ public class FraudDetectionService
             return Error.Unauthorized("Invalid verification code", customerId);
 
         Console.WriteLine($"? Customer {customerId} identity verified");
-        return Result.Success();
+        return Result.Ok();
     }
 
     /// <summary>
@@ -125,7 +125,7 @@ public class FraudDetectionService
                 "fraud-service");
         }
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     /// <summary>
@@ -141,6 +141,6 @@ public class FraudDetectionService
         // Simulate rate limiting (in real implementation, would check against a counter)
         // For demo purposes, always pass
         Console.WriteLine($"? Rate limit check passed for customer {customerId}");
-        return Result.Success();
+        return Result.Ok();
     }
 }

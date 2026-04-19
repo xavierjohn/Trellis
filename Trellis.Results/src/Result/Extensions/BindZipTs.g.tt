@@ -1,4 +1,4 @@
-﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ template debug="false" hostspecific="false" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
@@ -63,7 +63,7 @@ public static partial class BindZipExtensions
 
         if (result.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -72,12 +72,12 @@ public static partial class BindZipExtensions
         var nextResult = func(<# WriteArgs(i); #>);
         if (nextResult.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success((<# WriteArgs(i); #>, nextResult.Value));
+        var success = Result.Ok((<# WriteArgs(i); #>, nextResult.Value));
         success.LogActivityStatus();
         return success;
     }
@@ -112,7 +112,7 @@ public static partial class BindZipExtensionsAsync
 
         if (result.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -121,12 +121,12 @@ public static partial class BindZipExtensionsAsync
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         if (nextResult.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success((<# WriteArgs(i); #>, nextResult.Value));
+        var success = Result.Ok((<# WriteArgs(i); #>, nextResult.Value));
         success.LogActivityStatus();
         return success;
     }
@@ -158,7 +158,7 @@ public static partial class BindZipExtensionsAsync
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -167,12 +167,12 @@ public static partial class BindZipExtensionsAsync
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         if (nextResult.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success((<# WriteArgs(i); #>, nextResult.Value));
+        var success = Result.Ok((<# WriteArgs(i); #>, nextResult.Value));
         success.LogActivityStatus();
         return success;
     }
@@ -189,7 +189,7 @@ public static partial class BindZipExtensionsAsync
 
         if (result.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -198,12 +198,12 @@ public static partial class BindZipExtensionsAsync
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         if (nextResult.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success((<# WriteArgs(i); #>, nextResult.Value));
+        var success = Result.Ok((<# WriteArgs(i); #>, nextResult.Value));
         success.LogActivityStatus();
         return success;
     }
@@ -234,7 +234,7 @@ public static partial class BindZipExtensionsAsync
         var result = await resultTask.ConfigureAwait(false);
         if (result.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
@@ -243,12 +243,12 @@ public static partial class BindZipExtensionsAsync
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         if (nextResult.IsFailure)
         {
-            var failure = Result.Failure<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success((<# WriteArgs(i); #>, nextResult.Value));
+        var success = Result.Ok((<# WriteArgs(i); #>, nextResult.Value));
         success.LogActivityStatus();
         return success;
     }

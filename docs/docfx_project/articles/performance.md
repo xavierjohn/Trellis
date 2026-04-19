@@ -136,7 +136,7 @@ Result<string> CreateDisplayName(string first, string last, string email) =>
         .Combine(LastName.TryCreate(last))
         .Combine(EmailAddress.TryCreate(email))
         .Bind((firstName, lastName, emailAddress) =>
-            Result.Success($"{firstName} {lastName} <{emailAddress}>"));
+            Result.Ok($"{firstName} {lastName} <{emailAddress}>"));
 ```
 
 That is usually clearer *and* more efficient than deeply nested sequential validation.
@@ -153,7 +153,7 @@ static class CustomerRules
 
     public static Result<decimal> Validate(decimal totalSpend) =>
         totalSpend >= 1000m
-            ? Result.Success(totalSpend)
+            ? Result.Ok(totalSpend)
             : MinimumSpendError;
 }
 ```

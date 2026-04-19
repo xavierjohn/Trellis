@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
@@ -296,7 +296,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public void TestMethod(Result<int> result)
                 {
-                    result.Bind(x => Result.Success(x * 2));
+                    result.Bind(x => Result.Ok(x * 2));
                 }
             }
             """;
@@ -313,7 +313,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public void TestMethod(Result<int> result, Result<int> other)
                 {
-                    result.Bind(x => Result.Success(other.Value + x));
+                    result.Bind(x => Result.Ok(other.Value + x));
                 }
             }
             """;
@@ -321,7 +321,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultValueAccess)
-                .WithLocation(11, 47));
+                .WithLocation(11, 42));
 
         await test.RunAsync();
     }
@@ -334,7 +334,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public Result<string> TestMethod(Result<int> result)
                 {
-                    return result.Bind(x => Result.Success(result.Error.Message));
+                    return result.Bind(x => Result.Ok(result.Error.Message));
                 }
             }
             """;
@@ -342,7 +342,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultErrorAccess)
-                .WithLocation(11, 55));
+                .WithLocation(11, 50));
 
         await test.RunAsync();
     }
@@ -503,9 +503,9 @@ public class UnsafeValueAccessAnalyzerTests
                 {
                     if (!result.TryGetValue(out var value))
                     {
-                        return Result.Failure<string>(result.Error);
+                        return Result.Fail<string>(result.Error);
                     }
-                    return Result.Success(value.ToString());
+                    return Result.Ok(value.ToString());
                 }
             }
             """;

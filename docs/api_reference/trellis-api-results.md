@@ -8,6 +8,19 @@ See also: [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.m
 
 ---
 
+## Breaking changes from v1 (Phase 1a, in progress)
+
+This is the running list of breaking changes the v2 redesign introduces in `Trellis.Results`. Items below are landed; remaining Phase 1a items (removal of `.Value`/`.Error` properties, removal of implicit operators, non-generic `Result`, abstract `Error` base record, etc.) will be added as they ship. See `v2-redesign-plan.md` §3.1 for the full Phase 1a target.
+
+| Change | v1 | v2 | Migration |
+|---|---|---|---|
+| Result success factory | `Result.Success(value)` / `Result.Success<T>(...)` / `Result.Success()` | `Result.Ok(value)` / `Result.Ok<T>(...)` / `Result.Ok()` | Mechanical find-and-replace of `Result.Success` → `Result.Ok` |
+| Result failure factory | `Result.Failure<T>(error)` / `Result.Failure(error)` | `Result.Fail<T>(error)` / `Result.Fail(error)` | Mechanical find-and-replace of `Result.Failure` → `Result.Fail` |
+
+The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form. The conditional-factory variants (`SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `Result.Success(Func<T>)`, `Result.Failure<T>(Func<Error>)`, `Result.FromException`) are unchanged in this PR and will be removed in a follow-up Phase 1a PR per `v2-redesign-plan.md` §3.1.
+
+---
+
 ## Types
 
 ### `public interface IResult`
@@ -168,7 +181,7 @@ None.
 
 #### Factory Methods
 
-Use `Result.Success()`.
+Use `Result.Ok()`.
 
 ---
 

@@ -1094,7 +1094,7 @@ public class OrderService : IOrderService
             .TapAsync(
                 async (order, ct) => await _repository.UpdateAsync(order, ct),
                 cancellationToken)
-            .Map(_ => Result.Success());
+            .Map(_ => Result.Ok());
     }
 }
 ```

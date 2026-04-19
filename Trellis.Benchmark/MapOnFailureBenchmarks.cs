@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -17,9 +17,9 @@ public class MapOnFailureBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successResult = Result.Success(42);
-        _failureResult = Result.Failure<int>(Error.Unexpected("Something went wrong"));
-        _validationFailure = Result.Failure<int>(Error.Validation("Invalid value", "field"));
+        _successResult = Result.Ok(42);
+        _failureResult = Result.Fail<int>(Error.Unexpected("Something went wrong"));
+        _validationFailure = Result.Fail<int>(Error.Validation("Invalid value", "field"));
     }
 
     [Benchmark(Baseline = true)]

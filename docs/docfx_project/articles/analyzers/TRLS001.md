@@ -25,7 +25,7 @@ static class Example
     }
 
     static ValueTask<Result<int>> CreateCustomerAsync(string email) =>
-        new(Result.Success(email.Length));
+        new(Result.Ok(email.Length));
 }
 ```
 
@@ -43,7 +43,7 @@ static class Example
     }
 
     static ValueTask<Result<int>> CreateCustomerAsync(string email) =>
-        new(Result.Success(email.Length));
+        new(Result.Ok(email.Length));
 }
 ```
 

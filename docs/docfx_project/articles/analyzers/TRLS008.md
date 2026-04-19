@@ -4,7 +4,7 @@
 - **Category:** Trellis
 
 ## What it detects
-Flags declared or inferred `Result<Result<T>>`, and also flags `Result.Success(existingResult)` or `Result.Failure(existingResult)` when the value is already a `Result<T>`.
+Flags declared or inferred `Result<Result<T>>`, and also flags `Result.Ok(existingResult)` or `Result.Fail(existingResult)` when the value is already a `Result<T>`.
 
 ## Why it matters
 Double-wrapped results are awkward to handle and usually mean the pipeline used `Map` where `Bind` was intended.
@@ -19,7 +19,7 @@ using Trellis;
 static class Example
 {
     public static Result<Result<int>> Bad() =>
-        Result.Success(Result.Success(42));
+        Result.Ok(Result.Ok(42));
 }
 ```
 
@@ -30,7 +30,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Good() =>
-        Result.Success(42);
+        Result.Ok(42);
 }
 ```
 

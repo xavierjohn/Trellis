@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests.Helpers;
+namespace Trellis.Mediator.Tests.Helpers;
 
 using global::Mediator;
 using Trellis.Authorization;
@@ -11,8 +11,8 @@ internal sealed record TestCommand(string Name)
 {
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Name)
-            ? Result.Failure<string>(Error.Validation("Name is required.", "Name"))
-            : Result.Success(Name);
+            ? Result.Fail<string>(Error.Validation("Name is required.", "Name"))
+            : Result.Ok(Name);
 }
 
 /// <summary>
@@ -31,8 +31,8 @@ internal sealed record AdminCommand(string Data)
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Data)
-            ? Result.Failure<string>(Error.Validation("Data is required.", "Data"))
-            : Result.Success(Data);
+            ? Result.Fail<string>(Error.Validation("Data is required.", "Data"))
+            : Result.Ok(Data);
 }
 
 /// <summary>
@@ -61,8 +61,8 @@ internal sealed record TestQuery(int Id)
 {
     public IResult Validate() =>
         Id <= 0
-            ? Result.Failure<string>(Error.Validation("Id must be positive.", "Id"))
-            : Result.Success(Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            ? Result.Fail<string>(Error.Validation("Id must be positive.", "Id"))
+            : Result.Ok(Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
 }
 
 /// <summary>
@@ -79,8 +79,8 @@ internal sealed record ResourceOwnerCommand(string ResourceId)
 {
     public IResult Authorize(Actor actor, TestResource resource) =>
         actor.Id == resource.OwnerId
-            ? Result.Success()
-            : Result.Failure(Error.Forbidden("Only the resource owner can perform this operation."));
+            ? Result.Ok()
+            : Result.Fail(Error.Forbidden("Only the resource owner can perform this operation."));
 }
 
 /// <summary>
@@ -93,8 +93,8 @@ internal sealed record FullAuthResourceCommand(string ResourceId)
 
     public IResult Authorize(Actor actor, TestResource resource) =>
         actor.Id == resource.OwnerId || actor.HasPermission("Resources.WriteAny")
-            ? Result.Success()
-            : Result.Failure(Error.Forbidden("Cannot modify another user's resource."));
+            ? Result.Ok()
+            : Result.Fail(Error.Forbidden("Cannot modify another user's resource."));
 }
 
 /// <summary>
@@ -107,11 +107,11 @@ internal sealed record ValidatedFullAuthResourceCommand(string ResourceId, strin
 
     public IResult Authorize(Actor actor, TestResource resource) =>
         actor.Id == resource.OwnerId || actor.HasPermission("Resources.WriteAny")
-            ? Result.Success()
-            : Result.Failure(Error.Forbidden("Cannot modify another user's resource."));
+            ? Result.Ok()
+            : Result.Fail(Error.Forbidden("Cannot modify another user's resource."));
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Payload)
-            ? Result.Failure<string>(Error.Validation("Payload is required.", "Payload"))
-            : Result.Success();
+            ? Result.Fail<string>(Error.Validation("Payload is required.", "Payload"))
+            : Result.Ok();
 }

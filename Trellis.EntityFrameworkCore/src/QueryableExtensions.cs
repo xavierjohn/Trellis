@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+namespace Trellis.EntityFrameworkCore;
 
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
@@ -94,7 +94,7 @@ public static class QueryableExtensions
 
     /// <summary>
     /// Executes <see cref="EntityFrameworkQueryableExtensions.FirstOrDefaultAsync{TSource}(IQueryable{TSource}, CancellationToken)"/>.
-    /// Returns <see cref="Result.Success{TValue}(TValue)"/> if found,
+    /// Returns <see cref="Result.Ok{TValue}(TValue)"/> if found,
     /// or the provided error if no entity matches.
     /// </summary>
     /// <typeparam name="T">The entity type.</typeparam>
@@ -110,13 +110,13 @@ public static class QueryableExtensions
     {
         var entity = await query.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         return entity is not null
-            ? Result.Success(entity)
-            : Result.Failure<T>(notFoundError);
+            ? Result.Ok(entity)
+            : Result.Fail<T>(notFoundError);
     }
 
     /// <summary>
     /// Executes <see cref="EntityFrameworkQueryableExtensions.FirstOrDefaultAsync{TSource}(IQueryable{TSource}, Expression{Func{TSource, bool}}, CancellationToken)"/>
-    /// with a predicate. Returns <see cref="Result.Success{TValue}(TValue)"/> if found,
+    /// with a predicate. Returns <see cref="Result.Ok{TValue}(TValue)"/> if found,
     /// or the provided error if no entity matches.
     /// </summary>
     /// <typeparam name="T">The entity type.</typeparam>
@@ -134,8 +134,8 @@ public static class QueryableExtensions
     {
         var entity = await query.FirstOrDefaultAsync(predicate, cancellationToken).ConfigureAwait(false);
         return entity is not null
-            ? Result.Success(entity)
-            : Result.Failure<T>(notFoundError);
+            ? Result.Ok(entity)
+            : Result.Fail<T>(notFoundError);
     }
 
     // ──────────────────────────────────────────────

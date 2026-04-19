@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -63,7 +63,7 @@ public static class MapOnFailureExtensions
             return result;
         }
 
-        var mapped = Result.Failure<T>(map(result.Error));
+        var mapped = Result.Fail<T>(map(result.Error));
         mapped.LogActivityStatus();
         return mapped;
     }
@@ -105,7 +105,7 @@ public static class MapOnFailureExtensions
         }
 
         Error newError = await mapAsync(result.Error).ConfigureAwait(false);
-        var mapped = Result.Failure<T>(newError);
+        var mapped = Result.Fail<T>(newError);
         mapped.LogActivityStatus();
         return mapped;
     }
@@ -163,7 +163,7 @@ public static class MapOnFailureExtensions
         }
 
         Error newError = await mapAsync(result.Error).ConfigureAwait(false);
-        var mapped = Result.Failure<T>(newError);
+        var mapped = Result.Fail<T>(newError);
         mapped.LogActivityStatus();
         return mapped;
     }

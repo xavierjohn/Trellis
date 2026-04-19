@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -42,7 +42,7 @@ public static partial class EnsureExtensionsAsync
         }
 
         if (!await predicate(result.Value).ConfigureAwait(false))
-            return Result.Failure<TValue>(error);
+            return Result.Fail<TValue>(error);
 
         result.LogActivityStatus();
         return result;
@@ -71,7 +71,7 @@ public static partial class EnsureExtensionsAsync
         }
 
         if (!await predicate(result.Value).ConfigureAwait(false))
-            return Result.Failure<TValue>(errorPredicate(result.Value));
+            return Result.Fail<TValue>(errorPredicate(result.Value));
 
         result.LogActivityStatus();
         return result;
@@ -100,7 +100,7 @@ public static partial class EnsureExtensionsAsync
         }
 
         if (!await predicate(result.Value).ConfigureAwait(false))
-            return Result.Failure<TValue>(await errorPredicate(result.Value).ConfigureAwait(false));
+            return Result.Fail<TValue>(await errorPredicate(result.Value).ConfigureAwait(false));
 
         result.LogActivityStatus();
         return result;
@@ -129,7 +129,7 @@ public static partial class EnsureExtensionsAsync
         var predicateResult = await predicate().ConfigureAwait(false);
 
         if (predicateResult.IsFailure)
-            return Result.Failure<TValue>(predicateResult.Error);
+            return Result.Fail<TValue>(predicateResult.Error);
 
         result.LogActivityStatus();
         return result;
@@ -158,7 +158,7 @@ public static partial class EnsureExtensionsAsync
         var predicateResult = await predicate(result.Value).ConfigureAwait(false);
 
         if (predicateResult.IsFailure)
-            return Result.Failure<TValue>(predicateResult.Error);
+            return Result.Fail<TValue>(predicateResult.Error);
 
         result.LogActivityStatus();
         return result;

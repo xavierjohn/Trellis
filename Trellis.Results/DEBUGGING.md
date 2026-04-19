@@ -285,8 +285,8 @@ public Result<User> GetActiveUser(string id) =>
 
 public Result<User> ValidateEmail(User user) =>
     user.Email.Value.Contains('@')
-        ? Result.Success(user)
-        : Result.Failure<User>(Error.Validation("Invalid email", "email"));
+        ? Result.Ok(user)
+        : Result.Fail<User>(Error.Validation("Invalid email", "email"));
 
 // Compose
 public Result<User> ValidateAndProcess(string id) =>

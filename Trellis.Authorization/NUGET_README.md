@@ -18,8 +18,8 @@ using Trellis.Authorization;
 var actor = Actor.Create("user-1", new HashSet<string> { "orders:read" });
 
 IResult result = actor.HasPermission("orders:read")
-    ? Result.Success()
-    : Result.Failure(Error.Forbidden("Missing permission."));
+    ? Result.Ok()
+    : Result.Fail(Error.Forbidden("Missing permission."));
 ```
 
 ## Key Features

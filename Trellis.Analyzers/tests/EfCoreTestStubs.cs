@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 /// <summary>
 /// Shared stub source for Entity Framework Core types used in TRLS020 analyzer and code fix tests.
@@ -44,24 +44,24 @@ public static class EfCoreTestStubs
                 public static Task<Trellis.Result<int>> SaveChangesResultAsync(
                     this DbContext context,
                     CancellationToken cancellationToken = default)
-                    => Task.FromResult(Trellis.Result.Success(0));
+                    => Task.FromResult(Trellis.Result.Ok(0));
 
                 public static Task<Trellis.Result<int>> SaveChangesResultAsync(
                     this DbContext context,
                     bool acceptAllChangesOnSuccess,
                     CancellationToken cancellationToken = default)
-                    => Task.FromResult(Trellis.Result.Success(0));
+                    => Task.FromResult(Trellis.Result.Ok(0));
 
                 public static Task<Trellis.Result<Trellis.Unit>> SaveChangesResultUnitAsync(
                     this DbContext context,
                     CancellationToken cancellationToken = default)
-                    => Task.FromResult(Trellis.Result.Success(default(Trellis.Unit)));
+                    => Task.FromResult(Trellis.Result.Ok(default(Trellis.Unit)));
 
                 public static Task<Trellis.Result<Trellis.Unit>> SaveChangesResultUnitAsync(
                     this DbContext context,
                     bool acceptAllChangesOnSuccess,
                     CancellationToken cancellationToken = default)
-                    => Task.FromResult(Trellis.Result.Success(default(Trellis.Unit)));
+                    => Task.FromResult(Trellis.Result.Ok(default(Trellis.Unit)));
             }
         }
         """;

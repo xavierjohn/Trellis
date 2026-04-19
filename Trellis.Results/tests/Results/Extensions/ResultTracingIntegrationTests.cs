@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -19,7 +19,7 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success(21)
+        var result = Result.Ok(21)
             .Map(x => x * 2);
 
         // Assert
@@ -35,7 +35,7 @@ public class ResultTracingIntegrationTests
         var functionCalled = false;
 
         // Act
-        var result = Result.Failure<int>(Error.Validation("Invalid value"))
+        var result = Result.Fail<int>(Error.Validation("Invalid value"))
             .Map(x =>
             {
                 functionCalled = true;
@@ -55,7 +55,7 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Result.Success(21)
+        var result = await Result.Ok(21)
             .MapAsync(x => Task.FromResult(x * 2));
 
         // Assert
@@ -71,7 +71,7 @@ public class ResultTracingIntegrationTests
         var functionCalled = false;
 
         // Act
-        var result = await Result.Failure<int>(Error.Validation("Invalid value"))
+        var result = await Result.Fail<int>(Error.Validation("Invalid value"))
             .MapAsync(x =>
             {
                 functionCalled = true;
@@ -95,12 +95,12 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Multiple validations followed by transformations
-        var result = Result.Success(50)
+        var result = Result.Ok(50)
             .Ensure(x => x > 0, Error.Validation("Must be positive"))
             .Ensure(x => x < 100, Error.Validation("Must be < 100"))
-            .Bind(x => Result.Success(x * 2))
+            .Bind(x => Result.Ok(x * 2))
             .Tap(x => Console.WriteLine($"Doubled: {x}"))
-            .Bind(x => Result.Success(x + 10));
+            .Bind(x => Result.Ok(x + 10));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -127,11 +127,11 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Bind fails in the middle of pipeline
-        var result = Result.Success(42)
+        var result = Result.Ok(42)
             .Ensure(x => x > 0, Error.Validation("Must be positive"))
-            .Bind(x => Result.Failure<int>(Error.Unexpected("Database error")))
+            .Bind(x => Result.Fail<int>(Error.Unexpected("Database error")))
             .Tap(x => Console.WriteLine(x))
-            .Bind(x => Result.Success(x + 10));
+            .Bind(x => Result.Ok(x + 10));
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -157,10 +157,10 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Multiple recoveries, first one succeeds
-        var result = Result.Success(5)
+        var result = Result.Ok(5)
             .Ensure(x => x > 10, Error.Validation("Must be > 10"))
-            .RecoverOnFailure(() => Result.Success(50))
-            .RecoverOnFailure(() => Result.Success(999)); // Should not execute
+            .RecoverOnFailure(() => Result.Ok(50))
+            .RecoverOnFailure(() => Result.Ok(999)); // Should not execute
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -187,7 +187,7 @@ public class ResultTracingIntegrationTests
             .Bind(ValidateInventory)
             .Bind(ApplyDiscount)
             .Ensure(price => price >= 10, Error.Validation("Price must be at least $10"))
-            .RecoverOnFailure(() => Result.Success(10)) // Floor price at $10
+            .RecoverOnFailure(() => Result.Ok(10)) // Floor price at $10
             .Tap(price => Console.WriteLine($"Final price: ${price}"));
 
         // Assert
@@ -208,11 +208,11 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Complex failure and recovery scenario
-        var result = Result.Success("user@example.com")
+        var result = Result.Ok("user@example.com")
             .Bind(FetchUserFromDatabase)      // Fails
             .RecoverOnFailure(CreateGuestUser)
             .Ensure(user => !string.IsNullOrEmpty(user), Error.Unexpected("User cannot be null"))
-            .Bind(user => Result.Success(user.ToUpperInvariant()))
+            .Bind(user => Result.Ok(user.ToUpperInvariant()))
             .Tap(user => Console.WriteLine($"Processing: {user}"));
 
         // Assert
@@ -237,9 +237,9 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Async pipeline
-        var result = await Result.Success(42)
+        var result = await Result.Ok(42)
             .Ensure(x => x > 0, Error.Validation("Must be positive"))
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)))
             .TapAsync(x => Task.CompletedTask);
 
         // Assert
@@ -259,16 +259,16 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Mix of sync and async operations
-        var result = await Result.Success(10)
+        var result = await Result.Ok(10)
             .Ensure(x => x > 0, Error.Validation("Positive"))
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2)))
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2)))
             .BindAsync(async x =>
             {
-                var r = Result.Success(x);
+                var r = Result.Ok(x);
                 return await Task.FromResult(r.Ensure(y => y < 100, Error.Validation("< 100")));
             })
             .TapAsync(async x => await Task.Delay(1))
-            .BindAsync(x => Task.FromResult(Result.Success(x + 5)));
+            .BindAsync(x => Task.FromResult(Result.Ok(x + 5)));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -291,11 +291,11 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Success track changes to error track at Ensure
-        var result = Result.Success(42)
-            .Bind(x => Result.Success(x * 2))          // Success track: 84
+        var result = Result.Ok(42)
+            .Bind(x => Result.Ok(x * 2))          // Success track: 84
             .Tap(x => Console.WriteLine($"Before: {x}"))  // Success track
             .Ensure(x => x < 50, Error.Validation("Must be < 50")) // TRANSITION: Success ? Error
-            .Bind(x => Result.Success(x + 10))         // Error track (short-circuited)
+            .Bind(x => Result.Ok(x + 10))         // Error track (short-circuited)
             .Tap(x => Console.WriteLine($"After: {x}")); // Error track (short-circuited)
 
         // Assert
@@ -327,11 +327,11 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Error track changes to success track via Compensate
-        var result = Result.Success(5)
+        var result = Result.Ok(5)
             .Ensure(x => x > 10, Error.Validation("Must be > 10")) // TRANSITION: Success ? Error
-            .Bind(x => Result.Success(x * 2))         // Error track (short-circuited)
-            .RecoverOnFailure(() => Result.Success(100))    // TRANSITION: Error ? Success
-            .Bind(x => Result.Success(x + 50))        // Success track: 150
+            .Bind(x => Result.Ok(x * 2))         // Error track (short-circuited)
+            .RecoverOnFailure(() => Result.Ok(100))    // TRANSITION: Error ? Success
+            .Bind(x => Result.Ok(x + 50))        // Success track: 150
             .Tap(x => Console.WriteLine($"Final: {x}")); // Success track
 
         // Assert
@@ -361,14 +361,14 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Multiple track transitions in one pipeline
-        var result = Result.Success(100)
+        var result = Result.Ok(100)
             .Ensure(x => x > 50, Error.Validation("Must be > 50"))  // OK: Success track
-            .Bind(x => Result.Failure<int>(Error.Unexpected("DB Error"))) // TRANSITION: Success ? Error
+            .Bind(x => Result.Fail<int>(Error.Unexpected("DB Error"))) // TRANSITION: Success ? Error
             .Tap(x => Console.WriteLine($"After error: {x}"))         // Error track
-            .RecoverOnFailure(() => Result.Success(200))                     // TRANSITION: Error ? Success
+            .RecoverOnFailure(() => Result.Ok(200))                     // TRANSITION: Error ? Success
             .Ensure(x => x < 150, Error.Validation("Must be < 150"))  // TRANSITION: Success ? Error (200 > 150)
-            .RecoverOnFailure(() => Result.Success(50))                      // TRANSITION: Error ? Success
-            .Bind(x => Result.Success(x * 2));                         // Success track: 100
+            .RecoverOnFailure(() => Result.Ok(50))                      // TRANSITION: Error ? Success
+            .Bind(x => Result.Ok(x * 2));                         // Success track: 100
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -406,16 +406,16 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Track transitions in async pipeline
-        var result = await Result.Success(42)
-            .BindAsync(x => Task.FromResult(Result.Success(x * 2))) // Success: 84
+        var result = await Result.Ok(42)
+            .BindAsync(x => Task.FromResult(Result.Ok(x * 2))) // Success: 84
             .BindAsync(async x =>
             {
                 await Task.Delay(1);
-                return Result.Failure<int>(Error.Unexpected("Async error"));
+                return Result.Fail<int>(Error.Unexpected("Async error"));
             }) // TRANSITION: Success ? Error
             .TapAsync(x => Task.CompletedTask)                      // Error track
-            .RecoverOnFailureAsync(() => Task.FromResult(Result.Success(200))) // TRANSITION: Error ? Success
-            .BindAsync(x => Task.FromResult(Result.Success(x / 2))); // Success track: 100
+            .RecoverOnFailureAsync(() => Task.FromResult(Result.Ok(200))) // TRANSITION: Error ? Success
+            .BindAsync(x => Task.FromResult(Result.Ok(x / 2))); // Success track: 100
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -442,10 +442,10 @@ public class ResultTracingIntegrationTests
         using var activityTest = new ActivityTestHelper();
 
         // Act - Recovery fails, stays on error track
-        var result = Result.Success(5)
+        var result = Result.Ok(5)
             .Ensure(x => x > 10, Error.Validation("Must be > 10"))     // TRANSITION: Success ? Error
-            .RecoverOnFailure(() => Result.Failure<int>(Error.Unexpected("Recovery failed"))) // Failed recovery
-            .Bind(x => Result.Success(x * 2))                           // Still on error track
+            .RecoverOnFailure(() => Result.Fail<int>(Error.Unexpected("Recovery failed"))) // Failed recovery
+            .Bind(x => Result.Ok(x * 2))                           // Still on error track
             .Tap(x => Console.WriteLine($"Value: {x}"));                // Still on error track
 
         // Assert
@@ -466,16 +466,16 @@ public class ResultTracingIntegrationTests
 
     #region Helper Methods
 
-    private static Result<int> ProcessOrder(int orderId) => Result.Success(orderId);
+    private static Result<int> ProcessOrder(int orderId) => Result.Ok(orderId);
 
-    private static Result<int> ValidateInventory(int orderId) => Result.Success(100); // Price
+    private static Result<int> ValidateInventory(int orderId) => Result.Ok(100); // Price
 
-    private static Result<int> ApplyDiscount(int price) => Result.Success(price - 95); // Discount brings it to $5
+    private static Result<int> ApplyDiscount(int price) => Result.Ok(price - 95); // Discount brings it to $5
 
     private static Result<string> FetchUserFromDatabase(string email) =>
-        Result.Failure<string>(Error.NotFound("User not found"));
+        Result.Fail<string>(Error.NotFound("User not found"));
 
-    private static Result<string> CreateGuestUser() => Result.Success("guest_user");
+    private static Result<string> CreateGuestUser() => Result.Ok("guest_user");
 
     #endregion
 }

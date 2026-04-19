@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 using Xunit;
@@ -10,7 +10,7 @@ public class LinqTests : TestBase
     [Fact]
     public void Select_projects_success_value()
     {
-        var r = Result.Success(5);
+        var r = Result.Ok(5);
 
         var projected = r.Select(x => x * 2); // query Select extension
 
@@ -20,7 +20,7 @@ public class LinqTests : TestBase
     [Fact]
     public void Select_propagates_failure()
     {
-        var r = Result.Failure<int>(Error1);
+        var r = Result.Fail<int>(Error1);
 
         var projected = r.Select(x => x * 2);
 
@@ -30,8 +30,8 @@ public class LinqTests : TestBase
     [Fact]
     public void SelectMany_combines_two_success_results()
     {
-        var a = Result.Success(2);
-        var b = Result.Success(3);
+        var a = Result.Ok(2);
+        var b = Result.Ok(3);
 
         var combined =
             a.SelectMany(_ => b, (x, y) => x + y);
@@ -42,8 +42,8 @@ public class LinqTests : TestBase
     [Fact]
     public void SelectMany_propagates_first_failure()
     {
-        var a = Result.Failure<int>(Error1);
-        var b = Result.Success(3);
+        var a = Result.Fail<int>(Error1);
+        var b = Result.Ok(3);
 
         var combined =
             a.SelectMany(_ => b, (x, y) => x + y);
@@ -55,7 +55,7 @@ public class LinqTests : TestBase
     public void Where_filters_out_value_and_returns_failure_when_predicate_false()
     {
         var r =
-            Result.Success(5)
+            Result.Ok(5)
                   .Where(v => v > 10); // predicate false
 
         r.Should().BeFailure().Which.Should().Be(Error.Unexpected("Result filtered out by predicate."));
@@ -65,7 +65,7 @@ public class LinqTests : TestBase
     public void Where_keeps_success_when_predicate_true()
     {
         Result<int> r =
-            Result.Success(15)
+            Result.Ok(15)
                   .Where(v => v > 10);
 
         r.Should().BeSuccess().Which.Should().Be(15);
@@ -74,10 +74,10 @@ public class LinqTests : TestBase
     [Fact]
     public void SelectMany_combines_four_success_results()
     {
-        var a = Result.Success(1);
-        var b = Result.Success(2);
-        var c = Result.Success(3);
-        var d = Result.Success(4);
+        var a = Result.Ok(1);
+        var b = Result.Ok(2);
+        var c = Result.Ok(3);
+        var d = Result.Ok(4);
 
         // LINQ query syntax exercises chained SelectMany calls for 4 Results
         Result<int> combined =

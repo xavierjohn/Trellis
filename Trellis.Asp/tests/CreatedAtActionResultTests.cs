@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +21,7 @@ public class CreatedAtActionResultTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var dto = new UserDto("42", "Alice");
-        var result = Result.Success(dto);
+        var result = Result.Ok(dto);
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -43,7 +43,7 @@ public class CreatedAtActionResultTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var dto = new UserDto("7", "Bob");
-        var result = Result.Success(dto);
+        var result = Result.Ok(dto);
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -62,7 +62,7 @@ public class CreatedAtActionResultTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.BadRequest("Invalid input");
-        var result = Result.Failure<UserDto>(error);
+        var result = Result.Fail<UserDto>(error);
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -80,7 +80,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Failure<UserDto>(Error.NotFound("Not found"));
+        var result = Result.Fail<UserDto>(Error.NotFound("Not found"));
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -96,7 +96,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Failure<UserDto>(Error.NotFound("Resource not found"));
+        var result = Result.Fail<UserDto>(Error.NotFound("Resource not found"));
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -112,7 +112,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Failure<UserDto>(Error.Conflict("Already exists"));
+        var result = Result.Fail<UserDto>(Error.Conflict("Already exists"));
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -132,7 +132,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success(("42", "Alice"));
+        var result = Result.Ok(("42", "Alice"));
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -154,7 +154,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Success(("7", "Bob"));
+        var result = Result.Ok(("7", "Bob"));
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -173,7 +173,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Failure<(string, string)>(Error.BadRequest("Bad input"));
+        var result = Result.Fail<(string, string)>(Error.BadRequest("Bad input"));
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -191,7 +191,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Failure<string>(Error.NotFound("Missing"));
+        var result = Result.Fail<string>(Error.NotFound("Missing"));
 
         // Act
         var response = result.ToCreatedAtActionResult<string, UserDto>(controller,

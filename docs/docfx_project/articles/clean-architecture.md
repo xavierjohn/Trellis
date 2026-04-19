@@ -1,4 +1,4 @@
-﻿# Clean Architecture with Trellis
+# Clean Architecture with Trellis
 
 **Level:** Intermediate | **Packages:** `Trellis.DomainDrivenDesign`, `Trellis.Results`, `Trellis.Primitives`
 
@@ -115,7 +115,7 @@ public sealed class User : Aggregate<UserId>
     {
         var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
         user.DomainEvents.Add(new UserRegistered(user.Id, DateTime.UtcNow));
-        return Result.Success(user);
+        return Result.Ok(user);
     }
 }
 
@@ -273,7 +273,7 @@ public sealed class User : Aggregate<UserId>
     {
         var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
         user.DomainEvents.Add(new UserRegistered(user.Id, DateTime.UtcNow));
-        return Result.Success(user);
+        return Result.Ok(user);
     }
 
     public Result<User> Deactivate()
@@ -282,7 +282,7 @@ public sealed class User : Aggregate<UserId>
             return Error.Domain("User is already inactive.");
 
         IsActive = false;
-        return Result.Success(this);
+        return Result.Ok(this);
     }
 }
 

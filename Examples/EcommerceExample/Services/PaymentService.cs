@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace EcommerceExample.Services;
 
@@ -28,7 +28,7 @@ public class PaymentService
 
         await Task.Delay(100, cancellationToken); // Simulate API call
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     private static Result<Unit> ValidateCardNumber(string cardNumber)
@@ -41,7 +41,7 @@ public class PaymentService
         if (digitsOnly.Length is < 13 or > 19)
             return Error.Validation("Card number must be between 13 and 19 digits", nameof(cardNumber));
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     private static Result<Unit> ValidateCVV(string cvv)
@@ -52,7 +52,7 @@ public class PaymentService
         if (cvv.Length < 3 || cvv.Length > 4 || !cvv.All(char.IsDigit))
             return Error.Validation("CVV must be 3 or 4 digits", nameof(cvv));
 
-        return Result.Success();
+        return Result.Ok();
     }
 
     private static async Task<Result<string>> ChargeCardAsync(Money amount, string cardNumber, CancellationToken cancellationToken)

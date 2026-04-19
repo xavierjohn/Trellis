@@ -17,7 +17,7 @@ using Trellis.Asp;
 builder.Services.AddTrellisAsp();
 
 app.MapGet("/widgets/{id}", (string id) =>
-    Result.Success(id).ToHttpResult());
+    Result.Ok(id).ToHttpResult());
 ```
 
 ## Key Features

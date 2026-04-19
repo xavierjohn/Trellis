@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System;
 using System.Threading.Tasks;
@@ -12,16 +12,16 @@ public readonly partial struct Result
     /// <summary>
     /// Creates a successful result wrapping the provided <paramref name="value"/>.
     /// </summary>
-    /// <typeparam name="TValue">Type of the success value.</typeparam>
+    /// <typeparam name="TValue">Type of the Ok value.</typeparam>
     /// <param name="value">Value to wrap in a successful result (may be null for reference types).</param>
     /// <returns>A successful <see cref="Result{TValue}"/> containing <paramref name="value"/>.</returns>
-    public static Result<TValue> Success<TValue>(TValue value) =>
+    public static Result<TValue> Ok<TValue>(TValue value) =>
         new(false, value, default);
 
     /// <summary>
     /// Creates a successful result by invoking the supplied factory function.
     /// </summary>
-    /// <typeparam name="TValue">Type of the success value.</typeparam>
+    /// <typeparam name="TValue">Type of the Ok value.</typeparam>
     /// <param name="funcOk">Factory function producing the value. Must not be null.</param>
     /// <returns>A successful <see cref="Result{TValue}"/> containing the produced value.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="funcOk"/> is null.</exception>
@@ -35,16 +35,16 @@ public readonly partial struct Result
     /// <summary>
     /// Creates a failed result with the specified <paramref name="error"/>.
     /// </summary>
-    /// <typeparam name="TValue">Type of the (missing) success value.</typeparam>
-    /// <param name="error">Error describing the failure.</param>
+    /// <typeparam name="TValue">Type of the (missing) Ok value.</typeparam>
+    /// <param name="error">Error describing the Fail.</param>
     /// <returns>A failed <see cref="Result{TValue}"/>.</returns>
-    public static Result<TValue> Failure<TValue>(Error error) =>
+    public static Result<TValue> Fail<TValue>(Error error) =>
         new(true, default, error);
 
     /// <summary>
     /// Creates a failed result using a deferred error factory.
     /// </summary>
-    /// <typeparam name="TValue">Type of the (missing) success value.</typeparam>
+    /// <typeparam name="TValue">Type of the (missing) Ok value.</typeparam>
     /// <param name="error">Factory function producing an <see cref="Error"/>.</param>
     /// <returns>A failed <see cref="Result{TValue}"/>.</returns>
     public static Result<TValue> Failure<TValue>(Func<Error> error)
@@ -55,59 +55,59 @@ public readonly partial struct Result
     }
 
     /// <summary>
-    /// Returns a success or failure result based on <paramref name="isSuccess"/>.
+    /// Returns a Ok or Fail result based on <paramref name="isSuccess"/>.
     /// </summary>
-    /// <typeparam name="TValue">Type of the success value.</typeparam>
-    /// <param name="isSuccess">If true returns success; otherwise failure.</param>
-    /// <param name="value">Value for the success case.</param>
-    /// <param name="error">Error for the failure case.</param>
-    /// <returns>A success or failure <see cref="Result{TValue}"/>.</returns>
+    /// <typeparam name="TValue">Type of the Ok value.</typeparam>
+    /// <param name="isSuccess">If true returns Ok; otherwise Fail.</param>
+    /// <param name="value">Value for the Ok case.</param>
+    /// <param name="error">Error for the Fail case.</param>
+    /// <returns>A Ok or Fail <see cref="Result{TValue}"/>.</returns>
     public static Result<TValue> SuccessIf<TValue>(bool isSuccess, in TValue value, Error error)
-        => isSuccess ? Success(value) : Failure<TValue>(error);
+        => isSuccess ? Ok(value) : Fail<TValue>(error);
 
     /// <summary>
-    /// Returns a success (tuple) or failure result based on <paramref name="isSuccess"/>.
+    /// Returns a Ok (tuple) or Fail result based on <paramref name="isSuccess"/>.
     /// </summary>
     /// <typeparam name="T1">Type of first value.</typeparam>
     /// <typeparam name="T2">Type of second value.</typeparam>
-    /// <param name="isSuccess">If true returns success; otherwise failure.</param>
-    /// <param name="t1">First value for the success case.</param>
-    /// <param name="t2">Second value for the success case.</param>
-    /// <param name="error">Error for the failure case.</param>
-    /// <returns>A success or failure <see cref="Result{TValue}"/> with a tuple payload.</returns>
+    /// <param name="isSuccess">If true returns Ok; otherwise Fail.</param>
+    /// <param name="t1">First value for the Ok case.</param>
+    /// <param name="t2">Second value for the Ok case.</param>
+    /// <param name="error">Error for the Fail case.</param>
+    /// <returns>A Ok or Fail <see cref="Result{TValue}"/> with a tuple payload.</returns>
     public static Result<(T1, T2)> SuccessIf<T1, T2>(bool isSuccess, in T1 t1, in T2 t2, Error error)
-        => isSuccess ? Success((t1, t2)) : Failure<(T1, T2)>(error);
+        => isSuccess ? Ok((t1, t2)) : Fail<(T1, T2)>(error);
 
     /// <summary>
-    /// Returns failure if <paramref name="isFailure"/> is true; otherwise success with <paramref name="value"/>.
+    /// Returns Fail if <paramref name="isFailure"/> is true; otherwise Ok with <paramref name="value"/>.
     /// </summary>
     /// <typeparam name="TValue">Type of the value.</typeparam>
-    /// <param name="isFailure">If true produce a failure result.</param>
-    /// <param name="value">Success value when not failing.</param>
+    /// <param name="isFailure">If true produce a Fail result.</param>
+    /// <param name="value">Ok value when not failing.</param>
     /// <param name="error">Error when failing.</param>
-    /// <returns>A success or failure <see cref="Result{TValue}"/>.</returns>
+    /// <returns>A Ok or Fail <see cref="Result{TValue}"/>.</returns>
     public static Result<TValue> FailureIf<TValue>(bool isFailure, TValue value, Error error)
         => SuccessIf(!isFailure, value, error);
 
     /// <summary>
-    /// Returns failure if the provided predicate returns true; otherwise success with <paramref name="value"/>.
+    /// Returns Fail if the provided predicate returns true; otherwise Ok with <paramref name="value"/>.
     /// </summary>
     /// <typeparam name="TValue">Type of the value.</typeparam>
-    /// <param name="failurePredicate">Predicate indicating a failure condition.</param>
-    /// <param name="value">Success value when predicate is false.</param>
+    /// <param name="failurePredicate">Predicate indicating a Fail condition.</param>
+    /// <param name="value">Ok value when predicate is false.</param>
     /// <param name="error">Error when predicate is true.</param>
-    /// <returns>A success or failure <see cref="Result{TValue}"/>.</returns>
+    /// <returns>A Ok or Fail <see cref="Result{TValue}"/>.</returns>
     public static Result<TValue> FailureIf<TValue>(Func<bool> failurePredicate, in TValue value, Error error)
         => SuccessIf(!failurePredicate(), value, error);
 
     /// <summary>
-    /// Asynchronously determines success/failure using <paramref name="predicate"/>.
+    /// Asynchronously determines Ok/Fail using <paramref name="predicate"/>.
     /// </summary>
-    /// <typeparam name="TValue">Type of the success value.</typeparam>
-    /// <param name="predicate">Async predicate producing true for success.</param>
-    /// <param name="value">Success value if predicate is true.</param>
+    /// <typeparam name="TValue">Type of the Ok value.</typeparam>
+    /// <param name="predicate">Async predicate producing true for Ok.</param>
+    /// <param name="value">Ok value if predicate is true.</param>
     /// <param name="error">Error if predicate is false.</param>
-    /// <returns>A task producing a success or failure <see cref="Result{TValue}"/>.</returns>
+    /// <returns>A task producing a Ok or Fail <see cref="Result{TValue}"/>.</returns>
     public static async Task<Result<TValue>> SuccessIfAsync<TValue>(Func<Task<bool>> predicate, TValue value, Error error)
     {
         bool isSuccess = await predicate().ConfigureAwait(false);
@@ -115,13 +115,13 @@ public readonly partial struct Result
     }
 
     /// <summary>
-    /// Asynchronously determines failure/success using <paramref name="failurePredicate"/> (inverse semantics of <see cref="SuccessIfAsync{TValue}(Func{Task{bool}}, TValue, Error)"/>).
+    /// Asynchronously determines Fail/Ok using <paramref name="failurePredicate"/> (inverse semantics of <see cref="SuccessIfAsync{TValue}(Func{Task{bool}}, TValue, Error)"/>).
     /// </summary>
     /// <typeparam name="TValue">Type of the value.</typeparam>
-    /// <param name="failurePredicate">Async predicate producing true for failure.</param>
-    /// <param name="value">Success value if predicate is false.</param>
+    /// <param name="failurePredicate">Async predicate producing true for Fail.</param>
+    /// <param name="value">Ok value if predicate is false.</param>
     /// <param name="error">Error if predicate is true.</param>
-    /// <returns>A task producing a success or failure <see cref="Result{TValue}"/>.</returns>
+    /// <returns>A task producing a Ok or Fail <see cref="Result{TValue}"/>.</returns>
     public static async Task<Result<TValue>> FailureIfAsync<TValue>(Func<Task<bool>> failurePredicate, TValue value, Error error)
     {
         bool isFailure = await failurePredicate().ConfigureAwait(false);
@@ -132,58 +132,58 @@ public readonly partial struct Result
     /// Creates a successful unit result (no payload).
     /// </summary>
     /// <returns>A successful <see cref="Result{TValue}"/> of <see cref="Unit"/>.</returns>
-    public static Result<Unit> Success() =>
+    public static Result<Unit> Ok() =>
         new(false, default, default);
 
     /// <summary>
     /// Creates a failed unit result with the specified <paramref name="error"/>.
     /// </summary>
-    /// <param name="error">Error describing the failure.</param>
+    /// <param name="error">Error describing the Fail.</param>
     /// <returns>A failed <see cref="Result{TValue}"/> of <see cref="Unit"/>.</returns>
-    public static Result<Unit> Failure(Error error) =>
+    public static Result<Unit> Fail(Error error) =>
         new(true, default, error);
 
     /// <summary>
-    /// Returns a success result if the flag is true; otherwise returns a failure with the specified error.
+    /// Returns a Ok result if the flag is true; otherwise returns a Fail with the specified error.
     /// </summary>
     /// <param name="flag">The boolean condition to test.</param>
     /// <param name="error">The error to return if the condition is false.</param>
-    /// <returns>A success result if flag is true; otherwise a failure with the specified error.</returns>
+    /// <returns>A Ok result if flag is true; otherwise a Fail with the specified error.</returns>
     public static Result<Unit> Ensure(bool flag, Error error)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
-        var result = flag ? Success() : Failure(error);
+        var result = flag ? Ok() : Fail(error);
         result.LogActivityStatus();
         return result;
     }
 
     /// <summary>
-    /// Returns a success result if the predicate is true; otherwise returns a failure with the specified error.
+    /// Returns a Ok result if the predicate is true; otherwise returns a Fail with the specified error.
     /// </summary>
     /// <param name="predicate">The predicate to evaluate.</param>
     /// <param name="error">The error to return if the predicate is false.</param>
-    /// <returns>A success result if predicate is true; otherwise a failure with the specified error.</returns>
+    /// <returns>A Ok result if predicate is true; otherwise a Fail with the specified error.</returns>
     public static Result<Unit> Ensure(Func<bool> predicate, Error error)
     {
         ArgumentNullException.ThrowIfNull(predicate);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
-        var result = predicate() ? Success() : Failure(error);
+        var result = predicate() ? Ok() : Fail(error);
         result.LogActivityStatus();
         return result;
     }
 
     /// <summary>
-    /// Asynchronously evaluates the predicate and returns success if true; otherwise returns a failure with the specified error.
+    /// Asynchronously evaluates the predicate and returns Ok if true; otherwise returns a Fail with the specified error.
     /// </summary>
-    /// <param name="predicate">Async predicate producing true for success.</param>
+    /// <param name="predicate">Async predicate producing true for Ok.</param>
     /// <param name="error">The error to return if the predicate is false.</param>
-    /// <returns>A task producing a success or failure Result of Unit.</returns>
+    /// <returns>A task producing a Ok or Fail Result of Unit.</returns>
     public static async Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Error error)
     {
         ArgumentNullException.ThrowIfNull(predicate);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
         var isSuccess = await predicate().ConfigureAwait(false);
-        var result = isSuccess ? Success() : Failure(error);
+        var result = isSuccess ? Ok() : Fail(error);
         result.LogActivityStatus();
         return result;
     }
@@ -196,12 +196,12 @@ public readonly partial struct Result
     /// <typeparam name="T">Type of the produced value.</typeparam>
     /// <param name="func">Function to execute.</param>
     /// <param name="map">Optional exception-to-error mapper. If null, a default Unexpected error is used.</param>
-    /// <returns>A success result with the value or a failure result if an exception was thrown.</returns>
+    /// <returns>A Ok result with the value or a Fail result if an exception was thrown.</returns>
     public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)
     {
         try
         {
-            return Success(func());
+            return Ok(func());
         }
         catch (OperationCanceledException)
         {
@@ -209,7 +209,7 @@ public readonly partial struct Result
         }
         catch (Exception ex)
         {
-            return Failure<T>((map ?? DefaultExceptionMapper)(ex));
+            return Fail<T>((map ?? DefaultExceptionMapper)(ex));
         }
     }
 
@@ -219,12 +219,12 @@ public readonly partial struct Result
     /// <typeparam name="T">Type of the produced value.</typeparam>
     /// <param name="func">Asynchronous function to execute.</param>
     /// <param name="map">Optional exception-to-error mapper. If null, a default Unexpected error is used.</param>
-    /// <returns>A task producing either a success or failure result.</returns>
+    /// <returns>A task producing either a Ok or Fail result.</returns>
     public static async Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)
     {
         try
         {
-            return Success(await func().ConfigureAwait(false));
+            return Ok(await func().ConfigureAwait(false));
         }
         catch (OperationCanceledException)
         {
@@ -232,7 +232,7 @@ public readonly partial struct Result
         }
         catch (Exception ex)
         {
-            return Failure<T>((map ?? DefaultExceptionMapper)(ex));
+            return Fail<T>((map ?? DefaultExceptionMapper)(ex));
         }
     }
 
@@ -243,7 +243,7 @@ public readonly partial struct Result
     /// <param name="map">Optional exception-to-error mapper.</param>
     /// <returns>A failed unit result.</returns>
     public static Result<Unit> FromException(Exception ex, Func<Exception, Error>? map = null) =>
-        Failure((map ?? DefaultExceptionMapper)(ex));
+        Fail((map ?? DefaultExceptionMapper)(ex));
 
     /// <summary>
     /// Converts an exception to a failed result of type <typeparamref name="T"/> using the optional mapper (default Unexpected).
@@ -253,7 +253,7 @@ public readonly partial struct Result
     /// <param name="map">Optional exception-to-error mapper.</param>
     /// <returns>A failed result.</returns>
     public static Result<T> FromException<T>(Exception ex, Func<Exception, Error>? map = null) =>
-        Failure<T>((map ?? DefaultExceptionMapper)(ex));
+        Fail<T>((map ?? DefaultExceptionMapper)(ex));
 
     /// <summary>
     /// Default mapper converting an exception into an <see cref="UnexpectedError"/>.

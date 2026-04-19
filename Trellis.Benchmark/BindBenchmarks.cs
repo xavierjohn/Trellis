@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -16,68 +16,68 @@ public class BindBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _successResult = Result.Success(42);
-        _failureResult = Result.Failure<int>(Error.Validation("Test error"));
+        _successResult = Result.Ok(42);
+        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
     }
 
     [Benchmark(Baseline = true)]
     public Result<int> Bind_SingleChain_Success()
     {
         return _successResult
-            .Bind(x => Result.Success(x * 2));
+            .Bind(x => Result.Ok(x * 2));
     }
 
     [Benchmark]
     public Result<int> Bind_SingleChain_Failure()
     {
         return _failureResult
-            .Bind(x => Result.Success(x * 2));
+            .Bind(x => Result.Ok(x * 2));
     }
 
     [Benchmark]
     public Result<int> Bind_ThreeChains_AllSuccess()
     {
         return _successResult
-            .Bind(x => Result.Success(x * 2))
-            .Bind(x => Result.Success(x + 10))
-            .Bind(x => Result.Success(x - 5));
+            .Bind(x => Result.Ok(x * 2))
+            .Bind(x => Result.Ok(x + 10))
+            .Bind(x => Result.Ok(x - 5));
     }
 
     [Benchmark]
     public Result<int> Bind_ThreeChains_FailAtFirst()
     {
         return _failureResult
-            .Bind(x => Result.Success(x * 2))
-            .Bind(x => Result.Success(x + 10))
-            .Bind(x => Result.Success(x - 5));
+            .Bind(x => Result.Ok(x * 2))
+            .Bind(x => Result.Ok(x + 10))
+            .Bind(x => Result.Ok(x - 5));
     }
 
     [Benchmark]
     public Result<int> Bind_ThreeChains_FailAtSecond()
     {
         return _successResult
-            .Bind(x => Result.Failure<int>(Error.Validation("Failed at step 2")))
-            .Bind(x => Result.Success(x + 10))
-            .Bind(x => Result.Success(x - 5));
+            .Bind(x => Result.Fail<int>(Error.Validation("Failed at step 2")))
+            .Bind(x => Result.Ok(x + 10))
+            .Bind(x => Result.Ok(x - 5));
     }
 
     [Benchmark]
     public Result<string> Bind_TypeTransformation()
     {
         return _successResult
-            .Bind(x => Result.Success(x.ToString()))
-            .Bind(s => Result.Success($"Value: {s}"));
+            .Bind(x => Result.Ok(x.ToString()))
+            .Bind(s => Result.Ok($"Value: {s}"));
     }
 
     [Benchmark]
     public Result<int> Bind_FiveChains_Success()
     {
         return _successResult
-            .Bind(x => Result.Success(x + 1))
-            .Bind(x => Result.Success(x * 2))
-            .Bind(x => Result.Success(x + 10))
-            .Bind(x => Result.Success(x - 5))
-            .Bind(x => Result.Success(x / 2));
+            .Bind(x => Result.Ok(x + 1))
+            .Bind(x => Result.Ok(x * 2))
+            .Bind(x => Result.Ok(x + 10))
+            .Bind(x => Result.Ok(x - 5))
+            .Bind(x => Result.Ok(x / 2));
     }
 
     [Benchmark]
@@ -101,18 +101,18 @@ public class BindBenchmarks
     private static Result<int> ComputeComplexOperation(int value)
     {
         var result = value * value + value - 10;
-        return Result.Success(result);
+        return Result.Ok(result);
     }
 
     private static Result<int> ValidateResult(int value)
     {
         return value > 0
-            ? Result.Success(value)
-            : Result.Failure<int>(Error.Validation("Value must be positive"));
+            ? Result.Ok(value)
+            : Result.Fail<int>(Error.Validation("Value must be positive"));
     }
 
     private static Result<int> TransformResult(int value)
     {
-        return Result.Success(value % 100);
+        return Result.Ok(value % 100);
     }
 }

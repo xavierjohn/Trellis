@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Benchmark;
 
@@ -113,7 +113,7 @@ public class BenchmarkROP
             .Combine(LastName.TryCreate(string.Empty))
             .Combine(EmailAddress.TryCreate("xavier @ somewhereelse.com"))
             .Combine(Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt", nameof(updatedAt))))
-            .Bind((email, firstName, lastName, anotherEmail) => Result.Success(string.Join(" ", firstName, lastName, email, anotherEmail)));
+            .Bind((email, firstName, lastName, anotherEmail) => Result.Ok(string.Join(" ", firstName, lastName, email, anotherEmail)));
     }
 
     [Benchmark]
@@ -145,9 +145,9 @@ public class BenchmarkROP
             var firstName = hrFname.Value;
             var lastName = hrLname.Value;
             var anotherEmail = hrEmailSec.Value;
-            return Result.Success(string.Join(" ", firstName, lastName, email, anotherEmail));
+            return Result.Ok(string.Join(" ", firstName, lastName, email, anotherEmail));
         }
 
-        return Result.Failure<string>(error);
+        return Result.Fail<string>(error);
     }
 }

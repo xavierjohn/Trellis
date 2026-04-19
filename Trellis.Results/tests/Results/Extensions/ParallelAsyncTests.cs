@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Testing;
@@ -278,7 +278,7 @@ public class ParallelAsyncTests : TestBase
             () => CreateDelayedSuccessTask(30, 15)
         )
         .WhenAllAsync()
-        .BindAsync((a, b, c) => Result.Success(a + b + c));
+        .BindAsync((a, b, c) => Result.Ok(a + b + c));
 
         // Assert
         result.Should().BeSuccess();
@@ -318,7 +318,7 @@ public class ParallelAsyncTests : TestBase
         .BindAsync((a, b, c) =>
         {
             bindCalled = true;
-            return Result.Success(a + b + c);
+            return Result.Ok(a + b + c);
         });
 
         // Assert
@@ -550,13 +550,13 @@ public class ParallelAsyncTests : TestBase
     private static async Task<Result<T>> CreateDelayedSuccessTask<T>(T value, int delayMs)
     {
         await Task.Delay(delayMs);
-        return Result.Success(value);
+        return Result.Ok(value);
     }
 
     private static async Task<Result<T>> CreateDelayedFailureTask<T>(Error error, int delayMs)
     {
         await Task.Delay(delayMs);
-        return Result.Failure<T>(error);
+        return Result.Fail<T>(error);
     }
 
     #endregion

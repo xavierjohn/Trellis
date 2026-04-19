@@ -109,13 +109,13 @@ public sealed record RenameDocumentCommand(Guid DocumentId, string Title)
 
     public IResult Authorize(Actor actor, Document resource) =>
         actor.IsOwner(resource.OwnerId)
-            ? Result.Success()
-            : Result.Failure(Error.Forbidden("Only the owner can rename this document."));
+            ? Result.Ok()
+            : Result.Fail(Error.Forbidden("Only the owner can rename this document."));
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Title)
-            ? Result.Failure(Error.Validation("Title is required.", nameof(Title)))
-            : Result.Success();
+            ? Result.Fail(Error.Validation("Title is required.", nameof(Title)))
+            : Result.Ok();
 }
 ```
 
@@ -194,7 +194,7 @@ public sealed class RenameDocumentHandler(IDocumentRepository repository)
     {
         var documentResult = await repository.GetByIdAsync(command.DocumentId, cancellationToken);
         if (documentResult.IsFailure)
-            return Result.Failure<Document>(documentResult.Error);
+            return Result.Fail<Document>(documentResult.Error);
 
         return await repository.RenameAsync(documentResult.Value, command.Title, cancellationToken);
     }
@@ -217,8 +217,8 @@ public sealed record ArchiveDocumentCommand(Guid DocumentId, bool IsArchived)
 {
     public IResult Validate() =>
         IsArchived
-            ? Result.Success()
-            : Result.Failure(Error.Domain("Only archived documents can be processed."));
+            ? Result.Ok()
+            : Result.Fail(Error.Domain("Only archived documents can be processed."));
 }
 ```
 

@@ -247,7 +247,7 @@ return Error.Unexpected("Something went wrong");
 try { /* ... */ } catch { return Error.Unexpected("Error"); }
 
 // Don't throw exceptions in ROP code
-if (invalid) throw new Exception(); // Use Result.Failure instead
+if (invalid) throw new Exception(); // Use Result.Fail instead
 ```
 
 ---

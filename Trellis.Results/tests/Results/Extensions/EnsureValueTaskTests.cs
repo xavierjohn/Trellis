@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -10,7 +10,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskRight_short_circuits_when_source_is_failure()
     {
-        var source = Result.Failure<string>(Error.Validation("original"));
+        var source = Result.Fail<string>(Error.Validation("original"));
         var invoked = false;
 
         var actual = await source.EnsureAsync(
@@ -28,7 +28,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskRight_handles_boolean_predicate()
     {
-        var source = Result.Success("payload");
+        var source = Result.Ok("payload");
         var error = Error.Validation("predicate failed");
 
         var success = await source.EnsureAsync(() => new ValueTask<bool>(true), error);
@@ -42,7 +42,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskRight_uses_value_based_predicates()
     {
-        var source = Result.Success("abc");
+        var source = Result.Ok("abc");
         var error = Error.Validation("length invalid");
 
         var passing = await source.EnsureAsync(v => new ValueTask<bool>(v.Length == 3), error);
@@ -55,7 +55,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskRight_invokes_error_factories()
     {
-        var source = Result.Success("xyz");
+        var source = Result.Ok("xyz");
 
         var errorFromSyncFactory = await source.EnsureAsync(
             v => new ValueTask<bool>(false),
@@ -71,15 +71,15 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskRight_supports_result_predicates()
     {
-        var source = Result.Success("data");
+        var source = Result.Ok("data");
         var expected = Error.Validation("predicate failure");
 
         var predicateFailure = await source.EnsureAsync(
-            () => new ValueTask<Result<string>>(Result.Failure<string>(expected)));
+            () => new ValueTask<Result<string>>(Result.Fail<string>(expected)));
         predicateFailure.Error.Should().Be(expected);
 
         var valuePredicateFailure = await source.EnsureAsync(
-            value => new ValueTask<Result<string>>(Result.Failure<string>(Error.Validation($"bad:{value}"))));
+            value => new ValueTask<Result<string>>(Result.Fail<string>(Error.Validation($"bad:{value}"))));
         valuePredicateFailure.Error.Should().Be(Error.Validation("bad:data"));
     }
 
@@ -88,7 +88,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_bool_predicate_returns_success_when_predicate_passes()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
         var actual = await source.EnsureAsync(() => true, Error.Validation("should not fail"));
 
@@ -99,7 +99,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_bool_predicate_returns_failure_when_predicate_fails()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
         var error = Error.Validation("predicate failed");
 
         var actual = await source.EnsureAsync(() => false, error);
@@ -112,7 +112,7 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_bool_predicate_returns_original_failure()
     {
         var originalError = Error.Validation("original failure");
-        var source = new ValueTask<Result<string>>(Result.Failure<string>(originalError));
+        var source = new ValueTask<Result<string>>(Result.Fail<string>(originalError));
 
         var actual = await source.EnsureAsync(() => true, Error.Validation("should not be used"));
 
@@ -127,7 +127,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_value_predicate_returns_success_when_predicate_passes()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
         var actual = await source.EnsureAsync(x => x.Length == 4, Error.Validation("wrong length"));
 
@@ -138,7 +138,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_value_predicate_returns_failure_when_predicate_fails()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
         var error = Error.Validation("wrong length");
 
         var actual = await source.EnsureAsync(x => x.Length > 10, error);
@@ -151,7 +151,7 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_value_predicate_returns_original_failure()
     {
         var originalError = Error.Validation("original failure");
-        var source = new ValueTask<Result<string>>(Result.Failure<string>(originalError));
+        var source = new ValueTask<Result<string>>(Result.Fail<string>(originalError));
 
         var actual = await source.EnsureAsync(x => x.Length == 4, Error.Validation("should not be used"));
 
@@ -166,7 +166,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_sync_error_predicate_returns_success_when_predicate_passes()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
         var actual = await source.EnsureAsync(
             x => x.Length == 4,
@@ -179,7 +179,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_sync_error_predicate_returns_failure_when_predicate_fails()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
         var actual = await source.EnsureAsync(
             x => x.Length > 10,
@@ -193,7 +193,7 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_sync_error_predicate_returns_original_failure()
     {
         var originalError = Error.Validation("original failure");
-        var source = new ValueTask<Result<string>>(Result.Failure<string>(originalError));
+        var source = new ValueTask<Result<string>>(Result.Fail<string>(originalError));
         bool errorPredicateCalled = false;
 
         var actual = await source.EnsureAsync(
@@ -212,7 +212,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_sync_error_predicate_does_not_call_error_predicate_when_predicate_passes()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
         bool errorPredicateCalled = false;
 
         var actual = await source.EnsureAsync(
@@ -234,7 +234,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_async_error_predicate_returns_success_when_predicate_passes()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
         bool errorPredicateCalled = false;
 
         var actual = await source.EnsureAsync(
@@ -254,7 +254,7 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_async_error_predicate_returns_failure_when_predicate_fails()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
         var actual = await source.EnsureAsync(
             x => x.Length > 10,
@@ -272,7 +272,7 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_async_error_predicate_returns_original_failure()
     {
         var originalError = Error.Validation("original failure");
-        var source = new ValueTask<Result<string>>(Result.Failure<string>(originalError));
+        var source = new ValueTask<Result<string>>(Result.Fail<string>(originalError));
         bool predicateCalled = false;
         bool errorPredicateCalled = false;
 
@@ -302,9 +302,9 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_result_predicate_returns_success_when_predicate_succeeds()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
-        var actual = await source.EnsureAsync(() => Result.Success<string>("ignored"));
+        var actual = await source.EnsureAsync(() => Result.Ok<string>("ignored"));
 
         actual.IsSuccess.Should().BeTrue();
         actual.Value.Should().Be("test");
@@ -313,10 +313,10 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_result_predicate_returns_failure_when_predicate_fails()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
         var predicateError = Error.Validation("predicate failed");
 
-        var actual = await source.EnsureAsync(() => Result.Failure<string>(predicateError));
+        var actual = await source.EnsureAsync(() => Result.Fail<string>(predicateError));
 
         actual.IsFailure.Should().BeTrue();
         actual.Error.Should().Be(predicateError);
@@ -326,9 +326,9 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_result_predicate_returns_original_failure()
     {
         var originalError = Error.Validation("original failure");
-        var source = new ValueTask<Result<string>>(Result.Failure<string>(originalError));
+        var source = new ValueTask<Result<string>>(Result.Fail<string>(originalError));
 
-        var actual = await source.EnsureAsync(() => Result.Success<string>("should not be used"));
+        var actual = await source.EnsureAsync(() => Result.Ok<string>("should not be used"));
 
         actual.IsFailure.Should().BeTrue();
         actual.Error.Should().Be(originalError);
@@ -341,9 +341,9 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_value_result_predicate_returns_success_when_predicate_succeeds()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
-        var actual = await source.EnsureAsync(x => Result.Success<string>("ignored"));
+        var actual = await source.EnsureAsync(x => Result.Ok<string>("ignored"));
 
         actual.IsSuccess.Should().BeTrue();
         actual.Value.Should().Be("test");
@@ -352,9 +352,9 @@ public class EnsureValueTaskTests
     [Fact]
     public async Task Ensure_ValueTaskLeft_with_value_result_predicate_returns_failure_when_predicate_fails()
     {
-        var source = new ValueTask<Result<string>>(Result.Success("test"));
+        var source = new ValueTask<Result<string>>(Result.Ok("test"));
 
-        var actual = await source.EnsureAsync(x => Result.Failure<string>(Error.Validation($"{x} is invalid")));
+        var actual = await source.EnsureAsync(x => Result.Fail<string>(Error.Validation($"{x} is invalid")));
 
         actual.IsFailure.Should().BeTrue();
         actual.Error.Should().Be(Error.Validation("test is invalid"));
@@ -364,9 +364,9 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_value_result_predicate_returns_original_failure()
     {
         var originalError = Error.Validation("original failure");
-        var source = new ValueTask<Result<string>>(Result.Failure<string>(originalError));
+        var source = new ValueTask<Result<string>>(Result.Fail<string>(originalError));
 
-        var actual = await source.EnsureAsync(x => Result.Success<string>("should not be used"));
+        var actual = await source.EnsureAsync(x => Result.Ok<string>("should not be used"));
 
         actual.IsFailure.Should().BeTrue();
         actual.Error.Should().Be(originalError);

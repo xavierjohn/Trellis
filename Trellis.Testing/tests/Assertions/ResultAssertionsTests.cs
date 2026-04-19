@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests.Assertions;
+namespace Trellis.Testing.Tests.Assertions;
 
 public class ResultAssertionsTests
 {
@@ -6,7 +6,7 @@ public class ResultAssertionsTests
     public void BeSuccess_Should_Pass_When_Result_Is_Success()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         result.Should().BeSuccess();
@@ -16,7 +16,7 @@ public class ResultAssertionsTests
     public void BeSuccess_Should_Fail_When_Result_Is_Failure()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act & Assert
         var act = () => result.Should().BeSuccess();
@@ -29,7 +29,7 @@ public class ResultAssertionsTests
     public void BeSuccess_Should_Return_Value_In_Which()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         result.Should()
@@ -41,7 +41,7 @@ public class ResultAssertionsTests
     public void BeFailure_Should_Pass_When_Result_Is_Failure()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act & Assert
         result.Should().BeFailure();
@@ -51,7 +51,7 @@ public class ResultAssertionsTests
     public void BeFailure_Should_Fail_When_Result_Is_Success()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         var act = () => result.Should().BeFailure();
@@ -65,7 +65,7 @@ public class ResultAssertionsTests
     {
         // Arrange
         var error = Error.NotFound("Not found");
-        var result = Result.Failure<int>(error);
+        var result = Result.Fail<int>(error);
 
         // Act & Assert
         result.Should()
@@ -77,7 +77,7 @@ public class ResultAssertionsTests
     public void BeFailureOfType_Should_Pass_When_Error_Matches_Type()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act & Assert
         result.Should().BeFailureOfType<NotFoundError>();
@@ -87,7 +87,7 @@ public class ResultAssertionsTests
     public void BeFailureOfType_Should_Fail_When_Error_Type_Different()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Validation("Invalid"));
+        var result = Result.Fail<int>(Error.Validation("Invalid"));
 
         // Act & Assert
         var act = () => result.Should().BeFailureOfType<NotFoundError>();
@@ -100,7 +100,7 @@ public class ResultAssertionsTests
     public void BeFailureOfType_Should_Return_Typed_Error_In_Which()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act & Assert
         result.Should()
@@ -112,7 +112,7 @@ public class ResultAssertionsTests
     public void HaveValue_Should_Pass_When_Value_Matches()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         result.Should().HaveValue(42);
@@ -122,7 +122,7 @@ public class ResultAssertionsTests
     public void HaveValue_Should_Fail_When_Value_Different()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         var act = () => result.Should().HaveValue(99);
@@ -134,7 +134,7 @@ public class ResultAssertionsTests
     public void HaveValueMatching_Should_Pass_When_Predicate_Satisfied()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         result.Should().HaveValueMatching(x => x > 40);
@@ -144,7 +144,7 @@ public class ResultAssertionsTests
     public void HaveValueMatching_Should_Fail_When_Predicate_Not_Satisfied()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act & Assert
         var act = () => result.Should().HaveValueMatching(x => x > 50);
@@ -159,7 +159,7 @@ public class ResultAssertionsTests
     public void HaveValueEquivalentTo_Should_Pass_When_Equivalent()
     {
         // Arrange
-        var result = Result.Success(new { Name = "John", Age = 30 });
+        var result = Result.Ok(new { Name = "John", Age = 30 });
 
         // Act & Assert
         result.Should().HaveValueEquivalentTo(new { Name = "John", Age = 30 });
@@ -169,7 +169,7 @@ public class ResultAssertionsTests
     public void HaveValueEquivalentTo_Should_Fail_When_Not_Equivalent()
     {
         // Arrange
-        var result = Result.Success(new { Name = "John", Age = 30 });
+        var result = Result.Ok(new { Name = "John", Age = 30 });
 
         // Act
         var act = () => result.Should().HaveValueEquivalentTo(new { Name = "Jane", Age = 25 });
@@ -186,7 +186,7 @@ public class ResultAssertionsTests
     public void HaveErrorCode_Should_Pass_When_Code_Matches()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act & Assert
         result.Should().HaveErrorCode("not.found.error");
@@ -196,7 +196,7 @@ public class ResultAssertionsTests
     public void HaveErrorCode_Should_Fail_When_Code_Different()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         var act = () => result.Should().HaveErrorCode("wrong.code");
@@ -213,7 +213,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetail_Should_Pass_When_Detail_Matches()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Resource not found"));
+        var result = Result.Fail<int>(Error.NotFound("Resource not found"));
 
         // Act & Assert
         result.Should().HaveErrorDetail("Resource not found");
@@ -223,7 +223,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetail_Should_Fail_When_Detail_Different()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Resource not found"));
+        var result = Result.Fail<int>(Error.NotFound("Resource not found"));
 
         // Act
         var act = () => result.Should().HaveErrorDetail("Wrong detail");
@@ -240,7 +240,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetailContaining_Should_Pass_When_Contains()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("User with ID 123 not found"));
+        var result = Result.Fail<int>(Error.NotFound("User with ID 123 not found"));
 
         // Act & Assert
         result.Should().HaveErrorDetailContaining("123");
@@ -250,7 +250,7 @@ public class ResultAssertionsTests
     public void HaveErrorDetailContaining_Should_Fail_When_Not_Contains()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("User not found"));
+        var result = Result.Fail<int>(Error.NotFound("User not found"));
 
         // Act
         var act = () => result.Should().HaveErrorDetailContaining("456");

@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Provides extension methods for converting <see cref="Maybe{TValue}"/> instances to <see cref="Result{TValue}"/>
@@ -23,9 +23,9 @@ public static partial class MaybeExtensions
         where TValue : notnull
     {
         if (maybe.HasNoValue)
-            return Result.Failure<TValue>(error);
+            return Result.Fail<TValue>(error);
 
-        return Result.Success(maybe.GetValueOrThrow());
+        return Result.Ok(maybe.GetValueOrThrow());
     }
 
     /// <summary>
@@ -40,9 +40,9 @@ public static partial class MaybeExtensions
         where TValue : notnull
     {
         if (maybe.HasNoValue)
-            return Result.Failure<TValue>(ferror());
+            return Result.Fail<TValue>(ferror());
 
-        return Result.Success(maybe.GetValueOrThrow());
+        return Result.Ok(maybe.GetValueOrThrow());
     }
 
     /// <summary>

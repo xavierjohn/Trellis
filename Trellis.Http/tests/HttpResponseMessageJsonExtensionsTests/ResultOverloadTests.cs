@@ -1,4 +1,4 @@
-﻿namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
+namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
 using System.Net;
 using System.Threading.Tasks;
@@ -19,7 +19,7 @@ public class ResultOverloadTests
         // Arrange
         var notFoundError = Error.NotFound("Not found");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.NotFound);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleNotFound(notFoundError);
@@ -35,7 +35,7 @@ public class ResultOverloadTests
         // Arrange
         var notFoundError = Error.NotFound("Not found");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleNotFound(notFoundError);
@@ -51,7 +51,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.Unauthorized("Auth required");
         var notFoundError = Error.NotFound("Not found");
-        var result = Result.Failure<HttpResponseMessage>(originalError);
+        var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
         var actual = result.HandleNotFound(notFoundError);
@@ -67,7 +67,7 @@ public class ResultOverloadTests
         // Arrange
         var notFoundError = Error.NotFound("Not found");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.NotFound);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.HandleNotFoundAsync(notFoundError);
@@ -83,7 +83,7 @@ public class ResultOverloadTests
         // Arrange
         var notFoundError = Error.NotFound("Not found");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.HandleNotFoundAsync(notFoundError);
@@ -98,7 +98,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.Unauthorized("Auth required");
         var notFoundError = Error.NotFound("Not found");
-        var resultTask = Task.FromResult(Result.Failure<HttpResponseMessage>(originalError));
+        var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
         var actual = await resultTask.HandleNotFoundAsync(notFoundError);
@@ -118,7 +118,7 @@ public class ResultOverloadTests
         // Arrange
         var unauthorizedError = Error.Unauthorized("Auth required");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Unauthorized);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleUnauthorized(unauthorizedError);
@@ -134,7 +134,7 @@ public class ResultOverloadTests
         // Arrange
         var unauthorizedError = Error.Unauthorized("Auth required");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleUnauthorized(unauthorizedError);
@@ -149,7 +149,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.NotFound("Not found");
         var unauthorizedError = Error.Unauthorized("Auth required");
-        var result = Result.Failure<HttpResponseMessage>(originalError);
+        var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
         var actual = result.HandleUnauthorized(unauthorizedError);
@@ -165,7 +165,7 @@ public class ResultOverloadTests
         // Arrange
         var unauthorizedError = Error.Unauthorized("Auth required");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Unauthorized);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.HandleUnauthorizedAsync(unauthorizedError);
@@ -181,7 +181,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.NotFound("Not found");
         var unauthorizedError = Error.Unauthorized("Auth required");
-        var resultTask = Task.FromResult(Result.Failure<HttpResponseMessage>(originalError));
+        var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
         var actual = await resultTask.HandleUnauthorizedAsync(unauthorizedError);
@@ -201,7 +201,7 @@ public class ResultOverloadTests
         // Arrange
         var forbiddenError = Error.Forbidden("Access denied");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Forbidden);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleForbidden(forbiddenError);
@@ -217,7 +217,7 @@ public class ResultOverloadTests
         // Arrange
         var forbiddenError = Error.Forbidden("Access denied");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleForbidden(forbiddenError);
@@ -232,7 +232,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.NotFound("Not found");
         var forbiddenError = Error.Forbidden("Access denied");
-        var result = Result.Failure<HttpResponseMessage>(originalError);
+        var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
         var actual = result.HandleForbidden(forbiddenError);
@@ -248,7 +248,7 @@ public class ResultOverloadTests
         // Arrange
         var forbiddenError = Error.Forbidden("Access denied");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Forbidden);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.HandleForbiddenAsync(forbiddenError);
@@ -264,7 +264,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.NotFound("Not found");
         var forbiddenError = Error.Forbidden("Access denied");
-        var resultTask = Task.FromResult(Result.Failure<HttpResponseMessage>(originalError));
+        var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
         var actual = await resultTask.HandleForbiddenAsync(forbiddenError);
@@ -284,7 +284,7 @@ public class ResultOverloadTests
         // Arrange
         var conflictError = Error.Conflict("Already exists");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Conflict);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleConflict(conflictError);
@@ -300,7 +300,7 @@ public class ResultOverloadTests
         // Arrange
         var conflictError = Error.Conflict("Already exists");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleConflict(conflictError);
@@ -315,7 +315,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.NotFound("Not found");
         var conflictError = Error.Conflict("Already exists");
-        var result = Result.Failure<HttpResponseMessage>(originalError);
+        var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
         var actual = result.HandleConflict(conflictError);
@@ -331,7 +331,7 @@ public class ResultOverloadTests
         // Arrange
         var conflictError = Error.Conflict("Already exists");
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.Conflict);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.HandleConflictAsync(conflictError);
@@ -347,7 +347,7 @@ public class ResultOverloadTests
         // Arrange
         var originalError = Error.NotFound("Not found");
         var conflictError = Error.Conflict("Already exists");
-        var resultTask = Task.FromResult(Result.Failure<HttpResponseMessage>(originalError));
+        var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
         var actual = await resultTask.HandleConflictAsync(conflictError);
@@ -366,7 +366,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.BadRequest);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
@@ -381,7 +381,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
@@ -395,7 +395,7 @@ public class ResultOverloadTests
     {
         // Arrange
         var originalError = Error.Unauthorized("Auth required");
-        var result = Result.Failure<HttpResponseMessage>(originalError);
+        var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
         var actual = result.HandleClientError(code => Error.BadRequest($"Client error: {code}"));
@@ -410,7 +410,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.BadRequest);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.HandleClientErrorAsync(code => Error.BadRequest($"Client error: {code}"));
@@ -425,7 +425,7 @@ public class ResultOverloadTests
     {
         // Arrange
         var originalError = Error.Unauthorized("Auth required");
-        var resultTask = Task.FromResult(Result.Failure<HttpResponseMessage>(originalError));
+        var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
         var actual = await resultTask.HandleClientErrorAsync(code => Error.BadRequest($"Client error: {code}"));
@@ -444,7 +444,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.InternalServerError);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
@@ -459,7 +459,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
@@ -473,7 +473,7 @@ public class ResultOverloadTests
     {
         // Arrange
         var originalError = Error.NotFound("Not found");
-        var result = Result.Failure<HttpResponseMessage>(originalError);
+        var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
         var actual = result.HandleServerError(code => Error.ServiceUnavailable($"Server error: {code}"));
@@ -488,7 +488,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.InternalServerError);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.HandleServerErrorAsync(code => Error.ServiceUnavailable($"Server error: {code}"));
@@ -503,7 +503,7 @@ public class ResultOverloadTests
     {
         // Arrange
         var originalError = Error.NotFound("Not found");
-        var resultTask = Task.FromResult(Result.Failure<HttpResponseMessage>(originalError));
+        var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
         var actual = await resultTask.HandleServerErrorAsync(code => Error.ServiceUnavailable($"Server error: {code}"));
@@ -522,7 +522,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.EnsureSuccess();
@@ -536,7 +536,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.InternalServerError);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.EnsureSuccess();
@@ -551,7 +551,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.BadRequest);
-        var result = Result.Success(httpResponseMessage);
+        var result = Result.Ok(httpResponseMessage);
 
         // Act
         var actual = result.EnsureSuccess(code => Error.Validation($"Custom: {code}"));
@@ -567,7 +567,7 @@ public class ResultOverloadTests
     {
         // Arrange
         var originalError = Error.NotFound("Not found");
-        var result = Result.Failure<HttpResponseMessage>(originalError);
+        var result = Result.Fail<HttpResponseMessage>(originalError);
 
         // Act
         var actual = result.EnsureSuccess();
@@ -582,7 +582,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.OK);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.EnsureSuccessAsync();
@@ -596,7 +596,7 @@ public class ResultOverloadTests
     {
         // Arrange
         using HttpResponseMessage httpResponseMessage = new(HttpStatusCode.InternalServerError);
-        var resultTask = Task.FromResult(Result.Success(httpResponseMessage));
+        var resultTask = Task.FromResult(Result.Ok(httpResponseMessage));
 
         // Act
         var actual = await resultTask.EnsureSuccessAsync();
@@ -611,7 +611,7 @@ public class ResultOverloadTests
     {
         // Arrange
         var originalError = Error.NotFound("Not found");
-        var resultTask = Task.FromResult(Result.Failure<HttpResponseMessage>(originalError));
+        var resultTask = Task.FromResult(Result.Fail<HttpResponseMessage>(originalError));
 
         // Act
         var actual = await resultTask.EnsureSuccessAsync();

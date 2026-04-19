@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using Trellis.Mediator.Tests.Helpers;
 
@@ -15,7 +15,7 @@ public class ValidationBehaviorTests
         var behavior = new ValidationBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("Alice");
         var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
-            Result.Success("Hello, Alice!"));
+            Result.Ok("Hello, Alice!"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -34,7 +34,7 @@ public class ValidationBehaviorTests
         var behavior = new ValidationBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("   ");
         var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -50,7 +50,7 @@ public class ValidationBehaviorTests
         var behavior = new ValidationBehavior<TestCommand, Result<string>>();
         var command = new TestCommand(null!);
         var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -68,7 +68,7 @@ public class ValidationBehaviorTests
         var behavior = new ValidationBehavior<TestQuery, Result<string>>();
         var query = new TestQuery(42);
         var (next, tracker) = NextDelegate.TrackingAsync<TestQuery, Result<string>>(
-            Result.Success("Result-42"));
+            Result.Ok("Result-42"));
 
         var result = await behavior.Handle(query, next, CancellationToken.None);
 
@@ -83,7 +83,7 @@ public class ValidationBehaviorTests
         var behavior = new ValidationBehavior<TestQuery, Result<string>>();
         var query = new TestQuery(-1);
         var (next, tracker) = NextDelegate.TrackingAsync<TestQuery, Result<string>>(
-            Result.Success("should not reach"));
+            Result.Ok("should not reach"));
 
         var result = await behavior.Handle(query, next, CancellationToken.None);
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -36,11 +36,11 @@ public partial class Slug : ScalarValueObject<Slug, string>, IScalarValue<Slug, 
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Slug) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("slug");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<Slug>(Error.Validation("Slug is required.", field));
+            return Result.Fail<Slug>(Error.Validation("Slug is required.", field));
         var trimmed = value.Trim();
         // lower-case, numbers, hyphens, single hyphen separators
         if (!SlugRegex().IsMatch(trimmed))
-            return Result.Failure<Slug>(Error.Validation("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.", field));
+            return Result.Fail<Slug>(Error.Validation("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.", field));
         return new Slug(trimmed);
     }
 

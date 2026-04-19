@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -69,7 +69,7 @@ public class WhenAllAsyncTracingTests : TestBase
         // Arrange
         using var activityTest = new ActivityTestHelper();
         var task1 = Task.FromException<Result<int>>(new InvalidOperationException("boom"));
-        var task2 = Task.FromResult(Result.Success(2));
+        var task2 = Task.FromResult(Result.Ok(2));
 
         // Act
         var act = () => (task1, task2).WhenAllAsync();
@@ -86,7 +86,7 @@ public class WhenAllAsyncTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
         const string sensitiveMessage = "password=hunter2";
         var task1 = Task.FromException<Result<int>>(new InvalidOperationException(sensitiveMessage));
-        var task2 = Task.FromResult(Result.Success(2));
+        var task2 = Task.FromResult(Result.Ok(2));
 
         // Act
         var act = () => (task1, task2).WhenAllAsync();
@@ -109,14 +109,14 @@ public class WhenAllAsyncTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var task1 = Task.FromResult(Result.Success(10));
-        var task2 = Task.FromResult(Result.Success(20));
-        var task3 = Task.FromResult(Result.Success(30));
+        var task1 = Task.FromResult(Result.Ok(10));
+        var task2 = Task.FromResult(Result.Ok(20));
+        var task3 = Task.FromResult(Result.Ok(30));
 
         // Act
         await (task1, task2, task3)
             .WhenAllAsync()
-            .BindAsync((a, b, c) => Result.Success(a + b + c));
+            .BindAsync((a, b, c) => Result.Ok(a + b + c));
 
         // Assert
         // Should have both WhenAllAsync and Bind activities
@@ -130,18 +130,18 @@ public class WhenAllAsyncTracingTests : TestBase
     {
         var data = new TheoryData<string, Func<Task>>();
 
-        data.Add("2-tuple success", async () => await (Task.FromResult(Result.Success(1)), Task.FromResult(Result.Success(2))).WhenAllAsync());
-        data.Add("3-tuple success", async () => await (Task.FromResult(Result.Success(1)), Task.FromResult(Result.Success(2)), Task.FromResult(Result.Success(3))).WhenAllAsync());
+        data.Add("2-tuple success", async () => await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Ok(2))).WhenAllAsync());
+        data.Add("3-tuple success", async () => await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Ok(2)), Task.FromResult(Result.Ok(3))).WhenAllAsync());
         data.Add("9-tuple success", async () => await (
-            Task.FromResult(Result.Success(1)),
-            Task.FromResult(Result.Success(2)),
-            Task.FromResult(Result.Success(3)),
-            Task.FromResult(Result.Success(4)),
-            Task.FromResult(Result.Success(5)),
-            Task.FromResult(Result.Success(6)),
-            Task.FromResult(Result.Success(7)),
-            Task.FromResult(Result.Success(8)),
-            Task.FromResult(Result.Success(9))).WhenAllAsync());
+            Task.FromResult(Result.Ok(1)),
+            Task.FromResult(Result.Ok(2)),
+            Task.FromResult(Result.Ok(3)),
+            Task.FromResult(Result.Ok(4)),
+            Task.FromResult(Result.Ok(5)),
+            Task.FromResult(Result.Ok(6)),
+            Task.FromResult(Result.Ok(7)),
+            Task.FromResult(Result.Ok(8)),
+            Task.FromResult(Result.Ok(9))).WhenAllAsync());
 
         return data;
     }
@@ -150,22 +150,22 @@ public class WhenAllAsyncTracingTests : TestBase
     {
         var data = new TheoryData<string, Func<Task>>();
 
-        data.Add("2-tuple first failure", async () => await (Task.FromResult(Result.Failure<int>(Error.NotFound("Not found"))), Task.FromResult(Result.Success(2))).WhenAllAsync());
-        data.Add("3-tuple one failure", async () => await (Task.FromResult(Result.Success(1)), Task.FromResult(Result.Failure<int>(Error.Validation("Invalid"))), Task.FromResult(Result.Success(3))).WhenAllAsync());
+        data.Add("2-tuple first failure", async () => await (Task.FromResult(Result.Fail<int>(Error.NotFound("Not found"))), Task.FromResult(Result.Ok(2))).WhenAllAsync());
+        data.Add("3-tuple one failure", async () => await (Task.FromResult(Result.Ok(1)), Task.FromResult(Result.Fail<int>(Error.Validation("Invalid"))), Task.FromResult(Result.Ok(3))).WhenAllAsync());
         data.Add("3-tuple all failure", async () => await (
-            Task.FromResult(Result.Failure<int>(Error.Validation("Error 1"))),
-            Task.FromResult(Result.Failure<int>(Error.Validation("Error 2"))),
-            Task.FromResult(Result.Failure<int>(Error.Validation("Error 3")))).WhenAllAsync());
+            Task.FromResult(Result.Fail<int>(Error.Validation("Error 1"))),
+            Task.FromResult(Result.Fail<int>(Error.Validation("Error 2"))),
+            Task.FromResult(Result.Fail<int>(Error.Validation("Error 3")))).WhenAllAsync());
         data.Add("9-tuple multiple failure", async () => await (
-            Task.FromResult(Result.Success(1)),
-            Task.FromResult(Result.Failure<int>(Error.Validation("Error 2"))),
-            Task.FromResult(Result.Success(3)),
-            Task.FromResult(Result.Success(4)),
-            Task.FromResult(Result.Failure<int>(Error.NotFound("Error 5"))),
-            Task.FromResult(Result.Success(6)),
-            Task.FromResult(Result.Success(7)),
-            Task.FromResult(Result.Failure<int>(Error.Conflict("Error 8"))),
-            Task.FromResult(Result.Success(9))).WhenAllAsync());
+            Task.FromResult(Result.Ok(1)),
+            Task.FromResult(Result.Fail<int>(Error.Validation("Error 2"))),
+            Task.FromResult(Result.Ok(3)),
+            Task.FromResult(Result.Ok(4)),
+            Task.FromResult(Result.Fail<int>(Error.NotFound("Error 5"))),
+            Task.FromResult(Result.Ok(6)),
+            Task.FromResult(Result.Ok(7)),
+            Task.FromResult(Result.Fail<int>(Error.Conflict("Error 8"))),
+            Task.FromResult(Result.Ok(9))).WhenAllAsync());
 
         return data;
     }

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
@@ -87,7 +87,7 @@ public class HttpPaginationTests : IDisposable
     public void ToHttpResult_PartialRange_Returns206()
     {
         var data = new[] { "a", "b", "c" };
-        var result = Result.Success(data);
+        var result = Result.Ok(data);
 
         var response = result.ToHttpResult(0, 2, 10);
 
@@ -100,7 +100,7 @@ public class HttpPaginationTests : IDisposable
     public void ToHttpResult_CompleteRange_Returns200()
     {
         var data = new[] { "a", "b", "c" };
-        var result = Result.Success(data);
+        var result = Result.Ok(data);
 
         var response = result.ToHttpResult(0, 2, 3);
 
@@ -110,7 +110,7 @@ public class HttpPaginationTests : IDisposable
     [Fact]
     public void ToHttpResult_Failure_ReturnsError()
     {
-        var result = Result.Failure<string[]>(Error.NotFound("not found"));
+        var result = Result.Fail<string[]>(Error.NotFound("not found"));
 
         var response = result.ToHttpResult(0, 2, 10);
 
@@ -120,7 +120,7 @@ public class HttpPaginationTests : IDisposable
     [Fact]
     public void ToHttpResult_EmptyRange_ToLessThanFrom_Returns200()
     {
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToHttpResult(5, 4, 10);
 
@@ -130,7 +130,7 @@ public class HttpPaginationTests : IDisposable
     [Fact]
     public void ToHttpResult_ZeroTotalLength_Returns200()
     {
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToHttpResult(0, 0, 0);
 
@@ -145,7 +145,7 @@ public class HttpPaginationTests : IDisposable
     public void ToHttpResult_Lambda_PartialRange_Returns206()
     {
         var items = new[] { "a", "b" };
-        var result = Result.Success(("items", items, 10L));
+        var result = Result.Ok(("items", items, 10L));
 
         var response = result.ToHttpResult(
             r => new ContentRangeHeaderValue(0, 1, r.Item3) { Unit = "items" },
@@ -158,7 +158,7 @@ public class HttpPaginationTests : IDisposable
     public void ToHttpResult_Lambda_CompleteRange_Returns200()
     {
         var items = new[] { "a" };
-        var result = Result.Success(("items", items, 1L));
+        var result = Result.Ok(("items", items, 1L));
 
         var response = result.ToHttpResult(
             r => new ContentRangeHeaderValue(0, 0, r.Item3) { Unit = "items" },
@@ -170,7 +170,7 @@ public class HttpPaginationTests : IDisposable
     [Fact]
     public void ToHttpResult_Lambda_NullRangeFields_Returns200()
     {
-        var result = Result.Success("data");
+        var result = Result.Ok("data");
 
         var response = result.ToHttpResult(
             _ => new ContentRangeHeaderValue(0) { Unit = "items" },
@@ -182,7 +182,7 @@ public class HttpPaginationTests : IDisposable
     [Fact]
     public void ToHttpResult_Lambda_Failure_ReturnsError()
     {
-        var result = Result.Failure<string>(Error.BadRequest("bad"));
+        var result = Result.Fail<string>(Error.BadRequest("bad"));
 
         var response = result.ToHttpResult(
             _ => new ContentRangeHeaderValue(0, 0, 1) { Unit = "items" },
@@ -199,7 +199,7 @@ public class HttpPaginationTests : IDisposable
     public async Task ToHttpResultAsync_Task_PartialRange_Returns206()
     {
         var data = new[] { "a", "b" };
-        var resultTask = Task.FromResult(Result.Success(data));
+        var resultTask = Task.FromResult(Result.Ok(data));
 
         var response = await resultTask.ToHttpResultAsync(0, 2, 10);
 
@@ -210,7 +210,7 @@ public class HttpPaginationTests : IDisposable
     public async Task ToHttpResultAsync_Task_CompleteRange_Returns200()
     {
         var data = new[] { "a", "b" };
-        var resultTask = Task.FromResult(Result.Success(data));
+        var resultTask = Task.FromResult(Result.Ok(data));
 
         var response = await resultTask.ToHttpResultAsync(0, 1, 2);
 
@@ -221,7 +221,7 @@ public class HttpPaginationTests : IDisposable
     public async Task ToHttpResultAsync_Task_Lambda_PartialRange_Returns206()
     {
         var items = new[] { "a" };
-        var resultTask = Task.FromResult(Result.Success((items, 5L)));
+        var resultTask = Task.FromResult(Result.Ok((items, 5L)));
 
         var response = await resultTask.ToHttpResultAsync(
             r => new ContentRangeHeaderValue(0, 0, r.Item2) { Unit = "items" },
@@ -238,7 +238,7 @@ public class HttpPaginationTests : IDisposable
     public async Task ToHttpResultAsync_ValueTask_PartialRange_Returns206()
     {
         var data = new[] { "a", "b" };
-        var resultTask = ValueTask.FromResult(Result.Success(data));
+        var resultTask = ValueTask.FromResult(Result.Ok(data));
 
         var response = await resultTask.ToHttpResultAsync(0, 2, 10);
 
@@ -249,7 +249,7 @@ public class HttpPaginationTests : IDisposable
     public async Task ToHttpResultAsync_ValueTask_CompleteRange_Returns200()
     {
         var data = new[] { "a", "b" };
-        var resultTask = ValueTask.FromResult(Result.Success(data));
+        var resultTask = ValueTask.FromResult(Result.Ok(data));
 
         var response = await resultTask.ToHttpResultAsync(0, 1, 2);
 
@@ -260,7 +260,7 @@ public class HttpPaginationTests : IDisposable
     public async Task ToHttpResultAsync_ValueTask_Lambda_PartialRange_Returns206()
     {
         var items = new[] { "a" };
-        var resultTask = ValueTask.FromResult(Result.Success((items, 5L)));
+        var resultTask = ValueTask.FromResult(Result.Ok((items, 5L)));
 
         var response = await resultTask.ToHttpResultAsync(
             r => new ContentRangeHeaderValue(0, 0, r.Item2) { Unit = "items" },

@@ -161,8 +161,8 @@ public static class AnalyzerTestHelper
             // Static Result factory class
             public static class Result
             {
-                public static Result<T> Success<T>(T value) => value;
-                public static Result<T> Failure<T>(Error error) => error;
+                public static Result<T> Ok<T>(T value) => value;
+                public static Result<T> Fail<T>(Error error) => error;
 
                 // Combine stubs
                 public static Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2) => default;

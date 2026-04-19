@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -76,16 +76,16 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         var field = fieldName.NormalizeFieldName("url");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<Url>(Error.Validation("URL is required.", field));
+            return Result.Fail<Url>(Error.Validation("URL is required.", field));
 
         // Normalize input to avoid issues with accidental whitespace
         var trimmed = value.Trim();
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
-            return Result.Failure<Url>(Error.Validation("URL must be a valid absolute HTTP or HTTPS URL.", field));
+            return Result.Fail<Url>(Error.Validation("URL must be a valid absolute HTTP or HTTPS URL.", field));
 
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-            return Result.Failure<Url>(Error.Validation("URL must use HTTP or HTTPS scheme.", field));
+            return Result.Fail<Url>(Error.Validation("URL must use HTTP or HTTPS scheme.", field));
 
         return new Url(uri);
     }

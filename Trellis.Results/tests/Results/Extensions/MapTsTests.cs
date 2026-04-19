@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions.Map;
+namespace Trellis.Results.Tests.Results.Extensions.Map;
 
 using Trellis.Testing;
 
@@ -16,7 +16,7 @@ public class MapTsTests : TestBase
     [Fact]
     public void Map_2Tuple_WithNullFunc_ThrowsArgumentNullException()
     {
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
 
         var act = () => result.Map<T, K, string>(null!);
 
@@ -37,7 +37,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
         var functionCalled = false;
 
         // Act
@@ -57,7 +57,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K)>(Error1);
+        var result = Result.Fail<(T, K)>(Error1);
         var functionCalled = false;
 
         // Act
@@ -77,7 +77,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_Success_ReturnsTransformedValue()
     {
         // Arrange
-        var result = Result.Success(("Hello", "World"));
+        var result = Result.Ok(("Hello", "World"));
 
         // Act
         var actual = result.Map((first, second) => $"{first} {second}!");
@@ -91,7 +91,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_Success_CanTransformToComplexType()
     {
         // Arrange
-        var result = Result.Success(("John", 42));
+        var result = Result.Ok(("John", 42));
 
         // Act
         var actual = result.Map((name, age) => new Person(name, age));
@@ -107,7 +107,7 @@ public class MapTsTests : TestBase
     {
         // Arrange
         var error = Error.Validation("Test error", "field");
-        var result = Result.Failure<(string, int)>(error);
+        var result = Result.Fail<(string, int)>(error);
 
         // Act
         var actual = result.Map((name, age) => new Person(name, age));
@@ -121,7 +121,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_WithNullableTypes_Success()
     {
         // Arrange
-        var result = Result.Success<(string?, int?)>(("test", 123));
+        var result = Result.Ok<(string?, int?)>(("test", 123));
 
         // Act
         var actual = result.Map((s, i) => $"{s ?? "null"}-{i ?? 0}");
@@ -135,7 +135,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_ChainedOperations_Success()
     {
         // Arrange & Act
-        var result = Result.Success(("Hello", "World"))
+        var result = Result.Ok(("Hello", "World"))
             .Map((a, b) => $"{a} {b}")
             .Map(combined => combined.ToUpperInvariant());
 
@@ -152,7 +152,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_ResultWithTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
         var functionCalled = false;
 
         // Act
@@ -171,7 +171,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_ResultWithTaskFunc_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K)>(Error1);
+        var result = Result.Fail<(T, K)>(Error1);
         var functionCalled = false;
 
         // Act
@@ -195,7 +195,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_TaskResultWithSyncFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsTask();
         var functionCalled = false;
 
         // Act
@@ -214,7 +214,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_TaskResultWithSyncFunc_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K)>(Error1).AsTask();
+        var result = Result.Fail<(T, K)>(Error1).AsTask();
         var functionCalled = false;
 
         // Act
@@ -237,7 +237,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_TaskResultWithTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsTask();
         var functionCalled = false;
 
         // Act
@@ -256,7 +256,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_TaskResultWithTaskFunc_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K)>(Error1).AsTask();
+        var result = Result.Fail<(T, K)>(Error1).AsTask();
         var functionCalled = false;
 
         // Act
@@ -279,7 +279,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_ResultWithValueTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1));
+        var result = Result.Ok((T.Value1, K.Value1));
         var functionCalled = false;
 
         // Act
@@ -298,7 +298,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_ResultWithValueTaskFunc_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K)>(Error1);
+        var result = Result.Fail<(T, K)>(Error1);
         var functionCalled = false;
 
         // Act
@@ -317,7 +317,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_ValueTaskResultWithSyncFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsValueTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsValueTask();
         var functionCalled = false;
 
         // Act
@@ -336,7 +336,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_ValueTaskResultWithValueTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1)).AsValueTask();
+        var result = Result.Ok((T.Value1, K.Value1)).AsValueTask();
         var functionCalled = false;
 
         // Act
@@ -359,7 +359,7 @@ public class MapTsTests : TestBase
     public void Map_3Tuple_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1, 42));
+        var result = Result.Ok((T.Value1, K.Value1, 42));
         var functionCalled = false;
 
         // Act
@@ -379,7 +379,7 @@ public class MapTsTests : TestBase
     public void Map_3Tuple_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(T, K, int)>(Error1);
+        var result = Result.Fail<(T, K, int)>(Error1);
         var functionCalled = false;
 
         // Act
@@ -398,7 +398,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_3Tuple_TaskResultWithTaskFunc_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((T.Value1, K.Value1, 42)).AsTask();
+        var result = Result.Ok((T.Value1, K.Value1, 42)).AsTask();
         var functionCalled = false;
 
         // Act
@@ -421,7 +421,7 @@ public class MapTsTests : TestBase
     public void Map_9Tuple_Success_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Success((1, 2, 3, 4, 5, 6, 7, 8, 9));
+        var result = Result.Ok((1, 2, 3, 4, 5, 6, 7, 8, 9));
         var functionCalled = false;
 
         // Act
@@ -441,7 +441,7 @@ public class MapTsTests : TestBase
     public void Map_9Tuple_Failure_DoesNotExecuteFunction()
     {
         // Arrange
-        var result = Result.Failure<(int, int, int, int, int, int, int, int, int)>(Error1);
+        var result = Result.Fail<(int, int, int, int, int, int, int, int, int)>(Error1);
         var functionCalled = false;
 
         // Act
@@ -464,7 +464,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_TransformToNull_ReturnsSuccessWithNull()
     {
         // Arrange
-        var result = Result.Success(("test", 123));
+        var result = Result.Ok(("test", 123));
 
         // Act
         var actual = result.Map<string, int, string?>((s, i) => null);
@@ -478,7 +478,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_TransformThrowsException_PropagatesException()
     {
         // Arrange
-        var result = Result.Success(("test", 123));
+        var result = Result.Ok(("test", 123));
 
         // Act
         Action act = () => result.Map<string, int, string>((s, i) =>
@@ -493,7 +493,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_TransformThrowsException_PropagatesException()
     {
         // Arrange
-        var result = Result.Success(("test", 123));
+        var result = Result.Ok(("test", 123));
 
         // Act - Use explicit Task.FromResult to disambiguate
         Func<Task> act = async () => await result.MapAsync((string s, int i) =>
@@ -508,7 +508,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_WithRecordTypes_Success()
     {
         // Arrange
-        var result = Result.Success((new TestRecord("A", 1), new TestRecord("B", 2)));
+        var result = Result.Ok((new TestRecord("A", 1), new TestRecord("B", 2)));
 
         // Act
         var actual = result.Map((r1, r2) => new TestRecord($"{r1.Name}{r2.Name}", r1.Value + r2.Value));
@@ -527,8 +527,8 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_CreateDtoFromValidatedInputs()
     {
         // Simulate combining validated value objects
-        var nameResult = Result.Success("John Doe");
-        var emailResult = Result.Success("john@example.com");
+        var nameResult = Result.Ok("John Doe");
+        var emailResult = Result.Ok("john@example.com");
 
         // Act
         var result = nameResult
@@ -545,9 +545,9 @@ public class MapTsTests : TestBase
     public void Map_3Tuple_CreateEntityFromMultipleValidations()
     {
         // Simulate combining three validated inputs
-        var firstNameResult = Result.Success("John");
-        var lastNameResult = Result.Success("Doe");
-        var ageResult = Result.Success(30);
+        var firstNameResult = Result.Ok("John");
+        var lastNameResult = Result.Ok("Doe");
+        var ageResult = Result.Ok(30);
 
         // Act
         var result = firstNameResult
@@ -565,7 +565,7 @@ public class MapTsTests : TestBase
     public async Task MapAsync_2Tuple_RealWorldAsyncScenario()
     {
         // Simulate async validation and transformation
-        var result = await Result.Success(("user@example.com", "password123"))
+        var result = await Result.Ok(("user@example.com", "password123"))
             .AsTask()
             .MapAsync((email, password) => new AuthRequest(email, password));
 

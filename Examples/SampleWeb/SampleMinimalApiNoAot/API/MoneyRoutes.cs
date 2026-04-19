@@ -1,4 +1,4 @@
-﻿using Trellis.Asp;
+using Trellis.Asp;
 using Trellis.Primitives;
 
 namespace SampleMinimalApiNoAot.API;
@@ -68,7 +68,7 @@ public static class MoneyRoutes
         moneyApi.MapPost("/CartTotal", (CartTotalRequest request) =>
         {
             if (request.Items.Length == 0)
-                return Result.Failure<Money>(Error.Validation("Cart cannot be empty")).ToHttpResult();
+                return Result.Fail<Money>(Error.Validation("Cart cannot be empty")).ToHttpResult();
 
             var firstItem = Money.TryCreate(request.Items[0].Amount, request.Items[0].Currency);
             if (firstItem.IsFailure)
@@ -86,7 +86,7 @@ public static class MoneyRoutes
                 total = itemResult.Value;
             }
 
-            return Result.Success(total).ToHttpResult();
+            return Result.Ok(total).ToHttpResult();
         });
 
         moneyApi.MapPost("/ApplyDiscount", (ApplyDiscountRequest request) =>
@@ -110,7 +110,7 @@ public static class MoneyRoutes
         {
             var totalPercent = request.PlatformPercent + request.CreatorPercent + request.ReferrerPercent;
             if (totalPercent != 100)
-                return Result.Failure<RevenueShareResponse>(
+                return Result.Fail<RevenueShareResponse>(
                     Error.Validation($"Percentages must sum to 100, got {totalPercent}")).ToHttpResult();
 
             return Money.TryCreate(request.Revenue.Amount, request.Revenue.Currency)

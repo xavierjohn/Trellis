@@ -62,7 +62,7 @@ public sealed record RegisterUserInput(string FirstName, string LastName, string
 public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
 {
     public static Result<User> TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =>
-        Result.Success(new User(firstName, lastName, email));
+        Result.Ok(new User(firstName, lastName, email));
 }
 
 public static Result<User> RegisterUser(
@@ -144,7 +144,7 @@ If you want the full API surface, jump to the **[API reference](api/index.md)** 
 
 ## A few accuracy notes worth knowing early
 
-- `Unit` is `record struct Unit;` and has **no** `Unit.Value` property. Use `Result.Success()` for a success-without-payload flow, or `new Unit()` / `default` when you need a `Unit` instance.
+- `Unit` is `record struct Unit;` and has **no** `Unit.Value` property. Use `Result.Ok()` for a success-without-payload flow, or `new Unit()` / `default` when you need a `Unit` instance.
 - `Error.Equals(...)` compares **only the error code**, not the detail text.
 - `Error.NotFound(...)`, `Error.Conflict(...)`, and the other factory methods create specific error subtypes with default `.error` codes.
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System;
 using System.Diagnostics;
@@ -29,7 +29,7 @@ public static class EnsureExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
         if (result.IsSuccess && !predicate())
-            return Result.Failure<TValue>(error);
+            return Result.Fail<TValue>(error);
 
         result.LogActivityStatus();
         return result;
@@ -49,7 +49,7 @@ public static class EnsureExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
         if (result.IsSuccess && !predicate(result.Value))
-            return Result.Failure<TValue>(error);
+            return Result.Fail<TValue>(error);
 
         result.LogActivityStatus();
         return result;
@@ -71,7 +71,7 @@ public static class EnsureExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
         if (result.IsSuccess && !predicate(result.Value))
-            return Result.Failure<TValue>(errorPredicate(result.Value));
+            return Result.Fail<TValue>(errorPredicate(result.Value));
 
         result.LogActivityStatus();
         return result;
@@ -98,7 +98,7 @@ public static class EnsureExtensions
         var predicateResult = predicate();
 
         if (predicateResult.IsFailure)
-            return Result.Failure<TValue>(predicateResult.Error);
+            return Result.Fail<TValue>(predicateResult.Error);
 
         result.LogActivityStatus();
         return result;
@@ -126,7 +126,7 @@ public static class EnsureExtensions
         var predicateResult = predicate(result.Value);
 
         if (predicateResult.IsFailure)
-            return Result.Failure<TValue>(predicateResult.Error);
+            return Result.Fail<TValue>(predicateResult.Error);
 
         result.LogActivityStatus();
         return result;
@@ -141,7 +141,7 @@ public static class EnsureExtensions
     public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureNotNullOrWhiteSpace));
-        return string.IsNullOrWhiteSpace(str) ? Result.Failure<string>(error) : Result.Success(str);
+        return string.IsNullOrWhiteSpace(str) ? Result.Fail<string>(error) : Result.Ok(str);
     }
 
     /// <summary>
@@ -159,17 +159,17 @@ public static class EnsureExtensions
         if (result.IsFailure)
         {
             result.LogActivityStatus();
-            return Result.Failure<T>(result.Error);
+            return Result.Fail<T>(result.Error);
         }
 
         if (result.Value is null)
         {
-            var failure = Result.Failure<T>(error);
+            var failure = Result.Fail<T>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success(result.Value);
+        var success = Result.Ok(result.Value);
         success.LogActivityStatus();
         return success;
     }
@@ -189,19 +189,19 @@ public static class EnsureExtensions
 
         if (result.IsFailure)
         {
-            var failure = Result.Failure<T>(result.Error);
+            var failure = Result.Fail<T>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
         if (!result.Value.HasValue)
         {
-            var failure = Result.Failure<T>(error);
+            var failure = Result.Fail<T>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Success(result.Value.Value);
+        var success = Result.Ok(result.Value.Value);
         success.LogActivityStatus();
         return success;
     }

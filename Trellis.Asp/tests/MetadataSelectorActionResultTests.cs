@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -43,7 +43,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_WithSelector_Returns200_WithMetadataHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToActionResult(
             controller,
@@ -59,7 +59,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_WithSelector_AppliesFullMetadata()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToActionResult(
             controller,
@@ -80,7 +80,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_SelectorReceivesDomainValue()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Success("my-etag-source");
+        var result = Result.Ok("my-etag-source");
         string? capturedValue = null;
 
         result.ToActionResult(
@@ -100,7 +100,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Failure_SelectorNotInvoked()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Failure<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(Error.NotFound("not found"));
         var selectorInvoked = false;
 
         result.ToActionResult(
@@ -115,7 +115,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Failure_ReturnsErrorResponse()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Failure<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(Error.NotFound("not found"));
 
         var response = result.ToActionResult(
             controller,
@@ -130,7 +130,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Failure_DoesNotEmitMetadataHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Failure<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(Error.NotFound("not found"));
 
         result.ToActionResult(
             controller,
@@ -148,7 +148,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_MatchingIfNoneMatch_OnGET_Returns304()
     {
         var controller = CreateControllerWithHttpContext("GET", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToActionResult(
             controller,
@@ -163,7 +163,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_NonMatchingIfNoneMatch_OnGET_Returns200()
     {
         var controller = CreateControllerWithHttpContext("GET", "\"old-etag\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToActionResult(
             controller,
@@ -177,7 +177,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_MatchingIfNoneMatch_OnHEAD_Returns304()
     {
         var controller = CreateControllerWithHttpContext("HEAD", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToActionResult(
             controller,
@@ -196,7 +196,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_FailedIfMatch_OnGET_Returns412()
     {
         var controller = CreateControllerWithHttpContext("GET", ifMatch: "\"wrong-etag\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToActionResult(
             controller,
@@ -215,7 +215,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Success_MatchingIfNoneMatch_OnPUT_Returns200()
     {
         var controller = CreateControllerWithHttpContext("PUT", "\"abc123\"");
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         var response = result.ToActionResult(
             controller,
@@ -233,7 +233,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public async Task ToActionResultAsync_Task_Success_Returns200_WithMetadata()
     {
         var controller = CreateControllerWithHttpContext();
-        var resultTask = Task.FromResult(Result.Success("hello"));
+        var resultTask = Task.FromResult(Result.Ok("hello"));
 
         var response = await resultTask.ToActionResultAsync(
             controller,
@@ -248,7 +248,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public async Task ToActionResultAsync_Task_MatchingIfNoneMatch_Returns304()
     {
         var controller = CreateControllerWithHttpContext("GET", "\"etag1\"");
-        var resultTask = Task.FromResult(Result.Success("hello"));
+        var resultTask = Task.FromResult(Result.Ok("hello"));
 
         var response = await resultTask.ToActionResultAsync(
             controller,
@@ -267,7 +267,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public async Task ToActionResultAsync_ValueTask_Success_Returns200_WithMetadata()
     {
         var controller = CreateControllerWithHttpContext();
-        var resultTask = ValueTask.FromResult(Result.Success("hello"));
+        var resultTask = ValueTask.FromResult(Result.Ok("hello"));
 
         var response = await resultTask.ToActionResultAsync(
             controller,
@@ -282,7 +282,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public async Task ToActionResultAsync_ValueTask_Failure_ReturnsError()
     {
         var controller = CreateControllerWithHttpContext();
-        var resultTask = ValueTask.FromResult(Result.Failure<string>(Error.NotFound("gone")));
+        var resultTask = ValueTask.FromResult(Result.Fail<string>(Error.NotFound("gone")));
 
         var response = await resultTask.ToActionResultAsync(
             controller,

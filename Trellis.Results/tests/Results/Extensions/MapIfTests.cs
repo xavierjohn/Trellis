@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -9,7 +9,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_Success_ConditionTrue_TransformsValue()
     {
-        var sut = Result.Success(10);
+        var sut = Result.Ok(10);
 
         var result = sut.MapIf(true, x => x * 2);
 
@@ -19,7 +19,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_Success_ConditionFalse_ReturnsOriginal()
     {
-        var sut = Result.Success(10);
+        var sut = Result.Ok(10);
 
         var result = sut.MapIf(false, x => x * 2);
 
@@ -29,7 +29,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_Failure_ConditionTrue_ReturnsOriginalFailure()
     {
-        var sut = Result.Failure<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(Error.Unexpected("some error"));
 
         var result = sut.MapIf(true, x => x * 2);
 
@@ -39,7 +39,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_Failure_ConditionFalse_ReturnsOriginalFailure()
     {
-        var sut = Result.Failure<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(Error.Unexpected("some error"));
 
         var result = sut.MapIf(false, x => x * 2);
 
@@ -53,7 +53,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_Success_PredicateTrue_TransformsValue()
     {
-        var sut = Result.Success(10);
+        var sut = Result.Ok(10);
 
         var result = sut.MapIf(x => x > 5, x => x * 2);
 
@@ -63,7 +63,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_Success_PredicateFalse_ReturnsOriginal()
     {
-        var sut = Result.Success(3);
+        var sut = Result.Ok(3);
 
         var result = sut.MapIf(x => x > 5, x => x * 2);
 
@@ -74,7 +74,7 @@ public class MapIfTests
     public void MapIf_Failure_PredicateNotInvoked()
     {
         var predicateInvoked = false;
-        var sut = Result.Failure<int>(Error.Unexpected("some error"));
+        var sut = Result.Fail<int>(Error.Unexpected("some error"));
 
         var result = sut.MapIf(x => { predicateInvoked = true; return true; }, x => x * 2);
 
@@ -89,7 +89,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_NullFunc_ThrowsArgumentNullException()
     {
-        var sut = Result.Success(10);
+        var sut = Result.Ok(10);
 
         var act = () => sut.MapIf(true, (Func<int, int>)null!);
 
@@ -100,7 +100,7 @@ public class MapIfTests
     [Fact]
     public void MapIf_NullPredicate_ThrowsArgumentNullException()
     {
-        var sut = Result.Success(10);
+        var sut = Result.Ok(10);
 
         var act = () => sut.MapIf((Func<int, bool>)null!, x => x * 2);
 

@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results;
+namespace Trellis.Results.Tests.Results;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -20,7 +20,7 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success((T.Value1, K.Value1))
+        var result = Result.Ok((T.Value1, K.Value1))
             .Map((t, k) => $"{t}-{k}");
 
         // Assert
@@ -35,7 +35,7 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<(T, K)>(Error1)
+        var result = Result.Fail<(T, K)>(Error1)
             .Map((t, k) => $"{t}-{k}");
 
         // Assert
@@ -54,8 +54,8 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success((T.Value1, K.Value1))
-            .Bind((t, k) => Result.Success($"{t}-{k}"));
+        var result = Result.Ok((T.Value1, K.Value1))
+            .Bind((t, k) => Result.Ok($"{t}-{k}"));
 
         // Assert
         result.Should().BeSuccess();
@@ -69,8 +69,8 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Failure<(T, K)>(Error1)
-            .Bind((t, k) => Result.Success($"{t}-{k}"));
+        var result = Result.Fail<(T, K)>(Error1)
+            .Bind((t, k) => Result.Ok($"{t}-{k}"));
 
         // Assert
         result.Should().BeFailure();
@@ -84,8 +84,8 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Result.Success((T.Value1, K.Value1))
-            .BindAsync((t, k) => Task.FromResult(Result.Success($"{t}-{k}")));
+        var result = await Result.Ok((T.Value1, K.Value1))
+            .BindAsync((t, k) => Task.FromResult(Result.Ok($"{t}-{k}")));
 
         // Assert
         result.Should().BeSuccess();
@@ -99,8 +99,8 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Result.Failure<(T, K)>(Error1).AsTask()
-            .BindAsync((t, k) => Result.Success($"{t}-{k}"));
+        var result = await Result.Fail<(T, K)>(Error1).AsTask()
+            .BindAsync((t, k) => Result.Ok($"{t}-{k}"));
 
         // Assert
         result.Should().BeFailure();
@@ -114,8 +114,8 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Result.Success((T.Value1, K.Value1))
-            .BindAsync((t, k) => ValueTask.FromResult(Result.Success($"{t}-{k}")));
+        var result = await Result.Ok((T.Value1, K.Value1))
+            .BindAsync((t, k) => ValueTask.FromResult(Result.Ok($"{t}-{k}")));
 
         // Assert
         result.Should().BeSuccess();
@@ -133,8 +133,8 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success((T.Value1, K.Value1, 42))
-            .Bind((t, k, num) => Result.Success($"{t}-{k}-{num}"));
+        var result = Result.Ok((T.Value1, K.Value1, 42))
+            .Bind((t, k, num) => Result.Ok($"{t}-{k}-{num}"));
 
         // Assert
         result.Should().BeSuccess();
@@ -148,8 +148,8 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Result.Success((T.Value1, K.Value1, 42)).AsTask()
-            .BindAsync((t, k, num) => Task.FromResult(Result.Success($"{t}-{k}-{num}")));
+        var result = await Result.Ok((T.Value1, K.Value1, 42)).AsTask()
+            .BindAsync((t, k, num) => Task.FromResult(Result.Ok($"{t}-{k}-{num}")));
 
         // Assert
         result.Should().BeSuccess();
@@ -168,7 +168,7 @@ public class TupleTracingTests : TestBase
         var actionCalled = false;
 
         // Act
-        var result = Result.Success((T.Value1, K.Value1))
+        var result = Result.Ok((T.Value1, K.Value1))
             .TapOnFailure(() => actionCalled = true);
 
         // Assert
@@ -190,7 +190,7 @@ public class TupleTracingTests : TestBase
         var actionCalled = false;
 
         // Act
-        var result = Result.Failure<(T, K)>(Error1)
+        var result = Result.Fail<(T, K)>(Error1)
             .TapOnFailure(() => actionCalled = true);
 
         // Assert
@@ -207,7 +207,7 @@ public class TupleTracingTests : TestBase
         Error? capturedError = null;
 
         // Act
-        var result = Result.Failure<(T, K)>(Error1)
+        var result = Result.Fail<(T, K)>(Error1)
             .TapOnFailure(error => capturedError = error);
 
         // Assert
@@ -225,7 +225,7 @@ public class TupleTracingTests : TestBase
         var actionCalled = false;
 
         // Act
-        var result = await Result.Failure<(T, K)>(Error1).AsTask()
+        var result = await Result.Fail<(T, K)>(Error1).AsTask()
             .TapOnFailureAsync(() => actionCalled = true);
 
         // Assert
@@ -242,7 +242,7 @@ public class TupleTracingTests : TestBase
         var actionCalled = false;
 
         // Act
-        var result = await Result.Failure<(T, K)>(Error1)
+        var result = await Result.Fail<(T, K)>(Error1)
             .TapOnFailureAsync(() =>
             {
                 actionCalled = true;
@@ -263,7 +263,7 @@ public class TupleTracingTests : TestBase
         var actionCalled = false;
 
         // Act
-        var result = await Result.Failure<(T, K)>(Error1).AsValueTask()
+        var result = await Result.Fail<(T, K)>(Error1).AsValueTask()
             .TapOnFailureAsync(() => actionCalled = true);
 
         // Assert
@@ -284,7 +284,7 @@ public class TupleTracingTests : TestBase
         var actionCalled = false;
 
         // Act
-        var result = Result.Failure<(T, K, int)>(Error1)
+        var result = Result.Fail<(T, K, int)>(Error1)
             .TapOnFailure(() => actionCalled = true);
 
         // Assert
@@ -304,9 +304,9 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act - Real-world scenario: Combine multiple validations then bind
-        var result = Result.Success("John")
-            .Combine(Result.Success("Doe"))
-            .Bind((first, last) => Result.Success($"{first} {last}"))
+        var result = Result.Ok("John")
+            .Combine(Result.Ok("Doe"))
+            .Bind((first, last) => Result.Ok($"{first} {last}"))
             .TapOnFailure(error => Console.WriteLine($"Error: {error.Detail}"));
 
         // Assert
@@ -326,9 +326,9 @@ public class TupleTracingTests : TestBase
         var errorLogged = false;
 
         // Act - One validation fails in Combine
-        var result = Result.Failure<string>(Error.Validation("First name required"))
-            .Combine(Result.Success("Doe"))
-            .Bind((first, last) => Result.Success($"{first} {last}"))
+        var result = Result.Fail<string>(Error.Validation("First name required"))
+            .Combine(Result.Ok("Doe"))
+            .Bind((first, last) => Result.Ok($"{first} {last}"))
             .TapOnFailure(error => errorLogged = true);
 
         // Assert
@@ -348,10 +348,10 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act - Async pipeline with tuples
-        var result = await Result.Success("user@example.com")
-            .Combine(Result.Success("password123"))
+        var result = await Result.Ok("user@example.com")
+            .Combine(Result.Ok("password123"))
             .BindAsync((email, password) =>
-                Task.FromResult(Result.Success($"Authenticated: {email}"))
+                Task.FromResult(Result.Ok($"Authenticated: {email}"))
             )
             .TapOnFailureAsync(error =>
             {
@@ -374,10 +374,10 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act - Chain multiple Binds on tuple results
-        var result = Result.Success(("John", "Doe"))
-            .Bind((first, last) => Result.Success($"{first} {last}"))
-            .Bind(fullName => Result.Success(fullName.ToUpperInvariant()))
-            .Bind(upper => Result.Success(upper.Length));
+        var result = Result.Ok(("John", "Doe"))
+            .Bind((first, last) => Result.Ok($"{first} {last}"))
+            .Bind(fullName => Result.Ok(fullName.ToUpperInvariant()))
+            .Bind(upper => Result.Ok(upper.Length));
 
         // Assert
         result.Should().BeSuccess()
@@ -396,8 +396,8 @@ public class TupleTracingTests : TestBase
         var tapExecuted = false;
 
         // Act - Bind fails, TapOnFailure should execute
-        var result = Result.Success(("valid", "input"))
-            .Bind((s1, s2) => Result.Failure<string>(Error.Unexpected("Bind failed")))
+        var result = Result.Ok(("valid", "input"))
+            .Bind((s1, s2) => Result.Fail<string>(Error.Unexpected("Bind failed")))
             .TapOnFailure(() => tapExecuted = true);
 
         // Assert
@@ -424,11 +424,11 @@ public class TupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act - Real-world: Validate email, firstName, lastName then create user
-        var result = await Result.Success("user@example.com")
-            .Combine(Result.Success("John"))
-            .Combine(Result.Success("Doe"))
+        var result = await Result.Ok("user@example.com")
+            .Combine(Result.Ok("John"))
+            .Combine(Result.Ok("Doe"))
             .BindAsync((email, first, last) =>
-                Task.FromResult(Result.Success($"{first} {last} <{email}>"))
+                Task.FromResult(Result.Ok($"{first} {last} <{email}>"))
             )
             .TapOnFailureAsync(async error =>
             {
@@ -453,10 +453,10 @@ public class TupleTracingTests : TestBase
         var errorMessage = string.Empty;
 
         // Act - Last validation fails
-        var result = Result.Success("user@example.com")
-            .Combine(Result.Success("John"))
-            .Combine(Result.Failure<string>(Error.Validation("Last name required")))
-            .Bind((email, first, last) => Result.Success($"{first} {last}"))
+        var result = Result.Ok("user@example.com")
+            .Combine(Result.Ok("John"))
+            .Combine(Result.Fail<string>(Error.Validation("Last name required")))
+            .Bind((email, first, last) => Result.Ok($"{first} {last}"))
             .TapOnFailure(error => errorMessage = error.Detail);
 
         // Assert

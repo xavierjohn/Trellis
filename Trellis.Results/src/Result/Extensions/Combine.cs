@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -21,8 +21,8 @@ public static partial class CombineExtensions
         Error? error = null;
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<T1>(error);
-        return Result.Success(t1.Value);
+        if (error is not null) return Result.Fail<T1>(error);
+        return Result.Ok(t1.Value);
     }
 
     /// <summary>
@@ -39,8 +39,8 @@ public static partial class CombineExtensions
         Error? error = null;
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<(T1, T2)>(error);
-        return Result.Success<(T1, T2)>((t1.Value, t2.Value));
+        if (error is not null) return Result.Fail<(T1, T2)>(error);
+        return Result.Ok<(T1, T2)>((t1.Value, t2.Value));
     }
 }
 
@@ -62,8 +62,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await tt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<(T1, T2)>(error);
-        return Result.Success((t1.Value, t2.Value));
+        if (error is not null) return Result.Fail<(T1, T2)>(error);
+        return Result.Ok((t1.Value, t2.Value));
     }
 
     /// <summary>
@@ -76,8 +76,8 @@ public static partial class CombineExtensionsAsync
         var t2 = await tt2.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<(T1, T2)>(error);
-        return Result.Success((t1.Value, t2.Value));
+        if (error is not null) return Result.Fail<(T1, T2)>(error);
+        return Result.Ok((t1.Value, t2.Value));
     }
 
     /// <summary>
@@ -91,8 +91,8 @@ public static partial class CombineExtensionsAsync
         var t2 = await tt2.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<(T1, T2)>(error);
-        return Result.Success((t1.Value, t2.Value));
+        if (error is not null) return Result.Fail<(T1, T2)>(error);
+        return Result.Ok((t1.Value, t2.Value));
     }
 
     /// <summary>
@@ -105,8 +105,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await tt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<T1>(error);
-        return Result.Success(t1.Value);
+        if (error is not null) return Result.Fail<T1>(error);
+        return Result.Ok(t1.Value);
     }
 
     #endregion
@@ -123,8 +123,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await vt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<(T1, T2)>(error);
-        return Result.Success((t1.Value, t2.Value));
+        if (error is not null) return Result.Fail<(T1, T2)>(error);
+        return Result.Ok((t1.Value, t2.Value));
     }
 
     /// <summary>
@@ -137,8 +137,8 @@ public static partial class CombineExtensionsAsync
         var t2 = await vt2.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<(T1, T2)>(error);
-        return Result.Success((t1.Value, t2.Value));
+        if (error is not null) return Result.Fail<(T1, T2)>(error);
+        return Result.Ok((t1.Value, t2.Value));
     }
 
     /// <summary>
@@ -152,8 +152,8 @@ public static partial class CombineExtensionsAsync
         var t2 = await vt2.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<(T1, T2)>(error);
-        return Result.Success((t1.Value, t2.Value));
+        if (error is not null) return Result.Fail<(T1, T2)>(error);
+        return Result.Ok((t1.Value, t2.Value));
     }
 
     /// <summary>
@@ -166,8 +166,8 @@ public static partial class CombineExtensionsAsync
         var t1 = await vt1.ConfigureAwait(false);
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
-        if (error is not null) return Result.Failure<T1>(error);
-        return Result.Success(t1.Value);
+        if (error is not null) return Result.Fail<T1>(error);
+        return Result.Ok(t1.Value);
     }
 
     #endregion

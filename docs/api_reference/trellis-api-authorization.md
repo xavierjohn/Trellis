@@ -513,8 +513,8 @@ public sealed record CancelOrderCommand(string OrderId) : IAuthorizeResource<Ord
 {
     public IResult Authorize(Actor actor, Order resource) =>
         actor.IsOwner(resource.OwnerId)
-            ? Result.Success()
-            : Result.Failure(Error.Forbidden("Only the owner can cancel the order."));
+            ? Result.Ok()
+            : Result.Fail(Error.Forbidden("Only the owner can cancel the order."));
 }
 
 public sealed class CancelOrderLoader : ResourceLoaderById<CancelOrderCommand, Order, string>
@@ -522,7 +522,7 @@ public sealed class CancelOrderLoader : ResourceLoaderById<CancelOrderCommand, O
     protected override string GetId(CancelOrderCommand message) => message.OrderId;
 
     protected override Task<Result<Order>> GetByIdAsync(string id, CancellationToken cancellationToken) =>
-        Task.FromResult(Result.Success(new Order(id, "user-1")));
+        Task.FromResult(Result.Ok(new Order(id, "user-1")));
 }
 ```
 

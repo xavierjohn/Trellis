@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions.Traverse;
+namespace Trellis.Results.Tests.Results.Extensions.Traverse;
 
 using System.Globalization;
 using Trellis.Testing;
@@ -14,7 +14,7 @@ public class TraverseTests : TestBase
         var items = Array.Empty<int>();
 
         // Act
-        var result = items.Traverse(x => Result.Success(x * 2));
+        var result = items.Traverse(x => Result.Ok(x * 2));
 
         // Assert
         result.Should().BeSuccess();
@@ -28,7 +28,7 @@ public class TraverseTests : TestBase
         var items = new[] { 1, 2, 3, 4, 5 };
 
         // Act
-        var result = items.Traverse(x => Result.Success(x * 2));
+        var result = items.Traverse(x => Result.Ok(x * 2));
 
         // Assert
         result.Should().BeSuccess();
@@ -43,7 +43,7 @@ public class TraverseTests : TestBase
 
         // Act
         var result = items.Traverse(x =>
-            x == 1 ? Result.Failure<int>(Error1) : Result.Success(x * 2));
+            x == 1 ? Result.Fail<int>(Error1) : Result.Ok(x * 2));
 
         // Assert
         result.Should().BeFailure()
@@ -62,8 +62,8 @@ public class TraverseTests : TestBase
         {
             processedItems.Add(x);
             return x == 3
-                ? Result.Failure<int>(Error2)
-                : Result.Success(x * 2);
+                ? Result.Fail<int>(Error2)
+                : Result.Ok(x * 2);
         });
 
         // Assert
@@ -80,7 +80,7 @@ public class TraverseTests : TestBase
 
         // Act
         var result = items.Traverse(x =>
-            x == 5 ? Result.Failure<int>(Error1) : Result.Success(x * 2));
+            x == 5 ? Result.Fail<int>(Error1) : Result.Ok(x * 2));
 
         // Assert
         result.Should().BeFailure();
@@ -93,7 +93,7 @@ public class TraverseTests : TestBase
         var items = new[] { "apple", "banana", "cherry" };
 
         // Act
-        var result = items.Traverse(s => Result.Success(new Fruit { Name = s, Length = s.Length }));
+        var result = items.Traverse(s => Result.Ok(new Fruit { Name = s, Length = s.Length }));
 
         // Assert
         result.Should().BeSuccess();
@@ -110,8 +110,8 @@ public class TraverseTests : TestBase
         // Act
         var result = items.Traverse(s =>
             s.Length >= 3
-                ? Result.Success(s.ToUpper(CultureInfo.InvariantCulture))
-                : Result.Failure<string>(Error.Validation($"String too short: {s}")));
+                ? Result.Ok(s.ToUpper(CultureInfo.InvariantCulture))
+                : Result.Fail<string>(Error.Validation($"String too short: {s}")));
 
         // Assert
         result.Should().BeFailure();
@@ -129,7 +129,7 @@ public class TraverseTests : TestBase
         var items = Array.Empty<int>();
 
         // Act
-        var result = await items.TraverseAsync((int x) => Task.FromResult(Result.Success(x * 2)));
+        var result = await items.TraverseAsync((int x) => Task.FromResult(Result.Ok(x * 2)));
 
         // Assert
         result.Should().BeSuccess();
@@ -143,7 +143,7 @@ public class TraverseTests : TestBase
         var items = new[] { 1, 2, 3, 4, 5 };
 
         // Act
-        var result = await items.TraverseAsync((int x) => Task.FromResult(Result.Success(x * 2)));
+        var result = await items.TraverseAsync((int x) => Task.FromResult(Result.Ok(x * 2)));
 
         // Assert
         result.Should().BeSuccess();
@@ -158,7 +158,7 @@ public class TraverseTests : TestBase
 
         // Act
         var result = await items.TraverseAsync((int x) =>
-            Task.FromResult(x == 1 ? Result.Failure<int>(Error1) : Result.Success(x * 2)));
+            Task.FromResult(x == 1 ? Result.Fail<int>(Error1) : Result.Ok(x * 2)));
 
         // Assert
         result.Should().BeFailure()
@@ -177,8 +177,8 @@ public class TraverseTests : TestBase
         {
             processedItems.Add(x);
             return Task.FromResult(x == 3
-                ? Result.Failure<int>(Error2)
-                : Result.Success(x * 2));
+                ? Result.Fail<int>(Error2)
+                : Result.Ok(x * 2));
         });
 
         // Assert
@@ -201,7 +201,7 @@ public class TraverseTests : TestBase
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => items.TraverseAsync(
-                (int x, CancellationToken ct) => Task.FromResult(Result.Success(x * 2)),
+                (int x, CancellationToken ct) => Task.FromResult(Result.Ok(x * 2)),
                 cts.Token));
     }
 
@@ -220,7 +220,7 @@ public class TraverseTests : TestBase
                 processedItems.Add(x);
                 if (x == 3) cts.Cancel();
                 ct.ThrowIfCancellationRequested();
-                return Task.FromResult(Result.Success(x * 2));
+                return Task.FromResult(Result.Ok(x * 2));
             }, cts.Token));
 
         processedItems.Should().BeEquivalentTo(new List<int> { 1, 2, 3 });
@@ -237,7 +237,7 @@ public class TraverseTests : TestBase
         var items = new[] { 1, 2, 3, 4, 5 };
 
         // Act
-        var result = await items.TraverseAsync((int x) => ValueTask.FromResult(Result.Success(x * 2)));
+        var result = await items.TraverseAsync((int x) => ValueTask.FromResult(Result.Ok(x * 2)));
 
         // Assert
         result.Should().BeSuccess();
@@ -253,8 +253,8 @@ public class TraverseTests : TestBase
         // Act
         var result = await items.TraverseAsync((int x) =>
             ValueTask.FromResult(x == 1
-                ? Result.Failure<int>(Error1)
-                : Result.Success(x * 2)));
+                ? Result.Fail<int>(Error1)
+                : Result.Ok(x * 2)));
 
         // Assert
         result.Should().BeFailure()
@@ -270,7 +270,7 @@ public class TraverseTests : TestBase
 
         // Act
         var result = await items.TraverseAsync(
-            (int x, CancellationToken ct) => ValueTask.FromResult(Result.Success(x * 2)),
+            (int x, CancellationToken ct) => ValueTask.FromResult(Result.Ok(x * 2)),
             cts.Token);
 
         // Assert
@@ -291,8 +291,8 @@ public class TraverseTests : TestBase
         // Act
         var result = emails.Traverse(email =>
             email.Contains('@')
-                ? Result.Success(email.ToLower(CultureInfo.InvariantCulture))
-                : Result.Failure<string>(Error.Validation($"Invalid email: {email}")));
+                ? Result.Ok(email.ToLower(CultureInfo.InvariantCulture))
+                : Result.Fail<string>(Error.Validation($"Invalid email: {email}")));
 
         // Assert
         result.Should().BeSuccess();
@@ -308,8 +308,8 @@ public class TraverseTests : TestBase
         // Act
         var result = emails.Traverse(email =>
             email.Contains('@')
-                ? Result.Success(email.ToLower(CultureInfo.InvariantCulture))
-                : Result.Failure<string>(Error.Validation($"Invalid email: {email}")));
+                ? Result.Ok(email.ToLower(CultureInfo.InvariantCulture))
+                : Result.Fail<string>(Error.Validation($"Invalid email: {email}")));
 
         // Assert
         result.Should().BeFailure();
@@ -324,7 +324,7 @@ public class TraverseTests : TestBase
 
         // Act
         var result = await userIds.TraverseAsync((int id) =>
-            Task.FromResult(Result.Success($"User{id}")));
+            Task.FromResult(Result.Ok($"User{id}")));
 
         // Assert
         result.Should().BeSuccess();
@@ -340,8 +340,8 @@ public class TraverseTests : TestBase
         // Act
         var result = await userIds.TraverseAsync((int id) =>
             Task.FromResult(id == 999
-                ? Result.Failure<string>(Error.NotFound($"User {id} not found"))
-                : Result.Success($"User{id}")));
+                ? Result.Fail<string>(Error.NotFound($"User {id} not found"))
+                : Result.Ok($"User{id}")));
 
         // Assert
         result.Should().BeFailure();
@@ -357,7 +357,7 @@ public class TraverseTests : TestBase
 
         // Act
         var result = await items.TraverseAsync((int x) =>
-            Task.FromResult(Result.Success(x * 2)));
+            Task.FromResult(Result.Ok(x * 2)));
 
         // Assert
         result.Should().BeSuccess();
@@ -374,8 +374,8 @@ public class TraverseTests : TestBase
         // Act
         var result = names.Traverse(name =>
             !string.IsNullOrWhiteSpace(name)
-                ? Result.Success(new Name(name))
-                : Result.Failure<Name>(Error.Validation("Name cannot be empty")));
+                ? Result.Ok(new Name(name))
+                : Result.Fail<Name>(Error.Validation("Name cannot be empty")));
 
         // Assert
         result.Should().BeSuccess();
@@ -394,7 +394,7 @@ public class TraverseTests : TestBase
         var items = new[] { 42 };
 
         // Act
-        var result = items.Traverse(x => Result.Success(x * 2));
+        var result = items.Traverse(x => Result.Ok(x * 2));
 
         // Assert
         result.Should().BeSuccess();
@@ -409,7 +409,7 @@ public class TraverseTests : TestBase
         var items = new[] { 42 };
 
         // Act
-        var result = items.Traverse(x => Result.Failure<int>(Error1));
+        var result = items.Traverse(x => Result.Fail<int>(Error1));
 
         // Assert
         result.Should().BeFailure();
@@ -423,7 +423,7 @@ public class TraverseTests : TestBase
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => items!.TraverseAsync((int x) => Task.FromResult(Result.Success(x * 2))));
+            () => items!.TraverseAsync((int x) => Task.FromResult(Result.Ok(x * 2))));
     }
 
     [Fact]
@@ -433,7 +433,7 @@ public class TraverseTests : TestBase
         var items = new[] { 5, 3, 8, 1, 9, 2 };
 
         // Act
-        var result = items.Traverse(x => Result.Success(x * 10));
+        var result = items.Traverse(x => Result.Ok(x * 10));
 
         // Assert
         result.Should().BeSuccess();

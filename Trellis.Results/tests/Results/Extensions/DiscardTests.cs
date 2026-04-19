@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -17,7 +17,7 @@ public class DiscardTests
     [Fact]
     public void Discard_SuccessResult_DoesNotThrow()
     {
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         var act = () => result.Discard();
 
@@ -27,7 +27,7 @@ public class DiscardTests
     [Fact]
     public void Discard_FailureResult_DoesNotThrow()
     {
-        var result = Result.Failure<int>(TestError);
+        var result = Result.Fail<int>(TestError);
 
         var act = () => result.Discard();
 
@@ -37,7 +37,7 @@ public class DiscardTests
     [Fact]
     public void Discard_ReturnsVoid()
     {
-        var result = Result.Success("hello");
+        var result = Result.Ok("hello");
 
         // Discard should be usable as a statement (void return)
         result.Discard();
@@ -50,7 +50,7 @@ public class DiscardTests
     [Fact]
     public async Task DiscardAsync_Task_SuccessResult_DoesNotThrow()
     {
-        var resultTask = Task.FromResult(Result.Success(42));
+        var resultTask = Task.FromResult(Result.Ok(42));
 
         var act = () => resultTask.DiscardAsync();
 
@@ -60,7 +60,7 @@ public class DiscardTests
     [Fact]
     public async Task DiscardAsync_Task_FailureResult_DoesNotThrow()
     {
-        var resultTask = Task.FromResult(Result.Failure<int>(TestError));
+        var resultTask = Task.FromResult(Result.Fail<int>(TestError));
 
         var act = () => resultTask.DiscardAsync();
 
@@ -84,7 +84,7 @@ public class DiscardTests
     [Fact]
     public async Task DiscardAsync_ValueTask_SuccessResult_DoesNotThrow()
     {
-        var resultTask = new ValueTask<Result<int>>(Result.Success(42));
+        var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
         var act = () => resultTask.DiscardAsync().AsTask();
 
@@ -94,7 +94,7 @@ public class DiscardTests
     [Fact]
     public async Task DiscardAsync_ValueTask_FailureResult_DoesNotThrow()
     {
-        var resultTask = new ValueTask<Result<int>>(Result.Failure<int>(TestError));
+        var resultTask = new ValueTask<Result<int>>(Result.Fail<int>(TestError));
 
         var act = () => resultTask.DiscardAsync().AsTask();
 
@@ -108,14 +108,14 @@ public class DiscardTests
     [Fact]
     public void Discard_AtEndOfChain_CompilesSilently() =>
         // This pattern should not trigger TRLS001 because Discard returns void
-        Result.Success(42)
+        Result.Ok(42)
             .Map(x => x * 2)
             .Tap(x => _ = x)
             .Discard();
 
     [Fact]
     public async Task DiscardAsync_AtEndOfAsyncChain_CompilesSilently() =>
-        await Task.FromResult(Result.Success(42))
+        await Task.FromResult(Result.Ok(42))
             .MapAsync(x => x * 2)
             .TapAsync(x => _ = x)
             .DiscardAsync();

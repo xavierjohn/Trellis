@@ -1,4 +1,4 @@
-﻿# Mermaid Diagrams for Documentation
+# Mermaid Diagrams for Documentation
 
 This document contains reusable Mermaid diagram scripts for the Trellis documentation. All diagrams use the ````mermaid` code fence and are compatible with DocFX, GitHub, and mermaid.live.
 
@@ -250,7 +250,7 @@ graph TB
     
     DEC -->|Save/Update?| COMMAND
     COMMAND --> DB
-    DB -.->|Success| RES_OK[Result.Success]
+    DB -.->|Success| RES_OK[Result.Ok]
     DB -.->|Duplicate Key| RES_CONFLICT[Error.Conflict]
     DB -.->|FK Violation| RES_DOMAIN[Error.Domain]
     DB -.->|Concurrency| RES_CONFLICT2[Error.Conflict]
@@ -290,10 +290,10 @@ flowchart LR
     CHECK -->|Register scenario| REGISTER
     
     LOGIN -->|HasNoValue| ERR1[Error.NotFound<br/>User not found]
-    LOGIN -->|HasValue| OK1[Result.Success<br/>Verify password]
+    LOGIN -->|HasValue| OK1[Result.Ok<br/>Verify password]
     
     REGISTER -->|HasValue| ERR2[Error.Conflict<br/>Email taken]
-    REGISTER -->|HasNoValue| OK2[Result.Success<br/>Can register]
+    REGISTER -->|HasNoValue| OK2[Result.Ok<br/>Can register]
     
     style MAYBE fill:#E1F5FF
     style ERR1 fill:#FFB6C6
@@ -308,7 +308,7 @@ flowchart LR
 flowchart TB
     START[SaveAsync User] --> TRY{Try SaveChangesAsync}
     
-    TRY -->|Success| SUCCESS[Result.Success]
+    TRY -->|Success| SUCCESS[Result.Ok]
     
     TRY -->|DbUpdateConcurrencyException| CONFLICT1[Error.Conflict<br/>Modified by another process]
     
@@ -523,8 +523,8 @@ flowchart LR
     COMBINE --> BIND{Bind}
     BIND --> DOMAIN[User.TryCreate]
     
-    ERRORS --> FAIL[Result.Failure]
-    DOMAIN --> SUCCESS[Result.Success]
+    ERRORS --> FAIL[Result.Fail]
+    DOMAIN --> SUCCESS[Result.Ok]
     
     style SUCCESS fill:#90EE90
     style FAIL fill:#FFB6C6
@@ -659,7 +659,7 @@ sequenceDiagram
         
         alt Save successful
             Database-->>Repository: Success
-            Repository-->>Controller: Result.Success()
+            Repository-->>Controller: Result.Ok()
             Controller-->>Client: 200 OK + User JSON
         else Duplicate email
             Database-->>Repository: Duplicate key error
@@ -739,7 +739,7 @@ sequenceDiagram
     ROP->>Tracer: Set Status: Error
     ROP->>Tracer: Set Error Attributes
     ROP-->>Tracer: End Span (Status: Error)
-    ROP-->>API: Result.Failure
+    ROP-->>API: Result.Fail
     
     API-->>Tracer: End Root Span
     Tracer->>Backend: Export Trace

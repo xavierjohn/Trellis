@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -34,7 +34,7 @@ public static class RecoverExtensions
             return result;
         }
 
-        var output = Result.Success(fallback);
+        var output = Result.Ok(fallback);
         output.LogActivityStatus();
         return output;
     }
@@ -61,7 +61,7 @@ public static class RecoverExtensions
             return result;
         }
 
-        var output = Result.Success(fallbackFunc());
+        var output = Result.Ok(fallbackFunc());
         output.LogActivityStatus();
         return output;
     }
@@ -88,7 +88,7 @@ public static class RecoverExtensions
             return result;
         }
 
-        var output = Result.Success(fallbackFunc(result.Error));
+        var output = Result.Ok(fallbackFunc(result.Error));
         output.LogActivityStatus();
         return output;
     }

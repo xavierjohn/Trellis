@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -37,7 +37,7 @@ public static partial class CheckExtensionsAsync
         var checkResult = await func(result.Value).ConfigureAwait(false);
         if (checkResult.IsFailure)
         {
-            var failure = Result.Failure<T>(checkResult.Error);
+            var failure = Result.Fail<T>(checkResult.Error);
             failure.LogActivityStatus();
             return failure;
         }

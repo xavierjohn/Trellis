@@ -15,7 +15,7 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 
-var result = Result.Success(42);
+var result = Result.Ok(42);
 var maybe = Maybe.From("Ada");
 
 result.Should().BeSuccess().Which.Should().Be(42);

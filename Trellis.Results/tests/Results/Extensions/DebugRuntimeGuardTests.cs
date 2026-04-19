@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using Trellis.Results.Tests.Helpers;
 
@@ -20,7 +20,7 @@ public class DebugRuntimeGuardTests
         {
             ResultDebugSettings.EnableDebugTracing = false;
 
-            var result = Result.Success("Test");
+            var result = Result.Ok("Test");
             result.Debug("should be suppressed");
 
             activityTest.CapturedActivities.Should().BeEmpty("no activity should be emitted when runtime guard is disabled");
@@ -40,7 +40,7 @@ public class DebugRuntimeGuardTests
         {
             ResultDebugSettings.EnableDebugTracing = true;
 
-            var result = Result.Success("Test");
+            var result = Result.Ok("Test");
             result.Debug("should emit");
 
             activityTest.CapturedActivities.Should().NotBeEmpty("activity should be emitted when runtime guard is enabled");
@@ -60,7 +60,7 @@ public class DebugRuntimeGuardTests
         {
             ResultDebugSettings.EnableDebugTracing = false;
 
-            var result = Result.Success("Test");
+            var result = Result.Ok("Test");
             result.DebugDetailed("should be suppressed");
 
             activityTest.CapturedActivities.Should().BeEmpty();
@@ -80,7 +80,7 @@ public class DebugRuntimeGuardTests
             ResultDebugSettings.EnableDebugTracing = false;
             var actionInvoked = false;
 
-            var result = Result.Success("Test");
+            var result = Result.Ok("Test");
             result.DebugOnSuccess(_ => actionInvoked = true);
 
             actionInvoked.Should().BeFalse("action should not be invoked when runtime guard is disabled");
@@ -100,7 +100,7 @@ public class DebugRuntimeGuardTests
             ResultDebugSettings.EnableDebugTracing = false;
             var actionInvoked = false;
 
-            var result = Result.Failure<string>(Error.Unexpected("test"));
+            var result = Result.Fail<string>(Error.Unexpected("test"));
             result.DebugOnFailure(_ => actionInvoked = true);
 
             actionInvoked.Should().BeFalse("action should not be invoked when runtime guard is disabled");

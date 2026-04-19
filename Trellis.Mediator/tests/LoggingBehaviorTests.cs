@@ -1,4 +1,4 @@
-﻿namespace Trellis.Mediator.Tests;
+namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.Logging;
 using Trellis.Mediator.Tests.Helpers;
@@ -18,7 +18,7 @@ public class LoggingBehaviorTests
         var behavior = new LoggingBehavior<TestCommand, Result<string>>(logger);
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Success("Hello, Alice!"));
+            Result.Ok("Hello, Alice!"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -43,7 +43,7 @@ public class LoggingBehaviorTests
         var behavior = new LoggingBehavior<TestCommand, Result<string>>(logger);
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Failure<string>(Error.Validation("Something failed.", "field")));
+            Result.Fail<string>(Error.Validation("Something failed.", "field")));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -67,7 +67,7 @@ public class LoggingBehaviorTests
         var behavior = new LoggingBehavior<AdminCommand, Result<string>>(logger);
         var command = new AdminCommand("data");
         var next = NextDelegate.ReturningAsync<AdminCommand, Result<string>>(
-            Result.Success("Done"));
+            Result.Ok("Done"));
 
         await behavior.Handle(command, next, CancellationToken.None);
 

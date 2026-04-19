@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -57,7 +57,7 @@ public class DebugTests : TestBase
     public void DebugDetailed_with_validation_error_returns_same_result()
     {
         var validationError = Error.Validation("Test error", "TestField");
-        Result<T> result = Result.Failure<T>(validationError);
+        Result<T> result = Result.Fail<T>(validationError);
 
         var returned = result.DebugDetailed("Validation test");
 
@@ -68,7 +68,7 @@ public class DebugTests : TestBase
     public void DebugDetailed_with_aggregate_error_returns_same_result()
     {
         var aggregateError = new AggregateError([Error1, Error2]);
-        Result<T> result = Result.Failure<T>(aggregateError);
+        Result<T> result = Result.Fail<T>(aggregateError);
 
         var returned = result.DebugDetailed("Aggregate test");
 
@@ -132,7 +132,7 @@ public class DebugTests : TestBase
     [Fact]
     public void DebugOnSuccess_with_null_action_throws_argument_null_exception()
     {
-        var result = Result.Success(T.Value1);
+        var result = Result.Ok(T.Value1);
 
         var act = () => result.DebugOnSuccess((Action<T>)null!);
 
@@ -161,9 +161,9 @@ public class DebugTests : TestBase
     [Fact]
     public void Debug_can_be_chained_with_other_operations()
     {
-        var result = Result.Success("Hello")
+        var result = Result.Ok("Hello")
             .Debug("Initial")
-            .Bind(s => Result.Success(s + " World"))
+            .Bind(s => Result.Ok(s + " World"))
             .Debug("After Bind")
             .Tap(s => s.Should().Be("Hello World"));
 
@@ -351,9 +351,9 @@ public class DebugTests : TestBase
     [Fact]
     public async Task DebugAsync_can_be_chained_with_other_async_operations()
     {
-        var result = await Task.FromResult(Result.Success("Hello"))
+        var result = await Task.FromResult(Result.Ok("Hello"))
             .DebugAsync("Initial")
-            .BindAsync(s => Task.FromResult(Result.Success(s + " World")))
+            .BindAsync(s => Task.FromResult(Result.Ok(s + " World")))
             .DebugAsync("After Bind")
             .TapAsync(s => s.Should().Be("Hello World"));
 
@@ -371,7 +371,7 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = Result.Success("Test value");
+        var result = Result.Ok("Test value");
         result.Debug("Test message");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Test message");
@@ -387,7 +387,7 @@ public class DebugTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         var error = Error.NotFound("User not found");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
         result.Debug("Error test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Error test");
@@ -403,7 +403,7 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
         result.DebugDetailed("Detailed test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Detailed test (Detailed)");
@@ -418,7 +418,7 @@ public class DebugTests : TestBase
 
         var validationError = Error.Validation("Email is required", "email")
             .And("password", "Password too short");
-        var result = Result.Failure<string>(validationError);
+        var result = Result.Fail<string>(validationError);
         result.DebugDetailed("Validation error test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Validation error test (Detailed)");
@@ -435,7 +435,7 @@ public class DebugTests : TestBase
         var error1 = Error.NotFound("User not found");
         var error2 = Error.Unauthorized("Not authorized");
         var aggregateError = new AggregateError([error1, error2]);
-        var result = Result.Failure<string>(aggregateError);
+        var result = Result.Fail<string>(aggregateError);
         result.DebugDetailed("Aggregate error test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Aggregate error test (Detailed)");
@@ -449,7 +449,7 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = Result.Success("Test");
+        var result = Result.Ok("Test");
         result.DebugWithStack("Stack test");
 
         var activity = activityTest.AssertActivityCaptured("Debug: Stack test (with stack)");
@@ -462,7 +462,7 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = Result.Success("Test");
+        var result = Result.Ok("Test");
         result.DebugWithStack("No stack test", includeStackTrace: false);
 
         var activity = activityTest.AssertActivityCaptured("Debug: No stack test (with stack)");
@@ -474,7 +474,7 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = Result.Success("Test value");
+        var result = Result.Ok("Test value");
         result.DebugOnSuccess(_ => { });
 
         var activity = activityTest.AssertActivityCapturedWithStatus("Debug: OnSuccess", ActivityStatusCode.Ok);
@@ -486,7 +486,7 @@ public class DebugTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         var error = Error.BadRequest("Invalid request");
-        var result = Result.Failure<string>(error);
+        var result = Result.Fail<string>(error);
         result.DebugOnFailure(_ => { });
 
         var activity = activityTest.AssertActivityCapturedWithStatus("Debug: OnFailure", ActivityStatusCode.Error);
@@ -498,7 +498,7 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var result = Result.Success("Test");
+        var result = Result.Ok("Test");
         result.Debug();
 
         var activity = activityTest.AssertActivityCaptured("Debug");

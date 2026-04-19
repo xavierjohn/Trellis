@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests;
+namespace Trellis.Results.Tests;
 
 using FluentAssertions;
 using Trellis.Testing;
@@ -10,7 +10,7 @@ public class MatchErrorTests
     public void MatchError_WithSuccessResult_CallsOnSuccess()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
 
         // Act
         var output = result.MatchError(
@@ -26,7 +26,7 @@ public class MatchErrorTests
     public void MatchError_WithValidationError_CallsOnValidation()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Validation("Invalid email", "email"));
+        var result = Result.Fail<int>(Error.Validation("Invalid email", "email"));
 
         // Act
         var output = result.MatchError(
@@ -44,7 +44,7 @@ public class MatchErrorTests
     public void MatchError_WithNotFoundError_CallsOnNotFound()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("User not found"));
+        var result = Result.Fail<int>(Error.NotFound("User not found"));
 
         // Act
         var output = result.MatchError(
@@ -63,7 +63,7 @@ public class MatchErrorTests
     public void MatchError_WithConflictError_CallsOnConflict()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Conflict("Email already exists"));
+        var result = Result.Fail<int>(Error.Conflict("Email already exists"));
 
         // Act
         var output = result.MatchError(
@@ -81,7 +81,7 @@ public class MatchErrorTests
     public void MatchError_WithBadRequestError_CallsOnBadRequest()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.BadRequest("Invalid request"));
+        var result = Result.Fail<int>(Error.BadRequest("Invalid request"));
 
         // Act
         var output = result.MatchError(
@@ -98,7 +98,7 @@ public class MatchErrorTests
     public void MatchError_WithUnauthorizedError_CallsOnUnauthorized()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Unauthorized("Not authenticated"));
+        var result = Result.Fail<int>(Error.Unauthorized("Not authenticated"));
 
         // Act
         var output = result.MatchError(
@@ -115,7 +115,7 @@ public class MatchErrorTests
     public void MatchError_WithForbiddenError_CallsOnForbidden()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Forbidden("Access denied"));
+        var result = Result.Fail<int>(Error.Forbidden("Access denied"));
 
         // Act
         var output = result.MatchError(
@@ -132,7 +132,7 @@ public class MatchErrorTests
     public void MatchError_WithDomainError_CallsOnDomain()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Domain("Business rule violated"));
+        var result = Result.Fail<int>(Error.Domain("Business rule violated"));
 
         // Act
         var output = result.MatchError(
@@ -149,7 +149,7 @@ public class MatchErrorTests
     public void MatchError_WithRateLimitError_CallsOnRateLimit()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.RateLimit("Too many requests"));
+        var result = Result.Fail<int>(Error.RateLimit("Too many requests"));
 
         // Act
         var output = result.MatchError(
@@ -166,7 +166,7 @@ public class MatchErrorTests
     public void MatchError_WithServiceUnavailableError_CallsOnServiceUnavailable()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.ServiceUnavailable("Service down"));
+        var result = Result.Fail<int>(Error.ServiceUnavailable("Service down"));
 
         // Act
         var output = result.MatchError(
@@ -183,7 +183,7 @@ public class MatchErrorTests
     public void MatchError_WithUnexpectedError_CallsOnUnexpected()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Unexpected("Something went wrong"));
+        var result = Result.Fail<int>(Error.Unexpected("Something went wrong"));
 
         // Act
         var output = result.MatchError(
@@ -200,7 +200,7 @@ public class MatchErrorTests
     public void MatchError_WithNoSpecificHandler_CallsOnError()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         var output = result.MatchError(
@@ -216,7 +216,7 @@ public class MatchErrorTests
     public void MatchError_WithNoHandlerForErrorType_ThrowsInvalidOperationException()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         var act = () => result.MatchError(
@@ -233,7 +233,7 @@ public class MatchErrorTests
     public void SwitchError_WithSuccessResult_CallsOnSuccess()
     {
         // Arrange
-        var result = Result.Success(42);
+        var result = Result.Ok(42);
         var output = "";
 
         // Act
@@ -250,7 +250,7 @@ public class MatchErrorTests
     public void SwitchError_WithValidationError_CallsOnValidation()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Validation("Invalid email", "email"));
+        var result = Result.Fail<int>(Error.Validation("Invalid email", "email"));
         var output = "";
 
         // Act
@@ -270,7 +270,7 @@ public class MatchErrorTests
     public void SwitchError_WithNotFoundError_CallsOnNotFound()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("User not found"));
+        var result = Result.Fail<int>(Error.NotFound("User not found"));
         var output = "";
 
         // Act
@@ -288,7 +288,7 @@ public class MatchErrorTests
     public void SwitchError_WithConflictError_CallsOnConflict()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Conflict("Already exists"));
+        var result = Result.Fail<int>(Error.Conflict("Already exists"));
         var output = "";
 
         // Act
@@ -306,7 +306,7 @@ public class MatchErrorTests
     public void SwitchError_WithBadRequestError_CallsOnBadRequest()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.BadRequest("Malformed request"));
+        var result = Result.Fail<int>(Error.BadRequest("Malformed request"));
         var output = "";
 
         // Act
@@ -324,7 +324,7 @@ public class MatchErrorTests
     public void SwitchError_WithUnauthorizedError_CallsOnUnauthorized()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Unauthorized("Not authenticated"));
+        var result = Result.Fail<int>(Error.Unauthorized("Not authenticated"));
         var output = "";
 
         // Act
@@ -342,7 +342,7 @@ public class MatchErrorTests
     public void SwitchError_WithForbiddenError_CallsOnForbidden()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Forbidden("Access denied"));
+        var result = Result.Fail<int>(Error.Forbidden("Access denied"));
         var output = "";
 
         // Act
@@ -360,7 +360,7 @@ public class MatchErrorTests
     public void SwitchError_WithDomainError_CallsOnDomain()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Domain("Business rule violated"));
+        var result = Result.Fail<int>(Error.Domain("Business rule violated"));
         var output = "";
 
         // Act
@@ -378,7 +378,7 @@ public class MatchErrorTests
     public void SwitchError_WithRateLimitError_CallsOnRateLimit()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.RateLimit("Too many requests"));
+        var result = Result.Fail<int>(Error.RateLimit("Too many requests"));
         var output = "";
 
         // Act
@@ -396,7 +396,7 @@ public class MatchErrorTests
     public void SwitchError_WithServiceUnavailableError_CallsOnServiceUnavailable()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.ServiceUnavailable("Service down"));
+        var result = Result.Fail<int>(Error.ServiceUnavailable("Service down"));
         var output = "";
 
         // Act
@@ -414,7 +414,7 @@ public class MatchErrorTests
     public void SwitchError_WithUnexpectedError_CallsOnUnexpected()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Unexpected("Something went wrong"));
+        var result = Result.Fail<int>(Error.Unexpected("Something went wrong"));
         var output = "";
 
         // Act
@@ -432,7 +432,7 @@ public class MatchErrorTests
     public void SwitchError_WithNoSpecificHandler_CallsOnError()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
         var output = "";
 
         // Act
@@ -449,7 +449,7 @@ public class MatchErrorTests
     public void SwitchError_WithNoHandlerForErrorType_ThrowsInvalidOperationException()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         var act = () => result.SwitchError(
@@ -470,7 +470,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_NotFoundError_CallsOnNotFound()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(Error.NotFound("Not found"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -500,7 +500,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_ConflictError_CallsOnConflict()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Conflict("Already exists"));
+        var result = Result.Fail<int>(Error.Conflict("Already exists"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -530,7 +530,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_BadRequestError_CallsOnBadRequest()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.BadRequest("Bad request"));
+        var result = Result.Fail<int>(Error.BadRequest("Bad request"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -560,7 +560,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_UnauthorizedError_CallsOnUnauthorized()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Unauthorized("Not authenticated"));
+        var result = Result.Fail<int>(Error.Unauthorized("Not authenticated"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -590,7 +590,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_ForbiddenError_CallsOnForbidden()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Forbidden("Access denied"));
+        var result = Result.Fail<int>(Error.Forbidden("Access denied"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -620,7 +620,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_DomainError_CallsOnDomain()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Domain("Business rule violated"));
+        var result = Result.Fail<int>(Error.Domain("Business rule violated"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -650,7 +650,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_RateLimitError_CallsOnRateLimit()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.RateLimit("Too many requests"));
+        var result = Result.Fail<int>(Error.RateLimit("Too many requests"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -680,7 +680,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_ServiceUnavailableError_CallsOnServiceUnavailable()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.ServiceUnavailable("Service down"));
+        var result = Result.Fail<int>(Error.ServiceUnavailable("Service down"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -710,7 +710,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_UnexpectedError_CallsOnUnexpected()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Unexpected("Something went wrong"));
+        var result = Result.Fail<int>(Error.Unexpected("Something went wrong"));
 
         // Act
         var output = await result.MatchErrorAsync(
@@ -740,7 +740,7 @@ public class MatchErrorTests
     public async Task MatchErrorAsync_WithAsyncHandlers_NoHandler_Throws()
     {
         // Arrange
-        var result = Result.Failure<int>(Error.Conflict("conflict"));
+        var result = Result.Fail<int>(Error.Conflict("conflict"));
 
         // Act
         var act = async () => await result.MatchErrorAsync(
@@ -764,7 +764,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithValidationError_CallsOnValidation()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.Validation("Invalid", "field")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.Validation("Invalid", "field")));
         var output = "";
 
         // Act
@@ -795,7 +795,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithConflictError_CallsOnConflict()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.Conflict("Already exists")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.Conflict("Already exists")));
         var output = "";
 
         // Act
@@ -826,7 +826,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithBadRequestError_CallsOnBadRequest()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.BadRequest("Bad request")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.BadRequest("Bad request")));
         var output = "";
 
         // Act
@@ -857,7 +857,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithUnauthorizedError_CallsOnUnauthorized()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.Unauthorized("Not authenticated")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.Unauthorized("Not authenticated")));
         var output = "";
 
         // Act
@@ -888,7 +888,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithForbiddenError_CallsOnForbidden()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.Forbidden("Access denied")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.Forbidden("Access denied")));
         var output = "";
 
         // Act
@@ -919,7 +919,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithDomainError_CallsOnDomain()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.Domain("Business rule violated")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.Domain("Business rule violated")));
         var output = "";
 
         // Act
@@ -950,7 +950,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithRateLimitError_CallsOnRateLimit()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.RateLimit("Too many requests")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.RateLimit("Too many requests")));
         var output = "";
 
         // Act
@@ -981,7 +981,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithServiceUnavailableError_CallsOnServiceUnavailable()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.ServiceUnavailable("Service down")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.ServiceUnavailable("Service down")));
         var output = "";
 
         // Act
@@ -1012,7 +1012,7 @@ public class MatchErrorTests
     public async Task SwitchErrorAsync_WithUnexpectedError_CallsOnUnexpected()
     {
         // Arrange
-        var resultTask = Task.FromResult(Result.Failure<int>(Error.Unexpected("Something went wrong")));
+        var resultTask = Task.FromResult(Result.Fail<int>(Error.Unexpected("Something went wrong")));
         var output = "";
 
         // Act

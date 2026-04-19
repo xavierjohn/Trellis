@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Results.Extensions;
+namespace Trellis.Results.Tests.Results.Extensions;
 
 using System.Diagnostics;
 using Trellis.Results.Tests.Helpers;
@@ -20,7 +20,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = result.Tap((a, b) => { /* side effect */ });
@@ -35,7 +35,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Validation("Validation failed"));
+        var result = Result.Fail<(int, string)>(Error.Validation("Validation failed"));
 
         // Act
         var actual = result.Tap((a, b) => { /* should not execute */ });
@@ -50,7 +50,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         var actual = result
@@ -73,7 +73,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success(("text", 123));
+        var result = Result.Ok(("text", 123));
 
         // Act
         var actual = result.Tap((str, num) => { /* Log values */ });
@@ -92,7 +92,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Task.FromResult(Result.Success((42, "hello")));
+        var result = Task.FromResult(Result.Ok((42, "hello")));
 
         // Act
         await result.TapAsync((a, b) => { });
@@ -106,7 +106,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         await result.TapAsync((a, b) => Task.CompletedTask);
@@ -120,7 +120,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, string)>(Error.Unexpected("Error"));
+        var result = Result.Fail<(int, string)>(Error.Unexpected("Error"));
 
         // Act
         await result.TapAsync((a, b) => Task.CompletedTask);
@@ -134,7 +134,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         await result.TapAsync((a, b) => ValueTask.CompletedTask);
@@ -152,7 +152,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, "two", true));
+        var result = Result.Ok((1, "two", true));
 
         // Act
         result.Tap((a, b, c) => { });
@@ -166,7 +166,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, 2, 3, 4));
+        var result = Result.Ok((1, 2, 3, 4));
 
         // Act
         result.Tap((a, b, c, d) => { });
@@ -180,7 +180,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, 2, 3, 4, 5));
+        var result = Result.Ok((1, 2, 3, 4, 5));
 
         // Act
         result.Tap((a, b, c, d, e) => { });
@@ -194,7 +194,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((1, 2, 3, 4, 5, 6, 7, 8, 9));
+        var result = Result.Ok((1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         // Act
         result.Tap((a, b, c, d, e, f, g, h, i) => { });
@@ -208,7 +208,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Failure<(int, int, int, int, int, int, int, int, int)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, int, int, int, int, int, int, int, int)>(Error.NotFound("Not found"));
 
         // Act
         result.Tap((a, b, c, d, e, f, g, h, i) => { });
@@ -228,8 +228,8 @@ public class TapTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("John")
-            .Combine(Result.Success("Doe"))
+        var result = Result.Ok("John")
+            .Combine(Result.Ok("Doe"))
             .Tap((first, last) => { /* Log full name */ });
 
         // Assert
@@ -249,10 +249,10 @@ public class TapTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("user@example.com")
-            .Combine(Result.Success("John"))
+        var result = Result.Ok("user@example.com")
+            .Combine(Result.Ok("John"))
             .Tap((email, name) => { /* Log user creation */ })
-            .Bind((email, name) => Result.Success($"{name} <{email}>"));
+            .Bind((email, name) => Result.Ok($"{name} <{email}>"));
 
         // Assert
         result.Should().BeSuccess();
@@ -270,9 +270,9 @@ public class TapTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("user@example.com")
-            .Combine(Result.Success("John"))
-            .Combine(Result.Success("Doe"))
+        var result = Result.Ok("user@example.com")
+            .Combine(Result.Ok("John"))
+            .Combine(Result.Ok("Doe"))
             .Tap((email, first, last) => { /* Log complete user */ });
 
         // Assert
@@ -290,8 +290,8 @@ public class TapTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("John")
-            .Combine(Result.Success("Doe"))
+        var result = Result.Ok("John")
+            .Combine(Result.Ok("Doe"))
             .Tap((first, last) => { /* Log before match */ })
             .Match(
                 onSuccess: (first, last) => $"{first} {last}",
@@ -312,8 +312,8 @@ public class TapTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Success("valid")
-            .Combine(Result.Failure<string>(Error.Validation("Invalid")))
+        var result = Result.Ok("valid")
+            .Combine(Result.Fail<string>(Error.Validation("Invalid")))
             .Tap((a, b) => { /* Should not execute */ });
 
         // Assert
@@ -330,10 +330,10 @@ public class TapTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = await Result.Success("user@example.com")
-            .Combine(Result.Success("password123"))
+        var result = await Result.Ok("user@example.com")
+            .Combine(Result.Ok("password123"))
             .TapAsync((email, password) => Task.CompletedTask)
-            .BindAsync((email, password) => Task.FromResult(Result.Success($"User_{email}")))
+            .BindAsync((email, password) => Task.FromResult(Result.Ok($"User_{email}")))
             .TapAsync(userId => Task.CompletedTask);
 
         // Assert
@@ -357,7 +357,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         result.Tap((a, b) => { });
@@ -372,7 +372,7 @@ public class TapTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Success((42, "hello"));
+        var result = Result.Ok((42, "hello"));
 
         // Act
         result

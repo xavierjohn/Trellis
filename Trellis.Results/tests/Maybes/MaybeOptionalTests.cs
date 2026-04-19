@@ -1,4 +1,4 @@
-﻿namespace Trellis.Results.Tests.Maybes;
+namespace Trellis.Results.Tests.Maybes;
 
 using Trellis;
 
@@ -17,7 +17,7 @@ public class MaybeOptionalTests
         string? nullString = null;
 
         // Act
-        var result = Maybe.Optional(nullString, str => Result.Success(str.ToUpperInvariant()));
+        var result = Maybe.Optional(nullString, str => Result.Ok(str.ToUpperInvariant()));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -31,7 +31,7 @@ public class MaybeOptionalTests
         int? nullInt = null;
 
         // Act - Return a non-nullable wrapper type
-        var result = Maybe.Optional<int, WrappedInt>(nullInt, num => Result.Success(new WrappedInt(num * 2)));
+        var result = Maybe.Optional<int, WrappedInt>(nullInt, num => Result.Ok(new WrappedInt(num * 2)));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -45,7 +45,7 @@ public class MaybeOptionalTests
         Guid? nullGuid = null;
 
         // Act
-        var result = Maybe.Optional<Guid, string>(nullGuid, g => Result.Success(g.ToString()));
+        var result = Maybe.Optional<Guid, string>(nullGuid, g => Result.Ok(g.ToString()));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -63,7 +63,7 @@ public class MaybeOptionalTests
         string? value = "hello";
 
         // Act
-        var result = Maybe.Optional(value, str => Result.Success(str.ToUpperInvariant()));
+        var result = Maybe.Optional(value, str => Result.Ok(str.ToUpperInvariant()));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -78,7 +78,7 @@ public class MaybeOptionalTests
         int? value = 21;
 
         // Act - Return a non-nullable wrapper type
-        var result = Maybe.Optional<int, WrappedInt>(value, num => Result.Success(new WrappedInt(num * 2)));
+        var result = Maybe.Optional<int, WrappedInt>(value, num => Result.Ok(new WrappedInt(num * 2)));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -94,7 +94,7 @@ public class MaybeOptionalTests
         Guid? value = guid;
 
         // Act
-        var result = Maybe.Optional<Guid, string>(value, g => Result.Success(g.ToString()));
+        var result = Maybe.Optional<Guid, string>(value, g => Result.Ok(g.ToString()));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -114,7 +114,7 @@ public class MaybeOptionalTests
         var expectedError = Error.Validation("Value is invalid", "field");
 
         // Act
-        var result = Maybe.Optional(value, str => Result.Failure<string>(expectedError));
+        var result = Maybe.Optional(value, str => Result.Fail<string>(expectedError));
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -131,8 +131,8 @@ public class MaybeOptionalTests
         // Act
         var result = Maybe.Optional<int, WrappedInt>(value, num =>
             num > 0
-                ? Result.Success(new WrappedInt(num))
-                : Result.Failure<WrappedInt>(expectedError));
+                ? Result.Ok(new WrappedInt(num))
+                : Result.Fail<WrappedInt>(expectedError));
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -152,8 +152,8 @@ public class MaybeOptionalTests
         // Act - Use custom validation function
         var result = Maybe.Optional(email, str =>
             str.Contains('@')
-                ? Result.Success(str.ToLowerInvariant())
-                : Result.Failure<string>(Error.Validation("Invalid email")));
+                ? Result.Ok(str.ToLowerInvariant())
+                : Result.Fail<string>(Error.Validation("Invalid email")));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -170,8 +170,8 @@ public class MaybeOptionalTests
         // Act
         var result = Maybe.Optional(email, str =>
             str.Contains('@')
-                ? Result.Success(str.ToLowerInvariant())
-                : Result.Failure<string>(Error.Validation("Invalid email")));
+                ? Result.Ok(str.ToLowerInvariant())
+                : Result.Fail<string>(Error.Validation("Invalid email")));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -187,8 +187,8 @@ public class MaybeOptionalTests
         // Act
         var result = Maybe.Optional(email, str =>
             str.Contains('@')
-                ? Result.Success(str.ToLowerInvariant())
-                : Result.Failure<string>(Error.Validation("Invalid email")));
+                ? Result.Ok(str.ToLowerInvariant())
+                : Result.Fail<string>(Error.Validation("Invalid email")));
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -207,8 +207,8 @@ public class MaybeOptionalTests
         string? middleName = "Xavier";
 
         // Act
-        var result = Result.Success(firstName)
-            .Combine(Maybe.Optional(middleName, name => Result.Success(name.ToUpperInvariant())));
+        var result = Result.Ok(firstName)
+            .Combine(Maybe.Optional(middleName, name => Result.Ok(name.ToUpperInvariant())));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -226,8 +226,8 @@ public class MaybeOptionalTests
         string? middleName = null;
 
         // Act
-        var result = Result.Success(firstName)
-            .Combine(Maybe.Optional(middleName, name => Result.Success(name.ToUpperInvariant())));
+        var result = Result.Ok(firstName)
+            .Combine(Maybe.Optional(middleName, name => Result.Ok(name.ToUpperInvariant())));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -245,8 +245,8 @@ public class MaybeOptionalTests
         var validationError = Error.Validation("Invalid value", "field");
 
         // Act
-        var result = Result.Success(firstName)
-            .Combine(Maybe.Optional(invalidValue, _ => Result.Failure<string>(validationError)));
+        var result = Result.Ok(firstName)
+            .Combine(Maybe.Optional(invalidValue, _ => Result.Fail<string>(validationError)));
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -268,7 +268,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(emptyString, str =>
         {
             functionInvoked = true;
-            return Result.Success(str);
+            return Result.Ok(str);
         });
 
         // Assert
@@ -289,7 +289,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<Guid, string>(defaultGuid, g =>
         {
             functionInvoked = true;
-            return Result.Success(g.ToString());
+            return Result.Ok(g.ToString());
         });
 
         // Assert
@@ -308,7 +308,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<int, WrappedInt>(zero, num =>
         {
             functionInvoked = true;
-            return Result.Success(new WrappedInt(num));
+            return Result.Ok(new WrappedInt(num));
         });
 
         // Assert

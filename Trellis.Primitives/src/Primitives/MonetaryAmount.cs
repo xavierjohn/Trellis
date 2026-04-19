@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives;
+namespace Trellis.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
@@ -41,7 +41,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (value < 0)
-            return Result.Failure<MonetaryAmount>(Error.Validation("Amount cannot be negative.", field));
+            return Result.Fail<MonetaryAmount>(Error.Validation("Amount cannot be negative.", field));
 
         var rounded = Math.Round(value, DefaultDecimalPlaces, MidpointRounding.AwayFromZero);
         return new MonetaryAmount(rounded);
@@ -57,7 +57,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (value is null)
-            return Result.Failure<MonetaryAmount>(Error.Validation("Amount is required.", field));
+            return Result.Fail<MonetaryAmount>(Error.Validation("Amount is required.", field));
 
         return TryCreate(value.Value, fieldName);
     }
@@ -74,10 +74,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<MonetaryAmount>(Error.Validation("Amount is required.", field));
+            return Result.Fail<MonetaryAmount>(Error.Validation("Amount is required.", field));
 
         if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Failure<MonetaryAmount>(Error.Validation("Amount must be a valid decimal.", field));
+            return Result.Fail<MonetaryAmount>(Error.Validation("Amount must be a valid decimal.", field));
 
         return TryCreate(parsed, fieldName);
     }
@@ -95,10 +95,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Failure<MonetaryAmount>(Error.Validation("Amount is required.", field));
+            return Result.Fail<MonetaryAmount>(Error.Validation("Amount is required.", field));
 
         if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Failure<MonetaryAmount>(Error.Validation("Amount must be a valid decimal.", field));
+            return Result.Fail<MonetaryAmount>(Error.Validation("Amount must be a valid decimal.", field));
 
         return TryCreate(parsed, fieldName);
     }
@@ -107,36 +107,36 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     public Result<MonetaryAmount> Add(MonetaryAmount other)
     {
         try { return TryCreate(Value + other.Value); }
-        catch (OverflowException) { return Result.Failure<MonetaryAmount>(Error.Validation("Addition would overflow.", "amount")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.Validation("Addition would overflow.", "amount")); }
     }
 
     /// <summary>Subtracts a monetary amount. Fails if result would be negative.</summary>
     public Result<MonetaryAmount> Subtract(MonetaryAmount other)
     {
         try { return TryCreate(Value - other.Value); }
-        catch (OverflowException) { return Result.Failure<MonetaryAmount>(Error.Validation("Subtraction would overflow.", "amount")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.Validation("Subtraction would overflow.", "amount")); }
     }
 
     /// <summary>Multiplies by a non-negative integer quantity.</summary>
     public Result<MonetaryAmount> Multiply(int quantity)
     {
         if (quantity < 0)
-            return Result.Failure<MonetaryAmount>(
+            return Result.Fail<MonetaryAmount>(
                 Error.Validation("Quantity cannot be negative.", nameof(quantity)));
 
         try { return TryCreate(Value * quantity); }
-        catch (OverflowException) { return Result.Failure<MonetaryAmount>(Error.Validation("Multiplication would overflow.", "amount")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.Validation("Multiplication would overflow.", "amount")); }
     }
 
     /// <summary>Multiplies by a non-negative decimal multiplier.</summary>
     public Result<MonetaryAmount> Multiply(decimal multiplier)
     {
         if (multiplier < 0)
-            return Result.Failure<MonetaryAmount>(
+            return Result.Fail<MonetaryAmount>(
                 Error.Validation("Multiplier cannot be negative.", nameof(multiplier)));
 
         try { return TryCreate(Value * multiplier); }
-        catch (OverflowException) { return Result.Failure<MonetaryAmount>(Error.Validation("Multiplication would overflow.", "amount")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.Validation("Multiplication would overflow.", "amount")); }
     }
 
     /// <inheritdoc/>
@@ -190,6 +190,6 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
             total = addResult.Value;
         }
 
-        return Result.Success(total);
+        return Result.Ok(total);
     }
 }

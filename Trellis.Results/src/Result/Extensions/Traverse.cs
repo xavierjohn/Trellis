@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System.Diagnostics;
 
@@ -53,13 +53,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
+                return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IReadOnlyList<TOut>>(results);
+        return Result.Ok<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -88,13 +88,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
+                return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IReadOnlyList<TOut>>(results);
+        return Result.Ok<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -126,13 +126,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
+                return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IReadOnlyList<TOut>>(results);
+        return Result.Ok<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -161,13 +161,13 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
+                return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IReadOnlyList<TOut>>(results);
+        return Result.Ok<IReadOnlyList<TOut>>(results);
     }
 
     /// <summary>
@@ -199,12 +199,12 @@ public static class TraverseExtensions
             if (result.IsFailure)
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
-                return Result.Failure<IReadOnlyList<TOut>>(result.Error);
+                return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
             results.Add(result.Value);
         }
 
-        return Result.Success<IReadOnlyList<TOut>>(results);
+        return Result.Ok<IReadOnlyList<TOut>>(results);
     }
 }

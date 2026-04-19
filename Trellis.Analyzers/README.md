@@ -13,11 +13,11 @@ dotnet add package Trellis.Analyzers
 ```csharp
 using Trellis;
 
-Result<int> Parse(string text) => Result.Success(text.Length);
+Result<int> Parse(string text) => Result.Ok(text.Length);
 
 // TRLS002 recommends Bind instead of Map when the lambda returns Result<T>.
 var result = Parse("abc")
-    .Bind(length => Result.Success(length + 1));
+    .Bind(length => Result.Ok(length + 1));
 ```
 
 ## Key Features

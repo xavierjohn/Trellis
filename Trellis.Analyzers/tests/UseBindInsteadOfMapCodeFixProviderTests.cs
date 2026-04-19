@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
@@ -20,7 +20,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Result<int> Validate(int x) =>
-                    x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive"));
+                    x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive"));
             }
             """;
 
@@ -33,7 +33,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Result<int> Validate(int x) =>
-                    x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive"));
+                    x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive"));
             }
             """;
 
@@ -57,7 +57,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Task<Result<int>> ValidateAsync(int x) =>
-                    Task.FromResult(x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive")));
+                    Task.FromResult(x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive")));
             }
             """;
 
@@ -70,7 +70,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Task<Result<int>> ValidateAsync(int x) =>
-                    Task.FromResult(x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive")));
+                    Task.FromResult(x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive")));
             }
             """;
 
@@ -94,7 +94,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Result<int> Validate(int x) =>
-                    x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive"));
+                    x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive"));
             }
             """;
 
@@ -107,7 +107,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Result<int> Validate(int x) =>
-                    x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive"));
+                    x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive"));
             }
             """;
 
@@ -132,7 +132,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Result<int> Validate(int x) =>
-                    x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive"));
+                    x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive"));
             }
             """;
 
@@ -146,7 +146,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 }
 
                 private Result<int> Validate(int x) =>
-                    x > 0 ? Result.Success(x) : Result.Failure<int>(Error.Validation("Must be positive"));
+                    x > 0 ? Result.Ok(x) : Result.Fail<int>(Error.Validation("Must be positive"));
             }
             """;
 
