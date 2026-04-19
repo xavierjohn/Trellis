@@ -20,19 +20,13 @@ public static class StringExtensions
     /// Parses a string value using the specified <see cref="IScalarValue{TSelf, TPrimitive}"/> factory.
     /// Throws <see cref="FormatException"/> if the value is invalid.
     /// </summary>
-    public static T ParseScalarValue<T>(string? s) where T : class, IScalarValue<T, string>
-    {
-        var r = T.TryCreate(s!);
-        if (r.IsFailure)
-        {
-            if (r.Error is ValidationError val && val.FieldErrors.Length > 0 && val.FieldErrors[0].Details.Length > 0)
-                throw new FormatException(val.FieldErrors[0].Details[0]);
-
-            throw new FormatException(r.Error.Detail);
-        }
-
-        return r.Value;
-    }
+    public static T ParseScalarValue<T>(string? s) where T : class, IScalarValue<T, string> =>
+        T.TryCreate(s!).Match(
+            onSuccess: value => value,
+            onFailure: error => throw new FormatException(
+                error is ValidationError val && val.FieldErrors.Length > 0 && val.FieldErrors[0].Details.Length > 0
+                    ? val.FieldErrors[0].Details[0]
+                    : error.Detail));
 
     /// <summary>
     /// Tries to parse a string value using the specified <see cref="IScalarValue{TSelf, TPrimitive}"/> factory.
@@ -40,14 +34,14 @@ public static class StringExtensions
     public static bool TryParseScalarValue<T>([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out T result) where T : class, IScalarValue<T, string>
     {
         var r = T.TryCreate(s!);
-        if (r.IsFailure)
+        if (r.TryGetValue(out var value))
         {
-            result = default;
-            return false;
+            result = value;
+            return true;
         }
 
-        result = r.Value;
-        return true;
+        result = default;
+        return false;
     }
 
     /// <summary>

@@ -10,9 +10,9 @@
 public interface IResult<TValue> : IResult
 {
     /// <summary>
-    /// Gets the success value if this result represents success.
+    /// Attempts to get the success value without throwing.
     /// </summary>
-    /// <value>The value of type <typeparamref name="TValue"/>.</value>
-    /// <exception cref="InvalidOperationException">Thrown when accessed on a failed result.</exception>
-    TValue Value { get; }
+    /// <param name="value">When this method returns true, contains the success value; otherwise, the default value.</param>
+    /// <returns>True if the result is successful; otherwise false.</returns>
+    bool TryGetValue(out TValue value);
 }

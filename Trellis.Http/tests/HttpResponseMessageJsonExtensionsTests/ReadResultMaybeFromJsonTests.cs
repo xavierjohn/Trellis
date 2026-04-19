@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Trellis;
+using Trellis.Testing;
 
 public class ReadResultMaybeFromJsonTests
 {
@@ -29,7 +30,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        var maybePerson = result.Value;
+        var maybePerson = result.Unwrap();
         maybePerson.HasValue.Should().BeTrue();
         maybePerson.Value.firstName.Should().Be("Xavier");
         maybePerson.Value.age.Should().Be(50);
@@ -65,7 +66,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Be("HTTP response is in a failed state for value camelcasePerson. Status code: BadGateway.");
+        result.UnwrapError().Detail.Should().Be("HTTP response is in a failed state for value camelcasePerson. Status code: BadGateway.");
     }
 
     [Fact]
@@ -82,7 +83,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasNoValue.Should().BeTrue();
+        result.Unwrap().HasNoValue.Should().BeTrue();
     }
 
     [Fact]
@@ -116,7 +117,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        var maybePerson = result.Value;
+        var maybePerson = result.Unwrap();
         maybePerson.HasValue.Should().BeTrue();
         if (propertyNameCaseInsensitive)
         {
@@ -145,7 +146,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        var maybePerson = result.Value;
+        var maybePerson = result.Unwrap();
         maybePerson.Value.firstName.Should().Be("Xavier");
         maybePerson.Value.age.Should().Be(50);
     }
@@ -164,7 +165,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        Maybe<camelcasePerson> maybePerson = result.Value;
+        Maybe<camelcasePerson> maybePerson = result.Unwrap();
         maybePerson.HasValue.Should().BeFalse();
     }
 
@@ -184,7 +185,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasNoValue.Should().BeTrue();
+        result.Unwrap().HasNoValue.Should().BeTrue();
     }
 
     [Fact]
@@ -203,7 +204,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasNoValue.Should().BeTrue();
+        result.Unwrap().HasNoValue.Should().BeTrue();
     }
 
     [Theory]
@@ -224,7 +225,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasNoValue.Should().BeTrue();
+        result.Unwrap().HasNoValue.Should().BeTrue();
     }
 
     [Fact]
@@ -243,7 +244,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasNoValue.Should().BeTrue();
+        result.Unwrap().HasNoValue.Should().BeTrue();
     }
 
     [Fact]
@@ -263,7 +264,7 @@ public class ReadResultMaybeFromJsonTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         _callbackCalled.Should().BeFalse();
-        var maybePerson = result.Value;
+        var maybePerson = result.Unwrap();
         maybePerson.HasValue.Should().BeTrue();
         maybePerson.Value.firstName.Should().Be("Chris");
         maybePerson.Value.age.Should().Be(18);
@@ -298,7 +299,7 @@ public class ReadResultMaybeFromJsonTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         _callbackCalled.Should().BeFalse();
-        var maybePerson = result.Value;
+        var maybePerson = result.Unwrap();
         maybePerson.HasValue.Should().BeTrue();
         maybePerson.Value.firstName.Should().Be("Chris");
         maybePerson.Value.age.Should().Be(18);
@@ -322,8 +323,8 @@ public class ReadResultMaybeFromJsonTests
         // Assert
         result.IsFailure.Should().BeTrue();
         _callbackCalled.Should().BeTrue();
-        result.Error.Should().BeOfType<NotFoundError>();
-        result.Error.Detail.Should().Be("Bad request");
+        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Detail.Should().Be("Bad request");
     }
 
     [Fact]
@@ -345,8 +346,8 @@ public class ReadResultMaybeFromJsonTests
         // Assert
         result.IsFailure.Should().BeTrue();
         _callbackCalled.Should().BeTrue();
-        result.Error.Should().BeOfType<NotFoundError>();
-        result.Error.Detail.Should().Be("Bad request");
+        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Detail.Should().Be("Bad request");
     }
 
     [Fact]
@@ -364,7 +365,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        var maybePerson = result.Value;
+        var maybePerson = result.Unwrap();
         maybePerson.HasValue.Should().BeTrue();
         maybePerson.Value.firstName.Should().Be("Anna");
         maybePerson.Value.age.Should().Be(25);
@@ -382,7 +383,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.UnwrapError().Should().Be(error);
     }
 
     [Fact]
@@ -400,7 +401,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        var maybePerson = result.Value;
+        var maybePerson = result.Unwrap();
         maybePerson.HasValue.Should().BeTrue();
         maybePerson.Value.firstName.Should().Be("Bob");
         maybePerson.Value.age.Should().Be(30);
@@ -418,7 +419,7 @@ public class ReadResultMaybeFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.UnwrapError().Should().Be(error);
     }
 
     private Task<Error> CallbackFailedStatusCode(HttpResponseMessage response, string context, CancellationToken cancellationToken)

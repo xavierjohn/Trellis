@@ -1,6 +1,7 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="IFormattableScalarValue{TSelf, TPrimitive}"/> interface
@@ -37,7 +38,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1234.56m);
+        result.Unwrap().Value.Should().Be(1234.56m);
     }
 
     [Fact]
@@ -48,7 +49,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1234.56m);
+        result.Unwrap().Value.Should().Be(1234.56m);
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("price");
     }
 
@@ -104,7 +105,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1234.56m);
+        result.Unwrap().Value.Should().Be(1234.56m);
     }
 
     #endregion
@@ -119,7 +120,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(25);
+        result.Unwrap().Value.Should().Be(25);
     }
 
     [Fact]
@@ -130,7 +131,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(25);
+        result.Unwrap().Value.Should().Be(25);
     }
 
     [Fact]
@@ -178,7 +179,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(50.5m);
+        result.Unwrap().Value.Should().Be(50.5m);
     }
 
     [Fact]
@@ -189,7 +190,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(50.5m);
+        result.Unwrap().Value.Should().Be(50.5m);
     }
 
     [Fact]
@@ -200,7 +201,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(50.5m);
+        result.Unwrap().Value.Should().Be(50.5m);
     }
 
     [Fact]
@@ -239,7 +240,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(29.99m);
+        result.Unwrap().Value.Should().Be(29.99m);
     }
 
     [Fact]
@@ -252,7 +253,7 @@ public class IFormattableScalarValueTests
 
         // Assert — InvariantCulture misinterprets "29,99" as 2999
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(2999m);
+        result.Unwrap().Value.Should().Be(2999m);
     }
 
     [Fact]
@@ -266,7 +267,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(29.99m);
+        result.Unwrap().Value.Should().Be(29.99m);
     }
 
     [Fact]
@@ -280,7 +281,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1234.56m);
+        result.Unwrap().Value.Should().Be(1234.56m);
     }
 
     #endregion
@@ -299,7 +300,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(42);
+        result.Unwrap().Value.Should().Be(42);
     }
 
     [Fact]
@@ -332,7 +333,7 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(12345L);
+        result.Unwrap().Value.Should().Be(12345L);
     }
 
     [Fact]
@@ -365,9 +366,9 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Year.Should().Be(2026);
-        result.Value.Value.Month.Should().Be(3);
-        result.Value.Value.Day.Should().Be(28);
+        result.Unwrap().Value.Year.Should().Be(2026);
+        result.Unwrap().Value.Month.Should().Be(3);
+        result.Unwrap().Value.Day.Should().Be(28);
     }
 
     [Fact]
@@ -381,9 +382,9 @@ public class IFormattableScalarValueTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Year.Should().Be(2026);
-        result.Value.Value.Month.Should().Be(3);
-        result.Value.Value.Day.Should().Be(28);
+        result.Unwrap().Value.Year.Should().Be(2026);
+        result.Unwrap().Value.Month.Should().Be(3);
+        result.Unwrap().Value.Day.Should().Be(28);
     }
 
     #endregion

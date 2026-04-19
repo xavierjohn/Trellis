@@ -121,19 +121,10 @@ public static class HttpResultExtensions
     ///         .ToHttpResultAsync());
     /// </code>
     /// </example>
-    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TValue>(this Result<TValue> result, TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-        {
-            // If TValue is Unit, return 204 No Content
-            if (typeof(TValue) == typeof(Unit))
-                return Results.NoContent();
-
-            return Results.Ok(result.Value);
-        }
-
-        return result.Error.ToHttpResult(options);
-    }
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TValue>(this Result<TValue> result, TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: value => typeof(TValue) == typeof(Unit) ? Results.NoContent() : Results.Ok(value),
+            onFailure: error => error.ToHttpResult(options));
 
     /// <summary>
     /// Converts a domain <see cref="Error"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/> with appropriate HTTP status code and Problem Details format.
@@ -368,13 +359,10 @@ public static class HttpResultExtensions
         this Result<TValue> result,
         string routeName,
         Func<TValue, RouteValueDictionary> routeValues,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-            return Results.CreatedAtRoute(routeName, routeValues(result.Value), result.Value);
-
-        return result.Error.ToHttpResult(options);
-    }
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: value => Results.CreatedAtRoute(routeName, routeValues(value), value),
+            onFailure: error => error.ToHttpResult(options));
 
     /// <summary>
     /// Converts a <see cref="Result{TValue}"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/> that returns
@@ -411,16 +399,10 @@ public static class HttpResultExtensions
         string routeName,
         Func<TValue, RouteValueDictionary> routeValues,
         Func<TValue, TOut> map,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-        {
-            var value = map(result.Value);
-            return Results.CreatedAtRoute(routeName, routeValues(result.Value), value);
-        }
-
-        return result.Error.ToHttpResult(options);
-    }
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: inValue => Results.CreatedAtRoute(routeName, routeValues(inValue), map(inValue)),
+            onFailure: error => error.ToHttpResult(options));
 
     #region RFC 9110 — Metadata-Aware Response (Minimal API)
 
@@ -434,31 +416,29 @@ public static class HttpResultExtensions
         HttpContext httpContext,
         Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-        {
-            var metadata = metadataSelector(result.Value);
-            ActionResultExtensions.ApplyMetadataHeaders(httpContext.Response, metadata);
-
-            var method = httpContext.Request.Method;
-            if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: inValue =>
             {
-                return ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata) switch
+                var metadata = metadataSelector(inValue);
+                ActionResultExtensions.ApplyMetadataHeaders(httpContext.Response, metadata);
+
+                var method = httpContext.Request.Method;
+                if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
                 {
-                    ConditionalDecision.NotModified => Results.StatusCode(StatusCodes.Status304NotModified),
-                    ConditionalDecision.PreconditionFailed =>
-                        Error.PreconditionFailed("A conditional request header evaluated to false.")
-                            .ToHttpResult(options),
-                    _ => Results.Ok(map(result.Value)),
-                };
-            }
+                    return ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata) switch
+                    {
+                        ConditionalDecision.NotModified => Results.StatusCode(StatusCodes.Status304NotModified),
+                        ConditionalDecision.PreconditionFailed =>
+                            Error.PreconditionFailed("A conditional request header evaluated to false.")
+                                .ToHttpResult(options),
+                        _ => Results.Ok(map(inValue)),
+                    };
+                }
 
-            return Results.Ok(map(result.Value));
-        }
-
-        return result.Error.ToHttpResult(options);
-    }
+                return Results.Ok(map(inValue));
+            },
+            onFailure: error => error.ToHttpResult(options));
 
     #endregion
 
@@ -474,18 +454,15 @@ public static class HttpResultExtensions
         Func<TIn, string> uriSelector,
         Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-        {
-            var metadata = metadataSelector(result.Value);
-            ActionResultExtensions.ApplyMetadataHeaders(httpContext.Response, metadata);
-
-            return Results.Created(uriSelector(result.Value), map(result.Value));
-        }
-
-        return result.Error.ToHttpResult(options);
-    }
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: inValue =>
+            {
+                var metadata = metadataSelector(inValue);
+                ActionResultExtensions.ApplyMetadataHeaders(httpContext.Response, metadata);
+                return Results.Created(uriSelector(inValue), map(inValue));
+            },
+            onFailure: error => error.ToHttpResult(options));
 
     #endregion
 
@@ -508,30 +485,28 @@ public static class HttpResultExtensions
         long from,
         long to,
         long totalLength,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-        {
-            // If TValue is Unit, return 204 No Content
-            if (typeof(TValue) == typeof(Unit))
-                return Results.NoContent();
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: value =>
+            {
+                // If TValue is Unit, return 204 No Content
+                if (typeof(TValue) == typeof(Unit))
+                    return Results.NoContent();
 
-            // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
-            if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
-                return Results.Ok(result.Value);
+                // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
+                if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
+                    return Results.Ok(value);
 
-            // Clamp to against totalLength to prevent ContentRangeHeaderValue from throwing
-            var clampedTo = Math.Min(to, totalLength - 1);
+                // Clamp to against totalLength to prevent ContentRangeHeaderValue from throwing
+                var clampedTo = Math.Min(to, totalLength - 1);
 
-            var isCompleteRange = from == 0 && clampedTo == totalLength - 1;
-            if (!isCompleteRange)
-                return new PartialContentHttpResult(from, clampedTo, totalLength, Results.Ok(result.Value));
+                var isCompleteRange = from == 0 && clampedTo == totalLength - 1;
+                if (!isCompleteRange)
+                    return new PartialContentHttpResult(from, clampedTo, totalLength, Results.Ok(value));
 
-            return Results.Ok(result.Value);
-        }
-
-        return result.Error.ToHttpResult(options);
-    }
+                return Results.Ok(value);
+            },
+            onFailure: error => error.ToHttpResult(options));
 
     /// <summary>
     /// Converts a <see cref="Result{TIn}"/> to a Minimal API <see cref="Microsoft.AspNetCore.Http.IResult"/>
@@ -549,28 +524,26 @@ public static class HttpResultExtensions
         this Result<TIn> result,
         Func<TIn, System.Net.Http.Headers.ContentRangeHeaderValue> funcRange,
         Func<TIn, TOut> funcValue,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsSuccess)
-        {
-            var contentRange = funcRange(result.Value);
-            var value = funcValue(result.Value);
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: inValue =>
+            {
+                var contentRange = funcRange(inValue);
+                var value = funcValue(inValue);
 
-            if (contentRange.From is null || contentRange.To is null)
+                if (contentRange.From is null || contentRange.To is null)
+                    return Results.Ok(value);
+
+                if (contentRange.Length is null)
+                    return new PartialContentHttpResult(contentRange, Results.Ok(value));
+
+                var isCompleteRange = contentRange.From == 0 && contentRange.To == contentRange.Length - 1;
+                if (!isCompleteRange)
+                    return new PartialContentHttpResult(contentRange, Results.Ok(value));
+
                 return Results.Ok(value);
-
-            if (contentRange.Length is null)
-                return new PartialContentHttpResult(contentRange, Results.Ok(value));
-
-            var isCompleteRange = contentRange.From == 0 && contentRange.To == contentRange.Length - 1;
-            if (!isCompleteRange)
-                return new PartialContentHttpResult(contentRange, Results.Ok(value));
-
-            return Results.Ok(value);
-        }
-
-        return result.Error.ToHttpResult(options);
-    }
+            },
+            onFailure: error => error.ToHttpResult(options));
 
     #endregion
 
@@ -594,14 +567,10 @@ public static class HttpResultExtensions
         HttpContext httpContext,
         RepresentationMetadata? metadata,
         Func<TIn, TOut> map,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsFailure)
-            return result.Error.ToHttpResult(options);
-
-        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
-        return outcome.ToHttpResult<TIn, TOut>(httpContext, map);
-    }
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: value => new WriteOutcome<TIn>.Updated(value, metadata).ToHttpResult<TIn, TOut>(httpContext, map),
+            onFailure: error => error.ToHttpResult(options));
 
     /// <summary>
     /// Converts a successful <see cref="Result{TIn}"/> to an updated response for Minimal APIs with dynamic metadata,
@@ -620,15 +589,10 @@ public static class HttpResultExtensions
         HttpContext httpContext,
         Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
-        TrellisAspOptions? options = null)
-    {
-        if (result.IsFailure)
-            return result.Error.ToHttpResult(options);
-
-        var metadata = metadataSelector(result.Value);
-        var outcome = new WriteOutcome<TIn>.Updated(result.Value, metadata);
-        return outcome.ToHttpResult<TIn, TOut>(httpContext, map);
-    }
+        TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: value => new WriteOutcome<TIn>.Updated(value, metadataSelector(value)).ToHttpResult<TIn, TOut>(httpContext, map),
+            onFailure: error => error.ToHttpResult(options));
 
     #endregion
 

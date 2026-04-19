@@ -1,8 +1,8 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Trellis.Testing;
 using static RepositoryBaseTests;
 
 public class EfUnitOfWorkTests : IDisposable
@@ -127,6 +127,6 @@ public class EfUnitOfWorkTests : IDisposable
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
     }
 }

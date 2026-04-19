@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class CurrencyCodeTests
 {
@@ -20,7 +21,7 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(code.ToUpperInvariant());
+        result.Unwrap().Value.Should().Be(code.ToUpperInvariant());
     }
 
     [Theory]
@@ -34,7 +35,7 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -48,7 +49,7 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Currency code is required.");
     }
 
@@ -63,7 +64,7 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
@@ -78,7 +79,7 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
@@ -86,8 +87,8 @@ public class CurrencyCodeTests
     public void Two_CurrencyCode_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = CurrencyCode.TryCreate("USD").Value;
-        var b = CurrencyCode.TryCreate("usd").Value;
+        var a = CurrencyCode.TryCreate("USD").Unwrap();
+        var b = CurrencyCode.TryCreate("usd").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -174,7 +175,7 @@ public class CurrencyCodeTests
     public void ConvertToJson()
     {
         // Arrange
-        var code = CurrencyCode.TryCreate("USD").Value;
+        var code = CurrencyCode.TryCreate("USD").Unwrap();
         var expected = "\"USD\"";
 
         // Act
@@ -205,7 +206,7 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("paymentCurrency");
     }
 }

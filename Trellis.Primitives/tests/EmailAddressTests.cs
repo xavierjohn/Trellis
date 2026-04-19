@@ -1,10 +1,11 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
 using Xunit;
+using Trellis.Testing;
 
 public class EmailAddressTests
 {
@@ -17,7 +18,7 @@ public class EmailAddressTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(Error.Validation("Email address is not valid.", "school email"));
+        result.UnwrapError().Should().Be(Error.Validation("Email address is not valid.", "school email"));
     }
 
     [Theory]
@@ -29,7 +30,7 @@ public class EmailAddressTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeOfType<EmailAddress>();
+        result.Unwrap().Should().BeOfType<EmailAddress>();
     }
 
     [Theory]
@@ -98,7 +99,7 @@ public class EmailAddressTests
     public void ConvertToJson()
     {
         // Arrange
-        EmailAddress email = EmailAddress.TryCreate("chris@somewhere.com").Value;
+        EmailAddress email = EmailAddress.TryCreate("chris@somewhere.com").Unwrap();
         string primEmail = "chris@somewhere.com";
 
         var expected = JsonSerializer.Serialize(primEmail);
@@ -186,7 +187,7 @@ public class EmailAddressTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -197,7 +198,7 @@ public class EmailAddressTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("school email");
     }
 
@@ -205,8 +206,8 @@ public class EmailAddressTests
     public void Two_EmailAddress_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = EmailAddress.TryCreate("xavier@somewhere.com").Value;
-        var b = EmailAddress.TryCreate("xavier@somewhere.com").Value;
+        var a = EmailAddress.TryCreate("xavier@somewhere.com").Unwrap();
+        var b = EmailAddress.TryCreate("xavier@somewhere.com").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -218,8 +219,8 @@ public class EmailAddressTests
     public void Two_EmailAddress_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = EmailAddress.TryCreate("xavier@somewhere.com").Value;
-        var b = EmailAddress.TryCreate("other@somewhere.com").Value;
+        var a = EmailAddress.TryCreate("xavier@somewhere.com").Unwrap();
+        var b = EmailAddress.TryCreate("other@somewhere.com").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -230,7 +231,7 @@ public class EmailAddressTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        EmailAddress email = EmailAddress.TryCreate("xavier@somewhere.com").Value;
+        EmailAddress email = EmailAddress.TryCreate("xavier@somewhere.com").Unwrap();
 
         // Act
         string stringValue = email;

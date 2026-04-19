@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing.Tests.Fakes;
+namespace Trellis.Testing.Tests.Fakes;
 
 public class FakeRepositoryTests
 {
@@ -106,7 +106,7 @@ public class FakeRepositoryTests
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Name.Should().Be("Test");
+        result.Unwrap().Name.Should().Be("Test");
     }
 
     [Fact]

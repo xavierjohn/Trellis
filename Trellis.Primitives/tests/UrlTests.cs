@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class UrlTests
 {
@@ -21,7 +22,7 @@ public class UrlTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -42,7 +43,7 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("URL is required.");
     }
 
@@ -65,7 +66,7 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         // Note: On some platforms, Uri.TryCreate treats "/path" as absolute with "file" scheme
         // So we check for either error message depending on platform behavior
         validation.FieldErrors[0].Details[0].Should().Match(e =>
@@ -81,7 +82,7 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("URL must use HTTP or HTTPS scheme.");
     }
 
@@ -91,7 +92,7 @@ public class UrlTests
     public void Scheme_returns_correct_value(string url, string expectedScheme)
     {
         // Arrange
-        var urlObj = Url.TryCreate(url).Value;
+        var urlObj = Url.TryCreate(url).Unwrap();
 
         // Act & Assert
         urlObj.Scheme.Should().Be(expectedScheme);
@@ -104,7 +105,7 @@ public class UrlTests
     public void Host_returns_correct_value(string url, string expectedHost)
     {
         // Arrange
-        var urlObj = Url.TryCreate(url).Value;
+        var urlObj = Url.TryCreate(url).Unwrap();
 
         // Act & Assert
         urlObj.Host.Should().Be(expectedHost);
@@ -118,7 +119,7 @@ public class UrlTests
     public void Port_returns_correct_value(string url, int expectedPort)
     {
         // Arrange
-        var urlObj = Url.TryCreate(url).Value;
+        var urlObj = Url.TryCreate(url).Unwrap();
 
         // Act & Assert
         urlObj.Port.Should().Be(expectedPort);
@@ -131,7 +132,7 @@ public class UrlTests
     public void Path_returns_correct_value(string url, string expectedPath)
     {
         // Arrange
-        var urlObj = Url.TryCreate(url).Value;
+        var urlObj = Url.TryCreate(url).Unwrap();
 
         // Act & Assert
         urlObj.Path.Should().Be(expectedPath);
@@ -144,7 +145,7 @@ public class UrlTests
     public void Query_returns_correct_value(string url, string expectedQuery)
     {
         // Arrange
-        var urlObj = Url.TryCreate(url).Value;
+        var urlObj = Url.TryCreate(url).Unwrap();
 
         // Act & Assert
         urlObj.Query.Should().Be(expectedQuery);
@@ -156,7 +157,7 @@ public class UrlTests
     public void IsSecure_returns_correct_value(string url, bool expectedIsSecure)
     {
         // Arrange
-        var urlObj = Url.TryCreate(url).Value;
+        var urlObj = Url.TryCreate(url).Unwrap();
 
         // Act & Assert
         urlObj.IsSecure.Should().Be(expectedIsSecure);
@@ -166,7 +167,7 @@ public class UrlTests
     public void ToUri_returns_valid_Uri()
     {
         // Arrange
-        var url = Url.TryCreate("https://example.com/path").Value;
+        var url = Url.TryCreate("https://example.com/path").Unwrap();
 
         // Act
         var uri = url.ToUri();
@@ -180,8 +181,8 @@ public class UrlTests
     public void Two_Url_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = Url.TryCreate("https://example.com").Value;
-        var b = Url.TryCreate("https://example.com").Value;
+        var a = Url.TryCreate("https://example.com").Unwrap();
+        var b = Url.TryCreate("https://example.com").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -193,8 +194,8 @@ public class UrlTests
     public void Two_Url_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = Url.TryCreate("https://example.com").Value;
-        var b = Url.TryCreate("https://other.com").Value;
+        var a = Url.TryCreate("https://example.com").Unwrap();
+        var b = Url.TryCreate("https://other.com").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -205,7 +206,7 @@ public class UrlTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        Url value = Url.TryCreate("https://example.com").Value;
+        Url value = Url.TryCreate("https://example.com").Unwrap();
 
         // Act
         string stringValue = value;
@@ -270,7 +271,7 @@ public class UrlTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = Url.TryCreate("https://example.com").Value;
+        var value = Url.TryCreate("https://example.com").Unwrap();
         var expected = JsonSerializer.Serialize("https://example.com/");
 
         // Act
@@ -315,7 +316,7 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("webhookUrl");
     }
 

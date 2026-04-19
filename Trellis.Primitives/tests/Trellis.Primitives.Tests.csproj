@@ -11,4 +11,7 @@
       <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
       <PackageReference Include="OpenTelemetry" />
    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+  </ItemGroup>
 </Project>

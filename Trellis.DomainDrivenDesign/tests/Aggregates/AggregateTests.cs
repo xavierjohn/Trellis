@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.DomainDrivenDesign.Tests.Aggregates;
 
 using Trellis;
@@ -207,7 +208,7 @@ public class AggregateTests
         // Weak tags should not match via strong comparison
         var ensured = result.OptionalETag([EntityTagValue.Weak("abc123")]);
         ensured.IsSuccess.Should().BeFalse();
-        ensured.Error.Should().BeOfType<PreconditionFailedError>();
+        ensured.UnwrapError().Should().BeOfType<PreconditionFailedError>();
     }
 
     [Fact]
@@ -229,7 +230,7 @@ public class AggregateTests
 
         var ensured = result.OptionalETag(Array.Empty<EntityTagValue>());
         ensured.IsSuccess.Should().BeFalse();
-        ensured.Error.Should().BeOfType<PreconditionFailedError>();
+        ensured.UnwrapError().Should().BeOfType<PreconditionFailedError>();
     }
 
     [Fact]
@@ -254,7 +255,7 @@ public class AggregateTests
 
         var ensured = result.RequireETag((EntityTagValue[]?)null);
         ensured.IsSuccess.Should().BeFalse();
-        ensured.Error.Should().BeOfType<PreconditionRequiredError>();
+        ensured.UnwrapError().Should().BeOfType<PreconditionRequiredError>();
     }
 
     [Fact]
@@ -274,7 +275,7 @@ public class AggregateTests
 
         var ensured = result.RequireETag((EntityTagValue[]?)null);
         ensured.IsSuccess.Should().BeFalse();
-        ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionRequired");
+        ensured.UnwrapError().Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionRequired");
     }
 
     [Fact]
@@ -284,7 +285,7 @@ public class AggregateTests
 
         var ensured = result.OptionalETag([EntityTagValue.Strong("abc123")]);
         ensured.IsSuccess.Should().BeFalse();
-        ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionFailed");
+        ensured.UnwrapError().Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionFailed");
     }
 
     [Fact]
@@ -294,7 +295,7 @@ public class AggregateTests
 
         var ensured = result.RequireETag([EntityTagValue.Strong("abc123")]);
         ensured.IsSuccess.Should().BeFalse();
-        ensured.Error.Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionFailed");
+        ensured.UnwrapError().Should().BeOfType<NotFoundError>("existing failure should be preserved, not replaced by PreconditionFailed");
     }
 
     [Fact]
@@ -306,7 +307,7 @@ public class AggregateTests
 
         var ensured = result.OptionalETag([EntityTagValue.Strong("stale")]);
         ensured.IsSuccess.Should().BeFalse();
-        ensured.Error.Should().BeOfType<PreconditionFailedError>();
+        ensured.UnwrapError().Should().BeOfType<PreconditionFailedError>();
     }
 
     #endregion

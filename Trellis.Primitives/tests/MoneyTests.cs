@@ -1,10 +1,11 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Reflection;
 using System.Text.Json;
 using Trellis;
+using Trellis.Testing;
 
 public class MoneyTests
 {
@@ -22,7 +23,7 @@ public class MoneyTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Currency.Value.Should().Be(currency);
+        result.Unwrap().Currency.Value.Should().Be(currency);
     }
 
     [Fact]
@@ -33,7 +34,7 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Amount cannot be negative.");
     }
 
@@ -55,7 +56,7 @@ public class MoneyTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("unitPrice");
     }
 
@@ -103,7 +104,7 @@ public class MoneyTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(expected);
+        result.Unwrap().Amount.Should().Be(expected);
     }
 
     #endregion
@@ -114,31 +115,31 @@ public class MoneyTests
     public void Can_add_Money_with_same_currency()
     {
         // Arrange
-        var left = Money.TryCreate(50.25m, "USD").Value;
-        var right = Money.TryCreate(25.75m, "USD").Value;
+        var left = Money.TryCreate(50.25m, "USD").Unwrap();
+        var right = Money.TryCreate(25.75m, "USD").Unwrap();
 
         // Act
         var result = left.Add(right);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(76.00m);
-        result.Value.Currency.Value.Should().Be("USD");
+        result.Unwrap().Amount.Should().Be(76.00m);
+        result.Unwrap().Currency.Value.Should().Be("USD");
     }
 
     [Fact]
     public void Cannot_add_Money_with_different_currency()
     {
         // Arrange
-        var left = Money.TryCreate(50.00m, "USD").Value;
-        var right = Money.TryCreate(40.00m, "EUR").Value;
+        var left = Money.TryCreate(50.00m, "USD").Unwrap();
+        var right = Money.TryCreate(40.00m, "EUR").Unwrap();
 
         // Act
         var result = left.Add(right);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Cannot add EUR to USD.");
     }
 
@@ -146,30 +147,30 @@ public class MoneyTests
     public void Can_subtract_Money_with_same_currency()
     {
         // Arrange
-        var left = Money.TryCreate(100.00m, "USD").Value;
-        var right = Money.TryCreate(35.50m, "USD").Value;
+        var left = Money.TryCreate(100.00m, "USD").Unwrap();
+        var right = Money.TryCreate(35.50m, "USD").Unwrap();
 
         // Act
         var result = left.Subtract(right);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(64.50m);
+        result.Unwrap().Amount.Should().Be(64.50m);
     }
 
     [Fact]
     public void Subtract_resulting_in_negative_amount_fails()
     {
         // Arrange
-        var left = Money.TryCreate(40.00m, "USD").Value;
-        var right = Money.TryCreate(100.00m, "USD").Value;
+        var left = Money.TryCreate(40.00m, "USD").Unwrap();
+        var right = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = left.Subtract(right);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Subtraction would result in a negative amount.");
     }
 
@@ -177,15 +178,15 @@ public class MoneyTests
     public void Cannot_subtract_Money_with_different_currency()
     {
         // Arrange
-        var left = Money.TryCreate(100.00m, "USD").Value;
-        var right = Money.TryCreate(35.50m, "GBP").Value;
+        var left = Money.TryCreate(100.00m, "USD").Unwrap();
+        var right = Money.TryCreate(35.50m, "GBP").Unwrap();
 
         // Act
         var result = left.Subtract(right);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Cannot subtract GBP from USD.");
     }
 
@@ -193,36 +194,36 @@ public class MoneyTests
     public void Can_multiply_Money_by_decimal()
     {
         // Arrange
-        var money = Money.TryCreate(19.99m, "USD").Value;
+        var money = Money.TryCreate(19.99m, "USD").Unwrap();
 
         // Act
         var result = money.Multiply(3.5m);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(69.97m);
-        result.Value.Currency.Value.Should().Be("USD");
+        result.Unwrap().Amount.Should().Be(69.97m);
+        result.Unwrap().Currency.Value.Should().Be("USD");
     }
 
     [Fact]
     public void Can_multiply_Money_by_integer()
     {
         // Arrange
-        var money = Money.TryCreate(12.50m, "USD").Value;
+        var money = Money.TryCreate(12.50m, "USD").Unwrap();
 
         // Act
         var result = money.Multiply(5);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(62.50m);
+        result.Unwrap().Amount.Should().Be(62.50m);
     }
 
     [Fact]
     public void Cannot_multiply_Money_by_negative()
     {
         // Arrange
-        var money = Money.TryCreate(50.00m, "USD").Value;
+        var money = Money.TryCreate(50.00m, "USD").Unwrap();
 
         // Act
         var resultDecimal = money.Multiply(-2m);
@@ -230,11 +231,11 @@ public class MoneyTests
 
         // Assert
         resultDecimal.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)resultDecimal.Error;
+        var validation = (ValidationError)resultDecimal.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Multiplier cannot be negative.");
 
         resultInt.IsFailure.Should().BeTrue();
-        var validationInt = (ValidationError)resultInt.Error;
+        var validationInt = (ValidationError)resultInt.UnwrapError();
         validationInt.FieldErrors[0].Details[0].Should().Be("Quantity cannot be negative.");
     }
 
@@ -242,42 +243,42 @@ public class MoneyTests
     public void Can_divide_Money_by_decimal()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Divide(3m);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(33.33m);
+        result.Unwrap().Amount.Should().Be(33.33m);
     }
 
     [Fact]
     public void Can_divide_Money_by_integer()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Divide(4);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(25.00m);
+        result.Unwrap().Amount.Should().Be(25.00m);
     }
 
     [Fact]
     public void Cannot_divide_Money_by_zero()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Divide(0m);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Divisor must be positive.");
     }
 
@@ -285,14 +286,14 @@ public class MoneyTests
     public void Cannot_divide_Money_by_negative_integer()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Divide(-2);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Divisor must be positive.");
     }
 
@@ -315,49 +316,49 @@ public class MoneyTests
     public void Can_allocate_Money_equally()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Allocate(1, 1, 1);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(3);
-        result.Value[0].Amount.Should().Be(33.34m); // Gets the remainder
-        result.Value[1].Amount.Should().Be(33.33m);
-        result.Value[2].Amount.Should().Be(33.33m);
-        result.Value.Sum(m => m.Amount).Should().Be(100.00m); // No money lost
+        result.Unwrap().Should().HaveCount(3);
+        result.Unwrap()[0].Amount.Should().Be(33.34m); // Gets the remainder
+        result.Unwrap()[1].Amount.Should().Be(33.33m);
+        result.Unwrap()[2].Amount.Should().Be(33.33m);
+        result.Unwrap().Sum(m => m.Amount).Should().Be(100.00m); // No money lost
     }
 
     [Fact]
     public void Can_allocate_Money_by_ratio()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Allocate(1, 2, 1); // 25%, 50%, 25%
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(3);
-        result.Value[0].Amount.Should().Be(25.00m);
-        result.Value[1].Amount.Should().Be(50.00m);
-        result.Value[2].Amount.Should().Be(25.00m);
+        result.Unwrap().Should().HaveCount(3);
+        result.Unwrap()[0].Amount.Should().Be(25.00m);
+        result.Unwrap()[1].Amount.Should().Be(50.00m);
+        result.Unwrap()[2].Amount.Should().Be(25.00m);
     }
 
     [Fact]
     public void Cannot_allocate_Money_with_empty_ratios()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Allocate();
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("At least one ratio required.");
     }
 
@@ -365,14 +366,14 @@ public class MoneyTests
     public void Cannot_allocate_Money_with_negative_ratio()
     {
         // Arrange
-        var money = Money.TryCreate(100.00m, "USD").Value;
+        var money = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act
         var result = money.Allocate(1, -2, 1);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("All ratios must be positive.");
     }
 
@@ -384,8 +385,8 @@ public class MoneyTests
     public void Can_compare_Money_IsGreaterThan()
     {
         // Arrange
-        var left = Money.TryCreate(100.00m, "USD").Value;
-        var right = Money.TryCreate(50.00m, "USD").Value;
+        var left = Money.TryCreate(100.00m, "USD").Unwrap();
+        var right = Money.TryCreate(50.00m, "USD").Unwrap();
 
         // Act & Assert
         left.IsGreaterThan(right).Should().BeTrue();
@@ -396,8 +397,8 @@ public class MoneyTests
     public void Can_compare_Money_IsLessThan()
     {
         // Arrange
-        var left = Money.TryCreate(25.00m, "USD").Value;
-        var right = Money.TryCreate(50.00m, "USD").Value;
+        var left = Money.TryCreate(25.00m, "USD").Unwrap();
+        var right = Money.TryCreate(50.00m, "USD").Unwrap();
 
         // Act & Assert
         left.IsLessThan(right).Should().BeTrue();
@@ -408,9 +409,9 @@ public class MoneyTests
     public void Can_compare_Money_IsGreaterThanOrEqual()
     {
         // Arrange
-        var left = Money.TryCreate(100.00m, "USD").Value;
-        var right = Money.TryCreate(50.00m, "USD").Value;
-        var equal = Money.TryCreate(100.00m, "USD").Value;
+        var left = Money.TryCreate(100.00m, "USD").Unwrap();
+        var right = Money.TryCreate(50.00m, "USD").Unwrap();
+        var equal = Money.TryCreate(100.00m, "USD").Unwrap();
 
         // Act & Assert
         left.IsGreaterThanOrEqual(right).Should().BeTrue();
@@ -422,9 +423,9 @@ public class MoneyTests
     public void Can_compare_Money_IsLessThanOrEqual()
     {
         // Arrange
-        var left = Money.TryCreate(25.00m, "USD").Value;
-        var right = Money.TryCreate(50.00m, "USD").Value;
-        var equal = Money.TryCreate(25.00m, "USD").Value;
+        var left = Money.TryCreate(25.00m, "USD").Unwrap();
+        var right = Money.TryCreate(50.00m, "USD").Unwrap();
+        var equal = Money.TryCreate(25.00m, "USD").Unwrap();
 
         // Act & Assert
         left.IsLessThanOrEqual(right).Should().BeTrue();
@@ -436,8 +437,8 @@ public class MoneyTests
     public void Cannot_compare_Money_with_different_currency()
     {
         // Arrange
-        var left = Money.TryCreate(100.00m, "USD").Value;
-        var right = Money.TryCreate(80.00m, "EUR").Value;
+        var left = Money.TryCreate(100.00m, "USD").Unwrap();
+        var right = Money.TryCreate(80.00m, "EUR").Unwrap();
 
         // Act & Assert
         left.IsGreaterThan(right).Should().BeFalse();
@@ -454,8 +455,8 @@ public class MoneyTests
     public void Two_Money_with_same_amount_and_currency_should_be_equal()
     {
         // Arrange
-        var a = Money.TryCreate(50.00m, "USD").Value;
-        var b = Money.TryCreate(50.00m, "USD").Value;
+        var a = Money.TryCreate(50.00m, "USD").Unwrap();
+        var b = Money.TryCreate(50.00m, "USD").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -467,8 +468,8 @@ public class MoneyTests
     public void Two_Money_with_different_amount_should_not_be_equal()
     {
         // Arrange
-        var a = Money.TryCreate(50.00m, "USD").Value;
-        var b = Money.TryCreate(75.00m, "USD").Value;
+        var a = Money.TryCreate(50.00m, "USD").Unwrap();
+        var b = Money.TryCreate(75.00m, "USD").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -479,8 +480,8 @@ public class MoneyTests
     public void Two_Money_with_different_currency_should_not_be_equal()
     {
         // Arrange
-        var a = Money.TryCreate(50.00m, "USD").Value;
-        var b = Money.TryCreate(50.00m, "EUR").Value;
+        var a = Money.TryCreate(50.00m, "USD").Unwrap();
+        var b = Money.TryCreate(50.00m, "EUR").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -495,7 +496,7 @@ public class MoneyTests
     public void ConvertToJson()
     {
         // Arrange
-        var money = Money.TryCreate(99.99m, "USD").Value;
+        var money = Money.TryCreate(99.99m, "USD").Unwrap();
 
         // Act
         var json = JsonSerializer.Serialize(money);
@@ -616,8 +617,8 @@ public class MoneyTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(0m);
-        result.Value.Currency.Value.Should().Be("EUR");
+        result.Unwrap().Amount.Should().Be(0m);
+        result.Unwrap().Currency.Value.Should().Be("EUR");
     }
 
     [Fact]
@@ -628,14 +629,14 @@ public class MoneyTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Currency.Value.Should().Be("USD");
+        result.Unwrap().Currency.Value.Should().Be("USD");
     }
 
     [Fact]
     public void ToString_returns_formatted_amount_with_currency()
     {
         // Arrange
-        var money = Money.TryCreate(99.99m, "USD").Value;
+        var money = Money.TryCreate(99.99m, "USD").Unwrap();
 
         // Act
         var str = money.ToString();
@@ -668,7 +669,7 @@ public class MoneyTests
         var result = Money.Sum(items);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(10.00m);
+        result.Unwrap().Amount.Should().Be(10.00m);
     }
 
     [Fact]
@@ -684,8 +685,8 @@ public class MoneyTests
         var result = Money.Sum(items);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(35.75m);
-        result.Value.Currency.Should().Be(CurrencyCode.Create("USD"));
+        result.Unwrap().Amount.Should().Be(35.75m);
+        result.Unwrap().Currency.Should().Be(CurrencyCode.Create("USD"));
     }
 
     [Fact]

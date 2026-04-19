@@ -80,8 +80,8 @@ public static class NewOrderRoutes
             var authResult = actor.ToResult()
                 .Ensure(a => a.HasPermission("orders:write"),
                     Error.Forbidden("Permission 'orders:write' required."));
-            if (authResult.IsFailure)
-                return authResult.Error.ToHttpResult();
+            if (authResult.TryGetError(out var authError))
+                return authError.ToHttpResult();
 
             // Step 2: Fetch order → Confirm → Save → Pay → Notify
             // Note: Save before external calls ensures DB consistency. If payment/notification
@@ -117,8 +117,8 @@ public static class NewOrderRoutes
             var authResult = actor.ToResult()
                 .Ensure(a => a.HasPermission("orders:write"),
                     Error.Forbidden("Permission 'orders:write' required."));
-            if (authResult.IsFailure)
-                return authResult.Error.ToHttpResult();
+            if (authResult.TryGetError(out var authError))
+                return authError.ToHttpResult();
 
             // Step 2: Fetch → Cancel → Save → Notify
             // Note: Same save-first pattern as confirm. A production system would also call

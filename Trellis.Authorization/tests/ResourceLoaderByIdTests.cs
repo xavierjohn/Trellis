@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Authorization.Tests;
 
 /// <summary>
@@ -17,7 +18,7 @@ public class ResourceLoaderByIdTests
         var result = await loader.LoadAsync(message, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeSameAs(order);
+        result.Unwrap().Should().BeSameAs(order);
     }
 
     [Fact]
@@ -29,7 +30,7 @@ public class ResourceLoaderByIdTests
         var result = await loader.LoadAsync(message, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<NotFoundError>();
     }
 
     #endregion

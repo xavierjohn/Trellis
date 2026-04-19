@@ -1,4 +1,4 @@
-﻿namespace SourceGenerator;
+namespace SourceGenerator;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -268,25 +268,26 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Parse(string s, IFormatProvider? provider)
         {{
             var r = TryCreate(s, {(isFormattable ? "provider" : "null")});
-            if (r.IsFailure)
-            {{
-                var val = (ValidationError)r.Error;
-                throw new FormatException(val.FieldErrors[0].Details[0]);
-            }}
-            return r.Value;
+            return r.Match(
+                onSuccess: value => value,
+                onFailure: error =>
+                {{
+                    var val = (ValidationError)error;
+                    throw new FormatException(val.FieldErrors[0].Details[0]);
+                }});
         }}
 
         public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out {g.ClassName} result)
         {{
             var r = TryCreate(s, {(isFormattable ? "provider" : "null")});
-            if (r.IsFailure)
+            if (r.TryGetValue(out var value))
             {{
-                result = default;
-                return false;
+                result = value;
+                return true;
             }}
 
-            result = r.Value;
-            return true;
+            result = default;
+            return false;
         }}";
 
             // Generate type-specific factory methods (TryCreate, Create, validation hooks)
@@ -354,25 +355,26 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Parse(string s, IFormatProvider? provider)
         {{
             var r = TryCreate(s, null);
-            if (r.IsFailure)
-            {{
-                var val = (ValidationError)r.Error;
-                throw new FormatException(val.FieldErrors[0].Details[0]);
-            }}
-            return r.Value;
+            return r.Match(
+                onSuccess: value => value,
+                onFailure: error =>
+                {{
+                    var val = (ValidationError)error;
+                    throw new FormatException(val.FieldErrors[0].Details[0]);
+                }});
         }}
 
         public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out {g.ClassName} result)
         {{
             var r = TryCreate(s, null);
-            if (r.IsFailure)
+            if (r.TryGetValue(out var value))
             {{
-                result = default;
-                return false;
+                result = value;
+                return true;
             }}
 
-            result = r.Value;
-            return true;
+            result = default;
+            return false;
         }}
 
         /// <summary>
@@ -385,9 +387,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string value)
         {{
             var result = TryCreate(value, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}
     }}
     {nestedTypeClose}";
@@ -449,10 +451,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var validated = requiredGuidOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x != Guid.Empty, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -488,9 +490,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static new {g.ClassName} Create(Guid value)
         {{
             var result = TryCreate(value, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}
 
         /// <summary>
@@ -503,9 +505,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string stringValue)
         {{
             var result = TryCreate(stringValue, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}";
 
     private static string? GenerateStringMethods(RequiredPartialClassInfo g, SourceProductionContext context)
@@ -569,9 +571,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             var notEmpty = value
                 .EnsureNotNullOrWhiteSpace(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
-            if (!notEmpty.IsSuccess)
+            if (!notEmpty.TryGetValue(out var notEmptyValue))
                 return notEmpty.Map(str => new {g.ClassName}(str));
-            var normalized = notEmpty.Value.Trim();{lengthChecks}
+            var normalized = notEmptyValue.Trim();{lengthChecks}
             string? additionalError = null;
             ValidateAdditional(normalized, field, ref additionalError);
             if (additionalError is not null)
@@ -589,9 +591,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string? value, string? fieldName = null)
         {{
             var result = TryCreate(value, fieldName);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}";
     }
 
@@ -664,10 +666,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x >= {rangeMin}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."", field))
                 .Ensure(x => x <= {rangeMax}, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -732,10 +734,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             var validated = valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -796,9 +798,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static new {g.ClassName} Create(int value)
         {{
             var result = TryCreate(value, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}
 
         /// <summary>
@@ -811,9 +813,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string stringValue)
         {{
             var result = TryCreate(stringValue, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}";
 
         return result;
@@ -909,10 +911,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x >= {minStr}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {minStr}."", field))
                 .Ensure(x => x <= {maxStr}m, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {maxStr}."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -977,10 +979,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             var validated = valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -1041,9 +1043,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static new {g.ClassName} Create(decimal value)
         {{
             var result = TryCreate(value, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}
 
         /// <summary>
@@ -1056,9 +1058,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string stringValue)
         {{
             var result = TryCreate(stringValue, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}";
 
         return result;
@@ -1133,10 +1135,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x >= {rangeLongMin}L, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at least {rangeLongMin}."", field))
                 .Ensure(x => x <= {rangeLongMax}L, Error.Validation(""{g.ClassName.SplitPascalCase()} must be at most {rangeLongMax}."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -1201,10 +1203,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             var validated = valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -1265,9 +1267,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static new {g.ClassName} Create(long value)
         {{
             var result = TryCreate(value, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}
 
         /// <summary>
@@ -1280,9 +1282,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string stringValue)
         {{
             var result = TryCreate(stringValue, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}";
 
         return result;
@@ -1324,10 +1326,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             var validated = valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -1362,9 +1364,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static new {g.ClassName} Create(bool value)
         {{
             var result = TryCreate(value, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}
 
         /// <summary>
@@ -1377,9 +1379,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string stringValue)
         {{
             var result = TryCreate(stringValue, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}";
 
     private static string GenerateDateTimeMethods(RequiredPartialClassInfo g) =>
@@ -1421,10 +1423,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var validated = valueOrNothing
                 .ToResult(Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field))
                 .Ensure(x => x != DateTime.MinValue, Error.Validation(""{g.ClassName.SplitPascalCase()} cannot be empty."", field));
-            if (validated.IsSuccess)
+            if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;
-                ValidateAdditional(validated.Value, field, ref additionalError);
+                ValidateAdditional(value, field, ref additionalError);
                 if (additionalError is not null)
                     return Error.Validation(additionalError, field);
             }}
@@ -1479,9 +1481,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static new {g.ClassName} Create(DateTime value)
         {{
             var result = TryCreate(value, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}
 
         /// <summary>
@@ -1494,9 +1496,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public static {g.ClassName} Create(string stringValue)
         {{
             var result = TryCreate(stringValue, null);
-            if (result.IsFailure)
-                throw new InvalidOperationException($""Failed to create {g.ClassName}: {{result.Error.Detail}}"");
-            return result.Value;
+            return result.Match(
+                onSuccess: created => created,
+                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.Detail}}""));
         }}";
 
     /// <summary>

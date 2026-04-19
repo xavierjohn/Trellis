@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
@@ -60,7 +61,7 @@ public class AddResourceLoadersTests
         var result = await loader.LoadAsync(new TestMessage("id-1"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Id.Should().Be("id-1");
+        result.Unwrap().Id.Should().Be("id-1");
     }
 
     #endregion

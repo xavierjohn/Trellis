@@ -209,13 +209,10 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// <summary>
     /// Parses the string representation of a decimal to its <see cref="Percentage"/> equivalent.
     /// </summary>
-    public static Percentage Parse(string? s, IFormatProvider? provider)
-    {
-        var result = TryCreate(s, provider);
-        if (result.IsFailure)
-            throw new FormatException(result.Error.Detail);
-        return result.Value;
-    }
+    public static Percentage Parse(string? s, IFormatProvider? provider) =>
+        TryCreate(s, provider).Match(
+            onSuccess: value => value,
+            onFailure: error => throw new FormatException(error.Detail));
 
     /// <summary>
     /// Tries to parse a string into a <see cref="Percentage"/>.
@@ -223,9 +220,9 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Percentage result)
     {
         var r = TryCreate(s, provider);
-        if (r.IsSuccess)
+        if (r.TryGetValue(out var value))
         {
-            result = r.Value;
+            result = value;
             return true;
         }
 

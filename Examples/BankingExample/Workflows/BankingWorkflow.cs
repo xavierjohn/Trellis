@@ -34,8 +34,8 @@ public class BankingWorkflow
         {
             // Fraud detection
             var fraudResult = await _fraudDetection.AnalyzeTransactionAsync(acc, amount, "withdrawal", cancellationToken);
-            if (fraudResult.IsFailure)
-                return fraudResult.Error;
+            if (fraudResult.TryGetError(out var fraudError))
+                return fraudError;
 
             // Require MFA for large withdrawals
             if (amount.Amount > 1000)
@@ -46,8 +46,8 @@ public class BankingWorkflow
                     cancellationToken
                 );
 
-                if (mfaResult.IsFailure)
-                    return mfaResult.Error;
+                if (mfaResult.TryGetError(out var mfaError))
+                    return mfaError;
             }
 
             return acc.ToResult();
@@ -86,8 +86,8 @@ public class BankingWorkflow
             () => _fraudDetection.AnalyzeTransactionAsync(toAccount, amount, "transfer-in", cancellationToken)
         ).WhenAllAsync();
 
-        if (validationResult.IsFailure)
-            return validationResult.Error;
+        if (validationResult.TryGetError(out var validationError))
+            return validationError;
 
         // Perform transfer
         return await fromAccount.TransferTo(toAccount, amount, description)
@@ -149,11 +149,11 @@ public class BankingWorkflow
         {
             var result = account.Deposit(amount, description);
 
-            if (result.IsFailure)
+            if (result.TryGetError(out var depositError))
             {
                 // Don't accept changes - events will be discarded
                 Console.WriteLine($"? Transaction failed at item {processedCount + 1}, discarding {account.UncommittedEvents().Count} uncommitted events");
-                return Error.Domain($"Batch transaction failed at item {processedCount + 1}: {result.Error.Detail}");
+                return Error.Domain($"Batch transaction failed at item {processedCount + 1}: {depositError.Detail}");
             }
 
             processedCount++;

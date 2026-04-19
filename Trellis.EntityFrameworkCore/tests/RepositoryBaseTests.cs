@@ -1,10 +1,10 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
-using Trellis.Testing;
 
 public partial class RepositoryBaseTests : IDisposable
 {
@@ -385,7 +385,7 @@ public partial class RepositoryBaseTests : IDisposable
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<NotFoundError>();
     }
 
     #endregion

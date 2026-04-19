@@ -160,7 +160,9 @@ public static class MediatorExample
         actorProvider.CurrentActor = Actors.Alice;
         var createResult = await mediator.Send(new CreateDocumentCommand("Design Doc", "Initial draft"));
         Print("Alice creates 'Design Doc'", createResult);
-        var docId = createResult.Value.Id;
+        if (!createResult.TryGetValue(out var createdDoc))
+            throw new InvalidOperationException("Expected create to succeed.");
+        var docId = createdDoc.Id;
 
         // 2. Alice edits her own document (owner)
         actorProvider.CurrentActor = Actors.Alice;

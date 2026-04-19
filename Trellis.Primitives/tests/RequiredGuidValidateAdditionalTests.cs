@@ -1,4 +1,5 @@
-﻿namespace Trellis.Primitives.Tests;
+using Trellis.Testing;
+namespace Trellis.Primitives.Tests;
 
 /// <summary>
 /// RequiredGuid with custom validation — rejects Version 4 GUIDs (only allows V7).
@@ -37,7 +38,7 @@ public class RequiredGuidValidateAdditionalTests
         var v4 = Guid.NewGuid();
         var result = V7OnlyId.TryCreate(v4);
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Only Version 7 GUIDs are allowed.");
     }
 

@@ -111,19 +111,12 @@ public static class ActionResultExtensions
     /// // Not found: 404 Not Found
     /// </code>
     /// </example>
-    public static ActionResult<TValue> ToActionResult<TValue>(this Result<TValue> result, ControllerBase controllerBase)
-    {
-        if (result.IsSuccess)
-        {
-            // If TValue is Unit, return 204 No Content
-            if (typeof(TValue) == typeof(Unit))
-                return (ActionResult<TValue>)controllerBase.NoContent();
-
-            return (ActionResult<TValue>)controllerBase.Ok(result.Value);
-        }
-
-        return result.Error.ToActionResult<TValue>(controllerBase);
-    }
+    public static ActionResult<TValue> ToActionResult<TValue>(this Result<TValue> result, ControllerBase controllerBase) =>
+        result.Match<TValue, ActionResult<TValue>>(
+            onSuccess: value => typeof(TValue) == typeof(Unit)
+                ? (ActionResult<TValue>)controllerBase.NoContent()
+                : (ActionResult<TValue>)controllerBase.Ok(value),
+            onFailure: error => error.ToActionResult<TValue>(controllerBase));
 
     /// <summary>
     /// Converts a domain <see cref="Error"/> to an <see cref="ActionResult{TValue}"/> with appropriate HTTP status code and Problem Details format.
@@ -311,26 +304,23 @@ public static class ActionResultExtensions
         this Result<TIn> result,
         ControllerBase controllerBase,
         Func<TIn, ContentRangeHeaderValue> funcRange,
-        Func<TIn, TOut> funcValue)
-    {
-        if (result.IsSuccess)
-        {
-            var contentRange = funcRange(result.Value);
-            var value = funcValue(result.Value);
+        Func<TIn, TOut> funcValue) =>
+        result.Match<TIn, ActionResult<TOut>>(
+            onSuccess: inValue =>
+            {
+                var contentRange = funcRange(inValue);
+                var value = funcValue(inValue);
 
-            if (contentRange.From is null || contentRange.To is null || contentRange.Length is null)
+                if (contentRange.From is null || contentRange.To is null || contentRange.Length is null)
+                    return controllerBase.Ok(value);
+
+                var partialResult = contentRange.To - contentRange.From + 1 != contentRange.Length;
+                if (partialResult)
+                    return new PartialContentResult(contentRange, value);
+
                 return controllerBase.Ok(value);
-
-            var partialResult = contentRange.To - contentRange.From + 1 != contentRange.Length;
-            if (partialResult)
-                return new PartialContentResult(contentRange, value);
-
-            return controllerBase.Ok(value);
-        }
-
-        var error = result.Error;
-        return error.ToActionResult<TOut>(controllerBase);
-    }
+            },
+            onFailure: error => error.ToActionResult<TOut>(controllerBase));
 
     /// <summary>
     /// Converts a <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/> that returns
@@ -349,30 +339,28 @@ public static class ActionResultExtensions
         ControllerBase controllerBase,
         long from,
         long to,
-        long totalLength)
-    {
-        if (result.IsSuccess)
-        {
-            // If TValue is Unit, return 204 No Content
-            if (typeof(TValue) == typeof(Unit))
-                return (ActionResult<TValue>)controllerBase.NoContent();
+        long totalLength) =>
+        result.Match<TValue, ActionResult<TValue>>(
+            onSuccess: value =>
+            {
+                // If TValue is Unit, return 204 No Content
+                if (typeof(TValue) == typeof(Unit))
+                    return (ActionResult<TValue>)controllerBase.NoContent();
 
-            // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
-            if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
-                return (ActionResult<TValue>)controllerBase.Ok(result.Value);
+                // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
+                if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
+                    return (ActionResult<TValue>)controllerBase.Ok(value);
 
-            // Clamp to against totalLength to prevent ContentRangeHeaderValue from throwing
-            var clampedTo = Math.Min(to, totalLength - 1);
+                // Clamp to against totalLength to prevent ContentRangeHeaderValue from throwing
+                var clampedTo = Math.Min(to, totalLength - 1);
 
-            var isCompleteRange = from == 0 && clampedTo == totalLength - 1;
-            if (!isCompleteRange)
-                return new PartialContentResult(from, clampedTo, totalLength, result.Value);
+                var isCompleteRange = from == 0 && clampedTo == totalLength - 1;
+                if (!isCompleteRange)
+                    return new PartialContentResult(from, clampedTo, totalLength, value);
 
-            return (ActionResult<TValue>)controllerBase.Ok(result.Value);
-        }
-
-        return result.Error.ToActionResult<TValue>(controllerBase);
-    }
+                return (ActionResult<TValue>)controllerBase.Ok(value);
+            },
+            onFailure: error => error.ToActionResult<TValue>(controllerBase));
 
     /// <summary>
     /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> by applying
@@ -407,13 +395,10 @@ public static class ActionResultExtensions
     public static ActionResult<TOut> ToActionResult<TIn, TOut>(
         this Result<TIn> result,
         ControllerBase controllerBase,
-        Func<TIn, TOut> map)
-    {
-        if (result.IsSuccess)
-            return controllerBase.Ok(map(result.Value));
-
-        return result.Error.ToActionResult<TOut>(controllerBase);
-    }
+        Func<TIn, TOut> map) =>
+        result.Match<TIn, ActionResult<TOut>>(
+            onSuccess: inValue => controllerBase.Ok(map(inValue)),
+            onFailure: error => error.ToActionResult<TOut>(controllerBase));
 
     /// <summary>
     /// Converts a <see cref="Result{TValue}"/> to an <see cref="ActionResult{TValue}"/> that returns
@@ -459,13 +444,10 @@ public static class ActionResultExtensions
         ControllerBase controllerBase,
         string actionName,
         Func<TValue, object?> routeValues,
-        string? controllerName = null)
-    {
-        if (result.IsSuccess)
-            return (ActionResult<TValue>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(result.Value), result.Value);
-
-        return result.Error.ToActionResult<TValue>(controllerBase);
-    }
+        string? controllerName = null) =>
+        result.Match<TValue, ActionResult<TValue>>(
+            onSuccess: value => (ActionResult<TValue>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(value), value),
+            onFailure: error => error.ToActionResult<TValue>(controllerBase));
 
     /// <summary>
     /// Converts a <see cref="Result{TValue}"/> to an <see cref="ActionResult{TOut}"/> that returns
@@ -514,16 +496,10 @@ public static class ActionResultExtensions
         string actionName,
         Func<TValue, object?> routeValues,
         Func<TValue, TOut> map,
-        string? controllerName = null)
-    {
-        if (result.IsSuccess)
-        {
-            var value = map(result.Value);
-            return (ActionResult<TOut>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(result.Value), value);
-        }
-
-        return result.Error.ToActionResult<TOut>(controllerBase);
-    }
+        string? controllerName = null) =>
+        result.Match<TValue, ActionResult<TOut>>(
+            onSuccess: inValue => (ActionResult<TOut>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(inValue), map(inValue)),
+            onFailure: error => error.ToActionResult<TOut>(controllerBase));
 
     /// <summary>
     /// Converts a <see cref="Result{TIn}"/> to an <see cref="ActionResult{TOut}"/> that returns
@@ -569,18 +545,15 @@ public static class ActionResultExtensions
         Func<TIn, object?> routeValues,
         Func<TIn, RepresentationMetadata> metadataSelector,
         Func<TIn, TOut> map,
-        string? controllerName = null)
-    {
-        if (result.IsSuccess)
-        {
-            var metadata = metadataSelector(result.Value);
-            ApplyMetadataHeaders(controllerBase.Response, metadata);
-            var value = map(result.Value);
-            return (ActionResult<TOut>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(result.Value), value);
-        }
-
-        return result.Error.ToActionResult<TOut>(controllerBase);
-    }
+        string? controllerName = null) =>
+        result.Match<TIn, ActionResult<TOut>>(
+            onSuccess: inValue =>
+            {
+                var metadata = metadataSelector(inValue);
+                ApplyMetadataHeaders(controllerBase.Response, metadata);
+                return (ActionResult<TOut>)controllerBase.CreatedAtAction(actionName, controllerName, routeValues(inValue), map(inValue));
+            },
+            onFailure: error => error.ToActionResult<TOut>(controllerBase));
 
     internal static void EmitCompanionHeaders(Error error, Microsoft.AspNetCore.Http.HttpResponse response)
     {
@@ -644,32 +617,32 @@ public static class ActionResultExtensions
         this Result<TIn> result,
         ControllerBase controller,
         Func<TIn, RepresentationMetadata> metadataSelector,
-        Func<TIn, TOut> map)
-    {
-        if (result.IsFailure)
-            return result.Error.ToActionResult<TOut>(controller);
-
-        var metadata = metadataSelector(result.Value);
-        ApplyMetadataHeaders(controller.Response, metadata);
-
-        // Only evaluate conditional headers for safe methods (GET/HEAD).
-        // For unsafe methods, the precondition was already checked before the write
-        // (via OptionalETag/RequireETag), and the response ETag is the NEW value.
-        var method = controller.Request.Method;
-        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
-        {
-            return ConditionalRequestEvaluator.Evaluate(controller.Request, metadata) switch
+        Func<TIn, TOut> map) =>
+        result.Match<TIn, ActionResult<TOut>>(
+            onSuccess: inValue =>
             {
-                ConditionalDecision.NotModified => new StatusCodeResult(StatusCodes.Status304NotModified),
-                ConditionalDecision.PreconditionFailed =>
-                    Error.PreconditionFailed("A conditional request header evaluated to false.")
-                        .ToActionResult<TOut>(controller),
-                _ => controller.Ok(map(result.Value)),
-            };
-        }
+                var metadata = metadataSelector(inValue);
+                ApplyMetadataHeaders(controller.Response, metadata);
 
-        return controller.Ok(map(result.Value));
-    }
+                // Only evaluate conditional headers for safe methods (GET/HEAD).
+                // For unsafe methods, the precondition was already checked before the write
+                // (via OptionalETag/RequireETag), and the response ETag is the NEW value.
+                var method = controller.Request.Method;
+                if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
+                {
+                    return ConditionalRequestEvaluator.Evaluate(controller.Request, metadata) switch
+                    {
+                        ConditionalDecision.NotModified => new StatusCodeResult(StatusCodes.Status304NotModified),
+                        ConditionalDecision.PreconditionFailed =>
+                            Error.PreconditionFailed("A conditional request header evaluated to false.")
+                                .ToActionResult<TOut>(controller),
+                        _ => controller.Ok(map(inValue)),
+                    };
+                }
+
+                return controller.Ok(map(inValue));
+            },
+            onFailure: error => error.ToActionResult<TOut>(controller));
 
     /// <summary>Async Task overload of metadata-selector-aware ToActionResult.</summary>
     public static async Task<ActionResult<TOut>> ToActionResultAsync<TIn, TOut>(

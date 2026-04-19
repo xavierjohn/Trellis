@@ -25,7 +25,8 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(State.Running);
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Running);
     }
 
     [Fact]
@@ -40,15 +41,18 @@ public class StateMachineExtensionsTests
         // Act & Assert
         var result1 = machine.FireResult(Trigger.Start);
         result1.IsSuccess.Should().BeTrue();
-        result1.Value.Should().Be(State.Running);
+        result1.TryGetValue(out var v1).Should().BeTrue();
+        v1.Should().Be(State.Running);
 
         var result2 = machine.FireResult(Trigger.Pause);
         result2.IsSuccess.Should().BeTrue();
-        result2.Value.Should().Be(State.Paused);
+        result2.TryGetValue(out var v2).Should().BeTrue();
+        v2.Should().Be(State.Paused);
 
         var result3 = machine.FireResult(Trigger.Resume);
         result3.IsSuccess.Should().BeTrue();
-        result3.Value.Should().Be(State.Running);
+        result3.TryGetValue(out var v3).Should().BeTrue();
+        v3.Should().Be(State.Running);
     }
 
     [Fact]
@@ -63,7 +67,8 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(State.Running);
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Running);
     }
 
     #endregion
@@ -82,9 +87,10 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<DomainError>();
-        result.Error.Detail.Should().Contain("Pause");
-        result.Error.Detail.Should().Contain("Idle");
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Should().BeOfType<DomainError>();
+        err.Detail.Should().Contain("Pause");
+        err.Detail.Should().Contain("Idle");
     }
 
     [Fact]
@@ -112,7 +118,8 @@ public class StateMachineExtensionsTests
         var result = machine.FireResult(Trigger.Complete);
 
         // Assert
-        result.Error.Code.Should().Be("state.machine.invalid.transition");
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Code.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -126,7 +133,8 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<DomainError>();
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Should().BeOfType<DomainError>();
     }
 
     #endregion
@@ -147,7 +155,8 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(State.Running);
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Running);
     }
 
     [Fact]
@@ -164,9 +173,10 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<DomainError>();
-        result.Error.Detail.Should().Contain("Start");
-        result.Error.Detail.Should().Contain("Idle");
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Should().BeOfType<DomainError>();
+        err.Detail.Should().Contain("Start");
+        err.Detail.Should().Contain("Idle");
     }
 
     [Fact]
@@ -204,7 +214,8 @@ public class StateMachineExtensionsTests
         // Act — guard is now true
         var result2 = machine.FireResult(Trigger.Start);
         result2.IsSuccess.Should().BeTrue();
-        result2.Value.Should().Be(State.Running);
+        result2.TryGetValue(out var v2).Should().BeTrue();
+        v2.Should().Be(State.Running);
     }
 
     [Fact]
@@ -225,7 +236,8 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(State.Running);
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Running);
         guardCallCount.Should().Be(1, "FireResult should not evaluate transition guards more than once");
     }
 
@@ -278,7 +290,8 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Published");
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be("Published");
     }
 
     [Fact]
@@ -293,7 +306,8 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<DomainError>();
+        result.TryGetError(out var err).Should().BeTrue();
+        err.Should().BeOfType<DomainError>();
     }
 
     #endregion

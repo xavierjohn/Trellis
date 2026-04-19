@@ -51,12 +51,14 @@ public class NewOrdersController(
             .TapAsync(order => { db.Orders.Add(order); return Task.CompletedTask; })
             .CheckAsync(_ => db.SaveChangesResultUnitAsync());
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<OrderResponse>(this);
-
-        var response = OrderResponse.From(result.Value);
-        Response.Headers.ETag = $"\"{result.Value.ETag}\"";
-        return CreatedAtAction(nameof(GetOrder), new { id = result.Value.Id.Value }, response);
+        return result.Match<Order, ActionResult<OrderResponse>>(
+            onSuccess: created =>
+            {
+                var response = OrderResponse.From(created);
+                Response.Headers.ETag = $"\"{created.ETag}\"";
+                return CreatedAtAction(nameof(GetOrder), new { id = created.Id.Value }, response);
+            },
+            onFailure: error => error.ToActionResult<OrderResponse>(this));
     }
 
     // GET /orders/{id} — conditional GET with ETag
@@ -69,8 +71,8 @@ public class NewOrdersController(
             .FirstOrDefaultResultAsync(o => o.Id == id,
                 Error.NotFound("Order not found.", id));
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<OrderResponse>(this);
+        if (result.TryGetError(out var fetchError))
+            return fetchError.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
             order => RepresentationMetadata.WithStrongETag(order.ETag),
@@ -88,8 +90,8 @@ public class NewOrdersController(
         var authResult = actor.ToResult()
             .Ensure(a => a.HasPermission("orders:write"),
                 Error.Forbidden("Permission 'orders:write' required."));
-        if (authResult.IsFailure)
-            return authResult.Error.ToActionResult<OrderResponse>(this);
+        if (authResult.TryGetError(out var authError))
+            return authError.ToActionResult<OrderResponse>(this);
 
         // Step 2: Fetch order → Confirm → Save → Pay → Notify
         // Note: Save before external calls ensures DB consistency. If payment/notification
@@ -107,8 +109,8 @@ public class NewOrdersController(
             .CheckAsync(order =>
                 notificationService.SendOrderConfirmationAsync(order.Id, order.CustomerId, ct));
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<OrderResponse>(this);
+        if (result.TryGetError(out var confirmError))
+            return confirmError.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
             order => RepresentationMetadata.WithStrongETag(order.ETag),
@@ -125,8 +127,8 @@ public class NewOrdersController(
         var authResult = actor.ToResult()
             .Ensure(a => a.HasPermission("orders:write"),
                 Error.Forbidden("Permission 'orders:write' required."));
-        if (authResult.IsFailure)
-            return authResult.Error.ToActionResult<OrderResponse>(this);
+        if (authResult.TryGetError(out var authError))
+            return authError.ToActionResult<OrderResponse>(this);
 
         // Step 2: Fetch → Cancel → Save → Notify
         // Note: Same save-first pattern as confirm. A production system would also call
@@ -143,8 +145,8 @@ public class NewOrdersController(
                 _ => Result.Fail<Order>(
                     Error.Unexpected("Cancellation failed. Please try again.")));
 
-        if (result.IsFailure)
-            return result.Error.ToActionResult<OrderResponse>(this);
+        if (result.TryGetError(out var cancelError))
+            return cancelError.ToActionResult<OrderResponse>(this);
 
         return result.ToActionResult(this,
             order => RepresentationMetadata.WithStrongETag(order.ETag),

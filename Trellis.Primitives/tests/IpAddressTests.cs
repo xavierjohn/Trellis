@@ -1,10 +1,11 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class IpAddressTests
 {
@@ -23,7 +24,7 @@ public class IpAddressTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(ipAddress);
+        result.Unwrap().Value.Should().Be(ipAddress);
     }
 
     [Theory]
@@ -41,7 +42,7 @@ public class IpAddressTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.ToIPAddress().Should().NotBeNull();
+        result.Unwrap().ToIPAddress().Should().NotBeNull();
     }
 
     [Theory]
@@ -54,7 +55,7 @@ public class IpAddressTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -68,7 +69,7 @@ public class IpAddressTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("IP address is required.");
     }
 
@@ -89,7 +90,7 @@ public class IpAddressTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("IP address must be a valid IPv4 or IPv6.");
     }
 
@@ -97,7 +98,7 @@ public class IpAddressTests
     public void ToIPAddress_returns_underlying_IPAddress()
     {
         // Arrange
-        var ipAddress = IpAddress.TryCreate("192.168.1.1").Value;
+        var ipAddress = IpAddress.TryCreate("192.168.1.1").Unwrap();
 
         // Act
         var result = ipAddress.ToIPAddress();
@@ -116,7 +117,7 @@ public class IpAddressTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("clientIP");
     }
 
@@ -144,8 +145,8 @@ public class IpAddressTests
     public void Two_IpAddress_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = IpAddress.TryCreate("192.168.1.1").Value;
-        var b = IpAddress.TryCreate("192.168.1.1").Value;
+        var a = IpAddress.TryCreate("192.168.1.1").Unwrap();
+        var b = IpAddress.TryCreate("192.168.1.1").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -157,8 +158,8 @@ public class IpAddressTests
     public void Two_IpAddress_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = IpAddress.TryCreate("192.168.1.1").Value;
-        var b = IpAddress.TryCreate("192.168.1.2").Value;
+        var a = IpAddress.TryCreate("192.168.1.1").Unwrap();
+        var b = IpAddress.TryCreate("192.168.1.2").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -169,7 +170,7 @@ public class IpAddressTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        IpAddress value = IpAddress.TryCreate("192.168.1.1").Value;
+        IpAddress value = IpAddress.TryCreate("192.168.1.1").Unwrap();
 
         // Act
         string stringValue = value;
@@ -237,7 +238,7 @@ public class IpAddressTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = IpAddress.TryCreate("192.168.1.1").Value;
+        var value = IpAddress.TryCreate("192.168.1.1").Unwrap();
         var expected = JsonSerializer.Serialize("192.168.1.1");
 
         // Act

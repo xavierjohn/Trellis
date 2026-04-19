@@ -140,21 +140,18 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     }
 
     /// <inheritdoc/>
-    public static MonetaryAmount Parse(string? s, IFormatProvider? provider)
-    {
-        var result = TryCreate(s, provider);
-        if (result.IsFailure)
-            throw new FormatException(result.Error.Detail);
-        return result.Value;
-    }
+    public static MonetaryAmount Parse(string? s, IFormatProvider? provider) =>
+        TryCreate(s, provider).Match(
+            onSuccess: value => value,
+            onFailure: error => throw new FormatException(error.Detail));
 
     /// <inheritdoc/>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out MonetaryAmount result)
     {
         var r = TryCreate(s, provider);
-        if (r.IsSuccess)
+        if (r.TryGetValue(out var value))
         {
-            result = r.Value;
+            result = value;
             return true;
         }
 
@@ -187,7 +184,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
             if (addResult.IsFailure)
                 return addResult;
 
-            total = addResult.Value;
+            addResult.TryGetValue(out total);
         }
 
         return Result.Ok(total);

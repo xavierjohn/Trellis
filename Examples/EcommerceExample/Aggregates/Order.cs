@@ -54,14 +54,10 @@ public class Order : Aggregate<OrderId>
         return new Order(customerId);
     }
 
-    public static Order Create(CustomerId customerId)
-    {
-        var result = TryCreate(customerId);
-        if (result.IsFailure)
-            throw new InvalidOperationException($"Failed to create Order: {result.Error.Detail}");
-
-        return result.Value;
-    }
+    public static Order Create(CustomerId customerId) =>
+        TryCreate(customerId).Match(
+            onSuccess: o => o,
+            onFailure: error => throw new InvalidOperationException($"Failed to create Order: {error.Detail}"));
 
     /// <summary>
     /// Adds a product to the order with Railway Oriented Programming pattern.
@@ -78,7 +74,9 @@ public class Order : Aggregate<OrderId>
                 if (existingLine != null)
                 {
                     _lines.Remove(existingLine);
-                    line = existingLine.UpdateQuantity(existingLine.Quantity + quantity).Value;
+                    line = existingLine.UpdateQuantity(existingLine.Quantity + quantity).Match(
+                        onSuccess: l => l,
+                        onFailure: e => throw new InvalidOperationException($"Failed to update line: {e.Detail}"));
                 }
 
                 _lines.Add(line);
@@ -275,10 +273,13 @@ public class Order : Aggregate<OrderId>
         foreach (var line in _lines)
         {
             var addResult = total.Add(line.LineTotal);
-            if (addResult.IsFailure)
-                return addResult.Error;
+            if (addResult.TryGetError(out var addError))
+                return addError;
 
-            total = addResult.Value;
+            // Safe: TryGetError returned false above, so addResult is success.
+            if (!addResult.TryGetValue(out var newTotal))
+                throw new InvalidOperationException("Result is in an unexpected state.");
+            total = newTotal;
         }
 
         Total = total;

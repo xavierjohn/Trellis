@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
 using System.Net;
@@ -26,7 +27,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(notFoundError);
+        actual.UnwrapError().Should().Be(notFoundError);
     }
 
     [Fact]
@@ -42,7 +43,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsSuccess.Should().BeTrue();
-        actual.Value.StatusCode.Should().Be(HttpStatusCode.OK);
+        actual.Unwrap().StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -58,7 +59,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     [Fact]
@@ -74,7 +75,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(notFoundError);
+        actual.UnwrapError().Should().Be(notFoundError);
     }
 
     [Fact]
@@ -105,7 +106,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     #endregion
@@ -125,7 +126,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(unauthorizedError);
+        actual.UnwrapError().Should().Be(unauthorizedError);
     }
 
     [Fact]
@@ -156,7 +157,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     [Fact]
@@ -172,7 +173,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(unauthorizedError);
+        actual.UnwrapError().Should().Be(unauthorizedError);
     }
 
     [Fact]
@@ -188,7 +189,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     #endregion
@@ -208,7 +209,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(forbiddenError);
+        actual.UnwrapError().Should().Be(forbiddenError);
     }
 
     [Fact]
@@ -239,7 +240,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     [Fact]
@@ -255,7 +256,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(forbiddenError);
+        actual.UnwrapError().Should().Be(forbiddenError);
     }
 
     [Fact]
@@ -271,7 +272,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     #endregion
@@ -291,7 +292,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(conflictError);
+        actual.UnwrapError().Should().Be(conflictError);
     }
 
     [Fact]
@@ -322,7 +323,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     [Fact]
@@ -338,7 +339,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(conflictError);
+        actual.UnwrapError().Should().Be(conflictError);
     }
 
     [Fact]
@@ -354,7 +355,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     #endregion
@@ -373,7 +374,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Detail.Should().Contain("BadRequest");
+        actual.UnwrapError().Detail.Should().Contain("BadRequest");
     }
 
     [Fact]
@@ -402,7 +403,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     [Fact]
@@ -417,7 +418,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Detail.Should().Contain("BadRequest");
+        actual.UnwrapError().Detail.Should().Contain("BadRequest");
     }
 
     [Fact]
@@ -432,7 +433,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     #endregion
@@ -451,7 +452,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Detail.Should().Contain("InternalServerError");
+        actual.UnwrapError().Detail.Should().Contain("InternalServerError");
     }
 
     [Fact]
@@ -480,7 +481,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     [Fact]
@@ -495,7 +496,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Detail.Should().Contain("InternalServerError");
+        actual.UnwrapError().Detail.Should().Contain("InternalServerError");
     }
 
     [Fact]
@@ -510,7 +511,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     #endregion
@@ -543,7 +544,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Detail.Should().Contain("InternalServerError");
+        actual.UnwrapError().Detail.Should().Contain("InternalServerError");
     }
 
     [Fact]
@@ -558,8 +559,8 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().BeOfType<ValidationError>();
-        actual.Error.Detail.Should().Contain("Custom");
+        actual.UnwrapError().Should().BeOfType<ValidationError>();
+        actual.UnwrapError().Detail.Should().Contain("Custom");
     }
 
     [Fact]
@@ -574,7 +575,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     [Fact]
@@ -603,7 +604,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Detail.Should().Contain("InternalServerError");
+        actual.UnwrapError().Detail.Should().Contain("InternalServerError");
     }
 
     [Fact]
@@ -618,7 +619,7 @@ public class ResultOverloadTests
 
         // Assert
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().Be(originalError);
+        actual.UnwrapError().Should().Be(originalError);
     }
 
     #endregion
@@ -639,7 +640,7 @@ public class ResultOverloadTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ForbiddenError>();
+        result.UnwrapError().Should().BeOfType<ForbiddenError>();
     }
 
     [Fact]
@@ -658,7 +659,7 @@ public class ResultOverloadTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.Unwrap().StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -675,8 +676,8 @@ public class ResultOverloadTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnauthorizedError>();
-        result.Error.Detail.Should().Be("Auth required");
+        result.UnwrapError().Should().BeOfType<UnauthorizedError>();
+        result.UnwrapError().Detail.Should().Be("Auth required");
     }
 
     [Fact]
@@ -694,7 +695,7 @@ public class ResultOverloadTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<ConflictError>();
     }
 
     #endregion

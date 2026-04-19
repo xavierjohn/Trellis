@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class AgeTests
 {
@@ -21,7 +22,7 @@ public class AgeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(ageValue);
+        result.Unwrap().Value.Should().Be(ageValue);
     }
 
     [Theory]
@@ -35,8 +36,8 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Age must be non-negative.");
     }
 
@@ -51,8 +52,8 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.Error;
+        result.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Age is unrealistically high.");
     }
 
@@ -64,7 +65,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("personAge");
     }
 
@@ -92,8 +93,8 @@ public class AgeTests
     public void Two_Age_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = Age.TryCreate(25).Value;
-        var b = Age.TryCreate(25).Value;
+        var a = Age.TryCreate(25).Unwrap();
+        var b = Age.TryCreate(25).Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -105,8 +106,8 @@ public class AgeTests
     public void Two_Age_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = Age.TryCreate(25).Value;
-        var b = Age.TryCreate(30).Value;
+        var a = Age.TryCreate(25).Unwrap();
+        var b = Age.TryCreate(30).Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -117,7 +118,7 @@ public class AgeTests
     public void Can_implicitly_cast_to_int()
     {
         // Arrange
-        Age value = Age.TryCreate(25).Value;
+        Age value = Age.TryCreate(25).Unwrap();
 
         // Act
         int intValue = value;
@@ -197,7 +198,7 @@ public class AgeTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = Age.TryCreate(25).Value;
+        var value = Age.TryCreate(25).Unwrap();
 
         // Act
         var actual = JsonSerializer.Serialize(value);
@@ -247,7 +248,7 @@ public class AgeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Fact]
@@ -258,7 +259,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -269,7 +270,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -280,7 +281,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Theory]
@@ -294,7 +295,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -305,7 +306,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("personAge");
     }
 
@@ -317,7 +318,7 @@ public class AgeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Age is unrealistically high.");
     }
 

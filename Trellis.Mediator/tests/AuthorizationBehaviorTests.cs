@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using Trellis.Mediator.Tests.Helpers;
@@ -21,7 +22,7 @@ public class AuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Done");
+        result.Unwrap().Should().Be("Done");
         tracker.WasInvoked.Should().BeTrue();
     }
 
@@ -41,9 +42,9 @@ public class AuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ForbiddenError>();
-        result.Error.Detail.Should().Be("Insufficient permissions.");
-        result.Error.Detail.Should().NotContain("Admin.Write");
+        result.UnwrapError().Should().BeOfType<ForbiddenError>();
+        result.UnwrapError().Detail.Should().Be("Insufficient permissions.");
+        result.UnwrapError().Detail.Should().NotContain("Admin.Write");
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when permissions are missing");
     }
 
@@ -59,8 +60,8 @@ public class AuthorizationBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Be("Insufficient permissions.");
-        result.Error.Detail.Should().NotContain("Orders.Write");
+        result.UnwrapError().Detail.Should().Be("Insufficient permissions.");
+        result.UnwrapError().Detail.Should().NotContain("Orders.Write");
         tracker.WasInvoked.Should().BeFalse();
     }
 

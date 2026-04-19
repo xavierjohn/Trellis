@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class HostnameTests
 {
@@ -24,7 +25,7 @@ public class HostnameTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(hostname);
+        result.Unwrap().Value.Should().Be(hostname);
     }
 
     [Theory]
@@ -37,7 +38,7 @@ public class HostnameTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -51,7 +52,7 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Hostname is required.");
     }
 
@@ -75,7 +76,7 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
@@ -90,7 +91,7 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
@@ -106,7 +107,7 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
@@ -132,7 +133,7 @@ public class HostnameTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("serverName");
     }
 
@@ -160,8 +161,8 @@ public class HostnameTests
     public void Two_Hostname_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = Hostname.TryCreate("example.com").Value;
-        var b = Hostname.TryCreate("example.com").Value;
+        var a = Hostname.TryCreate("example.com").Unwrap();
+        var b = Hostname.TryCreate("example.com").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -173,8 +174,8 @@ public class HostnameTests
     public void Two_Hostname_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = Hostname.TryCreate("example.com").Value;
-        var b = Hostname.TryCreate("other.com").Value;
+        var a = Hostname.TryCreate("example.com").Unwrap();
+        var b = Hostname.TryCreate("other.com").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -185,7 +186,7 @@ public class HostnameTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        Hostname value = Hostname.TryCreate("example.com").Value;
+        Hostname value = Hostname.TryCreate("example.com").Unwrap();
 
         // Act
         string stringValue = value;
@@ -252,7 +253,7 @@ public class HostnameTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = Hostname.TryCreate("example.com").Value;
+        var value = Hostname.TryCreate("example.com").Unwrap();
         var expected = JsonSerializer.Serialize("example.com");
 
         // Act

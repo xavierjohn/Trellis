@@ -57,23 +57,25 @@ public abstract class ScalarValueModelBinderBase<TResult, TValue, TPrimitive> : 
 
         var parseResult = PrimitiveConverter.ConvertToPrimitive<TPrimitive>(rawValue);
 
-        if (parseResult.IsFailure)
+        if (parseResult.TryGetError(out var parseError))
         {
-            bindingContext.ModelState.AddModelError(modelName, parseResult.Error.Detail);
+            bindingContext.ModelState.AddModelError(modelName, parseError.Detail);
             bindingContext.Result = ModelBindingResult.Failed();
             return Task.CompletedTask;
         }
 
-        var primitiveValue = parseResult.Value;
+        // Safe: TryGetError returned false above, so parseResult is success.
+        if (!parseResult.TryGetValue(out var primitiveValue))
+            throw new InvalidOperationException("Result is in an unexpected state.");
         var result = TValue.TryCreate(primitiveValue, modelName);
 
-        if (result.IsSuccess)
+        if (result.TryGetValue(out var typedValue))
         {
-            bindingContext.Result = OnSuccess(result.Value);
+            bindingContext.Result = OnSuccess(typedValue);
         }
-        else
+        else if (result.TryGetError(out var createError))
         {
-            bindingContext.ModelState.AddResultErrors(modelName, result.Error);
+            bindingContext.ModelState.AddResultErrors(modelName, createError);
             bindingContext.Result = ModelBindingResult.Failed();
         }
 

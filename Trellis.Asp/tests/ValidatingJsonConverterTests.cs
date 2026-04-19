@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -7,6 +7,7 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
 using Xunit;
+using Trellis.Testing;
 
 /// <summary>
 /// Direct tests for ValidatingJsonConverter to ensure proper JSON serialization/deserialization.
@@ -184,7 +185,7 @@ public class ValidatingJsonConverterTests
     {
         // Arrange
         var converter = new ValidatingJsonConverter<Email, string>();
-        var email = Email.TryCreate("test@example.com", null).Value;
+        var email = Email.TryCreate("test@example.com", null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -292,7 +293,7 @@ public class ValidatingJsonConverterTests
     {
         // Arrange
         var converter = new ValidatingJsonConverter<Age, int>();
-        var age = Age.TryCreate(42, null).Value;
+        var age = Age.TryCreate(42, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -381,7 +382,7 @@ public class ValidatingJsonConverterTests
     {
         // Arrange
         var converter = new ValidatingJsonConverter<Percentage, decimal>();
-        var percentage = Percentage.TryCreate(99.99m, null).Value;
+        var percentage = Percentage.TryCreate(99.99m, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -452,7 +453,7 @@ public class ValidatingJsonConverterTests
         // Arrange
         var converter = new ValidatingJsonConverter<ItemId, Guid>();
         var guid = Guid.NewGuid();
-        var itemId = ItemId.TryCreate(guid, null).Value;
+        var itemId = ItemId.TryCreate(guid, null).Unwrap();
         using var stream = new System.IO.MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
 
@@ -495,7 +496,7 @@ public class ValidatingJsonConverterTests
     public void RoundTrip_Email_PreservesValue()
     {
         // Arrange
-        var email = Email.TryCreate("user@domain.com", null).Value;
+        var email = Email.TryCreate("user@domain.com", null).Unwrap();
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ValidatingJsonConverterFactory());
 
@@ -518,7 +519,7 @@ public class ValidatingJsonConverterTests
     public void RoundTrip_Age_PreservesValue()
     {
         // Arrange
-        var age = Age.TryCreate(30, null).Value;
+        var age = Age.TryCreate(30, null).Unwrap();
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ValidatingJsonConverterFactory());
 

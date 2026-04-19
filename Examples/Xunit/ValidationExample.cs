@@ -1,3 +1,4 @@
+using Trellis.Testing;
 using Trellis.Primitives;
 
 namespace Example;
@@ -21,7 +22,7 @@ public class ValidationExample
             .Combine(Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt")))
             .Bind((email, firstName, lastName) => Result.Ok(string.Join(" ", firstName, lastName, email)));
 
-        actual.Value.Should().Be("Xavier John xavier@somewhere.com");
+        actual.Unwrap().Should().Be("Xavier John xavier@somewhere.com");
     }
 
     [Fact]
@@ -49,7 +50,7 @@ public class ValidationExample
             });
         // Assert
         actual.IsFailure.Should().BeTrue();
-        var validationErrors = (ValidationError)actual.Error;
+        var validationErrors = (ValidationError)actual.UnwrapError();
         validationErrors.FieldErrors.Should().HaveCount(3);
         validationErrors.FieldErrors.Should().BeEquivalentTo(expected);
     }
@@ -66,7 +67,7 @@ public class ValidationExample
             .Combine(Maybe.Optional(lastName, s => LastName.TryCreate(s)))
             .Bind(Add);
 
-        actual.Value.Should().Be("xavier@somewhere.com  John");
+        actual.Unwrap().Should().Be("xavier@somewhere.com  John");
 
         static Result<string> Add(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
             => emailAddress + " " + firstname + " " + lastname;
@@ -85,8 +86,8 @@ public class ValidationExample
             .Bind(Add);
 
         actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().BeOfType<ValidationError>();
-        var validationError = (ValidationError)actual.Error;
+        actual.UnwrapError().Should().BeOfType<ValidationError>();
+        var validationError = (ValidationError)actual.UnwrapError();
         validationError.FieldErrors[0].Details[0].Should().Be("First Name cannot be empty.");
 
         static Result<string> Add(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)

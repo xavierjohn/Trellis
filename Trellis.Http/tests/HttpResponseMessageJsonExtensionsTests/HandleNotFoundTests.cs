@@ -1,9 +1,9 @@
-﻿namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
+using Trellis.Testing;
+namespace Trellis.Http.Tests.HttpResponseMessageJsonExtensionsTests;
 
 using System.Net;
 using System.Threading.Tasks;
 using Trellis;
-using Trellis.Testing;
 
 /// <summary>
 /// Tests for HandleNotFound and HandleNotFoundAsync extension methods.

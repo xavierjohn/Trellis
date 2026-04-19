@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class CountryCodeTests
 {
@@ -22,7 +23,7 @@ public class CountryCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(code.ToUpperInvariant());
+        result.Unwrap().Value.Should().Be(code.ToUpperInvariant());
     }
 
     [Theory]
@@ -38,7 +39,7 @@ public class CountryCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -51,7 +52,7 @@ public class CountryCodeTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -65,7 +66,7 @@ public class CountryCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Country code is required.");
     }
 
@@ -82,7 +83,7 @@ public class CountryCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Country code must be an ISO 3166-1 alpha-2 code.");
     }
 
@@ -99,7 +100,7 @@ public class CountryCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Country code must be an ISO 3166-1 alpha-2 code.");
     }
 
@@ -111,7 +112,7 @@ public class CountryCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("country");
     }
 
@@ -139,8 +140,8 @@ public class CountryCodeTests
     public void Two_CountryCode_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = CountryCode.TryCreate("US").Value;
-        var b = CountryCode.TryCreate("us").Value;
+        var a = CountryCode.TryCreate("US").Unwrap();
+        var b = CountryCode.TryCreate("us").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -152,8 +153,8 @@ public class CountryCodeTests
     public void Two_CountryCode_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = CountryCode.TryCreate("US").Value;
-        var b = CountryCode.TryCreate("GB").Value;
+        var a = CountryCode.TryCreate("US").Unwrap();
+        var b = CountryCode.TryCreate("GB").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -164,7 +165,7 @@ public class CountryCodeTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        CountryCode value = CountryCode.TryCreate("US").Value;
+        CountryCode value = CountryCode.TryCreate("US").Unwrap();
 
         // Act
         string stringValue = value;
@@ -231,7 +232,7 @@ public class CountryCodeTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = CountryCode.TryCreate("US").Value;
+        var value = CountryCode.TryCreate("US").Unwrap();
         var expected = JsonSerializer.Serialize("US");
 
         // Act

@@ -23,10 +23,10 @@ public interface IResult
 
 #pragma warning disable CA1716 // Identifiers should not match keywords
     /// <summary>
-    /// Gets the error information if this is a failure result.
+    /// Attempts to get the error without throwing.
     /// </summary>
-    /// <value>An <see cref="Trellis.Error"/> instance describing the failure.</value>
-    /// <exception cref="InvalidOperationException">Thrown when accessed on a successful result.</exception>
-    Error Error { get; }
+    /// <param name="error">When this method returns true, contains the error; otherwise, null.</param>
+    /// <returns>True if the result is a failure; otherwise false.</returns>
+    bool TryGetError(out Error error);
 #pragma warning restore CA1716 // Identifiers should not match keywords
 }

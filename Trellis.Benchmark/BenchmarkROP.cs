@@ -65,14 +65,14 @@ public class BenchmarkROP
     {
         var rFirstName = FirstName.TryCreate("Xavier");
         var rEmailAddress = EmailAddress.TryCreate("xavier@somewhere.com");
-        if (rFirstName.IsSuccess && rEmailAddress.IsSuccess)
-            return rFirstName.Value + " " + rEmailAddress.Value;
+        if (rFirstName.TryGetValue(out var firstName) && rEmailAddress.TryGetValue(out var email))
+            return firstName + " " + email;
 
         Error? error = null;
-        if (rFirstName.IsFailure)
-            error = rFirstName.Error;
-        if (rEmailAddress.IsFailure)
-            error = error.Combine(rEmailAddress.Error);
+        if (rFirstName.TryGetError(out var fnErr))
+            error = fnErr;
+        if (rEmailAddress.TryGetError(out var emErr))
+            error = error.Combine(emErr);
 
         return error!.Detail;
     }
@@ -91,14 +91,14 @@ public class BenchmarkROP
     {
         var rFirstName = FirstName.TryCreate("Xavier");
         var rEmailAddress = EmailAddress.TryCreate("bad email");
-        if (rFirstName.IsSuccess && rEmailAddress.IsSuccess)
-            return rFirstName.Value + " " + rEmailAddress.Value;
+        if (rFirstName.TryGetValue(out var firstName) && rEmailAddress.TryGetValue(out var email))
+            return firstName + " " + email;
 
         Error? error = null;
-        if (rFirstName.IsFailure)
-            error = rFirstName.Error;
-        if (rEmailAddress.IsFailure)
-            error = error.Combine(rEmailAddress.Error);
+        if (rFirstName.TryGetError(out var fnErr))
+            error = fnErr;
+        if (rEmailAddress.TryGetError(out var emErr))
+            error = error.Combine(emErr);
 
         return error!.Detail;
     }
@@ -128,26 +128,26 @@ public class BenchmarkROP
         var hrDateCheck = Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt", nameof(updatedAt)));
 
         Error? error = null;
-        if (hrEmail.IsFailure)
-            error = hrEmail.Error;
-        if (hrFname.IsFailure)
-            error = error.Combine(hrFname.Error);
-        if (hrLname.IsFailure)
-            error = error.Combine(hrLname.Error);
-        if (hrEmailSec.IsFailure)
-            error = error.Combine(hrEmailSec.Error);
-        if (hrDateCheck.IsFailure)
-            error = error.Combine(hrDateCheck.Error);
+        if (hrEmail.TryGetError(out var emErr))
+            error = emErr;
+        if (hrFname.TryGetError(out var fnErr))
+            error = error.Combine(fnErr);
+        if (hrLname.TryGetError(out var lnErr))
+            error = error.Combine(lnErr);
+        if (hrEmailSec.TryGetError(out var em2Err))
+            error = error.Combine(em2Err);
+        if (hrDateCheck.TryGetError(out var dateErr))
+            error = error.Combine(dateErr);
 
-        if (error == null)
+        if (error == null
+            && hrEmail.TryGetValue(out var email)
+            && hrFname.TryGetValue(out var firstName)
+            && hrLname.TryGetValue(out var lastName)
+            && hrEmailSec.TryGetValue(out var anotherEmail))
         {
-            var email = hrEmail.Value;
-            var firstName = hrFname.Value;
-            var lastName = hrLname.Value;
-            var anotherEmail = hrEmailSec.Value;
             return Result.Ok(string.Join(" ", firstName, lastName, email, anotherEmail));
         }
 
-        return Result.Fail<string>(error);
+        return Result.Fail<string>(error!);
     }
 }

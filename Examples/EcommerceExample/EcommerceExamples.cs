@@ -200,13 +200,14 @@ public static class EcommerceExamples
         // Create order - this raises OrderCreatedEvent
         var orderResult = Order.TryCreate(customerId);
 
-        if (orderResult.IsFailure)
+        if (orderResult.TryGetError(out var orderError))
         {
-            Console.WriteLine($"❌ Order creation failed: {orderResult.Error.Detail}");
+            Console.WriteLine($"❌ Order creation failed: {orderError.Detail}");
             return;
         }
 
-        var order = orderResult.Value;
+        if (!orderResult.TryGetValue(out var order))
+            return;
 
         Console.WriteLine("After order creation:");
         Console.WriteLine($"  IsChanged: {order.IsChanged}");
@@ -258,20 +259,20 @@ public static class EcommerceExamples
 
         // Try to add line to confirmed order (Conflict error)
         var addResult = order.AddLine(productId1, "Another Item", price1, 1);
-        if (addResult.IsFailure)
+        if (addResult.TryGetError(out var addError))
         {
-            Console.WriteLine($"Error Type: {addResult.Error.GetType().Name}");
-            Console.WriteLine($"Code: {addResult.Error.Code}");
-            Console.WriteLine($"Detail: {addResult.Error.Detail}");
+            Console.WriteLine($"Error Type: {addError.GetType().Name}");
+            Console.WriteLine($"Code: {addError.Code}");
+            Console.WriteLine($"Detail: {addError.Detail}");
         }
 
         // Try to cancel confirmed order (Domain error)
         var cancelResult = order.Cancel("Changed my mind");
-        if (cancelResult.IsFailure)
+        if (cancelResult.TryGetError(out var cancelError))
         {
-            Console.WriteLine($"\nError Type: {cancelResult.Error.GetType().Name}");
-            Console.WriteLine($"Code: {cancelResult.Error.Code}");
-            Console.WriteLine($"Detail: {cancelResult.Error.Detail}");
+            Console.WriteLine($"\nError Type: {cancelError.GetType().Name}");
+            Console.WriteLine($"Code: {cancelError.Code}");
+            Console.WriteLine($"Detail: {cancelError.Detail}");
         }
 
         Console.WriteLine();

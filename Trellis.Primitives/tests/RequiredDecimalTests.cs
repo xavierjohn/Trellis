@@ -1,7 +1,8 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public partial class UnitPrice : RequiredDecimal<UnitPrice>
 {
@@ -21,8 +22,8 @@ public class RequiredDecimalTests
 
         // Assert
         unitPrice.IsFailure.Should().BeTrue();
-        unitPrice.Error.Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)unitPrice.Error;
+        unitPrice.UnwrapError().Should().BeOfType<ValidationError>();
+        var validation = (ValidationError)unitPrice.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("unitPrice");
         validation.FieldErrors[0].Details[0].Should().Be("Unit Price cannot be empty.");
     }
@@ -40,8 +41,8 @@ public class RequiredDecimalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeOfType<InternalUnitPrice>();
-        result.Value.Value.Should().Be(value);
+        result.Unwrap().Should().BeOfType<InternalUnitPrice>();
+        result.Unwrap().Value.Should().Be(value);
     }
 
     [Fact]
@@ -49,7 +50,7 @@ public class RequiredDecimalTests
     {
         var result = InternalUnitPrice.TryCreate(decimal.MaxValue);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(decimal.MaxValue);
+        result.Unwrap().Value.Should().Be(decimal.MaxValue);
     }
 
     [Fact]
@@ -57,7 +58,7 @@ public class RequiredDecimalTests
     {
         var result = InternalUnitPrice.TryCreate(decimal.MinValue);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(decimal.MinValue);
+        result.Unwrap().Value.Should().Be(decimal.MinValue);
     }
 
     [Fact]
@@ -87,7 +88,7 @@ public class RequiredDecimalTests
     public void Can_implicitly_cast_to_decimal()
     {
         // Arrange
-        UnitPrice unitPrice = UnitPrice.TryCreate(19.99m).Value;
+        UnitPrice unitPrice = UnitPrice.TryCreate(19.99m).Unwrap();
 
         // Act
         decimal decimalValue = unitPrice;
@@ -103,14 +104,14 @@ public class RequiredDecimalTests
         UnitPrice unitPrice = (UnitPrice)19.99m;
 
         // Assert
-        unitPrice.Should().Be(UnitPrice.TryCreate(19.99m).Value);
+        unitPrice.Should().Be(UnitPrice.TryCreate(19.99m).Unwrap());
     }
 
     [Fact]
     public void Can_use_ToString()
     {
         // Arrange
-        UnitPrice unitPrice = UnitPrice.TryCreate(19.99m).Value;
+        UnitPrice unitPrice = UnitPrice.TryCreate(19.99m).Unwrap();
 
         // Act
         var strValue = unitPrice.ToString(CultureInfo.InvariantCulture);
@@ -180,8 +181,8 @@ public class RequiredDecimalTests
     public void Can_use_Contains()
     {
         // Arrange
-        var p1 = UnitPrice.TryCreate(10.00m).Value;
-        var p2 = UnitPrice.TryCreate(20.00m).Value;
+        var p1 = UnitPrice.TryCreate(10.00m).Unwrap();
+        var p2 = UnitPrice.TryCreate(20.00m).Unwrap();
         IReadOnlyList<UnitPrice> prices = new List<UnitPrice> { p1, p2 };
 
         // Act
@@ -196,7 +197,7 @@ public class RequiredDecimalTests
     {
         // Arrange
         var decimalValue = 19.99m;
-        UnitPrice unitPrice = UnitPrice.TryCreate(decimalValue).Value;
+        UnitPrice unitPrice = UnitPrice.TryCreate(decimalValue).Unwrap();
 
         // Act
         var actual = JsonSerializer.Serialize(unitPrice);
@@ -241,7 +242,7 @@ public class RequiredDecimalTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 }

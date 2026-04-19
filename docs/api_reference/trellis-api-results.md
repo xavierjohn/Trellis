@@ -10,7 +10,7 @@ See also: [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.m
 
 ## Breaking changes from v1 (Phase 1a, in progress)
 
-This is the running list of breaking changes the v2 redesign introduces in `Trellis.Results`. Items below are landed; remaining Phase 1a items (removal of `.Value`/`.Error` properties, removal of implicit operators, non-generic `Result`, abstract `Error` base record, etc.) will be added as they ship. See `v2-redesign-plan.md` §3.1 for the full Phase 1a target.
+This is the running list of breaking changes the v2 redesign introduces in `Trellis.Results`. Items below are landed; remaining Phase 1a items (removal of implicit operators, non-generic `Result`, abstract `Error` base record, etc.) will be added as they ship. See `v2-redesign-plan.md` §3.1 for the full Phase 1a target.
 
 | Change | v1 | v2 | Migration |
 |---|---|---|---|
@@ -22,6 +22,7 @@ This is the running list of breaking changes the v2 redesign introduces in `Trel
 | Inverse-conditional factory | `Result.FailureIf(cond, value, error)` / `Result.FailureIf(predicate, value, error)` | *(removed)* | Use a ternary: `cond ? Result.Fail<T>(error) : Result.Ok(value)` |
 | Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `await predicate() ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed) |
 | Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(Error.Unexpected(ex.Message))` or `Result.Fail<T>(...)` directly. `Result.Try`/`Result.TryAsync` continue to handle exception capture inside their lambdas. |
+| Public `Value` / `Error` properties on `Result<T>` | `result.Value` (throws if failure) / `result.Error` (throws if success) | *(now `internal`; not part of the public surface)* | Replace with one of: `result.TryGetValue(out var v)` / `result.TryGetError(out var e)` for imperative early-return, `result.Match(onSuccess, onFailure)` for transforms producing one value on both branches, `var (v, e) = result;` for destructuring, or — in test code only — `result.Unwrap()` / `result.UnwrapError()` from `Trellis.Testing` (throws `UnwrapFailedException` on wrong state). |
 
 The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form. The `SuccessIf`/`FailureIf`/`SuccessIfAsync`/`FailureIfAsync`/`Result.Success(Func<T>)`/`Result.Failure<T>(Func<Error>)`/`Result.FromException` methods have all been removed (this PR); call sites should inline a ternary or invoke the factory directly per the table above.
 

@@ -1,4 +1,5 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests;
+using Trellis.Testing;
+namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -225,8 +226,8 @@ public class QueryableExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeOfType<NotFoundError>();
-        result.Error.Detail.Should().Be("Customer not found");
+        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Detail.Should().Be("Customer not found");
     }
 
     #endregion
@@ -246,7 +247,7 @@ public class QueryableExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Name.Value.Should().Be("Alice");
+        result.Unwrap().Name.Value.Should().Be("Alice");
     }
 
     #endregion
@@ -269,7 +270,7 @@ public class QueryableExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Be(notFoundError);
+        result.UnwrapError().Should().Be(notFoundError);
     }
 
     #endregion

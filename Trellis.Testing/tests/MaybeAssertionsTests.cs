@@ -1,7 +1,7 @@
+using Trellis.Testing;
 namespace Trellis.Testing.Tests;
 
 using Trellis;
-using Trellis.Testing;
 
 /// <summary>
 /// Tests for MaybeAssertions - testing the testing utilities themselves.
@@ -415,7 +415,7 @@ public class MaybeAssertionsTests
     {
         // Arrange
         var result = Result.Ok("test");
-        var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe<string>.None;
+        var maybe = result.IsSuccess ? Maybe.From(result.Unwrap()) : Maybe<string>.None;
 
         // Act & Assert
         maybe.Should().HaveValueEqualTo("test");
@@ -426,7 +426,7 @@ public class MaybeAssertionsTests
     {
         // Arrange
         var result = Result.Fail<string>(Error.NotFound("Not found"));
-        var maybe = result.IsSuccess ? Maybe.From(result.Value) : Maybe<string>.None;
+        var maybe = result.IsSuccess ? Maybe.From(result.Unwrap()) : Maybe<string>.None;
 
         // Act & Assert
         maybe.Should().BeNone();

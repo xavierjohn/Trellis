@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Example.Tests;
 
 using Trellis;
@@ -100,9 +101,9 @@ public class DomainDrivenDesignSamplesTests
         {
             var result = TryCreate(name, email);
             if (result.IsFailure)
-                throw new InvalidOperationException($"Failed to create Customer: {result.Error.Detail}");
+                throw new InvalidOperationException($"Failed to create Customer: {result.UnwrapError().Detail}");
 
-            return result.Value;
+            return result.Unwrap();
         }
 
         public Result<Customer> UpdateName(string newName) =>
@@ -129,8 +130,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Name.Should().Be("John Doe");
-        result.Value.Email.Should().Be(email);
+        result.Unwrap().Name.Should().Be("John Doe");
+        result.Unwrap().Email.Should().Be(email);
     }
 
     [Fact]
@@ -144,7 +145,7 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Name cannot be empty");
+        result.UnwrapError().Detail.Should().Contain("Name cannot be empty");
     }
 
     [Fact]
@@ -158,8 +159,8 @@ public class DomainDrivenDesignSamplesTests
         var customer2 = Customer.TryCreate("John Doe", email);
 
         // Assert - Different instances, different IDs, not equal
-        customer1.Value.Should().NotBe(customer2.Value);
-        customer1.Value.Id.Should().NotBe(customer2.Value.Id);
+        customer1.Unwrap().Should().NotBe(customer2.Unwrap());
+        customer1.Unwrap().Id.Should().NotBe(customer2.Unwrap().Id);
     }
 
     [Fact]
@@ -174,7 +175,7 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Name.Should().Be("John Smith");
+        result.Unwrap().Name.Should().Be("John Smith");
     }
 
     [Fact]
@@ -190,7 +191,7 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Email.Should().Be(newEmail);
+        result.Unwrap().Email.Should().Be(newEmail);
     }
 
     [Fact]
@@ -208,8 +209,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Name.Should().Be("John Smith");
-        result.Value.Email.Should().Be(newEmail);
+        result.Unwrap().Name.Should().Be("John Smith");
+        result.Unwrap().Email.Should().Be(newEmail);
     }
 
     #endregion
@@ -277,7 +278,7 @@ public class DomainDrivenDesignSamplesTests
         var address2 = Address.TryCreate("123 Main St", "Springfield", "IL", "62701", "USA");
 
         // Assert - Same values, equal
-        address1.Value.Should().Be(address2.Value);
+        address1.Unwrap().Should().Be(address2.Unwrap());
     }
 
     [Fact]
@@ -288,7 +289,7 @@ public class DomainDrivenDesignSamplesTests
         var address3 = Address.TryCreate("456 Oak Ave", "Springfield", "IL", "62702", "USA");
 
         // Assert - Different values, not equal
-        address1.Value.Should().NotBe(address3.Value);
+        address1.Unwrap().Should().NotBe(address3.Unwrap());
     }
 
     [Fact]
@@ -299,7 +300,7 @@ public class DomainDrivenDesignSamplesTests
         var address3 = Address.TryCreate("456 Oak Ave", "Springfield", "IL", "62702", "USA");
 
         // Act & Assert
-        address1.Value.IsSameCity(address3.Value).Should().BeTrue();
+        address1.Unwrap().IsSameCity(address3.Unwrap()).Should().BeTrue();
     }
 
     [Fact]
@@ -309,7 +310,7 @@ public class DomainDrivenDesignSamplesTests
         var address = Address.TryCreate("123 Main St", "Springfield", "IL", "62701", "USA");
 
         // Act & Assert
-        address.Value.GetFullAddress().Should().Be("123 Main St, Springfield, IL 62701, USA");
+        address.Unwrap().GetFullAddress().Should().Be("123 Main St, Springfield, IL 62701, USA");
     }
 
     // Temperature (Scalar)
@@ -361,7 +362,7 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(98.6m);
+        result.Unwrap().Value.Should().Be(98.6m);
     }
 
     [Fact]
@@ -372,7 +373,7 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("below absolute zero");
+        result.UnwrapError().Detail.Should().Contain("below absolute zero");
     }
 
     [Fact]
@@ -383,7 +384,7 @@ public class DomainDrivenDesignSamplesTests
         var temp2 = Temperature.TryCreate(98.60m);
 
         // Assert - Rounded to same value, equal
-        temp1.Value.Should().Be(temp2.Value);
+        temp1.Unwrap().Should().Be(temp2.Unwrap());
     }
 
     [Fact]
@@ -404,7 +405,7 @@ public class DomainDrivenDesignSamplesTests
         var temp2 = Temperature.TryCreate(50m);
 
         // Act
-        var difference = temp1.Value.Subtract(temp2.Value);
+        var difference = temp1.Unwrap().Subtract(temp2.Unwrap());
 
         // Assert
         difference.Value.Should().Be(50m);
@@ -418,9 +419,9 @@ public class DomainDrivenDesignSamplesTests
         var coldTemp = Temperature.TryCreate(-10m);
 
         // Assert
-        hotTemp.Value.IsBoiling.Should().BeTrue();
-        coldTemp.Value.IsFreezing.Should().BeTrue();
-        coldTemp.Value.IsBelowZero.Should().BeTrue();
+        hotTemp.Unwrap().IsBoiling.Should().BeTrue();
+        coldTemp.Unwrap().IsFreezing.Should().BeTrue();
+        coldTemp.Unwrap().IsBelowZero.Should().BeTrue();
     }
 
     // Money (Domain Logic)
@@ -449,9 +450,9 @@ public class DomainDrivenDesignSamplesTests
         {
             var result = TryCreate(amount, currency);
             if (result.IsFailure)
-                throw new InvalidOperationException($"Failed to create Money: {result.Error.Detail}");
+                throw new InvalidOperationException($"Failed to create Money: {result.UnwrapError().Detail}");
 
-            return result.Value;
+            return result.Unwrap();
         }
 
         public static Money Zero(string currency = "USD") => new(0, currency);
@@ -501,8 +502,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(100.00m);
-        result.Value.Currency.Should().Be("USD");
+        result.Unwrap().Amount.Should().Be(100.00m);
+        result.Unwrap().Currency.Should().Be("USD");
     }
 
     [Fact]
@@ -513,7 +514,7 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Amount cannot be negative");
+        result.UnwrapError().Detail.Should().Contain("Amount cannot be negative");
     }
 
     [Fact]
@@ -524,11 +525,11 @@ public class DomainDrivenDesignSamplesTests
         var money2 = Money.TryCreate(50.00m, "USD");
 
         // Act
-        var result = money1.Value.Add(money2.Value);
+        var result = money1.Unwrap().Add(money2.Unwrap());
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(150.00m);
+        result.Unwrap().Amount.Should().Be(150.00m);
     }
 
     [Fact]
@@ -539,11 +540,11 @@ public class DomainDrivenDesignSamplesTests
         var eur = Money.TryCreate(50.00m, "EUR");
 
         // Act
-        var result = usd.Value.Add(eur.Value);
+        var result = usd.Unwrap().Add(eur.Unwrap());
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Cannot add EUR to USD");
+        result.UnwrapError().Detail.Should().Contain("Cannot add EUR to USD");
     }
 
     [Fact]
@@ -553,7 +554,7 @@ public class DomainDrivenDesignSamplesTests
         var price = Money.TryCreate(100.00m, "USD");
 
         // Act
-        var discount = price.Value.ApplyDiscount(10);
+        var discount = price.Unwrap().ApplyDiscount(10);
 
         // Assert
         discount.Amount.Should().Be(90.00m);
@@ -566,13 +567,13 @@ public class DomainDrivenDesignSamplesTests
         var price = Money.TryCreate(100.00m, "USD");
 
         // Act
-        var discount = price.Value.ApplyDiscount(10); // $90.00
+        var discount = price.Unwrap().ApplyDiscount(10); // $90.00
         var tax = discount.Multiply(0.08m); // $7.20
         var total = discount.Add(tax); // $97.20
 
         // Assert
         total.IsSuccess.Should().BeTrue();
-        total.Value.Amount.Should().Be(97.20m);
+        total.Unwrap().Amount.Should().Be(97.20m);
     }
 
     #endregion
@@ -651,9 +652,9 @@ public class DomainDrivenDesignSamplesTests
         {
             var result = TryCreate(customerId);
             if (result.IsFailure)
-                throw new InvalidOperationException($"Failed to create Order: {result.Error.Detail}");
+                throw new InvalidOperationException($"Failed to create Order: {result.UnwrapError().Detail}");
 
-            return result.Value;
+            return result.Unwrap();
         }
 
         public Result<Order> AddLine(ProductId productId, string productName, Money price, int quantity) =>
@@ -757,10 +758,10 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.CustomerId.Should().Be(customerId);
-        result.Value.Status.Should().Be(OrderStatus.Draft);
-        result.Value.Lines.Should().BeEmpty();
-        result.Value.Total.Amount.Should().Be(0);
+        result.Unwrap().CustomerId.Should().Be(customerId);
+        result.Unwrap().Status.Should().Be(OrderStatus.Draft);
+        result.Unwrap().Lines.Should().BeEmpty();
+        result.Unwrap().Total.Amount.Should().Be(0);
     }
 
     [Fact]
@@ -791,10 +792,10 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Lines.Should().HaveCount(1);
-        result.Value.Lines[0].ProductName.Should().Be("Widget");
-        result.Value.Lines[0].Quantity.Should().Be(5);
-        result.Value.Total.Amount.Should().Be(149.95m);
+        result.Unwrap().Lines.Should().HaveCount(1);
+        result.Unwrap().Lines[0].ProductName.Should().Be("Widget");
+        result.Unwrap().Lines[0].Quantity.Should().Be(5);
+        result.Unwrap().Total.Amount.Should().Be(149.95m);
     }
 
     [Fact]
@@ -813,8 +814,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Lines.Should().HaveCount(1);
-        result.Value.Lines[0].Quantity.Should().Be(8);
+        result.Unwrap().Lines.Should().HaveCount(1);
+        result.Unwrap().Lines[0].Quantity.Should().Be(8);
     }
 
     [Fact]
@@ -832,8 +833,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Lines.Should().BeEmpty();
-        result.Value.Total.Amount.Should().Be(0);
+        result.Unwrap().Lines.Should().BeEmpty();
+        result.Unwrap().Total.Amount.Should().Be(0);
     }
 
     [Fact]
@@ -851,8 +852,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Status.Should().Be(OrderStatus.Submitted);
-        result.Value.SubmittedAt.Should().NotBeNull();
+        result.Unwrap().Status.Should().Be(OrderStatus.Submitted);
+        result.Unwrap().SubmittedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -867,7 +868,7 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Contain("Cannot submit empty order");
+        result.UnwrapError().Detail.Should().Contain("Cannot submit empty order");
     }
 
     [Fact]
@@ -886,8 +887,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Status.Should().Be(OrderStatus.Shipped);
-        result.Value.ShippedAt.Should().NotBeNull();
+        result.Unwrap().Status.Should().Be(OrderStatus.Shipped);
+        result.Unwrap().ShippedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -905,8 +906,8 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Status.Should().Be(OrderStatus.Cancelled);
-        result.Value.CancelledAt.Should().NotBeNull();
+        result.Unwrap().Status.Should().Be(OrderStatus.Cancelled);
+        result.Unwrap().CancelledAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -963,9 +964,9 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Status.Should().Be(OrderStatus.Shipped);
-        result.Value.Lines.Should().HaveCount(2);
-        result.Value.Total.Amount.Should().Be(299.92m); // (29.99*5) + (49.99*3)
+        result.Unwrap().Status.Should().Be(OrderStatus.Shipped);
+        result.Unwrap().Lines.Should().HaveCount(2);
+        result.Unwrap().Total.Amount.Should().Be(299.92m); // (29.99*5) + (49.99*3)
     }
 
     #endregion

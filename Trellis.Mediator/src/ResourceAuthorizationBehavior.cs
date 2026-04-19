@@ -61,8 +61,8 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
 
         // 1. Load the resource
         var loadResult = await loader.LoadAsync(message, cancellationToken).ConfigureAwait(false);
-        if (loadResult.IsFailure)
-            return TResponse.CreateFailure(loadResult.Error);
+        if (loadResult.TryGetError(out var loadError))
+            return TResponse.CreateFailure(loadError);
 
         // 2. Authorize against the loaded resource
         var actor = await actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
@@ -70,9 +70,12 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
         if (actor is null)
             throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
 
-        var authResult = message.Authorize(actor, loadResult.Value);
-        if (authResult.IsFailure)
-            return TResponse.CreateFailure(authResult.Error);
+        // Safe: TryGetError returned false above, so loadResult is success.
+        if (!loadResult.TryGetValue(out var resource))
+            throw new InvalidOperationException("Result is in an unexpected state.");
+        var authResult = message.Authorize(actor, resource);
+        if (authResult.TryGetError(out var authError))
+            return TResponse.CreateFailure(authError);
 
         // 3. Proceed to handler
         return await next(message, cancellationToken).ConfigureAwait(false);

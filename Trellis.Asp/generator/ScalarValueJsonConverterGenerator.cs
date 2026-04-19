@@ -415,13 +415,9 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine();
         sb.AppendLine($"        var result = {fullTypeName}.TryCreate(primitiveValue, null);");
         sb.AppendLine();
-        sb.AppendLine("        if (result.IsFailure)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            // Return null on validation failure - the value object's TryCreate handles validation");
-        sb.AppendLine("            return null;");
-        sb.AppendLine("        }");
-        sb.AppendLine();
-        sb.AppendLine("        return result.Value;");
+        sb.AppendLine($"        return result.Match<{fullTypeName}, {fullTypeName}?>(");
+        sb.AppendLine("            onSuccess: v => v,");
+        sb.AppendLine("            onFailure: _ => null);");
         sb.AppendLine("    }");
         sb.AppendLine();
 

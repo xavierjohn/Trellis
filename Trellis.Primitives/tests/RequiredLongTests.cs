@@ -1,4 +1,5 @@
-﻿namespace Trellis.Primitives.Tests;
+using Trellis.Testing;
+namespace Trellis.Primitives.Tests;
 
 /// <summary>
 /// RequiredLong without [Range] — accepts any non-null long.
@@ -33,7 +34,7 @@ public class RequiredLongTests
     {
         var result = TraceId.TryCreate(123456789L);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(123456789L);
+        result.Unwrap().Value.Should().Be(123456789L);
     }
 
     [Theory]
@@ -45,7 +46,7 @@ public class RequiredLongTests
     {
         var result = TraceId.TryCreate(value);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(value);
+        result.Unwrap().Value.Should().Be(value);
     }
 
     [Fact]
@@ -60,7 +61,7 @@ public class RequiredLongTests
     {
         var result = TraceId.TryCreate("999999999999");
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(999999999999L);
+        result.Unwrap().Value.Should().Be(999999999999L);
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public class RequiredLongTests
     {
         var result = SequenceNumber.TryCreate(1L);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1L);
+        result.Unwrap().Value.Should().Be(1L);
     }
 
     [Fact]
@@ -97,7 +98,7 @@ public class RequiredLongTests
     {
         var result = SequenceNumber.TryCreate(1000000L);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1000000L);
+        result.Unwrap().Value.Should().Be(1000000L);
     }
 
     [Fact]
@@ -112,7 +113,7 @@ public class RequiredLongTests
     {
         var result = SequenceNumber.TryCreate("500");
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(500L);
+        result.Unwrap().Value.Should().Be(500L);
     }
 
     [Fact]
@@ -127,7 +128,7 @@ public class RequiredLongTests
     {
         var result = SequenceNumber.TryCreate(0L, "myField");
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("myField");
     }
 
@@ -141,7 +142,7 @@ public class RequiredLongTests
     [Fact]
     public void JsonRoundTrip()
     {
-        var original = TraceId.TryCreate(42L).Value;
+        var original = TraceId.TryCreate(42L).Unwrap();
         var json = System.Text.Json.JsonSerializer.Serialize(original);
         var deserialized = System.Text.Json.JsonSerializer.Deserialize<TraceId>(json);
         deserialized.Should().Be(original);
@@ -154,7 +155,7 @@ public class RequiredLongTests
     {
         var result = LargeSequence.TryCreate(5000000000L);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(5000000000L);
+        result.Unwrap().Value.Should().Be(5000000000L);
     }
 
     [Fact]
@@ -187,7 +188,7 @@ public class RequiredLongTests
     {
         var result = FullRangeLong.TryCreate(long.MinValue);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(long.MinValue);
+        result.Unwrap().Value.Should().Be(long.MinValue);
     }
 
     [Fact]
@@ -195,7 +196,7 @@ public class RequiredLongTests
     {
         var result = FullRangeLong.TryCreate(long.MaxValue);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(long.MaxValue);
+        result.Unwrap().Value.Should().Be(long.MaxValue);
     }
 
     [Fact]

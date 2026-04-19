@@ -1,8 +1,8 @@
-﻿namespace Trellis.FluentValidation.Tests;
+using Trellis.Testing;
+namespace Trellis.FluentValidation.Tests;
 
 using global::FluentValidation;
 using Trellis;
-using Trellis.Testing;
 using Xunit;
 
 public class FluentTests
@@ -14,9 +14,9 @@ public class FluentTests
     {
         // Act
         var rUser = User.TryCreate(
-            FirstName.TryCreate("John").Value,
-            LastName.TryCreate("Doe").Value,
-            EmailAddress.TryCreate("xavier@somewhere.com").Value,
+            FirstName.TryCreate("John").Unwrap(),
+            LastName.TryCreate("Doe").Unwrap(),
+            EmailAddress.TryCreate("xavier@somewhere.com").Unwrap(),
             StrongPassword);
 
         // Assert
@@ -54,7 +54,7 @@ public class FluentTests
         // Arrange
         FirstName firstName = default!;
         LastName lastName = default!;
-        EmailAddress email = EmailAddress.TryCreate("xavier@somewhere.com").Value;
+        EmailAddress email = EmailAddress.TryCreate("xavier@somewhere.com").Unwrap();
 
         // Act
         var rUser = User.TryCreate(firstName, lastName, email, "WeakPassword");

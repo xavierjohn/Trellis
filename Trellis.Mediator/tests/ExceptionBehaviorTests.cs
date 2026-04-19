@@ -1,3 +1,4 @@
+using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.Logging;
@@ -23,9 +24,9 @@ public class ExceptionBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().NotContain("Something went wrong");
-        result.Error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Detail.Should().NotContain("Something went wrong");
+        result.UnwrapError().Detail.Should().Be("An unexpected error occurred while processing the request.");
     }
 
     [Fact]
@@ -41,9 +42,9 @@ public class ExceptionBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().NotContain("s3cret",
+        result.UnwrapError().Detail.Should().NotContain("s3cret",
             "exception messages may contain credentials and must not be exposed in error details");
-        result.Error.Detail.Should().NotContain("Connection string",
+        result.UnwrapError().Detail.Should().NotContain("Connection string",
             "internal infrastructure details must not be exposed in error details");
     }
 
@@ -121,7 +122,7 @@ public class ExceptionBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Hello, Alice!");
+        result.Unwrap().Should().Be("Hello, Alice!");
         logEntries.Should().BeEmpty("no exception means no logging");
     }
 
@@ -139,7 +140,7 @@ public class ExceptionBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Detail.Should().Be("Business rule failed.");
+        result.UnwrapError().Detail.Should().Be("Business rule failed.");
         logEntries.Should().BeEmpty("failure results are not exceptions");
     }
 

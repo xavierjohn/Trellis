@@ -79,22 +79,21 @@ public class MoneyController : ControllerBase
             return Result.Fail<Money>(Error.Validation("Cart cannot be empty")).ToActionResult(this);
 
         var firstItem = Money.TryCreate(request.Items[0].Amount, request.Items[0].Currency);
-        if (firstItem.IsFailure)
+        if (!firstItem.TryGetValue(out var total))
             return firstItem.ToActionResult(this);
 
-        var total = firstItem.Value;
         for (int i = 1; i < request.Items.Length; i++)
         {
             var itemResult = Money.TryCreate(request.Items[i].Amount, request.Items[i].Currency)
-                .Bind(item => total.Add(item));
+                .Bind(item => total!.Add(item));
 
-            if (itemResult.IsFailure)
+            if (!itemResult.TryGetValue(out var nextTotal))
                 return itemResult.ToActionResult(this);
 
-            total = itemResult.Value;
+            total = nextTotal;
         }
 
-        return Result.Ok(total).ToActionResult(this);
+        return Result.Ok(total!).ToActionResult(this);
     }
 
     [HttpPost("[action]")]

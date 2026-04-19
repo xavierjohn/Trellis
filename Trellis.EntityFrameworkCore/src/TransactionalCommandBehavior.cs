@@ -39,8 +39,8 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>(IUnitOfWor
         if (result.IsSuccess)
         {
             var commitResult = await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-            if (commitResult.IsFailure)
-                return TResponse.CreateFailure(commitResult.Error);
+            if (commitResult.TryGetError(out var error))
+                return TResponse.CreateFailure(error);
         }
 
         return result;

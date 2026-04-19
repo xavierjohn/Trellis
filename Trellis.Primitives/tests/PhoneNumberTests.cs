@@ -1,9 +1,10 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
+using Trellis.Testing;
 
 public class PhoneNumberTests
 {
@@ -20,7 +21,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(phone);
+        result.Unwrap().Value.Should().Be(phone);
     }
 
     [Theory]
@@ -34,7 +35,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Theory]
@@ -54,7 +55,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -65,7 +66,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Phone number is required.");
     }
 
@@ -77,7 +78,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
     }
 
@@ -110,7 +111,7 @@ public class PhoneNumberTests
     public void GetCountryCode_returns_correct_code(string phone, string expectedCountryCode)
     {
         // Arrange
-        var phoneNumber = PhoneNumber.TryCreate(phone).Value;
+        var phoneNumber = PhoneNumber.TryCreate(phone).Unwrap();
 
         // Act
         var countryCode = phoneNumber.GetCountryCode();
@@ -123,8 +124,8 @@ public class PhoneNumberTests
     public void Two_PhoneNumber_with_same_value_should_be_equal()
     {
         // Arrange
-        var a = PhoneNumber.TryCreate("+14155551234").Value;
-        var b = PhoneNumber.TryCreate("+14155551234").Value;
+        var a = PhoneNumber.TryCreate("+14155551234").Unwrap();
+        var b = PhoneNumber.TryCreate("+14155551234").Unwrap();
 
         // Assert
         (a == b).Should().BeTrue();
@@ -136,8 +137,8 @@ public class PhoneNumberTests
     public void Two_PhoneNumber_with_different_value_should_not_be_equal()
     {
         // Arrange
-        var a = PhoneNumber.TryCreate("+14155551234").Value;
-        var b = PhoneNumber.TryCreate("+14155559999").Value;
+        var a = PhoneNumber.TryCreate("+14155551234").Unwrap();
+        var b = PhoneNumber.TryCreate("+14155559999").Unwrap();
 
         // Assert
         (a != b).Should().BeTrue();
@@ -148,7 +149,7 @@ public class PhoneNumberTests
     public void Can_implicitly_cast_to_string()
     {
         // Arrange
-        PhoneNumber value = PhoneNumber.TryCreate("+14155551234").Value;
+        PhoneNumber value = PhoneNumber.TryCreate("+14155551234").Unwrap();
 
         // Act
         string stringValue = value;
@@ -213,7 +214,7 @@ public class PhoneNumberTests
     public void ConvertToJson()
     {
         // Arrange
-        var value = PhoneNumber.TryCreate("+14155551234").Value;
+        var value = PhoneNumber.TryCreate("+14155551234").Unwrap();
         var expected = JsonSerializer.Serialize("+14155551234");
 
         // Act
@@ -258,7 +259,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("contactPhone");
     }
 }

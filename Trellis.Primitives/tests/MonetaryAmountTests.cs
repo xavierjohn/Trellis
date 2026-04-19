@@ -1,6 +1,7 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using Trellis.Primitives;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="MonetaryAmount"/> — a single-currency monetary value.
@@ -15,7 +16,7 @@ public class MonetaryAmountTests
     {
         var result = MonetaryAmount.TryCreate(29.99m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(29.99m);
+        result.Unwrap().Value.Should().Be(29.99m);
     }
 
     [Fact]
@@ -23,7 +24,7 @@ public class MonetaryAmountTests
     {
         var result = MonetaryAmount.TryCreate(0m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(0m);
+        result.Unwrap().Value.Should().Be(0m);
     }
 
     [Fact]
@@ -38,7 +39,7 @@ public class MonetaryAmountTests
     {
         var result = MonetaryAmount.TryCreate(29.999m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(30.00m);
+        result.Unwrap().Value.Should().Be(30.00m);
     }
 
     [Fact]
@@ -55,7 +56,7 @@ public class MonetaryAmountTests
         decimal? value = 15.50m;
         var result = MonetaryAmount.TryCreate(value);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(15.50m);
+        result.Unwrap().Value.Should().Be(15.50m);
     }
 
     [Fact]
@@ -91,7 +92,7 @@ public class MonetaryAmountTests
 
         var result = a.Add(b);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(30.50m);
+        result.Unwrap().Value.Should().Be(30.50m);
     }
 
     [Fact]
@@ -102,7 +103,7 @@ public class MonetaryAmountTests
 
         var result = a.Subtract(b);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(30.00m);
+        result.Unwrap().Value.Should().Be(30.00m);
     }
 
     [Fact]
@@ -122,7 +123,7 @@ public class MonetaryAmountTests
 
         var result = amount.Multiply(3);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(30.00m);
+        result.Unwrap().Value.Should().Be(30.00m);
     }
 
     [Fact]
@@ -141,7 +142,7 @@ public class MonetaryAmountTests
 
         var result = amount.Multiply(1.5m);
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(15.00m);
+        result.Unwrap().Value.Should().Be(15.00m);
     }
 
     [Fact]
@@ -290,7 +291,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(expected);
+        result.Unwrap().Value.Should().Be(expected);
     }
 
     [Fact]
@@ -301,7 +302,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -312,7 +313,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -323,7 +324,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Theory]
@@ -336,7 +337,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<ValidationError>();
     }
 
     [Fact]
@@ -347,7 +348,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].FieldName.Should().Be("price");
     }
 
@@ -359,7 +360,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.Error;
+        var validation = (ValidationError)result.UnwrapError();
         validation.FieldErrors[0].Details[0].Should().Be("Amount cannot be negative.");
     }
 
@@ -371,7 +372,7 @@ public class MonetaryAmountTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(1234.56m);
+        result.Unwrap().Value.Should().Be(1234.56m);
     }
 
     #endregion
@@ -386,7 +387,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.Sum(items);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(10.00m);
+        result.Unwrap().Value.Should().Be(10.00m);
     }
 
     [Fact]
@@ -402,7 +403,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.Sum(items);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(35.75m);
+        result.Unwrap().Value.Should().Be(35.75m);
     }
 
     [Fact]
@@ -411,7 +412,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.Sum(Array.Empty<MonetaryAmount>());
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Should().Be(0m);
+        result.Unwrap().Value.Should().Be(0m);
     }
 
     [Fact]

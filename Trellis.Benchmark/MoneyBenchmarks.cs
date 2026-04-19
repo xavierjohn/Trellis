@@ -1,4 +1,4 @@
-﻿namespace Benchmark;
+namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -46,37 +46,37 @@ public class MoneyBenchmarks
     [Benchmark]
     public Money Add_SameCurrency()
     {
-        return _usd100.Add(_usd50).Value;
+        return _usd100.Add(_usd50).OrThrow();
     }
 
     [Benchmark]
     public Money Subtract_SameCurrency()
     {
-        return _usd100.Subtract(_usd50).Value;
+        return _usd100.Subtract(_usd50).OrThrow();
     }
 
     [Benchmark]
     public Money Multiply_Decimal()
     {
-        return _usd100.Multiply(2.5m).Value;
+        return _usd100.Multiply(2.5m).OrThrow();
     }
 
     [Benchmark]
     public Money Multiply_Integer()
     {
-        return _usd100.Multiply(3).Value;
+        return _usd100.Multiply(3).OrThrow();
     }
 
     [Benchmark]
     public Money Divide_Decimal()
     {
-        return _usd100.Divide(3m).Value;
+        return _usd100.Divide(3m).OrThrow();
     }
 
     [Benchmark]
     public Money Divide_Integer()
     {
-        return _usd100.Divide(4).Value;
+        return _usd100.Divide(4).OrThrow();
     }
 
     #endregion
@@ -118,13 +118,13 @@ public class MoneyBenchmarks
     [Benchmark]
     public Money[] Allocate_ThreeWay()
     {
-        return _usd100.Allocate(1, 2, 1).Value;
+        return _usd100.Allocate(1, 2, 1).OrThrow();
     }
 
     [Benchmark]
     public Money[] Allocate_EvenSplit()
     {
-        return _usd100.Allocate(1, 1, 1).Value;
+        return _usd100.Allocate(1, 1, 1).OrThrow();
     }
 
     #endregion
@@ -138,8 +138,14 @@ public class MoneyBenchmarks
             .Add(_usd50)
             .Bind(m => m.Multiply(2))
             .Bind(m => m.Divide(3))
-            .Value;
+            .OrThrow();
     }
 
     #endregion
+}
+
+internal static class BenchmarkResultExtensions
+{
+    public static T OrThrow<T>(this Result<T> r) =>
+        r.Match(onSuccess: v => v, onFailure: e => throw new InvalidOperationException(e.Detail));
 }
