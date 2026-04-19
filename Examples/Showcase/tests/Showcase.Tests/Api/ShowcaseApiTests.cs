@@ -36,7 +36,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<AccountResponse>(Ct);
         body.Should().NotBeNull();
-        body!.Status.Should().Be("Active");
+        body!.Status.Should().Be(Trellis.Showcase.Domain.Aggregates.AccountStatus.Active);
     }
 
     [Fact]

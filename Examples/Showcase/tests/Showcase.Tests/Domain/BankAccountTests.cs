@@ -1,5 +1,6 @@
 namespace Trellis.Showcase.Tests.Domain;
 
+using Microsoft.Extensions.Time.Testing;
 using Trellis;
 using Trellis.Primitives;
 using Trellis.Showcase.Domain.Aggregates;
@@ -12,13 +13,14 @@ public class BankAccountTests
 
     private static BankAccount NewActiveAccount(decimal initialDeposit = 100m, decimal dailyLimit = 500m, decimal overdraft = 0m, AccountType type = AccountType.Checking)
     {
+        var timeProvider = new FakeTimeProvider(FixedNow);
         var result = BankAccount.TryCreate(
             CustomerId.NewUniqueV4(),
             type,
             Money.Create(initialDeposit, "USD"),
             Money.Create(dailyLimit, "USD"),
             Money.Create(overdraft, "USD"),
-            utcNow: () => FixedNow);
+            timeProvider);
         result.IsSuccess.Should().BeTrue();
         return result.Value;
     }

@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Showcase.Domain\Showcase.Domain.csproj" />
     <ProjectReference Include="..\..\src\Showcase.Api\Showcase.Api.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Testing\src\Trellis.Testing.csproj" />

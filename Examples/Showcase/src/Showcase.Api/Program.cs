@@ -14,7 +14,7 @@ builder.Services
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
 builder.Services.AddSingleton<IFraudGateway, InMemoryFraudGateway>();
 builder.Services.AddSingleton<IIdentityVerifier, InMemoryIdentityVerifier>();
@@ -29,8 +29,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var repo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
-    var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-    ShowcaseSeed.Apply(repo, clock);
+    var timeProvider = scope.ServiceProvider.GetRequiredService<TimeProvider>();
+    ShowcaseSeed.Apply(repo, timeProvider);
 }
 
 if (app.Environment.IsDevelopment())

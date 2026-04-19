@@ -30,7 +30,7 @@ public class TransfersController : ControllerBase
             .BindAsync(values =>
             {
                 var (from, to, amount) = values;
-                return _workflow.ProcessTransferAsync(from, to, amount, request.Description, cancellationToken);
+                return _workflow.TransferAsync(from, to, amount, request.Description, cancellationToken);
             })
             .MapAsync(pair => AccountResponse.From(pair.From))
             .ToActionResultAsync(this);

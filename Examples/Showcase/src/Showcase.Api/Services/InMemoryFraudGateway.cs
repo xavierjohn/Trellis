@@ -18,9 +18,9 @@ public sealed class InMemoryFraudGateway : IFraudGateway
     public const decimal SuspiciousAmountThreshold = 5000m;
     public const int MaxTransactionsPerHour = 10;
 
-    private readonly IClock _clock;
+    private readonly TimeProvider _timeProvider;
 
-    public InMemoryFraudGateway(IClock clock) => _clock = clock;
+    public InMemoryFraudGateway(TimeProvider timeProvider) => _timeProvider = timeProvider;
 
     public Task<Result> AnalyzeTransactionAsync(
         BankAccount account,
@@ -36,7 +36,7 @@ public sealed class InMemoryFraudGateway : IFraudGateway
             }));
         }
 
-        var oneHourAgo = _clock.UtcNow.AddHours(-1);
+        var oneHourAgo = _timeProvider.GetUtcNow().UtcDateTime.AddHours(-1);
         var recentCount = account.Transactions.Count(t => t.Timestamp >= oneHourAgo);
         if (recentCount >= MaxTransactionsPerHour)
         {

@@ -2,35 +2,65 @@ namespace Trellis.Showcase.Api.Workflows;
 
 using Trellis;
 using Trellis.Primitives;
+using Trellis.Showcase.Api.Persistence;
 using Trellis.Showcase.Api.Services;
 using Trellis.Showcase.Domain.Aggregates;
 using Trellis.Showcase.Domain.ValueObjects;
 
 /// <summary>
-/// Orchestrates banking operations across the domain aggregate, fraud gateway, identity verifier,
-/// and event publisher. The class is pure orchestration: every collaborator is injected, every
-/// failure path produces a specific <see cref="Error"/> case.
+/// Application boundary for every state-changing banking use case. Each method:
+/// <list type="number">
+///   <item>Validates cross-aggregate / external preconditions (fraud, identity).</item>
+///   <item>Mutates the aggregate via its domain methods.</item>
+///   <item>On success, publishes uncommitted events and calls <see cref="IAggregate.AcceptChanges"/>.</item>
+/// </list>
+/// Controllers must not mutate aggregates directly — load them from <see cref="IAccountRepository"/>
+/// and dispatch through this workflow so events are reliably published exactly once.
 /// </summary>
 public class BankingWorkflow
 {
     private const decimal MfaThreshold = 1000m;
 
+    private readonly IAccountRepository _repository;
     private readonly IFraudGateway _fraud;
     private readonly IIdentityVerifier _identity;
     private readonly IEventPublisher _events;
+    private readonly TimeProvider _timeProvider;
 
-    public BankingWorkflow(IFraudGateway fraud, IIdentityVerifier identity, IEventPublisher events)
+    public BankingWorkflow(
+        IAccountRepository repository,
+        IFraudGateway fraud,
+        IIdentityVerifier identity,
+        IEventPublisher events,
+        TimeProvider timeProvider)
     {
+        _repository = repository;
         _fraud = fraud;
         _identity = identity;
         _events = events;
+        _timeProvider = timeProvider;
     }
 
-    /// <summary>
-    /// Withdraws money from <paramref name="account"/> after fraud screening and (for amounts
-    /// over <see cref="MfaThreshold"/>) identity verification.
-    /// </summary>
-    public async Task<Result<BankAccount>> ProcessSecureWithdrawalAsync(
+    public Task<Result<BankAccount>> OpenAccountAsync(
+        CustomerId customerId,
+        AccountType accountType,
+        Money initialDeposit,
+        Money dailyWithdrawalLimit,
+        Money overdraftLimit,
+        CancellationToken cancellationToken = default) =>
+        BankAccount.TryCreate(customerId, accountType, initialDeposit, dailyWithdrawalLimit, overdraftLimit, _timeProvider)
+            .Tap(_repository.Add)
+            .TapAsync(account => CommitAsync(account, cancellationToken));
+
+    public Task<Result<BankAccount>> DepositAsync(BankAccount account, Money amount, string description, CancellationToken cancellationToken = default) =>
+        account.Deposit(amount, description)
+            .TapAsync(updated => CommitAsync(updated, cancellationToken));
+
+    public Task<Result<BankAccount>> WithdrawAsync(BankAccount account, Money amount, string description, CancellationToken cancellationToken = default) =>
+        account.Withdraw(amount, description)
+            .TapAsync(updated => CommitAsync(updated, cancellationToken));
+
+    public async Task<Result<BankAccount>> SecureWithdrawAsync(
         BankAccount account,
         Money amount,
         string verificationCode,
@@ -47,17 +77,11 @@ public class BankingWorkflow
                 return Result.Fail<BankAccount>(mfaError);
         }
 
-        var withdrawal = account.Withdraw(amount, "Secure withdrawal");
-        if (withdrawal.IsSuccess)
-            await PublishAndAcceptAsync(account, cancellationToken);
-
-        return withdrawal;
+        return await account.Withdraw(amount, "Secure withdrawal")
+            .TapAsync(updated => CommitAsync(updated, cancellationToken));
     }
 
-    /// <summary>
-    /// Transfers money between two accounts after fraud screening on both sides.
-    /// </summary>
-    public async Task<Result<(BankAccount From, BankAccount To)>> ProcessTransferAsync(
+    public async Task<Result<(BankAccount From, BankAccount To)>> TransferAsync(
         BankAccount fromAccount,
         BankAccount toAccount,
         Money amount,
@@ -72,23 +96,27 @@ public class BankingWorkflow
         if (combined.TryGetError(out var combinedError))
             return Result.Fail<(BankAccount From, BankAccount To)>(combinedError);
 
-        var transfer = fromAccount.TransferTo(toAccount, amount, description);
-        if (transfer.IsSuccess)
-        {
-            await PublishAndAcceptAsync(fromAccount, cancellationToken);
-            await PublishAndAcceptAsync(toAccount, cancellationToken);
-        }
-
-        return transfer;
+        return await fromAccount.TransferTo(toAccount, amount, description)
+            .TapAsync((Func<(BankAccount From, BankAccount To), Task>)(async pair =>
+            {
+                await CommitAsync(pair.From, cancellationToken);
+                await CommitAsync(pair.To, cancellationToken);
+            }));
     }
 
-    /// <summary>
-    /// Pays one day of interest on a savings account at the supplied annual rate.
-    /// </summary>
-    public async Task<Result<BankAccount>> ProcessInterestPaymentAsync(
-        BankAccount account,
-        decimal annualRate,
-        CancellationToken cancellationToken = default)
+    public Task<Result<BankAccount>> FreezeAsync(BankAccount account, string reason, CancellationToken cancellationToken = default) =>
+        account.Freeze(reason)
+            .TapAsync(updated => CommitAsync(updated, cancellationToken));
+
+    public Task<Result<BankAccount>> UnfreezeAsync(BankAccount account, CancellationToken cancellationToken = default) =>
+        account.Unfreeze()
+            .TapAsync(updated => CommitAsync(updated, cancellationToken));
+
+    public Task<Result<BankAccount>> CloseAsync(BankAccount account, CancellationToken cancellationToken = default) =>
+        account.Close()
+            .TapAsync(updated => CommitAsync(updated, cancellationToken));
+
+    public Task<Result<BankAccount>> PayInterestAsync(BankAccount account, decimal annualRate, CancellationToken cancellationToken = default)
     {
         var preconditions = account.ToResult()
             .Ensure(acc => acc.AccountType == AccountType.Savings,
@@ -98,22 +126,15 @@ public class BankingWorkflow
             .Ensure(acc => acc.Balance.Amount > 0,
                 new Error.Conflict(null, "interest.zero.balance") { Detail = "No interest on accounts with zero balance." });
 
-        if (preconditions.TryGetError(out var error))
-            return Result.Fail<BankAccount>(error);
-
         var dailyAmount = account.Balance.Amount * (annualRate / 365m);
-        var interest = Money.TryCreate(dailyAmount, account.Balance.Currency.Value);
-        if (interest.TryGetError(out var moneyError))
-            return Result.Fail<BankAccount>(moneyError);
 
-        var deposit = account.Deposit(interest.Value, $"Daily interest at {annualRate:P2} APR");
-        if (deposit.IsSuccess)
-            await PublishAndAcceptAsync(account, cancellationToken);
-
-        return deposit;
+        return preconditions
+            .Combine(Money.TryCreate(dailyAmount, account.Balance.Currency.Value))
+            .Bind(pair => pair.Item1.Deposit(pair.Item2, $"Daily interest at {annualRate:P2} APR"))
+            .TapAsync(updated => CommitAsync(updated, cancellationToken));
     }
 
-    private async Task PublishAndAcceptAsync(BankAccount account, CancellationToken cancellationToken)
+    private async Task CommitAsync(BankAccount account, CancellationToken cancellationToken)
     {
         var events = account.UncommittedEvents();
         if (events.Count == 0)

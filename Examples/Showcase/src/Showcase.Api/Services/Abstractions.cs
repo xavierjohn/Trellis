@@ -26,8 +26,3 @@ public interface IEventPublisher
 {
     Task PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default);
 }
-
-public interface IClock
-{
-    DateTime UtcNow { get; }
-}

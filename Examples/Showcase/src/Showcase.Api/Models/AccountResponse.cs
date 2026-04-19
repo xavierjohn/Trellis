@@ -1,24 +1,28 @@
 namespace Trellis.Showcase.Api.Models;
 
+using Trellis.Primitives;
 using Trellis.Showcase.Domain.Aggregates;
+using Trellis.Showcase.Domain.ValueObjects;
 
+/// <summary>
+/// Wire representation of a bank account. Uses VO types directly so that the JSON shape
+/// reflects the same constraints the domain enforces.
+/// </summary>
 public sealed record AccountResponse(
-    Guid Id,
-    Guid CustomerId,
-    string AccountType,
-    decimal Balance,
-    string Currency,
-    string Status,
-    decimal DailyWithdrawalLimit,
-    decimal OverdraftLimit)
+    AccountId Id,
+    CustomerId CustomerId,
+    AccountType AccountType,
+    Money Balance,
+    AccountStatus Status,
+    Money DailyWithdrawalLimit,
+    Money OverdraftLimit)
 {
     public static AccountResponse From(BankAccount account) => new(
-        account.Id.Value,
-        account.CustomerId.Value,
-        account.AccountType.ToString(),
-        account.Balance.Amount,
-        account.Balance.Currency.Value,
-        account.Status.ToString(),
-        account.DailyWithdrawalLimit.Amount,
-        account.OverdraftLimit.Amount);
+        account.Id,
+        account.CustomerId,
+        account.AccountType,
+        account.Balance,
+        account.Status,
+        account.DailyWithdrawalLimit,
+        account.OverdraftLimit);
 }

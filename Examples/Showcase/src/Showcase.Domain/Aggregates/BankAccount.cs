@@ -24,23 +24,14 @@ public enum AccountType
 }
 
 /// <summary>
-/// Bank account aggregate.
+/// Bank account aggregate. Lifecycle transitions are modeled as a state machine; all money
+/// operations and state changes return <see cref="Result{T}"/> with strongly-typed
+/// <see cref="Error"/> cases for failures.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Demonstrates two distinct error-handling patterns side by side:
-/// <list type="bullet">
-///   <item>Plain ROP (<c>Ensure</c>/<c>Bind</c>/<c>Tap</c>) for money operations.</item>
-///   <item>A <see cref="StateMachine{TState,TTrigger}"/> for lifecycle transitions
-///     (Active ↔ Frozen → Closed). Invalid lifecycle transitions become
-///     <see cref="Error.Conflict"/> via <see cref="StateMachineExtensions.FireResult"/>.</item>
-/// </list>
-/// </para>
-/// </remarks>
 public class BankAccount : Aggregate<AccountId>
 {
     private readonly List<Transaction> _transactions = [];
-    private readonly Func<DateTime> _utcNow;
+    private readonly TimeProvider _timeProvider;
     private StateMachine<AccountStatus, AccountTrigger> _lifecycle = default!;
 
     public CustomerId CustomerId { get; }
@@ -59,7 +50,7 @@ public class BankAccount : Aggregate<AccountId>
         Money dailyWithdrawalLimit,
         Money overdraftLimit,
         AccountStatus initialStatus,
-        Func<DateTime> utcNow)
+        TimeProvider timeProvider)
         : base(id)
     {
         CustomerId = customerId;
@@ -67,7 +58,7 @@ public class BankAccount : Aggregate<AccountId>
         Balance = initialBalance;
         DailyWithdrawalLimit = dailyWithdrawalLimit;
         OverdraftLimit = overdraftLimit;
-        _utcNow = utcNow;
+        _timeProvider = timeProvider;
         ConfigureLifecycle(initialStatus);
     }
 
@@ -101,8 +92,8 @@ public class BankAccount : Aggregate<AccountId>
         Money dailyWithdrawalLimit,
         Money overdraftLimit,
         AccountStatus status,
-        Func<DateTime>? utcNow = null) =>
-        new(id, customerId, accountType, balance, dailyWithdrawalLimit, overdraftLimit, status, utcNow ?? (() => DateTime.UtcNow));
+        TimeProvider? timeProvider = null) =>
+        new(id, customerId, accountType, balance, dailyWithdrawalLimit, overdraftLimit, status, timeProvider ?? TimeProvider.System);
 
     public static Result<BankAccount> TryCreate(
         CustomerId customerId,
@@ -110,9 +101,9 @@ public class BankAccount : Aggregate<AccountId>
         Money initialDeposit,
         Money dailyWithdrawalLimit,
         Money overdraftLimit,
-        Func<DateTime>? utcNow = null)
+        TimeProvider? timeProvider = null)
     {
-        utcNow ??= () => DateTime.UtcNow;
+        timeProvider ??= TimeProvider.System;
 
         var violations = new List<FieldViolation>();
         if (initialDeposit.Amount < 0)
@@ -133,14 +124,14 @@ public class BankAccount : Aggregate<AccountId>
             dailyWithdrawalLimit,
             overdraftLimit,
             AccountStatus.Active,
-            utcNow);
+            timeProvider);
 
         account.DomainEvents.Add(new AccountOpened(
             account.Id,
             customerId,
             accountType,
             initialDeposit,
-            utcNow()));
+            timeProvider.GetUtcNow().UtcDateTime));
 
         return Result.Ok(account);
     }
@@ -158,7 +149,7 @@ public class BankAccount : Aggregate<AccountId>
             .Tap(newBalance =>
             {
                 Balance = newBalance;
-                var now = _utcNow();
+                var now = _timeProvider.GetUtcNow().UtcDateTime;
                 _transactions.Add(Transaction.CreateDeposit(TransactionId.NewUniqueV4(), amount, Balance, description, now));
                 DomainEvents.Add(new MoneyDeposited(Id, amount, Balance, description, now));
             })
@@ -183,7 +174,7 @@ public class BankAccount : Aggregate<AccountId>
             .Tap(newBalance =>
             {
                 Balance = newBalance;
-                var now = _utcNow();
+                var now = _timeProvider.GetUtcNow().UtcDateTime;
                 _transactions.Add(Transaction.CreateWithdrawal(TransactionId.NewUniqueV4(), amount, Balance, description, now));
                 DomainEvents.Add(new MoneyWithdrawn(Id, amount, Balance, description, now));
             })
@@ -200,7 +191,7 @@ public class BankAccount : Aggregate<AccountId>
 
         return Withdraw(amount, $"{description} to {toAccount.Id}")
             .Bind(_ => toAccount.Deposit(amount, $"{description} from {Id}"))
-            .Tap(_ => DomainEvents.Add(new TransferCompleted(Id, toAccount.Id, amount, description, _utcNow())))
+            .Tap(_ => DomainEvents.Add(new TransferCompleted(Id, toAccount.Id, amount, description, _timeProvider.GetUtcNow().UtcDateTime)))
             .Map(_ => (this, toAccount));
     }
 
@@ -213,13 +204,13 @@ public class BankAccount : Aggregate<AccountId>
         }
 
         return _lifecycle.FireResult(AccountTrigger.Freeze)
-            .Tap(_ => DomainEvents.Add(new AccountFrozen(Id, reason, _utcNow())))
+            .Tap(_ => DomainEvents.Add(new AccountFrozen(Id, reason, _timeProvider.GetUtcNow().UtcDateTime)))
             .Map(_ => this);
     }
 
     public Result<BankAccount> Unfreeze() =>
         _lifecycle.FireResult(AccountTrigger.Unfreeze)
-            .Tap(_ => DomainEvents.Add(new AccountUnfrozen(Id, _utcNow())))
+            .Tap(_ => DomainEvents.Add(new AccountUnfrozen(Id, _timeProvider.GetUtcNow().UtcDateTime)))
             .Map(_ => this);
 
     public Result<BankAccount> Close()
@@ -231,7 +222,7 @@ public class BankAccount : Aggregate<AccountId>
         }
 
         return _lifecycle.FireResult(AccountTrigger.Close)
-            .Tap(_ => DomainEvents.Add(new AccountClosed(Id, _utcNow())))
+            .Tap(_ => DomainEvents.Add(new AccountClosed(Id, _timeProvider.GetUtcNow().UtcDateTime)))
             .Map(_ => this);
     }
 
@@ -239,7 +230,7 @@ public class BankAccount : Aggregate<AccountId>
 
     private Money GetTodayWithdrawals()
     {
-        var today = _utcNow().Date;
+        var today = _timeProvider.GetUtcNow().UtcDateTime.Date;
         var total = _transactions
             .Where(t => t.Type == TransactionType.Withdrawal && t.Timestamp.Date == today)
             .Sum(t => t.Amount.Amount);
