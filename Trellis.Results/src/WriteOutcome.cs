@@ -10,7 +10,7 @@
 /// The case set aligns with the write outcomes enumerated in RFC 9110 §9.3.4 because HTTP is the
 /// most commonly served transport, but the type itself takes no dependency on any transport package.
 /// </remarks>
-/// <typeparam name="T">The domain entity / value-object type produced by the write.</typeparam>
+/// <typeparam name="T">The representation/body type returned for Created/Updated and the status payload type used by Accepted.</typeparam>
 public abstract record WriteOutcome<T>
 {
     private WriteOutcome() { }
