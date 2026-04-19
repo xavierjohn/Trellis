@@ -40,20 +40,18 @@ public class WeatherForecastController : ControllerBase
             to = firstRange.To ?? to;
         }
 
-        return Result.Success<(ContentRangeHeaderValue, WeatherForecast[])>(() =>
-            {
-                var allData = Enumerable.Range(1, 5).Select(index => new WeatherForecast
-                {
-                    Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    TemperatureC = Random.Shared.Next(-20, 55),
-                    Summary = s_summaries[Random.Shared.Next(s_summaries.Length)]
-                }).ToArray();
+        var data = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        {
+            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+            TemperatureC = Random.Shared.Next(-20, 55),
+            Summary = s_summaries[Random.Shared.Next(s_summaries.Length)]
+        }).ToArray();
 
-                WeatherForecast[] data = allData.Skip((int)from).Take((int)(to - from + 1)).ToArray();
-                var contentRangeHeaderValue = new ContentRangeHeaderValue(from, to, allData.Length) { Unit = "items" };
-                return new(contentRangeHeaderValue, data);
-            })
-        .ToActionResult(this, static r => r.Item1, static r => r.Item2);
+        WeatherForecast[] page = data.Skip((int)from).Take((int)(to - from + 1)).ToArray();
+        var contentRangeHeaderValue = new ContentRangeHeaderValue(from, to, data.Length) { Unit = "items" };
+
+        return Result.Ok<(ContentRangeHeaderValue, WeatherForecast[])>((contentRangeHeaderValue, page))
+            .ToActionResult(this, static r => r.Item1, static r => r.Item2);
     }
 
     [HttpGet("Forbidden")]

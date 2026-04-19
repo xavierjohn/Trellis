@@ -53,17 +53,6 @@ public class TryTests
 
     [Fact]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2201:Do not raise reserved exception types")]
-    public void FromException_converts_exception()
-    {
-        var ex = new ApplicationException("Custom");
-        var r = Result.FromException<int>(ex);
-
-        r.IsFailure.Should().BeTrue();
-        r.Error.Detail.Should().Be("Custom");
-    }
-
-    [Fact]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2201:Do not raise reserved exception types")]
     public void Custom_exception_mapper()
     {
         var r = Result.Try<int>(() => throw new Exception("HideMe"), ex => Error.BadRequest("Mapped"));

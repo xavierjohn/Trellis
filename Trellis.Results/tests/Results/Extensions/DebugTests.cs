@@ -10,7 +10,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void Debug_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = result.Debug();
 
@@ -22,7 +22,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void Debug_with_message_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = result.Debug("Test message");
 
@@ -34,7 +34,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void DebugDetailed_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = result.DebugDetailed();
 
@@ -46,7 +46,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void DebugDetailed_with_message_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = result.DebugDetailed("Test message");
 
@@ -80,7 +80,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void DebugWithStack_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = result.DebugWithStack();
 
@@ -92,7 +92,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void DebugWithStack_with_message_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = result.DebugWithStack("Test message");
 
@@ -104,7 +104,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void DebugWithStack_without_stack_trace_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = result.DebugWithStack("Test message", includeStackTrace: false);
 
@@ -116,7 +116,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void DebugOnSuccess_executes_action_on_success_and_returns_self(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
         var actionExecuted = false;
 
         var returned = result.DebugOnSuccess(_ => actionExecuted = true);
@@ -145,7 +145,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public void DebugOnFailure_executes_action_on_failure_and_returns_self(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
         var actionExecuted = false;
 
         var returned = result.DebugOnFailure(_ => actionExecuted = true);
@@ -178,7 +178,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugAsync_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = await result.AsTask().DebugAsync();
 
@@ -190,7 +190,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugAsync_with_message_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = await result.AsTask().DebugAsync("Test message");
 
@@ -202,7 +202,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugDetailedAsync_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = await result.AsTask().DebugDetailedAsync();
 
@@ -214,7 +214,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugDetailedAsync_with_message_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = await result.AsTask().DebugDetailedAsync("Test message");
 
@@ -226,7 +226,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugWithStackAsync_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = await result.AsTask().DebugWithStackAsync();
 
@@ -238,7 +238,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugWithStackAsync_with_message_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = await result.AsTask().DebugWithStackAsync("Test message");
 
@@ -250,7 +250,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugWithStackAsync_without_stack_trace_returns_same_result(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
 
         var returned = await result.AsTask().DebugWithStackAsync("Test message", includeStackTrace: false);
 
@@ -262,7 +262,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugOnSuccessAsync_with_sync_action_executes_on_success_and_returns_self(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
         var actionExecuted = false;
 
         var returned = await result.AsTask().DebugOnSuccessAsync(_ => actionExecuted = true);
@@ -291,7 +291,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugOnSuccessAsync_with_async_action_executes_on_success_and_returns_self(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
         var actionExecuted = false;
 
         var returned = await result.AsTask().DebugOnSuccessAsync(_ =>
@@ -313,7 +313,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugOnFailureAsync_with_sync_action_executes_on_failure_and_returns_self(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
         var actionExecuted = false;
 
         var returned = await result.AsTask().DebugOnFailureAsync(_ => actionExecuted = true);
@@ -331,7 +331,7 @@ public class DebugTests : TestBase
     [InlineData(false)]
     public async Task DebugOnFailureAsync_with_async_action_executes_on_failure_and_returns_self(bool isSuccess)
     {
-        Result<T> result = Result.SuccessIf(isSuccess, T.Value1, Error1);
+        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
         var actionExecuted = false;
 
         var returned = await result.AsTask().DebugOnFailureAsync(_ =>

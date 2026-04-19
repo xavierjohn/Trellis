@@ -16,8 +16,14 @@ This is the running list of breaking changes the v2 redesign introduces in `Trel
 |---|---|---|---|
 | Result success factory | `Result.Success(value)` / `Result.Success<T>(...)` / `Result.Success()` | `Result.Ok(value)` / `Result.Ok<T>(...)` / `Result.Ok()` | Mechanical find-and-replace of `Result.Success` → `Result.Ok` |
 | Result failure factory | `Result.Failure<T>(error)` / `Result.Failure(error)` | `Result.Fail<T>(error)` / `Result.Fail(error)` | Mechanical find-and-replace of `Result.Failure` → `Result.Fail` |
+| Deferred success factory | `Result.Success(Func<T> funcOk)` | *(removed)* | Inline the factory: `Result.Ok(funcOk())` |
+| Deferred failure factory | `Result.Failure<T>(Func<Error> errorFactory)` | *(removed)* | Inline the factory: `Result.Fail<T>(errorFactory())` |
+| Conditional factory | `Result.SuccessIf(cond, value, error)` / `Result.SuccessIf(cond, t1, t2, error)` | *(removed)* | Use a ternary: `cond ? Result.Ok(value) : Result.Fail<T>(error)` |
+| Inverse-conditional factory | `Result.FailureIf(cond, value, error)` / `Result.FailureIf(predicate, value, error)` | *(removed)* | Use a ternary: `cond ? Result.Fail<T>(error) : Result.Ok(value)` |
+| Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `await predicate() ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed) |
+| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(Error.Unexpected(ex.Message))` or `Result.Fail<T>(...)` directly. `Result.Try`/`Result.TryAsync` continue to handle exception capture inside their lambdas. |
 
-The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form. The conditional-factory variants (`SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `Result.Success(Func<T>)`, `Result.Failure<T>(Func<Error>)`, `Result.FromException`) are unchanged in this PR and will be removed in a follow-up Phase 1a PR per `v2-redesign-plan.md` §3.1.
+The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form. The `SuccessIf`/`FailureIf`/`SuccessIfAsync`/`FailureIfAsync`/`Result.Success(Func<T>)`/`Result.Failure<T>(Func<Error>)`/`Result.FromException` methods have all been removed (this PR); call sites should inline a ternary or invoke the factory directly per the table above.
 
 ---
 
@@ -97,32 +103,22 @@ None.
 
 | Signature | Notes |
 | --- | --- |
-| `public static Result<TValue> Success<TValue>(TValue value)` | Success factory |
-| `public static Result<TValue> Success<TValue>(Func<TValue> funcOk)` | Deferred success factory |
-| `public static Result<Unit> Success()` | Success without payload |
-| `public static Result<TValue> Failure<TValue>(Error error)` | Failure factory |
-| `public static Result<TValue> Failure<TValue>(Func<Error> error)` | Deferred failure factory |
-| `public static Result<Unit> Failure(Error error)` | Failure without payload |
-| `public static Result<TValue> SuccessIf<TValue>(bool isSuccess, in TValue value, Error error)` | Conditional success |
-| `public static Result<(T1, T2)> SuccessIf<T1, T2>(bool isSuccess, in T1 t1, in T2 t2, Error error)` | Conditional 2-tuple success |
-| `public static Result<TValue> FailureIf<TValue>(bool isFailure, TValue value, Error error)` | Conditional failure |
-| `public static Result<TValue> FailureIf<TValue>(Func<bool> failurePredicate, in TValue value, Error error)` | Deferred predicate version |
-| `public static Task<Result<TValue>> SuccessIfAsync<TValue>(Func<Task<bool>> predicate, TValue value, Error error)` | Async conditional success |
-| `public static Task<Result<TValue>> FailureIfAsync<TValue>(Func<Task<bool>> failurePredicate, TValue value, Error error)` | Async conditional failure |
+| `public static Result<TValue> Ok<TValue>(TValue value)` | Success factory |
+| `public static Result<Unit> Ok()` | Success without payload |
+| `public static Result<TValue> Fail<TValue>(Error error)` | Failure factory |
+| `public static Result<Unit> Fail(Error error)` | Failure without payload |
 | `public static Result<Unit> Ensure(bool flag, Error error)` | Converts a boolean to `Result<Unit>` |
 | `public static Result<Unit> Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
 | `public static Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Error error)` | Async predicate version |
 | `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures |
 | `public static Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)` | Async exception capture |
-| `public static Result<Unit> FromException(Exception ex, Func<Exception, Error>? map = null)` | Failure from exception |
-| `public static Result<T> FromException<T>(Exception ex, Func<Exception, Error>? map = null)` | Typed failure from exception |
 | `public static Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2)` | Combines two results |
 | `public static Result<(T1, ..., T9)> Combine<...>(...)` | Additional generated arities up to 9 |
 | `public static (Task<Result<T1>>, ..., Task<Result<T9>>) ParallelAsync<...>(...)` | Starts async result-producing operations in parallel, arities 2-9 |
 
 #### Factory Methods
 
-`Success`, `Failure`, `SuccessIf`, `FailureIf`, `Ensure`, `Try`, `FromException`, `Combine`, and `ParallelAsync`.
+`Ok`, `Fail`, `Ensure`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed in v2 (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`.
 
 ---
 
