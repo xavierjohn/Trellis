@@ -425,7 +425,7 @@ public class MaybeAssertionsTests
     public void MaybeAssertions_FromFailedResult_IsNone()
     {
         // Arrange
-        var result = Result.Fail<string>(Error.NotFound("Not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
         var maybe = result.IsSuccess ? Maybe.From(result.Unwrap()) : Maybe<string>.None;
 
         // Act & Assert

@@ -11,7 +11,8 @@ using Trellis;
 /// <remarks>
 /// <para>
 /// These extensions fire the trigger once and translate Stateless invalid-transition exceptions
-/// into a <see cref="DomainError"/> for expected failure paths.
+/// into an <see cref="Error.Conflict"/> (HTTP 409) for expected failure paths — the requested
+/// transition conflicts with the machine's current state.
 /// </para>
 /// <para>
 /// These extensions do not change the concurrency model of <see cref="StateMachine{TState, TTrigger}"/>.
@@ -40,7 +41,7 @@ public static class StateMachineExtensions
     /// <param name="trigger">The trigger to fire.</param>
     /// <returns>
     /// A <see cref="Result{TState}"/> containing the new state if the transition is valid,
-    /// or a <see cref="DomainError"/> if the trigger cannot be fired from the current state.
+    /// or an <see cref="Error.Conflict"/> if the trigger cannot be fired from the current state.
     /// </returns>
     /// <remarks>
     /// This method fires the trigger once and converts Stateless invalid-transition exceptions
@@ -60,7 +61,7 @@ public static class StateMachineExtensions
     ///
     /// // Invalid transition
     /// Result&lt;State&gt; invalid = machine.FireResult(Trigger.Start);
-    /// // invalid.IsFailure == true, invalid.Error is DomainError
+    /// // invalid.IsFailure == true, invalid.Error is Error.Conflict
     /// </code>
     /// </example>
     public static Result<TState> FireResult<TState, TTrigger>(
@@ -76,10 +77,10 @@ public static class StateMachineExtensions
         }
         catch (InvalidOperationException exception) when (IsStatelessInvalidTransition(exception))
         {
-            return Result.Fail<TState>(Error.Domain(
-                exception.Message,
-                code: "state.machine.invalid.transition",
-                instance: null));
+            return Result.Fail<TState>(new Error.Conflict(
+                Resource: null,
+                ReasonCode: "state.machine.invalid.transition")
+            { Detail = exception.Message });
         }
     }
 

@@ -47,7 +47,7 @@ public class ScalarValueValidationMiddlewareTests
         {
             // Verify scope is clean
             ValidationErrorsContext.HasErrors.Should().BeFalse();
-            ValidationErrorsContext.GetValidationError().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
             await Task.CompletedTask;
         });
 
@@ -68,10 +68,10 @@ public class ScalarValueValidationMiddlewareTests
 
             // Verify it's accessible
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("TestField");
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/TestField");
 
             await Task.CompletedTask;
         });
@@ -111,9 +111,9 @@ public class ScalarValueValidationMiddlewareTests
             requestCount++;
             ValidationErrorsContext.AddError($"Field{requestCount}", $"Error {requestCount}");
 
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle("each request should have isolated scope");
-            error.FieldErrors[0].FieldName.Should().Be($"Field{requestCount}");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle("each request should have isolated scope");
+            error.Fields[0].Field.Path.Should().Be($"/Field{requestCount}");
 
             await Task.CompletedTask;
         });
@@ -142,9 +142,9 @@ public class ScalarValueValidationMiddlewareTests
             await Task.Delay(10);
 
             // Verify this scope only has this thread's error
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().ContainSingle("scope should be isolated per async context");
+            error!.Fields.Items.Should().ContainSingle("scope should be isolated per async context");
         });
 
         // Act - Process 10 concurrent requests
@@ -175,9 +175,9 @@ public class ScalarValueValidationMiddlewareTests
 
                 // Inner scope should not see outer errors (new scope)
                 ValidationErrorsContext.AddError("InnerField", "Inner error");
-                var innerError = ValidationErrorsContext.GetValidationError();
-                innerError!.FieldErrors.Should().ContainSingle()
-                    .Which.FieldName.Should().Be("InnerField");
+                var innerError = ValidationErrorsContext.GetUnprocessableContent();
+                innerError!.Fields.Items.Should().ContainSingle()
+                    .Which.Field.Path.Should().Be("/InnerField");
 
                 await Task.CompletedTask;
             });
@@ -185,9 +185,9 @@ public class ScalarValueValidationMiddlewareTests
             await innerMiddleware.InvokeAsync(httpContext);
 
             // After inner scope, outer scope should still have its error
-            var outerError = ValidationErrorsContext.GetValidationError();
-            outerError!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("OuterField");
+            var outerError = ValidationErrorsContext.GetUnprocessableContent();
+            outerError!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/OuterField");
         });
 
         var context = new DefaultHttpContext();
@@ -255,13 +255,13 @@ public class ScalarValueValidationMiddlewareTests
             ValidationErrorsContext.AddError("Field3", "Error 3");
             ValidationErrorsContext.AddError("Field1", "Error 1b"); // Another error for Field1
 
-            var error = ValidationErrorsContext.GetValidationError();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.FieldErrors.Should().HaveCount(3);
+            error!.Fields.Items.Should().HaveCount(4);
 
-            // Field1 should have 2 errors
-            var field1Errors = error.FieldErrors.First(f => f.FieldName == "Field1");
-            field1Errors.Details.Should().HaveCount(2);
+            // Field1 should appear twice (2 distinct messages on Field1)
+            var field1Errors = error.Fields.Items.Where(f => f.Field.Path == "/Field1").ToList();
+            field1Errors.Should().HaveCount(2);
 
             await Task.CompletedTask;
         });
@@ -308,9 +308,9 @@ public class ScalarValueValidationMiddlewareTests
         {
             var field = fieldName ?? "orderCode";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(Error.Validation("Order code is required.", field));
+                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Order code is required." })));
             if (!value.StartsWith("ORD-", StringComparison.Ordinal))
-                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(Error.Validation("Order code must start with 'ORD-'.", field));
+                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Order code must start with 'ORD-'." })));
             return Result.Ok(new OrderCode(value));
         }
     }
@@ -330,7 +330,7 @@ public class ScalarValueValidationMiddlewareTests
         public int Value { get; }
         private IntOnlyScalarValue(int value) => Value = value;
         public static Result<IntOnlyScalarValue> TryCreate(int value, string? fieldName = null) =>
-            value > 0 ? Result.Ok(new IntOnlyScalarValue(value) ): Result.Fail<IntOnlyScalarValue>(Error.Validation("Must be positive.", fieldName ?? "value"));
+            value > 0 ? Result.Ok(new IntOnlyScalarValue(value) ): Result.Fail<IntOnlyScalarValue>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be positive." })));
         public static Result<IntOnlyScalarValue> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -624,7 +624,7 @@ public class ScalarValueValidationMiddlewareTests
     public async Task InvokeAsync_BindingFailure_ScalarValueWithoutStringTryCreate_ReturnsRichValidationError()
     {
         // Arrange - IntOnlyScalarValue has TryCreate(string, string) that throws NotImplementedException,
-        // so GetValidationErrors returns null and the middleware falls back to CreateFallbackErrors.
+        // so GetUnprocessableContents returns null and the middleware falls back to CreateFallbackErrors.
         var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];

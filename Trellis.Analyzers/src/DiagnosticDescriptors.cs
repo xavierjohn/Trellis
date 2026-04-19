@@ -67,20 +67,6 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase + "TRLS004");
 
     /// <summary>
-    /// TRLS005: Consider using MatchError for error type discrimination.
-    /// </summary>
-    public static readonly DiagnosticDescriptor UseMatchErrorForDiscrimination = new(
-        id: "TRLS005",
-        title: "Consider using MatchError for error type discrimination",
-        messageFormat: "Consider using MatchError instead of switch/if on error types for exhaustive handling",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Info,
-        isEnabledByDefault: true,
-        description: "MatchError provides type-safe pattern matching on specific error types " +
-                     "(ValidationError, NotFoundError, etc.) with a fallback for unhandled types.",
-        helpLinkUri: HelpLinkBase + "TRLS005");
-
-    /// <summary>
     /// TRLS006: Accessing Maybe.Value without checking HasValue.
     /// </summary>
     public static readonly DiagnosticDescriptor UnsafeMaybeValueAccess = new(

@@ -23,10 +23,10 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(LanguageCode) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("languageCode");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<LanguageCode>(Error.Validation("Language code is required.", field));
+            return Result.Fail<LanguageCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Language code is required." })));
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsLetter))
-            return Result.Fail<LanguageCode>(Error.Validation("Language code must be an ISO 639-1 alpha-2 code.", field));
+            return Result.Fail<LanguageCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Language code must be an ISO 639-1 alpha-2 code." })));
         return Result.Ok(new LanguageCode(code.ToLowerInvariant()));
     }
 

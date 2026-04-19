@@ -24,7 +24,7 @@ public class FakeRepository<TAggregate, TId>
     /// <summary>
     /// Adds a unique constraint on the specified property. When <see cref="SaveAsync"/> is called,
     /// the repository checks that no other aggregate (with a different ID) has the same value
-    /// for this property. Returns a <see cref="ConflictError"/> on violation.
+    /// for this property. Returns an <see cref="Error.Conflict"/> on violation.
     /// </summary>
     /// <param name="propertySelector">A function selecting the property to constrain.</param>
     /// <returns>This repository for fluent chaining.</returns>
@@ -53,7 +53,7 @@ public class FakeRepository<TAggregate, TId>
             return Task.FromResult(Result.Ok(aggregate));
 
         return Task.FromResult(Result.Fail<TAggregate>(
-            Error.NotFound($"{typeof(TAggregate).Name} with ID {id} not found")));
+            new Error.NotFound(new ResourceRef(typeof(TAggregate).Name, id?.ToString())) { Detail = $"{typeof(TAggregate).Name} with ID {id} not found" }));
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ public class FakeRepository<TAggregate, TId>
 
             if (conflict is not null)
                 return Task.FromResult(Result.Fail(
-                    Error.Conflict($"A {typeof(TAggregate).Name} with the same value already exists.")));
+                    new Error.Conflict(Resource: new ResourceRef(typeof(TAggregate).Name, id?.ToString()), ReasonCode: "duplicate.unique.constraint") { Detail = $"A {typeof(TAggregate).Name} with the same value already exists." }));
         }
 
         _store[id] = aggregate;
@@ -111,7 +111,7 @@ public class FakeRepository<TAggregate, TId>
             return Task.FromResult(Result.Ok());
 
         return Task.FromResult(Result.Fail(
-            Error.NotFound($"{typeof(TAggregate).Name} with ID {id} not found")));
+            new Error.NotFound(new ResourceRef(typeof(TAggregate).Name, id?.ToString())) { Detail = $"{typeof(TAggregate).Name} with ID {id} not found" }));
     }
 
     /// <summary>

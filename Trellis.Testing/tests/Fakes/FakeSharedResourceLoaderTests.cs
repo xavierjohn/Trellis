@@ -51,7 +51,7 @@ public class FakeSharedResourceLoaderTests
         var result = await loader.GetByIdAsync("nonexistent", TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<NotFoundError>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class FakeSharedResourceLoaderTests
 
         // Initially missing
         var before = await loader.GetByIdAsync("1", TestContext.Current.CancellationToken);
-        before.Should().BeFailureOfType<NotFoundError>();
+        before.Should().BeFailureOfType<Error.NotFound>();
 
         // Save then load
         await repo.SaveAsync(TestAggregate.Create("1", "Added"), TestContext.Current.CancellationToken);

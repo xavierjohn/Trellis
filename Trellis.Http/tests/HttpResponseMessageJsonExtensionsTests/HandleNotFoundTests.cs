@@ -11,7 +11,7 @@ using Trellis;
 /// </summary>
 public class HandleNotFoundTests
 {
-    readonly NotFoundError _notFoundError = Error.NotFound("Person not found");
+    readonly Error.NotFound _notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Person not found" };
 
     #region Synchronous HandleNotFound Tests
 
@@ -25,7 +25,7 @@ public class HandleNotFoundTests
         var result = httpResponseMessage.HandleNotFound(_notFoundError);
 
         // Assert
-        result.Should().BeFailureOfType<NotFoundError>()
+        result.Should().BeFailureOfType<Error.NotFound>()
             .Which.Should().HaveDetail("Person not found");
     }
 
@@ -96,7 +96,7 @@ public class HandleNotFoundTests
         var result = await taskHttpResponseMessage.HandleNotFoundAsync(_notFoundError);
 
         // Assert
-        result.Should().BeFailureOfType<NotFoundError>()
+        result.Should().BeFailureOfType<Error.NotFound>()
             .Which.Should().HaveDetail("Person not found");
     }
 

@@ -100,7 +100,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Failure_SelectorNotInvoked()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Fail<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
         var selectorInvoked = false;
 
         result.ToActionResult(
@@ -115,7 +115,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Failure_ReturnsErrorResponse()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Fail<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var response = result.ToActionResult(
             controller,
@@ -130,7 +130,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public void Failure_DoesNotEmitMetadataHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Fail<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         result.ToActionResult(
             controller,
@@ -282,7 +282,7 @@ public class MetadataSelectorActionResultTests : IDisposable
     public async Task ToActionResultAsync_ValueTask_Failure_ReturnsError()
     {
         var controller = CreateControllerWithHttpContext();
-        var resultTask = ValueTask.FromResult(Result.Fail<string>(Error.NotFound("gone")));
+        var resultTask = ValueTask.FromResult(Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" }));
 
         var response = await resultTask.ToActionResultAsync(
             controller,

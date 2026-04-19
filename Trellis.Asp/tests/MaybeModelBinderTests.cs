@@ -27,7 +27,7 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "userId";
             if (value == Guid.Empty)
-                return Result.Fail<Asp.Tests.MaybeModelBinderTests.UserId>(Error.Validation("UserId cannot be empty.", field));
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.UserId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "UserId cannot be empty." })));
             return Result.Ok(new UserId(value));
         }
 
@@ -43,9 +43,9 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "productCode";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.MaybeModelBinderTests.ProductCode>(Error.Validation("ProductCode is required.", field));
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.ProductCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "ProductCode is required." })));
             if (value.Length < 3)
-                return Result.Fail<Asp.Tests.MaybeModelBinderTests.ProductCode>(Error.Validation("ProductCode must be at least 3 characters.", field));
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.ProductCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "ProductCode must be at least 3 characters." })));
             return Result.Ok(new ProductCode(value));
         }
     }
@@ -58,9 +58,9 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "quantity";
             if (value <= 0)
-                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Quantity>(Error.Validation("Quantity must be greater than zero.", field));
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Quantity must be greater than zero." })));
             if (value > 1000)
-                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Quantity>(Error.Validation("Quantity cannot exceed 1000.", field));
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Quantity cannot exceed 1000." })));
             return Result.Ok(new Quantity(value));
         }
 
@@ -76,7 +76,7 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "price";
             if (value < 0)
-                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Price>(Error.Validation("Price cannot be negative.", field));
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Price>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Price cannot be negative." })));
             return Result.Ok(new Price(value));
         }
 

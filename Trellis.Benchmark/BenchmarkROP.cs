@@ -57,7 +57,7 @@ public class BenchmarkROP
             .Combine(EmailAddress.TryCreate("xavier@somewhere.com"))
             .Match(
                 onSuccess: ok => ok.Item1 + " " + ok.Item2,
-                onFailure: error => error.Detail
+                onFailure: error => error.Detail ?? string.Empty
             );
 
     [Benchmark]
@@ -74,7 +74,7 @@ public class BenchmarkROP
         if (rEmailAddress.TryGetError(out var emErr))
             error = error.Combine(emErr);
 
-        return error!.Detail;
+        return error!.Detail ?? string.Empty;
     }
 
     [Benchmark]
@@ -83,7 +83,7 @@ public class BenchmarkROP
         .Combine(EmailAddress.TryCreate("bad email"))
         .Match(
             onSuccess: ok => ok.Item1 + " " + ok.Item2,
-            onFailure: error => error.Detail
+            onFailure: error => error.Detail ?? string.Empty
         );
 
     [Benchmark]
@@ -100,7 +100,7 @@ public class BenchmarkROP
         if (rEmailAddress.TryGetError(out var emErr))
             error = error.Combine(emErr);
 
-        return error!.Detail;
+        return error!.Detail ?? string.Empty;
     }
 
     [Benchmark]
@@ -112,7 +112,7 @@ public class BenchmarkROP
             .Combine(FirstName.TryCreate("Xavier"))
             .Combine(LastName.TryCreate(string.Empty))
             .Combine(EmailAddress.TryCreate("xavier @ somewhereelse.com"))
-            .Combine(Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt", nameof(updatedAt))))
+            .Combine(Ensure(createdAt <= updatedAt, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), "validation.error") { Detail = "updateAt cannot be less than createdAt" }))))
             .Bind((email, firstName, lastName, anotherEmail) => Result.Ok(string.Join(" ", firstName, lastName, email, anotherEmail)));
     }
 
@@ -125,7 +125,7 @@ public class BenchmarkROP
         var hrFname = FirstName.TryCreate("Xavier");
         var hrLname = LastName.TryCreate(string.Empty);
         var hrEmailSec = EmailAddress.TryCreate("xavier @ somewhereelse.com");
-        var hrDateCheck = Ensure(createdAt <= updatedAt, Error.Validation("updateAt cannot be less than createdAt", nameof(updatedAt)));
+        var hrDateCheck = Ensure(createdAt <= updatedAt, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), "validation.error") { Detail = "updateAt cannot be less than createdAt" })));
 
         Error? error = null;
         if (hrEmail.TryGetError(out var emErr))

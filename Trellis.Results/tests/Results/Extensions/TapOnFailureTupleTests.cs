@@ -27,7 +27,7 @@ public class TapOnFailureTupleTests : TestBase
     [Fact]
     public void TapOnFailure_2Tuple_WithNullAction_ThrowsArgumentNullException()
     {
-        var result = Result.Fail<(int, string)>(Error.Validation("Validation failed"));
+        var result = Result.Fail<(int, string)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Validation failed" });
 
         var act = () => result.TapOnFailure((Action)null!);
 
@@ -39,7 +39,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_2Tuple_WithAction_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.Validation("Validation failed"));
+        var result = Result.Fail<(int, string)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Validation failed" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -47,7 +47,7 @@ public class TapOnFailureTupleTests : TestBase
         // Assert
         _actionExecuted.Should().BeTrue();
         actual.Should().BeFailure();
-        actual.Error.Should().BeOfType<ValidationError>();
+        actual.Error!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_2Tuple_WithActionError_Failure_PassesError()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.NotFound("Item not found", "item-123"));
+        var result = Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", "item-123"?.ToString())) { Detail = "Item not found" });
 
         // Act
         var actual = result.TapOnFailure(error =>
@@ -81,9 +81,9 @@ public class TapOnFailureTupleTests : TestBase
         // Assert
         _actionExecuted.Should().BeTrue();
         Assert.NotNull(_capturedError);
-        _capturedError.Should().BeOfType<NotFoundError>();
+        _capturedError.Should().BeOfType<Error.NotFound>();
         _capturedError.Detail.Should().Be("Item not found");
-        _capturedError.Instance.Should().Be("item-123");
+        ((Error.NotFound)_capturedError).Resource.Id.Should().Be("item-123");
         actual.Should().BeFailure();
     }
 
@@ -110,7 +110,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_2Tuple_ChainedActions_ExecutesAll()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.Unexpected("Something went wrong"));
+        var result = Result.Fail<(int, string)>(new Error.InternalServerError("test") { Detail = "Something went wrong" });
 
         // Act
         var actual = result
@@ -127,7 +127,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_2Tuple_PreservesOriginalResult()
     {
         // Arrange
-        var originalError = Error.Forbidden("Access denied");
+        var originalError = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         var result = Result.Fail<(int, string)>(originalError);
 
         // Act
@@ -135,14 +135,14 @@ public class TapOnFailureTupleTests : TestBase
 
         // Assert
         actual.Should().BeFailure();
-        actual.Error.Should().BeSameAs(originalError);
+        actual.Error!.Should().BeSameAs(originalError);
     }
 
     [Fact]
     public void TapOnFailure_2Tuple_DifferentTypes_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(string, bool)>(Error.Validation("Invalid data"));
+        var result = Result.Fail<(string, bool)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid data" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -171,7 +171,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_TaskResult_WithAction_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Task.FromResult(Result.Fail<(int, string)>(Error.Validation("Failed")));
+        var result = Task.FromResult(Result.Fail<(int, string)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Failed" }));
 
         // Act
         var actual = await result.TapOnFailureAsync(() => _actionExecuted = true);
@@ -199,7 +199,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_TaskResult_WithActionError_PassesError()
     {
         // Arrange
-        var result = Task.FromResult(Result.Fail<(int, string)>(Error.Conflict("Conflict")));
+        var result = Task.FromResult(Result.Fail<(int, string)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" }));
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -211,7 +211,7 @@ public class TapOnFailureTupleTests : TestBase
         // Assert
         _actionExecuted.Should().BeTrue();
         Assert.NotNull(_capturedError);
-        _capturedError.Should().BeOfType<ConflictError>();
+        _capturedError.Should().BeOfType<Error.Conflict>();
         actual.Should().BeFailure();
     }
 
@@ -219,7 +219,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_WithFuncTask_Failure_ExecutesFunction()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.Unexpected("Error"));
+        var result = Result.Fail<(int, string)>(new Error.InternalServerError("test") { Detail = "Error" });
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -255,7 +255,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_WithFuncErrorTask_PassesError()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.BadRequest("Bad request"));
+        var result = Result.Fail<(int, string)>(new Error.BadRequest("bad.request") { Detail = "Bad request" });
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -268,7 +268,7 @@ public class TapOnFailureTupleTests : TestBase
         // Assert
         _actionExecuted.Should().BeTrue();
         Assert.NotNull(_capturedError);
-        _capturedError.Should().BeOfType<BadRequestError>();
+        _capturedError.Should().BeOfType<Error.BadRequest>();
         actual.Should().BeFailure();
     }
 
@@ -276,7 +276,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_TaskResult_WithFuncTask_Failure()
     {
         // Arrange
-        var result = Task.FromResult(Result.Fail<(int, string)>(Error.ServiceUnavailable("Down")));
+        var result = Task.FromResult(Result.Fail<(int, string)>(new Error.ServiceUnavailable() { Detail = "Down" }));
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -294,7 +294,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_TaskResult_WithFuncErrorTask_PassesError()
     {
         // Arrange
-        var result = Task.FromResult(Result.Fail<(int, string)>(Error.Forbidden("Forbidden")));
+        var result = Task.FromResult(Result.Fail<(int, string)>(new Error.Forbidden("authorization.forbidden") { Detail = "Forbidden" }));
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -305,7 +305,7 @@ public class TapOnFailureTupleTests : TestBase
 
         // Assert
         Assert.NotNull(_capturedError);
-        _capturedError.Should().BeOfType<ForbiddenError>();
+        _capturedError.Should().BeOfType<Error.Forbidden>();
         actual.Should().BeFailure();
     }
 
@@ -313,7 +313,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_ValueTask_WithAction_Failure()
     {
         // Arrange
-        var result = ValueTask.FromResult(Result.Fail<(int, string)>(Error.RateLimit("Too many")));
+        var result = ValueTask.FromResult(Result.Fail<(int, string)>(new Error.TooManyRequests() { Detail = "Too many" }));
 
         // Act
         var actual = await result.TapOnFailureAsync(() => _actionExecuted = true);
@@ -327,14 +327,14 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_ValueTask_WithActionError_PassesError()
     {
         // Arrange
-        var result = ValueTask.FromResult(Result.Fail<(int, string)>(Error.Unauthorized("Unauthorized")));
+        var result = ValueTask.FromResult(Result.Fail<(int, string)>(new Error.Unauthorized() { Detail = "Unauthorized" }));
 
         // Act
         var actual = await result.TapOnFailureAsync(error => _capturedError = error);
 
         // Assert
         Assert.NotNull(_capturedError);
-        _capturedError.Should().BeOfType<UnauthorizedError>();
+        _capturedError.Should().BeOfType<Error.Unauthorized>();
         actual.Should().BeFailure();
     }
 
@@ -342,7 +342,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_WithFuncValueTask_Failure()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.Conflict("Conflict"));
+        var result = Result.Fail<(int, string)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" });
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -360,7 +360,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_WithFuncErrorValueTask_PassesError()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -371,7 +371,7 @@ public class TapOnFailureTupleTests : TestBase
 
         // Assert
         Assert.NotNull(_capturedError);
-        _capturedError.Should().BeOfType<NotFoundError>();
+        _capturedError.Should().BeOfType<Error.NotFound>();
         actual.Should().BeFailure();
     }
 
@@ -383,7 +383,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_3Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, string, bool)>(Error.Validation("Failed"));
+        var result = Result.Fail<(int, string, bool)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Failed" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -397,7 +397,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_4Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int)>(Error.Unexpected("Error"));
+        var result = Result.Fail<(int, int, int, int)>(new Error.InternalServerError("test") { Detail = "Error" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -411,7 +411,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_5Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int)>(Error.NotFound("Not found"));
+        var result = Result.Fail<(int, int, int, int, int)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -425,7 +425,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_6Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int, int)>(Error.Forbidden("Forbidden"));
+        var result = Result.Fail<(int, int, int, int, int, int)>(new Error.Forbidden("authorization.forbidden") { Detail = "Forbidden" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -439,7 +439,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_7Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int, int, int)>(Error.Conflict("Conflict"));
+        var result = Result.Fail<(int, int, int, int, int, int, int)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -453,7 +453,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_8Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int, int, int, int)>(Error.BadRequest("Bad"));
+        var result = Result.Fail<(int, int, int, int, int, int, int, int)>(new Error.BadRequest("bad.request") { Detail = "Bad" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -467,7 +467,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_9Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int, int, int, int, int)>(Error.Validation("Invalid"));
+        var result = Result.Fail<(int, int, int, int, int, int, int, int, int)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -488,15 +488,15 @@ public class TapOnFailureTupleTests : TestBase
         var loggedMessages = new List<string>();
 
         // Act
-        var result = Result.Fail<string>(Error.Validation("Invalid email", "email"))
-            .Combine(Result.Fail<string>(Error.Validation("Invalid phone", "phone")))
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "unprocessable-content") { Detail = "Invalid email" })))
+            .Combine(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("phone"), "unprocessable-content") { Detail = "Invalid phone" }))))
             .TapOnFailure(error =>
             {
-                if (error is ValidationError validationError)
+                if (error is Error.UnprocessableContent validationError)
                 {
-                    foreach (var fieldError in validationError.FieldErrors)
+                    foreach (var fieldError in validationError.Fields)
                     {
-                        loggedMessages.Add($"{fieldError.FieldName}: {string.Join(", ", fieldError.Details)}");
+                        loggedMessages.Add($"{fieldError.Field.Path}: {string.Join(", ", fieldError.Detail)}");
                     }
                 }
             });
@@ -516,7 +516,7 @@ public class TapOnFailureTupleTests : TestBase
 
         // Act
         var result = await Task.FromResult(
-            Result.Fail<string>(Error.NotFound("User not found"))
+            Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" })
                 .Combine(Result.Ok("data")))
             .TapOnFailureAsync(async error =>
             {
@@ -526,7 +526,7 @@ public class TapOnFailureTupleTests : TestBase
 
         // Assert
         notificationsSent.Should().ContainSingle();
-        notificationsSent[0].Should().Contain("not.found");
+        notificationsSent[0].Should().Contain("not-found");
         result.Should().BeFailure();
     }
 
@@ -537,20 +537,20 @@ public class TapOnFailureTupleTests : TestBase
         var errorCounts = new Dictionary<string, int>();
 
         // Act - Test different error types
-        Result.Fail<(int, string)>(Error.Validation("Invalid"))
+        Result.Fail<(int, string)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid" })
             .TapOnFailure(error => errorCounts[error.Code] = errorCounts.GetValueOrDefault(error.Code) + 1);
 
-        Result.Fail<(int, string)>(Error.NotFound("Not found"))
+        Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" })
             .TapOnFailure(error => errorCounts[error.Code] = errorCounts.GetValueOrDefault(error.Code) + 1);
 
-        Result.Fail<(int, string)>(Error.Validation("Another invalid"))
+        Result.Fail<(int, string)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Another invalid" })
             .TapOnFailure(error => errorCounts[error.Code] = errorCounts.GetValueOrDefault(error.Code) + 1);
 
         // Assert
-        errorCounts.Should().ContainKey("validation.error");
-        errorCounts["validation.error"].Should().Be(2);
-        errorCounts.Should().ContainKey("not.found.error");
-        errorCounts["not.found.error"].Should().Be(1);
+        errorCounts.Should().ContainKey("unprocessable-content");
+        errorCounts["unprocessable-content"].Should().Be(2);
+        errorCounts.Should().ContainKey("not-found");
+        errorCounts["not-found"].Should().Be(1);
     }
 
     [Fact]
@@ -561,7 +561,7 @@ public class TapOnFailureTupleTests : TestBase
         var bindCalled = false;
 
         // Act
-        var result = Result.Fail<string>(Error.Unexpected("Error"))
+        var result = Result.Fail<string>(new Error.InternalServerError("test") { Detail = "Error" })
             .Combine(Result.Ok("data"))
             .TapOnFailure(error => executionOrder.Add("TapOnFailure"))
             .Bind((a, b) =>
@@ -585,11 +585,11 @@ public class TapOnFailureTupleTests : TestBase
         var resourcesCleaned = false;
 
         // Act
-        var result = await Result.Fail<string>(Error.ServiceUnavailable("DB down"))
+        var result = await Result.Fail<string>(new Error.ServiceUnavailable() { Detail = "DB down" })
             .Combine(Result.Ok("transaction"))
             .TapOnFailureAsync((Error error) =>
             {
-                if (error is ServiceUnavailableError)
+                if (error is Error.ServiceUnavailable)
                 {
                     resourcesCleaned = true;
                 }

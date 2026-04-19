@@ -10,7 +10,7 @@ using Trellis.Testing;
 /// </summary>
 public class DiscardTests
 {
-    private static readonly Error TestError = Error.Unexpected("test error");
+    private static readonly Error TestError = new Error.InternalServerError("test") { Detail = "test error" };
 
     #region Discard (sync)
 

@@ -29,13 +29,13 @@ public class ActionResultValueTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.BadRequest("Test", "Jackson");
+        var error = new Error.BadRequest("bad.request") { Detail = "Test" };
         var result = ValueTask.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
             Detail = "Test",
             Status = StatusCodes.Status400BadRequest,
-            Instance = "Jackson"
+            Instance = (string?)null
         };
 
         // Act
@@ -44,7 +44,7 @@ public class ActionResultValueTaskTests
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
     }
 

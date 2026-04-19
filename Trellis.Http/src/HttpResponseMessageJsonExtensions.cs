@@ -41,14 +41,14 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of NotFound.
     /// </summary>
     /// <param name="response">The HTTP response message.</param>
-    /// <param name="notFoundError">The error to return if the response has a status code of NotFound.</param>
+    /// <param name="error">The error to return if the response has a status code of NotFound.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleNotFound(
         this HttpResponseMessage response,
-        NotFoundError notFoundError)
+        Error.NotFound error)
     {
         if (response.StatusCode == HttpStatusCode.NotFound)
-            return Result.Fail<HttpResponseMessage>(notFoundError);
+            return Result.Fail<HttpResponseMessage>(error);
 
         return Result.Ok(response);
     }
@@ -57,28 +57,28 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of NotFound asynchronously.
     /// </summary>
     /// <param name="responseTask">The task representing the HTTP response message.</param>
-    /// <param name="notFoundError">The error to return if the response has a status code of NotFound.</param>
+    /// <param name="error">The error to return if the response has a status code of NotFound.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleNotFoundAsync(
         this Task<HttpResponseMessage> responseTask,
-        NotFoundError notFoundError)
+        Error.NotFound error)
     {
         var response = await responseTask.ConfigureAwait(false);
-        return response.HandleNotFound(notFoundError);
+        return response.HandleNotFound(error);
     }
 
     /// <summary>
     /// Handles the case when the HTTP response has a status code of Unauthorized (401).
     /// </summary>
     /// <param name="response">The HTTP response message.</param>
-    /// <param name="unauthorizedError">The error to return if the response has a status code of Unauthorized.</param>
+    /// <param name="error">The error to return if the response has a status code of Unauthorized.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleUnauthorized(
         this HttpResponseMessage response,
-        UnauthorizedError unauthorizedError)
+        Error.Unauthorized error)
     {
         if (response.StatusCode == HttpStatusCode.Unauthorized)
-            return Result.Fail<HttpResponseMessage>(unauthorizedError);
+            return Result.Fail<HttpResponseMessage>(error);
 
         return Result.Ok(response);
     }
@@ -87,28 +87,28 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of Unauthorized (401) asynchronously.
     /// </summary>
     /// <param name="responseTask">The task representing the HTTP response message.</param>
-    /// <param name="unauthorizedError">The error to return if the response has a status code of Unauthorized.</param>
+    /// <param name="error">The error to return if the response has a status code of Unauthorized.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(
         this Task<HttpResponseMessage> responseTask,
-        UnauthorizedError unauthorizedError)
+        Error.Unauthorized error)
     {
         var response = await responseTask.ConfigureAwait(false);
-        return response.HandleUnauthorized(unauthorizedError);
+        return response.HandleUnauthorized(error);
     }
 
     /// <summary>
     /// Handles the case when the HTTP response has a status code of Forbidden (403).
     /// </summary>
     /// <param name="response">The HTTP response message.</param>
-    /// <param name="forbiddenError">The error to return if the response has a status code of Forbidden.</param>
+    /// <param name="error">The error to return if the response has a status code of Forbidden.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleForbidden(
         this HttpResponseMessage response,
-        ForbiddenError forbiddenError)
+        Error.Forbidden error)
     {
         if (response.StatusCode == HttpStatusCode.Forbidden)
-            return Result.Fail<HttpResponseMessage>(forbiddenError);
+            return Result.Fail<HttpResponseMessage>(error);
 
         return Result.Ok(response);
     }
@@ -117,28 +117,28 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of Forbidden (403) asynchronously.
     /// </summary>
     /// <param name="responseTask">The task representing the HTTP response message.</param>
-    /// <param name="forbiddenError">The error to return if the response has a status code of Forbidden.</param>
+    /// <param name="error">The error to return if the response has a status code of Forbidden.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleForbiddenAsync(
         this Task<HttpResponseMessage> responseTask,
-        ForbiddenError forbiddenError)
+        Error.Forbidden error)
     {
         var response = await responseTask.ConfigureAwait(false);
-        return response.HandleForbidden(forbiddenError);
+        return response.HandleForbidden(error);
     }
 
     /// <summary>
     /// Handles the case when the HTTP response has a status code of Conflict (409).
     /// </summary>
     /// <param name="response">The HTTP response message.</param>
-    /// <param name="conflictError">The error to return if the response has a status code of Conflict.</param>
+    /// <param name="error">The error to return if the response has a status code of Conflict.</param>
     /// <returns>A <see cref="Result{TValue}"/> of <see cref="HttpResponseMessage"/>.</returns>
     public static Result<HttpResponseMessage> HandleConflict(
         this HttpResponseMessage response,
-        ConflictError conflictError)
+        Error.Conflict error)
     {
         if (response.StatusCode == HttpStatusCode.Conflict)
-            return Result.Fail<HttpResponseMessage>(conflictError);
+            return Result.Fail<HttpResponseMessage>(error);
 
         return Result.Ok(response);
     }
@@ -147,14 +147,14 @@ public static partial class HttpResponseExtensions
     /// Handles the case when the HTTP response has a status code of Conflict (409) asynchronously.
     /// </summary>
     /// <param name="responseTask">The task representing the HTTP response message.</param>
-    /// <param name="conflictError">The error to return if the response has a status code of Conflict.</param>
+    /// <param name="error">The error to return if the response has a status code of Conflict.</param>
     /// <returns>A <see cref="Task{TResult}"/> of <see cref="Result{TValue}"/> containing the <see cref="HttpResponseMessage"/>.</returns>
     public static async Task<Result<HttpResponseMessage>> HandleConflictAsync(
         this Task<HttpResponseMessage> responseTask,
-        ConflictError conflictError)
+        Error.Conflict error)
     {
         var response = await responseTask.ConfigureAwait(false);
-        return response.HandleConflict(conflictError);
+        return response.HandleConflict(error);
     }
 
     /// <summary>
@@ -269,7 +269,7 @@ public static partial class HttpResponseExtensions
         if (!response.IsSuccessStatusCode)
         {
             var error = errorFactory?.Invoke(response.StatusCode)
-                ?? Error.Unexpected($"HTTP request failed with status code {response.StatusCode}.");
+                ?? new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"HTTP request failed with status code {response.StatusCode}." };
             return Result.Fail<HttpResponseMessage>(error);
         }
 
@@ -353,10 +353,10 @@ public static partial class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
         if (response.IsSuccessStatusCode == false)
-            return Result.Fail<TValue>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
+            return Result.Fail<TValue>(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}." });
 
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
-            return Result.Fail<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."));
+            return Result.Fail<TValue>(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"HTTP response was null for value {typeof(TValue).Name}." });
 
         TValue? value;
         try
@@ -365,11 +365,11 @@ public static partial class HttpResponseExtensions
         }
         catch (JsonException ex)
         {
-            return Result.Fail<TValue>(Error.Unexpected($"Failed to deserialize HTTP response to {typeof(TValue).Name}: {ex.Message}"));
+            return Result.Fail<TValue>(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"Failed to deserialize HTTP response to {typeof(TValue).Name}: {ex.Message}" });
         }
 
         return value is null
-            ? Result.Fail<TValue>(Error.Unexpected($"HTTP response was null for value {typeof(TValue).Name}."))
+            ? Result.Fail<TValue>(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"HTTP response was null for value {typeof(TValue).Name}." })
             : Result.Ok(value);
     }
 
@@ -449,7 +449,7 @@ public static partial class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
         if (response.IsSuccessStatusCode == false)
-            return Result.Fail<Maybe<TValue>>(Error.Unexpected($"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}."));
+            return Result.Fail<Maybe<TValue>>(new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"HTTP response is in a failed state for value {typeof(TValue).Name}. Status code: {response.StatusCode}." });
 
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
             return Result.Ok(Maybe<TValue>.None);

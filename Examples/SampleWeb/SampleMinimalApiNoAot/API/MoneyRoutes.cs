@@ -68,7 +68,7 @@ public static class MoneyRoutes
         moneyApi.MapPost("/CartTotal", (CartTotalRequest request) =>
         {
             if (request.Items.Length == 0)
-                return Result.Fail<Money>(Error.Validation("Cart cannot be empty")).ToHttpResult();
+                return Result.Fail<Money>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Cart cannot be empty" }).ToHttpResult();
 
             var firstItem = Money.TryCreate(request.Items[0].Amount, request.Items[0].Currency);
             if (!firstItem.TryGetValue(out var total))
@@ -91,7 +91,7 @@ public static class MoneyRoutes
         moneyApi.MapPost("/ApplyDiscount", (ApplyDiscountRequest request) =>
             Money.TryCreate(request.OriginalPrice.Amount, request.OriginalPrice.Currency)
                 .Ensure(price => request.DiscountPercent is >= 0 and <= 100,
-                    Error.Validation("Discount percent must be between 0 and 100"))
+                    new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Discount percent must be between 0 and 100" })
                 .Bind(price =>
                 {
                     var discountMultiplier = 1 - (request.DiscountPercent / 100m);
@@ -101,7 +101,7 @@ public static class MoneyRoutes
 
         moneyApi.MapPost("/SplitBill", (SplitBillRequest request) =>
             Money.TryCreate(request.Total.Amount, request.Total.Currency)
-                .Ensure(_ => request.People > 0, Error.Validation("Number of people must be positive"))
+                .Ensure(_ => request.People > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Number of people must be positive" })
                 .Bind(total => total.Divide(request.People))
                 .ToHttpResult());
 
@@ -110,7 +110,7 @@ public static class MoneyRoutes
             var totalPercent = request.PlatformPercent + request.CreatorPercent + request.ReferrerPercent;
             if (totalPercent != 100)
                 return Result.Fail<RevenueShareResponse>(
-                    Error.Validation($"Percentages must sum to 100, got {totalPercent}")).ToHttpResult();
+                    new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Percentages must sum to 100, got {totalPercent}" }).ToHttpResult();
 
             return Money.TryCreate(request.Revenue.Amount, request.Revenue.Currency)
                 .Bind(revenue => revenue.Allocate(

@@ -106,7 +106,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_Failure_PreservesOriginalError()
     {
         // Arrange
-        var error = Error.Validation("Test error", "field");
+        var error = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Test error" }));
         var result = Result.Fail<(string, int)>(error);
 
         // Act
@@ -114,7 +114,7 @@ public class MapTsTests : TestBase
 
         // Assert
         actual.Should().BeFailure();
-        actual.Error.Should().Be(error);
+        actual.Error!.Should().Be(error);
     }
 
     [Fact]

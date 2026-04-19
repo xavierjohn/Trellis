@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp;
+namespace Trellis.Asp;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
@@ -146,43 +146,43 @@ public static class ActionResultExtensions
     ///         <description>Default HTTP Status Code</description>
     ///     </listheader>
     ///     <item>
-    ///         <term><see cref="ValidationError"/></term>
-    ///         <description>400 Bad Request with validation problem details and ModelState</description>
+    ///         <term><see cref="Error.UnprocessableContent"/></term>
+    ///         <description>422 Unprocessable Content with validation problem details and ModelState</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="BadRequestError"/></term>
+    ///         <term><see cref="Error.BadRequest"/></term>
     ///         <description>400 Bad Request</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="UnauthorizedError"/></term>
+    ///         <term><see cref="Error.Unauthorized"/></term>
     ///         <description>401 Unauthorized</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="ForbiddenError"/></term>
+    ///         <term><see cref="Error.Forbidden"/></term>
     ///         <description>403 Forbidden</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="NotFoundError"/></term>
+    ///         <term><see cref="Error.NotFound"/></term>
     ///         <description>404 Not Found</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="ConflictError"/></term>
+    ///         <term><see cref="Error.Conflict"/></term>
     ///         <description>409 Conflict</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="DomainError"/></term>
-    ///         <description>422 Unprocessable Entity</description>
-    ///     </item>
-    ///     <item>
-    ///         <term><see cref="RateLimitError"/></term>
-    ///         <description>429 Too Many Requests</description>
-    ///     </item>
-    ///     <item>
-    ///         <term><see cref="UnexpectedError"/></term>
+    ///         <term><see cref="Error.InternalServerError"/></term>
     ///         <description>500 Internal Server Error</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="ServiceUnavailableError"/></term>
+    ///         <term><see cref="Error.TooManyRequests"/></term>
+    ///         <description>429 Too Many Requests</description>
+    ///     </item>
+    ///     <item>
+    ///         <term><see cref="Error.InternalServerError"/></term>
+    ///         <description>500 Internal Server Error</description>
+    ///     </item>
+    ///     <item>
+    ///         <term><see cref="Error.ServiceUnavailable"/></term>
     ///         <description>503 Service Unavailable</description>
     ///     </item>
     ///     <item>
@@ -198,7 +198,7 @@ public static class ActionResultExtensions
     /// <code>
     /// builder.Services.AddTrellisAsp(options =>
     /// {
-    ///     options.MapError&lt;DomainError&gt;(StatusCodes.Status400BadRequest);
+    ///     options.MapError&lt;Error.Conflict&gt;(StatusCodes.Status400BadRequest);
     /// });
     /// </code>
     /// If <c>AddTrellisAsp</c> is not called, the default mappings shown above are used.
@@ -215,7 +215,7 @@ public static class ActionResultExtensions
     /// </list>
     /// </para>
     /// <para>
-    /// For <see cref="ValidationError"/>, the response includes an additional <c>errors</c> object
+    /// For <see cref="Error.UnprocessableContent"/>, the response includes an additional <c>errors</c> object
     /// containing field-level validation messages compatible with ASP.NET Core ModelState.
     /// </para>
     /// </remarks>
@@ -241,14 +241,17 @@ public static class ActionResultExtensions
                       ?? TrellisAspOptions.Default;
         var statusCode = options.GetStatusCode(error);
 
-        if (error is ValidationError validation)
-            return ValidationErrors<TValue>(string.IsNullOrEmpty(error.Detail) ? null : error.Detail, validation, error.Instance, controllerBase, statusCode);
+        if (error is Error.UnprocessableContent validation
+            && (validation.Fields.Items.Length > 0 || validation.Rules.Items.Length > 0))
+            return ValidationErrors<TValue>(string.IsNullOrEmpty(error.Detail) ? null : error.Detail, validation, instance: null, controllerBase, statusCode);
 
         if (controllerBase.HttpContext is not null)
             EmitCompanionHeaders(error, controllerBase.Response);
 
         var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
-        return (ActionResult<TValue>)controllerBase.Problem(detail, error.Instance, statusCode);
+        var problem = controllerBase.Problem(detail, instance: null, statusCode);
+        ApplyExtensions(problem, error, error is Error.UnprocessableContent uc ? uc.Rules : default);
+        return (ActionResult<TValue>)problem;
     }
 
     /// <summary>
@@ -568,39 +571,62 @@ public static class ActionResultExtensions
     {
         switch (error)
         {
-            case MethodNotAllowedError mae:
-                response.Headers["Allow"] = string.Join(", ", mae.AllowedMethods);
+            case Error.MethodNotAllowed mae:
+                response.Headers["Allow"] = string.Join(", ", mae.Allow.Items);
                 break;
 
-            case RateLimitError { RetryAfter: not null } rle:
-                response.Headers["Retry-After"] = rle.RetryAfter.ToHeaderValue();
+            case Error.TooManyRequests { RetryAfter: not null } tmr:
+                response.Headers["Retry-After"] = tmr.RetryAfter.ToHeaderValue();
                 break;
 
-            case ServiceUnavailableError { RetryAfter: not null } sue:
+            case Error.ServiceUnavailable { RetryAfter: not null } sue:
                 response.Headers["Retry-After"] = sue.RetryAfter.ToHeaderValue();
                 break;
 
-            case ContentTooLargeError { RetryAfter: not null } ctle:
-                response.Headers["Retry-After"] = ctle.RetryAfter.ToHeaderValue();
-                break;
-
-            case RangeNotSatisfiableError rnse:
+            case Error.RangeNotSatisfiable rnse:
                 response.Headers["Content-Range"] = $"{rnse.Unit} */{rnse.CompleteLength}";
                 break;
         }
     }
 
-    private static ActionResult<TValue> ValidationErrors<TValue>(string? detail, ValidationError validation, string? instance, ControllerBase controllerBase, int statusCode)
+    private static ActionResult<TValue> ValidationErrors<TValue>(string? detail, Error.UnprocessableContent validation, string? instance, ControllerBase controllerBase, int statusCode)
     {
         ModelStateDictionary modelState = new();
-        foreach (var error in validation.FieldErrors)
-            foreach (var detailError in error.Details)
-                modelState.AddModelError(error.FieldName, detailError);
+        foreach (var fieldViolation in validation.Fields)
+            modelState.AddModelError(fieldViolation.Field.Path.TrimStart('/'), fieldViolation.Detail ?? fieldViolation.ReasonCode);
 
         // Pass null when statusCode matches the ValidationProblem default (400)
         // to preserve standard ControllerBase.ValidationProblem behavior.
         int? effectiveStatusCode = statusCode == StatusCodes.Status400BadRequest ? null : statusCode;
-        return controllerBase.ValidationProblem(detail, instance, effectiveStatusCode, modelStateDictionary: modelState);
+        var result = controllerBase.ValidationProblem(detail, instance, effectiveStatusCode, modelStateDictionary: modelState);
+        ApplyExtensions(result, validation, validation.Rules);
+        return result;
+    }
+
+    private static void ApplyExtensions(ActionResult? result, Error error, EquatableArray<RuleViolation> rules)
+    {
+        if (result is not ObjectResult { Value: ProblemDetails pd })
+            return;
+
+        pd.Extensions["code"] = error.Code;
+        pd.Extensions["kind"] = error.Kind;
+
+        if (error is Error.InternalServerError ise)
+        {
+            pd.Extensions["faultId"] = ise.FaultId;
+        }
+
+        if (rules.Items.Length > 0)
+        {
+            pd.Extensions["rules"] = rules.Items
+                .Select(rv => (object)new
+                {
+                    code = rv.ReasonCode,
+                    detail = rv.Detail,
+                    fields = rv.Fields.Items.Select(p => p.Path).ToArray(),
+                })
+                .ToArray();
+        }
     }
 
     #region RepresentationMetadata Support
@@ -643,7 +669,7 @@ public static class ActionResultExtensions
                     {
                         ConditionalDecision.NotModified => new StatusCodeResult(StatusCodes.Status304NotModified),
                         ConditionalDecision.PreconditionFailed =>
-                            Error.PreconditionFailed("A conditional request header evaluated to false.")
+                            new Error.PreconditionFailed(new ResourceRef(typeof(TIn).Name, null), PreconditionKind.IfMatch) { Detail = "A conditional request header evaluated to false." }
                                 .ToActionResult<TOut>(controller),
                         _ => controller.Ok(map(inValue)),
                     };

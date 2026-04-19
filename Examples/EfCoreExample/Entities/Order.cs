@@ -40,7 +40,7 @@ public class Order : Aggregate<OrderId>
     /// </summary>
     public static Result<Order> TryCreate(CustomerId customerId) =>
         customerId.ToResult()
-            .Ensure(id => id != null, Error.Validation("Customer ID is required", nameof(customerId)))
+            .Ensure(id => id != null, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(customerId)), "validation.error") { Detail = "Customer ID is required" })))
             .Map(_ => new Order(customerId));
 
     /// <summary>
@@ -50,8 +50,8 @@ public class Order : Aggregate<OrderId>
     public Result<Order> AddLine(Product product, int quantity) =>
         this.ToResult()
             // RequiredEnum provides the CanModify property
-            .Ensure(_ => State.CanModify, Error.Validation($"Cannot modify order in '{State}' state"))
-            .Ensure(_ => quantity > 0, Error.Validation("Quantity must be positive", nameof(quantity)))
+            .Ensure(_ => State.CanModify, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot modify order in '{State}' state" })
+            .Ensure(_ => quantity > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be positive" })))
             .Tap(_ => _lines.Add(new OrderLine(Id, product, quantity)));
 
     /// <summary>
@@ -60,7 +60,7 @@ public class Order : Aggregate<OrderId>
     /// </summary>
     public Result<Order> Confirm() =>
         this.ToResult()
-            .Ensure(_ => _lines.Count > 0, Error.Validation("Order must have at least one item"))
+            .Ensure(_ => _lines.Count > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Order must have at least one item" })
             // RequiredEnum validates the transition
             .Bind(_ => State.TryTransitionTo(OrderState.Confirmed))
             .Tap(newState =>
@@ -103,7 +103,7 @@ public class Order : Aggregate<OrderId>
     public Result<Order> Cancel() =>
         this.ToResult()
             // RequiredEnum provides the CanCancel property
-            .Ensure(_ => State.CanCancel, Error.Validation($"Cannot cancel order in '{State}' state"))
+            .Ensure(_ => State.CanCancel, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot cancel order in '{State}' state" })
             .Bind(_ => State.TryTransitionTo(OrderState.Cancelled))
             .Tap(newState =>
             {

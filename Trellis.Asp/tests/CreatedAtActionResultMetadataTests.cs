@@ -89,7 +89,7 @@ public class CreatedAtActionResultMetadataTests
     public void ToCreatedAtActionResult_Failure_ReturnsProblemDetails()
     {
         var controller = CreateController();
-        var result = Result.Fail<Order>(Error.BadRequest("bad input"));
+        var result = Result.Fail<Order>(new Error.BadRequest("bad.request") { Detail = "bad input" });
 
         var response = result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -106,7 +106,7 @@ public class CreatedAtActionResultMetadataTests
     {
         var invoked = false;
         var controller = CreateController();
-        var result = Result.Fail<Order>(Error.NotFound("gone"));
+        var result = Result.Fail<Order>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" });
 
         result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -121,7 +121,7 @@ public class CreatedAtActionResultMetadataTests
     public void ToCreatedAtActionResult_Failure_DoesNotSetMetadataHeaders()
     {
         var controller = CreateController();
-        var result = Result.Fail<Order>(Error.NotFound("gone"));
+        var result = Result.Fail<Order>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" });
 
         result.ToCreatedAtActionResult(controller,
             actionName: "GetOrder",
@@ -157,7 +157,7 @@ public class CreatedAtActionResultMetadataTests
     public async Task ToCreatedAtActionResultAsync_Task_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var resultTask = Task.FromResult(Result.Fail<Order>(Error.Conflict("exists")));
+        var resultTask = Task.FromResult(Result.Fail<Order>(new Error.Conflict(null, "conflict") { Detail = "exists" }));
 
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
             actionName: "GetOrder",
@@ -194,7 +194,7 @@ public class CreatedAtActionResultMetadataTests
     public async Task ToCreatedAtActionResultAsync_ValueTask_Failure_ReturnsError()
     {
         var controller = CreateController();
-        var resultTask = new ValueTask<Result<Order>>(Result.Fail<Order>(Error.Forbidden("denied")));
+        var resultTask = new ValueTask<Result<Order>>(Result.Fail<Order>(new Error.Forbidden("authorization.forbidden") { Detail = "denied" }));
 
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
             actionName: "GetOrder",

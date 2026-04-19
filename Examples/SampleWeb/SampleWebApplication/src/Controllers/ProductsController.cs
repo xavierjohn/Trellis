@@ -9,6 +9,7 @@ using Trellis;
 using Trellis.Asp;
 using Trellis.EntityFrameworkCore;
 using Trellis.Primitives;
+using System.Globalization;
 
 public record ProductResponse(Guid Id, string Name, decimal Price, int Stock, string ETag)
 {
@@ -85,7 +86,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     {
         var result = await db.Products
             .FirstOrDefaultResultAsync(p => p.Id == id,
-                Error.NotFound("Product not found.", id));
+                new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Product not found." });
 
         if (result.TryGetError(out var fetchError))
             return fetchError.ToActionResult<ProductResponse>(this);
@@ -121,7 +122,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     {
         var result = await db.Products
             .FirstOrDefaultResultAsync(p => p.Id == id,
-                Error.NotFound("Product not found.", id))
+                new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Product not found." })
             .OptionalETagAsync(ETagHelper.ParseIfMatch(Request))
             .BindAsync(p =>
                 MonetaryAmount.TryCreate(request.Price, "price")
@@ -140,7 +141,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     {
         var product = await db.Products.FindAsync(id);
         if (product is null)
-            return Error.NotFound("Product not found.", id).ToActionResult(this);
+            return new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Product not found." }.ToActionResult(this);
 
         db.Products.Remove(product);
         var saveResult = await db.SaveChangesResultUnitAsync();

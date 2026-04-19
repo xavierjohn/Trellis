@@ -27,7 +27,7 @@ public class ResultEdgeCaseTests
     public void TryGetValue_OnFailure_ShouldReturnFalseWithDefaultValue()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         bool success = result.TryGetValue(out var value);
@@ -55,7 +55,7 @@ public class ResultEdgeCaseTests
     public void TryGetError_OnFailure_ShouldReturnTrueWithError()
     {
         // Arrange
-        var expectedError = Error.Validation("Invalid input");
+        var expectedError = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid input" };
         var result = Result.Fail<int>(expectedError);
 
         // Act
@@ -89,7 +89,7 @@ public class ResultEdgeCaseTests
     public void Deconstruct_OnFailure_ShouldDeconstructCorrectly()
     {
         // Arrange
-        var expectedError = Error.Conflict("Conflict");
+        var expectedError = new Error.Conflict(null, "conflict") { Detail = "Conflict" };
         var result = Result.Fail<int>(expectedError);
 
         // Act
@@ -111,7 +111,7 @@ public class ResultEdgeCaseTests
         string message = result switch
         {
             { IsSuccess: true } => $"Success: {result.Value}",
-            { IsFailure: true } => $"Failure: {result.Error.Code}",
+            { IsFailure: true } => $"Failure: {result.Error!.Code}",
             _ => "Unknown"
         };
 
@@ -151,12 +151,14 @@ public class ResultEdgeCaseTests
     public void Equals_TwoFailuresWithSameErrorCode_ShouldBeEqual()
     {
         // Arrange
-        var result1 = Result.Fail<int>(Error.NotFound("User not found"));
-        var result2 = Result.Fail<int>(Error.NotFound("Resource not found"));
+        var result1 = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" });
+        var result2 = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" });
 
         // Act & Assert
-        // Errors are equal based on Code, not Detail
-        result1.Should().Be(result2);
+        // Errors are equal based on payload AND Detail (V6 semantics: Detail is part of equality)
+        result1.Should().NotBe(result2);
+        var result3 = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" });
+        result1.Should().Be(result3);
     }
 
     [Fact]
@@ -164,7 +166,7 @@ public class ResultEdgeCaseTests
     {
         // Arrange
         var result1 = Result.Ok(42);
-        var result2 = Result.Fail<int>(Error.NotFound("Not found"));
+        var result2 = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act & Assert
         result1.Should().NotBe(result2);
@@ -215,7 +217,7 @@ public class ResultEdgeCaseTests
     public void GetHashCode_FailureResults_ShouldBeConsistent()
     {
         // Arrange
-        var error = Error.Validation("Invalid");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid" };
         var result1 = Result.Fail<int>(error);
         var result2 = Result.Fail<int>(error);
 
@@ -261,14 +263,14 @@ public class ResultEdgeCaseTests
     public void ToString_Failure_ShouldFormatCorrectly()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("User not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" });
 
         // Act
         string str = result.ToString();
 
         // Assert
         str.Should().Contain("Failure");
-        str.Should().Contain("not.found.error");
+        str.Should().Contain("not-found");
         str.Should().Contain("User not found");
     }
 
@@ -291,14 +293,14 @@ public class ResultEdgeCaseTests
     public void ImplicitConversion_FromError_ShouldCreateFailureResult()
     {
         // Arrange
-        Error error = Error.Unexpected("Something went wrong");
+        Error error = new Error.InternalServerError("test") { Detail = "Something went wrong" };
 
         // Act
         Result<int> result = Result.Fail<int>(error);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.Error!.Should().Be(error);
     }
 
     #endregion
@@ -309,7 +311,7 @@ public class ResultEdgeCaseTests
     public void Value_OnFailure_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var result = Result.Fail<int>(Error.NotFound("Not found"));
+        var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         Action act = () => { var _ = result.Value; };
@@ -320,17 +322,16 @@ public class ResultEdgeCaseTests
     }
 
     [Fact]
-    public void Error_OnSuccess_ShouldThrowInvalidOperationException()
+    public void Error_OnSuccess_ShouldReturnNull()
     {
         // Arrange
         var result = Result.Ok(42);
 
         // Act
-        Action act = () => { var _ = result.Error; };
+        var error = result.Error;
 
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*successful result*");
+        // Assert: V6 semantics — Error is nullable and returns null on success (no throw)
+        error.Should().BeNull();
     }
 
     #endregion
@@ -345,7 +346,7 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
+        result.Error!.Should().BeOfType<Error.InternalServerError>();
     }
 
     [Fact]
@@ -356,23 +357,23 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().Be("Test exception");
+        result.Error!.Should().BeOfType<Error.InternalServerError>();
+        result.Error!.Detail.Should().Be("Test exception");
     }
 
     [Fact]
     public void Try_WithCustomExceptionMapper_ShouldUseCustomMapping()
     {
         // Arrange
-        Error CustomMapper(Exception ex) => Error.Validation($"Custom: {ex.Message}");
+        Error CustomMapper(Exception ex) => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Custom: {ex.Message}" };
 
         // Act
         var result = Result.Try<int>(() => throw new InvalidOperationException("Test"), CustomMapper);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<ValidationError>();
-        result.Error.Detail.Should().Be("Custom: Test");
+        result.Error!.Should().BeOfType<Error.UnprocessableContent>();
+        result.Error!.Detail.Should().Be("Custom: Test");
     }
 
     [Fact]
@@ -390,8 +391,8 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<UnexpectedError>();
-        result.Error.Detail.Should().Be("Async test exception");
+        result.Error!.Should().BeOfType<Error.InternalServerError>();
+        result.Error!.Detail.Should().Be("Async test exception");
     }
 
     [Fact]
@@ -418,7 +419,7 @@ public class ResultEdgeCaseTests
     [Fact]
     public void Ensure_Bool_True_ReturnsSuccess()
     {
-        var result = Result.Ensure(true, Error.Validation("Should not appear"));
+        var result = Result.Ensure(true, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Should not appear" });
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -426,12 +427,12 @@ public class ResultEdgeCaseTests
     [Fact]
     public void Ensure_Bool_False_ReturnsFailureWithError()
     {
-        var error = Error.Validation("Condition failed", "field");
+        var error = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Condition failed" }));
 
         var result = Result.Ensure(false, error);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.Error!.Should().Be(error);
     }
 
     [Fact]
@@ -439,7 +440,7 @@ public class ResultEdgeCaseTests
     {
         var invoked = false;
 
-        var result = Result.Ensure(() => { invoked = true; return true; }, Error.Validation("fail"));
+        var result = Result.Ensure(() => { invoked = true; return true; }, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "fail" });
 
         result.IsSuccess.Should().BeTrue();
         invoked.Should().BeTrue("predicate should be invoked");
@@ -448,18 +449,18 @@ public class ResultEdgeCaseTests
     [Fact]
     public void Ensure_FuncBool_False_ReturnsFailureWithError()
     {
-        var error = Error.Forbidden("Not allowed");
+        var error = new Error.Forbidden("authorization.forbidden") { Detail = "Not allowed" };
 
         var result = Result.Ensure(() => false, error);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.Error!.Should().Be(error);
     }
 
     [Fact]
     public void Ensure_FuncBool_NullPredicate_ThrowsArgumentNullException()
     {
-        var act = () => Result.Ensure((Func<bool>)null!, Error.Validation("fail"));
+        var act = () => Result.Ensure((Func<bool>)null!, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "fail" });
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -469,7 +470,7 @@ public class ResultEdgeCaseTests
     {
         var result = await Result.EnsureAsync(
             async () => { await Task.Yield(); return true; },
-            Error.Validation("fail"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "fail" });
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -477,20 +478,20 @@ public class ResultEdgeCaseTests
     [Fact]
     public async Task EnsureAsync_False_ReturnsFailureWithError()
     {
-        var error = Error.Forbidden("Denied");
+        var error = new Error.Forbidden("authorization.forbidden") { Detail = "Denied" };
 
         var result = await Result.EnsureAsync(
             async () => { await Task.Yield(); return false; },
             error);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.Error!.Should().Be(error);
     }
 
     [Fact]
     public async Task EnsureAsync_NullPredicate_ThrowsArgumentNullException()
     {
-        var act = () => Result.EnsureAsync((Func<Task<bool>>)null!, Error.Validation("fail"));
+        var act = () => Result.EnsureAsync((Func<Task<bool>>)null!, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "fail" });
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
@@ -502,7 +503,7 @@ public class ResultEdgeCaseTests
 
         var result = await Result.EnsureAsync(
             async () => { await Task.Yield(); invoked = true; return true; },
-            Error.Validation("fail"));
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "fail" });
 
         result.IsSuccess.Should().BeTrue();
         invoked.Should().BeTrue("async predicate should be invoked");
@@ -563,14 +564,14 @@ public class ResultEdgeCaseTests
     public void Failure_Unit_ShouldCreateFailureResultWithError()
     {
         // Arrange
-        var error = Error.BadRequest("Bad request");
+        var error = new Error.BadRequest("bad.request") { Detail = "Bad request" };
 
         // Act
         var result = Result.Fail(error);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(error);
+        result.Error!.Should().Be(error);
     }
 
     #endregion

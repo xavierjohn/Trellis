@@ -16,7 +16,7 @@ public class EnsureTracingTests
         var result = Result.Ok(42);
 
         // Act
-        var actual = result.Ensure(x => x > 40, Error.Validation("Value must be > 40"));
+        var actual = result.Ensure(x => x > 40, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be > 40" });
 
         // Assert
         var activity = activityTest.AssertActivityCaptured("Ensure");
@@ -30,7 +30,7 @@ public class EnsureTracingTests
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var actual = "test".EnsureNotNullOrWhiteSpace(Error.Validation("String is required"));
+        var actual = "test".EnsureNotNullOrWhiteSpace(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "String is required" });
 
         // Assert
         var activity = activityTest.AssertActivityCaptured("EnsureNotNullOrWhiteSpace");
@@ -49,7 +49,7 @@ public class EnsureTracingTests
         var result = Result.Ok(42);
 
         // Act
-        var actual = result.Ensure(x => x > 40, Error.Validation("Value must be > 40"));
+        var actual = result.Ensure(x => x > 40, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be > 40" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Ok);
@@ -64,7 +64,7 @@ public class EnsureTracingTests
         var result = Result.Ok("test");
 
         // Act
-        var actual = result.Ensure(() => true, Error.Validation("Must be true"));
+        var actual = result.Ensure(() => true, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be true" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Ok);
@@ -78,7 +78,7 @@ public class EnsureTracingTests
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var actual = "test".EnsureNotNullOrWhiteSpace(Error.Validation("String is required"));
+        var actual = "test".EnsureNotNullOrWhiteSpace(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "String is required" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Ok);
@@ -97,7 +97,7 @@ public class EnsureTracingTests
         var result = Result.Ok(42);
 
         // Act
-        var actual = result.Ensure(x => x < 40, Error.Validation("Value must be < 40"));
+        var actual = result.Ensure(x => x < 40, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be < 40" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
@@ -109,11 +109,11 @@ public class EnsureTracingTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var error = Error.NotFound("Not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
         var result = Result.Fail<int>(error);
 
         // Act
-        var actual = result.Ensure(x => x > 40, Error.Validation("Value must be > 40"));
+        var actual = result.Ensure(x => x > 40, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be > 40" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
@@ -128,7 +128,7 @@ public class EnsureTracingTests
         var result = Result.Ok(5);
 
         // Act
-        var actual = result.Ensure(x => x > 10, Error.Validation("Value must be > 10"));
+        var actual = result.Ensure(x => x > 10, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be > 10" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
@@ -143,7 +143,7 @@ public class EnsureTracingTests
         var result = Result.Ok(42);
 
         // Act
-        var actual = result.Ensure(x => x > 100, Error.Validation("Predicate failed"));
+        var actual = result.Ensure(x => x > 100, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Predicate failed" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
@@ -160,7 +160,7 @@ public class EnsureTracingTests
         // Act
         var actual = result.Ensure(
             value => value > 100,
-            value => Error.Validation($"Value {value} is invalid"));
+            value => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Value {value} is invalid" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
@@ -175,7 +175,7 @@ public class EnsureTracingTests
 
         // Act
         string? str = null;
-        var actual = str.EnsureNotNullOrWhiteSpace(Error.Validation("String is required"));
+        var actual = str.EnsureNotNullOrWhiteSpace(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "String is required" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Error);
@@ -189,7 +189,7 @@ public class EnsureTracingTests
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var actual = "   ".EnsureNotNullOrWhiteSpace(Error.Validation("String is required"));
+        var actual = "   ".EnsureNotNullOrWhiteSpace(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "String is required" });
 
         // Assert
         activityTest.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Error);
@@ -208,8 +208,8 @@ public class EnsureTracingTests
 
         // Act
         var result = Result.Ok(42)
-            .Ensure(x => x > 0, Error.Validation("Must be positive"))
-            .Ensure(x => x < 100, Error.Validation("Must be < 100"))
+            .Ensure(x => x > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be positive" })
+            .Ensure(x => x < 100, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Must be < 100" })
             .Bind(x => Result.Ok(x * 2));
 
         // Assert

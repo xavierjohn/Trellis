@@ -17,7 +17,7 @@ public class BindBenchmarks
     public void Setup()
     {
         _successResult = Result.Ok(42);
-        _failureResult = Result.Fail<int>(Error.Validation("Test error"));
+        _failureResult = Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Test error" });
     }
 
     [Benchmark(Baseline = true)]
@@ -56,7 +56,7 @@ public class BindBenchmarks
     public Result<int> Bind_ThreeChains_FailAtSecond()
     {
         return _successResult
-            .Bind(x => Result.Fail<int>(Error.Validation("Failed at step 2")))
+            .Bind(x => Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Failed at step 2" }))
             .Bind(x => Result.Ok(x + 10))
             .Bind(x => Result.Ok(x - 5));
     }
@@ -108,7 +108,7 @@ public class BindBenchmarks
     {
         return value > 0
             ? Result.Ok(value)
-            : Result.Fail<int>(Error.Validation("Value must be positive"));
+            : Result.Fail<int>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be positive" });
     }
 
     private static Result<int> TransformResult(int value)

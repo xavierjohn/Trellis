@@ -24,9 +24,9 @@ public static class StringExtensions
         T.TryCreate(s!).Match(
             onSuccess: value => value,
             onFailure: error => throw new FormatException(
-                error is ValidationError val && val.FieldErrors.Length > 0 && val.FieldErrors[0].Details.Length > 0
-                    ? val.FieldErrors[0].Details[0]
-                    : error.Detail));
+                error is Error.UnprocessableContent uc && uc.Fields.Length > 0
+                    ? uc.Fields[0].Detail ?? error.Detail ?? "Validation failed."
+                    : error.Detail ?? "Validation failed."));
 
     /// <summary>
     /// Tries to parse a string value using the specified <see cref="IScalarValue{TSelf, TPrimitive}"/> factory.

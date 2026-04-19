@@ -152,7 +152,7 @@ public class ParallelExamples : IClassFixture<TraceFixture>
     private static Task<Result<string>> ValidatePaymentAsync(string orderId)
     {
         if (orderId == "invalid-payment")
-            return Task.FromResult(Result.Fail<string>(Error.Validation("Invalid payment")));
+            return Task.FromResult(Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid payment" }));
 
         return Task.FromResult(Result.Ok($"Payment OK for {orderId}"));
     }

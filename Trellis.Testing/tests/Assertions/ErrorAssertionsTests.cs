@@ -6,17 +6,17 @@ public class ErrorAssertionsTests
     public void HaveCode_Should_Pass_When_Code_Matches()
     {
         // Arrange
-        var error = Error.NotFound("Not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
 
         // Act & Assert
-        error.Should().HaveCode("not.found.error");
+        error.Should().HaveCode("not-found");
     }
 
     [Fact]
     public void HaveCode_Should_Fail_When_Code_Does_Not_Match()
     {
         // Arrange
-        var error = Error.NotFound("Not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
 
         // Act
         var act = () => error.Should().HaveCode("wrong.code");
@@ -29,7 +29,7 @@ public class ErrorAssertionsTests
     public void HaveDetail_Should_Pass_When_Detail_Matches()
     {
         // Arrange
-        var error = Error.BadRequest("Invalid input");
+        var error = new Error.BadRequest("bad.request") { Detail = "Invalid input" };
 
         // Act & Assert
         error.Should().HaveDetail("Invalid input");
@@ -39,7 +39,7 @@ public class ErrorAssertionsTests
     public void HaveDetail_Should_Fail_When_Detail_Does_Not_Match()
     {
         // Arrange
-        var error = Error.BadRequest("Invalid input");
+        var error = new Error.BadRequest("bad.request") { Detail = "Invalid input" };
 
         // Act
         var act = () => error.Should().HaveDetail("Wrong detail");
@@ -52,7 +52,7 @@ public class ErrorAssertionsTests
     public void HaveDetailContaining_Should_Pass_When_Contains_Substring()
     {
         // Arrange
-        var error = Error.NotFound("User with ID 123 not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User with ID 123 not found" };
 
         // Act & Assert
         error.Should().HaveDetailContaining("123");
@@ -62,7 +62,7 @@ public class ErrorAssertionsTests
     public void HaveDetailContaining_Should_Fail_When_Does_Not_Contain()
     {
         // Arrange
-        var error = Error.NotFound("User not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" };
 
         // Act
         var act = () => error.Should().HaveDetailContaining("456");
@@ -75,11 +75,11 @@ public class ErrorAssertionsTests
     public void Should_Allow_Chaining_Assertions()
     {
         // Arrange
-        var error = Error.Conflict("Resource already exists");
+        var error = new Error.Conflict(null, "conflict") { Detail = "Resource already exists" };
 
         // Act & Assert
         error.Should()
-            .HaveCode("conflict.error")
+            .HaveCode("conflict")
             .And.HaveDetail("Resource already exists")
             .And.HaveDetailContaining("exists");
     }
@@ -88,17 +88,17 @@ public class ErrorAssertionsTests
     public void HaveCode_Should_Support_Because_Reason()
     {
         // Arrange
-        var error = Error.Unauthorized("Not authenticated");
+        var error = new Error.Unauthorized() { Detail = "Not authenticated" };
 
         // Act & Assert
-        error.Should().HaveCode("unauthorized.error", "because authentication is required");
+        error.Should().HaveCode("unauthorized", "because authentication is required");
     }
 
     [Fact]
     public void HaveDetail_Should_Support_Because_Reason()
     {
         // Arrange
-        var error = Error.Forbidden("Access denied");
+        var error = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
 
         // Act & Assert
         error.Should().HaveDetail("Access denied", "because user lacks permission");
@@ -108,36 +108,13 @@ public class ErrorAssertionsTests
     public void HaveDetailContaining_Should_Support_Because_Reason()
     {
         // Arrange
-        var error = Error.Domain("Balance insufficient for withdrawal");
+        var error = new Error.Conflict(null, "domain.violation") { Detail = "Balance insufficient for withdrawal" };
 
         // Act & Assert
         error.Should().HaveDetailContaining("insufficient", "because this is a business rule");
     }
 
     #region HaveInstance Tests
-
-    [Fact]
-    public void HaveInstance_Should_Pass_When_Instance_Matches()
-    {
-        // Arrange
-        var error = Error.NotFound("Not found", "resource-123");
-
-        // Act & Assert
-        error.Should().HaveInstance("resource-123");
-    }
-
-    [Fact]
-    public void HaveInstance_Should_Fail_When_Instance_Does_Not_Match()
-    {
-        // Arrange
-        var error = Error.NotFound("Not found", "resource-123");
-
-        // Act
-        var act = () => error.Should().HaveInstance("wrong-instance");
-
-        // Assert
-        act.Should().Throw<Exception>();
-    }
 
     #endregion
 
@@ -147,20 +124,20 @@ public class ErrorAssertionsTests
     public void BeOfType_Should_Pass_When_Type_Matches()
     {
         // Arrange
-        var error = Error.NotFound("Not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
 
         // Act & Assert
-        error.Should().BeOfType<NotFoundError>();
+        error.Should().BeOfType<Error.NotFound>();
     }
 
     [Fact]
     public void BeOfType_Should_Fail_When_Type_Does_Not_Match()
     {
         // Arrange
-        var error = Error.NotFound("Not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
 
         // Act
-        var act = () => error.Should().BeOfType<ValidationError>();
+        var act = () => error.Should().BeOfType<Error.UnprocessableContent>();
 
         // Assert
         act.Should().Throw<Exception>();
@@ -170,11 +147,11 @@ public class ErrorAssertionsTests
     public void BeOfType_Should_Return_Typed_Error_For_Chaining()
     {
         // Arrange
-        var error = Error.Validation("Invalid email", "email");
+        var error = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }));
 
         // Act & Assert
         error.Should()
-            .BeOfType<ValidationError>()
+            .BeOfType<Error.UnprocessableContent>()
             .Which.Should()
             .HaveFieldError("email");
     }
@@ -187,10 +164,10 @@ public class ErrorAssertionsTests
     public void Be_Should_Pass_When_Errors_Are_Equal()
     {
         // Arrange
-        var error1 = Error.NotFound("Not found");
-        var error2 = Error.NotFound("Different detail but same code");
+        var error1 = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var error2 = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
 
-        // Act & Assert (Errors are equal by Code)
+        // Act & Assert
         error1.Should().Be(error2);
     }
 
@@ -198,8 +175,8 @@ public class ErrorAssertionsTests
     public void Be_Should_Fail_When_Errors_Are_Different()
     {
         // Arrange
-        var error1 = Error.NotFound("Not found");
-        var error2 = Error.BadRequest("Bad request");
+        var error1 = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var error2 = new Error.BadRequest("bad.request") { Detail = "Bad request" };
 
         // Act
         var act = () => error1.Should().Be(error2);
@@ -212,11 +189,11 @@ public class ErrorAssertionsTests
     public void Be_Should_Support_Because_Reason()
     {
         // Arrange
-        var error1 = Error.Conflict("Conflict");
-        var error2 = Error.Conflict("Same conflict");
+        var error1 = new Error.Conflict(null, "conflict") { Detail = "Conflict" };
+        var error2 = new Error.Conflict(null, "conflict") { Detail = "Conflict" };
 
         // Act & Assert
-        error1.Should().Be(error2, "because they have the same error code");
+        error1.Should().Be(error2, "because they represent the same conflict");
     }
 
     #endregion

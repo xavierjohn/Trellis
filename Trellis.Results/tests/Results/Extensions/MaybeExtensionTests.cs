@@ -12,7 +12,7 @@ public class MaybeExtensionTests
         Maybe<DateTime> date = DateTime.Now;
 
         // Act
-        var result = date.ToResult(Error.Validation("Date not set."));
+        var result = date.ToResult(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date.Value);
@@ -25,10 +25,10 @@ public class MaybeExtensionTests
         Maybe<DateTime> date = default;
 
         // Act
-        var result = date.ToResult(Error.Validation("Date not set."));
+        var result = date.ToResult(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
 
     }
 
@@ -40,7 +40,7 @@ public class MaybeExtensionTests
         Maybe<MyClass> maybeMy = my;
 
         // Act
-        var result = maybeMy.ToResult(Error.Validation("MyClass is not set."));
+        var result = maybeMy.ToResult(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
@@ -53,10 +53,10 @@ public class MaybeExtensionTests
         Maybe<MyClass> myClass = default;
 
         // Act
-        var result = myClass.ToResult(Error.Validation("MyClass is not set."));
+        var result = myClass.ToResult(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("MyClass is not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
     }
 
     // async class
@@ -69,7 +69,7 @@ public class MaybeExtensionTests
         var myClassTask = Task.FromResult(maybeMy);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
@@ -83,10 +83,10 @@ public class MaybeExtensionTests
         var myClassTask = Task.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("MyClass is not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class MaybeExtensionTests
         var myClassTask = ValueTask.FromResult(maybeMy);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
@@ -113,10 +113,10 @@ public class MaybeExtensionTests
         var myClassTask = ValueTask.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("MyClass is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("MyClass is not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
     }
 
     // async struct
@@ -129,7 +129,7 @@ public class MaybeExtensionTests
         var myClassTask = Task.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date);
@@ -143,10 +143,10 @@ public class MaybeExtensionTests
         var myClassTask = Task.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date is not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class MaybeExtensionTests
         var myClassTask = ValueTask.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date);
@@ -172,10 +172,10 @@ public class MaybeExtensionTests
         var myClassTask = ValueTask.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(Error.Validation("Date is not set."));
+        var result = await myClassTask.ToResultAsync(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date is not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
     }
 
     #region ToResult with Error Factory
@@ -192,7 +192,7 @@ public class MaybeExtensionTests
         var result = maybe.ToResult(() =>
         {
             factoryInvoked = true;
-            return Error.Validation("Date not set.");
+            return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
         });
 
         // Assert
@@ -211,11 +211,11 @@ public class MaybeExtensionTests
         var result = maybe.ToResult(() =>
         {
             factoryInvoked = true;
-            return Error.Validation("Date not set.");
+            return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
         });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
         factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
     }
 
@@ -227,7 +227,7 @@ public class MaybeExtensionTests
         Maybe<MyClass> maybe = my;
 
         // Act
-        var result = maybe.ToResult(() => Error.NotFound("MyClass not found"));
+        var result = maybe.ToResult(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" });
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
@@ -240,10 +240,10 @@ public class MaybeExtensionTests
         Maybe<MyClass> maybe = default;
 
         // Act
-        var result = maybe.ToResult(() => Error.NotFound("MyClass not found"));
+        var result = maybe.ToResult(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" });
 
         // Assert
-        result.Should().BeFailureOfType<NotFoundError>().Which.Detail.Should().Be("MyClass not found");
+        result.Should().BeFailureOfType<Error.NotFound>().Which.Detail.Should().Be("MyClass not found");
     }
 
     #endregion
@@ -263,7 +263,7 @@ public class MaybeExtensionTests
         var result = await maybeTask.ToResultAsync(() =>
         {
             factoryInvoked = true;
-            return Error.Validation("MyClass not set.");
+            return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass not set." };
         });
 
         // Assert
@@ -283,11 +283,11 @@ public class MaybeExtensionTests
         var result = await maybeTask.ToResultAsync(() =>
         {
             factoryInvoked = true;
-            return Error.Conflict("MyClass already exists.");
+            return new Error.Conflict(null, "conflict") { Detail = "MyClass already exists." };
         });
 
         // Assert
-        result.Should().BeFailureOfType<ConflictError>();
+        result.Should().BeFailureOfType<Error.Conflict>();
         factoryInvoked.Should().BeTrue();
     }
 
@@ -300,7 +300,7 @@ public class MaybeExtensionTests
         var maybeTask = Task.FromResult(maybe);
 
         // Act
-        var result = await maybeTask.ToResultAsync(() => Error.Validation("Date not set."));
+        var result = await maybeTask.ToResultAsync(() => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date);
@@ -314,10 +314,10 @@ public class MaybeExtensionTests
         var maybeTask = Task.FromResult(maybe);
 
         // Act
-        var result = await maybeTask.ToResultAsync(() => Error.Validation("Date not set."));
+        var result = await maybeTask.ToResultAsync(() => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
 
         // Assert
-        result.Should().BeFailure().Which.Should().Be(Error.Validation("Date not set."));
+        result.Should().BeFailure().Which.Should().Be(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
     }
 
     #endregion
@@ -337,7 +337,7 @@ public class MaybeExtensionTests
         var result = await maybeTask.ToResultAsync(() =>
         {
             factoryInvoked = true;
-            return Error.Unauthorized("Not authorized.");
+            return new Error.Unauthorized() { Detail = "Not authorized." };
         });
 
         // Assert
@@ -357,11 +357,11 @@ public class MaybeExtensionTests
         var result = await maybeTask.ToResultAsync(() =>
         {
             factoryInvoked = true;
-            return Error.Forbidden("Access denied.");
+            return new Error.Forbidden("authorization.forbidden") { Detail = "Access denied." };
         });
 
         // Assert
-        result.Should().BeFailureOfType<ForbiddenError>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         factoryInvoked.Should().BeTrue();
     }
 
@@ -374,7 +374,7 @@ public class MaybeExtensionTests
         var maybeTask = ValueTask.FromResult(maybe);
 
         // Act
-        var result = await maybeTask.ToResultAsync(() => Error.Domain("Business rule violated."));
+        var result = await maybeTask.ToResultAsync(() => new Error.Conflict(null, "domain.violation") { Detail = "Business rule violated." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date);
@@ -388,10 +388,10 @@ public class MaybeExtensionTests
         var maybeTask = ValueTask.FromResult(maybe);
 
         // Act
-        var result = await maybeTask.ToResultAsync(() => Error.ServiceUnavailable("Service down."));
+        var result = await maybeTask.ToResultAsync(() => new Error.ServiceUnavailable() { Detail = "Service down." });
 
         // Assert
-        result.Should().BeFailureOfType<ServiceUnavailableError>();
+        result.Should().BeFailureOfType<Error.ServiceUnavailable>();
     }
 
     #endregion

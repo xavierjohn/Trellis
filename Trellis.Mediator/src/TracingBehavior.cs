@@ -46,8 +46,8 @@ public sealed class TracingBehavior<TMessage, TResponse>
         {
             if (response.TryGetError(out var error))
             {
-                activity.SetStatus(ActivityStatusCode.Error, error.Detail);
-                activity.SetTag("error.type", error.GetType().Name);
+                activity.SetStatus(ActivityStatusCode.Error, error.GetDisplayMessage());
+                activity.SetTag("error.type", FormatErrorTypeName(error.GetType()));
                 activity.SetTag("error.code", error.Code);
             }
             else
@@ -57,5 +57,11 @@ public sealed class TracingBehavior<TMessage, TResponse>
         }
 
         return response;
+    }
+
+    private static string FormatErrorTypeName(Type errorType)
+    {
+        var declaring = errorType.DeclaringType;
+        return declaring is null ? errorType.Name : $"{declaring.Name}.{errorType.Name}";
     }
 }

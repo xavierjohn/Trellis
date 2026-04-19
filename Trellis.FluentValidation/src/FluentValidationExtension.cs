@@ -1,12 +1,10 @@
 namespace Trellis.FluentValidation;
 
-using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using global::FluentValidation;
 using global::FluentValidation.Results;
 using Trellis;
-using static Trellis.ValidationError;
 
 /// <summary>
 /// Provides extension methods to integrate FluentValidation with Railway Oriented Programming Result types.
@@ -17,7 +15,7 @@ using static Trellis.ValidationError;
 /// This class bridges FluentValidation's imperative validation model with FunctionalDDD's
 /// Railway Oriented Programming approach. Key benefits:
 /// <list type="bullet">
-/// <item>Automatic conversion of validation errors to domain ValidationError type</item>
+/// <item>Automatic conversion of validation errors to <see cref="Error.UnprocessableContent"/></item>
 /// <item>Field-level error grouping for structured error responses</item>
 /// <item>Integration with Result type for consistent error handling</item>
 /// <item>Support for both sync and async validation scenarios</item>
@@ -79,7 +77,7 @@ using static Trellis.ValidationError;
 /// 
 /// // Usage in application code
 /// var result = User.TryCreate(firstName, lastName, email, password);
-/// // Returns: Success(user) or Failure(ValidationError with field errors)
+/// // Returns: Success(user) or Failure(Error.UnprocessableContent with field violations)
 /// </code>
 /// </example>
 /// <example>
@@ -144,13 +142,17 @@ public static class FluentValidationResultExtensions
     /// </returns>
     /// <remarks>
     /// <para>
-    /// This method groups validation errors by property name, making it easy to display
-    /// field-level errors in UIs or API responses. Errors are converted to immutable FieldError objects.
+    /// Each <see cref="ValidationFailure"/> becomes one <see cref="FieldViolation"/> with the
+    /// failure's property name as a JSON Pointer (<see cref="InputPointer.ForProperty(string)"/>),
+    /// the <see cref="ValidationFailure.ErrorCode"/> as <see cref="FieldViolation.ReasonCode"/>
+    /// (falling back to <c>"validation.error"</c>), and the <see cref="ValidationFailure.ErrorMessage"/>
+    /// as <see cref="FieldViolation.Detail"/>. Multiple failures on the same property produce
+    /// multiple <see cref="FieldViolation"/> entries — no information is lost.
     /// </para>
     /// <para>
-    /// The resulting ValidationError can be automatically converted to:
+    /// The resulting <see cref="Error.UnprocessableContent"/> can be automatically converted to:
     /// <list type="bullet">
-    /// <item>HTTP 400 Bad Request with validation problem details (via ToActionResult/ToHttpResult)</item>
+    /// <item>HTTP 422 Unprocessable Content with validation problem details (via ToActionResult/ToHttpResult)</item>
     /// <item>Structured error responses with field-level error messages</item>
     /// </list>
     /// </para>
@@ -162,18 +164,18 @@ public static class FluentValidationResultExtensions
     /// var user = new User { Name = "", Email = "invalid" };
     /// var validationResult = validator.Validate(user);
     /// var result = validationResult.ToResult(user);
-    /// 
+    ///
     /// if (result.IsFailure)
     /// {
-    ///     var error = (ValidationError)result.Error;
-    ///     foreach (var fieldError in error.FieldErrors)
+    ///     var error = (Error.UnprocessableContent)result.Error;
+    ///     foreach (var fv in error.Fields)
     ///     {
-    ///         Console.WriteLine($"{fieldError.FieldName}: {string.Join(", ", fieldError.Details)}");
+    ///         Console.WriteLine($"{fv.Field.Path}: {fv.Detail} ({fv.ReasonCode})");
     ///     }
     /// }
     /// // Output:
-    /// // Name: Name is required
-    /// // Email: Email must be a valid email address
+    /// // /Name:  Name is required (validation.error)
+    /// // /Email: Email must be a valid email address (validation.error)
     /// </code>
     /// </example>
     /// <param name="paramName">
@@ -190,12 +192,16 @@ public static class FluentValidationResultExtensions
         if (validationResult.IsValid)
             return Result.Ok(value);
 
-        ImmutableArray<FieldError> errors = validationResult.Errors
-            .GroupBy(e => string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName)
-            .Select(g => new FieldError(g.Key, g.Select(e => e.ErrorMessage).ToArray()))
-            .ToImmutableArray();
+        var violations = validationResult.Errors
+            .Select(e =>
+            {
+                var propertyName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
+                var reasonCode = string.IsNullOrWhiteSpace(e.ErrorCode) ? "validation.error" : e.ErrorCode;
+                return new FieldViolation(InputPointer.ForProperty(propertyName), reasonCode) { Detail = e.ErrorMessage };
+            })
+            .ToArray();
 
-        return Result.Fail<T>(Error.Validation(errors));
+        return Result.Fail<T>(new Error.UnprocessableContent(EquatableArray.Create(violations)));
     }
 
     /// <summary>
@@ -386,8 +392,21 @@ public static class FluentValidationResultExtensions
     /// 
     /// return result.Match(
     ///     onSuccess: user =&gt; Ok(new UserDto(user)),
-    ///     onFailure: error =&gt; error is ValidationError validationError
-    ///         ? BadRequest(validationError.FieldErrors)
+    ///     onFailure: error =&gt; error is Error.UnprocessableContent uc
+    ///         ? BadRequest(uc.Fields)
+    ///         : StatusCode(500, error.Detail)
+    /// );
+    /// </code>
+    /// </example>
+    /// <example>
+    /// Handling validation errors in the caller (sync variant):
+    /// <code>
+    /// var result = validator.ValidateToResult(request);
+    ///
+    /// return result.Match(
+    ///     onSuccess: user =&gt; Ok(new UserDto(user)),
+    ///     onFailure: error =&gt; error is Error.UnprocessableContent uc
+    ///         ? BadRequest(uc.Fields)
     ///         : StatusCode(500, error.Detail)
     /// );
     /// </code>

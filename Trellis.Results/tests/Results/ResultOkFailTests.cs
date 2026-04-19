@@ -36,7 +36,7 @@ public class ResultOkFailTests
     [Fact]
     public void Fail_with_error_returns_failure_carrying_error()
     {
-        var result = Result.Fail<string>(Error.Validation("Bad first name"));
+        var result = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad first name" });
 
         result.Should().BeFailure()
             .Which.Should().HaveDetail("Bad first name");
@@ -45,7 +45,7 @@ public class ResultOkFailTests
     [Fact]
     public void Fail_unit_with_error_returns_unit_failure()
     {
-        var result = Result.Fail(Error.Validation("Bad"));
+        var result = Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bad" });
 
         result.Should().BeFailure()
             .Which.Should().HaveDetail("Bad");

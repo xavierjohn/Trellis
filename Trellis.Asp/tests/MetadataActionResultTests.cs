@@ -251,7 +251,7 @@ public class MetadataActionResultTests : IDisposable
     public void Failure_ReturnsErrorStatus_NoMetadataHeaders()
     {
         var controller = CreateControllerWithHttpContext();
-        var result = Result.Fail<string>(Error.NotFound("gone"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" });
         var metadata = RepresentationMetadata.WithStrongETag("abc123");
 
         var response = result.ToActionResult(controller, _ => metadata, s => s);

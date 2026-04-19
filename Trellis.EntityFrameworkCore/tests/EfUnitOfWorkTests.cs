@@ -127,6 +127,6 @@ public class EfUnitOfWorkTests : IDisposable
 
         // Assert
         result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
     }
 }

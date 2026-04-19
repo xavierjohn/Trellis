@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Base class for creating strongly-typed string value objects that cannot be null or empty.
@@ -214,7 +214,7 @@
 ///     public static Result&lt;ProductSKU&gt; TryCreateWithValidation(string? value) =>
 ///         TryCreate(value) // Generated: validates non-empty + length &lt;= 20
 ///             .Ensure(sku => sku.Value.All(c => char.IsLetterOrDigit(c) || c == '-'),
-///                    Error.Validation("SKU can only contain letters, digits, and hyphens", "sku"));
+///                    new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("sku"), "validation.error") { Detail = "SKU can only contain letters, digits, and hyphens" })));
 /// }
 /// 
 /// // Usage

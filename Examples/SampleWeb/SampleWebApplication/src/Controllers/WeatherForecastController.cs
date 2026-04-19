@@ -6,7 +6,8 @@ using System.Collections.Immutable;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
 using Trellis;
-using static Trellis.ValidationError;
+using static Trellis.Error.UnprocessableContent;
+using System.Globalization;
 
 [ApiController]
 [Produces("application/json")]
@@ -56,27 +57,28 @@ public class WeatherForecastController : ControllerBase
 
     [HttpGet("Forbidden")]
     public ActionResult Forbidden(string instance)
-        => Error.Forbidden("You are forbidden.", instance).ToActionResult(this);
+        => new Error.Forbidden(instance) { Detail = "You are forbidden." }.ToActionResult(this);
 
     [HttpGet("Unauthorized")]
     public ActionResult Unauthorized(string instance)
-        => Error.Unauthorized("You are not authorized.", instance).ToActionResult(this);
+        => new Error.Unauthorized() { Detail = "You are not authorized." }.ToActionResult(this);
 
     [HttpGet("Conflict")]
     public ActionResult Conflict(string instance)
-        => Error.Conflict("There is a conflict. " + instance, instance).ToActionResult(this);
+        => new Error.Conflict(null, instance) { Detail = "There is a conflict. " + instance }.ToActionResult(this);
 
     [HttpGet("NotFound")]
     public ActionResult NotFound(string? instance)
-        => Error.NotFound("Record not found. " + instance, instance).ToActionResult(this);
+        => new Error.NotFound(new ResourceRef("Resource", instance)) { Detail = "Record not found. " + instance }.ToActionResult(this);
 
     [HttpGet("ValidationError")]
     public ActionResult ValidationError(string? instance, string? detail)
     {
-        ImmutableArray<FieldError> errors = [
-            new("Field1",["Field is required.", "It cannot be empty."]),
-            new("Field2",["Field is required."])
-        ];
-        return Error.Validation(errors, detail ?? string.Empty, instance).ToActionResult(this);
+        Error error = new Error.UnprocessableContent(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty("Field1"), "validation.error") { Detail = "Field is required." },
+            new FieldViolation(InputPointer.ForProperty("Field1"), "validation.error") { Detail = "It cannot be empty." },
+            new FieldViolation(InputPointer.ForProperty("Field2"), "validation.error") { Detail = "Field is required." }))
+            { Detail = detail };
+        return error.ToActionResult(this);
     }
 }

@@ -36,10 +36,10 @@ public class ResultTests
     public void Failed_Unit_Result()
     {
         // Arrange
-        var result = Result.Fail(Error.Forbidden("Testing"));
+        var result = Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Testing" });
 
         // Assert
-        result.Should().BeFailureOfType<ForbiddenError>()
+        result.Should().BeFailureOfType<Error.Forbidden>()
             .Which.Should().HaveDetail("Testing");
     }
 

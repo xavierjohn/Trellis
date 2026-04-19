@@ -116,11 +116,11 @@ public class BankingWorkflow
     {
         return await Task.FromResult(account.ToResult()
             .Ensure(acc => acc.AccountType == AccountType.Savings,
-                Error.Domain("Interest is only paid on savings accounts"))
+                new Error.Conflict(null, "domain.violation") { Detail = "Interest is only paid on savings accounts" })
             .Ensure(acc => acc.Status == AccountStatus.Active,
-                Error.Domain($"Cannot process interest for {account.Status} account"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Cannot process interest for {account.Status} account" })
             .Ensure(acc => acc.Balance.Amount > 0,
-                Error.Domain("No interest on accounts with zero or negative balance"))
+                new Error.Conflict(null, "domain.violation") { Detail = "No interest on accounts with zero or negative balance" })
             .Bind(acc =>
             {
                 var interestAmount = acc.Balance.Amount * (interestRate / 365m); // Daily interest
@@ -153,7 +153,7 @@ public class BankingWorkflow
             {
                 // Don't accept changes - events will be discarded
                 Console.WriteLine($"? Transaction failed at item {processedCount + 1}, discarding {account.UncommittedEvents().Count} uncommitted events");
-                return Result.Fail<BankingExample.Aggregates.BankAccount>(Error.Domain($"Batch transaction failed at item {processedCount + 1}: {depositError.Detail}"));
+                return Result.Fail<BankingExample.Aggregates.BankAccount>(new Error.Conflict(null, "domain.violation") { Detail = $"Batch transaction failed at item {processedCount + 1}: {depositError.Detail}" });
             }
 
             processedCount++;

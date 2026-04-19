@@ -55,7 +55,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -66,8 +66,8 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Phone number is required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Phone number is required.");
     }
 
     [Fact]
@@ -78,8 +78,8 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
     }
 
     [Fact]
@@ -259,7 +259,7 @@ public class PhoneNumberTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("contactPhone");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/contactPhone");
     }
 }

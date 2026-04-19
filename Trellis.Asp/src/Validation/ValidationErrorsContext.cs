@@ -1,8 +1,6 @@
 ﻿namespace Trellis.Asp;
 
-using System.Collections.Immutable;
 using Trellis;
-using static Trellis.ValidationError;
 
 /// <summary>
 /// Provides a context for collecting validation errors during JSON deserialization.
@@ -27,10 +25,10 @@ using static Trellis.ValidationError;
 ///     var dto = JsonSerializer.Deserialize&lt;CreateUserDto&gt;(json, options);
 ///     
 ///     // Check for collected errors
-///     var error = ValidationErrorsContext.GetValidationError();
+///     var error = ValidationErrorsContext.GetUnprocessableContent();
 ///     if (error is not null)
 ///     {
-///         return Results.ValidationProblem(error);
+///         return Results.Problem(detail: error.Detail, statusCode: 422);
 ///     }
 /// }
 /// </code>
@@ -88,24 +86,24 @@ public static class ValidationErrorsContext
         s_current.Value?.AddError(fieldName, errorMessage);
 
     /// <summary>
-    /// Adds a complete validation error to the current scope.
+    /// Adds all field violations from an existing <see cref="Error.UnprocessableContent"/> to the current scope.
     /// </summary>
-    /// <param name="validationError">The validation error to add.</param>
+    /// <param name="unprocessableContent">The error whose field violations should be merged.</param>
     /// <remarks>
     /// If no scope is active, this method is a no-op.
     /// </remarks>
-    internal static void AddError(ValidationError validationError) =>
-        s_current.Value?.AddError(validationError);
+    internal static void AddError(Error.UnprocessableContent unprocessableContent) =>
+        s_current.Value?.AddError(unprocessableContent);
 
     /// <summary>
-    /// Gets the aggregated validation error from the current scope, or null if no errors were collected.
+    /// Gets the aggregated <see cref="Error.UnprocessableContent"/> from the current scope, or null if no errors were collected.
     /// </summary>
     /// <returns>
-    /// A <see cref="ValidationError"/> containing all collected field errors,
+    /// An <see cref="Error.UnprocessableContent"/> containing all collected field violations,
     /// or <c>null</c> if no validation errors were recorded.
     /// </returns>
-    public static ValidationError? GetValidationError() =>
-        s_current.Value?.GetValidationError();
+    public static Error.UnprocessableContent? GetUnprocessableContent() =>
+        s_current.Value?.GetUnprocessableContent();
 
     /// <summary>
     /// Gets whether any validation errors have been collected in the current scope.
@@ -171,44 +169,44 @@ public static class ValidationErrorsContext
             }
         }
 
-        public void AddError(ValidationError validationError)
+        public void AddError(Error.UnprocessableContent unprocessableContent)
         {
             lock (_lock)
             {
-                foreach (var fieldError in validationError.FieldErrors)
+                foreach (var fieldViolation in unprocessableContent.Fields)
                 {
-                    if (!_fieldErrors.TryGetValue(fieldError.FieldName, out var errors))
+                    var fieldName = fieldViolation.Field.Path.TrimStart('/');
+                    if (!_fieldErrors.TryGetValue(fieldName, out var errors))
                     {
                         errors = [];
-                        _fieldErrors[fieldError.FieldName] = errors;
+                        _fieldErrors[fieldName] = errors;
                     }
 
-                    foreach (var detail in fieldError.Details)
+                    var detail = fieldViolation.Detail ?? fieldViolation.ReasonCode;
+                    if (!errors.Contains(detail))
                     {
-                        if (!errors.Contains(detail))
-                        {
-                            errors.Add(detail);
-                        }
+                        errors.Add(detail);
                     }
                 }
             }
         }
 
-        public ValidationError? GetValidationError()
+        public Error.UnprocessableContent? GetUnprocessableContent()
         {
             lock (_lock)
             {
                 if (_fieldErrors.Count == 0)
                     return null;
 
-                var fieldErrors = _fieldErrors
-                    .Select(kvp => new FieldError(kvp.Key, kvp.Value.ToImmutableArray()))
-                    .ToImmutableArray();
+                var violations = _fieldErrors
+                    .SelectMany(kvp => kvp.Value.Select(detail =>
+                        new FieldViolation(InputPointer.ForProperty(kvp.Key), "validation.error") { Detail = detail }))
+                    .ToArray();
 
-                return new ValidationError(
-                    fieldErrors,
-                    "validation.error",
-                    "One or more validation errors occurred.");
+                return new Error.UnprocessableContent(EquatableArray.Create(violations))
+                {
+                    Detail = "One or more validation errors occurred.",
+                };
             }
         }
     }

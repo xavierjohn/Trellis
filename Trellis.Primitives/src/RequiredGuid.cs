@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Base class for creating strongly-typed GUID value objects that cannot have the default (empty) GUID value.
@@ -178,7 +178,7 @@
 ///     
 ///     public Result&lt;Order&gt; AddLine(ProductId productId, int quantity) =>
 ///         this.ToResult()
-///             .Ensure(_ => quantity > 0, Error.Validation("Quantity must be positive"))
+///             .Ensure(_ => quantity > 0, new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = "Quantity must be positive" })
 ///             .Tap(_ => _lines.Add(new OrderLine(productId, quantity)));
 ///     
 ///     // Compiler prevents mixing IDs:

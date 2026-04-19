@@ -128,8 +128,8 @@ public class RequiredLongTests
     {
         var result = SequenceNumber.TryCreate(0L, "myField");
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("myField");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 
     [Fact]

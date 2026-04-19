@@ -78,11 +78,11 @@ public sealed class DocumentService
     {
         var doc = _store.Get(documentId);
         if (doc is null)
-            return Result.Fail<Document>(Error.NotFound("Document not found"));
+            return Result.Fail<Document>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Document not found" });
 
         // ⚠️ Auth logic mixed with business logic
         if (actor.Id != doc.OwnerId && !actor.HasPermission("Documents.EditAny"))
-            return Result.Fail<Document>(Error.Forbidden("Only the owner can edit this document"));
+            return Result.Fail<Document>(new Error.Forbidden("authorization.forbidden") { Detail = "Only the owner can edit this document" });
 
         var updated = doc with { Content = newContent };
         _store.Update(updated);
@@ -93,11 +93,11 @@ public sealed class DocumentService
     {
         var doc = _store.Get(documentId);
         if (doc is null)
-            return Result.Fail<Document>(Error.NotFound("Document not found"));
+            return Result.Fail<Document>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Document not found" });
 
         // ⚠️ Auth logic mixed with business logic
         if (!actor.HasPermission("Documents.Publish"))
-            return Result.Fail<Document>(Error.Forbidden("Missing required permission: Documents.Publish"));
+            return Result.Fail<Document>(new Error.Forbidden("authorization.forbidden") { Detail = "Missing required permission: Documents.Publish" });
 
         var published = doc with { IsPublished = true };
         _store.Update(published);

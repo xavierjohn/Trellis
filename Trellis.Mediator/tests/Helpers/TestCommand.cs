@@ -11,7 +11,7 @@ internal sealed record TestCommand(string Name)
 {
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Name)
-            ? Result.Fail<string>(Error.Validation("Name is required.", "Name"))
+            ? Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Name)), "validation.error") { Detail = "Name is required." })))
             : Result.Ok(Name);
 }
 
@@ -31,7 +31,7 @@ internal sealed record AdminCommand(string Data)
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Data)
-            ? Result.Fail<string>(Error.Validation("Data is required.", "Data"))
+            ? Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Data)), "validation.error") { Detail = "Data is required." })))
             : Result.Ok(Data);
 }
 
@@ -61,7 +61,7 @@ internal sealed record TestQuery(int Id)
 {
     public IResult Validate() =>
         Id <= 0
-            ? Result.Fail<string>(Error.Validation("Id must be positive.", "Id"))
+            ? Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Id)), "validation.error") { Detail = "Id must be positive." })))
             : Result.Ok(Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
 }
 
@@ -80,7 +80,7 @@ internal sealed record ResourceOwnerCommand(string ResourceId)
     public IResult Authorize(Actor actor, TestResource resource) =>
         actor.Id == resource.OwnerId
             ? Result.Ok()
-            : Result.Fail(Error.Forbidden("Only the resource owner can perform this operation."));
+            : Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Only the resource owner can perform this operation." });
 }
 
 /// <summary>
@@ -94,7 +94,7 @@ internal sealed record FullAuthResourceCommand(string ResourceId)
     public IResult Authorize(Actor actor, TestResource resource) =>
         actor.Id == resource.OwnerId || actor.HasPermission("Resources.WriteAny")
             ? Result.Ok()
-            : Result.Fail(Error.Forbidden("Cannot modify another user's resource."));
+            : Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Cannot modify another user's resource." });
 }
 
 /// <summary>
@@ -108,10 +108,10 @@ internal sealed record ValidatedFullAuthResourceCommand(string ResourceId, strin
     public IResult Authorize(Actor actor, TestResource resource) =>
         actor.Id == resource.OwnerId || actor.HasPermission("Resources.WriteAny")
             ? Result.Ok()
-            : Result.Fail(Error.Forbidden("Cannot modify another user's resource."));
+            : Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Cannot modify another user's resource." });
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Payload)
-            ? Result.Fail<string>(Error.Validation("Payload is required.", "Payload"))
+            ? Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Payload)), "validation.error") { Detail = "Payload is required." })))
             : Result.Ok();
 }

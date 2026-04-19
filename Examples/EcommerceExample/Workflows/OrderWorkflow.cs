@@ -54,7 +54,7 @@ public class OrderWorkflow
             {
                 var reserveResult = await ReserveInventoryAsync(order, ct)
                     .RecoverOnFailureAsync(
-                        predicate: error => error is ValidationError,
+                        predicate: error => error is Error.UnprocessableContent,
                         funcAsync: () => SuggestAlternativeProductsAsync(order, ct));
 
                 if (reserveResult.TryGetError(out var reserveError))
@@ -112,7 +112,7 @@ public class OrderWorkflow
         CancellationToken cancellationToken)
     {
         if (items.Count == 0)
-            return Result.Fail<EcommerceExample.Aggregates.Order>(Error.Validation("Order must contain at least one item"));
+            return Result.Fail<EcommerceExample.Aggregates.Order>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Order must contain at least one item" });
 
         // Validate all items - errors are automatically aggregated
         var validationResult = await items.TraverseAsync(
@@ -186,7 +186,7 @@ public class OrderWorkflow
         return await Task.FromResult(order.ProcessPayment("PENDING"))
             .BindAsync(_ => _paymentService.ProcessPaymentAsync(order, paymentInfo.CardNumber, paymentInfo.CVV, cancellationToken))
             .RecoverOnFailureAsync(
-                predicate: error => error is UnexpectedError, // Retry on unexpected errors (e.g., timeouts)
+                predicate: error => error is Error.InternalServerError, // Retry on unexpected errors (e.g., timeouts)
                 funcAsync: async () =>
                 {
                     Console.WriteLine("Payment gateway timeout, retrying...");
@@ -211,7 +211,7 @@ public class OrderWorkflow
 
         // In a real system, this would query for similar products
         // For now, just return the original error
-        return Result.Fail(Error.Domain("Products out of stock. Please check alternative products."));
+        return Result.Fail(new Error.Conflict(null, "domain.violation") { Detail = "Products out of stock. Please check alternative products." });
     }
 
     /// <summary>

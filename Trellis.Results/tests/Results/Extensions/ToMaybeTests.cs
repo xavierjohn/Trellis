@@ -23,7 +23,7 @@ public class ToMaybeTests
     [Fact]
     public void ToMaybe_WhenResultIsFailure_ShouldReturnNone()
     {
-        var sut = Result.Fail<string>(Error.Unexpected("some error"));
+        var sut = Result.Fail<string>(new Error.InternalServerError("test") { Detail = "some error" });
 
         var maybe = sut.ToMaybe();
 
@@ -60,7 +60,7 @@ public class ToMaybeTests
     [Fact]
     public async Task ToMaybeAsync_Task_WhenResultIsFailure_ShouldReturnNone()
     {
-        var sut = Task.FromResult(Result.Fail<string>(Error.Unexpected("error")));
+        var sut = Task.FromResult(Result.Fail<string>(new Error.InternalServerError("test") { Detail = "error" }));
 
         var maybe = await sut.ToMaybeAsync();
 
@@ -95,7 +95,7 @@ public class ToMaybeTests
     [Fact]
     public async Task ToMaybeAsync_ValueTask_WhenResultIsFailure_ShouldReturnNone()
     {
-        var sut = new ValueTask<Result<string>>(Result.Fail<string>(Error.Unexpected("error")));
+        var sut = new ValueTask<Result<string>>(Result.Fail<string>(new Error.InternalServerError("test") { Detail = "error" }));
 
         var maybe = await sut.ToMaybeAsync();
 

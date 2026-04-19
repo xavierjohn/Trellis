@@ -98,5 +98,5 @@ public static class ResultLinqExtensions
     /// </code>
     /// </example>
     public static Result<TSource> Where<TSource>(this Result<TSource> source, Func<TSource, bool> predicate)
-        => source.Ensure(predicate, Error.Unexpected("Result filtered out by predicate."));
+        => source.Ensure(predicate, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Result filtered out by predicate." });
 }

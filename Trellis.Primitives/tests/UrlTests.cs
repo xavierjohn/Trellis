@@ -43,7 +43,7 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -54,8 +54,8 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("URL is required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("URL is required.");
     }
 
     [Fact]
@@ -66,10 +66,10 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
         // Note: On some platforms, Uri.TryCreate treats "/path" as absolute with "file" scheme
         // So we check for either error message depending on platform behavior
-        validation.FieldErrors[0].Details[0].Should().Match(e =>
+        validation.Fields[0].Detail.Should().Match(e =>
             e == "URL must be a valid absolute HTTP or HTTPS URL." ||
             e == "URL must use HTTP or HTTPS scheme.");
     }
@@ -82,8 +82,8 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("URL must use HTTP or HTTPS scheme.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("URL must use HTTP or HTTPS scheme.");
     }
 
     [Theory]
@@ -316,8 +316,8 @@ public class UrlTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("webhookUrl");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/webhookUrl");
     }
 
     [Fact]

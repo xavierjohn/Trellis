@@ -24,9 +24,11 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     private readonly Error? _error;
 
     /// <summary>True when the result represents success.</summary>
+    [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(false, nameof(Error))]
     public bool IsSuccess => !IsFailure;
 
     /// <summary>True when the result represents failure.</summary>
+    [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
     public bool IsFailure { get; }
 
     internal Result(bool isFailure, Error? error)
@@ -56,27 +58,35 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     internal void LogActivityStatus() => Activity.Current?.SetStatus(IsFailure ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
 
     /// <summary>
-    /// Internal accessor for in-assembly use, mirroring the <see cref="Result{TValue}"/> pattern.
-    /// External consumers must use <see cref="TryGetError(out Error)"/> or <see cref="Deconstruct(out bool, out Error?)"/>.
+    /// Gets the error when this result is a failure, or <see langword="null"/> when it is a success.
     /// </summary>
-    internal Error Error =>
-        IsFailure
-            ? _error!
-            : throw new InvalidOperationException("Cannot access Error on a successful result.");
+    /// <remarks>
+    /// Reading this property never throws. The nullable return type is the discriminator: a non-null
+    /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
+    /// Pattern-match on the value to handle individual error cases.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// if (result.Error is { } error)
+    ///     return error switch
+    ///     {
+    ///         Error.NotFound nf => HandleNotFound(nf),
+    ///         _ => HandleGeneric(error),
+    ///     };
+    /// </code>
+    /// </example>
+    public Error? Error => _error;
 
     /// <summary>
-    /// Attempts to get the error without throwing.
+    /// Attempts to get the error without throwing. Companion to <see cref="Error"/> for callers
+    /// that prefer <c>TryParse</c>-style imperative usage where a non-null local binding is desired.
     /// </summary>
-    public bool TryGetError(out Error error)
+    /// <param name="error">When this method returns <see langword="true"/>, contains the error; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the result is a failure; otherwise <see langword="false"/>.</returns>
+    public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Error? error)
     {
-        if (IsFailure)
-        {
-            error = _error!;
-            return true;
-        }
-
-        error = default!;
-        return false;
+        error = _error;
+        return error is not null;
     }
 
     /// <summary>
@@ -121,8 +131,8 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
 
     /// <inheritdoc />
     public override string ToString() =>
-        IsFailure
-            ? $"Failure({Error.Code}: {Error.Detail})"
+        _error is { } error
+            ? $"Failure({error.Code}: {error.Detail})"
             : "Success";
 
     // ------------- Factories -------------
@@ -273,8 +283,10 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     }
 
     /// <summary>
-    /// Default mapper converting an exception into an <see cref="UnexpectedError"/>.
+    /// Default mapper converting an exception into an <see cref="Error.InternalServerError"/>.
+    /// The exception message is attached as <c>Detail</c>; richer diagnostics belong in the
+    /// logging/telemetry layer indexed by <c>FaultId</c>.
     /// </summary>
-    private static UnexpectedError DefaultExceptionMapper(Exception ex) =>
-        Error.Unexpected(ex.Message);
+    private static Error.InternalServerError DefaultExceptionMapper(Exception ex) =>
+        new(FaultId: Guid.NewGuid().ToString("N")) { Detail = ex.Message };
 }

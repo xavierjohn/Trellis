@@ -67,10 +67,10 @@ public class BankAccount : Aggregate<AccountId>
         Money overdraftLimit)
     {
         return customerId.ToResult()
-            .Ensure(_ => customerId != null, Error.Validation("Customer ID is required"))
-            .Ensure(_ => initialDeposit.Amount >= 0, Error.Validation("Initial deposit must be non-negative"))
-            .Ensure(_ => dailyWithdrawalLimit.Amount > 0, Error.Validation("Daily withdrawal limit must be positive"))
-            .Ensure(_ => overdraftLimit.Amount >= 0, Error.Validation("Overdraft limit must be non-negative"))
+            .Ensure(_ => customerId != null, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID is required" })
+            .Ensure(_ => initialDeposit.Amount >= 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Initial deposit must be non-negative" })
+            .Ensure(_ => dailyWithdrawalLimit.Amount > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Daily withdrawal limit must be positive" })
+            .Ensure(_ => overdraftLimit.Amount >= 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Overdraft limit must be non-negative" })
             .Map(_ => new BankAccount(customerId, accountType, initialDeposit, dailyWithdrawalLimit, overdraftLimit));
     }
 
@@ -81,11 +81,11 @@ public class BankAccount : Aggregate<AccountId>
     {
         return this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                Error.Domain($"Cannot deposit to {Status} account"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Cannot deposit to {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                Error.Validation("Deposit amount must be positive", nameof(amount)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(amount)), "validation.error") { Detail = "Deposit amount must be positive" })))
             .Ensure(_ => amount.Amount <= 10000,
-                Error.Domain("Single deposit cannot exceed $10,000"))
+                new Error.Conflict(null, "domain.violation") { Detail = "Single deposit cannot exceed $10,000" })
             .Bind(_ => Balance.Add(amount))
             .Tap(newBalance =>
             {
@@ -112,15 +112,15 @@ public class BankAccount : Aggregate<AccountId>
 
         return this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                Error.Domain($"Cannot withdraw from {Status} account"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Cannot withdraw from {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                Error.Validation("Withdrawal amount must be positive", nameof(amount)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(amount)), "validation.error") { Detail = "Withdrawal amount must be positive" })))
             .Bind(_ => todayTotal.Add(amount))
             .Ensure(totalWithToday => totalWithToday.IsGreaterThanOrEqual(DailyWithdrawalLimit) == false,
-                Error.Domain($"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded" })
             .Bind(_ => Balance.Subtract(amount))
             .Ensure(newBalance => newBalance.Amount >= -OverdraftLimit.Amount,
-                Error.Domain($"Withdrawal would exceed overdraft limit of {OverdraftLimit}"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Withdrawal would exceed overdraft limit of {OverdraftLimit}" })
             .Tap(newBalance =>
             {
                 Balance = newBalance;
@@ -143,10 +143,10 @@ public class BankAccount : Aggregate<AccountId>
     public Result<(BankAccount From, BankAccount To)> TransferTo(BankAccount toAccount, Money amount, string description = "Transfer")
     {
         if (toAccount == null)
-            return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(Error.Validation("Destination account is required"));
+            return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Destination account is required" });
 
         if (Id.Equals(toAccount.Id))
-            return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(Error.Conflict("Cannot transfer to the same account"));
+            return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(new Error.Conflict(null, "conflict") { Detail = "Cannot transfer to the same account" });
 
         return Withdraw(amount, $"{description} to {toAccount.Id}")
             .Bind(_ => toAccount.Deposit(amount, $"{description} from {Id}"))
@@ -170,9 +170,9 @@ public class BankAccount : Aggregate<AccountId>
     {
         return this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                Error.Conflict($"Cannot freeze {Status} account"))
+                new Error.Conflict(null, "conflict") { Detail = $"Cannot freeze {Status} account" })
             .Ensure(_ => !string.IsNullOrWhiteSpace(reason),
-                Error.Validation("Freeze reason is required", nameof(reason)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(reason)), "validation.error") { Detail = "Freeze reason is required" })))
             .Tap(_ =>
             {
                 Status = AccountStatus.Frozen;
@@ -190,7 +190,7 @@ public class BankAccount : Aggregate<AccountId>
     {
         return this.ToResult()
             .Ensure(_ => Status == AccountStatus.Frozen,
-                Error.Conflict("Only frozen accounts can be unfrozen"))
+                new Error.Conflict(null, "conflict") { Detail = "Only frozen accounts can be unfrozen" })
             .Tap(_ =>
             {
                 Status = AccountStatus.Active;
@@ -208,9 +208,9 @@ public class BankAccount : Aggregate<AccountId>
     {
         return this.ToResult()
             .Ensure(_ => Status != AccountStatus.Closed,
-                Error.Conflict("Account is already closed"))
+                new Error.Conflict(null, "conflict") { Detail = "Account is already closed" })
             .Ensure(_ => Balance.Amount == 0,
-                Error.Domain("Account balance must be zero to close"))
+                new Error.Conflict(null, "domain.violation") { Detail = "Account balance must be zero to close" })
             .Tap(_ =>
             {
                 Status = AccountStatus.Closed;

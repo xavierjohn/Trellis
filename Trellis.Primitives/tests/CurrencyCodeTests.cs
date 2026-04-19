@@ -49,8 +49,8 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Currency code is required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Currency code is required.");
     }
 
     [Theory]
@@ -64,8 +64,8 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Currency code must be a 3-letter ISO 4217 code.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
     [Theory]
@@ -79,8 +79,8 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Currency code must be a 3-letter ISO 4217 code.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public class CurrencyCodeTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("paymentCurrency");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/paymentCurrency");
     }
 }

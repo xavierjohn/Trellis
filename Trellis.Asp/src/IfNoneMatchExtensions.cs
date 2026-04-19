@@ -19,7 +19,7 @@ public static class IfNoneMatchExtensions
         if (result.IsFailure)
             return result;
         if (ifNoneMatchETags.Any(tag => tag.IsWildcard))
-            return Result.Fail<T>(Error.PreconditionFailed("Resource already exists. If-None-Match: * requires the resource to be absent."));
+            return Result.Fail<T>(new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfNoneMatch) { Detail = "Resource already exists. If-None-Match: * requires the resource to be absent." });
         return result;
     }
 

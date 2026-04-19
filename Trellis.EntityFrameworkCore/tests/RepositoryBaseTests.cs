@@ -385,7 +385,7 @@ public partial class RepositoryBaseTests : IDisposable
 
         // Assert
         result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<Error.NotFound>();
     }
 
     #endregion

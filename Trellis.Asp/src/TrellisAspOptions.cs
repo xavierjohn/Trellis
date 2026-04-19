@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp;
+namespace Trellis.Asp;
 
 using System.Threading;
 using Microsoft.AspNetCore.Http;
@@ -16,18 +16,18 @@ using Trellis;
 ///         <term>Error Type</term>
 ///         <description>Default HTTP Status</description>
 ///     </listheader>
-///     <item><term><see cref="ValidationError"/></term><description>400 Bad Request</description></item>
-///     <item><term><see cref="BadRequestError"/></term><description>400 Bad Request</description></item>
-///     <item><term><see cref="UnauthorizedError"/></term><description>401 Unauthorized</description></item>
-///     <item><term><see cref="ForbiddenError"/></term><description>403 Forbidden</description></item>
-///     <item><term><see cref="NotFoundError"/></term><description>404 Not Found</description></item>
-///     <item><term><see cref="ConflictError"/></term><description>409 Conflict</description></item>
-///     <item><term><see cref="PreconditionFailedError"/></term><description>412 Precondition Failed</description></item>
-///     <item><term><see cref="PreconditionRequiredError"/></term><description>428 Precondition Required</description></item>
-///     <item><term><see cref="DomainError"/></term><description>422 Unprocessable Entity</description></item>
-///     <item><term><see cref="RateLimitError"/></term><description>429 Too Many Requests</description></item>
-///     <item><term><see cref="UnexpectedError"/></term><description>500 Internal Server Error</description></item>
-///     <item><term><see cref="ServiceUnavailableError"/></term><description>503 Service Unavailable</description></item>
+///     <item><term><see cref="Error.UnprocessableContent"/></term><description>400 Bad Request</description></item>
+///     <item><term><see cref="Error.BadRequest"/></term><description>400 Bad Request</description></item>
+///     <item><term><see cref="Error.Unauthorized"/></term><description>401 Unauthorized</description></item>
+///     <item><term><see cref="Error.Forbidden"/></term><description>403 Forbidden</description></item>
+///     <item><term><see cref="Error.NotFound"/></term><description>404 Not Found</description></item>
+///     <item><term><see cref="Error.Conflict"/></term><description>409 Conflict</description></item>
+///     <item><term><see cref="Error.PreconditionFailed"/></term><description>412 Precondition Failed</description></item>
+///     <item><term><see cref="Error.PreconditionRequired"/></term><description>428 Precondition Required</description></item>
+///     <item><term><see cref="Error.Conflict"/></term><description>422 Unprocessable Entity</description></item>
+///     <item><term><see cref="Error.TooManyRequests"/></term><description>429 Too Many Requests</description></item>
+///     <item><term><see cref="Error.InternalServerError"/></term><description>500 Internal Server Error</description></item>
+///     <item><term><see cref="Error.ServiceUnavailable"/></term><description>503 Service Unavailable</description></item>
 /// </list>
 /// </para>
 /// <para>
@@ -63,24 +63,24 @@ public sealed class TrellisAspOptions
 
     private readonly Dictionary<Type, int> _errorMappings = new()
     {
-        [typeof(ValidationError)] = StatusCodes.Status400BadRequest,
-        [typeof(BadRequestError)] = StatusCodes.Status400BadRequest,
-        [typeof(UnauthorizedError)] = StatusCodes.Status401Unauthorized,
-        [typeof(ForbiddenError)] = StatusCodes.Status403Forbidden,
-        [typeof(NotFoundError)] = StatusCodes.Status404NotFound,
-        [typeof(MethodNotAllowedError)] = StatusCodes.Status405MethodNotAllowed,
-        [typeof(NotAcceptableError)] = StatusCodes.Status406NotAcceptable,
-        [typeof(ConflictError)] = StatusCodes.Status409Conflict,
-        [typeof(GoneError)] = StatusCodes.Status410Gone,
-        [typeof(PreconditionFailedError)] = StatusCodes.Status412PreconditionFailed,
-        [typeof(ContentTooLargeError)] = StatusCodes.Status413RequestEntityTooLarge,
-        [typeof(UnsupportedMediaTypeError)] = StatusCodes.Status415UnsupportedMediaType,
-        [typeof(RangeNotSatisfiableError)] = StatusCodes.Status416RangeNotSatisfiable,
-        [typeof(PreconditionRequiredError)] = StatusCodes.Status428PreconditionRequired,
-        [typeof(DomainError)] = StatusCodes.Status422UnprocessableEntity,
-        [typeof(RateLimitError)] = StatusCodes.Status429TooManyRequests,
-        [typeof(UnexpectedError)] = StatusCodes.Status500InternalServerError,
-        [typeof(ServiceUnavailableError)] = StatusCodes.Status503ServiceUnavailable,
+        [typeof(Error.UnprocessableContent)] = StatusCodes.Status422UnprocessableEntity,
+        [typeof(Error.BadRequest)] = StatusCodes.Status400BadRequest,
+        [typeof(Error.Unauthorized)] = StatusCodes.Status401Unauthorized,
+        [typeof(Error.Forbidden)] = StatusCodes.Status403Forbidden,
+        [typeof(Error.NotFound)] = StatusCodes.Status404NotFound,
+        [typeof(Error.MethodNotAllowed)] = StatusCodes.Status405MethodNotAllowed,
+        [typeof(Error.NotAcceptable)] = StatusCodes.Status406NotAcceptable,
+        [typeof(Error.Conflict)] = StatusCodes.Status409Conflict,
+        [typeof(Error.Gone)] = StatusCodes.Status410Gone,
+        [typeof(Error.PreconditionFailed)] = StatusCodes.Status412PreconditionFailed,
+        [typeof(Error.ContentTooLarge)] = StatusCodes.Status413RequestEntityTooLarge,
+        [typeof(Error.UnsupportedMediaType)] = StatusCodes.Status415UnsupportedMediaType,
+        [typeof(Error.RangeNotSatisfiable)] = StatusCodes.Status416RangeNotSatisfiable,
+        [typeof(Error.PreconditionRequired)] = StatusCodes.Status428PreconditionRequired,
+        [typeof(Error.TooManyRequests)] = StatusCodes.Status429TooManyRequests,
+        [typeof(Error.InternalServerError)] = StatusCodes.Status500InternalServerError,
+        [typeof(Error.NotImplemented)] = StatusCodes.Status501NotImplemented,
+        [typeof(Error.ServiceUnavailable)] = StatusCodes.Status503ServiceUnavailable,
     };
 
     /// <summary>
@@ -91,8 +91,8 @@ public sealed class TrellisAspOptions
     /// <returns>The options instance for fluent chaining.</returns>
     /// <example>
     /// <code>
-    /// options.MapError&lt;DomainError&gt;(StatusCodes.Status400BadRequest)
-    ///        .MapError&lt;ConflictError&gt;(StatusCodes.Status422UnprocessableEntity);
+    /// options.MapError&lt;Error.Conflict&gt;(StatusCodes.Status400BadRequest)
+    ///        .MapError&lt;Error.UnprocessableContent&gt;(StatusCodes.Status422UnprocessableEntity);
     /// </code>
     /// </example>
     public TrellisAspOptions MapError<TError>(int statusCode) where TError : Error

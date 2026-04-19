@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+namespace Trellis.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -30,9 +30,9 @@ public static class DbContextExtensions
     /// <para>
     /// Expected exceptions converted:
     /// <list type="bullet">
-    ///   <item><see cref="DbUpdateConcurrencyException"/> → <see cref="Error.Conflict(string, string?)"/> with detail</item>
-    ///   <item><see cref="DbUpdateException"/> (duplicate key) → <see cref="Error.Conflict(string, string?)"/> with detail</item>
-    ///   <item><see cref="DbUpdateException"/> (foreign key violation) → <see cref="Error.Domain(string, string?)"/> with detail</item>
+    ///   <item><see cref="DbUpdateConcurrencyException"/> → <see cref="Error.Conflict"/> with detail</item>
+    ///   <item><see cref="DbUpdateException"/> (duplicate key) → <see cref="Error.Conflict"/> with detail</item>
+    ///   <item><see cref="DbUpdateException"/> (foreign key violation) → <see cref="Error.Conflict"/> with detail</item>
     /// </list>
     /// </para>
     /// <para>
@@ -63,22 +63,24 @@ public static class DbContextExtensions
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            return Result.Fail<int>(Error.Conflict(
-                $"One or more entities were modified by another process. {ex.Entries.Count} entities affected."));
+            return Result.Fail<int>(new Error.Conflict(
+                Resource: null,
+                ReasonCode: "concurrency.modified")
+            { Detail = $"One or more entities were modified by another process. {ex.Entries.Count} entities affected." });
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
         {
             // Use a safe generic message for Error.Detail — it flows to API responses.
             // For logging, use DbExceptionClassifier.ExtractConstraintDetail(ex) which may contain schema details.
             _ = ex; // available for caller logging via ExceptionBehavior or repository catch blocks
-            return Result.Fail<int>(Error.Conflict("A record with the same unique value already exists."));
+            return Result.Fail<int>(new Error.Conflict(Resource: null, ReasonCode: "duplicate.key") { Detail = "A record with the same unique value already exists." });
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsForeignKeyViolation(ex))
         {
             // Use a safe generic message for Error.Detail — it flows to API responses.
             // For logging, use DbExceptionClassifier.ExtractConstraintDetail(ex) which may contain schema details.
             _ = ex;
-            return Result.Fail<int>(Error.Domain("Operation violates a referential integrity constraint."));
+            return Result.Fail<int>(new Error.Conflict(Resource: null, ReasonCode: "referential.integrity") { Detail = "Operation violates a referential integrity constraint." });
         }
     }
 

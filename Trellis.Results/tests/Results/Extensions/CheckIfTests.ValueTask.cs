@@ -8,8 +8,8 @@ using Trellis.Testing;
 /// </summary>
 public class CheckIfTests_ValueTask
 {
-    private static readonly Error TestError = Error.Unexpected("test error");
-    private static readonly Error CheckError = Error.Validation("check failed", "field");
+    private static readonly Error TestError = new Error.InternalServerError("test") { Detail = "test error" };
+    private static readonly Error CheckError = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "check failed" }));
 
     #region Bool condition
 

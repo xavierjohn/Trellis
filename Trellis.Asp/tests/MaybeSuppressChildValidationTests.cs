@@ -25,7 +25,7 @@ public class MaybeSuppressChildValidationTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.MaybeSuppressChildValidationTests.Name>(Error.Validation("Name is required.", field));
+                return Result.Fail<Asp.Tests.MaybeSuppressChildValidationTests.Name>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Name is required." })));
             return Result.Ok(new Name(value));
         }
     }

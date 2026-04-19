@@ -31,7 +31,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var failure = Result.Fail<string>(Error.Domain("bad"));
+        var failure = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "bad" });
 
         // Act
         var result = await behavior.Handle(
@@ -49,7 +49,7 @@ public class TransactionalCommandBehaviorTests
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
-        var uow = new FakeUnitOfWork { CommitResult = Result.Fail(Error.Conflict("concurrency")) };
+        var uow = new FakeUnitOfWork { CommitResult = Result.Fail(new Error.Conflict(null, "conflict") { Detail = "concurrency" }) };
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
         var handlerResult = Result.Ok("staged");
 
@@ -61,7 +61,7 @@ public class TransactionalCommandBehaviorTests
 
         // Assert
         result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<ConflictError>();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
         uow.CommitCount.Should().Be(1);
     }
 

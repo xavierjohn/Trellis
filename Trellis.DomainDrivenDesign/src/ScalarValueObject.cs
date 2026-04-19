@@ -233,7 +233,7 @@ where T : IComparable
     public static TSelf Create(T value) =>
         TSelf.TryCreate(value).Match(
             onSuccess: created => created,
-            onFailure: error => throw new InvalidOperationException($"Failed to create {typeof(TSelf).Name}: {error.Detail}"));
+            onFailure: error => throw new InvalidOperationException($"Failed to create {typeof(TSelf).Name}: {error.GetDisplayMessage()}"));
 #pragma warning restore CA1000
 
     // IConvertible implementation - delegates to Convert class for the wrapped value

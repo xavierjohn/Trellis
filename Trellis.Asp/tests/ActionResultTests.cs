@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Net.Http.Headers;
@@ -38,7 +38,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.BadRequest("Test");
+        var error = new Error.BadRequest("bad.request") { Detail = "Test" };
         var result = Result.Fail<string>(error);
         var expected = new ProblemDetails
         {
@@ -52,7 +52,7 @@ public class ActionResultTests : IDisposable
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
     }
 
@@ -83,7 +83,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Fail<string>(Error.NotFound("Can't find it"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Can't find it" });
 
         // Act
         Func<string, ContentRangeHeaderValue> rangeFunc = static r => throw new InvalidOperationException();
@@ -114,7 +114,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.BadRequest("Operation failed");
+        var error = new Error.BadRequest("bad.request") { Detail = "Operation failed" };
         var result = Result.Fail(error);
         var expected = new ProblemDetails
         {
@@ -128,7 +128,7 @@ public class ActionResultTests : IDisposable
         // Assert
         response.Should().BeOfType<ObjectResult>();
         var objectResult = response.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
     }
 
@@ -139,7 +139,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.NotFound("Resource not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -156,7 +156,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Unauthorized("Not authenticated");
+        var error = new Error.Unauthorized() { Detail = "Not authenticated" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -173,7 +173,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Forbidden("Access denied");
+        var error = new Error.Forbidden("authorization.forbidden") { Detail = "Access denied" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -190,7 +190,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Conflict("Resource already exists");
+        var error = new Error.Conflict(null, "conflict") { Detail = "Resource already exists" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -207,7 +207,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Domain("Business rule violation");
+        var error = new Error.Conflict(null, "domain.violation") { Detail = "Business rule violation" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -216,7 +216,7 @@ public class ActionResultTests : IDisposable
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        objectResult.StatusCode.Should().Be(StatusCodes.Status409Conflict);
     }
 
     [Fact]
@@ -224,7 +224,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.RateLimit("Too many requests");
+        var error = new Error.TooManyRequests() { Detail = "Too many requests" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -241,7 +241,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Unexpected("Something went wrong");
+        var error = new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "Something went wrong" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -258,7 +258,7 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.ServiceUnavailable("Service is down");
+        var error = new Error.ServiceUnavailable() { Detail = "Service is down" };
         var result = Result.Fail<string>(error);
 
         // Act
@@ -301,9 +301,9 @@ public class ActionResultTests : IDisposable
     {
         // Arrange
         var options = new TrellisAspOptions();
-        options.MapError<DomainError>(StatusCodes.Status400BadRequest);
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
         var controller = CreateControllerWithOptions(options);
-        var result = Result.Fail<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" });
 
         // Act
         var response = result.ToActionResult(controller);
@@ -318,24 +318,24 @@ public class ActionResultTests : IDisposable
     {
         // Arrange — mock controller with no HttpContext (null-safe fallback)
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Fail<string>(Error.Domain("Business rule"));
+        var result = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" });
 
         // Act
         var response = result.ToActionResult(controller);
 
-        // Assert — DomainError defaults to 422
+        // Assert — Error.Conflict defaults to 422
         response.Result.Should().BeOfType<ObjectResult>();
-        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        response.Result.As<ObjectResult>().StatusCode.Should().Be(StatusCodes.Status409Conflict);
     }
 
     [Fact]
     public void ToActionResult_custom_options_do_not_affect_unmapped_errors()
     {
-        // Arrange — override DomainError only
+        // Arrange — override Error.Conflict only
         var options = new TrellisAspOptions();
-        options.MapError<DomainError>(StatusCodes.Status400BadRequest);
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
         var controller = CreateControllerWithOptions(options);
-        var result = Result.Fail<string>(Error.NotFound("Missing"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Missing" });
 
         // Act
         var response = result.ToActionResult(controller);

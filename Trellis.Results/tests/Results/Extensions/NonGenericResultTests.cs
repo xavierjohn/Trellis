@@ -39,14 +39,14 @@ public class NonGenericResultTests : TestBase
     [Fact]
     public void Combine_NonGeneric_BothFailure_AggregatesValidationFieldErrors()
     {
-        var first = Result.Fail(Error.Validation("first failed", "f1"));
-        var second = Result.Fail(Error.Validation("second failed", "f2"));
+        var first = Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("f1"), "validation.error") { Detail = "first failed" })));
+        var second = Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("f2"), "validation.error") { Detail = "second failed" })));
 
         var combined = first.Combine(second);
 
-        var validation = combined.Should().BeFailureOfType<ValidationError>().Which;
-        validation.FieldErrors.Should().HaveCount(2);
-        validation.FieldErrors.Select(fe => fe.FieldName).Should().BeEquivalentTo("f1", "f2");
+        var validation = combined.Should().BeFailureOfType<Error.UnprocessableContent>().Which;
+        validation.Fields.Items.Should().HaveCount(2);
+        validation.Fields.Items.Select(fe => fe.Field.Path).Should().BeEquivalentTo("/f1", "/f2");
     }
 
     #endregion
@@ -228,7 +228,7 @@ public class NonGenericResultTests : TestBase
         var result = Result.Try(() => throw new InvalidOperationException("Boom"));
 
         var error = result.Should().BeFailure().Which;
-        error.Should().BeOfType<UnexpectedError>();
+        error.Should().BeOfType<Error.InternalServerError>();
         error.Detail.Should().Be("Boom");
     }
 
@@ -237,10 +237,10 @@ public class NonGenericResultTests : TestBase
     {
         var result = Result.Try(
             () => throw new InvalidOperationException("HideMe"),
-            ex => Error.BadRequest("Mapped"));
+            ex => new Error.BadRequest("bad.request") { Detail = "Mapped" });
 
         var error = result.Should().BeFailure().Which;
-        error.Should().BeOfType<BadRequestError>();
+        error.Should().BeOfType<Error.BadRequest>();
         error.Detail.Should().Be("Mapped");
     }
 
@@ -277,7 +277,7 @@ public class NonGenericResultTests : TestBase
         });
 
         var error = result.Should().BeFailure().Which;
-        error.Should().BeOfType<UnexpectedError>();
+        error.Should().BeOfType<Error.InternalServerError>();
         error.Detail.Should().Be("AsyncBoom");
     }
 

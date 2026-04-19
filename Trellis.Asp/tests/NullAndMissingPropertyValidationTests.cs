@@ -29,7 +29,7 @@ public class NullAndMissingPropertyValidationTests
         public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
             value > 0
                 ? Result.Ok(new Quantity(value))
-                : Result.Fail<Quantity>(Error.Validation("Quantity must be positive.", fieldName ?? "quantity"));
+                : Result.Fail<Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "quantity"), "validation.error") { Detail = "Quantity must be positive." })));
         public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -40,7 +40,7 @@ public class NullAndMissingPropertyValidationTests
         public static Result<Price> TryCreate(decimal value, string? fieldName = null) =>
             value >= 0
                 ? Result.Ok(new Price(value))
-                : Result.Fail<Price>(Error.Validation("Price cannot be negative.", fieldName ?? "price"));
+                : Result.Fail<Price>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "price"), "validation.error") { Detail = "Price cannot be negative." })));
         public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -51,7 +51,7 @@ public class NullAndMissingPropertyValidationTests
         public static Result<Counter> TryCreate(long value, string? fieldName = null) =>
             value >= 0
                 ? Result.Ok(new Counter(value))
-                : Result.Fail<Counter>(Error.Validation("Counter cannot be negative.", fieldName ?? "counter"));
+                : Result.Fail<Counter>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "counter"), "validation.error") { Detail = "Counter cannot be negative." })));
         public static Result<Counter> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -70,7 +70,7 @@ public class NullAndMissingPropertyValidationTests
         private ProductName(string value) : base(value) { }
         public static Result<ProductName> TryCreate(string? value, string? fieldName = null) =>
             string.IsNullOrWhiteSpace(value)
-                ? Result.Fail<ProductName>(Error.Validation("Product name is required.", fieldName ?? "productName"))
+                ? Result.Fail<ProductName>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productName"), "validation.error") { Detail = "Product name is required." })))
                 : Result.Ok(new ProductName(value));
     }
 
@@ -106,10 +106,10 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Quantity");
-            error.FieldErrors[0].Details.Should().Contain("Quantity cannot be null.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Quantity");
+            error.Fields[0].Detail.Should().Contain("Quantity cannot be null.");
         }
     }
 
@@ -128,10 +128,10 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Price");
-            error.FieldErrors[0].Details.Should().Contain("Price cannot be null.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Price");
+            error.Fields[0].Detail.Should().Contain("Price cannot be null.");
         }
     }
 
@@ -150,10 +150,10 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Counter");
-            error.FieldErrors[0].Details.Should().Contain("Counter cannot be null.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Counter");
+            error.Fields[0].Detail.Should().Contain("Counter cannot be null.");
         }
     }
 
@@ -172,10 +172,10 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Active");
-            error.FieldErrors[0].Details.Should().Contain("IsActive cannot be null.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Active");
+            error.Fields[0].Detail.Should().Contain("IsActive cannot be null.");
         }
     }
 
@@ -199,9 +199,9 @@ public class NullAndMissingPropertyValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required int VO should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Quantity");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Quantity");
         }
     }
 
@@ -220,9 +220,9 @@ public class NullAndMissingPropertyValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required decimal VO should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Price");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Price");
         }
     }
 
@@ -241,9 +241,9 @@ public class NullAndMissingPropertyValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required long VO should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Counter");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Counter");
         }
     }
 
@@ -262,9 +262,9 @@ public class NullAndMissingPropertyValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required bool VO should produce a validation error");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.FieldName.Should().Be("Active");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Field.Path.Should().Be("/Active");
         }
     }
 
@@ -282,15 +282,15 @@ public class NullAndMissingPropertyValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "all null VO properties should produce validation errors");
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().HaveCount(5,
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().HaveCount(5,
                 "each null scalar VO property should produce a separate field error");
 
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Name");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Quantity");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Price");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Counter");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Active");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Name");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Quantity");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Price");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Counter");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Active");
         }
     }
 
@@ -384,9 +384,9 @@ public class NullAndMissingPropertyValidationTests
             // Quantity rejects 0 because "must be positive"
             dto!.Quantity.Should().BeNull("TryCreate rejects 0 for Quantity");
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().ContainSingle()
-                .Which.Details.Should().Contain("Quantity must be positive.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().ContainSingle()
+                .Which.Detail.Should().Contain("Quantity must be positive.");
         }
     }
 
@@ -450,13 +450,13 @@ public class NullAndMissingPropertyValidationTests
             dto.Counter.Should().BeNull();
 
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors.Should().HaveCount(2);
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Price");
-            error.FieldErrors.Should().Contain(e => e.FieldName == "Counter");
-            error.FieldErrors.Should().NotContain(e => e.FieldName == "Name");
-            error.FieldErrors.Should().NotContain(e => e.FieldName == "Quantity");
-            error.FieldErrors.Should().NotContain(e => e.FieldName == "Active");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields.Items.Should().HaveCount(2);
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Price");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/Counter");
+            error.Fields.Items.Should().NotContain(e => e.Field.Path == "/Name");
+            error.Fields.Items.Should().NotContain(e => e.Field.Path == "/Quantity");
+            error.Fields.Items.Should().NotContain(e => e.Field.Path == "/Active");
         }
     }
 

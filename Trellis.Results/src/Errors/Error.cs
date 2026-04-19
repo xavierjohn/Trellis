@@ -1,680 +1,414 @@
-﻿namespace Trellis;
+namespace Trellis;
 
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Globalization;
-using static Trellis.ValidationError;
 
 /// <summary>
-/// Base class for all error types in the functional DDD library.
-/// Errors represent failure states and contain structured information about what went wrong.
+/// Closed discriminated union of error values. Each case is a nested <see langword="sealed record"/>
+/// that mirrors a status from the IANA HTTP Status Code Registry (RFC 9110, RFC 6585) and carries
+/// a strongly-typed payload describing what went wrong.
 /// </summary>
 /// <remarks>
-/// Use the static factory methods (Validation, NotFound, etc.) to create specific error types.
-/// All errors have a Code for programmatic handling and a Detail for human-readable messages.
+/// <para>
+/// <b>Closure.</b> The base record has a private constructor; only nested cases declared in this
+/// file may inherit from <see cref="Error"/>. External code cannot extend the catalog, so
+/// <c>switch</c> over an <see cref="Error"/> reference is exhaustive at the language level.
+/// </para>
+/// <para>
+/// <b>Identity.</b> <see cref="Kind"/> is a stable, IANA-aligned slug (e.g. <c>"not-found"</c>)
+/// that survives CLR renames. <see cref="Code"/> defaults to <see cref="Kind"/> and is overridden
+/// by cases whose payload carries a per-instance reason code (for example <see cref="Conflict"/>
+/// returns its <c>ReasonCode</c>).
+/// </para>
+/// <para>
+/// <b>Detail.</b> Every case inherits an optional <c>Detail</c> property from the base. Callers
+/// supply it via object-initializer syntax: <c>new Error.NotFound(resource) { Detail = "..." }</c>.
+/// The boundary renderer prefers <c>Detail</c> when present; otherwise it computes a localized
+/// message from <see cref="Kind"/>, <see cref="Code"/>, and the typed payload.
+/// </para>
+/// <para>
+/// <b>Equality.</b> Value-based equality over the discriminator, the typed payload, and
+/// <see cref="Detail"/>. <see cref="Cause"/> is intentionally excluded from equality so that
+/// two errors with identical surface payload compare equal regardless of how deeply they were
+/// wrapped — see the <see cref="Equals(Error?)"/> override for the rationale.
+/// Collection-bearing payloads use <see cref="EquatableArray{T}"/> for sequence equality.
+/// </para>
+/// <para>
+/// <b>Cause chain.</b> <see cref="Cause"/> is a structured chain (never a live <see cref="System.Exception"/>).
+/// Cycles are detected at <c>init</c> time and throw <see cref="InvalidOperationException"/>.
+/// </para>
 /// </remarks>
-[DebuggerDisplay("{Detail}")]
-#pragma warning disable CA1716 // Identifiers should not match keywords
-public class Error : IEquatable<Error>
-#pragma warning restore CA1716 // Identifiers should not match keywords
+[DebuggerDisplay("{Kind,nq}: {Detail ?? Code,nq}")]
+#pragma warning disable CA1716 // Identifiers should not match keywords — "Error" is the framework's domain term.
+public abstract record Error
+#pragma warning restore CA1716
 {
-    /// <summary>
-    /// Gets the machine-readable error code. Use this for programmatic error handling.
-    /// </summary>
-    /// <value>A string code like "validation.error" or "not.found.error".</value>
-    public string Code { get; }
+    private readonly Error? _cause;
+
+    private Error() { }
 
     /// <summary>
-    /// Gets the human-readable error description. Use this for displaying error messages to users or in logs.
+    /// Gets the stable, IANA-aligned identifier for this case (e.g. <c>"not-found"</c>,
+    /// <c>"unprocessable-content"</c>). Suitable for telemetry, problem-details
+    /// <c>type</c> URI synthesis, and wire serialization.
     /// </summary>
-    /// <value>A descriptive message explaining what went wrong.</value>
-    public string Detail { get; }
+    public abstract string Kind { get; }
 
     /// <summary>
-    /// Gets an optional identifier for the specific instance that caused the error (e.g., a resource ID).
+    /// Gets the per-instance machine-readable code. Defaults to <see cref="Kind"/>; cases
+    /// whose payload carries a per-instance <c>ReasonCode</c> override this.
     /// </summary>
-    /// <value>An instance identifier, or null if not applicable.</value>
-    public string? Instance { get; }
+    public virtual string Code => Kind;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Error"/> class with the specified detail and code.
+    /// Gets the optional human-readable detail. When non-null the boundary renderer prefers
+    /// this over the default template for <see cref="Code"/>.
     /// </summary>
-    /// <param name="detail">The human-readable error description.</param>
-    /// <param name="code">The machine-readable error code.</param>
-    public Error(string detail, string code)
+    public string? Detail { get; init; }
+
+    /// <summary>
+    /// Gets the optional structured cause of this error. Never holds a live <see cref="System.Exception"/>;
+    /// use a child <see cref="Error"/> to attach causal context.
+    /// </summary>
+    public Error? Cause
     {
-        ArgumentNullException.ThrowIfNull(detail);
-        ArgumentNullException.ThrowIfNull(code);
-        Detail = detail;
-        Code = code;
+        get => _cause;
+        init
+        {
+            if (value is not null) EnsureAcyclic(value);
+            _cause = value;
+        }
+    }
+
+    private void EnsureAcyclic(Error candidate)
+    {
+        var seen = new HashSet<Error>(ReferenceEqualityComparer.Instance) { this };
+        var current = candidate;
+        while (current is not null)
+        {
+            if (!seen.Add(current))
+                throw new InvalidOperationException("Error.Cause chain contains a cycle.");
+            current = current.Cause;
+        }
+    }
+
+    /// <inheritdoc />
+    public override string ToString() => $"{Kind}: {Detail ?? Code}";
+
+    /// <summary>
+    /// Returns a human-readable message suitable for logging, tracing, and diagnostic
+    /// surfaces. Prefers the explicit <see cref="Detail"/> when set; otherwise flattens
+    /// any per-field violation messages (for <see cref="UnprocessableContent"/>) before
+    /// falling back to <see cref="Code"/>.
+    /// </summary>
+    public virtual string GetDisplayMessage()
+    {
+        if (!string.IsNullOrEmpty(Detail))
+        {
+            return Detail;
+        }
+
+        if (this is UnprocessableContent uc)
+        {
+            var fieldItems = uc.Fields.Items;
+            var ruleItems = uc.Rules.Items;
+
+            // Single-field, no-rule shortcut: return just the detail / path with no prefix.
+            if (fieldItems.Length == 1 && ruleItems.Length == 0)
+            {
+                var only = fieldItems[0];
+                return !string.IsNullOrEmpty(only.Detail) ? only.Detail : only.Field.Path;
+            }
+
+            var parts = new List<string>(fieldItems.Length + ruleItems.Length);
+            foreach (var fv in fieldItems)
+            {
+                parts.Add(!string.IsNullOrEmpty(fv.Detail)
+                    ? $"{fv.Field.Path}: {fv.Detail}"
+                    : fv.Field.Path);
+            }
+
+            foreach (var rv in ruleItems)
+            {
+                parts.Add(!string.IsNullOrEmpty(rv.Detail)
+                    ? $"{rv.ReasonCode}: {rv.Detail}"
+                    : rv.ReasonCode);
+            }
+
+            if (parts.Count > 0)
+            {
+                return string.Join("; ", parts);
+            }
+        }
+
+        return Code;
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Error"/> class with the specified detail, code, and instance identifier.
+    /// Value equality over the discriminator (<see cref="EqualityContract"/>) and <see cref="Detail"/>,
+    /// plus each derived case's positional payload. <see cref="Cause"/> is intentionally
+    /// <b>excluded</b> from equality and hashing — two errors with identical kind, payload,
+    /// and detail represent the same logical failure regardless of how deeply they were
+    /// wrapped. This mirrors <see cref="System.Exception"/>, whose equality does not recurse
+    /// into <c>InnerException</c>, and keeps test assertions ergonomic (callers assert on
+    /// the surface error without reconstructing the entire causal chain).
     /// </summary>
-    /// <param name="detail">The human-readable error description.</param>
-    /// <param name="code">The machine-readable error code.</param>
-    /// <param name="instance">An optional identifier for the specific instance that caused the error.</param>
-    public Error(string detail, string code, string? instance)
+    public virtual bool Equals(Error? other)
     {
-        ArgumentNullException.ThrowIfNull(detail);
-        ArgumentNullException.ThrowIfNull(code);
-        Detail = detail;
-        Code = code;
-        Instance = instance;
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        if (EqualityContract != other.EqualityContract) return false;
+        return string.Equals(Detail, other.Detail, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Determines equality based solely on the error Code.
-    /// </summary>
-    /// <param name="other">The error to compare with.</param>
-    /// <returns>True if the error codes match; false otherwise.</returns>
-    /// <remarks>
-    /// IMPORTANT: Two errors are considered equal if they have the same Code, 
-    /// regardless of their Detail, Instance, or concrete type.
-    /// This design allows treating errors with the same code as equivalent for programmatic handling.
-    /// Example: Error.NotFound("User not found", "user-1") == Error.NotFound("Product not found", "user-1") returns true
-    /// because both have the code "not.found.error".
-    /// </remarks>
-    public bool Equals(Error? other)
+    /// <inheritdoc />
+    public override int GetHashCode() => HashCode.Combine(EqualityContract, Detail);
+
+    // ───────────────────────────────────────────────────────────────────────────
+    // 4xx Client Errors (RFC 9110, RFC 6585)
+    // ───────────────────────────────────────────────────────────────────────────
+
+    /// <summary>HTTP 400 — the request is syntactically or semantically malformed.</summary>
+    /// <param name="ReasonCode">Machine-readable code identifying why the request was rejected.</param>
+    /// <param name="At">Optional pointer locating the offending input.</param>
+    public sealed record BadRequest(string ReasonCode, InputPointer? At = null) : Error
     {
-        if (other == null) return false;
-        return Code == other.Code;
+        /// <inheritdoc />
+        public override string Kind => "bad-request";
+
+        /// <inheritdoc />
+        public override string Code => ReasonCode;
     }
 
-    /// <summary>
-    /// Determines whether the specified object is equal to the current Error instance.
-    /// </summary>
-    /// <remarks>This method supports object-based equality comparison. Use this method when the type of the
-    /// object to compare is not known at compile time.</remarks>
-    /// <param name="obj">The object to compare with the current Error instance.</param>
-    /// <returns>true if the specified object is an Error and is equal to the current instance; otherwise, false.</returns>
-    public override bool Equals(object? obj)
+    /// <summary>HTTP 401 — authentication is required or has failed.</summary>
+    /// <param name="Challenges">Authentication challenges to present to the client (round-trips <c>WWW-Authenticate</c>).</param>
+    public sealed record Unauthorized(EquatableArray<AuthChallenge> Challenges = default) : Error
     {
-        if (obj is Error error)
-            return Equals(error);
-        else
-            return false;
+        /// <inheritdoc />
+        public override string Kind => "unauthorized";
     }
 
-    /// <summary>
-    /// Serves as the default hash function.
-    /// </summary>
-    /// <returns>A hash code for the current object.</returns>
-    public override int GetHashCode() => Code.GetHashCode();
-
-    /// <summary>
-    /// Returns a string that represents the current object, including its type, code, detail, and instance information.
-    /// </summary>
-    /// <returns>A string containing the type name, code, detail, and instance values of the object. If the instance is null,
-    /// "N/A" is used.</returns>
-    public override string ToString()
-        => $"Type: {GetType().Name}, Code: {Code}, Detail: {Detail}, Instance: {Instance ?? "N/A"}";
-
-    /// <summary>
-    /// Creates a <see cref="ValidationError"/> for a single field validation failure.
-    /// </summary>
-    /// <param name="fieldDetail">Description of what's wrong with the field value.</param>
-    /// <param name="fieldName">Name of the field that failed validation. Empty string if not field-specific.</param>
-    /// <param name="detail">Optional overall error detail. If null, uses fieldDetail.</param>
-    /// <param name="instance">Optional identifier for the instance being validated.</param>
-    /// <returns>A <see cref="ValidationError"/> representing the validation failure.</returns>
-    /// <example>
-    /// <code>
-    /// Error.Validation("Email address is not valid", "email")
-    /// Error.Validation("Age must be 18 or older", "age")
-    /// </code>
-    /// </example>
-    public static ValidationError Validation(string fieldDetail, string fieldName = "", string? detail = null, string? instance = null)
-        => new(fieldDetail, fieldName, "validation.error", detail, instance);
-
-    /// <summary>
-    /// Creates a <see cref="ValidationError"/> for multiple field validation failures.
-    /// </summary>
-    /// <param name="fieldDetails">Collection of field-specific validation errors.</param>
-    /// <param name="detail">Overall error description.</param>
-    /// <param name="instance">Optional identifier for the instance being validated.</param>
-    /// <returns>A <see cref="ValidationError"/> containing all field errors.</returns>
-    /// <example>
-    /// <code>
-    /// var errors = ImmutableArray.Create(
-    ///     new FieldError("email", "Invalid format"),
-    ///     new FieldError("age", "Must be 18 or older")
-    /// );
-    /// Error.Validation(errors, "User validation failed")
-    /// </code>
-    /// </example>
-    public static ValidationError Validation(ImmutableArray<FieldError> fieldDetails, string detail = "", string? instance = null)
-        => new(fieldDetails, "validation.error", detail, instance);
-
-    /// <summary>
-    /// Creates a <see cref="ValidationError"/> for multiple field validation failures with a custom error code.
-    /// </summary>
-    /// <param name="fieldDetails">Collection of field-specific validation errors.</param>
-    /// <param name="detail">Overall error description.</param>
-    /// <param name="instance">Optional identifier for the instance being validated.</param>
-    /// <param name="code">Custom error code to use instead of the default "validation.error".</param>
-    /// <returns>A <see cref="ValidationError"/> containing all field errors with the specified code.</returns>
-    public static ValidationError Validation(ImmutableArray<FieldError> fieldDetails, string detail, string? instance, string code)
-        => new(fieldDetails, code, detail, instance);
-
-    /// <summary>
-    /// Creates a <see cref="BadRequestError"/> indicating the request was malformed or invalid.
-    /// </summary>
-    /// <param name="detail">Description of why the request is bad.</param>
-    /// <param name="instance">Optional identifier for the bad request.</param>
-    /// <returns>A <see cref="BadRequestError"/>.</returns>
-    /// <remarks>Use this for syntactic errors or malformed requests, not for business rule violations (use Validation instead).</remarks>
-    public static BadRequestError BadRequest(string detail, string? instance = null) =>
-        new(detail, "bad.request.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="ConflictError"/> indicating a conflict with the current state.
-    /// </summary>
-    /// <param name="detail">Description of the conflict.</param>
-    /// <param name="instance">Optional identifier for the conflicting resource.</param>
-    /// <returns>A <see cref="ConflictError"/>.</returns>
-    /// <example>
-    /// <code>
-    /// Error.Conflict("Email address already in use")
-    /// Error.Conflict("Cannot delete user with active subscriptions")
-    /// </code>
-    /// </example>
-    public static ConflictError Conflict(string detail, string? instance = null) =>
-        new(detail, "conflict.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="PreconditionFailedError"/> indicating a conditional request header
-    /// (e.g., <c>If-Match</c>) evaluated to false per RFC 9110 §13.1.1.
-    /// </summary>
-    /// <param name="detail">Description of the precondition failure.</param>
-    /// <param name="instance">Optional identifier for the affected resource.</param>
-    /// <returns>A <see cref="PreconditionFailedError"/>.</returns>
-    /// <example>
-    /// <code>
-    /// Error.PreconditionFailed("Resource has been modified. Please reload and retry.")
-    /// </code>
-    /// </example>
-    public static PreconditionFailedError PreconditionFailed(string detail, string? instance = null) =>
-        new(detail, "precondition.failed.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="PreconditionRequiredError"/> indicating the server requires
-    /// a conditional request header (e.g., <c>If-Match</c>) per RFC 6585 §3.
-    /// </summary>
-    /// <param name="detail">Description of the required precondition.</param>
-    /// <param name="instance">Optional identifier for the affected resource.</param>
-    /// <returns>A <see cref="PreconditionRequiredError"/>.</returns>
-    public static PreconditionRequiredError PreconditionRequired(string detail, string? instance = null) =>
-        new(detail, "precondition.required.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="NotFoundError"/> indicating a requested resource was not found.
-    /// </summary>
-    /// <param name="detail">Description of what was not found.</param>
-    /// <param name="instance">Optional identifier for the missing resource.</param>
-    /// <returns>A <see cref="NotFoundError"/>.</returns>
-    /// <example>
-    /// <code>
-    /// Error.NotFound($"User with ID {userId} not found", userId)
-    /// Error.NotFound("Product not found in catalog")
-    /// </code>
-    /// </example>
-    public static NotFoundError NotFound(string detail, string? instance = null) =>
-        new(detail, "not.found.error", instance);
-
-    /// <summary>
-    /// Creates an <see cref="UnauthorizedError"/> indicating authentication is required.
-    /// </summary>
-    /// <param name="detail">Description of why authorization failed.</param>
-    /// <param name="instance">Optional identifier for the unauthorized request.</param>
-    /// <returns>An <see cref="UnauthorizedError"/>.</returns>
-    /// <remarks>Use this when the user is not authenticated (not logged in).</remarks>
-    public static UnauthorizedError Unauthorized(string detail, string? instance = null) =>
-        new(detail, "unauthorized.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="ForbiddenError"/> indicating the user lacks permission.
-    /// </summary>
-    /// <param name="detail">Description of why access is forbidden.</param>
-    /// <param name="instance">Optional identifier for the forbidden resource.</param>
-    /// <returns>A <see cref="ForbiddenError"/>.</returns>
-    /// <remarks>Use this when the user is authenticated but doesn't have permission to access the resource.</remarks>
-    public static ForbiddenError Forbidden(string detail, string? instance = null) =>
-        new(detail, "forbidden.error", instance);
-
-    /// <summary>
-    /// Creates an <see cref="UnexpectedError"/> indicating an unexpected system error occurred.
-    /// </summary>
-    /// <param name="detail">Description of what went wrong.</param>
-    /// <param name="instance">Optional identifier for the operation that failed.</param>
-    /// <returns>An <see cref="UnexpectedError"/>.</returns>
-    /// <remarks>
-    /// Use this for system errors, infrastructure failures, or exceptions.
-    /// This typically maps to HTTP 500 Internal Server Error.
-    /// </remarks>
-    public static UnexpectedError Unexpected(string detail, string? instance = null) =>
-        new(detail, "unexpected.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="DomainError"/> indicating a business rule violation.
-    /// </summary>
-    /// <param name="detail">Description of the business rule that was violated.</param>
-    /// <param name="instance">Optional identifier for the entity or operation.</param>
-    /// <returns>A <see cref="DomainError"/>.</returns>
-    /// <remarks>
-    /// Use this for domain logic violations that prevent the operation from completing.
-    /// This is distinct from validation errors (field-level) and conflicts (state-based).
-    /// Maps to HTTP 422 Unprocessable Entity.
-    /// </remarks>
-    /// <example>
-    /// <code>
-    /// Error.Domain("Cannot withdraw more than account balance")
-    /// Error.Domain("Minimum order quantity is 10 units")
-    /// Error.Domain("Cannot cancel order after shipment")
-    /// </code>
-    /// </example>
-    public static DomainError Domain(string detail, string? instance = null) =>
-        new(detail, "domain.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="RateLimitError"/> indicating too many requests have been made.
-    /// </summary>
-    /// <param name="detail">Description of the rate limit violation.</param>
-    /// <param name="instance">Optional identifier for the client or resource being rate limited.</param>
-    /// <returns>A <see cref="RateLimitError"/>.</returns>
-    /// <remarks>
-    /// Use this when a client has exceeded their request quota or rate limit.
-    /// Maps to HTTP 429 Too Many Requests.
-    /// </remarks>
-    /// <example>
-    /// <code>
-    /// Error.RateLimit("API rate limit exceeded. Please try again in 60 seconds")
-    /// Error.RateLimit("Too many login attempts. Account temporarily locked")
-    /// </code>
-    /// </example>
-    public static RateLimitError RateLimit(string detail, string? instance = null) =>
-        new(detail, "rate.limit.error", instance);
-
-    /// <summary>
-    /// Creates a <see cref="RateLimitError"/> with retry-after metadata.
-    /// </summary>
-    /// <param name="detail">Description of the rate limit violation.</param>
-    /// <param name="retryAfter">The retry-after value indicating when the client may retry.</param>
-    /// <param name="instance">Optional identifier for the client or resource being rate limited.</param>
-    /// <returns>A <see cref="RateLimitError"/> with retry-after metadata.</returns>
-    public static RateLimitError RateLimit(string detail, RetryAfterValue retryAfter, string? instance = null) =>
-        new(detail, "rate.limit.error", retryAfter, instance);
-
-    /// <summary>
-    /// Creates a <see cref="ServiceUnavailableError"/> indicating temporary service unavailability.
-    /// </summary>
-    /// <param name="detail">Description of why the service is unavailable.</param>
-    /// <param name="instance">Optional identifier for the unavailable service or resource.</param>
-    /// <returns>A <see cref="ServiceUnavailableError"/>.</returns>
-    /// <remarks>
-    /// Use this when the service is temporarily unable to handle the request.
-    /// This indicates a temporary condition - the service is expected to be available again.
-    /// Maps to HTTP 503 Service Unavailable.
-    /// </remarks>
-    /// <example>
-    /// <code>
-    /// Error.ServiceUnavailable("Service is under maintenance. Please try again later")
-    /// Error.ServiceUnavailable("External payment gateway is temporarily unavailable")
-    /// </code>
-    /// </example>
-    public static ServiceUnavailableError ServiceUnavailable(string detail, string? instance = null) =>
-        new(detail, "service.unavailable.error", instance);
-
-    // ──────────────────────────────────────────────────────────────────
-    // IFormattable instance overloads
-    //
-    // Accept strongly-typed IDs (scalar value objects, Guid, int, DateTime, etc.)
-    // and format them to invariant-culture strings for the instance field.
-    // ──────────────────────────────────────────────────────────────────
-
-    private static string? FormatInstance<TInstance>(TInstance instance) where TInstance : IFormattable
+    /// <summary>HTTP 403 — authorization policy refused the request.</summary>
+    /// <param name="PolicyId">Identifier of the policy that denied access.</param>
+    /// <param name="Resource">Optional resource the policy was evaluated against.</param>
+    public sealed record Forbidden(string PolicyId, ResourceRef? Resource = null) : Error
     {
-        if (typeof(TInstance).IsValueType)
-            return instance.ToString(null, CultureInfo.InvariantCulture);
+        /// <inheritdoc />
+        public override string Kind => "forbidden";
 
-        return instance is null ? null : instance.ToString(null, CultureInfo.InvariantCulture);
+        /// <inheritdoc />
+        public override string Code => PolicyId;
     }
 
-    /// <inheritdoc cref="BadRequest(string, string?)"/>
-    /// <param name="detail">Description of why the request is bad.</param>
-    /// <param name="instance">A formattable identifier (e.g., a scalar value object or primitive) for the bad request.</param>
-    public static BadRequestError BadRequest<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "bad.request.error", FormatInstance(instance));
+    /// <summary>HTTP 404 — the requested resource does not exist.</summary>
+    /// <param name="Resource">The resource that was looked up.</param>
+    public sealed record NotFound(ResourceRef Resource) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "not-found";
+    }
 
-    /// <inheritdoc cref="Conflict(string, string?)"/>
-    /// <param name="detail">Description of the conflict.</param>
-    /// <param name="instance">A formattable identifier for the conflicting resource.</param>
-    public static ConflictError Conflict<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "conflict.error", FormatInstance(instance));
+    /// <summary>HTTP 405 — the HTTP method is not supported by the target resource.</summary>
+    /// <param name="Allow">The set of methods supported by the resource (becomes the <c>Allow</c> header).</param>
+    public sealed record MethodNotAllowed(EquatableArray<string> Allow) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "method-not-allowed";
+    }
 
-    /// <inheritdoc cref="PreconditionFailed(string, string?)"/>
-    /// <param name="detail">Description of the precondition failure.</param>
-    /// <param name="instance">A formattable identifier for the affected resource.</param>
-    public static PreconditionFailedError PreconditionFailed<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "precondition.failed.error", FormatInstance(instance));
+    /// <summary>HTTP 406 — none of the available representations are acceptable to the client.</summary>
+    /// <param name="Available">Media types the server can produce.</param>
+    public sealed record NotAcceptable(EquatableArray<string> Available) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "not-acceptable";
+    }
 
-    /// <inheritdoc cref="PreconditionRequired(string, string?)"/>
-    /// <param name="detail">Description of the required precondition.</param>
-    /// <param name="instance">A formattable identifier for the affected resource.</param>
-    public static PreconditionRequiredError PreconditionRequired<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "precondition.required.error", FormatInstance(instance));
+    /// <summary>HTTP 409 — the request conflicts with the current state of the resource.</summary>
+    /// <param name="Resource">
+    /// The conflicting resource, when one is identifiable. May be <see langword="null"/> for
+    /// stateless conflicts (e.g. workflow / state-machine guards, library code with no aggregate
+    /// context). RFC 9110 § 15.5.10 implies the target resource via the request URI; the response
+    /// body is not required to identify it.
+    /// </param>
+    /// <param name="ReasonCode">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate_key"</c>, <c>"invalid_state"</c>).</param>
+    public sealed record Conflict(ResourceRef? Resource, string ReasonCode) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "conflict";
 
-    /// <inheritdoc cref="NotFound(string, string?)"/>
-    /// <param name="detail">Description of what was not found.</param>
-    /// <param name="instance">A formattable identifier for the missing resource.</param>
-    public static NotFoundError NotFound<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "not.found.error", FormatInstance(instance));
+        /// <inheritdoc />
+        public override string Code => ReasonCode;
+    }
 
-    /// <inheritdoc cref="Unauthorized(string, string?)"/>
-    /// <param name="detail">Description of why authorization failed.</param>
-    /// <param name="instance">A formattable identifier for the unauthorized request.</param>
-    public static UnauthorizedError Unauthorized<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "unauthorized.error", FormatInstance(instance));
+    /// <summary>HTTP 410 — the resource is permanently gone.</summary>
+    /// <param name="Resource">The resource that has been removed.</param>
+    public sealed record Gone(ResourceRef Resource) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "gone";
+    }
 
-    /// <inheritdoc cref="Forbidden(string, string?)"/>
-    /// <param name="detail">Description of why access is forbidden.</param>
-    /// <param name="instance">A formattable identifier for the forbidden resource.</param>
-    public static ForbiddenError Forbidden<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "forbidden.error", FormatInstance(instance));
+    /// <summary>HTTP 412 — a request precondition (e.g. <c>If-Match</c>) failed.</summary>
+    /// <param name="Resource">The resource the precondition was evaluated against.</param>
+    /// <param name="Condition">Which precondition failed.</param>
+    public sealed record PreconditionFailed(ResourceRef Resource, PreconditionKind Condition) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "precondition-failed";
 
-    /// <inheritdoc cref="Unexpected(string, string?)"/>
-    /// <param name="detail">Description of what went wrong.</param>
-    /// <param name="instance">A formattable identifier for the operation that failed.</param>
-    public static UnexpectedError Unexpected<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "unexpected.error", FormatInstance(instance));
+        /// <inheritdoc />
+        public override string Code => Condition.ToString();
+    }
 
-    /// <inheritdoc cref="Domain(string, string?)"/>
-    /// <param name="detail">Description of the business rule that was violated.</param>
-    /// <param name="instance">A formattable identifier for the entity or operation.</param>
-    public static DomainError Domain<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "domain.error", FormatInstance(instance));
+    /// <summary>HTTP 413 — the request payload exceeds size limits.</summary>
+    /// <param name="MaxBytes">Optional maximum accepted size in bytes.</param>
+    public sealed record ContentTooLarge(long? MaxBytes = null) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "content-too-large";
+    }
 
-    /// <inheritdoc cref="RateLimit(string, string?)"/>
-    /// <param name="detail">Description of the rate limit violation.</param>
-    /// <param name="instance">A formattable identifier for the client or resource being rate limited.</param>
-    public static RateLimitError RateLimit<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "rate.limit.error", FormatInstance(instance));
+    /// <summary>HTTP 415 — the request's media type is not supported.</summary>
+    /// <param name="Supported">Media types the resource can accept.</param>
+    public sealed record UnsupportedMediaType(EquatableArray<string> Supported) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "unsupported-media-type";
+    }
 
-    /// <inheritdoc cref="ServiceUnavailable(string, string?)"/>
-    /// <param name="detail">Description of why the service is unavailable.</param>
-    /// <param name="instance">A formattable identifier for the unavailable service or resource.</param>
-    public static ServiceUnavailableError ServiceUnavailable<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "service.unavailable.error", FormatInstance(instance));
+    /// <summary>HTTP 416 — the requested byte range cannot be satisfied.</summary>
+    /// <param name="CompleteLength">The full length of the resource (used to synthesize the <c>Content-Range</c> header).</param>
+    /// <param name="Unit">The range unit (typically <c>"bytes"</c>).</param>
+    public sealed record RangeNotSatisfiable(long CompleteLength, string Unit = "bytes") : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "range-not-satisfiable";
+    }
 
-    /// <inheritdoc cref="Gone(string, string?)"/>
-    /// <param name="detail">Description of why the resource is gone.</param>
-    /// <param name="instance">A formattable identifier for the removed resource.</param>
-    public static GoneError Gone<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "gone.error", FormatInstance(instance));
+    /// <summary>HTTP 422 — the request was well-formed but the content failed semantic validation.</summary>
+    /// <param name="Fields">Per-field validation failures.</param>
+    /// <param name="Rules">Global or multi-field business-rule failures.</param>
+    public sealed record UnprocessableContent(
+        EquatableArray<FieldViolation> Fields,
+        EquatableArray<RuleViolation> Rules = default) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "unprocessable-content";
+    }
 
-    /// <inheritdoc cref="NotAcceptable(string, string?)"/>
-    /// <param name="detail">Description of why no acceptable representation is available.</param>
-    /// <param name="instance">A formattable identifier for the resource.</param>
-    public static NotAcceptableError NotAcceptable<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "not.acceptable.error", FormatInstance(instance));
+    /// <summary>HTTP 428 — the resource requires a precondition that the request did not include.</summary>
+    /// <param name="Condition">The precondition that must be supplied.</param>
+    public sealed record PreconditionRequired(PreconditionKind Condition) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "precondition-required";
 
-    /// <inheritdoc cref="UnsupportedMediaType(string, string?)"/>
-    /// <param name="detail">Description of why the media type is not supported.</param>
-    /// <param name="instance">A formattable identifier for the resource.</param>
-    public static UnsupportedMediaTypeError UnsupportedMediaType<TInstance>(string detail, TInstance instance) where TInstance : IFormattable =>
-        new(detail, "unsupported.media.type.error", FormatInstance(instance));
+        /// <inheritdoc />
+        public override string Code => Condition.ToString();
+    }
 
-    /// <summary>
-    /// Creates a <see cref="ServiceUnavailableError"/> with retry-after metadata.
-    /// </summary>
-    /// <param name="detail">Description of why the service is unavailable.</param>
-    /// <param name="retryAfter">The retry-after value indicating when the service may resume.</param>
-    /// <param name="instance">Optional identifier for the unavailable service or resource.</param>
-    /// <returns>A <see cref="ServiceUnavailableError"/> with retry-after metadata.</returns>
-    public static ServiceUnavailableError ServiceUnavailable(string detail, RetryAfterValue retryAfter, string? instance = null) =>
-        new(detail, "service.unavailable.error", retryAfter, instance);
+    /// <summary>HTTP 429 — the client has exceeded a rate limit.</summary>
+    /// <param name="RetryAfter">Optional advice for when the client may retry.</param>
+    public sealed record TooManyRequests(RetryAfterValue? RetryAfter = null) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "too-many-requests";
+    }
 
-    /// <summary>
-    /// Creates a <see cref="BadRequestError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why the request is bad.</param>
-    /// <param name="code">Custom error code to use instead of the default "bad.request.error".</param>
-    /// <param name="instance">Optional identifier for the bad request.</param>
-    /// <returns>A <see cref="BadRequestError"/> with the specified code.</returns>
-    public static BadRequestError BadRequest(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+    // ───────────────────────────────────────────────────────────────────────────
+    // 5xx Server Errors
+    // ───────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Creates a <see cref="ConflictError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of the conflict.</param>
-    /// <param name="code">Custom error code to use instead of the default "conflict.error".</param>
-    /// <param name="instance">Optional identifier for the conflicting resource.</param>
-    /// <returns>A <see cref="ConflictError"/> with the specified code.</returns>
-    public static ConflictError Conflict(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+    /// <summary>HTTP 500 — an unhandled server-side fault occurred.</summary>
+    /// <param name="FaultId">An opaque identifier correlating to richer diagnostics in the logging/telemetry layer.</param>
+    public sealed record InternalServerError(string FaultId) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "internal-server-error";
 
-    /// <summary>
-    /// Creates a <see cref="PreconditionFailedError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of the precondition failure.</param>
-    /// <param name="code">Custom error code to use instead of the default "precondition.failed.error".</param>
-    /// <param name="instance">Optional identifier for the affected resource.</param>
-    /// <returns>A <see cref="PreconditionFailedError"/> with the specified code.</returns>
-    public static PreconditionFailedError PreconditionFailed(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+        /// <inheritdoc />
+        public override string Code => FaultId;
+    }
 
-    /// <summary>
-    /// Creates a <see cref="PreconditionRequiredError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of the required precondition.</param>
-    /// <param name="code">Custom error code to use instead of the default "precondition.required.error".</param>
-    /// <param name="instance">Optional identifier for the affected resource.</param>
-    /// <returns>A <see cref="PreconditionRequiredError"/> with the specified code.</returns>
-    public static PreconditionRequiredError PreconditionRequired(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+    /// <summary>HTTP 501 — the requested feature is not implemented.</summary>
+    /// <param name="Feature">Identifier of the feature that is not implemented.</param>
+    public sealed record NotImplemented(string Feature) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "not-implemented";
 
-    /// <summary>
-    /// Creates a <see cref="NotFoundError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of what was not found.</param>
-    /// <param name="code">Custom error code to use instead of the default "not.found.error".</param>
-    /// <param name="instance">Optional identifier for the missing resource.</param>
-    /// <returns>A <see cref="NotFoundError"/> with the specified code.</returns>
-    public static NotFoundError NotFound(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+        /// <inheritdoc />
+        public override string Code => Feature;
+    }
 
-    /// <summary>
-    /// Creates an <see cref="UnauthorizedError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why authorization failed.</param>
-    /// <param name="code">Custom error code to use instead of the default "unauthorized.error".</param>
-    /// <param name="instance">Optional identifier for the unauthorized request.</param>
-    /// <returns>An <see cref="UnauthorizedError"/> with the specified code.</returns>
-    public static UnauthorizedError Unauthorized(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+    /// <summary>HTTP 503 — the server is temporarily unable to handle the request.</summary>
+    /// <param name="RetryAfter">Optional advice for when the client may retry.</param>
+    public sealed record ServiceUnavailable(RetryAfterValue? RetryAfter = null) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "service-unavailable";
+    }
 
-    /// <summary>
-    /// Creates a <see cref="ForbiddenError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why access is forbidden.</param>
-    /// <param name="code">Custom error code to use instead of the default "forbidden.error".</param>
-    /// <param name="instance">Optional identifier for the forbidden resource.</param>
-    /// <returns>A <see cref="ForbiddenError"/> with the specified code.</returns>
-    public static ForbiddenError Forbidden(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+    // ───────────────────────────────────────────────────────────────────────────
+    // Composition
+    // ───────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates an <see cref="UnexpectedError"/> with a custom error code.
+    /// Composition of multiple independent errors. Used when several failures occur
+    /// together (e.g. parallel operations, batch validation). On the wire this typically
+    /// renders as a problem-details <c>extensions.errors</c> array; <c>207 Multi-Status</c>
+    /// is reserved for explicit batch endpoints.
     /// </summary>
-    /// <param name="detail">Description of what went wrong.</param>
-    /// <param name="code">Custom error code to use instead of the default "unexpected.error".</param>
-    /// <param name="instance">Optional identifier for the operation that failed.</param>
-    /// <returns>An <see cref="UnexpectedError"/> with the specified code.</returns>
-    public static UnexpectedError Unexpected(string detail, string code, string? instance) =>
-        new(detail, code, instance);
-
-    /// <summary>
-    /// Creates a <see cref="DomainError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of the business rule that was violated.</param>
-    /// <param name="code">Custom error code to use instead of the default "domain.error".</param>
-    /// <param name="instance">Optional identifier for the entity or operation.</param>
-    /// <returns>A <see cref="DomainError"/> with the specified code.</returns>
-    public static DomainError Domain(string detail, string code, string? instance) =>
-        new(detail, code, instance);
-
-    /// <summary>
-    /// Creates a <see cref="RateLimitError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of the rate limit violation.</param>
-    /// <param name="code">Custom error code to use instead of the default "rate.limit.error".</param>
-    /// <param name="instance">Optional identifier for the client or resource being rate limited.</param>
-    /// <returns>A <see cref="RateLimitError"/> with the specified code.</returns>
-    public static RateLimitError RateLimit(string detail, string code, string? instance) =>
-        new(detail, code, instance);
-
-    /// <summary>
-    /// Creates a <see cref="ServiceUnavailableError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why the service is unavailable.</param>
-    /// <param name="code">Custom error code to use instead of the default "service.unavailable.error".</param>
-    /// <param name="instance">Optional identifier for the unavailable service or resource.</param>
-    /// <returns>A <see cref="ServiceUnavailableError"/> with the specified code.</returns>
-    public static ServiceUnavailableError ServiceUnavailable(string detail, string code, string? instance) =>
-        new(detail, code, instance);
-
-    /// <summary>
-    /// Creates a <see cref="GoneError"/> indicating a resource has been permanently removed.
-    /// </summary>
-    /// <param name="detail">Description of why the resource is gone.</param>
-    /// <param name="instance">Optional identifier for the removed resource.</param>
-    /// <returns>A <see cref="GoneError"/>.</returns>
     /// <remarks>
-    /// Use this instead of <see cref="NotFound(string, string?)"/> when the server knows the resource
-    /// previously existed and has been intentionally removed. Maps to HTTP 410 Gone.
+    /// Nested <see cref="Aggregate"/> values are flattened at construction. The constructor
+    /// accepts at least one error.
     /// </remarks>
-    public static GoneError Gone(string detail, string? instance = null) =>
-        new(detail, "gone.error", instance);
+    public sealed record Aggregate : Error
+    {
+        /// <summary>Gets the flattened list of errors composing this aggregate.</summary>
+        public EquatableArray<Error> Errors { get; }
 
-    /// <summary>
-    /// Creates a <see cref="GoneError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why the resource is gone.</param>
-    /// <param name="code">Custom error code to use instead of the default "gone.error".</param>
-    /// <param name="instance">Optional identifier for the removed resource.</param>
-    /// <returns>A <see cref="GoneError"/> with the specified code.</returns>
-    public static GoneError Gone(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+        /// <summary>Initializes a new aggregate from the supplied errors. Nested aggregates are flattened.</summary>
+        /// <param name="errors">The errors to compose. Must be non-empty.</param>
+        public Aggregate(EquatableArray<Error> errors)
+        {
+            if (errors.IsEmpty) throw new ArgumentException("Aggregate requires at least one error.", nameof(errors));
+            Errors = Flatten(errors);
+        }
 
-    /// <summary>
-    /// Creates a <see cref="MethodNotAllowedError"/> indicating the HTTP method is not supported.
-    /// </summary>
-    /// <param name="detail">Description of why the method is not allowed.</param>
-    /// <param name="allowedMethods">The HTTP methods the target resource supports. Emitted as the <c>Allow</c> header.</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="MethodNotAllowedError"/>.</returns>
-    /// <remarks>
-    /// Per RFC 9110 §15.5.6, a 405 response MUST include an <c>Allow</c> header.
-    /// Maps to HTTP 405 Method Not Allowed.
-    /// </remarks>
-    public static MethodNotAllowedError MethodNotAllowed(string detail, IReadOnlyList<string> allowedMethods, string? instance = null) =>
-        new(detail, allowedMethods, "method.not.allowed.error", instance);
+        /// <summary>Initializes a new aggregate from the supplied errors.</summary>
+        /// <param name="errors">The errors to compose.</param>
+        public Aggregate(IEnumerable<Error> errors) : this(EquatableArray<Error>.From(errors)) { }
 
-    /// <summary>
-    /// Creates a <see cref="MethodNotAllowedError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why the method is not allowed.</param>
-    /// <param name="allowedMethods">The HTTP methods the target resource supports.</param>
-    /// <param name="code">Custom error code to use instead of the default "method.not.allowed.error".</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="MethodNotAllowedError"/> with the specified code.</returns>
-    public static MethodNotAllowedError MethodNotAllowed(string detail, IReadOnlyList<string> allowedMethods, string code, string? instance) =>
-        new(detail, allowedMethods, code, instance);
+        /// <summary>Initializes a new aggregate from the supplied errors.</summary>
+        /// <param name="errors">The errors to compose.</param>
+        public Aggregate(params Error[] errors) : this(EquatableArray<Error>.Create(errors)) { }
 
-    /// <summary>
-    /// Creates a <see cref="NotAcceptableError"/> indicating no acceptable representation is available.
-    /// </summary>
-    /// <param name="detail">Description of why no acceptable representation is available.</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="NotAcceptableError"/>.</returns>
-    /// <remarks>Maps to HTTP 406 Not Acceptable.</remarks>
-    public static NotAcceptableError NotAcceptable(string detail, string? instance = null) =>
-        new(detail, "not.acceptable.error", instance);
+        /// <inheritdoc />
+        public override string Kind => "aggregate";
 
-    /// <summary>
-    /// Creates a <see cref="NotAcceptableError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why no acceptable representation is available.</param>
-    /// <param name="code">Custom error code to use instead of the default "not.acceptable.error".</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="NotAcceptableError"/> with the specified code.</returns>
-    public static NotAcceptableError NotAcceptable(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+        private static EquatableArray<Error> Flatten(EquatableArray<Error> input)
+        {
+            var needsFlatten = false;
+            foreach (var e in input)
+            {
+                if (e is Aggregate) { needsFlatten = true; break; }
+            }
 
-    /// <summary>
-    /// Creates an <see cref="UnsupportedMediaTypeError"/> indicating the content type is not supported.
-    /// </summary>
-    /// <param name="detail">Description of why the media type is not supported.</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>An <see cref="UnsupportedMediaTypeError"/>.</returns>
-    /// <remarks>Maps to HTTP 415 Unsupported Media Type.</remarks>
-    public static UnsupportedMediaTypeError UnsupportedMediaType(string detail, string? instance = null) =>
-        new(detail, "unsupported.media.type.error", instance);
+            if (!needsFlatten) return input;
 
-    /// <summary>
-    /// Creates an <see cref="UnsupportedMediaTypeError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why the media type is not supported.</param>
-    /// <param name="code">Custom error code to use instead of the default "unsupported.media.type.error".</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>An <see cref="UnsupportedMediaTypeError"/> with the specified code.</returns>
-    public static UnsupportedMediaTypeError UnsupportedMediaType(string detail, string code, string? instance) =>
-        new(detail, code, instance);
+            var builder = ImmutableArray.CreateBuilder<Error>(input.Length);
+            foreach (var e in input)
+            {
+                if (e is Aggregate inner)
+                    foreach (var child in inner.Errors) builder.Add(child);
+                else
+                    builder.Add(e);
+            }
 
-    /// <summary>
-    /// Creates a <see cref="ContentTooLargeError"/> indicating the request content is too large.
-    /// </summary>
-    /// <param name="detail">Description of why the content is too large.</param>
-    /// <param name="retryAfter">Optional retry-after value for temporary conditions.</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="ContentTooLargeError"/>.</returns>
-    /// <remarks>Maps to HTTP 413 Content Too Large.</remarks>
-    public static ContentTooLargeError ContentTooLarge(string detail, RetryAfterValue? retryAfter = null, string? instance = null) =>
-        new(detail, "content.too.large.error", retryAfter, instance);
-
-    /// <summary>
-    /// Creates a <see cref="ContentTooLargeError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why the content is too large.</param>
-    /// <param name="code">Custom error code to use instead of the default "content.too.large.error".</param>
-    /// <param name="retryAfter">Optional retry-after value for temporary conditions.</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="ContentTooLargeError"/> with the specified code.</returns>
-    public static ContentTooLargeError ContentTooLarge(string detail, string code, RetryAfterValue? retryAfter = null, string? instance = null) =>
-        new(detail, code, retryAfter, instance);
-
-    /// <summary>
-    /// Creates a <see cref="RangeNotSatisfiableError"/> indicating the requested range cannot be served.
-    /// </summary>
-    /// <param name="detail">Description of why the range is not satisfiable.</param>
-    /// <param name="completeLength">The complete length of the representation for the <c>Content-Range</c> header.</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="RangeNotSatisfiableError"/>.</returns>
-    /// <remarks>Maps to HTTP 416 Range Not Satisfiable.</remarks>
-    public static RangeNotSatisfiableError RangeNotSatisfiable(string detail, long completeLength, string? instance = null) =>
-        new(detail, completeLength, "range.not.satisfiable.error", instance: instance);
-
-    /// <summary>
-    /// Creates a <see cref="RangeNotSatisfiableError"/> with a custom error code.
-    /// </summary>
-    /// <param name="detail">Description of why the range is not satisfiable.</param>
-    /// <param name="completeLength">The complete length of the representation.</param>
-    /// <param name="code">Custom error code to use instead of the default "range.not.satisfiable.error".</param>
-    /// <param name="unit">The range unit (defaults to "bytes").</param>
-    /// <param name="instance">Optional identifier for the resource.</param>
-    /// <returns>A <see cref="RangeNotSatisfiableError"/> with the specified code.</returns>
-    public static RangeNotSatisfiableError RangeNotSatisfiable(string detail, long completeLength, string code, string unit = "bytes", string? instance = null) =>
-        new(detail, completeLength, code, unit, instance);
+            return new EquatableArray<Error>(builder.ToImmutable());
+        }
+    }
 }

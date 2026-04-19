@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp;
+namespace Trellis.Asp;
 
 using Microsoft.AspNetCore.Http;
 using Trellis;
@@ -35,9 +35,14 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
     /// </returns>
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var validationError = ValidationErrorsContext.GetValidationError();
+        var validationError = ValidationErrorsContext.GetUnprocessableContent();
         if (validationError is not null)
-            return Results.ValidationProblem(validationError.ToDictionary());
+        {
+            var dictionary = validationError.Fields.Items
+                .GroupBy(fv => fv.Field.Path.TrimStart('/'))
+                .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
+            return Results.ValidationProblem(dictionary);
+        }
 
         return await next(context).ConfigureAwait(false);
     }

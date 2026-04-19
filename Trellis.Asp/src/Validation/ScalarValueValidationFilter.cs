@@ -58,7 +58,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
     public void OnActionExecuting(ActionExecutingContext context)
     {
         // First, check for validation errors from JSON deserialization
-        var validationError = ValidationErrorsContext.GetValidationError();
+        var validationError = ValidationErrorsContext.GetUnprocessableContent();
         if (validationError is not null)
         {
             HandleJsonValidationErrors(context, validationError);
@@ -69,7 +69,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         ValidateScalarValueParameters(context);
     }
 
-    private static void HandleJsonValidationErrors(ActionExecutingContext context, ValidationError validationError)
+    private static void HandleJsonValidationErrors(ActionExecutingContext context, Error.UnprocessableContent validationError)
     {
         // Create a fresh ModelStateDictionary to avoid key casing issues.
         // MVC's model validation adds errors with PascalCase C# property names (e.g., "State").
@@ -77,10 +77,9 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         // Remove + re-Add with different casing. Using a fresh dictionary ensures our
         // camelCase field names (matching JSON property names) are preserved correctly.
         var modelState = new ModelStateDictionary();
-        foreach (var (fieldName, details) in validationError.ToDictionary())
+        foreach (var fieldViolation in validationError.Fields)
         {
-            foreach (var detail in details)
-                modelState.AddModelError(fieldName, detail);
+            modelState.AddModelError(fieldViolation.Field.Path.TrimStart('/'), fieldViolation.Detail ?? fieldViolation.ReasonCode);
         }
 
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();

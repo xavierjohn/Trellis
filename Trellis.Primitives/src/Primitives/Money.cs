@@ -51,7 +51,7 @@ public class Money : ValueObject
         var field = fieldName.NormalizeFieldName("amount");
 
         if (amount < 0)
-            return Result.Fail<Money>(Error.Validation("Amount cannot be negative.", field));
+            return Result.Fail<Money>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Amount cannot be negative." })));
 
         return CurrencyCode.TryCreate(currencyCode, fieldName.NormalizeFieldName("currencyCode"))
             .Map(currency => new Money(Math.Round(amount, GetDecimalPlaces(currency), MidpointRounding.AwayFromZero), currency));
@@ -72,7 +72,7 @@ public class Money : ValueObject
     public static Money Create(decimal amount, string currencyCode) =>
         TryCreate(amount, currencyCode).Match(
             onSuccess: money => money,
-            onFailure: error => throw new InvalidOperationException($"Failed to create Money: {error.Detail}"));
+            onFailure: error => throw new InvalidOperationException($"Failed to create Money: {error.GetDisplayMessage()}"));
 
     /// <summary>
     /// Adds two Money amounts if they have the same currency.
@@ -81,10 +81,10 @@ public class Money : ValueObject
     {
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
-                Error.Validation($"Cannot add {other.Currency} to {Currency}.", "currency"));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("currency"), "validation.error") { Detail = $"Cannot add {other.Currency} to {Currency}." })));
 
         try { return TryCreate(Amount + other.Amount, Currency); }
-        catch (OverflowException) { return Result.Fail<Money>(Error.Validation("Addition would overflow.", "amount")); }
+        catch (OverflowException) { return Result.Fail<Money>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("amount"), "validation.error") { Detail = "Addition would overflow." }))); }
     }
 
     /// <summary>
@@ -94,11 +94,11 @@ public class Money : ValueObject
     {
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
-                Error.Validation($"Cannot subtract {other.Currency} from {Currency}.", "currency"));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("currency"), "validation.error") { Detail = $"Cannot subtract {other.Currency} from {Currency}." })));
 
         if (Amount < other.Amount)
             return Result.Fail<Money>(
-                Error.Validation("Subtraction would result in a negative amount.", "money"));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("money"), "validation.error") { Detail = "Subtraction would result in a negative amount." })));
 
         return TryCreate(Amount - other.Amount, Currency);
     }
@@ -110,7 +110,7 @@ public class Money : ValueObject
     {
         if (multiplier < 0)
             return Result.Fail<Money>(
-                Error.Validation("Multiplier cannot be negative.", nameof(multiplier)));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(multiplier)), "validation.error") { Detail = "Multiplier cannot be negative." })));
 
         return TryCreate(Amount * multiplier, Currency);
     }
@@ -122,7 +122,7 @@ public class Money : ValueObject
     {
         if (quantity < 0)
             return Result.Fail<Money>(
-                Error.Validation("Quantity cannot be negative.", nameof(quantity)));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity cannot be negative." })));
 
         return TryCreate(Amount * quantity, Currency);
     }
@@ -134,7 +134,7 @@ public class Money : ValueObject
     {
         if (divisor <= 0)
             return Result.Fail<Money>(
-                Error.Validation("Divisor must be positive.", nameof(divisor)));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(divisor)), "validation.error") { Detail = "Divisor must be positive." })));
 
         return TryCreate(Amount / divisor, Currency);
     }
@@ -146,7 +146,7 @@ public class Money : ValueObject
     {
         if (divisor <= 0)
             return Result.Fail<Money>(
-                Error.Validation("Divisor must be positive.", nameof(divisor)));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(divisor)), "validation.error") { Detail = "Divisor must be positive." })));
 
         return TryCreate(Amount / divisor, Currency);
     }
@@ -160,10 +160,10 @@ public class Money : ValueObject
     public Result<Money[]> Allocate(params int[] ratios)
     {
         if (ratios.Length == 0)
-            return Result.Fail<Money[]>(Error.Validation("At least one ratio required.", nameof(ratios)));
+            return Result.Fail<Money[]>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(ratios)), "validation.error") { Detail = "At least one ratio required." })));
 
         if (ratios.Any(r => r <= 0))
-            return Result.Fail<Money[]>(Error.Validation("All ratios must be positive.", nameof(ratios)));
+            return Result.Fail<Money[]>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(ratios)), "validation.error") { Detail = "All ratios must be positive." })));
 
         var decimalPlaces = GetDecimalPlaces(Currency);
         var multiplier = (decimal)Math.Pow(10, decimalPlaces);
@@ -258,7 +258,7 @@ public class Money : ValueObject
         using var enumerator = values.GetEnumerator();
 
         if (!enumerator.MoveNext())
-            return Result.Fail<Money>(Error.Validation("Cannot sum an empty collection.", nameof(values)));
+            return Result.Fail<Money>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(values)), "validation.error") { Detail = "Cannot sum an empty collection." })));
 
         var first = enumerator.Current;
         var currency = first.Currency;
@@ -272,14 +272,14 @@ public class Money : ValueObject
 
                 if (!currency.Equals(current.Currency))
                     return Result.Fail<Money>(
-                        Error.Validation($"Cannot add {current.Currency} to {currency}.", "currency"));
+                        new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("currency"), "validation.error") { Detail = $"Cannot add {current.Currency} to {currency}." })));
 
                 totalAmount += current.Amount;
             }
         }
         catch (OverflowException)
         {
-            return Result.Fail<Money>(Error.Validation("Addition would overflow.", "amount"));
+            return Result.Fail<Money>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("amount"), "validation.error") { Detail = "Addition would overflow." })));
         }
 
         return TryCreate(totalAmount, currency.Value);

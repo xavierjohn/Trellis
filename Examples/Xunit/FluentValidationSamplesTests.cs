@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using FluentValidation;
 using Trellis;
 using Xunit;
-using static Trellis.ValidationError;
+using static Trellis.Error.UnprocessableContent;
 
 /// <summary>
 /// Comprehensive tests validating all examples from FluentValidation\SAMPLES.md
@@ -26,9 +26,9 @@ public class FluentValidationSamplesTests
         public static Result<EmailAddress> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(Error.Validation("Email cannot be empty", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Email cannot be empty" })));
             if (!value.Contains('@'))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(Error.Validation("Email must contain @", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Email must contain @" })));
             return Result.Ok(new EmailAddress(value));
         }
     }
@@ -41,9 +41,9 @@ public class FluentValidationSamplesTests
         public static Result<Username> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(Error.Validation("Username cannot be empty", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Username cannot be empty" })));
             if (value.Length is < 3 or > 20)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(Error.Validation("Username must be between 3 and 20 characters", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Username must be between 3 and 20 characters" })));
             return Result.Ok(new Username(value));
         }
     }
@@ -56,7 +56,7 @@ public class FluentValidationSamplesTests
         public static Result<PhoneNumber> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.PhoneNumber>(Error.Validation("Phone number cannot be empty", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.PhoneNumber>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Phone number cannot be empty" })));
             return Result.Ok(new PhoneNumber(value));
         }
     }
@@ -194,9 +194,9 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Email" && e.Details.Contains("Email is already registered"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Email" && e.Detail!.Contains("Email is already registered"));
     }
 
     [Fact]
@@ -216,9 +216,9 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Email" && e.Details.Contains("Email domain is not allowed"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Email" && e.Detail!.Contains("Email domain is not allowed"));
     }
 
     [Fact]
@@ -238,9 +238,9 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Username" && e.Details.Contains("Username is already taken"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Username" && e.Detail!.Contains("Username is already taken"));
     }
 
     [Fact]
@@ -260,8 +260,8 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e => e.FieldName == "Username");
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path == "/Username");
     }
 
     [Fact]
@@ -300,7 +300,7 @@ public class FluentValidationSamplesTests
         public static Result<ProductId> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.ProductId>(Error.Validation("Product ID cannot be empty", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.ProductId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Product ID cannot be empty" })));
             return Result.Ok(new ProductId(value));
         }
     }
@@ -313,9 +313,9 @@ public class FluentValidationSamplesTests
         public static Result<Quantity> TryCreate(int value)
         {
             if (value <= 0)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(Error.Validation("Quantity must be positive", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Quantity must be positive" })));
             if (value > 1000)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(Error.Validation("Quantity cannot exceed 1000", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Quantity cannot exceed 1000" })));
             return Result.Ok(new Quantity(value));
         }
     }
@@ -328,7 +328,7 @@ public class FluentValidationSamplesTests
         public static Result<Price> TryCreate(decimal value)
         {
             if (value <= 0)
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Price>(Error.Validation("Price must be positive", nameof(value)));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Price>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Price must be positive" })));
             return Result.Ok(new Price(value));
         }
     }
@@ -355,7 +355,7 @@ public class FluentValidationSamplesTests
             Quantity quantity)
         {
             if (string.IsNullOrWhiteSpace(productName))
-                return Result.Fail<Example.Tests.FluentValidationSamplesTests.OrderLine>(Error.Validation("Product name cannot be empty"));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.OrderLine>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Product name cannot be empty" });
 
             return Result.Ok(new OrderLine(productId, productName, price, quantity));
         }
@@ -404,9 +404,9 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "value" && e.Details.Contains("Quantity must be positive"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/value" && e.Detail!.Contains("Quantity must be positive"));
     }
 
     [Fact]
@@ -428,13 +428,12 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        // Combine groups all errors into a single FieldError with Details array
-        validationError.FieldErrors.Should().HaveCount(1);
-        validationError.FieldErrors[0].Details.Should().HaveCount(3);
-        validationError.FieldErrors[0].Details.Should().Contain(d => d.Contains("Product ID"));
-        validationError.FieldErrors[0].Details.Should().Contain(d => d.Contains("Quantity"));
-        validationError.FieldErrors[0].Details.Should().Contain(d => d.Contains("Price"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        // Combine groups all errors into a single FieldViolation with Details array
+        validationError.Fields.Items.Should().HaveCount(3);
+        validationError.Fields.Items.Should().Contain(f => f.Detail!.Contains("Product ID"));
+        validationError.Fields.Items.Should().Contain(f => f.Detail!.Contains("Quantity"));
+        validationError.Fields.Items.Should().Contain(f => f.Detail!.Contains("Price"));
     }
 
     [Fact]
@@ -572,10 +571,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "ShippingAddress" &&
-            e.Details.Contains("Shipping address is required for physical orders"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/ShippingAddress" &&
+            e.Detail!.Contains("Shipping address is required for physical orders"));
     }
 
     [Fact]
@@ -618,11 +617,11 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
         // FluentValidation's default message is "'Email' must not be empty."
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Email" &&
-            e.Details.Any(d => d.Contains("must not be empty")));
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Email" &&
+            e.Detail!.Contains("must not be empty"));
     }
 
     [Fact]
@@ -644,10 +643,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "TotalAmount" &&
-            e.Details.Contains("Express shipping not available for orders over $10,000"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/TotalAmount" &&
+            e.Detail!.Contains("Express shipping not available for orders over $10,000"));
     }
 
     [Fact]
@@ -690,10 +689,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "TaxId" &&
-            e.Details.Contains("Tax ID required for business orders"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/TaxId" &&
+            e.Detail!.Contains("Tax ID required for business orders"));
     }
 
     #endregion
@@ -744,10 +743,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Price" &&
-            e.Details.Any(d => d.Contains("$-5") && d.Contains("must be greater than $0")));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Price" &&
+            e.Detail!.Contains("$-5") && e.Detail!.Contains("must be greater than $0"));
     }
 
     [Fact]
@@ -762,10 +761,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Stock" &&
-            e.Details.Any(d => d.Contains("15000") && d.Contains("exceeds maximum of 10,000")));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Stock" &&
+            e.Detail!.Contains("15000") && e.Detail!.Contains("exceeds maximum of 10,000"));
     }
 
     [Fact]
@@ -780,10 +779,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Name" &&
-            e.Details.Any(d => d.Contains("current: 2")));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Name" &&
+            e.Detail!.Contains("current: 2"));
     }
 
     [Fact]
@@ -798,10 +797,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Discount" &&
-            e.Details.Any(d => d.Contains("$60") && d.Contains("$100")));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Discount" &&
+            e.Detail!.Contains("$60") && e.Detail!.Contains("$100"));
     }
 
     #endregion
@@ -855,10 +854,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "OrderIds" &&
-            e.Details.Contains("Batch must contain at least one order"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/OrderIds" &&
+            e.Detail!.Contains("Batch must contain at least one order"));
     }
 
     [Fact]
@@ -874,10 +873,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "OrderIds" &&
-            e.Details.Any(d => d.Contains("101") && d.Contains("maximum is 100")));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/OrderIds" &&
+            e.Detail!.Contains("101") && e.Detail!.Contains("maximum is 100"));
     }
 
     [Fact]
@@ -892,10 +891,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "OrderIds" &&
-            e.Details.Contains("Batch contains duplicate order IDs"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/OrderIds" &&
+            e.Detail!.Contains("Batch contains duplicate order IDs"));
     }
 
     #endregion
@@ -1008,10 +1007,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
         // Both Email and Phone should have validation errors
-        validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Email"));
-        validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Phone"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Email"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Phone"));
     }
 
     [Fact]
@@ -1029,10 +1028,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Street"));
-        validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("PostalCode"));
-        validationError.FieldErrors.Should().Contain(e => e.FieldName.Contains("Country"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Street"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("PostalCode"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Country"));
     }
 
     [Fact]
@@ -1050,10 +1049,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "ContactInfo" &&
-            e.Details.Contains("Contact information is required"));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/ContactInfo" &&
+            e.Detail!.Contains("Contact information is required"));
     }
 
     #endregion
@@ -1076,10 +1075,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "value" &&
-            e.Details.Contains("'value' must not be empty."));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/value" &&
+            e.Detail!.Contains("'value' must not be empty."));
     }
 
     [Fact]
@@ -1098,11 +1097,11 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
         // ValidateToResult uses custom paramName and message for null values
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "Alias" &&
-            e.Details.Contains("Hello There"));
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/Alias" &&
+            e.Detail!.Contains("Hello There"));
     }
 
     [Fact]
@@ -1121,10 +1120,10 @@ public class FluentValidationSamplesTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validationError = (ValidationError)result.UnwrapError();
-        validationError.FieldErrors.Should().Contain(e =>
-            e.FieldName == "value" &&
-            e.Details.Contains("'value' must not be empty."));
+        var validationError = (Error.UnprocessableContent)result.UnwrapError();
+        validationError.Fields.Items.Should().Contain(e =>
+            e.Field.Path == "/value" &&
+            e.Detail!.Contains("'value' must not be empty."));
     }
 
     #endregion

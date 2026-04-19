@@ -111,11 +111,11 @@ public class TraverseTests : TestBase
         var result = items.Traverse(s =>
             s.Length >= 3
                 ? Result.Ok(s.ToUpper(CultureInfo.InvariantCulture))
-                : Result.Fail<string>(Error.Validation($"String too short: {s}")));
+                : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"String too short: {s}" }));
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Detail.Should().Contain("String too short: a");
+        result.Error!.Detail.Should().Contain("String too short: a");
     }
 
     #endregion
@@ -292,7 +292,7 @@ public class TraverseTests : TestBase
         var result = emails.Traverse(email =>
             email.Contains('@')
                 ? Result.Ok(email.ToLower(CultureInfo.InvariantCulture))
-                : Result.Fail<string>(Error.Validation($"Invalid email: {email}")));
+                : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Invalid email: {email}" }));
 
         // Assert
         result.Should().BeSuccess();
@@ -309,11 +309,11 @@ public class TraverseTests : TestBase
         var result = emails.Traverse(email =>
             email.Contains('@')
                 ? Result.Ok(email.ToLower(CultureInfo.InvariantCulture))
-                : Result.Fail<string>(Error.Validation($"Invalid email: {email}")));
+                : Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Invalid email: {email}" }));
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Detail.Should().Contain("invalid-email");
+        result.Error!.Detail.Should().Contain("invalid-email");
     }
 
     [Fact]
@@ -340,13 +340,13 @@ public class TraverseTests : TestBase
         // Act
         var result = await userIds.TraverseAsync((int id) =>
             Task.FromResult(id == 999
-                ? Result.Fail<string>(Error.NotFound($"User {id} not found"))
+                ? Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"User {id} not found" })
                 : Result.Ok($"User{id}")));
 
         // Assert
         result.Should().BeFailure();
-        result.Error.Should().BeOfType<NotFoundError>();
-        result.Error.Detail.Should().Contain("999");
+        result.Error!.Should().BeOfType<Error.NotFound>();
+        result.Error!.Detail.Should().Contain("999");
     }
 
     [Fact]
@@ -375,7 +375,7 @@ public class TraverseTests : TestBase
         var result = names.Traverse(name =>
             !string.IsNullOrWhiteSpace(name)
                 ? Result.Ok(new Name(name))
-                : Result.Fail<Name>(Error.Validation("Name cannot be empty")));
+                : Result.Fail<Name>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" }));
 
         // Assert
         result.Should().BeSuccess();

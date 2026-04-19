@@ -88,9 +88,9 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err.Should().BeOfType<DomainError>();
-        err.Detail.Should().Contain("Pause");
-        err.Detail.Should().Contain("Idle");
+        err!.Should().BeOfType<Error.Conflict>();
+        err!.Detail.Should().Contain("Pause");
+        err!.Detail.Should().Contain("Idle");
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.TryGetError(out var err).Should().BeTrue();
-        err.Code.Should().Be("state.machine.invalid.transition");
+        err!.Code.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err.Should().BeOfType<DomainError>();
+        err!.Should().BeOfType<Error.Conflict>();
     }
 
     #endregion
@@ -174,9 +174,9 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err.Should().BeOfType<DomainError>();
-        err.Detail.Should().Contain("Start");
-        err.Detail.Should().Contain("Idle");
+        err!.Should().BeOfType<Error.Conflict>();
+        err!.Detail.Should().Contain("Start");
+        err!.Detail.Should().Contain("Idle");
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err.Should().BeOfType<DomainError>();
+        err!.Should().BeOfType<Error.Conflict>();
     }
 
     #endregion

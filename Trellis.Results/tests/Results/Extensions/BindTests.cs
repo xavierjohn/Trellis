@@ -53,7 +53,7 @@ public partial class BindTests : TestBase
         // Assert
         functionCalled.Should().BeFalse();
         newResult.Should().BeFailure();
-        newResult.Error.Should().Be(Error1);
+        newResult.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public partial class BindTests : TestBase
         // Assert
         functionCalled.Should().BeFalse();
         actual.Should().BeFailure();
-        actual.Error.Should().Be(Error1);
+        actual.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public partial class BindTests : TestBase
         // Assert
         functionCalled.Should().BeFalse();
         actual.Should().BeFailure();
-        actual.Error.Should().Be(Error1);
+        actual.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public partial class BindTests : TestBase
         // Assert
         functionCalled.Should().BeFalse();
         actual.Should().BeFailure();
-        actual.Error.Should().Be(Error1);
+        actual.Error!.Should().Be(Error1);
     }
 
     // Bind ValueTask
@@ -225,7 +225,7 @@ public partial class BindTests : TestBase
         // Assert
         functionCalled.Should().BeFalse();
         actual.Should().BeFailure();
-        actual.Error.Should().Be(Error1);
+        actual.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public partial class BindTests : TestBase
         // Assert
         functionCalled.Should().BeFalse();
         actual.Should().BeFailure();
-        actual.Error.Should().Be(Error1);
+        actual.Error!.Should().Be(Error1);
     }
 
     [Fact]
@@ -305,7 +305,7 @@ public partial class BindTests : TestBase
         // Assert
         functionCalled.Should().BeFalse();
         actual.Should().BeFailure();
-        actual.Error.Should().Be(Error1);
+        actual.Error!.Should().Be(Error1);
     }
 
 }

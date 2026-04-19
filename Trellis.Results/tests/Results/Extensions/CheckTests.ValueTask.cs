@@ -23,7 +23,7 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskBoth_Success_CheckFails_ReturnsCheckFailure()
     {
-        var error = Error.Validation("check failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "check failed" };
 
         var result = await new ValueTask<Result<string>>(Result.Ok("hello"))
             .CheckAsync(v => new ValueTask<Result<int>>(Result.Fail<int>(error)));
@@ -34,7 +34,7 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskBoth_Failure_CheckNotInvoked()
     {
-        var error = Error.Unexpected("original error");
+        var error = new Error.InternalServerError("test") { Detail = "original error" };
         var funcInvoked = false;
 
         var result = await new ValueTask<Result<string>>(Result.Fail<string>(error))
@@ -60,7 +60,7 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskLeft_Success_CheckFails_ReturnsCheckFailure()
     {
-        var error = Error.Validation("check failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "check failed" };
 
         var result = await new ValueTask<Result<string>>(Result.Ok("hello"))
             .CheckAsync((string v) => Result.Fail<int>(error));
@@ -71,7 +71,7 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskLeft_Failure_CheckNotInvoked()
     {
-        var error = Error.Unexpected("original error");
+        var error = new Error.InternalServerError("test") { Detail = "original error" };
         var funcInvoked = false;
 
         var result = await new ValueTask<Result<string>>(Result.Fail<string>(error))
@@ -97,7 +97,7 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskRight_Success_CheckFails_ReturnsCheckFailure()
     {
-        var error = Error.Validation("check failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "check failed" };
 
         var result = await Result.Ok("hello")
             .CheckAsync(v => new ValueTask<Result<int>>(Result.Fail<int>(error)));
@@ -108,7 +108,7 @@ public class Check_ValueTask_Tests
     [Fact]
     public async Task CheckAsync_ValueTaskRight_Failure_CheckNotInvoked()
     {
-        var error = Error.Unexpected("original error");
+        var error = new Error.InternalServerError("test") { Detail = "original error" };
         var funcInvoked = false;
 
         var result = await Result.Fail<string>(error)

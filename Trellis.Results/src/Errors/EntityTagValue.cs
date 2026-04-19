@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Represents an RFC 9110 §8.8.1 entity tag (ETag) value with explicit weak/strong semantics.
@@ -107,7 +107,7 @@ public sealed record EntityTagValue
     /// </param>
     /// <returns>
     /// A <see cref="Result{TValue}"/> containing the parsed <see cref="EntityTagValue"/> on success,
-    /// or a <see cref="BadRequestError"/> on failure.
+    /// or a <see cref="Error.BadRequest"/> on failure.
     /// </returns>
     /// <example>
     /// <code>
@@ -118,13 +118,13 @@ public sealed record EntityTagValue
     public static Result<EntityTagValue> TryParse(string? headerValue)
     {
         if (string.IsNullOrWhiteSpace(headerValue))
-            return Result.Fail<EntityTagValue>(Error.BadRequest("ETag header value cannot be null or empty.", "etag.parse.error", null));
+            return Result.Fail<EntityTagValue>(new Error.BadRequest("etag.parse.error") { Detail = "ETag header value cannot be null or empty." });
 
         if (headerValue.StartsWith("W/\"", StringComparison.Ordinal) && headerValue.EndsWith('"') && headerValue.Length >= 4)
         {
             var tag = headerValue[3..^1];
             if (HasInvalidOpaqueTagChars(tag))
-                return Result.Fail<EntityTagValue>(Error.BadRequest("Invalid ETag format.", "etag.parse.error", null));
+                return Result.Fail<EntityTagValue>(new Error.BadRequest("etag.parse.error") { Detail = "Invalid ETag format." });
             return Result.Ok(new EntityTagValue(tag, true));
         }
 
@@ -132,11 +132,11 @@ public sealed record EntityTagValue
         {
             var tag = headerValue[1..^1];
             if (HasInvalidOpaqueTagChars(tag))
-                return Result.Fail<EntityTagValue>(Error.BadRequest("Invalid ETag format.", "etag.parse.error", null));
+                return Result.Fail<EntityTagValue>(new Error.BadRequest("etag.parse.error") { Detail = "Invalid ETag format." });
             return Result.Ok(new EntityTagValue(tag, false));
         }
 
-        return Result.Fail<EntityTagValue>(Error.BadRequest("Invalid ETag format.", "etag.parse.error", null));
+        return Result.Fail<EntityTagValue>(new Error.BadRequest("etag.parse.error") { Detail = "Invalid ETag format." });
     }
 
     /// <summary>

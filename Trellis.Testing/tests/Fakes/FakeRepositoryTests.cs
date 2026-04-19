@@ -119,7 +119,7 @@ public class FakeRepositoryTests
         var result = await repository.GetByIdAsync("nonexistent", TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<NotFoundError>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     #endregion
@@ -186,7 +186,7 @@ public class FakeRepositoryTests
         var result = await repository.DeleteAsync("nonexistent", TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<NotFoundError>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     #endregion
@@ -337,7 +337,7 @@ public class FakeRepositoryTests
             TestAggregate.Create("2", "Bob", "alice@test.com"), TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<ConflictError>();
+        result.Should().BeFailureOfType<Error.Conflict>();
         repository.Count.Should().Be(1);
     }
 
@@ -375,7 +375,7 @@ public class FakeRepositoryTests
             TestAggregate.Create("2", "Alice", "bob@test.com"), TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<ConflictError>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]

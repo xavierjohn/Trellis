@@ -53,7 +53,7 @@ public class MoneyJsonConverter : JsonConverter<Money>
 
         return Money.TryCreate(amount, currency).Match(
             onSuccess: money => money,
-            onFailure: error => throw new JsonException(error.Detail));
+            onFailure: error => throw new JsonException(error.GetDisplayMessage()));
     }
 
     /// <summary>

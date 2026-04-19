@@ -39,10 +39,10 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate(DateTime.MinValue);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("orderDate");
-        validation.FieldErrors[0].Details[0].Should().Be("Order Date cannot be empty.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/orderDate");
+        validation.Fields[0].Detail.Should().Be("Order Date cannot be empty.");
     }
 
     [Fact]
@@ -59,10 +59,10 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate((DateTime?)null);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("orderDate");
-        validation.FieldErrors[0].Details[0].Should().Be("Order Date cannot be empty.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/orderDate");
+        validation.Fields[0].Detail.Should().Be("Order Date cannot be empty.");
     }
 
     [Fact]
@@ -193,8 +193,8 @@ public class RequiredDateTimeTests
         var result = OrderDate.TryCreate((DateTime?)null, "myField");
 
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("myField");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 
     [Fact]

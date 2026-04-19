@@ -51,6 +51,6 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
         var name = reader.GetString();
         return RequiredEnum<TRequiredEnum>.TryFromName(name).Match(
             onSuccess: value => value,
-            onFailure: error => throw new JsonException($"Invalid {typeof(TRequiredEnum).Name} value: '{name}'. {error.Detail}"));
+            onFailure: error => throw new JsonException($"Invalid {typeof(TRequiredEnum).Name} value: '{name}'. {error.GetDisplayMessage()}"));
     }
 }

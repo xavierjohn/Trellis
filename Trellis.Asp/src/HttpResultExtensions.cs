@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp;
+namespace Trellis.Asp;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -149,43 +149,43 @@ public static class HttpResultExtensions
     ///         <description>Default HTTP Status Code</description>
     ///     </listheader>
     ///     <item>
-    ///         <term><see cref="ValidationError"/></term>
+    ///         <term><see cref="Error.UnprocessableContent"/></term>
     ///         <description>400 Bad Request with validation problem details and field errors</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="BadRequestError"/></term>
+    ///         <term><see cref="Error.BadRequest"/></term>
     ///         <description>400 Bad Request</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="UnauthorizedError"/></term>
+    ///         <term><see cref="Error.Unauthorized"/></term>
     ///         <description>401 Unauthorized</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="ForbiddenError"/></term>
+    ///         <term><see cref="Error.Forbidden"/></term>
     ///         <description>403 Forbidden</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="NotFoundError"/></term>
+    ///         <term><see cref="Error.NotFound"/></term>
     ///         <description>404 Not Found</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="ConflictError"/></term>
+    ///         <term><see cref="Error.Conflict"/></term>
     ///         <description>409 Conflict</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="DomainError"/></term>
+    ///         <term><see cref="Error.Conflict"/></term>
     ///         <description>422 Unprocessable Entity</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="RateLimitError"/></term>
+    ///         <term><see cref="Error.TooManyRequests"/></term>
     ///         <description>429 Too Many Requests</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="UnexpectedError"/></term>
+    ///         <term><see cref="Error.InternalServerError"/></term>
     ///         <description>500 Internal Server Error</description>
     ///     </item>
     ///     <item>
-    ///         <term><see cref="ServiceUnavailableError"/></term>
+    ///         <term><see cref="Error.ServiceUnavailable"/></term>
     ///         <description>503 Service Unavailable</description>
     ///     </item>
     ///     <item>
@@ -218,7 +218,7 @@ public static class HttpResultExtensions
     /// </list>
     /// </para>
     /// <para>
-    /// For <see cref="ValidationError"/>, the response includes an additional <c>errors</c> object
+    /// For <see cref="Error.UnprocessableContent"/>, the response includes an additional <c>errors</c> object
     /// containing field-level validation messages grouped by field name.
     /// </para>
     /// </remarks>
@@ -277,24 +277,63 @@ public static class HttpResultExtensions
         var statusCode = (options ?? TrellisAspOptions.Default).GetStatusCode(error);
 
         Microsoft.AspNetCore.Http.IResult inner;
-        if (error is ValidationError validationError)
+        if (error is Error.UnprocessableContent unprocessable
+            && (unprocessable.Fields.Items.Length > 0 || unprocessable.Rules.Items.Length > 0))
         {
-            Dictionary<string, string[]> errors = validationError.FieldErrors
-                .GroupBy(x => x.FieldName)
-                .ToDictionary(x => x.Key, x => x.SelectMany(y => y.Details).ToArray());
+            Dictionary<string, string[]> errors = unprocessable.Fields.Items
+                .GroupBy(fv => fv.Field.Path.TrimStart('/'))
+                .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
 
-            inner = Results.ValidationProblem(errors, validationError.Detail, validationError.Instance, statusCode);
+            inner = Results.ValidationProblem(
+                errors,
+                unprocessable.Detail,
+                instance: null,
+                statusCode,
+                extensions: BuildExtensions(error, unprocessable.Rules));
         }
         else
         {
             var detail = statusCode >= 500 ? "An internal error occurred." : error.Detail;
-            inner = Results.Problem(detail, error.Instance, statusCode);
+            var rules = error is Error.UnprocessableContent uc ? uc.Rules : default;
+            inner = Results.Problem(
+                detail,
+                instance: null,
+                statusCode,
+                extensions: BuildExtensions(error, rules));
         }
 
         if (HasCompanionHeaders(error))
             return new CompanionHeaderResult(error, inner);
 
         return inner;
+    }
+
+    private static Dictionary<string, object?> BuildExtensions(Error error, EquatableArray<RuleViolation> rules)
+    {
+        var ext = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["code"] = error.Code,
+            ["kind"] = error.Kind,
+        };
+
+        if (error is Error.InternalServerError ise)
+        {
+            ext["faultId"] = ise.FaultId;
+        }
+
+        if (rules.Items.Length > 0)
+        {
+            ext["rules"] = rules.Items
+                .Select(rv => (object)new
+                {
+                    code = rv.ReasonCode,
+                    detail = rv.Detail,
+                    fields = rv.Fields.Items.Select(p => p.Path).ToArray(),
+                })
+                .ToArray();
+        }
+
+        return ext;
     }
 
     /// <summary>
@@ -439,7 +478,7 @@ public static class HttpResultExtensions
                     {
                         ConditionalDecision.NotModified => Results.StatusCode(StatusCodes.Status304NotModified),
                         ConditionalDecision.PreconditionFailed =>
-                            Error.PreconditionFailed("A conditional request header evaluated to false.")
+                            new Error.PreconditionFailed(new ResourceRef(typeof(TIn).Name, null), PreconditionKind.IfMatch) { Detail = "A conditional request header evaluated to false." }
                                 .ToHttpResult(options),
                         _ => Results.Ok(map(inValue)),
                     };
@@ -603,11 +642,10 @@ public static class HttpResultExtensions
 
     private static bool HasCompanionHeaders(Error error) => error switch
     {
-        MethodNotAllowedError => true,
-        RateLimitError { RetryAfter: not null } => true,
-        ServiceUnavailableError { RetryAfter: not null } => true,
-        ContentTooLargeError { RetryAfter: not null } => true,
-        RangeNotSatisfiableError => true,
+        Error.MethodNotAllowed => true,
+        Error.TooManyRequests { RetryAfter: not null } => true,
+        Error.ServiceUnavailable { RetryAfter: not null } => true,
+        Error.RangeNotSatisfiable => true,
         _ => false,
     };
 

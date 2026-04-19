@@ -28,7 +28,7 @@ public class Product : Aggregate<ProductId>
     /// </summary>
     public static Result<Product> TryCreate(ProductName name, MonetaryAmount price, int stockQuantity) =>
         name.ToResult()
-            .Ensure(_ => stockQuantity >= 0, Error.Validation("Stock cannot be negative", nameof(stockQuantity)))
+            .Ensure(_ => stockQuantity >= 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(stockQuantity)), "validation.error") { Detail = "Stock cannot be negative" })))
             .Map(_ => new Product(ProductId.NewUniqueV7(), name, price, stockQuantity));
 
     /// <summary>
@@ -44,7 +44,7 @@ public class Product : Aggregate<ProductId>
     public Result<Product> AdjustStock(int delta) =>
         this.ToResult()
             .Ensure(_ => StockQuantity + delta >= 0,
-                Error.Validation($"Insufficient stock. Available: {StockQuantity}, requested: {-delta}", nameof(delta)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(delta)), "validation.error") { Detail = $"Insufficient stock. Available: {StockQuantity}, requested: {-delta}" })))
             .Tap(_ => StockQuantity += delta);
 
     /// <summary>
@@ -52,9 +52,9 @@ public class Product : Aggregate<ProductId>
     /// </summary>
     public Result<Product> ReserveStock(int quantity) =>
         this.ToResult()
-            .Ensure(_ => quantity > 0, Error.Validation("Quantity must be positive", nameof(quantity)))
+            .Ensure(_ => quantity > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be positive" })))
             .Ensure(_ => StockQuantity >= quantity,
-                Error.Validation($"Insufficient stock. Available: {StockQuantity}", nameof(quantity)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = $"Insufficient stock. Available: {StockQuantity}" })))
             .Tap(_ => StockQuantity -= quantity);
 
     /// <summary>
@@ -62,6 +62,6 @@ public class Product : Aggregate<ProductId>
     /// </summary>
     public Result<Product> ReleaseStock(int quantity) =>
         this.ToResult()
-            .Ensure(_ => quantity > 0, Error.Validation("Quantity must be positive", nameof(quantity)))
+            .Ensure(_ => quantity > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be positive" })))
             .Tap(_ => StockQuantity += quantity);
 }

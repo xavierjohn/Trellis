@@ -20,7 +20,7 @@ public sealed record CreateDocumentCommand(string Title, string Content)
 {
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Title)
-            ? Result.Fail<Document>(Error.Validation("Title is required", "Title"))
+            ? Result.Fail<Document>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Title)), "validation.error") { Detail = "Title is required" })))
             : Result.Ok();
 }
 
@@ -36,11 +36,11 @@ public sealed record EditDocumentCommand(string DocumentId, string NewContent)
     public IResult Authorize(Actor actor, Document document) =>
         actor.Id == document.OwnerId || actor.HasPermission("Documents.EditAny")
             ? Result.Ok()
-            : Result.Fail(Error.Forbidden("Only the owner can edit this document"));
+            : Result.Fail(new Error.Forbidden("authorization.forbidden") { Detail = "Only the owner can edit this document" });
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(NewContent)
-            ? Result.Fail<Document>(Error.Validation("Content is required", "Content"))
+            ? Result.Fail<Document>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("Content"), "validation.error") { Detail = "Content is required" })))
             : Result.Ok();
 }
 
@@ -56,7 +56,7 @@ public sealed class EditDocumentResourceLoader(DocumentStore store)
         var doc = store.Get(message.DocumentId);
         return doc is not null
             ? Task.FromResult(Result.Ok(doc))
-            : Task.FromResult(Result.Fail<Document>(Error.NotFound("Document not found")));
+            : Task.FromResult(Result.Fail<Document>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Document not found" }));
     }
 }
 
@@ -97,7 +97,7 @@ public sealed class EditDocumentHandler(DocumentStore store)
         var doc = store.Get(command.DocumentId);
         if (doc is null)
             return new ValueTask<Result<Document>>(
-                Result.Fail<Document>(Error.NotFound("Document not found")));
+                Result.Fail<Document>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Document not found" }));
 
         var updated = doc with { Content = command.NewContent };
         store.Update(updated);
@@ -114,7 +114,7 @@ public sealed class PublishDocumentHandler(DocumentStore store)
         var doc = store.Get(command.DocumentId);
         if (doc is null)
             return new ValueTask<Result<Document>>(
-                Result.Fail<Document>(Error.NotFound("Document not found")));
+                Result.Fail<Document>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Document not found" }));
 
         var published = doc with { IsPublished = true };
         store.Update(published);

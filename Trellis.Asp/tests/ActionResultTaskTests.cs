@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Collections.Immutable;
 using System.Net.Http.Headers;
@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
-using static Trellis.ValidationError;
+using static Trellis.Error.UnprocessableContent;
 
 public class ActionResultTaskTests
 {
@@ -32,13 +32,13 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.BadRequest("Test", "Jackson");
+        var error = new Error.BadRequest("bad.request") { Detail = "Test" };
         var result = Task.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
             Detail = "Test",
             Status = StatusCodes.Status400BadRequest,
-            Instance = "Jackson"
+            Instance = (string?)null
         };
 
         // Act
@@ -47,7 +47,7 @@ public class ActionResultTaskTests
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
     }
 
@@ -56,12 +56,12 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Forbidden("You are forbidden.", "xavier");
+        var error = new Error.Forbidden("xavier") { Detail = "You are forbidden." };
         var expected = new ProblemDetails
         {
             Detail = "You are forbidden.",
             Status = StatusCodes.Status403Forbidden,
-            Instance = "xavier"
+            Instance = (string?)null
         };
         var result = Task.FromResult(Result.Fail<string>(error));
 
@@ -71,7 +71,7 @@ public class ActionResultTaskTests
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
     }
 
@@ -80,12 +80,12 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Unauthorized("You are not authorized.", "xavier");
+        var error = new Error.Unauthorized() { Detail = "You are not authorized." };
         var expected = new ProblemDetails
         {
             Detail = "You are not authorized.",
             Status = StatusCodes.Status401Unauthorized,
-            Instance = "xavier"
+            Instance = (string?)null
         };
         var result = Task.FromResult(Result.Fail<string>(error));
 
@@ -95,7 +95,7 @@ public class ActionResultTaskTests
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
     }
 
@@ -104,13 +104,15 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        ImmutableArray<FieldError> modelError = [new FieldError("firstName", ["First name required."])];
-        var error = Error.Validation(modelError, "Customer validation failed.", "Micheal");
+        var error = new Error.UnprocessableContent(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty("firstName"), "validation.error") { Detail = "First name required." }))
+            { Detail = "Customer validation failed." };
         var expected = new ValidationProblemDetails
         {
             Title = null,
             Detail = "Customer validation failed.",
-            Instance = "Micheal",
+            Instance = (string?)null,
+            Status = StatusCodes.Status422UnprocessableEntity,
             Errors = new Dictionary<string, string[]> { { "firstName", ["First name required."] } }
         };
         var result = Task.FromResult(Result.Fail<string>(error));
@@ -123,7 +125,7 @@ public class ActionResultTaskTests
         var objectResult = response.Result.As<ObjectResult>();
         objectResult.Value.Should().BeOfType<ValidationProblemDetails>();
         var validationProblem = objectResult.Value.As<ValidationProblemDetails>();
-        validationProblem.Should().BeEquivalentTo(expected);
+        validationProblem.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
@@ -131,12 +133,12 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Conflict("There is a conflict.", "Micheal");
+        var error = new Error.Conflict(null, "Micheal") { Detail = "There is a conflict." };
         var expected = new ProblemDetails
         {
             Detail = "There is a conflict.",
             Status = StatusCodes.Status409Conflict,
-            Instance = "Micheal"
+            Instance = (string?)null
         };
         var result = Task.FromResult(Result.Fail<string>(error));
 
@@ -146,7 +148,7 @@ public class ActionResultTaskTests
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status409Conflict);
     }
 
@@ -155,12 +157,12 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.Unexpected("What happened?", "Micheal");
+        var error = new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = "What happened?" };
         var expected = new ProblemDetails
         {
             Detail = "An internal error occurred.",
             Status = StatusCodes.Status500InternalServerError,
-            Instance = "Micheal"
+            Instance = (string?)null
         };
         var result = Task.FromResult(Result.Fail<string>(error));
 
@@ -170,7 +172,7 @@ public class ActionResultTaskTests
         // Assert
         response.Result.Should().BeOfType<ObjectResult>();
         var objectResult = response.Result.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
     }
 
@@ -235,7 +237,7 @@ public class ActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.NotFound("Resource not found");
+        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" };
         var result = Task.FromResult(Result.Fail(error));
         var expected = new ProblemDetails
         {
@@ -249,7 +251,7 @@ public class ActionResultTaskTests
         // Assert
         response.Should().BeOfType<ObjectResult>();
         var objectResult = response.As<ObjectResult>();
-        objectResult.Value.Should().BeEquivalentTo(expected);
+        objectResult.Value.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
         objectResult.StatusCode.Should().Be(StatusCodes.Status404NotFound);
     }
 }

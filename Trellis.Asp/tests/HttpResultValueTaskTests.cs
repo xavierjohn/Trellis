@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using Microsoft.AspNetCore.Http;
@@ -37,7 +37,7 @@ public class HttpResultValueTaskTests : IDisposable
     public async Task Will_return_BadRequest_Result_Async()
     {
         // Arrange
-        var error = Error.BadRequest("Test");
+        var error = new Error.BadRequest("bad.request") { Detail = "Test" };
         var result = ValueTask.FromResult(Result.Fail<string>(error));
         var expected = new ProblemDetails
         {
@@ -54,7 +54,7 @@ public class HttpResultValueTaskTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class HttpResultValueTaskTests : IDisposable
     public async Task Will_return_Conflict_for_Unit_failure_async()
     {
         // Arrange
-        var error = Error.Conflict("Conflict occurred");
+        var error = new Error.Conflict(null, "conflict") { Detail = "Conflict occurred" };
         var result = ValueTask.FromResult(Result.Fail(error));
         var expected = new ProblemDetails
         {
@@ -93,7 +93,7 @@ public class HttpResultValueTaskTests : IDisposable
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         var problemResult = response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         problemResult.ContentType.Should().Be("application/problem+json");
-        problemResult.ProblemDetails.Should().BeEquivalentTo(expected);
+        problemResult.ProblemDetails.Should().BeEquivalentTo(expected, o => o.Excluding(p => p.Extensions));
     }
 
     #region Custom Options
@@ -103,8 +103,8 @@ public class HttpResultValueTaskTests : IDisposable
     {
         // Arrange
         var options = new TrellisAspOptions();
-        options.MapError<DomainError>(StatusCodes.Status400BadRequest);
-        var resultTask = ValueTask.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+        var resultTask = ValueTask.FromResult(Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" }));
 
         // Act
         var response = await resultTask.ToHttpResultAsync(options);
@@ -119,7 +119,7 @@ public class HttpResultValueTaskTests : IDisposable
     public async Task ToHttpResultAsync_ValueTask_without_options_uses_defaults()
     {
         // Arrange
-        var resultTask = ValueTask.FromResult(Result.Fail<string>(Error.Domain("Business rule")));
+        var resultTask = ValueTask.FromResult(Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" }));
 
         // Act
         var response = await resultTask.ToHttpResultAsync();
@@ -127,7 +127,7 @@ public class HttpResultValueTaskTests : IDisposable
         // Assert
         response.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>();
         response.As<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>()
-            .ProblemDetails.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+            .ProblemDetails.Status.Should().Be(StatusCodes.Status409Conflict);
     }
 
     #endregion

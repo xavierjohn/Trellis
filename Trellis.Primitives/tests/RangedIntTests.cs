@@ -40,10 +40,10 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(-10);
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("testQuantity");
-        validation.FieldErrors[0].Details[0].Should().Be("Test Quantity must be at least 1.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/testQuantity");
+        validation.Fields[0].Detail.Should().Be("Test Quantity must be at least 1.");
     }
 
     [Fact]
@@ -51,10 +51,10 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(5000);
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("testQuantity");
-        validation.FieldErrors[0].Details[0].Should().Be("Test Quantity must be at most 999.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/testQuantity");
+        validation.Fields[0].Detail.Should().Be("Test Quantity must be at most 999.");
     }
 
     [Fact]
@@ -112,9 +112,9 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate("1000");
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Test Quantity must be at most 999.");
+        result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Test Quantity must be at most 999.");
     }
 
     #endregion
@@ -145,8 +145,8 @@ public class RangedIntTests
     {
         var result = TestQuantity.TryCreate(0, "myField");
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("myField");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 
     #endregion

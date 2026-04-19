@@ -21,32 +21,32 @@ public class EnsureTests_Task_Right
     {
         var initialResult = Result.Ok("Initial Result");
 
-        var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Fail<string>(Error.Unauthorized("Error message"))));
+        var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Fail<string>(new Error.Unauthorized() { Detail = "Error message" })));
 
         result.Should().BeFailure("Predicate is failure result")
-            .Which.Should().Be(Error.Unauthorized("Error message"));
+            .Which.Should().Be(new Error.Unauthorized() { Detail = "Error message" });
     }
 
     [Fact]
     public async Task Ensure_Task_Right_with_failureInput_and_successPredicate()
     {
-        var initialResult = Result.Fail<string>(Error.Conflict("Initial Error message"));
+        var initialResult = Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" });
 
         var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Ok("Success message")));
 
         result.Should().BeFailure("Initial result is failure result")
-            .Which.Should().Be(Error.Conflict("Initial Error message"));
+            .Which.Should().Be(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" });
     }
 
     [Fact]
     public async Task Ensure_Task_Right_with_failureInput_and_failurePredicate()
     {
-        var initialResult = Result.Fail<string>(Error.NotFound("Initial Error message"));
+        var initialResult = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Initial Error message" });
 
-        var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Fail<string>(Error.Unauthorized("Error message"))));
+        var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Fail<string>(new Error.Unauthorized() { Detail = "Error message" })));
 
         result.Should().BeFailure("Initial result is failure result")
-            .Which.Should().Be(Error.NotFound("Initial Error message"));
+            .Which.Should().Be(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Initial Error message" });
     }
 
     [Fact]
@@ -54,10 +54,10 @@ public class EnsureTests_Task_Right
     {
         var initialResult = Result.Ok("Initial Success message");
 
-        var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Fail<string>(Error.Conflict("Error Message"))));
+        var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "Error Message" })));
 
         result.Should().BeFailure("Predicate is failure result")
-            .Which.Should().Be(Error.Conflict("Error Message"));
+            .Which.Should().Be(new Error.Conflict(null, "conflict") { Detail = "Error Message" });
     }
 
     [Fact]
@@ -74,22 +74,22 @@ public class EnsureTests_Task_Right
     [Fact]
     public async Task Ensure_Task_Right_with_failureInput_and_parameterisedSuccessPredicate()
     {
-        var initialResult = Result.Fail<string>(Error.Unexpected("Initial Error message"));
+        var initialResult = Result.Fail<string>(new Error.InternalServerError("test") { Detail = "Initial Error message" });
 
         var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Ok("Success Message")));
 
         result.Should().BeFailure("Initial result is failure result")
-            .Which.Should().Be(Error.Unexpected("Initial Error message"));
+            .Which.Should().Be(new Error.InternalServerError("test") { Detail = "Initial Error message" });
     }
 
     [Fact]
     public async Task Ensure_Task_Right_with_failureInput_and_parameterisedFailurePredicate()
     {
-        var initialResult = Result.Fail<string>(Error.Unexpected("Initial Error message"));
+        var initialResult = Result.Fail<string>(new Error.InternalServerError("test") { Detail = "Initial Error message" });
 
-        var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Fail<string>(Error.Unexpected("Success Message"))));
+        var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Fail<string>(new Error.InternalServerError("test") { Detail = "Success Message" })));
 
         result.Should().BeFailure("Initial result and predicate is failure result")
-            .Which.Should().Be(Error.Unexpected("Initial Error message"));
+            .Which.Should().Be(new Error.InternalServerError("test") { Detail = "Initial Error message" });
     }
 }

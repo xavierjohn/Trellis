@@ -202,7 +202,7 @@ public class QueryableExtensionsTests : IDisposable
         // Act
         var ct = TestContext.Current.CancellationToken;
         var result = await _context.Customers
-            .FirstOrDefaultResultAsync(Error.NotFound("Not found"), ct);
+            .FirstOrDefaultResultAsync(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" }, ct);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -217,7 +217,7 @@ public class QueryableExtensionsTests : IDisposable
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
-        var notFoundError = Error.NotFound("Customer not found");
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer not found" };
 
         // Act
         var result = await _context.Customers
@@ -226,7 +226,7 @@ public class QueryableExtensionsTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<Error.NotFound>();
         result.UnwrapError().Detail.Should().Be("Customer not found");
     }
 
@@ -242,7 +242,7 @@ public class QueryableExtensionsTests : IDisposable
         var result = await _context.Customers
             .FirstOrDefaultResultAsync(
                 c => c.Email == EmailAddress.Create("alice@example.com"),
-                Error.NotFound("Not found"),
+                new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" },
                 ct);
 
         // Assert
@@ -259,7 +259,7 @@ public class QueryableExtensionsTests : IDisposable
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
-        var notFoundError = Error.NotFound("User not found");
+        var notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "User not found" };
 
         // Act
         var result = await _context.Customers

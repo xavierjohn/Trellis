@@ -12,7 +12,7 @@ using Trellis.Testing;
 
 public class ReadResultMaybeFromJsonTests
 {
-    readonly NotFoundError _notFoundError = Error.NotFound("Person not found");
+    readonly Error.NotFound _notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Person not found" };
 
     private bool _callbackCalled;
 
@@ -323,7 +323,7 @@ public class ReadResultMaybeFromJsonTests
         // Assert
         result.IsFailure.Should().BeTrue();
         _callbackCalled.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<Error.NotFound>();
         result.UnwrapError().Detail.Should().Be("Bad request");
     }
 
@@ -346,7 +346,7 @@ public class ReadResultMaybeFromJsonTests
         // Assert
         result.IsFailure.Should().BeTrue();
         _callbackCalled.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<NotFoundError>();
+        result.UnwrapError().Should().BeOfType<Error.NotFound>();
         result.UnwrapError().Detail.Should().Be("Bad request");
     }
 
@@ -375,7 +375,7 @@ public class ReadResultMaybeFromJsonTests
     public async Task Result_wrapped_failure_Propagates_error()
     {
         // Arrange
-        var error = Error.Validation("Validation failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Validation failed" };
         var resultHttpResponseMessage = Result.Fail<HttpResponseMessage>(error);
 
         // Act
@@ -411,7 +411,7 @@ public class ReadResultMaybeFromJsonTests
     public async Task Task_result_wrapped_failure_Propagates_error()
     {
         // Arrange
-        var error = Error.Unauthorized("Unauthorized access");
+        var error = new Error.Unauthorized() { Detail = "Unauthorized access" };
         var taskResultHttpResponseMessage = Task.FromResult(Result.Fail<HttpResponseMessage>(error));
 
         // Act
@@ -426,7 +426,7 @@ public class ReadResultMaybeFromJsonTests
     {
         _callbackCalled = true;
         context.Should().Be("Common");
-        return Task.FromResult((Error)Error.NotFound("Bad request"));
+        return Task.FromResult((Error)new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Bad request" });
     }
 }
 

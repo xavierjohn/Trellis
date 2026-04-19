@@ -17,11 +17,11 @@ public class RequiredGuidTests
     {
         var guidId1 = EmployeeId.TryCreate(default(Guid));
         guidId1.IsFailure.Should().BeTrue();
-        guidId1.UnwrapError().Should().BeOfType<ValidationError>();
-        var validation = (ValidationError)guidId1.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("employeeId");
-        validation.FieldErrors[0].Details[0].Should().Be("Employee Id cannot be empty.");
-        validation.Code.Should().Be("validation.error");
+        guidId1.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        var validation = (Error.UnprocessableContent)guidId1.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/employeeId");
+        validation.Fields[0].Detail.Should().Be("Employee Id cannot be empty.");
+        validation.Fields[0].ReasonCode.Should().Be("validation.error");
     }
 
     [Fact]
@@ -32,8 +32,8 @@ public class RequiredGuidTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("myField");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 
     [Fact]
@@ -157,10 +157,10 @@ public class RequiredGuidTests
 
         // Assert
         myGuidResult.IsFailure.Should().BeTrue();
-        myGuidResult.UnwrapError().Should().BeOfType<ValidationError>();
-        ValidationError ve = (ValidationError)myGuidResult.UnwrapError();
-        ve.FieldErrors[0].FieldName.Should().Be("employeeId");
-        ve.FieldErrors[0].Details[0].Should().Be("Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)");
+        myGuidResult.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        Error.UnprocessableContent ve = (Error.UnprocessableContent)myGuidResult.UnwrapError();
+        ve.Fields[0].Field.Path.Should().Be("/employeeId");
+        ve.Fields[0].Detail.Should().Be("Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)");
 
     }
 
@@ -174,10 +174,10 @@ public class RequiredGuidTests
 
         // Assert
         myGuidResult.IsFailure.Should().BeTrue();
-        myGuidResult.UnwrapError().Should().BeOfType<ValidationError>();
-        ValidationError ve = (ValidationError)myGuidResult.UnwrapError();
-        ve.FieldErrors[0].FieldName.Should().Be("employeeId");
-        ve.FieldErrors[0].Details[0].Should().Be("Employee Id cannot be empty.");
+        myGuidResult.UnwrapError().Should().BeOfType<Error.UnprocessableContent>();
+        Error.UnprocessableContent ve = (Error.UnprocessableContent)myGuidResult.UnwrapError();
+        ve.Fields[0].Field.Path.Should().Be("/employeeId");
+        ve.Fields[0].Detail.Should().Be("Employee Id cannot be empty.");
     }
 
     [Fact]

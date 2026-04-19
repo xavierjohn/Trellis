@@ -28,13 +28,13 @@ public class InventoryService
     public Result CheckAvailability(ProductId productId, int quantity)
     {
         if (quantity <= 0)
-            return Result.Fail(Error.Validation("Quantity must be greater than zero", nameof(quantity)));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be greater than zero" })));
 
         if (!_stock.TryGetValue(productId, out var available))
-            return Result.Fail(Error.NotFound($"Product {productId} not found in inventory"));
+            return Result.Fail(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"Product {productId} not found in inventory" });
 
         if (available < quantity)
-            return Result.Fail(Error.Validation($"Insufficient stock. Available: {available}, Requested: {quantity}"));
+            return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Insufficient stock. Available: {available}, Requested: {quantity}" });
 
         return Result.Ok();
     }
@@ -62,7 +62,7 @@ public class InventoryService
         await Task.Delay(50, cancellationToken); // Simulate async operation
 
         if (!_stock.TryGetValue(productId, out _))
-            return Result.Fail(Error.NotFound($"Product {productId} not found in inventory"));
+            return Result.Fail(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"Product {productId} not found in inventory" });
 
         _stock[productId] += quantity;
         Console.WriteLine($"Released {quantity} units of product {productId}. New total: {_stock[productId]}");
@@ -76,7 +76,7 @@ public class InventoryService
     public Result<int> GetStockLevel(ProductId productId)
     {
         if (!_stock.TryGetValue(productId, out var level))
-            return Result.Fail<int>(Error.NotFound($"Product {productId} not found in inventory"));
+            return Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"Product {productId} not found in inventory" });
 
         return Result.Ok(level);
     }

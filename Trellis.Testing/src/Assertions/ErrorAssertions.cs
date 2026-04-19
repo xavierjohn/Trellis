@@ -1,4 +1,4 @@
-﻿namespace Trellis.Testing;
+namespace Trellis.Testing;
 
 using FluentAssertions;
 using FluentAssertions.Execution;
@@ -89,7 +89,7 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         string because = "",
         params object[] becauseArgs)
     {
-        Subject.Detail.Should().Be(expectedDetail, because, becauseArgs);
+        Subject.Detail!.Should().Be(expectedDetail, because, becauseArgs);
         return new AndConstraint<ErrorAssertions>(this);
     }
 
@@ -108,26 +108,7 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         string because = "",
         params object[] becauseArgs)
     {
-        Subject.Detail.Should().Contain(substring, because, becauseArgs);
-        return new AndConstraint<ErrorAssertions>(this);
-    }
-
-    /// <summary>
-    /// Asserts that the error has the specified instance identifier.
-    /// </summary>
-    /// <param name="expectedInstance">The expected instance identifier.</param>
-    /// <param name="because">
-    /// A formatted phrase explaining why the assertion is needed.
-    /// </param>
-    /// <param name="becauseArgs">
-    /// Zero or more objects to format using the placeholders in <paramref name="because" />.
-    /// </param>
-    public AndConstraint<ErrorAssertions> HaveInstance(
-        string expectedInstance,
-        string because = "",
-        params object[] becauseArgs)
-    {
-        Subject.Instance.Should().Be(expectedInstance, because, becauseArgs);
+        Subject.Detail!.Should().Contain(substring, because, becauseArgs);
         return new AndConstraint<ErrorAssertions>(this);
     }
 

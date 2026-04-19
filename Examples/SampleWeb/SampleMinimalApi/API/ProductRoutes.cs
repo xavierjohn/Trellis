@@ -7,6 +7,7 @@ using Trellis;
 using Trellis.Asp;
 using Trellis.EntityFrameworkCore;
 using Trellis.Primitives;
+using System.Globalization;
 
 public record ProductResponse(Guid Id, string Name, decimal Price, int Stock, string ETag)
 {
@@ -79,7 +80,7 @@ public static class ProductRoutes
         productApi.MapGet("/{id}", (ProductId id, AppDbContext db, HttpContext httpContext) =>
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == id,
-                    Error.NotFound("Product not found.", id))
+                    new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Product not found." })
                 .ToHttpResultAsync(httpContext, p => RepresentationMetadata.WithStrongETag(p.ETag), ProductResponse.From))
             .WithScalarValueValidation();
 
@@ -102,7 +103,7 @@ public static class ProductRoutes
         productApi.MapPut("/{id}", (ProductId id, UpdateProductRequest request, AppDbContext db, HttpContext httpContext) =>
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == id,
-                    Error.NotFound("Product not found.", id))
+                    new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Product not found." })
                 .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p =>
                     MonetaryAmount.TryCreate(request.Price, "price")
@@ -118,7 +119,7 @@ public static class ProductRoutes
         {
             var product = await db.Products.FindAsync(id);
             if (product is null)
-                return Error.NotFound("Product not found.", id).ToHttpResult();
+                return new Error.NotFound(new ResourceRef("Resource", id.ToString(CultureInfo.InvariantCulture))) { Detail = "Product not found." }.ToHttpResult();
 
             db.Products.Remove(product);
             var saveResult = await db.SaveChangesResultUnitAsync();

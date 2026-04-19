@@ -61,7 +61,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var error = Error.BadRequest("Invalid input");
+        var error = new Error.BadRequest("bad.request") { Detail = "Invalid input" };
         var result = Result.Fail<UserDto>(error);
 
         // Act
@@ -80,7 +80,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Fail<UserDto>(Error.NotFound("Not found"));
+        var result = Result.Fail<UserDto>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -96,7 +96,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Fail<UserDto>(Error.NotFound("Resource not found"));
+        var result = Result.Fail<UserDto>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" });
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -112,7 +112,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Fail<UserDto>(Error.Conflict("Already exists"));
+        var result = Result.Fail<UserDto>(new Error.Conflict(null, "conflict") { Detail = "Already exists" });
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -173,7 +173,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Fail<(string, string)>(Error.BadRequest("Bad input"));
+        var result = Result.Fail<(string, string)>(new Error.BadRequest("bad.request") { Detail = "Bad input" });
 
         // Act
         var response = result.ToCreatedAtActionResult(controller,
@@ -191,7 +191,7 @@ public class CreatedAtActionResultTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var result = Result.Fail<string>(Error.NotFound("Missing"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Missing" });
 
         // Act
         var response = result.ToCreatedAtActionResult<string, UserDto>(controller,

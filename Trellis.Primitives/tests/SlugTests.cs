@@ -51,8 +51,8 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Slug is required.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Slug is required.");
     }
 
     [Theory]
@@ -68,8 +68,8 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
     [Theory]
@@ -83,8 +83,8 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
     [Theory]
@@ -99,8 +99,8 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
     [Theory]
@@ -117,8 +117,8 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].Details[0].Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
     [Fact]
@@ -129,8 +129,8 @@ public class SlugTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        var validation = (ValidationError)result.UnwrapError();
-        validation.FieldErrors[0].FieldName.Should().Be("articleSlug");
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Field.Path.Should().Be("/articleSlug");
     }
 
     [Fact]

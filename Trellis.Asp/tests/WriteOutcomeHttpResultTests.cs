@@ -307,7 +307,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Failure_ReturnsError()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Fail<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var response = result.ToUpdatedHttpResult(httpContext, (RepresentationMetadata?)null, (string s) => s);
 
@@ -337,7 +337,7 @@ public class WriteOutcomeHttpResultTests : IDisposable
     public void ToUpdatedHttpResult_Selector_Failure_DoesNotInvokeSelector()
     {
         var httpContext = CreateHttpContext();
-        var result = Result.Fail<string>(Error.NotFound("gone"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" });
         var selectorInvoked = false;
 
         result.ToUpdatedHttpResult(

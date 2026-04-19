@@ -766,7 +766,7 @@ public class WhenTests : TestBase
         // Act
         var actual = result.Unless(
             u => u.IsActive,
-            u => { processingExecuted = true; return Result.Fail<User>(Error.Validation("User is inactive")); });
+            u => { processingExecuted = true; return Result.Fail<User>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "User is inactive" }); });
 
         // Assert
         processingExecuted.Should().BeTrue();

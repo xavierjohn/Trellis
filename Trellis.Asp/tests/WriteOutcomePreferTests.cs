@@ -261,7 +261,7 @@ public class WriteOutcomePreferTests
     public void ToUpdatedActionResult_Failure_ReturnsError()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var result = Result.Fail<string>(Error.NotFound("not found"));
+        var result = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var actionResult = result.ToUpdatedActionResult(controller, (RepresentationMetadata?)null, (string s) => s);
 
@@ -320,7 +320,7 @@ public class WriteOutcomePreferTests
     public async Task ToUpdatedActionResultAsync_Task_StaticMetadata_Failure_ReturnsError()
     {
         var (controller, _) = CreateControllerWithPrefer("return=minimal");
-        var resultTask = Task.FromResult(Result.Fail<string>(Error.NotFound("gone")));
+        var resultTask = Task.FromResult(Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "gone" }));
 
         var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, (RepresentationMetadata?)null, (string s) => s);
 
@@ -346,7 +346,7 @@ public class WriteOutcomePreferTests
     public async Task ToUpdatedActionResultAsync_ValueTask_StaticMetadata_Failure_ReturnsError()
     {
         var (controller, _) = CreateControllerWithPrefer();
-        var resultTask = new ValueTask<Result<string>>(Result.Fail<string>(Error.Conflict("exists")));
+        var resultTask = new ValueTask<Result<string>>(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "exists" }));
 
         var actionResult = await resultTask.ToUpdatedActionResultAsync(controller, (RepresentationMetadata?)null, (string s) => s);
 

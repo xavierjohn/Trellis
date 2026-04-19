@@ -10,7 +10,7 @@ using Trellis;
 
 public class ReadResultFromJsonTests
 {
-    readonly NotFoundError _notFoundError = Error.NotFound("Person not found");
+    readonly Error.NotFound _notFoundError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Person not found" };
 
     private bool _callbackCalled;
 
@@ -46,7 +46,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Should().BeOfType<Error.InternalServerError>();
         result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
@@ -81,7 +81,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Should().BeOfType<Error.InternalServerError>();
         result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
@@ -99,7 +99,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Should().BeOfType<Error.InternalServerError>();
         result.UnwrapError().Detail.Should().Be("HTTP response was null for value camelcasePerson.");
     }
 
@@ -168,7 +168,7 @@ public class ReadResultFromJsonTests
             content.Should().Be("Expected space invaders.");
             context.Should().Be("Hello");
             callbackCalled = true;
-            return Error.NotFound("Bad request");
+            return new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Bad request" };
         }
 
         // Act
@@ -176,7 +176,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().Be(Error.NotFound("Bad request"));
+        result.UnwrapError().Should().Be(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Bad request" });
         callbackCalled.Should().BeTrue();
     }
 
@@ -197,7 +197,7 @@ public class ReadResultFromJsonTests
             content.Should().Be("Expected space invaders.");
             context.Should().Be(5);
             callbackCalled = true;
-            return Error.NotFound("Bad request");
+            return new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Bad request" };
         }
 
         // Act
@@ -205,7 +205,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().Be(Error.NotFound("Bad request"));
+        result.UnwrapError().Should().Be(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Bad request" });
         callbackCalled.Should().BeTrue();
     }
 
@@ -256,7 +256,7 @@ public class ReadResultFromJsonTests
     {
         _callbackCalled = true;
         context.Should().Be("Common");
-        return Task.FromResult((Error)Error.NotFound("Bad request"));
+        return Task.FromResult((Error)new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Bad request" });
     }
 
     #region CancellationToken Tests
@@ -294,7 +294,7 @@ public class ReadResultFromJsonTests
         async Task<Error> Callback(HttpResponseMessage response, string context, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
-            return Error.BadRequest("Error");
+            return new Error.BadRequest("bad.request") { Detail = "Error" };
         }
 
         // Act
@@ -400,7 +400,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Should().BeOfType<Error.InternalServerError>();
         result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
@@ -420,7 +420,7 @@ public class ReadResultFromJsonTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<UnexpectedError>();
+        result.UnwrapError().Should().BeOfType<Error.InternalServerError>();
         result.UnwrapError().Detail.Should().StartWith("Failed to deserialize HTTP response to camelcasePerson:");
     }
 
@@ -522,7 +522,7 @@ public class ReadResultFromJsonTests
     public async Task Result_wrapped_HttpResponseMessage_with_failure_should_propagate_error()
     {
         // Arrange
-        var error = Error.Validation("Initial validation failed");
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Initial validation failed" };
         var resultResponse = Result.Fail<HttpResponseMessage>(error);
 
         // Act

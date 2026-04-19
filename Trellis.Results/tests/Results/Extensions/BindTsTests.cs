@@ -311,7 +311,7 @@ public class BindTsTests : TestBase
     public void Bind_2Tuple_AfterCombine_OneFailure_ReturnsFailure()
     {
         // Arrange
-        var firstNameResult = Result.Fail<string>(Error.Validation("First name required"));
+        var firstNameResult = Result.Fail<string>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "First name required" });
         var lastNameResult = Result.Ok("Doe");
 
         // Act
@@ -320,7 +320,7 @@ public class BindTsTests : TestBase
             .Bind((first, last) => Result.Ok($"{first} {last}"));
 
         // Assert
-        result.Should().BeFailureOfType<ValidationError>();
+        result.Should().BeFailureOfType<Error.UnprocessableContent>();
     }
 
     [Fact]

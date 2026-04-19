@@ -115,22 +115,22 @@ public static class ResultDebugExtensions
                 activity.SetTag("debug.error.type", error.GetType().Name);
                 activity.SetTag("debug.error.code", error.Code);
                 activity.SetTag("debug.error.detail", error.Detail);
-                activity.SetTag("debug.error.instance", error.Instance ?? "(none)");
+                activity.SetTag("debug.error.kind", error.Kind);
 
-                if (error is ValidationError validationError)
+                if (error is Error.UnprocessableContent validationError)
                 {
-                    activity.SetTag("debug.error.validation.field_count", validationError.FieldErrors.Length);
-                    for (int i = 0; i < Math.Min(validationError.FieldErrors.Length, 10); i++)
+                    activity.SetTag("debug.error.validation.field_count", validationError.Fields.Length);
+                    for (int i = 0; i < Math.Min(validationError.Fields.Length, 10); i++)
                     {
-                        var fieldError = validationError.FieldErrors[i];
-                        activity.SetTag($"debug.error.validation.field[{i}].name", fieldError.FieldName);
-                        activity.SetTag($"debug.error.validation.field[{i}].details", string.Join(", ", fieldError.Details));
+                        var fieldError = validationError.Fields[i];
+                        activity.SetTag($"debug.error.validation.field[{i}].name", fieldError.Field.Path);
+                        activity.SetTag($"debug.error.validation.field[{i}].reason", fieldError.ReasonCode);
                     }
                 }
-                else if (error is AggregateError aggregated)
+                else if (error is Error.Aggregate aggregated)
                 {
-                    activity.SetTag("debug.error.aggregate.count", aggregated.Errors.Count);
-                    for (int i = 0; i < Math.Min(aggregated.Errors.Count, 10); i++)
+                    activity.SetTag("debug.error.aggregate.count", aggregated.Errors.Length);
+                    for (int i = 0; i < Math.Min(aggregated.Errors.Length, 10); i++)
                     {
                         var err = aggregated.Errors[i];
                         activity.SetTag($"debug.error.aggregate[{i}].code", err.Code);

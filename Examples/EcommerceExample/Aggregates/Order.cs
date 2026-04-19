@@ -49,7 +49,7 @@ public class Order : Aggregate<OrderId>
     public static Result<Order> TryCreate(CustomerId customerId)
     {
         if (customerId is null)
-            return Result.Fail<EcommerceExample.Aggregates.Order>(Error.Validation("Customer ID is required", nameof(customerId)));
+            return Result.Fail<EcommerceExample.Aggregates.Order>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(customerId)), "validation.error") { Detail = "Customer ID is required" })));
 
         return Result.Ok(new Order(customerId));
     }
@@ -57,7 +57,7 @@ public class Order : Aggregate<OrderId>
     public static Order Create(CustomerId customerId) =>
         TryCreate(customerId).Match(
             onSuccess: o => o,
-            onFailure: error => throw new InvalidOperationException($"Failed to create Order: {error.Detail}"));
+            onFailure: error => throw new InvalidOperationException($"Failed to create Order: {error.GetDisplayMessage()}"));
 
     /// <summary>
     /// Adds a product to the order with Railway Oriented Programming pattern.
@@ -66,7 +66,7 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.Draft,
-                Error.Domain($"Cannot add items to order in {Status} status"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Cannot add items to order in {Status} status" })
             .Bind(_ => OrderLine.TryCreate(productId, productName, unitPrice, quantity))
             .Tap(line =>
             {
@@ -102,9 +102,9 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.Draft,
-                Error.Domain($"Cannot remove items from order in {Status} status"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Cannot remove items from order in {Status} status" })
             .Ensure(_ => _lines.Any(l => l.Id.Equals(productId)),
-                Error.NotFound("Product not found in order"))
+                new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Product not found in order" })
             .Tap(_ =>
             {
                 _lines.RemoveAll(l => l.Id.Equals(productId));
@@ -123,11 +123,11 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.Draft,
-                Error.Conflict($"Cannot submit order in {Status} status"))
+                new Error.Conflict(null, "conflict") { Detail = $"Cannot submit order in {Status} status" })
             .Ensure(_ => _lines.Count > 0,
-                Error.Domain("Cannot submit empty order"))
+                new Error.Conflict(null, "domain.violation") { Detail = "Cannot submit empty order" })
             .Ensure(_ => Total.Amount > 0,
-                Error.Domain("Order total must be greater than zero"))
+                new Error.Conflict(null, "domain.violation") { Detail = "Order total must be greater than zero" })
             .Tap(_ =>
             {
                 Status = OrderStatus.Pending;
@@ -150,9 +150,9 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.Pending,
-                Error.Conflict($"Cannot process payment for order in {Status} status"))
+                new Error.Conflict(null, "conflict") { Detail = $"Cannot process payment for order in {Status} status" })
             .Ensure(_ => !string.IsNullOrWhiteSpace(transactionId),
-                Error.Validation("Transaction ID is required", nameof(transactionId)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(transactionId)), "validation.error") { Detail = "Transaction ID is required" })))
             .Tap(_ =>
             {
                 Status = OrderStatus.PaymentProcessing;
@@ -171,9 +171,9 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.PaymentProcessing,
-                Error.Conflict($"Cannot confirm order in {Status} status"))
+                new Error.Conflict(null, "conflict") { Detail = $"Cannot confirm order in {Status} status" })
             .Ensure(_ => !string.IsNullOrWhiteSpace(PaymentTransactionId),
-                Error.Domain("Payment transaction ID is missing"))
+                new Error.Conflict(null, "domain.violation") { Detail = "Payment transaction ID is missing" })
             .Tap(_ =>
             {
                 Status = OrderStatus.Confirmed;
@@ -197,7 +197,7 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.PaymentProcessing,
-                Error.Conflict($"Cannot mark payment failed for order in {Status} status"))
+                new Error.Conflict(null, "conflict") { Detail = $"Cannot mark payment failed for order in {Status} status" })
             .Tap(_ =>
             {
                 Status = OrderStatus.PaymentFailed;
@@ -216,9 +216,9 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status is OrderStatus.Draft or OrderStatus.Pending or OrderStatus.PaymentFailed,
-                Error.Domain($"Cannot cancel order in {Status} status"))
+                new Error.Conflict(null, "domain.violation") { Detail = $"Cannot cancel order in {Status} status" })
             .Ensure(_ => !string.IsNullOrWhiteSpace(reason),
-                Error.Validation("Cancellation reason is required", nameof(reason)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(reason)), "validation.error") { Detail = "Cancellation reason is required" })))
             .Tap(_ =>
             {
                 var previousStatus = Status;
@@ -237,7 +237,7 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.Confirmed,
-                Error.Conflict($"Cannot ship order in {Status} status"))
+                new Error.Conflict(null, "conflict") { Detail = $"Cannot ship order in {Status} status" })
             .Tap(_ =>
             {
                 Status = OrderStatus.Shipped;
@@ -255,7 +255,7 @@ public class Order : Aggregate<OrderId>
     {
         return this.ToResult()
             .Ensure(_ => Status == OrderStatus.Shipped,
-                Error.Conflict($"Cannot mark order as delivered in {Status} status"))
+                new Error.Conflict(null, "conflict") { Detail = $"Cannot mark order as delivered in {Status} status" })
             .Tap(_ =>
             {
                 Status = OrderStatus.Delivered;

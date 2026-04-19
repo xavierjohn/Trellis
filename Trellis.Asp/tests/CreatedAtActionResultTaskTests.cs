@@ -40,7 +40,7 @@ public class CreatedAtActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var resultTask = Task.FromResult(Result.Fail<UserDto>(Error.BadRequest("Bad")));
+        var resultTask = Task.FromResult(Result.Fail<UserDto>(new Error.BadRequest("bad.request") { Detail = "Bad" }));
 
         // Act
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,
@@ -79,7 +79,7 @@ public class CreatedAtActionResultTaskTests
     {
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
-        var resultTask = Task.FromResult(Result.Fail<(string, string)>(Error.Conflict("Exists")));
+        var resultTask = Task.FromResult(Result.Fail<(string, string)>(new Error.Conflict(null, "conflict") { Detail = "Exists" }));
 
         // Act
         var response = await resultTask.ToCreatedAtActionResultAsync(controller,

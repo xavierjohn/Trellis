@@ -110,14 +110,14 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         var field = fieldName.NormalizeFieldName("phoneNumber");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<PhoneNumber>(Error.Validation("Phone number is required.", field));
+            return Result.Fail<PhoneNumber>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Phone number is required." })));
 
         // Normalize: remove spaces, dashes, and parentheses for validation
         var normalized = NormalizeRegex().Replace(value.Trim(), "");
 
         // Validate E.164 format
         if (!E164Regex().IsMatch(normalized))
-            return Result.Fail<PhoneNumber>(Error.Validation("Phone number must be in E.164 format (e.g., +14155551234).", field));
+            return Result.Fail<PhoneNumber>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Phone number must be in E.164 format (e.g., +14155551234)." })));
 
         return Result.Ok(new PhoneNumber(normalized));
     }

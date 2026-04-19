@@ -26,9 +26,9 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(Error.Validation("Email is required.", field));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(Error.Validation("Email must contain @.", field));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
             return Result.Ok(new Email(value));
         }
     }
@@ -41,9 +41,9 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(Error.Validation("Age cannot be negative.", field));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age cannot be negative." })));
             if (value > 150)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(Error.Validation("Age must be realistic.", field));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age must be realistic." })));
             return Result.Ok(new Age(value));
         }
 
@@ -59,9 +59,9 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "percentage";
             if (value < 0)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(Error.Validation("Percentage cannot be negative.", field));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot be negative." })));
             if (value > 100)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(Error.Validation("Percentage cannot exceed 100.", field));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot exceed 100." })));
             return Result.Ok(new Percentage(value));
         }
 
@@ -77,7 +77,7 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "itemId";
             if (value == Guid.Empty)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.ItemId>(Error.Validation("ItemId cannot be empty.", field));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.ItemId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "ItemId cannot be empty." })));
             return Result.Ok(new ItemId(value));
         }
 
@@ -98,7 +98,7 @@ public class MaybeScalarValueJsonConverterTests
 
         public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
             value == ProcessingMode.Unknown
-                ? Result.Fail<ProcessingModeVO>(Error.Validation("Processing mode is required.", fieldName ?? "processingMode"))
+                ? Result.Fail<ProcessingModeVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "processingMode"), "validation.error") { Detail = "Processing mode is required." })))
                 : Result.Ok(new ProcessingModeVO(value));
 
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
@@ -200,9 +200,9 @@ public class MaybeScalarValueJsonConverterTests
             // Assert
             result.HasNoValue.Should().BeTrue("invalid value returns default (None)");
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].FieldName.Should().Be("Email");
-            error.FieldErrors[0].Details[0].Should().Be("Email must contain @.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Field.Path.Should().Be("/Email");
+            error.Fields[0].Detail.Should().Be("Email must contain @.");
         }
     }
 
@@ -274,8 +274,8 @@ public class MaybeScalarValueJsonConverterTests
             // Assert
             result.HasNoValue.Should().BeTrue();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].Details[0].Should().Be("Age cannot be negative.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Detail.Should().Be("Age cannot be negative.");
         }
     }
 
@@ -397,8 +397,8 @@ public class MaybeScalarValueJsonConverterTests
             // Assert
             result.HasNoValue.Should().BeTrue();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetValidationError();
-            error!.FieldErrors[0].Details[0].Should().Be("ItemId cannot be empty.");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Fields[0].Detail.Should().Be("ItemId cannot be empty.");
         }
     }
 
