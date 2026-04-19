@@ -91,7 +91,7 @@ public static partial class CombineExtensions
     /// </code>
     /// </example>
     public static Result<(<# WriteTs(i - 1); #>)> Combine<<# WriteTs(i - 1); #>>(
-      this Result<(<# WriteTs(i - 1); #>)> t1, Result<Unit> tc)
+      this Result<(<# WriteTs(i - 1); #>)> t1, Result tc)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
@@ -163,7 +163,7 @@ public static partial class CombineExtensionsAsync
     /// Combine a Task-wrapped <#= i - 1 #>-tuple result with a Unit result. Left is async (Task).
     /// </summary>
     public static async Task<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
-      this Task<Result<(<# WriteTs(i - 1); #>)>> tt1, Result<Unit> tc)
+      this Task<Result<(<# WriteTs(i - 1); #>)>> tt1, Result tc)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
@@ -197,7 +197,7 @@ public static partial class CombineExtensionsAsync
     /// Combine a ValueTask-wrapped <#= i - 1 #>-tuple result with a Unit result. Left is async (ValueTask).
     /// </summary>
     public static async ValueTask<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
-      this ValueTask<Result<(<# WriteTs(i - 1); #>)>> vt1, Result<Unit> tc)
+      this ValueTask<Result<(<# WriteTs(i - 1); #>)>> vt1, Result tc)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
