@@ -30,93 +30,67 @@ public class AccountsController : ControllerBase
     public ActionResult<IReadOnlyList<AccountResponse>> List() =>
         Ok(_repository.All().Select(AccountResponse.From).ToList());
 
-    [HttpGet("{id:guid}")]
-    public ActionResult<AccountResponse> Get(Guid id) =>
-        _repository.GetById(AccountId.TryCreate(id).Value)
+    [HttpGet("{id}")]
+    public ActionResult<AccountResponse> Get(AccountId id) =>
+        _repository.GetById(id)
             .Map(AccountResponse.From)
             .ToActionResult(this);
 
     [HttpPost]
-    public ActionResult<AccountResponse> Open([FromBody] OpenAccountRequest request)
-    {
-        if (!Enum.TryParse<AccountType>(request.AccountType, ignoreCase: true, out var type))
-        {
-            return new Error.UnprocessableContent(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(nameof(request.AccountType)), "validation.enum")
-                {
-                    Detail = $"Unknown account type '{request.AccountType}'.",
-                })).ToActionResult<AccountResponse>(this);
-        }
-
-        var moneyChecks = Money.TryCreate(request.InitialDeposit, request.Currency)
+    public ActionResult<AccountResponse> Open([FromBody] OpenAccountRequest request) =>
+        Money.TryCreate(request.InitialDeposit, request.Currency)
             .Combine(Money.TryCreate(request.DailyWithdrawalLimit, request.Currency))
-            .Combine(Money.TryCreate(request.OverdraftLimit, request.Currency));
-
-        return moneyChecks
+            .Combine(Money.TryCreate(request.OverdraftLimit, request.Currency))
             .Bind(values =>
             {
                 var (deposit, daily, overdraft) = values;
-                return BankAccount.TryCreate(
-                    CustomerId.TryCreate(request.CustomerId).Value,
-                    type,
-                    deposit,
-                    daily,
-                    overdraft,
-                    () => _clock.UtcNow);
+                return BankAccount.TryCreate(request.CustomerId, request.AccountType, deposit, daily, overdraft, () => _clock.UtcNow);
             })
             .Tap(_repository.Add)
             .Map(AccountResponse.From)
             .ToActionResult(this);
-    }
 
-    [HttpPost("{id:guid}/deposit")]
-    public ActionResult<AccountResponse> Deposit(Guid id, [FromBody] DepositRequest request) =>
-        _repository.GetById(AccountId.TryCreate(id).Value)
-            .Bind(account => Money.TryCreate(request.Amount, request.Currency).Map(money => (account, money)))
-            .Bind(pair => pair.account.Deposit(pair.money, request.Description))
+    [HttpPost("{id}/deposit")]
+    public ActionResult<AccountResponse> Deposit(AccountId id, [FromBody] DepositRequest request) =>
+        _repository.GetById(id)
+            .Combine(Money.TryCreate(request.Amount, request.Currency))
+            .Bind(pair => pair.Item1.Deposit(pair.Item2, request.Description))
             .Map(AccountResponse.From)
             .ToActionResult(this);
 
-    [HttpPost("{id:guid}/withdraw")]
-    public ActionResult<AccountResponse> Withdraw(Guid id, [FromBody] WithdrawRequest request) =>
-        _repository.GetById(AccountId.TryCreate(id).Value)
-            .Bind(account => Money.TryCreate(request.Amount, request.Currency).Map(money => (account, money)))
-            .Bind(pair => pair.account.Withdraw(pair.money, request.Description))
+    [HttpPost("{id}/withdraw")]
+    public ActionResult<AccountResponse> Withdraw(AccountId id, [FromBody] WithdrawRequest request) =>
+        _repository.GetById(id)
+            .Combine(Money.TryCreate(request.Amount, request.Currency))
+            .Bind(pair => pair.Item1.Withdraw(pair.Item2, request.Description))
             .Map(AccountResponse.From)
             .ToActionResult(this);
 
-    [HttpPost("{id:guid}/secure-withdraw")]
-    public async Task<ActionResult<AccountResponse>> SecureWithdraw(Guid id, [FromBody] SecureWithdrawRequest request, CancellationToken cancellationToken)
-    {
-        var account = _repository.GetById(AccountId.TryCreate(id).Value);
-        if (account.TryGetError(out var error))
-            return error.ToActionResult<AccountResponse>(this);
+    [HttpPost("{id}/secure-withdraw")]
+    public Task<ActionResult<AccountResponse>> SecureWithdraw(AccountId id, [FromBody] SecureWithdrawRequest request, CancellationToken cancellationToken) =>
+        _repository.GetById(id)
+            .Combine(Money.TryCreate(request.Amount, request.Currency))
+            .BindAsync(pair => _workflow.ProcessSecureWithdrawalAsync(pair.Item1, pair.Item2, request.VerificationCode, cancellationToken))
+            .MapAsync(AccountResponse.From)
+            .ToActionResultAsync(this);
 
-        var amount = Money.TryCreate(request.Amount, request.Currency);
-        if (amount.TryGetError(out var amountError))
-            return amountError.ToActionResult<AccountResponse>(this);
-
-        var withdrawal = await _workflow.ProcessSecureWithdrawalAsync(account.Value, amount.Value, request.VerificationCode, cancellationToken);
-        return withdrawal.Map(AccountResponse.From).ToActionResult(this);
-    }
-
-    [HttpPost("{id:guid}/freeze")]
-    public ActionResult<AccountResponse> Freeze(Guid id, [FromBody] FreezeRequest request) =>
-        _repository.GetById(AccountId.TryCreate(id).Value)
+    [HttpPost("{id}/freeze")]
+    public ActionResult<AccountResponse> Freeze(AccountId id, [FromBody] FreezeRequest request) =>
+        _repository.GetById(id)
             .Bind(account => account.Freeze(request.Reason))
             .Map(AccountResponse.From)
             .ToActionResult(this);
 
-    [HttpPost("{id:guid}/unfreeze")]
-    public ActionResult<AccountResponse> Unfreeze(Guid id) =>
-        _repository.GetById(AccountId.TryCreate(id).Value)
+    [HttpPost("{id}/unfreeze")]
+    public ActionResult<AccountResponse> Unfreeze(AccountId id) =>
+        _repository.GetById(id)
             .Bind(account => account.Unfreeze())
             .Map(AccountResponse.From)
             .ToActionResult(this);
 
-    [HttpPost("{id:guid}/close")]
-    public ActionResult<AccountResponse> Close(Guid id) =>
-        _repository.GetById(AccountId.TryCreate(id).Value)
+    [HttpPost("{id}/close")]
+    public ActionResult<AccountResponse> Close(AccountId id) =>
+        _repository.GetById(id)
             .Bind(account => account.Close())
             .Map(AccountResponse.From)
             .ToActionResult(this);

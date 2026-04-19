@@ -1,8 +1,11 @@
 namespace Trellis.Showcase.Api.Models;
 
+using Trellis.Showcase.Domain.Aggregates;
+using Trellis.Showcase.Domain.ValueObjects;
+
 public sealed record OpenAccountRequest(
-    Guid CustomerId,
-    string AccountType,
+    CustomerId CustomerId,
+    AccountType AccountType,
     decimal InitialDeposit,
     decimal DailyWithdrawalLimit,
     decimal OverdraftLimit,
@@ -14,7 +17,7 @@ public sealed record WithdrawRequest(decimal Amount, string Currency = "USD", st
 
 public sealed record SecureWithdrawRequest(decimal Amount, string VerificationCode, string Currency = "USD");
 
-public sealed record TransferRequest(Guid ToAccountId, decimal Amount, string Description = "Transfer", string Currency = "USD");
+public sealed record TransferRequest(AccountId ToAccountId, decimal Amount, string Description = "Transfer", string Currency = "USD");
 
 public sealed record FreezeRequest(string Reason);
 

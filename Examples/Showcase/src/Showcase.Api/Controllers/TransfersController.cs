@@ -22,24 +22,16 @@ public class TransfersController : ControllerBase
         _workflow = workflow;
     }
 
-    [HttpPost("{fromId:guid}")]
-    public async Task<ActionResult<AccountResponse>> Transfer(Guid fromId, [FromBody] TransferRequest request, CancellationToken cancellationToken)
-    {
-        var fromAccount = _repository.GetById(AccountId.TryCreate(fromId).Value);
-        if (fromAccount.TryGetError(out var fromError))
-            return fromError.ToActionResult<AccountResponse>(this);
-
-        var toAccount = _repository.GetById(AccountId.TryCreate(request.ToAccountId).Value);
-        if (toAccount.TryGetError(out var toError))
-            return toError.ToActionResult<AccountResponse>(this);
-
-        var amount = Money.TryCreate(request.Amount, request.Currency);
-        if (amount.TryGetError(out var amountError))
-            return amountError.ToActionResult<AccountResponse>(this);
-
-        var transfer = await _workflow.ProcessTransferAsync(fromAccount.Value, toAccount.Value, amount.Value, request.Description, cancellationToken);
-        return transfer
-            .Map(pair => AccountResponse.From(pair.From))
-            .ToActionResult(this);
-    }
+    [HttpPost("{fromId}")]
+    public Task<ActionResult<AccountResponse>> Transfer(AccountId fromId, [FromBody] TransferRequest request, CancellationToken cancellationToken) =>
+        _repository.GetById(fromId)
+            .Combine(_repository.GetById(request.ToAccountId))
+            .Combine(Money.TryCreate(request.Amount, request.Currency))
+            .BindAsync(values =>
+            {
+                var (from, to, amount) = values;
+                return _workflow.ProcessTransferAsync(from, to, amount, request.Description, cancellationToken);
+            })
+            .MapAsync(pair => AccountResponse.From(pair.From))
+            .ToActionResultAsync(this);
 }
