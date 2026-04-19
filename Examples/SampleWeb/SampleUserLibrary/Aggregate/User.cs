@@ -1,13 +1,20 @@
-﻿using Trellis.FluentValidation;
-using Trellis.Primitives;
-
 namespace SampleUserLibrary;
 
-using FluentValidation;
 using Trellis;
+using Trellis.Primitives;
 
+/// <summary>
+/// User aggregate. Demonstrates pure ROP construction (no FluentValidation):
+/// scalar VOs are validated at the wire boundary; composite/business invariants
+/// are enforced by chaining <c>Ensure</c> guards in <see cref="TryCreate"/>.
+/// </summary>
 public class User : Aggregate<UserId>
 {
+    // Password complexity rules (kept here, not in DTO, because they're a domain
+    // invariant — even an admin-created user must satisfy them).
+    private const int MinPasswordLength = 8;
+    private const string PasswordRulesField = "Password";
+
     public FirstName FirstName { get; }
     public LastName LastName { get; }
     public EmailAddress Email { get; }
@@ -27,9 +34,45 @@ public class User : Aggregate<UserId>
         string password,
         Maybe<Url> website = default)
     {
-        var user = new User(firstName, lastName, email, phone, age, country, password, website);
-        var validator = new UserValidator();
-        return validator.ValidateToResult(user);
+        ArgumentNullException.ThrowIfNull(firstName);
+        ArgumentNullException.ThrowIfNull(lastName);
+        ArgumentNullException.ThrowIfNull(email);
+        ArgumentNullException.ThrowIfNull(phone);
+        ArgumentNullException.ThrowIfNull(age);
+        ArgumentNullException.ThrowIfNull(country);
+
+        return Result.Ok(password)
+            .Ensure(p => age.Value >= 18,
+                Field("Age", "User must be at least 18 years old to register."))
+            .Ensure(p => !string.IsNullOrEmpty(p),
+                Field(PasswordRulesField, "Password must not be empty."))
+            .Ensure(p => p.Length >= MinPasswordLength,
+                Field(PasswordRulesField, $"Password must be at least {MinPasswordLength} characters long."))
+            .Ensure(p => p.Any(char.IsUpper),
+                Field(PasswordRulesField, "Password must contain at least one uppercase letter."))
+            .Ensure(p => p.Any(char.IsLower),
+                Field(PasswordRulesField, "Password must contain at least one lowercase letter."))
+            .Ensure(p => p.Any(char.IsDigit),
+                Field(PasswordRulesField, "Password must contain at least one number."))
+            .Ensure(p => p.Any(c => !char.IsLetterOrDigit(c)),
+                Field(PasswordRulesField, "Password must contain at least one special character."))
+            .Map(_ => new User(firstName, lastName, email, phone, age, country, password, website));
+    }
+
+    private static Error.UnprocessableContent Field(string property, string detail) =>
+        new(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty(property), "validation.error") { Detail = detail }));
+
+    // EF Core parameterless constructor
+    private User() : base(default!)
+    {
+        FirstName = null!;
+        LastName = null!;
+        Email = null!;
+        Phone = null!;
+        Age = null!;
+        Country = null!;
+        Password = null!;
     }
 
     private User(
@@ -52,31 +95,4 @@ public class User : Aggregate<UserId>
         Website = website;
         Password = password;
     }
-
-    public class UserValidator : AbstractValidator<User>
-    {
-        public UserValidator()
-        {
-            RuleFor(user => user.FirstName).NotNull();
-            RuleFor(user => user.LastName).NotNull();
-            RuleFor(user => user.Email).NotNull();
-            RuleFor(user => user.Phone).NotNull();
-            RuleFor(user => user.Age).NotNull();
-            RuleFor(user => user.Country).NotNull();
-
-            // Business rule: Age must be 18 or older for registration
-            RuleFor(user => user.Age)
-                .Must(age => age.Value >= 18)
-                .WithMessage("User must be at least 18 years old to register.");
-
-            RuleFor(user => user.Password)
-                .NotEmpty().WithMessage("Password must not be empty.")
-                .MinimumLength(8).WithMessage("Password must be at least 8 characters long.")
-                .Matches("[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
-                .Matches("[a-z]").WithMessage("Password must contain at least one lowercase letter.")
-                .Matches("[0-9]").WithMessage("Password must contain at least one number.")
-                .Matches("[^a-zA-Z0-9]").WithMessage("Password must contain at least one special character.");
-        }
-    }
-
 }
