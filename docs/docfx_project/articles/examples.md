@@ -43,7 +43,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(request.LastName))
         .Combine(CustomerEmail.TryCreate(request.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), Error.Conflict("Email already registered."))
+        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." })
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }
@@ -83,7 +83,7 @@ public sealed class UsersController : ControllerBase
     private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
     {
         return string.IsNullOrWhiteSpace(request.Email)
-            ? Error.Validation("Email is required.", "email")
+            ? new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required." }))
             : Result.Ok(new UserResponse(request.Email));
     }
 }
@@ -118,7 +118,7 @@ public static class UserRoutes
     private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
     {
         return string.IsNullOrWhiteSpace(request.Email)
-            ? Error.Validation("Email is required.", "email")
+            ? new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required." }))
             : Result.Ok(new UserResponse(request.Email));
     }
 }
@@ -183,7 +183,7 @@ validator.RuleFor(x => x.Email).NotEmpty().EmailAddress();
 Result<CreateCustomer> result = validator.ValidateToResult(new CreateCustomer("user@example.com"));
 ```
 
-If validation fails, the result becomes a `ValidationError` with field-level details. That makes it easy to carry the same rule set from your application layer to HTTP responses.
+If validation fails, the result becomes a `Error.UnprocessableContent` with field-level details. That makes it easy to carry the same rule set from your application layer to HTTP responses.
 
 See [FluentValidation Integration](integration-fluentvalidation.md) for a full walkthrough.
 
@@ -198,11 +198,11 @@ using Trellis;
 
 public sealed record PricingSnapshot(string Source);
 
-Result<PricingSnapshot> cacheResult = Error.NotFound("Price not found in cache.");
+Result<PricingSnapshot> cacheResult = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Price not found in cache." };
 Result<PricingSnapshot> databaseResult = Result.Ok(new PricingSnapshot("database"));
 
 Result<PricingSnapshot> finalResult = cacheResult.RecoverOnFailure(
-    predicate: error => error is NotFoundError,
+    predicate: error => error is Error.NotFound,
     func: _ => databaseResult);
 ```
 
@@ -233,12 +233,12 @@ public sealed class Customer
 static Task<Customer?> GetCustomerByIdAsync(long id) =>
     Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
 
-static Task<Result<Unit>> SendPromotionNotificationAsync(string email) =>
+static Task<Result> SendPromotionNotificationAsync(string email) =>
     Task.FromResult(Result.Ok(new Unit()));
 
 string message = await GetCustomerByIdAsync(1)
-    .ToResultAsync(Error.NotFound("Customer not found."))
-    .EnsureAsync(customer => customer.CanBePromoted, Error.Validation("Customer cannot be promoted."))
+    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Customer not found." })
+    .EnsureAsync(customer => customer.CanBePromoted, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Customer cannot be promoted." })
     .TapAsync(customer => customer.PromoteAsync())
     .BindAsync(customer => SendPromotionNotificationAsync(customer.Email))
     .MatchAsync(
@@ -258,14 +258,17 @@ The shape is the same as the synchronous version. That is one of the nicest part
 using Microsoft.AspNetCore.Http;
 using Trellis;
 
-Result<string> result = Error.NotFound("Order not found.");
+Result<string> result = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Order not found." };
 
-IResult httpResult = result.MatchError(
+IResult httpResult = result.Match(
     onSuccess: order => Results.Ok(order),
-    onValidation: error => Results.BadRequest(error.FieldErrors),
-    onNotFound: error => Results.NotFound(error.Detail),
-    onConflict: error => Results.Conflict(error.Detail),
-    onError: _ => Results.StatusCode(StatusCodes.Status500InternalServerError));
+    onFailure: error => error switch
+    {
+        Error.UnprocessableContent uc => Results.BadRequest(uc.Fields.Items),
+        Error.NotFound nf             => Results.NotFound(nf.Detail),
+        Error.Conflict c              => Results.Conflict(c.Detail),
+        _                              => Results.StatusCode(StatusCodes.Status500InternalServerError)
+    });
 ```
 
 This is especially handy when you want to shape the HTTP response yourself instead of delegating to `ToActionResult()` or `ToHttpResult()`.
@@ -278,11 +281,11 @@ This is especially handy when you want to shape the HTTP response yourself inste
 | --- | --- |
 | Validate several incoming fields | `A.TryCreate(...).Combine(B.TryCreate(...))` |
 | Move from validated input to domain logic | `.Bind(...)` |
-| Add a business rule | `.Ensure(..., Error.Validation(...))` |
+| Add a business rule | `.Ensure(..., new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... })` |
 | Save or notify on success | `.Tap(...)` / `.TapAsync(...)` |
 | Fallback on acceptable failures | `.RecoverOnFailure(...)` |
 | Return HTTP from MVC or Minimal API | `.ToActionResult(this)` / `.ToHttpResult()` |
-| Branch by concrete error type | `.MatchError(...)` |
+| Branch by concrete error type | `result.Match(_, e => e switch { Error.X => ..., ... })` |
 
 ## Where to go next
 

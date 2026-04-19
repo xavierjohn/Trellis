@@ -149,7 +149,7 @@ using Trellis;
 static class CustomerRules
 {
     private static readonly Error MinimumSpendError =
-        Error.Validation("Customer must have spent at least 1000.");
+        new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Customer must have spent at least 1000." };
 
     public static Result<decimal> Validate(decimal totalSpend) =>
         totalSpend >= 1000m

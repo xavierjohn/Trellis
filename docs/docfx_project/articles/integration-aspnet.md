@@ -16,7 +16,7 @@ It gives you:
 - `ToActionResult(...)` and `ToHttpResult(...)` for mapping `Result<T>` to HTTP responses
 - default error-type-to-status-code mappings
 - Problem Details responses for failures
-- automatic `204 No Content` for successful `Result<Unit>`
+- automatic `204 No Content` for successful `Result`
 - scalar value validation for MVC and Minimal APIs
 - representation metadata support for headers like `ETag` and `Last-Modified`
 - `Prefer`-aware update helpers
@@ -144,7 +144,7 @@ builder.Services.AddTrellisAsp();
 
 builder.Services.AddTrellisAsp(options =>
 {
-    options.MapError<DomainError>(StatusCodes.Status400BadRequest);
+    options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
 });
 ```
 
@@ -156,24 +156,24 @@ One of the biggest wins of `Trellis.Asp` is that you do not need a custom `switc
 
 | Trellis error type | Default HTTP status |
 | --- | --- |
-| `ValidationError` | `400 Bad Request` |
-| `BadRequestError` | `400 Bad Request` |
-| `UnauthorizedError` | `401 Unauthorized` |
-| `ForbiddenError` | `403 Forbidden` |
-| `NotFoundError` | `404 Not Found` |
-| `MethodNotAllowedError` | `405 Method Not Allowed` |
-| `NotAcceptableError` | `406 Not Acceptable` |
-| `ConflictError` | `409 Conflict` |
-| `GoneError` | `410 Gone` |
-| `PreconditionFailedError` | `412 Precondition Failed` |
-| `ContentTooLargeError` | `413 Content Too Large` |
-| `UnsupportedMediaTypeError` | `415 Unsupported Media Type` |
-| `RangeNotSatisfiableError` | `416 Range Not Satisfiable` |
-| `DomainError` | `422 Unprocessable Content` |
-| `PreconditionRequiredError` | `428 Precondition Required` |
-| `RateLimitError` | `429 Too Many Requests` |
-| `UnexpectedError` | `500 Internal Server Error` |
-| `ServiceUnavailableError` | `503 Service Unavailable` |
+| `Error.UnprocessableContent` | `400 Bad Request` |
+| `Error.BadRequest` | `400 Bad Request` |
+| `Error.Unauthorized` | `401 Unauthorized` |
+| `Error.Forbidden` | `403 Forbidden` |
+| `Error.NotFound` | `404 Not Found` |
+| `Error.MethodNotAllowed` | `405 Method Not Allowed` |
+| `Error.NotAcceptable` | `406 Not Acceptable` |
+| `Error.Conflict` | `409 Conflict` |
+| `Error.Gone` | `410 Gone` |
+| `Error.PreconditionFailed` | `412 Precondition Failed` |
+| `Error.ContentTooLarge` | `413 Content Too Large` |
+| `Error.UnsupportedMediaType` | `415 Unsupported Media Type` |
+| `Error.RangeNotSatisfiable` | `416 Range Not Satisfiable` |
+| `Error.Conflict` | `422 Unprocessable Content` |
+| `Error.PreconditionRequired` | `428 Precondition Required` |
+| `Error.TooManyRequests` | `429 Too Many Requests` |
+| `Error.InternalServerError` | `500 Internal Server Error` |
+| `Error.ServiceUnavailable` | `503 Service Unavailable` |
 
 > [!NOTE]
 > Trellis error codes follow the `.error` suffix convention, such as `validation.error`, `not.found.error`, and `conflict.error`.
@@ -282,7 +282,7 @@ app.MapGet("/products/{id:guid}", (Guid id, ProductDbContext db, HttpContext htt
     db.Products
         .FirstOrDefaultResultAsync(
             p => p.Id == ProductId.Create(id),
-            Error.NotFound("Product not found.", id.ToString()))
+            new Error.NotFound(new ResourceRef("Resource", id.ToString())) { Detail = "Product not found." })
         .ToHttpResultAsync(
             httpContext,
             product => RepresentationMetadata.WithStrongETag(product.ETag),
@@ -310,7 +310,7 @@ app.MapPut("/products/{id:guid}", (Guid id, UpdateProductRequest request, Produc
     db.Products
         .FirstOrDefaultResultAsync(
             p => p.Id == ProductId.Create(id),
-            Error.NotFound("Product not found.", id.ToString()))
+            new Error.NotFound(new ResourceRef("Resource", id.ToString())) { Detail = "Product not found." })
         .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
         .BindAsync(product => product.UpdatePrice(request.Price))
         .CheckAsync(_ => db.SaveChangesResultUnitAsync())
@@ -424,16 +424,20 @@ app.MapPost("/orders", async (
     CreateOrderRequest request,
     IOrderService orders,
     CancellationToken ct) =>
-    await orders.CreateAsync(request, ct).MatchErrorAsync(
-        onValidation: validation => Results.BadRequest(new
-        {
-            message = "Validation failed",
-            errors = validation.FieldErrors
-                .GroupBy(e => e.FieldName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.Message).ToArray())
-        }),
-        onConflict: error => Results.Conflict(new { message = error.Detail }),
+    await orders.CreateAsync(request, ct).MatchAsync(
         onSuccess: order => Results.Created($"/orders/{order.Id}", order),
+        onFailure: error => error switch
+        {
+            Error.UnprocessableContent uc => Results.BadRequest(new
+            {
+                message = "Validation failed",
+                errors = uc.Fields.Items
+                    .GroupBy(v => v.Field.Path)
+                    .ToDictionary(g => g.Key, g => g.Select(v => v.Detail ?? v.ReasonCode).ToArray())
+            }),
+            Error.Conflict c              => Results.Conflict(new { message = c.Detail }),
+            _                              => Results.StatusCode(StatusCodes.Status500InternalServerError)
+        },
         cancellationToken: ct));
 ```
 
@@ -447,7 +451,7 @@ Use this approach when you need:
 
 1. **Convert at the API boundary only.** Keep `Result<T>` in your application layer.
 2. **Use MVC-specific or Minimal-API-specific validation setup.** Do not rely on the shared convenience overload alone for MVC.
-3. **Use `Result<Unit>` for side-effect operations.** Trellis maps successful unit results to `204 No Content`.
+3. **Use `Result` for side-effect operations.** Trellis maps successful unit results to `204 No Content`.
 4. **Prefer typed ETag helpers.** `ParseIfMatch(...)` and `ParseIfNoneMatch(...)` return `EntityTagValue[]?`, which matches the concurrency APIs.
 5. **Use representation metadata instead of hand-writing headers** when you want `ETag`, `Last-Modified`, `Vary`, or related response metadata.
 

@@ -58,7 +58,7 @@ public async Task<Result<Order>> ProcessOrderAsync(
         .BindAsync(order => AddItemsAsync(order, items))
         .BindAsync(order => ReserveInventoryAsync(order))
         .RecoverOnFailureAsync(
-            predicate: error => error is ValidationError,
+            predicate: error => error is Error.UnprocessableContent,
             func: async () => await SuggestAlternativesAsync()
         )
         .Bind(order => order.Submit())
@@ -84,7 +84,7 @@ public async Task<Result<BankAccount>> ProcessSecureWithdrawalAsync(
     return await account.ToResult()
         .EnsureAsync(
             async acc => await _fraudDetection.AnalyzeTransactionAsync(acc, amount),
-            Error.Validation("Fraud check failed")
+            new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Fraud check failed" }
         )
         .BindAsync(acc => VerifyMFAIfLargeAmountAsync(acc, amount, verificationCode))
         .Bind(acc => acc.Withdraw(amount))
@@ -116,8 +116,8 @@ Email.TryCreate(email)
 ### Pattern 2: Async Workflow
 ```csharp
 await GetUserAsync(id)
-    .ToResultAsync(Error.NotFound("User not found"))
-    .EnsureAsync(u => u.IsActive, Error.Validation("Inactive"))
+    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = "User not found" })
+    .EnsureAsync(u => u.IsActive, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Inactive" })
     .TapAsync(u => LogAccessAsync(u))
     .BindAsync(u => GetOrdersAsync(u))
 ```
@@ -126,7 +126,7 @@ await GetUserAsync(id)
 ### Pattern 3: recovery (Fallback/Cleanup)
 ```csharp
 .RecoverOnFailureAsync(
-    predicate: error => error is UnexpectedError,
+    predicate: error => error is Error.InternalServerError,
     func: async () => await RetryOperationAsync()
 )
 ```
@@ -150,8 +150,8 @@ var result = await Result.ParallelAsync(
 public Result<Order> Submit()
 {
     return this.ToResult()
-        .Ensure(_ => Status == OrderStatus.Draft, Error.Validation("Wrong status"))
-        .Ensure(_ => Lines.Count > 0, Error.Validation("Empty order"))
+        .Ensure(_ => Status == OrderStatus.Draft, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Wrong status" })
+        .Ensure(_ => Lines.Count > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Empty order" })
         .Tap(_ => Status = OrderStatus.Pending);
 }
 ```
@@ -200,7 +200,7 @@ public void Order_Creation_Fails_With_Invalid_Email()
         .Bind(email => CreateOrder(email));
     
     result.IsFailure.Should().BeTrue();
-    result.Error.Should().BeOfType<ValidationError>();
+    result.Error.Should().BeOfType<Error.UnprocessableContent>();
 }
 ```
 
@@ -228,23 +228,23 @@ public async Task Payment_Failure_Triggers_Inventory_Release()
 ### ✅ DO
 ```csharp
 // Be specific with errors
-return Error.Validation("Email format is invalid", "email");
+return new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email format is invalid" }));
 
 // Provide context
-return Error.NotFound($"Order {orderId} not found");
+return new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {orderId} not found" };
 
 // Use appropriate error types
-if (unauthorized) return Error.Unauthorized("Login required");
-if (forbidden) return Error.Forbidden("Insufficient permissions");
+if (unauthorized) return new Error.Unauthorized() { Detail = "Login required" };
+if (forbidden) return new Error.Forbidden("policy.id") { Detail = "Insufficient permissions" };
 ```
 
 ### ❌ DON'T
 ```csharp
 // Don't use generic errors
-return Error.Unexpected("Something went wrong");
+return new Error.InternalServerError("fault-id") { Detail = "Something went wrong" };
 
 // Don't swallow errors
-try { /* ... */ } catch { return Error.Unexpected("Error"); }
+try { /* ... */ } catch { return new Error.InternalServerError("fault-id") { Detail = "Error" }; }
 
 // Don't throw exceptions in ROP code
 if (invalid) throw new Exception(); // Use Result.Fail instead

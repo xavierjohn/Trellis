@@ -76,7 +76,7 @@ public static Result<User> RegisterUser(RegisterUserInput input, Func<CustomerEm
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), Error.Conflict("Email already registered."));
+        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." });
 }
 ```
 
@@ -218,7 +218,7 @@ Use `Ensure` when the value is structurally valid, but you still need a domain r
 ```csharp
 var result = CustomerEmail.TryCreate("jane@example.com", fieldName: "email")
     .Ensure(email => !email.Value.EndsWith("@blocked.example", StringComparison.OrdinalIgnoreCase),
-        Error.Validation("Blocked email domains are not allowed.", "email"));
+        new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Blocked email domains are not allowed." })));
 ```
 
 A good mental model is:
@@ -248,9 +248,9 @@ public sealed record CheckoutRequest(string CouponCode, decimal Subtotal, string
 
 var result = Result.Ok(new CheckoutRequest("SPRING25", 125m, "USD"))
     .EnsureAll(
-        (request => request.Subtotal > 0m, Error.Validation("Subtotal must be greater than zero.", "subtotal")),
-        (request => request.Currency.Length == 3, Error.Validation("Currency must be a 3-letter code.", "currency")),
-        (request => request.CouponCode.Length <= 20, Error.Validation("Coupon code is too long.", "couponCode")));
+        (request => request.Subtotal > 0m, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("subtotal"), "validation.error") { Detail = "Subtotal must be greater than zero." }))),
+        (request => request.Currency.Length == 3, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("currency"), "validation.error") { Detail = "Currency must be a 3-letter code." }))),
+        (request => request.CouponCode.Length <= 20, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("couponCode"), "validation.error") { Detail = "Coupon code is too long." }))));
 ```
 
 ### `RecoverOnFailure`: provide a fallback path
@@ -260,11 +260,11 @@ Use `RecoverOnFailure` when a failure should trigger another attempt.
 ```csharp
 public sealed record CustomerProfile(string Source);
 
-Result<CustomerProfile> fromCache = Error.NotFound("Customer not found in cache.");
+Result<CustomerProfile> fromCache = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Customer not found in cache." };
 Result<CustomerProfile> fromDatabase = Result.Ok(new CustomerProfile("database"));
 
 Result<CustomerProfile> result = fromCache.RecoverOnFailure(
-    predicate: error => error is NotFoundError,
+    predicate: error => error is Error.NotFound,
     func: _ => fromDatabase);
 ```
 
@@ -309,7 +309,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), Error.Conflict("Email already registered."))
+        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." })
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }
@@ -350,12 +350,12 @@ public sealed class Customer
 public static Task<Customer?> GetCustomerByIdAsync(long id) =>
     Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
 
-public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) =>
+public static Task<Result> SendPromotionNotificationAsync(string email) =>
     Task.FromResult(Result.Ok(new Unit()));
 
 string message = await GetCustomerByIdAsync(1)
-    .ToResultAsync(Error.NotFound("Customer not found."))
-    .EnsureAsync(customer => customer.CanBePromoted, Error.Validation("Customer cannot be promoted."))
+    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Customer not found." })
+    .EnsureAsync(customer => customer.CanBePromoted, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Customer cannot be promoted." })
     .TapAsync(customer => customer.PromoteAsync())
     .BindAsync(customer => SendPromotionNotificationAsync(customer.Email))
     .MatchAsync(
@@ -364,7 +364,7 @@ string message = await GetCustomerByIdAsync(1)
 ```
 
 > [!NOTE]
-> `Unit` has no `Value` property. When you need a successful `Result<Unit>`, use `Result.Ok()` or create a `Unit` with `new Unit()` / `default`.
+> `Unit` has no `Value` property. When you need a successful `Result`, use `Result.Ok()` or create a `Unit` with `new Unit()` / `default`.
 
 ### Parallel async work
 
@@ -417,20 +417,23 @@ string FormatName(Person person) => person.Name.ToUpperInvariant();
 
 ### How do I handle different error types?
 
-Use `MatchError` when the response should depend on the concrete error subtype.
+Use a `switch` expression on the closed `Error` ADT when the response should depend on the concrete case.
 
 ```csharp
 using Microsoft.AspNetCore.Http;
 using Trellis;
 
-Result<string> result = Error.NotFound("Order not found.");
+Result<string> result = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Order not found." };
 
-IResult httpResult = result.MatchError(
+IResult httpResult = result.Match(
     onSuccess: value => Results.Ok(value),
-    onValidation: error => Results.BadRequest(error.FieldErrors),
-    onNotFound: error => Results.NotFound(error.Detail),
-    onConflict: error => Results.Conflict(error.Detail),
-    onError: error => Results.StatusCode(StatusCodes.Status500InternalServerError));
+    onFailure: error => error switch
+    {
+        Error.UnprocessableContent uc => Results.BadRequest(uc.Fields.Items),
+        Error.NotFound nf             => Results.NotFound(nf.Detail),
+        Error.Conflict c              => Results.Conflict(c.Detail),
+        _                              => Results.StatusCode(StatusCodes.Status500InternalServerError)
+    });
 ```
 
 ### What if I need to inspect failures in the middle of a chain?
@@ -438,7 +441,7 @@ IResult httpResult = result.MatchError(
 Use `TapOnFailure`.
 
 ```csharp
-Result<string> result = Error.Unexpected("Email service offline.")
+Result<string> result = new Error.InternalServerError("fault-id") { Detail = "Email service offline." }
     .TapOnFailure(error => Console.WriteLine($"Failure: {error.Code}"));
 ```
 
@@ -456,7 +459,7 @@ Result<string> result = Error.Unexpected("Email service offline.")
 | run a side effect on success | `Tap` |
 | run a side effect on failure | `TapOnFailure` |
 | recover from a failure | `RecoverOnFailure` |
-| finish the chain | `Match` or `MatchError` |
+| finish the chain | `Match` (with a `switch` expression on the closed `Error` ADT) |
 
 ### Cheat sheet
 

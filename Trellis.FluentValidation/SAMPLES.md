@@ -688,10 +688,10 @@ public class OrderService
     {
         // Validate customer
         return await _customerService.GetByIdAsync(request.CustomerId, cancellationToken)
-            .ToResultAsync(Error.NotFound($"Customer {request.CustomerId} not found"))
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Customer {request.CustomerId} not found" })
             .EnsureAsync(
                 async (customer, ct) => await customer.IsActiveAsync(ct),
-                Error.Conflict("Customer account is inactive"),
+                new Error.Conflict(null, "conflict") { Detail = "Customer account is inactive" },
                 cancellationToken)
             // Validate and create order lines
             .BindAsync(
@@ -699,11 +699,11 @@ public class OrderService
                     await request.Items.TraverseAsync(
                         async (itemReq, innerCt) =>
                             await _inventoryService.GetProductAsync(itemReq.ProductId, innerCt)
-                                .ToResultAsync(Error.NotFound($"Product {itemReq.ProductId} not found"))
+                                .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {itemReq.ProductId} not found" })
                                 .EnsureAsync(
                                     async (product, productCt) => 
                                         await _inventoryService.HasStockAsync(product.Id, itemReq.Quantity, productCt),
-                                    Error.Conflict($"Insufficient stock for product {itemReq.ProductId}"),
+                                    new Error.Conflict(null, "conflict") { Detail = $"Insufficient stock for product {itemReq.ProductId}" },
                                     innerCt)
                                 .BindAsync(
                                     async (product, productCt) =>
@@ -1079,12 +1079,12 @@ public class OrderService : IOrderService
                 cancellationToken);
     }
     
-    public async Task<Result<Unit>> SubmitOrderAsync(
+    public async Task<Result> SubmitOrderAsync(
         string orderId,
         CancellationToken cancellationToken)
     {
         return await _repository.GetByIdAsync(orderId, cancellationToken)
-            .ToResultAsync(Error.NotFound($"Order {orderId} not found"))
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {orderId} not found" })
             .BindAsync(
                 async (order, ct) => await order.SubmitAsync(ct),
                 cancellationToken)
@@ -1157,7 +1157,7 @@ public class UserRepository : IUserRepository
                     }
                     catch (DbUpdateException ex)
                     {
-                        return Error.Unexpected("Failed to save user", ex);
+                        return new Error.InternalServerError("fault-id") { Detail = "Failed to save user" };
                     }
                 },
                 cancellationToken);

@@ -80,7 +80,7 @@ Result<T> ToResult<T>(
 What those helpers do for you:
 
 - return the validated value on success
-- convert FluentValidation failures into `Error.Validation(...)`
+- convert FluentValidation failures into `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }`
 - preserve grouped field errors
 - use caller argument expressions for better root-level field names
 - short-circuit `null` input before FluentValidation runs

@@ -55,7 +55,7 @@ public sealed class UserDirectoryClient(HttpClient httpClient)
         CancellationToken cancellationToken)
     {
         return await httpClient.GetAsync($"users/{userId}", cancellationToken)
-            .HandleNotFoundAsync(Error.NotFound($"User {userId} not found", userId))
+            .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Resource", userId)) { Detail = $"User {userId} not found" })
             .ReadResultFromJsonAsync(ApiJsonContext.Default.UserDto, cancellationToken);
     }
 }
@@ -74,10 +74,10 @@ Use these when you know which failures are part of the contract.
 
 | Handler | HTTP status | Produces |
 | --- | --- | --- |
-| `HandleNotFound` | `404` | `NotFoundError` |
-| `HandleUnauthorized` | `401` | `UnauthorizedError` |
-| `HandleForbidden` | `403` | `ForbiddenError` |
-| `HandleConflict` | `409` | `ConflictError` |
+| `HandleNotFound` | `404` | `Error.NotFound` |
+| `HandleUnauthorized` | `401` | `Error.Unauthorized` |
+| `HandleForbidden` | `403` | `Error.Forbidden` |
+| `HandleConflict` | `409` | `Error.Conflict` |
 
 Each handler has async overloads for:
 
@@ -112,9 +112,9 @@ public sealed class OrdersClient(HttpClient httpClient)
                 request,
                 OrdersJsonContext.Default.CreateOrderRequest,
                 cancellationToken)
-            .HandleUnauthorizedAsync(Error.Unauthorized("Sign in before creating orders."))
-            .HandleForbiddenAsync(Error.Forbidden("You are not allowed to create orders."))
-            .HandleConflictAsync(Error.Conflict("An order with the same id already exists."))
+            .HandleUnauthorizedAsync(new Error.Unauthorized() { Detail = "Sign in before creating orders." })
+            .HandleForbiddenAsync(new Error.Forbidden("policy.id") { Detail = "You are not allowed to create orders." })
+            .HandleConflictAsync(new Error.Conflict(null, "conflict") { Detail = "An order with the same id already exists." })
             .ReadResultFromJsonAsync(OrdersJsonContext.Default.OrderDto, cancellationToken);
     }
 }
@@ -145,11 +145,11 @@ public sealed class ProductsClient(HttpClient httpClient)
         CancellationToken cancellationToken)
     {
         return await httpClient.GetAsync($"products/{productId}", cancellationToken)
-            .HandleNotFoundAsync(Error.NotFound($"Product {productId} not found", productId))
+            .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Resource", productId)) { Detail = $"Product {productId} not found" })
             .HandleClientErrorAsync(statusCode => statusCode switch
             {
-                HttpStatusCode.BadRequest => Error.BadRequest("The product request was invalid."),
-                _ => Error.Unexpected($"Unexpected client error: {(int)statusCode}.")
+                HttpStatusCode.BadRequest => new Error.BadRequest("bad.request") { Detail = "The product request was invalid." },
+                _ => new Error.InternalServerError("fault-id") { Detail = $"Unexpected client error: {(int)statusCode}." }
             })
             .HandleServerErrorAsync(statusCode =>
                 Error.ServiceUnavailable($"Product service failed with {(int)statusCode}."))
@@ -177,7 +177,7 @@ public sealed class CacheClient(HttpClient httpClient)
     {
         return await httpClient.DeleteAsync($"cache/{cacheKey}", cancellationToken)
             .EnsureSuccessAsync(statusCode =>
-                Error.Unexpected($"Cache purge failed with status {(int)statusCode}."));
+                new Error.InternalServerError("fault-id") { Detail = $"Cache purge failed with status {(int)statusCode}." });
     }
 }
 ```
@@ -292,10 +292,9 @@ public sealed class InvoicesClient(HttpClient httpClient)
 
                     return response.StatusCode switch
                     {
-                        HttpStatusCode.BadRequest => Error.BadRequest(body),
-                        HttpStatusCode.Conflict => Error.Conflict(body),
-                        _ => Error.Unexpected(
-                            $"Invoice request failed with {(int)response.StatusCode}: {body}")
+                        HttpStatusCode.BadRequest => new Error.BadRequest("bad.request") { Detail = body },
+                        HttpStatusCode.Conflict => new Error.Conflict(null, "conflict") { Detail = body },
+                        _ => new Error.InternalServerError("fault-id") { Detail = $"Invoice request failed with {(int)response.StatusCode}: {body}" }
                     };
                 },
                 context: 0,
@@ -333,7 +332,7 @@ public sealed class CheckoutService(HttpClient httpClient)
             .ReadResultFromJsonAsync(CheckoutJsonContext.Default.InventoryCheckDto, cancellationToken)
             .EnsureAsync(
                 inventory => inventory.InStock,
-                Error.Validation("The product is out of stock.", nameof(productId)))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(productId)), "validation.error") { Detail = "The product is out of stock." })))
             .BindAsync(
                 (_, ct) => httpClient.PostAsync($"payments/{productId}", null, ct)
                     .ReadResultFromJsonAsync(CheckoutJsonContext.Default.PaymentReceiptDto, ct),

@@ -514,7 +514,7 @@ public sealed record CancelOrderCommand(string OrderId) : IAuthorizeResource<Ord
     public IResult Authorize(Actor actor, Order resource) =>
         actor.IsOwner(resource.OwnerId)
             ? Result.Ok()
-            : Result.Fail(Error.Forbidden("Only the owner can cancel the order."));
+            : Result.Fail(new Error.Forbidden("orders.cancel") { Detail = "Only the owner can cancel the order." });
 }
 
 public sealed class CancelOrderLoader : ResourceLoaderById<CancelOrderCommand, Order, string>

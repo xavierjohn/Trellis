@@ -54,7 +54,7 @@ public record User(string Id, string Name);
 static Task<Result<User>> GetUserAsync(string id) =>
     Task.FromResult(id == "42"
         ? Result.Ok(new User(id, "Ada"))
-        : Result.Fail<User>(Error.NotFound($"User {id} not found", id)));
+        : Result.Fail<User>(new Error.NotFound(new ResourceRef("Resource", id)) { Detail = $"User {id} not found" }));
 
 var message = await GetUserAsync("42").MatchAsync(
     onSuccess: user => $"Loaded {user.Name}",
@@ -62,7 +62,7 @@ var message = await GetUserAsync("42").MatchAsync(
 ```
 
 > [!TIP]
-> Use `Match(...)` when you want one final value. Use `MatchError(...)` from the error-handling guide when different error types need different outcomes.
+> Use `Match(...)` when you want one final value. Use `Match(_, e => e switch { ... })` (covered in the [error-handling guide](error-handling.md)) when different error cases need different outcomes.
 
 ## Tuple Destructuring: Combine Values Without Manual Unpacking
 
@@ -121,7 +121,7 @@ static Result<string> LoadFile(string path) =>
     Result.Try(() => File.ReadAllText(path));
 
 var content = LoadFile("settings.json")
-    .Ensure(text => !string.IsNullOrWhiteSpace(text), Error.BadRequest("settings.json is empty"));
+    .Ensure(text => !string.IsNullOrWhiteSpace(text), new Error.BadRequest("bad.request") { Detail = "settings.json is empty" });
 ```
 
 ### `Result.TryAsync(...)`
@@ -133,7 +133,7 @@ static Task<Result<string>> LoadFileAsync(string path) =>
     Result.TryAsync(() => File.ReadAllTextAsync(path));
 
 var content = await LoadFileAsync("settings.json")
-    .EnsureAsync(text => Task.FromResult(!string.IsNullOrWhiteSpace(text)), Error.BadRequest("settings.json is empty"));
+    .EnsureAsync(text => Task.FromResult(!string.IsNullOrWhiteSpace(text)), new Error.BadRequest("bad.request") { Detail = "settings.json is empty" });
 ```
 
 ### Custom exception mapping
@@ -145,9 +145,9 @@ var result = Result.Try(
     () => File.ReadAllText("settings.json"),
     exception => exception switch
     {
-        FileNotFoundException => Error.NotFound("settings.json was not found"),
-        UnauthorizedAccessException => Error.Forbidden("Access denied"),
-        _ => Error.Unexpected(exception.Message)
+        FileNotFoundException => new Error.NotFound(new ResourceRef("Resource")) { Detail = "settings.json was not found" },
+        UnauthorizedAccessException => new Error.Forbidden("policy.id") { Detail = "Access denied" },
+        _ => new Error.InternalServerError("fault-id") { Detail = exception.Message }
     });
 ```
 
@@ -227,7 +227,7 @@ var confirmation =
     from customerId in Result.Ok("customer-42")
     from sku in Result.Ok("sku-123")
     from quantity in Result.Ok(3)
-        .Ensure(value => value > 0, Error.Validation("Quantity must be positive", "quantity"))
+        .Ensure(value => value > 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("quantity"), "validation.error") { Detail = "Quantity must be positive" })))
     select $"{customerId}:{sku}:{quantity}";
 ```
 
@@ -269,7 +269,7 @@ Sometimes the only question is “did I get a value?” — not “why did it fa
 using Trellis;
 
 Maybe<string> cachedName = Result.Ok("Ada").ToMaybe();
-Maybe<string> missingName = Result.Fail<string>(Error.NotFound("User not found")).ToMaybe();
+Maybe<string> missingName = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource")) { Detail = "User not found" }).ToMaybe();
 ```
 
 And the async version:

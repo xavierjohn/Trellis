@@ -1,5 +1,10 @@
 # Migration Guide: v2.x → v3.0
 
+> [!IMPORTANT]
+> This guide documents the historical FunctionalDDD v2.x → Trellis v3.0 migration (renamed failure-track operations: `TapError` → `TapOnFailure`, `Compensate` → `RecoverOnFailure`, etc.). The advice below still applies for projects upgrading from FunctionalDDD v2.x.
+>
+> **Trellis V2 (the current major release) introduces a separate, larger breaking change**: the `Error` type is now a closed discriminated-union ADT with 18 nested `sealed record` cases (no static factory methods, typed payloads). See [ADR-001](docs/adr/ADR-001-result-api-surface.md) and the [Error Handling guide](docs/docfx_project/articles/error-handling.md) for the full surface and migration patterns. The error snippets in this document have been updated in-place to use the V2 closed-ADT syntax.
+
 ## Breaking Changes Summary
 
 FunctionalDDD v3.0 (now Trellis) introduces clearer naming for failure track operations to make Railway-Oriented Programming more explicit and easier to learn. All **failure track operations** now have an `OnFailure` suffix.
@@ -37,7 +42,7 @@ These methods are **unchanged**:
 
 - `Combine` - Merge multiple results
 - `Match`, `MatchAsync` - Pattern match success/failure
-- `MatchError` - Pattern match specific error types
+- *(removed in Trellis V2: `MatchError` superseded by exhaustive `switch` on the closed `Error` ADT)*
 - `ToResult`, `ToResultAsync` - Convert nullables to Result
 
 ---
@@ -229,7 +234,7 @@ public async Task<IActionResult> ProcessOrder(CreateOrderRequest request)
         .TapError(err => _logger.LogWarning("Order creation failed: {Error}", err))
         
         .EnsureAsync(order => HasInventoryAsync(order.ProductId, order.Quantity),
-            Error.Conflict("Insufficient inventory"))
+            new Error.Conflict(null, "inventory.insufficient") { Detail = "Insufficient inventory" })
         .TapError(err => _metrics.RecordFailure("order.create", err.Code))
         
         .Compensate(err => err is ConflictError 
@@ -262,7 +267,7 @@ public async Task<IActionResult> ProcessOrder(CreateOrderRequest request)
         .TapOnFailure(err => _logger.LogWarning("Order creation failed: {Error}", err)) // ✅ Changed
         
         .EnsureAsync(order => HasInventoryAsync(order.ProductId, order.Quantity),
-            Error.Conflict("Insufficient inventory"))
+            new Error.Conflict(null, "inventory.insufficient") { Detail = "Insufficient inventory" })
         .TapOnFailure(err => _metrics.RecordFailure("order.create", err.Code)) // ✅ Changed
         
         .RecoverOnFailure(err => err is ConflictError                           // ✅ Changed
@@ -294,7 +299,7 @@ Test method names should also be updated for clarity:
 [Fact]
 public void TapError_WithAction_FailureResult_ExecutesAction()
 {
-    var result = Result.Fail<int>(Error.Unexpected("Error"));
+    var result = Result.Fail<int>(new Error.InternalServerError("test") { Detail = "Error" });
     
     var actual = result.TapError(() => _actionExecuted = true);
     
@@ -307,7 +312,7 @@ public void TapError_WithAction_FailureResult_ExecutesAction()
 [Fact]
 public void TapOnFailure_WithAction_FailureResult_ExecutesAction()  // ✅ Test name changed
 {
-    var result = Result.Fail<int>(Error.Unexpected("Error"));
+    var result = Result.Fail<int>(new Error.InternalServerError("test") { Detail = "Error" });
     
     var actual = result.TapOnFailure(() => _actionExecuted = true);  // ✅ Method changed
     

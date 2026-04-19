@@ -26,7 +26,7 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Result assertions** — `BeSuccess()`, `BeFailure()`, `BeFailureOfType<T>()`, `HaveErrorCode()`, async variants
 - **Maybe assertions** — `HaveValue()`, `BeNone()`, `HaveValueEqualTo()`, `HaveValueMatching()`
 - **Error assertions** — `HaveCode()`, `HaveDetail()`, `BeOfType<T>()`
-- **ValidationError assertions** — `HaveFieldError()`, `HaveFieldErrorWithDetail()`, `HaveFieldCount()`
+- **Error.UnprocessableContent assertions** — `HaveFieldError()`, `HaveFieldErrorWithDetail()`, `HaveFieldCount()`
 - **Unwrap helpers** — `Unwrap()` for extracting values in test code without analyzer warnings
 - **FakeRepository** — In-memory aggregate store with domain event tracking and unique constraints
 - **TestActorProvider** — Mutable `IActorProvider` with `AsyncLocal` scoping for authorization tests

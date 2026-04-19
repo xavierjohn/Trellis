@@ -109,13 +109,13 @@ public sealed class CustomerRepository(AppDbContext db)
     public Task<Result<Customer>> GetRequiredAsync(CustomerId id, CancellationToken ct) =>
         db.Customers.FirstOrDefaultResultAsync(
             x => x.Id == id,
-            Error.NotFound($"Customer {id} was not found."),
+            new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Customer {id} was not found." },
             ct);
 }
 ```
 
 > [!IMPORTANT]
-> `FirstOrDefaultResultAsync(...)` returns **the exact `Error` you pass in**. It does not automatically create a `NotFoundError`.
+> `FirstOrDefaultResultAsync(...)` returns **the exact `Error` you pass in**. It does not automatically create a `Error.NotFound`.
 
 ### Query flow at a glance
 
@@ -146,7 +146,7 @@ namespace MyApp.Data;
 
 public sealed class CustomerRepository(AppDbContext db)
 {
-    public async Task<Result<Unit>> AddAsync(Customer customer, CancellationToken ct)
+    public async Task<Result> AddAsync(Customer customer, CancellationToken ct)
     {
         db.Customers.Add(customer);
         return await db.SaveChangesResultUnitAsync(ct);
@@ -161,9 +161,9 @@ public sealed class CustomerRepository(AppDbContext db)
 
 | EF Core failure | Trellis result |
 | --- | --- |
-| `DbUpdateConcurrencyException` | `ConflictError` (`conflict.error`) |
-| Duplicate key `DbUpdateException` | `ConflictError` (`conflict.error`) |
-| Foreign key `DbUpdateException` | `DomainError` (`domain.error`) |
+| `DbUpdateConcurrencyException` | `Error.Conflict` (`conflict.error`) |
+| Duplicate key `DbUpdateException` | `Error.Conflict` (`conflict.error`) |
+| Foreign key `DbUpdateException` | `Error.Conflict` (`domain.error`) |
 
 > [!NOTE]
 > The Trellis save helpers call EF Core’s `SaveChangesAsync(...)` internally. The public API you should use is `SaveChangesResultAsync(...)` or `SaveChangesResultUnitAsync(...)`.
@@ -185,7 +185,7 @@ public async ValueTask<Result<Order>> Handle(ShipOrderCommand cmd, CancellationT
 {
     var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
     return maybe
-        .ToResult(Error.NotFound("Order not found."))
+        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Order not found." })
         .Bind(order => order.Ship());
     // TransactionalCommandBehavior auto-commits the tracked changes on success.
 }
@@ -284,7 +284,7 @@ public sealed class Order : Aggregate<OrderId>
 ```csharp
 public sealed class OrderRepository(AppDbContext db)
 {
-    public async Task<Result<Unit>> UpdateAsync(Order order, CancellationToken ct)
+    public async Task<Result> UpdateAsync(Order order, CancellationToken ct)
     {
         db.Orders.Update(order);
         return await db.SaveChangesResultUnitAsync(ct);
@@ -292,7 +292,7 @@ public sealed class OrderRepository(AppDbContext db)
 }
 ```
 
-If another writer changed the same aggregate first, EF Core throws `DbUpdateConcurrencyException` and Trellis converts that to `ConflictError` with the standard `conflict.error` code.
+If another writer changed the same aggregate first, EF Core throws `DbUpdateConcurrencyException` and Trellis converts that to `Error.Conflict` with the standard `conflict.error` code.
 
 ## When to use `Maybe<T>` vs `Result<T>`
 
@@ -302,7 +302,7 @@ This is the repository design rule that keeps your application layer clear.
 | --- | --- | --- |
 | `Maybe<T>` | absence is data, not failure | “Find customer by email” |
 | `Result<T>` | the repository should decide the failure | “Load required customer” |
-| `Result<Unit>` | command succeeded or failed | save, delete, update |
+| `Result` | command succeeded or failed | save, delete, update |
 | `bool` | you only need existence | uniqueness checks |
 
 ### Practical rule of thumb

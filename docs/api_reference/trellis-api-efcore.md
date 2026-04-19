@@ -50,9 +50,9 @@ public static class DbContextExtensions
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)` | `Task<Result<int>>` | Convenience overload for `SaveChangesResultAsync(context, true, cancellationToken)`. |
-| `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | `Task<Result<int>>` | Wraps `SaveChangesAsync`; maps `DbUpdateConcurrencyException` to `Conflict`, duplicate-key `DbUpdateException` to `Conflict`, and foreign-key `DbUpdateException` to `Domain`. |
-| `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Saves changes and maps a successful row count to `Unit`. |
-| `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Saves changes with explicit `acceptAllChangesOnSuccess` and maps success to `Unit`. |
+| `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | `Task<Result<int>>` | Wraps `SaveChangesAsync`; maps `DbUpdateConcurrencyException` to `Error.Conflict("concurrency.modified")`, duplicate-key `DbUpdateException` to `Error.Conflict("duplicate.key")`, and foreign-key `DbUpdateException` to `Error.Conflict("referential.integrity")`. |
+| `public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)` | `Task<Result>` | Saves changes and discards the row count. |
+| `public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | `Task<Result>` | Saves changes with explicit `acceptAllChangesOnSuccess`. |
 
 ### `QueryableExtensions`
 
@@ -107,7 +107,7 @@ Abstract generic repository base class for EF Core aggregate persistence. Provid
 | --- | --- | --- |
 | `public virtual void Add(TAggregate aggregate)` | `void` | Stages a new aggregate for insertion. No-op if already tracked. |
 | `public virtual void Remove(TAggregate aggregate)` | `void` | Stages an aggregate for deletion. |
-| `public virtual Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken ct = default)` | `Task<Result<Unit>>` | Looks up by ID via `DbSet.FindAsync` (avoids Include graphs) and stages for deletion. Returns not-found if absent. |
+| `public virtual Task<Result> RemoveByIdAsync(TId id, CancellationToken ct = default)` | `Task<Result>` | Looks up by ID via `DbSet.FindAsync` (avoids Include graphs) and stages for deletion. Returns not-found if absent. |
 
 #### Virtual Hooks
 
@@ -128,7 +128,7 @@ public class OrderRepository(DbContext context) : RepositoryBase<Order, OrderId>
 // In a command handler (pipeline auto-commits on success):
 var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
 return maybe
-    .ToResult(Error.NotFound("Order not found."))
+    .ToResult(new Error.NotFound(new ResourceRef("Order")) { Detail = "Order not found." })
     .Bind(order => order.Ship());
 // Tracked changes are committed automatically by TransactionalCommandBehavior.
 ```
@@ -143,7 +143,7 @@ Abstraction over the commit boundary for staged changes. Repositories stage chan
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. |
+| `Task<Result> CommitAsync(CancellationToken ct = default)` | `Task<Result>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. |
 
 ### `EfUnitOfWork<TContext>`
 
@@ -411,8 +411,8 @@ public static ModelConfigurationBuilder ApplyTrellisConventions(this ModelConfig
 ```csharp
 public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)
 public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
-public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)
-public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)
+public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
 ```
 
 ### `QueryableExtensions`
@@ -511,13 +511,13 @@ public sealed class CustomerId : ScalarValueObject<CustomerId, Guid>, IScalarVal
 
     public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
         value == Guid.Empty
-            ? Result.Fail<CustomerId>(Error.Validation("Customer ID is required.", fieldName ?? "customerId"))
+            ? Result.Fail<CustomerId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "customerId"), "required") { Detail = "Customer ID is required." })))
             : Result.Ok(new CustomerId(value));
 
     public static Result<CustomerId> TryCreate(string? value, string? fieldName = null) =>
         Guid.TryParse(value, out var guid)
             ? TryCreate(guid, fieldName)
-            : Result.Fail<CustomerId>(Error.Validation("Customer ID must be a GUID.", fieldName ?? "customerId"));
+            : Result.Fail<CustomerId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "customerId"), "must_be_guid") { Detail = "Customer ID must be a GUID." })));
 }
 
 public partial class Customer : Aggregate<CustomerId>
@@ -560,7 +560,7 @@ await using var db = new AppDbContext(options);
 
 var result = await db.Customers.FirstOrDefaultResultAsync(
     x => x.Name == "missing",
-    Error.NotFound("Customer not found."));
+    new Error.NotFound(new ResourceRef("Customer")) { Detail = "Customer not found." });
 
 var submittedCustomers = await db.Customers
     .WhereHasValue(x => x.SubmittedAt)

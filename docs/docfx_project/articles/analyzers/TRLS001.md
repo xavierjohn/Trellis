@@ -64,5 +64,5 @@ dotnet_diagnostic.TRLS001.severity = none
 ```
 
 > [!TIP]
-> If you are at a boundary, return the `Result`, convert it with `Match` or `MatchError`, or explicitly assign it so the next step can handle success and failure.
+> If you are at a boundary, return the `Result`, convert it with `Match` (with a `switch` expression on the closed `Error` ADT), or explicitly assign it so the next step can handle success and failure.
 

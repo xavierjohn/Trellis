@@ -182,11 +182,6 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         string because = "",
         params object[] becauseArgs);
 
-    public AndConstraint<ErrorAssertions> HaveInstance(
-        string expectedInstance,
-        string because = "",
-        params object[] becauseArgs);
-
     public new AndWhichConstraint<ErrorAssertions, TError> BeOfType<TError>(
         string because = "",
         params object[] becauseArgs)
@@ -194,33 +189,37 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
 }
 ```
 
+> **v2 note:** The `HaveInstance(...)` assertion was removed. `Error.Instance` is no longer part of the closed-ADT base — the ASP wire layer synthesizes `ProblemDetails.Instance` from the request URL plus any `ResourceRef` carried by the typed payload (e.g. `Error.NotFound.Resource`). Assert against `ResourceRef` directly via `BeOfType<Error.NotFound>().Which.Resource`.
+
 #### `ValidationErrorAssertionsExtensions`
 ```csharp
 public static class ValidationErrorAssertionsExtensions
 {
-    public static ValidationErrorAssertions Should(this ValidationError error);
+    // Bound to Error.UnprocessableContent (the v2 replacement for v1's ValidationError class).
+    // Method names preserved for source-compat at test sites.
+    public static ValidationErrorAssertions Should(this Error.UnprocessableContent error);
 }
 ```
 
 #### `ValidationErrorAssertions`
 ```csharp
-public class ValidationErrorAssertions : ReferenceTypeAssertions<ValidationError, ValidationErrorAssertions>
+public class ValidationErrorAssertions : ReferenceTypeAssertions<Error.UnprocessableContent, ValidationErrorAssertions>
 {
-    public ValidationErrorAssertions(ValidationError error);
+    public ValidationErrorAssertions(Error.UnprocessableContent error);
 
     public AndConstraint<ValidationErrorAssertions> HaveFieldError(
-        string fieldName,
+        string fieldName,                              // accepted as either "email" or "/email" — normalized via InputPointer.ForProperty
         string because = "",
         params object[] becauseArgs);
 
     public AndConstraint<ValidationErrorAssertions> HaveFieldErrorWithDetail(
         string fieldName,
-        string expectedDetail,
+        string expectedDetail,                         // matches FieldViolation.Detail exactly
         string because = "",
         params object[] becauseArgs);
 
     public AndConstraint<ValidationErrorAssertions> HaveFieldCount(
-        int expectedCount,
+        int expectedCount,                             // counts distinct field paths
         string because = "",
         params object[] becauseArgs);
 }
@@ -283,8 +282,8 @@ public class FakeRepository<TAggregate, TId>
 
     public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default);
     public Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default);
-    public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
-    public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default);
+    public Task<Result> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
+    public Task<Result> DeleteAsync(TId id, CancellationToken cancellationToken = default);
 
     public void Clear();
     public bool Exists(TId id);
@@ -338,7 +337,7 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
 
 - Synchronous assertions start from `Result<T>` or `Maybe<T>`:
   - `result.Should().BeSuccess()`
-  - `result.Should().BeFailureOfType<ValidationError>()`
+  - `result.Should().BeFailureOfType<Error.UnprocessableContent>()`
   - `maybe.Should().HaveValue()`
 - **Async assertions are extension methods on `Task<Result<T>>` and `ValueTask<Result<T>>`, not on `ResultAssertions<T>`.**
   - Correct: `await resultTask.BeSuccessAsync();`
@@ -347,10 +346,10 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
 
 ### FakeRepository
 
-- `SaveAsync` and `DeleteAsync` return `Task<Result<Unit>>`.
+- `SaveAsync` and `DeleteAsync` return `Task<Result>`.
 - `WithUniqueConstraint(Func<TAggregate, object?> propertySelector)` — fluent constraint registration
 - `Clear()`, `Exists(TId id)`, `Get(TId id)`, `GetAll()`, `Count` — direct inspection helpers
-- `GetByIdAsync` / `DeleteAsync` return `NotFoundError` details in the format:
+- `GetByIdAsync` / `DeleteAsync` return `Error.NotFound` details in the format:
   - `"{AggregateTypeName} with ID {id} not found"`
 - Unique-constraint conflicts return:
   - `"A {AggregateTypeName} with the same value already exists."`
@@ -367,7 +366,7 @@ using Trellis.Testing;
 var success = Result.Ok(42);
 success.Should().BeSuccess().Which.Should().Be(42);
 
-var notFound = Result.Fail<int>(Error.NotFound("Order 123 not found", "123"));
+var notFound = Result.Fail<int>(new Error.NotFound(new ResourceRef("Order", "123")) { Detail = "Order 123 not found" });
 notFound.Should().BeFailure()
     .Which.Detail.Should().Be("Order 123 not found");
 ```

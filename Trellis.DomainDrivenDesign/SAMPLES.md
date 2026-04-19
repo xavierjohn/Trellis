@@ -39,8 +39,8 @@ public class CustomerId : ScalarValueObject<Guid>
     public static CustomerId NewUnique() => new(Guid.NewGuid());
     
     public static Result<CustomerId> TryCreate(Guid? value) =>
-        value.ToResult(Error.Validation("Customer ID cannot be empty"))
-            .Ensure(v => v != Guid.Empty, Error.Validation("Customer ID cannot be empty"))
+        value.ToResult(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
+            .Ensure(v => v != Guid.Empty, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
             .Map(v => new CustomerId(v));
 }
 
@@ -63,13 +63,13 @@ public class Customer : Entity<CustomerId>
     public static Result<Customer> TryCreate(string name, EmailAddress email) =>
         name.ToResult()
             .Ensure(n => !string.IsNullOrWhiteSpace(n), 
-                   Error.Validation("Name cannot be empty"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
             .Map(n => new Customer(CustomerId.NewUniqueV7(), n, email));
     
     public Result<Customer> UpdateName(string newName) =>
         newName.ToResult()
             .Ensure(n => !string.IsNullOrWhiteSpace(n),
-                   Error.Validation("Name cannot be empty"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
             .Tap(n =>
             {
                 Name = n;
@@ -135,15 +135,15 @@ public class Address : ValueObject
         string country) =>
         (street, city, state, postalCode, country).ToResult()
             .Ensure(x => !string.IsNullOrWhiteSpace(x.street), 
-                   Error.Validation("Street is required", nameof(street)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(street)), "validation.error") { Detail = "Street is required" })))
             .Ensure(x => !string.IsNullOrWhiteSpace(x.city),
-                   Error.Validation("City is required", nameof(city)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(city)), "validation.error") { Detail = "City is required" })))
             .Ensure(x => !string.IsNullOrWhiteSpace(x.state),
-                   Error.Validation("State is required", nameof(state)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(state)), "validation.error") { Detail = "State is required" })))
             .Ensure(x => !string.IsNullOrWhiteSpace(x.postalCode),
-                   Error.Validation("Postal code is required", nameof(postalCode)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(postalCode)), "validation.error") { Detail = "Postal code is required" })))
             .Ensure(x => !string.IsNullOrWhiteSpace(x.country),
-                   Error.Validation("Country is required", nameof(country)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(country)), "validation.error") { Detail = "Country is required" })))
             .Map(x => new Address(x.street, x.city, x.state, x.postalCode, x.country));
     
     // Define equality components
@@ -191,9 +191,9 @@ public class Temperature : ScalarValueObject<decimal>
     public static Result<Temperature> TryCreate(decimal value) =>
         value.ToResult()
             .Ensure(v => v >= -273.15m, 
-                   Error.Validation("Temperature cannot be below absolute zero"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Temperature cannot be below absolute zero" })
             .Ensure(v => v <= 1_000_000m,
-                   Error.Validation("Temperature exceeds physical limits"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Temperature exceeds physical limits" })
             .Map(v => new Temperature(v));
     
     public static Temperature FromCelsius(decimal celsius) => new(celsius);
@@ -256,11 +256,11 @@ public class Money : ValueObject
     public static Result<Money> TryCreate(decimal amount, string currency = "USD") =>
         (amount, currency).ToResult()
             .Ensure(x => x.amount >= 0, 
-                   Error.Validation("Amount cannot be negative", nameof(amount)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(amount)), "validation.error") { Detail = "Amount cannot be negative" })))
             .Ensure(x => !string.IsNullOrWhiteSpace(x.currency),
-                   Error.Validation("Currency is required", nameof(currency)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(currency)), "validation.error") { Detail = "Currency is required" })))
             .Ensure(x => x.currency.Length == 3,
-                   Error.Validation("Currency must be 3-letter ISO code", nameof(currency)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(currency)), "validation.error") { Detail = "Currency must be 3-letter ISO code" })))
             .Map(x => new Money(x.amount, x.currency.ToUpperInvariant()));
     
     public static Money Zero(string currency = "USD") => new(0, currency);
@@ -274,14 +274,14 @@ public class Money : ValueObject
     // Domain operations
     public Result<Money> Add(Money other) =>
         Currency != other.Currency
-            ? Error.Validation($"Cannot add {other.Currency} to {Currency}")
+            ? new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot add {other.Currency} to {Currency}" }
             : new Money(Amount + other.Amount, Currency).ToResult();
     
     public Result<Money> Subtract(Money other) =>
         Currency != other.Currency
-            ? Error.Validation($"Cannot subtract {other.Currency} from {Currency}")
+            ? new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot subtract {other.Currency} from {Currency}" }
             : Amount < other.Amount
-                ? Error.Validation("Result would be negative")
+                ? new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Result would be negative" }
                 : new Money(Amount - other.Amount, Currency).ToResult();
     
     public Money Multiply(decimal factor) =>
@@ -362,11 +362,11 @@ public class Order : Aggregate<OrderId>
     public Result<Order> AddLine(ProductId productId, string productName, Money price, int quantity) =>
         this.ToResult()
             .Ensure(_ => Status == OrderStatus.Draft,
-                   Error.Validation("Can only add items to draft orders"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Can only add items to draft orders" })
             .Ensure(_ => quantity > 0,
-                   Error.Validation("Quantity must be positive", nameof(quantity)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be positive" })))
             .Ensure(_ => quantity <= 1000,
-                   Error.Validation("Quantity cannot exceed 1000", nameof(quantity)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity cannot exceed 1000" })))
             .Tap(_ =>
             {
                 var existingLine = _lines.FirstOrDefault(l => l.ProductId == productId);
@@ -386,9 +386,9 @@ public class Order : Aggregate<OrderId>
     public Result<Order> RemoveLine(ProductId productId) =>
         this.ToResult()
             .Ensure(_ => Status == OrderStatus.Draft,
-                   Error.Validation("Can only remove items from draft orders"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Can only remove items from draft orders" })
             .Ensure(_ => _lines.Any(l => l.ProductId == productId),
-                   Error.NotFound($"Product {productId} not found in order"))
+                   new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {productId} not found in order" })
             .Tap(_ =>
             {
                 var line = _lines.First(l => l.ProductId == productId);
@@ -400,11 +400,11 @@ public class Order : Aggregate<OrderId>
     public Result<Order> Submit() =>
         this.ToResult()
             .Ensure(_ => Status == OrderStatus.Draft,
-                   Error.Validation("Can only submit draft orders"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Can only submit draft orders" })
             .Ensure(_ => Lines.Count > 0,
-                   Error.Validation("Cannot submit empty order"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Cannot submit empty order" })
             .Ensure(_ => Total.Amount > 0,
-                   Error.Validation("Order total must be positive"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Order total must be positive" })
             .Tap(_ =>
             {
                 Status = OrderStatus.Submitted;
@@ -415,7 +415,7 @@ public class Order : Aggregate<OrderId>
     public Result<Order> Ship() =>
         this.ToResult()
             .Ensure(_ => Status == OrderStatus.Submitted,
-                   Error.Validation("Can only ship submitted orders"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Can only ship submitted orders" })
             .Tap(_ =>
             {
                 Status = OrderStatus.Shipped;
@@ -426,9 +426,9 @@ public class Order : Aggregate<OrderId>
     public Result<Order> Cancel(string reason) =>
         this.ToResult()
             .Ensure(_ => Status is OrderStatus.Draft or OrderStatus.Submitted,
-                   Error.Validation("Can only cancel draft or submitted orders"))
+                   new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Can only cancel draft or submitted orders" })
             .Ensure(_ => !string.IsNullOrWhiteSpace(reason),
-                   Error.Validation("Cancellation reason is required", nameof(reason)))
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(reason)), "validation.error") { Detail = "Cancellation reason is required" })))
             .Tap(_ =>
             {
                 Status = OrderStatus.Cancelled;
@@ -657,7 +657,7 @@ public class OrderService
                 line.Quantity);
             
             if (!available)
-                return Error.Validation($"Insufficient inventory for {line.ProductName}");
+                return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Insufficient inventory for {line.ProductName}" };
         }
         
         return order;
@@ -674,7 +674,7 @@ public class OrderService
         
         return paymentResult.IsSuccess
             ? order.ToResult()
-            : Error.Validation($"Payment failed: {paymentResult.Error.Detail}");
+            : new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"Payment failed: {paymentResult.Error.Detail}" };
     }
     
     private async Task PublishEventsAsync(Order order)
@@ -699,7 +699,7 @@ public class OrderService
         string reason)
     {
         return await _orderRepository.GetByIdAsync(orderId)
-            .ToResultAsync(Error.NotFound($"Order {orderId} not found"))
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {orderId} not found" })
             .Bind(order => order.Cancel(reason))
             .TapAsync(order => _orderRepository.SaveAsync(order))
             .TapAsync(order => PublishEventsAsync(order));
@@ -722,7 +722,7 @@ public class BulkOrderService
     {
         // Validate minimum order count
         if (requests.Count < 3)
-            return Error.Validation("Bulk orders require at least 3 orders");
+            return new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Bulk orders require at least 3 orders" };
         
         // Create multiple orders
         var orderResults = requests
@@ -753,7 +753,7 @@ public class BulkOrderService
             discount).ToResult();
     }
     
-    public async Task<Result<Unit>> ProcessOrderBatchAsync(List<Order> orders)
+    public async Task<Result> ProcessOrderBatchAsync(List<Order> orders)
     {
         // Process each order using Traverse - automatically fails if any order fails
         return await orders.TraverseAsync(order => order.Submit())
@@ -817,7 +817,7 @@ public class UnitOfWork : IUnitOfWork
     
     public void RegisterAggregate(IAggregate aggregate) => _aggregates.Add(aggregate);
     
-    public async Task<Result<Unit>> CommitAsync()
+    public async Task<Result> CommitAsync()
     {
         try
         {
@@ -839,7 +839,7 @@ public class UnitOfWork : IUnitOfWork
         }
         catch (Exception ex)
         {
-            return Error.Unexpected("Failed to commit unit of work", ex);
+            return new Error.InternalServerError("fault-id") { Detail = "Failed to commit unit of work" };
         }
     }
 }

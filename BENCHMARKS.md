@@ -216,8 +216,8 @@ Testing validation/guard clauses.
 **Use Case:**
 ```csharp
 customer.CanBePromoted()
-    .Ensure(c => c.TotalPurchases > 1000, Error.Validation("Minimum purchase requirement"))
-    .Ensure(c => c.AccountAge > TimeSpan.FromDays(90), Error.Validation("Account age requirement"))
+    .Ensure(c => c.TotalPurchases > 1000, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Minimum purchase requirement" })
+    .Ensure(c => c.AccountAge > TimeSpan.FromDays(90), new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Account age requirement" })
     .Tap(c => c.Promote());
 ```
 

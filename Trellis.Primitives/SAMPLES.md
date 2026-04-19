@@ -135,7 +135,7 @@ public partial class ContactPhone : RequiredString<ContactPhone>
         TryCreate(value) // Generated: validates non-empty + length 10–15
             .Ensure(
                 phone => phone.Value.All(c => char.IsDigit(c) || c == '-' || c == ' '),
-                Error.Validation("Phone number can only contain digits, dashes, and spaces", "contactPhone"));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("contactPhone"), "validation.error") { Detail = "Phone number can only contain digits, dashes, and spaces" })));
 }
 
 public partial class ZipCode : RequiredString<ZipCode>
@@ -144,10 +144,10 @@ public partial class ZipCode : RequiredString<ZipCode>
         TryCreate(value)
             .Ensure(
                 zip => zip.Value.Length == 5 || zip.Value.Length == 10,
-                Error.Validation("Zip code must be 5 or 10 characters (with dash)", "zipCode"))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("zipCode"), "validation.error") { Detail = "Zip code must be 5 or 10 characters (with dash)" })))
             .Ensure(
                 zip => Regex.IsMatch(zip.Value, @"^\d{5}(-\d{4})?$"),
-                Error.Validation("Invalid zip code format (use 12345 or 12345-6789)", "zipCode"));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("zipCode"), "validation.error") { Detail = "Invalid zip code format (use 12345 or 12345-6789)" })));
 }
 
 [StringLength(20, MinimumLength = 3)]
@@ -157,7 +157,7 @@ public partial class PartNumber : RequiredString<PartNumber>
         TryCreate(value) // Generated: validates non-empty + length 3–20
             .Ensure(
                 code => Regex.IsMatch(code.Value, @"^[A-Z0-9-]+$"),
-                Error.Validation("Part number can only contain uppercase letters, digits, and dashes", "partNumber"));
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("partNumber"), "validation.error") { Detail = "Part number can only contain uppercase letters, digits, and dashes" })));
 }
 
 // Usage
@@ -424,7 +424,7 @@ public class EntityService
             return result3.ToResult();
         }
         
-        return Error.Validation("Invalid entity ID", "entityId");
+        return new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("entityId"), "validation.error") { Detail = "Invalid entity ID" }));
     }
     
     // Parsing from Guid
@@ -510,7 +510,7 @@ public class UserService
         return await EmailAddress.TryCreate(email)
             .EnsureAsync(
                 async e => !await _repository.EmailExistsAsync(e),
-                Error.Conflict("Email is already registered"))
+                new Error.Conflict(null, "conflict") { Detail = "Email is already registered" })
             .BindAsync(async validEmail =>
                 (await User.TryCreate(validEmail.Value, firstName, lastName))
                     .TapAsync(user => _repository.AddAsync(user)));
@@ -605,7 +605,7 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
         var r = TryCreate(s);
         if (r.IsFailure)
         {
-            var val = (ValidationError)r.Error;
+            var val = (Error.UnprocessableContent)r.Error;
             throw new FormatException(val.FieldErrors[0].Details[0]);
         }
         return r.Value;
@@ -634,7 +634,7 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
             : "trackingId";
         return requiredStringOrNothing
-            .EnsureNotNullOrWhiteSpace(Error.Validation("Tracking Id cannot be empty.", field))
+            .EnsureNotNullOrWhiteSpace(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Tracking Id cannot be empty." })))
             .Map(str => new TrackingId(str));
     }
 }
@@ -657,9 +657,9 @@ public static Result<ProductName> TryCreate(string? value, string? fieldName = n
         ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
         : "productName";
     return value
-        .EnsureNotNullOrWhiteSpace(Error.Validation("Product Name cannot be empty.", field))
-        .Ensure(str => str.Length >= 3, Error.Validation("Product Name must be at least 3 characters.", field))
-        .Ensure(str => str.Length <= 50, Error.Validation("Product Name must be 50 characters or fewer.", field))
+        .EnsureNotNullOrWhiteSpace(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Product Name cannot be empty." })))
+        .Ensure(str => str.Length >= 3, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Product Name must be at least 3 characters." })))
+        .Ensure(str => str.Length <= 50, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Product Name must be 50 characters or fewer." })))
         .Map(str => new ProductName(str));
 }
 ```
@@ -696,7 +696,7 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
         var r = TryCreate(s);
         if (r.IsFailure)
         {
-            var val = (ValidationError)r.Error;
+            var val = (Error.UnprocessableContent)r.Error;
             throw new FormatException(val.FieldErrors[0].Details[0]);
         }
         return r.Value;
@@ -727,8 +727,8 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
             : "employeeId";
         return requiredGuidOrNothing
-            .ToResult(Error.Validation("Employee Id cannot be empty.", field))
-            .Ensure(x => x != Guid.Empty, Error.Validation("Employee Id cannot be empty.", field))
+            .ToResult(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
+            .Ensure(x => x != Guid.Empty, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
             .Map(guid => new EmployeeId(guid));
      }
 
@@ -740,13 +740,11 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
             : "employeeId";
         Guid parsedGuid = Guid.Empty;
         return stringOrNull
-            .ToResult(Error.Validation("Employee Id cannot be empty.", field))
+            .ToResult(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
             .Ensure(
                 x => Guid.TryParse(x, out parsedGuid), 
-                Error.Validation(
-                    "Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)", 
-                    field))
-            .Ensure(_ => parsedGuid != Guid.Empty, Error.Validation("Employee Id cannot be empty.", field))
+                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)" })))
+            .Ensure(_ => parsedGuid != Guid.Empty, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
             .Map(guid => new EmployeeId(parsedGuid));
     }
 }
@@ -963,7 +961,7 @@ public class UsersController : ControllerBase
         UserId id)
     {
         var user = await _repository.GetByIdAsync(id)
-            .ToResultAsync(Error.NotFound($"User {id} not found"));
+            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" });
         
         return user.ToActionResult(this);
     }

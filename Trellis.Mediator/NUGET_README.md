@@ -19,7 +19,7 @@ public sealed record GetOrderQuery(string Id) : IQuery<Result<string>>, IValidat
 {
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Id)
-            ? Result.Fail(Error.Validation("Order ID is required.", nameof(Id)))
+            ? Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Id)), "validation.error") { Detail = "Order ID is required." })))
             : Result.Ok();
 }
 

@@ -110,7 +110,7 @@ A reviewer learns one Trellis service and can usually review the next one much f
 
 - validate with `TryCreate`
 - compose with `Bind`, `Map`, `Ensure`, `Tap`, `Combine`
-- branch with `Match` / `MatchError`
+- branch with `Match` (with a `switch` expression on the closed `Error` ADT)
 - map to HTTP with `ToHttpResult()` or `ToActionResult(this)`
 
 ## Spec-to-code mapping

@@ -9,10 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
+#### Trellis.Results — Error redesigned as closed ADT (V6)
+
+The `Error` type is now an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, `Error.Conflict`, `Error.Forbidden`, …). The base type has a `private` constructor so the catalog is closed at the language level, and every `switch` over an `Error` reference is exhaustive at compile time.
+
+Key changes:
+- **No static factory methods.** Replace `Error.Validation("msg", "field")` with `new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "reason_code") { Detail = "msg" }))`. Same pattern for `Error.NotFound`, `Error.Conflict`, `Error.Forbidden`, `Error.Unexpected`, etc.
+- **Typed payloads.** Each case carries a strongly typed payload — `ResourceRef` for `NotFound`/`Gone`/`Conflict`, `EquatableArray<FieldViolation>` for `UnprocessableContent`, `PreconditionKind` for `PreconditionFailed`, etc. No more `object?` bags.
+- **`Detail` and `Cause` on the base.** Set them via object initializer; equality compares discriminator + payload + `Detail` (Cause excluded).
+- **`Result.Error` is now `public Error?`** (null on success, never throws). `Result<T>.Value` still throws on failure — required because `T` may be a struct where `default(T)` is indistinguishable from a real value. See [ADR-001](docs/adr/ADR-001-result-api-surface.md) for the full design rationale.
+- **`Result<Unit>` collapsed to non-generic `Result`.** `Unit` is retained for tuple-result interop only.
+- **Removed:** `MatchError`, `SwitchError`, `FlattenValidationErrors` extensions; `ValidationError`/`NotFoundError`/`ConflictError`/etc. concrete subclasses; `Error.Instance` field. The ASP wire layer synthesizes `ProblemDetails.Instance` from request URL + `ResourceRef`.
+- **Renamed wire identifiers.** Default `Code` values changed from `"validation.error"`/`"not.found.error"`/etc. to the IANA-aligned slugs `"unprocessable-content"`/`"not-found"`/etc.
+- **TRLS005 analyzer (`UseMatchErrorAnalyzer`) removed** — the C# compiler now provides exhaustiveness for free.
+
+Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full V2 patterns and [api-results.md](docs/api_reference/trellis-api-results.md) for the reference table.
+
 #### Trellis.Testing — Package Restructure
 
-- **Removed `ResultBuilder`** — Use `Result.Ok(value)` and `Result.Fail<T>(Error.XYZ(...))` directly. `ResultBuilder` was a thin wrapper that added no value over the existing API.
-- **Removed `ValidationErrorBuilder`** — Use `Error.Validation(detail, fieldName).And(fieldName, detail)` directly.
+- **Removed `ResultBuilder`** — Use `Result.Ok(value)` and `Result.Fail<T>(new Error.X(...))` directly. `ResultBuilder` was a thin wrapper that added no value over the existing API.
+- **Removed `ValidationErrorBuilder`** — Construct an `Error.UnprocessableContent` directly with one `FieldViolation` per failure: `new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), reasonCode) { Detail = "..." }))`. Combine multiple validation results via `Combine`.
 - **Removed `Trellis.Testing.Builders` namespace** — All builder types have been removed.
 - **Removed `Trellis.Testing.Fakes` namespace** — `FakeRepository`, `FakeSharedResourceLoader`, `TestActorProvider`, and `TestActorScope` now live in the `Trellis.Testing` namespace. Replace `using Trellis.Testing.Fakes;` with `using Trellis.Testing;`.
 - **New package: `Trellis.Testing.AspNetCore`** — ASP.NET Core integration test helpers (`WebApplicationFactoryExtensions`, `WebApplicationFactoryTimeExtensions`, `ServiceCollectionExtensions`, `ServiceCollectionDbProviderExtensions`, `MsalTestTokenProvider`, `MsalTestOptions`, `TestUserCredentials`) moved to this new package. Add `dotnet add package Trellis.Testing.AspNetCore` and add `using Trellis.Testing.AspNetCore;` for these types. Projects using both core assertions and ASP.NET helpers will need both packages.
@@ -147,7 +163,7 @@ A comprehensive suite of 18 Roslyn analyzers to enforce Railway Oriented Program
 
 **Best Practice Rules (Info):**
 - **TRLS002**: Suggest `Bind` instead of `Map` when lambda returns Result
-- **TRLS005**: Suggest `MatchError` for type-safe error discrimination
+- **TRLS005**: *(removed in V2)* — superseded by C# exhaustive `switch` on the closed `Error` ADT
 - **TRLS010**: Suggest specific error types instead of base `Error` class
 - **TRLS012**: Suggest `Result.Combine()` for multiple Result checks
 - **TRLS013**: Suggest `GetValueOrDefault`/`Match` instead of ternary operator

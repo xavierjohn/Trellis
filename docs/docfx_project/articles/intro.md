@@ -111,7 +111,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), Error.Conflict("Email already registered."))
+        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." })
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }
@@ -201,26 +201,26 @@ The problem with plain strings and generic exceptions is that they tell humans s
 
 Trellis uses concrete error types such as:
 
-- `ValidationError`
-- `NotFoundError`
-- `ConflictError`
-- `ForbiddenError`
-- `UnexpectedError`
+- `Error.UnprocessableContent`
+- `Error.NotFound`
+- `Error.Conflict`
+- `Error.Forbidden`
+- `Error.InternalServerError`
 
 Each one carries intent, and the defaults map naturally to HTTP semantics.
 
 | Factory | Default code | Typical meaning |
 | --- | --- | --- |
-| `Error.Validation(...)` | `validation.error` | Input or rule validation failed |
-| `Error.NotFound(...)` | `not.found.error` | The resource does not exist |
-| `Error.Conflict(...)` | `conflict.error` | Current state prevents the operation |
-| `Error.Forbidden(...)` | `forbidden.error` | Caller is authenticated but not allowed |
-| `Error.Unexpected(...)` | `unexpected.error` | Something unplanned failed |
+| `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }` | `validation.error` | Input or rule validation failed |
+| `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }` | `not.found.error` | The resource does not exist |
+| `new Error.Conflict(null, "conflict") { Detail = ... }` | `conflict.error` | Current state prevents the operation |
+| `new Error.Forbidden("policy.id") { Detail = ... }` | `forbidden.error` | Caller is authenticated but not allowed |
+| `new Error.InternalServerError("fault-id") { Detail = ... }` | `unexpected.error` | Something unplanned failed |
 
 ```csharp
 using Trellis;
 
-var message = Error.NotFound("Order not found.") == Error.NotFound("Customer not found.")
+var message = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Order not found." } == new Error.NotFound(new ResourceRef("Resource")) { Detail = "Customer not found." }
     ? "Same programmatic error code"
     : "Different error code";
 ```

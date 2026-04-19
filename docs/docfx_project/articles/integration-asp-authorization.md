@@ -176,7 +176,7 @@ Once you have an `Actor`, authorization logic becomes plain application code.
 
 ```csharp
 if (!actor.HasPermission("Products.Delete"))
-    return Result.Fail(Error.Forbidden("Products.Delete is required."));
+    return Result.Fail(new Error.Forbidden("policy.id") { Detail = "Products.Delete is required." });
 ```
 
 ### Scoped permissions
@@ -187,7 +187,7 @@ if (!actor.HasPermission("Products.Delete"))
 var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
 
 if (tenantId is null || !actor.HasPermission("Documents.Read", tenantId))
-    return Result.Fail(Error.Forbidden("You cannot read documents in this tenant."));
+    return Result.Fail(new Error.Forbidden("policy.id") { Detail = "You cannot read documents in this tenant." });
 ```
 
 That call checks for a permission string shaped like:
@@ -208,7 +208,7 @@ using Trellis;
 using Trellis.Authorization;
 
 public sealed record DeleteDocumentCommand(string DocumentId)
-    : ICommand<Result<Unit>>, IAuthorize
+    : ICommand<Result>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions => ["Documents.Delete"];
 }
@@ -251,7 +251,7 @@ public sealed record EditDocumentCommand(string DocumentId)
     public IResult Authorize(Actor actor, Document resource) =>
         actor.IsOwner(resource.OwnerId) || actor.HasPermission("Documents.EditAny")
             ? Result.Ok()
-            : Result.Fail(Error.Forbidden("Only the owner can edit this document."));
+            : Result.Fail(new Error.Forbidden("policy.id") { Detail = "Only the owner can edit this document." });
 }
 ```
 

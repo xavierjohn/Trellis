@@ -4,7 +4,7 @@
 - **Category:** Trellis
 
 ## What it detects
-Flags empty or whitespace-only messages passed to Trellis error factory methods such as `Error.Validation(...)`, `Error.NotFound(...)`, `Error.Conflict(...)`, `Error.Unauthorized(...)`, `Error.Forbidden(...)`, and `Error.Unexpected(...)`.
+Flags empty or whitespace-only messages passed to Trellis error factory methods such as `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }`, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, `new Error.Unauthorized() { Detail = ... }`, `new Error.Forbidden("policy.id") { Detail = ... }`, and `new Error.InternalServerError("fault-id") { Detail = ... }`.
 
 ## Why it matters
 Empty error messages make logs, diagnostics, and HTTP responses much harder to understand.
@@ -19,7 +19,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Bad(string quantity) =>
-        Result.Fail<int>(Error.Validation("", nameof(quantity)));
+        Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "" })));
 }
 ```
 
@@ -30,7 +30,7 @@ using Trellis;
 static class Example
 {
     public static Result<int> Good(string quantity) =>
-        Result.Fail<int>(Error.Validation("Quantity must be a whole number.", nameof(quantity)));
+        Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be a whole number." })));
 }
 ```
 

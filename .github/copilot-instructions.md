@@ -176,6 +176,36 @@ For `Result<T>`, `Maybe<T>`, `Error`, and all ROP extension methods (`Bind`, `Ma
 
 For `Maybe<T>` usage in ASP.NET DTOs and EF Core, see `docs/api_reference/trellis-api-asp.md` and `docs/api_reference/trellis-api-efcore.md`.
 
+### Error API Discipline (V2 / V6 Closed ADT)
+
+`Error` is a **closed discriminated union**: each HTTP-aligned case (`NotFound`, `Conflict`, `UnprocessableContent`, `Forbidden`, `InternalServerError`, …) is a `sealed record` nested inside the `Error` base record. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit. See `docs/adr/ADR-001-result-api-surface.md` for design rationale.
+
+**Construct errors with `new Error.X(...)`. There are no static factory helpers.**
+
+```csharp
+// ✅ V2 — direct construction with typed payload
+new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found" }
+new Error.Forbidden("only-creator-can-edit") { Detail = "Only the creator can edit." }
+new Error.Conflict("etag_mismatch") { Detail = "ETag does not match current version." }
+new Error.UnprocessableContent(EquatableArray.Create(
+    new FieldViolation(InputPointer.ForProperty("dueDate"), "due_date_in_past")
+    { Detail = "Due date must be in the future." }))
+new Error.InternalServerError(faultId: Guid.NewGuid().ToString("N")) { Detail = "Persisted to log; see faultId." }
+
+// ❌ V1 (removed) — do not write
+Error.NotFound("User not found")
+Error.Validation("Due date must be in the future.", "dueDate")
+Error.Forbidden("Only the creator can edit.")
+```
+
+Key facts:
+- `Detail` and `Cause` live on the base record as `init`-only properties; set them via object-initializer syntax.
+- `Cause` chains are validated acyclic at `init` time. Never assign a live `System.Exception` — wrap context as a child `Error`.
+- Equality compares discriminator + `Detail` + positional payload. `Cause` is intentionally excluded (mirrors `System.Exception`).
+- `switch` over an `Error` reference is exhaustive at the language level — no default branch needed.
+- `UnprocessableContent` carries both `Fields` (`EquatableArray<FieldViolation>`) and `Rules` (`EquatableArray<RuleViolation>`); either may be empty.
+- The ASP boundary populates `ProblemDetails.Extensions["code"]`, `["kind"]`, `["faultId"]` (for `InternalServerError`), and `["rules"]` (when present). On 5xx responses `Detail` is redacted; the `faultId` extension preserves the link to server-side logs.
+
 ### Repository and Unit of Work Pattern
 
 **Critical Rule:** Repositories stage changes. The pipeline commits. Handlers never call `SaveChanges`.
@@ -250,15 +280,15 @@ Applies to: Ensure, Bind, Map, Tap, Match, Combine, and all other async extensio
 ```csharp
 // Both async → EnsureTests.ValueTask.cs
 await ValueTask.FromResult(Result.Ok("test"))
-    .EnsureAsync(v => ValueTask.FromResult(v.Length > 0), Error.Validation("Empty"));
+    .EnsureAsync(v => ValueTask.FromResult(v.Length > 0), new Error.BadRequest("empty"));
 
 // Left only → EnsureTests.ValueTask.Left.cs
 await ValueTask.FromResult(Result.Ok("test"))
-    .EnsureAsync(v => v.Length > 0, Error.Validation("Empty"));
+    .EnsureAsync(v => v.Length > 0, new Error.BadRequest("empty"));
 
 // Right only → EnsureTests.ValueTask.Right.cs
 await Result.Ok("test")
-    .EnsureAsync(v => ValueTask.FromResult(v.Length > 0), Error.Validation("Empty"));
+    .EnsureAsync(v => ValueTask.FromResult(v.Length > 0), new Error.BadRequest("empty"));
 ```
 
 **Quick decision tree:** Is the input async? → Left. Are predicates async? → Right. Both? → Base (no suffix).
@@ -438,7 +468,11 @@ public static Result<EmailAddress> TryCreate(string? value, string? fieldName = 
     using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity("EmailAddress.TryCreate");
     if (value is not null && EmailRegEx().IsMatch(value))
         return new EmailAddress(value);  // Result constructor sets Activity.Current (== activity)
-    return Result.Fail<EmailAddress>(Error.Validation("Email address is not valid.", field));
+    return Result.Fail<EmailAddress>(
+        new Error.UnprocessableContent(
+            EquatableArray.Create(
+                new FieldViolation(InputPointer.ForProperty(field ?? string.Empty), "invalid_email")
+                { Detail = "Email address is not valid." })));
 }
 ```
 

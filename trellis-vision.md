@@ -184,7 +184,7 @@ public async Task<Result<User>> CreateUserAsync(
         .Combine(LastName.TryCreate(lastName))
         .Combine(EmailAddress.TryCreate(email))
         .Bind((first, last, email) => User.TryCreate(first, last, email))
-        .Ensure(user => !_repository.EmailExists(user.Email), Error.Conflict("Email exists"))
+        .Ensure(user => !_repository.EmailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email exists" })
         .Tap(user => _repository.Save(user))
         .Tap(user => _emailService.SendWelcome(user.Email));
 ```
@@ -214,14 +214,14 @@ Trellis provides 10 discriminated error types that map to HTTP status codes:
 
 | Error | HTTP | Use Case |
 |-------|------|----------|
-| ValidationError | 400 | Invalid input with field-level details |
-| NotFoundError | 404 | Entity doesn't exist |
-| ConflictError | 409 | Duplicate or concurrency violation |
-| ForbiddenError | 403 | Insufficient permissions |
-| DomainError | 422 | Business rule violation |
-| UnexpectedError | 500 | Unhandled failure |
+| Error.UnprocessableContent | 400 | Invalid input with field-level details |
+| Error.NotFound | 404 | Entity doesn't exist |
+| Error.Conflict | 409 | Duplicate or concurrency violation |
+| Error.Forbidden | 403 | Insufficient permissions |
+| Error.Conflict | 422 | Business rule violation |
+| Error.InternalServerError | 500 | Unhandled failure |
 
-Plus `BadRequestError` (400), `UnauthorizedError` (401), `RateLimitError` (429), `ServiceUnavailableError` (503).
+Plus `Error.BadRequest` (400), `Error.Unauthorized` (401), `Error.TooManyRequests` (429), `Error.ServiceUnavailable` (503).
 
 ### Analyzer Rules
 

@@ -25,7 +25,7 @@ Result<int> saved = await dbContext.SaveChangesResultAsync(cancellationToken);
 ## Key Features
 - Apply Trellis value converters and owned-type conventions with one registration point.
 - Query `Maybe<T>` naturally instead of dropping to storage-specific null handling.
-- Return `Result<int>` or `Result<Unit>` from save operations instead of throwing on expected failures.
+- Return `Result<int>` or `Result` from save operations instead of throwing on expected failures.
 - `RepositoryBase<TAggregate, TId>` — staging-only base class (Add/Remove/Query/Exists/Count).
 - `IUnitOfWork` / `EfUnitOfWork<TContext>` — single commit boundary for staged changes.
 - `TransactionalCommandBehavior` — Mediator pipeline behavior that auto-commits after successful command handlers (requires Mediator pipeline registration).
