@@ -31,6 +31,11 @@ public static partial class CheckExtensionsAsync
     /// <param name="resultTask">The async result to check.</param>
     /// <param name="func">The sync validation function that returns a Result of Unit.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
-    public static ValueTask<Result<T>> CheckAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, Result<Unit>> func)
-        => CheckAsync<T, Unit>(resultTask, func);
+    public static async ValueTask<Result<T>> CheckAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, Result> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        Result<T> result = await resultTask.ConfigureAwait(false);
+        return result.Check(func);
+    }
 }

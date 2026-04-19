@@ -47,6 +47,27 @@ public static partial class CheckExtensionsAsync
     /// <param name="result">The result to check.</param>
     /// <param name="func">The async validation function that returns a Result of Unit.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
-    public static Task<Result<T>> CheckAsync<T>(this Result<T> result, Func<T, Task<Result<Unit>>> func)
-        => CheckAsync<T, Unit>(result, func);
+    public static async Task<Result<T>> CheckAsync<T>(this Result<T> result, Func<T, Task<Result>> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckExtensions.Check));
+
+        if (result.IsFailure)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = await func(result.Value).ConfigureAwait(false);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Fail<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
 }

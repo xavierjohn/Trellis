@@ -123,7 +123,16 @@ public static class HttpResultExtensions
     /// </example>
     public static Microsoft.AspNetCore.Http.IResult ToHttpResult<TValue>(this Result<TValue> result, TrellisAspOptions? options = null) =>
         result.Match(
-            onSuccess: value => typeof(TValue) == typeof(Unit) ? Results.NoContent() : Results.Ok(value),
+            onSuccess: value => Results.Ok(value),
+            onFailure: error => error.ToHttpResult(options));
+
+    /// <summary>
+    /// Converts a non-generic <see cref="Result"/> to an <see cref="Microsoft.AspNetCore.Http.IResult"/>.
+    /// On success returns 204 No Content; on failure returns an error result.
+    /// </summary>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResult(this Result result, TrellisAspOptions? options = null) =>
+        result.Match(
+            onSuccess: () => Results.NoContent(),
             onFailure: error => error.ToHttpResult(options));
 
     /// <summary>
@@ -489,10 +498,6 @@ public static class HttpResultExtensions
         result.Match(
             onSuccess: value =>
             {
-                // If TValue is Unit, return 204 No Content
-                if (typeof(TValue) == typeof(Unit))
-                    return Results.NoContent();
-
                 // Guard: invalid, empty, or out-of-range → return 200 OK (no Content-Range)
                 if (from < 0 || to < from || totalLength <= 0 || from >= totalLength)
                     return Results.Ok(value);

@@ -25,16 +25,16 @@ public class InventoryService
     /// <summary>
     /// Checks if sufficient stock is available for a product.
     /// </summary>
-    public Result<Unit> CheckAvailability(ProductId productId, int quantity)
+    public Result CheckAvailability(ProductId productId, int quantity)
     {
         if (quantity <= 0)
-            return Result.Fail<Unit>(Error.Validation("Quantity must be greater than zero", nameof(quantity)));
+            return Result.Fail(Error.Validation("Quantity must be greater than zero", nameof(quantity)));
 
         if (!_stock.TryGetValue(productId, out var available))
-            return Result.Fail<Unit>(Error.NotFound($"Product {productId} not found in inventory"));
+            return Result.Fail(Error.NotFound($"Product {productId} not found in inventory"));
 
         if (available < quantity)
-            return Result.Fail<Unit>(Error.Validation($"Insufficient stock. Available: {available}, Requested: {quantity}"));
+            return Result.Fail(Error.Validation($"Insufficient stock. Available: {available}, Requested: {quantity}"));
 
         return Result.Ok();
     }
@@ -42,12 +42,12 @@ public class InventoryService
     /// <summary>
     /// Reserves stock for an order with Railway Oriented Programming.
     /// </summary>
-    public async Task<Result<Unit>> ReserveStockAsync(ProductId productId, int quantity, CancellationToken cancellationToken = default)
+    public async Task<Result> ReserveStockAsync(ProductId productId, int quantity, CancellationToken cancellationToken = default)
     {
         await Task.Delay(100, cancellationToken); // Simulate async operation
 
         return CheckAvailability(productId, quantity)
-            .Tap(_ =>
+            .Tap(() =>
             {
                 _stock[productId] -= quantity;
                 Console.WriteLine($"Reserved {quantity} units of product {productId}. Remaining: {_stock[productId]}");
@@ -57,12 +57,12 @@ public class InventoryService
     /// <summary>
     /// Releases reserved stock if order is cancelled.
     /// </summary>
-    public async Task<Result<Unit>> ReleaseStockAsync(ProductId productId, int quantity, CancellationToken cancellationToken = default)
+    public async Task<Result> ReleaseStockAsync(ProductId productId, int quantity, CancellationToken cancellationToken = default)
     {
         await Task.Delay(50, cancellationToken); // Simulate async operation
 
         if (!_stock.TryGetValue(productId, out _))
-            return Result.Fail<Unit>(Error.NotFound($"Product {productId} not found in inventory"));
+            return Result.Fail(Error.NotFound($"Product {productId} not found in inventory"));
 
         _stock[productId] += quantity;
         Console.WriteLine($"Released {quantity} units of product {productId}. New total: {_stock[productId]}");

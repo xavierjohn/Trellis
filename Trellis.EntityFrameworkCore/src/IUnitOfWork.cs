@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+namespace Trellis.EntityFrameworkCore;
 
 /// <summary>
 /// Abstraction over the commit boundary for staged changes.
@@ -14,10 +14,10 @@ public interface IUnitOfWork
 {
     /// <summary>
     /// Persists all staged changes to the database.
-    /// Returns <see cref="Result{Unit}"/> to surface concurrency, duplicate-key,
+    /// Returns <see cref="Result"/> to surface concurrency, duplicate-key,
     /// and foreign-key errors as <see cref="Error"/> instead of exceptions.
     /// </summary>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Result{Unit}"/> representing success or failure.</returns>
-    Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default);
+    /// <returns>A <see cref="Result"/> representing success or failure.</returns>
+    Task<Result> CommitAsync(CancellationToken cancellationToken = default);
 }

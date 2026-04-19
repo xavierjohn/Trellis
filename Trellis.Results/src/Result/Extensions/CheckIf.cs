@@ -59,8 +59,29 @@ public static class CheckIfExtensions
     /// <param name="condition">The condition that must be true for the check to run.</param>
     /// <param name="func">The validation function that returns a Result of Unit.</param>
     /// <returns>The original result if the condition is false or the check passes; otherwise the check's failure.</returns>
-    public static Result<T> CheckIf<T>(this Result<T> result, bool condition, Func<T, Result<Unit>> func)
-        => CheckIf<T, Unit>(result, condition, func);
+    public static Result<T> CheckIf<T>(this Result<T> result, bool condition, Func<T, Result> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        if (result.IsFailure || !condition)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = func(result.Value);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Fail<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
 
     /// <summary>
     /// Conditionally runs a validation function when the predicate returns true for the success value.
@@ -106,6 +127,28 @@ public static class CheckIfExtensions
     /// <param name="predicate">The predicate to evaluate against the success value.</param>
     /// <param name="func">The validation function that returns a Result of Unit.</param>
     /// <returns>The original result if the predicate is false or the check passes; otherwise the check's failure.</returns>
-    public static Result<T> CheckIf<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<Unit>> func)
-        => CheckIf<T, Unit>(result, predicate, func);
+    public static Result<T> CheckIf<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result> func)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        if (result.IsFailure || !predicate(result.Value))
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = func(result.Value);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Fail<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
 }

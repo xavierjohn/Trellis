@@ -77,7 +77,7 @@ public class HttpResultValueTaskTests : IDisposable
     {
         // Arrange
         var error = Error.Conflict("Conflict occurred");
-        var result = ValueTask.FromResult(Result.Fail<Unit>(error));
+        var result = ValueTask.FromResult(Result.Fail(error));
         var expected = new ProblemDetails
         {
             Title = "Conflict",

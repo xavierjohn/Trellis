@@ -244,14 +244,14 @@ public class SharedResourceLoaderTests
     // -- Commands that use IIdentifyResource (should be auto-bridged)
 
     public sealed record SharedCancelCommand(string OrderId)
-        : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
+        : ICommand<Result>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
     {
         public string GetResourceId() => OrderId;
         public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
     }
 
     public sealed record SharedReturnCommand(string OrderId)
-        : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
+        : ICommand<Result>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
     {
         public string GetResourceId() => OrderId;
         public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
@@ -260,7 +260,7 @@ public class SharedResourceLoaderTests
     // -- Command WITHOUT IIdentifyResource (should NOT be auto-bridged)
 
     public sealed record NonIdentifyCommand(string OrderId)
-        : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>
+        : ICommand<Result>, IAuthorizeResource<SharedOrder>
     {
         public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
     }
@@ -268,7 +268,7 @@ public class SharedResourceLoaderTests
     // -- Command with explicit loader (explicit should win)
 
     public sealed record ExplicitLoaderCommand(string OrderId)
-        : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
+        : ICommand<Result>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, string>
     {
         public string GetResourceId() => OrderId;
         public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
@@ -292,7 +292,7 @@ public class SharedResourceLoaderTests
     // -- Command with mismatched TId (shared loader uses string, command uses int)
 
     public sealed record MismatchedIdCommand(int OrderNumber)
-        : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, int>
+        : ICommand<Result>, IAuthorizeResource<SharedOrder>, IIdentifyResource<SharedOrder, int>
     {
         public int GetResourceId() => OrderNumber;
         public IResult Authorize(Actor actor, SharedOrder order) => Result.Ok();
@@ -300,3 +300,4 @@ public class SharedResourceLoaderTests
 
     #endregion
 }
+

@@ -12,7 +12,7 @@
 /// <example>
 /// <code>
 /// public record CancelOrderCommand(OrderId OrderId)
-///     : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, OrderId&gt;
+///     : ICommand&lt;Result&gt;, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, OrderId&gt;
 /// {
 ///     public OrderId GetResourceId() =&gt; OrderId;
 ///     public IResult Authorize(Actor actor, Order order) =&gt; ...;

@@ -71,13 +71,13 @@ public class TransactionalCommandBehaviorTests
         // Arrange
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
-        var behavior = new TransactionalCommandBehavior<FakeUnitCommand, Result<Unit>>(uow);
-        var expected = Result.Ok(default(Unit));
+        var behavior = new TransactionalCommandBehavior<FakeUnitCommand, Result>(uow);
+        var expected = Result.Ok();
 
         // Act
         var result = await behavior.Handle(
             new FakeUnitCommand(),
-            (_, _) => new ValueTask<Result<Unit>>(expected),
+            (_, _) => new ValueTask<Result>(expected),
             ct);
 
         // Assert
@@ -90,9 +90,9 @@ public class TransactionalCommandBehaviorTests
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
         public int CommitCount { get; private set; }
-        public Result<Unit>? CommitResult { get; init; }
+        public Result? CommitResult { get; init; }
 
-        public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
+        public Task<Result> CommitAsync(CancellationToken cancellationToken = default)
         {
             CommitCount++;
             return Task.FromResult(CommitResult ?? Result.Ok());
@@ -101,7 +101,7 @@ public class TransactionalCommandBehaviorTests
 
     private sealed record FakeCommand : Mediator.ICommand<Result<string>>;
 
-    private sealed record FakeUnitCommand : Mediator.ICommand<Result<Unit>>;
+    private sealed record FakeUnitCommand : Mediator.ICommand<Result>;
 
     #endregion
 }

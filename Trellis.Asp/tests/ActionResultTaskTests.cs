@@ -226,8 +226,8 @@ public class ActionResultTaskTests
         var response = await result.ToActionResultAsync(controller);
 
         // Assert
-        response.Result.Should().BeOfType<NoContentResult>();
-        response.Result.As<NoContentResult>().StatusCode.Should().Be(StatusCodes.Status204NoContent);
+        response.Should().BeOfType<NoContentResult>();
+        response.As<NoContentResult>().StatusCode.Should().Be(StatusCodes.Status204NoContent);
     }
 
     [Fact]
@@ -236,7 +236,7 @@ public class ActionResultTaskTests
         // Arrange
         var controller = new Mock<ControllerBase> { CallBase = true }.Object;
         var error = Error.NotFound("Resource not found");
-        var result = Task.FromResult(Result.Fail<Unit>(error));
+        var result = Task.FromResult(Result.Fail(error));
         var expected = new ProblemDetails
         {
             Detail = "Resource not found",
@@ -247,8 +247,8 @@ public class ActionResultTaskTests
         var response = await result.ToActionResultAsync(controller);
 
         // Assert
-        response.Result.Should().BeOfType<ObjectResult>();
-        var objectResult = response.Result.As<ObjectResult>();
+        response.Should().BeOfType<ObjectResult>();
+        var objectResult = response.As<ObjectResult>();
         objectResult.Value.Should().BeEquivalentTo(expected);
         objectResult.StatusCode.Should().Be(StatusCodes.Status404NotFound);
     }

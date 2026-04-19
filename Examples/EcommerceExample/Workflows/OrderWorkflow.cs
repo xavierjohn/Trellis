@@ -142,7 +142,7 @@ public class OrderWorkflow
     /// <summary>
     /// Reserves inventory for all order lines.
     /// </summary>
-    private async Task<Result<Unit>> ReserveInventoryAsync(Order order, CancellationToken cancellationToken)
+    private async Task<Result> ReserveInventoryAsync(Order order, CancellationToken cancellationToken)
     {
         foreach (var line in order.Lines)
         {
@@ -204,14 +204,14 @@ public class OrderWorkflow
     /// Suggests alternative products when requested items are out of stock.
     /// Demonstrates: RecoverOnFailure for providing alternative paths.
     /// </summary>
-    private async Task<Result<Unit>> SuggestAlternativeProductsAsync(Order order, CancellationToken cancellationToken)
+    private async Task<Result> SuggestAlternativeProductsAsync(Order order, CancellationToken cancellationToken)
     {
         await Task.Delay(100, cancellationToken);
         Console.WriteLine($"Inventory unavailable for order {order.Id}. Suggesting alternatives...");
 
         // In a real system, this would query for similar products
         // For now, just return the original error
-        return Result.Fail<Unit>(Error.Domain("Products out of stock. Please check alternative products."));
+        return Result.Fail(Error.Domain("Products out of stock. Please check alternative products."));
     }
 
     /// <summary>

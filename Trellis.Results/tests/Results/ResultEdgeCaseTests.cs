@@ -557,7 +557,6 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(default(Unit));
     }
 
     [Fact]

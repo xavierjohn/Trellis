@@ -290,7 +290,7 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
-                     "Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result<Unit>) instead.",
+                     "Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result) instead.",
         helpLinkUri: HelpLinkBase + "TRLS020");
 
     /// <summary>

@@ -210,11 +210,11 @@ public class CombineBenchmarks
     }
 
     [Benchmark]
-    public Result<Unit> Combine_WithUnit_Success()
+    public Result Combine_WithUnit_Success()
     {
         return _successInt1
             .Combine(Result.Ok())
-            .Map((tuple) => new Unit());
+            .AsUnit();
     }
 
     public record Person(string Name, string Email, int Age);

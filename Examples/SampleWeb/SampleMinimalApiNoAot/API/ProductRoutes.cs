@@ -123,7 +123,7 @@ public static class ProductRoutes
             db.Products.Remove(product);
             var saveResult = await db.SaveChangesResultUnitAsync();
             return saveResult.Match(
-                _ => Results.NoContent(),
+                () => Results.NoContent(),
                 error => error.ToHttpResult());
         }).WithScalarValueValidation();
 

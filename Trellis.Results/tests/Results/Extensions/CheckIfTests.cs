@@ -157,7 +157,7 @@ public class CheckIfTests
     {
         var result = Result.Ok(42);
 
-        var sut = result.CheckIf(v => v > 0, _ => Result.Fail<Unit>(CheckError));
+        var sut = result.CheckIf(v => v > 0, _ => Result.Fail(CheckError));
 
         sut.Should().BeFailure().Which.Should().Be(CheckError);
     }

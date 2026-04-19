@@ -24,8 +24,13 @@ public static partial class CheckIfExtensionsAsync
     }
 
     /// <inheritdoc cref="CheckIfAsync{T,TK}(ValueTask{Result{T}}, bool, Func{T, Result{TK}})"/>
-    public static ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, bool condition, Func<T, Result<Unit>> func)
-        => CheckIfAsync<T, Unit>(resultTask, condition, func);
+    public static async ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, bool condition, Func<T, Result> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        Result<T> result = await resultTask.ConfigureAwait(false);
+        return result.CheckIf(condition, func);
+    }
 
     /// <summary>
     /// Conditionally runs a sync validation function when the predicate returns true.
@@ -47,6 +52,12 @@ public static partial class CheckIfExtensionsAsync
     }
 
     /// <inheritdoc cref="CheckIfAsync{T,TK}(ValueTask{Result{T}}, Func{T, bool}, Func{T, Result{TK}})"/>
-    public static ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, bool> predicate, Func<T, Result<Unit>> func)
-        => CheckIfAsync<T, Unit>(resultTask, predicate, func);
+    public static async ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, bool> predicate, Func<T, Result> func)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(func);
+
+        Result<T> result = await resultTask.ConfigureAwait(false);
+        return result.CheckIf(predicate, func);
+    }
 }

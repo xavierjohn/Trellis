@@ -57,6 +57,27 @@ public static class CheckExtensions
     /// <param name="result">The result to check.</param>
     /// <param name="func">The validation function that returns a Result of Unit.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
-    public static Result<T> Check<T>(this Result<T> result, Func<T, Result<Unit>> func)
-        => Check<T, Unit>(result, func);
+    public static Result<T> Check<T>(this Result<T> result, Func<T, Result> func)
+    {
+        ArgumentNullException.ThrowIfNull(func);
+
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        if (result.IsFailure)
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var checkResult = func(result.Value);
+        if (checkResult.IsFailure)
+        {
+            var failure = Result.Fail<T>(checkResult.Error);
+            failure.LogActivityStatus();
+            return failure;
+        }
+
+        result.LogActivityStatus();
+        return result;
+    }
 }
