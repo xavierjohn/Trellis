@@ -22,7 +22,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private StringVO(string value) : base(value) { }
         public static Result<StringVO> TryCreate(string? value, string? fieldName = null) =>
-            string.IsNullOrEmpty(value) ? Error.Validation("Required", fieldName ?? "field") : new StringVO(value);
+            string.IsNullOrEmpty(value) ? Result.Fail<StringVO>(Error.Validation("Required", fieldName ?? "field") ): Result.Ok(new StringVO(value));
     }
 
     // Guid
@@ -30,7 +30,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private GuidVO(Guid value) : base(value) { }
         public static Result<GuidVO> TryCreate(Guid value, string? fieldName = null) =>
-            value == Guid.Empty ? Error.Validation("Required", fieldName ?? "field") : new GuidVO(value);
+            value == Guid.Empty ? Result.Fail<GuidVO>(Error.Validation("Required", fieldName ?? "field") ): Result.Ok(new GuidVO(value));
         public static Result<GuidVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -40,7 +40,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private IntVO(int value) : base(value) { }
         public static Result<IntVO> TryCreate(int value, string? fieldName = null) =>
-            value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new IntVO(value);
+            value < 0 ? Result.Fail<IntVO>(Error.Validation("Negative", fieldName ?? "field")) : Result.Ok(new IntVO(value));
         public static Result<IntVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -50,7 +50,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private LongVO(long value) : base(value) { }
         public static Result<LongVO> TryCreate(long value, string? fieldName = null) =>
-            value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new LongVO(value);
+            value < 0 ? Result.Fail<LongVO>(Error.Validation("Negative", fieldName ?? "field") ): Result.Ok(new LongVO(value));
         public static Result<LongVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -60,7 +60,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DoubleVO(double value) : base(value) { }
         public static Result<DoubleVO> TryCreate(double value, string? fieldName = null) =>
-            double.IsNaN(value) ? Error.Validation("NaN", fieldName ?? "field") : new DoubleVO(value);
+            double.IsNaN(value) ? Result.Fail<DoubleVO>(Error.Validation("NaN", fieldName ?? "field")) : Result.Ok(new DoubleVO(value));
         public static Result<DoubleVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -70,7 +70,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private FloatVO(float value) : base(value) { }
         public static Result<FloatVO> TryCreate(float value, string? fieldName = null) =>
-            float.IsNaN(value) ? Error.Validation("NaN", fieldName ?? "field") : new FloatVO(value);
+            float.IsNaN(value) ? Result.Fail<FloatVO>(Error.Validation("NaN", fieldName ?? "field")) : Result.Ok(new FloatVO(value));
         public static Result<FloatVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -80,7 +80,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DecimalVO(decimal value) : base(value) { }
         public static Result<DecimalVO> TryCreate(decimal value, string? fieldName = null) =>
-            value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new DecimalVO(value);
+            value < 0 ? Result.Fail<DecimalVO>(Error.Validation("Negative", fieldName ?? "field") ): Result.Ok(new DecimalVO(value));
         public static Result<DecimalVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -90,7 +90,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private BoolVO(bool value) : base(value) { }
         public static Result<BoolVO> TryCreate(bool value, string? fieldName = null) =>
-            new BoolVO(value);
+            Result.Ok(new BoolVO(value));
         public static Result<BoolVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -100,7 +100,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DateTimeVO(DateTime value) : base(value) { }
         public static Result<DateTimeVO> TryCreate(DateTime value, string? fieldName = null) =>
-            value == DateTime.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new DateTimeVO(value);
+            value == DateTime.MinValue ? Result.Fail<DateTimeVO>(Error.Validation("MinValue", fieldName ?? "field") ): Result.Ok(new DateTimeVO(value));
         public static Result<DateTimeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -110,7 +110,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DateTimeOffsetVO(DateTimeOffset value) : base(value) { }
         public static Result<DateTimeOffsetVO> TryCreate(DateTimeOffset value, string? fieldName = null) =>
-            value == DateTimeOffset.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new DateTimeOffsetVO(value);
+            value == DateTimeOffset.MinValue ? Result.Fail<DateTimeOffsetVO>(Error.Validation("MinValue", fieldName ?? "field") ): Result.Ok(new DateTimeOffsetVO(value));
         public static Result<DateTimeOffsetVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -120,7 +120,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DateOnlyVO(DateOnly value) : base(value) { }
         public static Result<DateOnlyVO> TryCreate(DateOnly value, string? fieldName = null) =>
-            value == DateOnly.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new DateOnlyVO(value);
+            value == DateOnly.MinValue ? Result.Fail<DateOnlyVO>(Error.Validation("MinValue", fieldName ?? "field")) : Result.Ok(new DateOnlyVO(value));
         public static Result<DateOnlyVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -130,7 +130,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private TimeOnlyVO(TimeOnly value) : base(value) { }
         public static Result<TimeOnlyVO> TryCreate(TimeOnly value, string? fieldName = null) =>
-            value == TimeOnly.MinValue ? Error.Validation("MinValue", fieldName ?? "field") : new TimeOnlyVO(value);
+            value == TimeOnly.MinValue ? Result.Fail<TimeOnlyVO>(Error.Validation("MinValue", fieldName ?? "field")) : Result.Ok(new TimeOnlyVO(value));
         public static Result<TimeOnlyVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -139,7 +139,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private TimeSpanVO(TimeSpan value) : base(value) { }
         public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
-            value < TimeSpan.Zero ? Error.Validation("Negative", fieldName ?? "field") : new TimeSpanVO(value);
+            value < TimeSpan.Zero ? Result.Fail<TimeSpanVO>(Error.Validation("Negative", fieldName ?? "field") ): Result.Ok(new TimeSpanVO(value));
         public static Result<TimeSpanVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -148,7 +148,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private ShortVO(short value) : base(value) { }
         public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
-            value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new ShortVO(value);
+            value < 0 ? Result.Fail<ShortVO>(Error.Validation("Negative", fieldName ?? "field") ): Result.Ok(new ShortVO(value));
         public static Result<ShortVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -157,7 +157,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private ByteVO(byte value) : base(value) { }
         public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
-            new ByteVO(value);
+            Result.Ok(new ByteVO(value));
         public static Result<ByteVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -166,7 +166,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private SByteVO(sbyte value) : base(value) { }
         public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
-            value < 0 ? Error.Validation("Negative", fieldName ?? "field") : new SByteVO(value);
+            value < 0 ? Result.Fail<SByteVO>(Error.Validation("Negative", fieldName ?? "field")) : Result.Ok(new SByteVO(value));
         public static Result<SByteVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -175,7 +175,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private UShortVO(ushort value) : base(value) { }
         public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
-            new UShortVO(value);
+            Result.Ok(new UShortVO(value));
         public static Result<UShortVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -184,7 +184,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private UIntVO(uint value) : base(value) { }
         public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
-            new UIntVO(value);
+            Result.Ok(new UIntVO(value));
         public static Result<UIntVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -193,7 +193,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private ULongVO(ulong value) : base(value) { }
         public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>
-            new ULongVO(value);
+            Result.Ok(new ULongVO(value));
         public static Result<ULongVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

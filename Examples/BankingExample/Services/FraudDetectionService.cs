@@ -46,11 +46,11 @@ public class FraudDetectionService
         if (amount.Amount > SuspiciousAmountThreshold)
         {
             Console.WriteLine($"⚠️ Large transaction detected: {amount}");
-            return Error.Domain(
+            return Result.Fail<Unit>(Error.Domain(
                 $"Transaction amount {amount} exceeds threshold of ${SuspiciousAmountThreshold}. Manual review required.",
                 "fraud.detected",
                 null
-            );
+            ));
         }
 
         return Result.Ok();
@@ -95,14 +95,14 @@ public class FraudDetectionService
         await Task.Delay(200, cancellationToken); // Simulate MFA verification
 
         if (string.IsNullOrWhiteSpace(verificationCode))
-            return Error.Unauthorized("Verification code required for this transaction", customerId);
+            return Result.Fail<Unit>(Error.Unauthorized("Verification code required for this transaction", customerId));
 
         if (verificationCode.Length != 6 || !verificationCode.All(char.IsDigit))
-            return Error.Validation("Invalid verification code format", nameof(verificationCode));
+            return Result.Fail<Unit>(Error.Validation("Invalid verification code format", nameof(verificationCode)));
 
         // Simulate verification check
         if (verificationCode == "000000")
-            return Error.Unauthorized("Invalid verification code", customerId);
+            return Result.Fail<Unit>(Error.Unauthorized("Invalid verification code", customerId));
 
         Console.WriteLine($"? Customer {customerId} identity verified");
         return Result.Ok();
@@ -120,9 +120,9 @@ public class FraudDetectionService
         var random = new Random();
         if (random.Next(100) < 5) // 5% chance of service being down
         {
-            return Error.ServiceUnavailable(
+            return Result.Fail<Unit>(Error.ServiceUnavailable(
                 "Fraud detection service is temporarily unavailable. Please try again later.",
-                "fraud-service");
+                "fraud-service"));
         }
 
         return Result.Ok();

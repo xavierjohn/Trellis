@@ -87,7 +87,7 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
             return Result.Fail<Url>(Error.Validation("URL must use HTTP or HTTPS scheme.", field));
 
-        return new Url(uri);
+        return Result.Ok(new Url(uri));
     }
 
     /// <summary>

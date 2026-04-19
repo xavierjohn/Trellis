@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace BankingExample.Workflows;
 
@@ -35,7 +35,7 @@ public class BankingWorkflow
             // Fraud detection
             var fraudResult = await _fraudDetection.AnalyzeTransactionAsync(acc, amount, "withdrawal", cancellationToken);
             if (fraudResult.TryGetError(out var fraudError))
-                return fraudError;
+                return Result.Fail<BankingExample.Aggregates.BankAccount>(fraudError);
 
             // Require MFA for large withdrawals
             if (amount.Amount > 1000)
@@ -47,7 +47,7 @@ public class BankingWorkflow
                 );
 
                 if (mfaResult.TryGetError(out var mfaError))
-                    return mfaError;
+                    return Result.Fail<BankingExample.Aggregates.BankAccount>(mfaError);
             }
 
             return acc.ToResult();
@@ -64,7 +64,7 @@ public class BankingWorkflow
                     await Task.FromResult(account.Freeze("Suspicious activity detected"));
                     await PublishEventsAndAcceptChangesAsync(account, cancellationToken);
                     await NotifySecurityTeamAsync(account.CustomerId, error, cancellationToken);
-                    return error; // Still return error after recovery
+                    return Result.Fail<BankingExample.Aggregates.BankAccount>(error); // Still return error after recovery
                 }
             );
     }
@@ -87,7 +87,7 @@ public class BankingWorkflow
         ).WhenAllAsync();
 
         if (validationResult.TryGetError(out var validationError))
-            return validationError;
+            return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(validationError);
 
         // Perform transfer
         return await fromAccount.TransferTo(toAccount, amount, description)
@@ -153,7 +153,7 @@ public class BankingWorkflow
             {
                 // Don't accept changes - events will be discarded
                 Console.WriteLine($"? Transaction failed at item {processedCount + 1}, discarding {account.UncommittedEvents().Count} uncommitted events");
-                return Error.Domain($"Batch transaction failed at item {processedCount + 1}: {depositError.Detail}");
+                return Result.Fail<BankingExample.Aggregates.BankAccount>(Error.Domain($"Batch transaction failed at item {processedCount + 1}: {depositError.Detail}"));
             }
 
             processedCount++;
@@ -162,7 +162,7 @@ public class BankingWorkflow
         // All successful - publish events and accept changes
         await PublishEventsAndAcceptChangesAsync(account, cancellationToken);
         Console.WriteLine($"? Successfully processed {processedCount} transactions");
-        return account;
+        return Result.Ok(account);
     }
 
     /// <summary>

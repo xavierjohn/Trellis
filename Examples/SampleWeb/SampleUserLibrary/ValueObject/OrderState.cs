@@ -1,4 +1,4 @@
-﻿using Trellis;
+using Trellis;
 
 namespace SampleUserLibrary;
 
@@ -41,12 +41,12 @@ public partial class OrderState : RequiredEnum<OrderState>
     public Result<OrderState> TryTransitionTo(OrderState newState)
     {
         if (CanTransitionTo(newState))
-            return newState;
+            return Result.Ok(newState);
 
         var allowed = AllowedTransitions;
         var msg = allowed.Count > 0
             ? $"Cannot transition from '{this}' to '{newState}'. Allowed: {string.Join(", ", allowed)}"
             : $"Cannot transition from '{this}' — this is a terminal state.";
-        return Error.Validation(msg, "state");
+        return Result.Fail<SampleUserLibrary.OrderState>(Error.Validation(msg, "state"));
     }
 }

@@ -28,13 +28,13 @@ public class InventoryService
     public Result<Unit> CheckAvailability(ProductId productId, int quantity)
     {
         if (quantity <= 0)
-            return Error.Validation("Quantity must be greater than zero", nameof(quantity));
+            return Result.Fail<Unit>(Error.Validation("Quantity must be greater than zero", nameof(quantity)));
 
         if (!_stock.TryGetValue(productId, out var available))
-            return Error.NotFound($"Product {productId} not found in inventory");
+            return Result.Fail<Unit>(Error.NotFound($"Product {productId} not found in inventory"));
 
         if (available < quantity)
-            return Error.Validation($"Insufficient stock. Available: {available}, Requested: {quantity}");
+            return Result.Fail<Unit>(Error.Validation($"Insufficient stock. Available: {available}, Requested: {quantity}"));
 
         return Result.Ok();
     }
@@ -62,7 +62,7 @@ public class InventoryService
         await Task.Delay(50, cancellationToken); // Simulate async operation
 
         if (!_stock.TryGetValue(productId, out _))
-            return Error.NotFound($"Product {productId} not found in inventory");
+            return Result.Fail<Unit>(Error.NotFound($"Product {productId} not found in inventory"));
 
         _stock[productId] += quantity;
         Console.WriteLine($"Released {quantity} units of product {productId}. New total: {_stock[productId]}");
@@ -76,9 +76,9 @@ public class InventoryService
     public Result<int> GetStockLevel(ProductId productId)
     {
         if (!_stock.TryGetValue(productId, out var level))
-            return Error.NotFound($"Product {productId} not found in inventory");
+            return Result.Fail<int>(Error.NotFound($"Product {productId} not found in inventory"));
 
-        return level;
+        return Result.Ok(level);
     }
 
     public IReadOnlyDictionary<ProductId, int> GetAllStock() => _stock;

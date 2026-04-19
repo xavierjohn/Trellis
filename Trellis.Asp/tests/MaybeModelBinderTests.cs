@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Collections.Generic;
@@ -27,8 +27,8 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "userId";
             if (value == Guid.Empty)
-                return Error.Validation("UserId cannot be empty.", field);
-            return new UserId(value);
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.UserId>(Error.Validation("UserId cannot be empty.", field));
+            return Result.Ok(new UserId(value));
         }
 
         public static Result<UserId> TryCreate(string? value, string? fieldName = null) =>
@@ -43,10 +43,10 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "productCode";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("ProductCode is required.", field);
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.ProductCode>(Error.Validation("ProductCode is required.", field));
             if (value.Length < 3)
-                return Error.Validation("ProductCode must be at least 3 characters.", field);
-            return new ProductCode(value);
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.ProductCode>(Error.Validation("ProductCode must be at least 3 characters.", field));
+            return Result.Ok(new ProductCode(value));
         }
     }
 
@@ -58,10 +58,10 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "quantity";
             if (value <= 0)
-                return Error.Validation("Quantity must be greater than zero.", field);
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Quantity>(Error.Validation("Quantity must be greater than zero.", field));
             if (value > 1000)
-                return Error.Validation("Quantity cannot exceed 1000.", field);
-            return new Quantity(value);
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Quantity>(Error.Validation("Quantity cannot exceed 1000.", field));
+            return Result.Ok(new Quantity(value));
         }
 
         public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
@@ -76,8 +76,8 @@ public class MaybeModelBinderTests
         {
             var field = fieldName ?? "price";
             if (value < 0)
-                return Error.Validation("Price cannot be negative.", field);
-            return new Price(value);
+                return Result.Fail<Asp.Tests.MaybeModelBinderTests.Price>(Error.Validation("Price cannot be negative.", field));
+            return Result.Ok(new Price(value));
         }
 
         public static Result<Price> TryCreate(string? value, string? fieldName = null) =>

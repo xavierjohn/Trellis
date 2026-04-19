@@ -63,22 +63,22 @@ public static class DbContextExtensions
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            return Error.Conflict(
-                $"One or more entities were modified by another process. {ex.Entries.Count} entities affected.");
+            return Result.Fail<int>(Error.Conflict(
+                $"One or more entities were modified by another process. {ex.Entries.Count} entities affected."));
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
         {
             // Use a safe generic message for Error.Detail — it flows to API responses.
             // For logging, use DbExceptionClassifier.ExtractConstraintDetail(ex) which may contain schema details.
             _ = ex; // available for caller logging via ExceptionBehavior or repository catch blocks
-            return Error.Conflict("A record with the same unique value already exists.");
+            return Result.Fail<int>(Error.Conflict("A record with the same unique value already exists."));
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsForeignKeyViolation(ex))
         {
             // Use a safe generic message for Error.Detail — it flows to API responses.
             // For logging, use DbExceptionClassifier.ExtractConstraintDetail(ex) which may contain schema details.
             _ = ex;
-            return Error.Domain("Operation violates a referential integrity constraint.");
+            return Result.Fail<int>(Error.Domain("Operation violates a referential integrity constraint."));
         }
     }
 

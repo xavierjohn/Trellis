@@ -119,7 +119,7 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         if (!E164Regex().IsMatch(normalized))
             return Result.Fail<PhoneNumber>(Error.Validation("Phone number must be in E.164 format (e.g., +14155551234).", field));
 
-        return new PhoneNumber(normalized);
+        return Result.Ok(new PhoneNumber(normalized));
     }
 
     /// <summary>

@@ -70,7 +70,7 @@ public class ValidationExample
         actual.Unwrap().Should().Be("xavier@somewhere.com  John");
 
         static Result<string> Add(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
-            => emailAddress + " " + firstname + " " + lastname;
+            => Result.Ok(emailAddress + " " + firstname + " " + lastname);
     }
 
     [Fact]
@@ -91,6 +91,6 @@ public class ValidationExample
         validationError.FieldErrors[0].Details[0].Should().Be("First Name cannot be empty.");
 
         static Result<string> Add(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
-            => emailAddress + " " + firstname + " " + lastname;
+            => Result.Ok(emailAddress + " " + firstname + " " + lastname);
     }
 }

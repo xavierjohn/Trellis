@@ -27,7 +27,7 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsLetter))
             return Result.Fail<LanguageCode>(Error.Validation("Language code must be an ISO 639-1 alpha-2 code.", field));
-        return new LanguageCode(code.ToLowerInvariant());
+        return Result.Ok(new LanguageCode(code.ToLowerInvariant()));
     }
 
     /// <summary>

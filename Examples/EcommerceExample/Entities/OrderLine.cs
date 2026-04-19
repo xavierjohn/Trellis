@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace EcommerceExample.Entities;
 
@@ -27,13 +27,13 @@ public class OrderLine : Entity<ProductId>
     public static Result<OrderLine> TryCreate(ProductId productId, string productName, Money unitPrice, int quantity)
     {
         if (string.IsNullOrWhiteSpace(productName))
-            return Error.Validation("Product name is required", nameof(productName));
+            return Result.Fail<EcommerceExample.Entities.OrderLine>(Error.Validation("Product name is required", nameof(productName)));
 
         if (quantity <= 0)
-            return Error.Validation("Quantity must be greater than zero", nameof(quantity));
+            return Result.Fail<EcommerceExample.Entities.OrderLine>(Error.Validation("Quantity must be greater than zero", nameof(quantity)));
 
         if (quantity > 1000)
-            return Error.Validation("Quantity cannot exceed 1000 per line", nameof(quantity));
+            return Result.Fail<EcommerceExample.Entities.OrderLine>(Error.Validation("Quantity cannot exceed 1000 per line", nameof(quantity)));
 
         return unitPrice
             .Multiply(quantity)
@@ -43,10 +43,10 @@ public class OrderLine : Entity<ProductId>
     public Result<OrderLine> UpdateQuantity(int newQuantity)
     {
         if (newQuantity <= 0)
-            return Error.Validation("Quantity must be greater than zero", nameof(newQuantity));
+            return Result.Fail<EcommerceExample.Entities.OrderLine>(Error.Validation("Quantity must be greater than zero", nameof(newQuantity)));
 
         if (newQuantity > 1000)
-            return Error.Validation("Quantity cannot exceed 1000 per line", nameof(newQuantity));
+            return Result.Fail<EcommerceExample.Entities.OrderLine>(Error.Validation("Quantity cannot exceed 1000 per line", nameof(newQuantity)));
 
         return UnitPrice
             .Multiply(newQuantity)

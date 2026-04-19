@@ -44,7 +44,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
             return Result.Fail<MonetaryAmount>(Error.Validation("Amount cannot be negative.", field));
 
         var rounded = Math.Round(value, DefaultDecimalPlaces, MidpointRounding.AwayFromZero);
-        return new MonetaryAmount(rounded);
+        return Result.Ok(new MonetaryAmount(rounded));
     }
 
     /// <summary>

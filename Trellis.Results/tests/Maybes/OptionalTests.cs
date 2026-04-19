@@ -60,7 +60,7 @@ public class OptionalTests
             if (string.IsNullOrEmpty(zipCode)) return Result.Fail<ZipCode>(Error.BadRequest("ZipCode is required."));
             if (zipCode.Length != 5) return Result.Fail<ZipCode>(Error.BadRequest("Invalid ZipCode."));
 
-            return new ZipCode(zipCode);
+            return Result.Ok(new ZipCode(zipCode));
         }
     }
 }

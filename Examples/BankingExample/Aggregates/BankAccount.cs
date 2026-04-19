@@ -1,4 +1,4 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace BankingExample.Aggregates;
 
@@ -143,10 +143,10 @@ public class BankAccount : Aggregate<AccountId>
     public Result<(BankAccount From, BankAccount To)> TransferTo(BankAccount toAccount, Money amount, string description = "Transfer")
     {
         if (toAccount == null)
-            return Error.Validation("Destination account is required");
+            return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(Error.Validation("Destination account is required"));
 
         if (Id.Equals(toAccount.Id))
-            return Error.Conflict("Cannot transfer to the same account");
+            return Result.Fail<(BankingExample.Aggregates.BankAccount From, BankingExample.Aggregates.BankAccount To)>(Error.Conflict("Cannot transfer to the same account"));
 
         return Withdraw(amount, $"{description} to {toAccount.Id}")
             .Bind(_ => toAccount.Deposit(amount, $"{description} from {Id}"))

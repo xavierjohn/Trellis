@@ -25,10 +25,10 @@ public class PropertyNameAwareConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Email is required.", field);
+                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(Error.Validation("Email is required.", field));
             if (!value.Contains('@'))
-                return Error.Validation("Email must contain @.", field);
-            return new Email(value);
+                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(Error.Validation("Email must contain @.", field));
+            return Result.Ok(new Email(value));
         }
     }
 
@@ -39,9 +39,9 @@ public class PropertyNameAwareConverterTests
         public static Result<DomainOnlyEmail> TryCreate(string? value, string? fieldName = null)
         {
             if (value == "ok@example.com")
-                return new DomainOnlyEmail(value);
+                return Result.Ok(new DomainOnlyEmail(value));
 
-            return Error.Domain(string.Empty, code: "email.domain.invalid", instance: null);
+            return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.DomainOnlyEmail>(Error.Domain(string.Empty, code: "email.domain.invalid", instance: null));
         }
     }
 

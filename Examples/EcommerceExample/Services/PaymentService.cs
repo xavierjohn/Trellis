@@ -24,7 +24,7 @@ public class PaymentService
     public async Task<Result<Unit>> RefundPaymentAsync(string transactionId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(transactionId))
-            return Error.Validation("Transaction ID is required");
+            return Result.Fail<Unit>(Error.Validation("Transaction ID is required"));
 
         await Task.Delay(100, cancellationToken); // Simulate API call
 
@@ -34,12 +34,12 @@ public class PaymentService
     private static Result<Unit> ValidateCardNumber(string cardNumber)
     {
         if (string.IsNullOrWhiteSpace(cardNumber))
-            return Error.Validation("Card number is required", nameof(cardNumber));
+            return Result.Fail<Unit>(Error.Validation("Card number is required", nameof(cardNumber)));
 
         var digitsOnly = new string(cardNumber.Where(char.IsDigit).ToArray());
 
         if (digitsOnly.Length is < 13 or > 19)
-            return Error.Validation("Card number must be between 13 and 19 digits", nameof(cardNumber));
+            return Result.Fail<Unit>(Error.Validation("Card number must be between 13 and 19 digits", nameof(cardNumber)));
 
         return Result.Ok();
     }
@@ -47,10 +47,10 @@ public class PaymentService
     private static Result<Unit> ValidateCVV(string cvv)
     {
         if (string.IsNullOrWhiteSpace(cvv))
-            return Error.Validation("CVV is required", nameof(cvv));
+            return Result.Fail<Unit>(Error.Validation("CVV is required", nameof(cvv)));
 
         if (cvv.Length < 3 || cvv.Length > 4 || !cvv.All(char.IsDigit))
-            return Error.Validation("CVV must be 3 or 4 digits", nameof(cvv));
+            return Result.Fail<Unit>(Error.Validation("CVV must be 3 or 4 digits", nameof(cvv)));
 
         return Result.Ok();
     }
@@ -61,12 +61,12 @@ public class PaymentService
 
         // Simulate occasional failures
         if (cardNumber.EndsWith("0000", StringComparison.Ordinal))
-            return Error.Validation("Card declined - insufficient funds");
+            return Result.Fail<string>(Error.Validation("Card declined - insufficient funds"));
 
         if (cardNumber.EndsWith("9999", StringComparison.Ordinal))
-            return Error.Unexpected("Payment gateway timeout");
+            return Result.Fail<string>(Error.Unexpected("Payment gateway timeout"));
 
-        return $"TXN-{Guid.NewGuid():N}";
+        return Result.Ok($"TXN-{Guid.NewGuid():N}");
     }
 
     private static async Task LogPaymentSuccessAsync(OrderId orderId, string transactionId, CancellationToken cancellationToken)

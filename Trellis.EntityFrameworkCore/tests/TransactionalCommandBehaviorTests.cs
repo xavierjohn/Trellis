@@ -49,7 +49,7 @@ public class TransactionalCommandBehaviorTests
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
-        var uow = new FakeUnitOfWork { CommitResult = Error.Conflict("concurrency") };
+        var uow = new FakeUnitOfWork { CommitResult = Result.Fail(Error.Conflict("concurrency")) };
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
         var handlerResult = Result.Ok("staged");
 

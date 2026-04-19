@@ -43,7 +43,7 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
             return Result.Fail<CurrencyCode>(Error.Validation("Currency code must be a 3-letter ISO 4217 code.", field));
 
         var upper = code.ToUpperInvariant();
-        return new CurrencyCode(upper);
+        return Result.Ok(new CurrencyCode(upper));
     }
 
     /// <summary>

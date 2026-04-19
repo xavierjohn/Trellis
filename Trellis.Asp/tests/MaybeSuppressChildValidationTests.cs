@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using FluentAssertions;
@@ -25,8 +25,8 @@ public class MaybeSuppressChildValidationTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Name is required.", field);
-            return new Name(value);
+                return Result.Fail<Asp.Tests.MaybeSuppressChildValidationTests.Name>(Error.Validation("Name is required.", field));
+            return Result.Ok(new Name(value));
         }
     }
 

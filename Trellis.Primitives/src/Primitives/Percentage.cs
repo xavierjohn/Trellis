@@ -100,7 +100,7 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         if (value is < 0m or > 100m)
             return Result.Fail<Percentage>(Error.Validation("Percentage must be between 0 and 100.", field));
 
-        return new Percentage(value);
+        return Result.Ok(new Percentage(value));
     }
 
     /// <summary>
@@ -123,7 +123,7 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         if (value.Value is < 0m or > 100m)
             return Result.Fail<Percentage>(Error.Validation("Percentage must be between 0 and 100.", field));
 
-        return new Percentage(value.Value);
+        return Result.Ok(new Percentage(value.Value));
     }
 
     /// <summary>

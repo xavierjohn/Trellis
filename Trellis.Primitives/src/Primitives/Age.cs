@@ -37,7 +37,7 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
             return Result.Fail<Age>(Error.Validation("Age must be non-negative.", field));
         if (value > 150)
             return Result.Fail<Age>(Error.Validation("Age is unrealistically high.", field));
-        return new Age(value);
+        return Result.Ok(new Age(value));
     }
 
     /// <summary>

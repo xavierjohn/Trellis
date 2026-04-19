@@ -1,4 +1,4 @@
-﻿namespace SampleUserLibrary;
+namespace SampleUserLibrary;
 
 using Trellis;
 
@@ -31,13 +31,13 @@ public class FakePaymentService : IPaymentService
     {
         await Task.Delay(50, ct);
         var paymentRef = $"PAY-{Guid.NewGuid():N}"[..16];
-        return paymentRef;
+        return Result.Ok(paymentRef);
     }
 
     public async Task<Result<Unit>> RefundPaymentAsync(string paymentReference, CancellationToken ct = default)
     {
         await Task.Delay(30, ct);
-        return new Unit();
+        return Result.Ok(new Unit());
     }
 }
 
@@ -50,12 +50,12 @@ public class FakeNotificationService : INotificationService
     public async Task<Result<Unit>> SendOrderConfirmationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default)
     {
         await Task.Delay(20, ct);
-        return new Unit();
+        return Result.Ok(new Unit());
     }
 
     public async Task<Result<Unit>> SendOrderCancellationAsync(OrderId orderId, CustomerId customerId, CancellationToken ct = default)
     {
         await Task.Delay(20, ct);
-        return new Unit();
+        return Result.Ok(new Unit());
     }
 }

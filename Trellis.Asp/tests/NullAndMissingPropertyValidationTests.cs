@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Text;
 using System.Text.Json;
@@ -28,8 +28,8 @@ public class NullAndMissingPropertyValidationTests
         private Quantity(int value) : base(value) { }
         public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
             value > 0
-                ? new Quantity(value)
-                : Error.Validation("Quantity must be positive.", fieldName ?? "quantity");
+                ? Result.Ok(new Quantity(value))
+                : Result.Fail<Quantity>(Error.Validation("Quantity must be positive.", fieldName ?? "quantity"));
         public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -39,8 +39,8 @@ public class NullAndMissingPropertyValidationTests
         private Price(decimal value) : base(value) { }
         public static Result<Price> TryCreate(decimal value, string? fieldName = null) =>
             value >= 0
-                ? new Price(value)
-                : Error.Validation("Price cannot be negative.", fieldName ?? "price");
+                ? Result.Ok(new Price(value))
+                : Result.Fail<Price>(Error.Validation("Price cannot be negative.", fieldName ?? "price"));
         public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -50,8 +50,8 @@ public class NullAndMissingPropertyValidationTests
         private Counter(long value) : base(value) { }
         public static Result<Counter> TryCreate(long value, string? fieldName = null) =>
             value >= 0
-                ? new Counter(value)
-                : Error.Validation("Counter cannot be negative.", fieldName ?? "counter");
+                ? Result.Ok(new Counter(value))
+                : Result.Fail<Counter>(Error.Validation("Counter cannot be negative.", fieldName ?? "counter"));
         public static Result<Counter> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -60,7 +60,7 @@ public class NullAndMissingPropertyValidationTests
     {
         private IsActive(bool value) : base(value) { }
         public static Result<IsActive> TryCreate(bool value, string? fieldName = null) =>
-            new IsActive(value);
+            Result.Ok(new IsActive(value));
         public static Result<IsActive> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -70,8 +70,8 @@ public class NullAndMissingPropertyValidationTests
         private ProductName(string value) : base(value) { }
         public static Result<ProductName> TryCreate(string? value, string? fieldName = null) =>
             string.IsNullOrWhiteSpace(value)
-                ? Error.Validation("Product name is required.", fieldName ?? "productName")
-                : new ProductName(value);
+                ? Result.Fail<ProductName>(Error.Validation("Product name is required.", fieldName ?? "productName"))
+                : Result.Ok(new ProductName(value));
     }
 
     #endregion
