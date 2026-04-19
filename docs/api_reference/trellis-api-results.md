@@ -24,6 +24,7 @@ This is the running list of breaking changes the v2 redesign introduces in `Trel
 | Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(Error.Unexpected(ex.Message))` or `Result.Fail<T>(...)` directly. `Result.Try`/`Result.TryAsync` continue to handle exception capture inside their lambdas. |
 | Public `Value` / `Error` properties on `Result<T>` | `result.Value` (throws if failure) / `result.Error` (throws if success) | *(now `internal`; not part of the public surface)* | Replace with one of: `result.TryGetValue(out var v)` / `result.TryGetError(out var e)` for imperative early-return, `result.Match(onSuccess, onFailure)` for transforms producing one value on both branches, `var (v, e) = result;` for destructuring, or — in test code only — `result.Unwrap()` / `result.UnwrapError()` from `Trellis.Testing` (throws `UnwrapFailedException` on wrong state). |
 | Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` (implicit `T → Result<T>` and `Error → Result<T>`) | *(removed)* | Use the explicit factory: `Result.Ok(value)` for success, `Result.Fail<T>(error)` for failure. The compiler now flags every site with CS0029 so the construction is visible at the call site. |
+| `WriteOutcome<T>` package + namespace | `Trellis.Asp.WriteOutcome<T>` (in `Trellis.Asp`) | `Trellis.WriteOutcome<T>` (in `Trellis.Results`) | Replace `using Trellis.Asp;` with `using Trellis;` for any file that names `WriteOutcome<T>` directly. The type, its case records, and member shapes are unchanged; only the assembly and namespace move. ASP-specific extensions (`ToActionResult`, `ToHttpResult`, `ToUpdatedActionResult*`) still live in `Trellis.Asp`. |
 
 The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form. The `SuccessIf`/`FailureIf`/`SuccessIfAsync`/`FailureIfAsync`/`Result.Success(Func<T>)`/`Result.Failure<T>(Func<Error>)`/`Result.FromException` methods have all been removed (this PR); call sites should inline a ternary or invoke the factory directly per the table above.
 
@@ -514,6 +515,33 @@ None.
 #### Factory Methods
 
 Use `RepresentationMetadata.Create()`.
+
+---
+
+### `public abstract record WriteOutcome<T>`
+
+Closed union representing the outcome of a write operation (create / replace / accept-for-async) returned by Application-layer repositories. Transport adapters (e.g. `Trellis.Asp`'s `WriteOutcomeExtensions`) translate each case to a protocol-specific response. The case set aligns with RFC 9110 §9.3.4 because HTTP is the most commonly served transport, but `WriteOutcome<T>` itself takes no dependency on any transport package.
+
+```csharp
+public abstract record WriteOutcome<T>
+{
+    public sealed record Created(T Value, string Location, RepresentationMetadata? Metadata = null)         : WriteOutcome<T>;
+    public sealed record Updated(T Value, RepresentationMetadata? Metadata = null)                          : WriteOutcome<T>;
+    public sealed record UpdatedNoContent(RepresentationMetadata? Metadata = null)                          : WriteOutcome<T>;
+    public sealed record Accepted(T StatusBody, string? MonitorUri = null, RetryAfterValue? RetryAfter = null)      : WriteOutcome<T>;
+    public sealed record AcceptedNoContent(string? MonitorUri = null, RetryAfterValue? RetryAfter = null)           : WriteOutcome<T>;
+}
+```
+
+| Case | Members | Transports as |
+| --- | --- | --- |
+| `Created` | `T Value`, `string Location`, `RepresentationMetadata? Metadata` | HTTP `201 Created` + `Location` |
+| `Updated` | `T Value`, `RepresentationMetadata? Metadata` | HTTP `200 OK` |
+| `UpdatedNoContent` | `RepresentationMetadata? Metadata` | HTTP `204 No Content` |
+| `Accepted` | `T StatusBody`, `string? MonitorUri`, `RetryAfterValue? RetryAfter` | HTTP `202 Accepted` + body |
+| `AcceptedNoContent` | `string? MonitorUri`, `RetryAfterValue? RetryAfter` | HTTP `202 Accepted` |
+
+The base record's constructor is `private`; new cases cannot be added by consumers.
 
 ---
 
