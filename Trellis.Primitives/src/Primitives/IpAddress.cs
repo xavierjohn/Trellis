@@ -36,7 +36,7 @@ public class IpAddress : ScalarValueObject<IpAddress, string>, IScalarValue<IpAd
         var trimmed = value.Trim();
         if (!IPAddress.TryParse(trimmed, out var ip))
             return Result.Fail<IpAddress>(Error.Validation("IP address must be a valid IPv4 or IPv6.", field));
-        return new IpAddress(trimmed, ip);
+        return Result.Ok(new IpAddress(trimmed, ip));
     }
 
     /// <summary>

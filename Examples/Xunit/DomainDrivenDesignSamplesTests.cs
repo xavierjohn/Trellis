@@ -21,7 +21,7 @@ public class DomainDrivenDesignSamplesTests
 
         public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
             value == Guid.Empty
-                ? Error.Validation("Customer ID cannot be empty", fieldName ?? "customerId")
+                ? Result.Fail<CustomerId>(Error.Validation("Customer ID cannot be empty", fieldName ?? "customerId"))
                 : Result.Ok(new CustomerId(value));
 
         public static Result<CustomerId> TryCreate(string? value, string? fieldName = null) =>
@@ -41,7 +41,7 @@ public class DomainDrivenDesignSamplesTests
 
         public static Result<OrderId> TryCreate(Guid value, string? fieldName = null) =>
             value == Guid.Empty
-                ? Error.Validation("Order ID cannot be empty", fieldName ?? "orderId")
+                ? Result.Fail<OrderId>(Error.Validation("Order ID cannot be empty", fieldName ?? "orderId"))
                 : Result.Ok(new OrderId(value));
 
         public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
@@ -465,14 +465,14 @@ public class DomainDrivenDesignSamplesTests
 
         public Result<Money> Add(Money other) =>
             Currency != other.Currency
-                ? Error.Validation($"Cannot add {other.Currency} to {Currency}")
+                ? Result.Fail<Money>(Error.Validation($"Cannot add {other.Currency} to {Currency}"))
                 : new Money(Amount + other.Amount, Currency).ToResult();
 
         public Result<Money> Subtract(Money other) =>
             Currency != other.Currency
-                ? Error.Validation($"Cannot subtract {other.Currency} from {Currency}")
+                ? Result.Fail<Money>(Error.Validation($"Cannot subtract {other.Currency} from {Currency}"))
                 : Amount < other.Amount
-                    ? Error.Validation("Result would be negative")
+                    ? Result.Fail<Money>(Error.Validation("Result would be negative"))
                     : new Money(Amount - other.Amount, Currency).ToResult();
 
         public Money Multiply(decimal factor) =>

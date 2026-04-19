@@ -24,10 +24,10 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Email is required.", field);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(Error.Validation("Email is required.", field));
             if (!value.Contains('@'))
-                return Error.Validation("Email must contain @.", field);
-            return new Email(value);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(Error.Validation("Email must contain @.", field));
+            return Result.Ok(new Email(value));
         }
     }
 
@@ -39,10 +39,10 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Error.Validation("Age cannot be negative.", field);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(Error.Validation("Age cannot be negative.", field));
             if (value > 150)
-                return Error.Validation("Age must be realistic.", field);
-            return new Age(value);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(Error.Validation("Age must be realistic.", field));
+            return Result.Ok(new Age(value));
         }
         public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -56,10 +56,10 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "percentage";
             if (value < 0)
-                return Error.Validation("Percentage cannot be negative.", field);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(Error.Validation("Percentage cannot be negative.", field));
             if (value > 100)
-                return Error.Validation("Percentage cannot exceed 100.", field);
-            return new Percentage(value);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(Error.Validation("Percentage cannot exceed 100.", field));
+            return Result.Ok(new Percentage(value));
         }
         public static Result<Percentage> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -73,8 +73,8 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "itemId";
             if (value == Guid.Empty)
-                return Error.Validation("ItemId cannot be empty.", field);
-            return new ItemId(value);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.ItemId>(Error.Validation("ItemId cannot be empty.", field));
+            return Result.Ok(new ItemId(value));
         }
         public static Result<ItemId> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();

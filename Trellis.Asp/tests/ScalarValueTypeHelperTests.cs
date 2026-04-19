@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text.Json.Serialization;
@@ -21,7 +21,7 @@ public class ScalarValueTypeHelperTests
     {
         private ValidVO(string value) : base(value) { }
         public static Result<ValidVO> TryCreate(string? value, string? fieldName = null) =>
-            string.IsNullOrEmpty(value) ? Error.Validation("Required", fieldName ?? "field") : new ValidVO(value);
+            string.IsNullOrEmpty(value) ? Result.Fail<ValidVO>(Error.Validation("Required", fieldName ?? "field") ): Result.Ok(new ValidVO(value));
     }
 
     // CRTP violation - TSelf doesn't match the class
@@ -44,7 +44,7 @@ public class ScalarValueTypeHelperTests
         public int Value { get; }
         public InterfaceOnly(int value) => Value = value;
         public static Result<InterfaceOnly> TryCreate(int value, string? fieldName = null) =>
-            new InterfaceOnly(value);
+            Result.Ok(new InterfaceOnly(value));
         public static Result<InterfaceOnly> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -54,7 +54,7 @@ public class ScalarValueTypeHelperTests
         public int Value { get; }
         private InterfaceOnlyValidated(int value) => Value = value;
         public static Result<InterfaceOnlyValidated> TryCreate(int value, string? fieldName = null) =>
-            value > 0 ? new InterfaceOnlyValidated(value) : Error.Validation("Must be positive.", fieldName ?? "field");
+            value > 0 ? Result.Ok(new InterfaceOnlyValidated(value) ): Result.Fail<InterfaceOnlyValidated>(Error.Validation("Must be positive.", fieldName ?? "field"));
         public static Result<InterfaceOnlyValidated> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -66,7 +66,7 @@ public class ScalarValueTypeHelperTests
         private GenericVO(T value) : base(value) { }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required by IScalarValue interface pattern")]
         public static Result<GenericVO<T>> TryCreate(T? value, string? fieldName = null) =>
-            value is null ? Error.Validation("Required", fieldName ?? "field") : new GenericVO<T>(value);
+            value is null ? Result.Fail<Asp.Tests.ScalarValueTypeHelperTests.GenericVO<T>>(Error.Validation("Required", fieldName ?? "field") ): Result.Ok(new GenericVO<T>(value));
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required by IScalarValue interface pattern")]
         public static Result<GenericVO<T>> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -79,7 +79,7 @@ public class ScalarValueTypeHelperTests
     {
         private MultiInterfaceVO(string value) : base(value) { }
         public static Result<MultiInterfaceVO> TryCreate(string? value, string? fieldName = null) =>
-            string.IsNullOrEmpty(value) ? Error.Validation("Required", fieldName ?? "field") : new MultiInterfaceVO(value);
+            string.IsNullOrEmpty(value) ? Result.Fail<MultiInterfaceVO>(Error.Validation("Required", fieldName ?? "field") ): Result.Ok(new MultiInterfaceVO(value));
         public int CompareTo(MultiInterfaceVO? other) => string.Compare(Value, other?.Value, StringComparison.Ordinal);
     }
 

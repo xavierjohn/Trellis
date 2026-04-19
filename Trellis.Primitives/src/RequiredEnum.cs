@@ -205,14 +205,14 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         var field = NormalizeFieldName(fieldName, typeof(TSelf).Name);
 
         if (string.IsNullOrWhiteSpace(name))
-            return Error.Validation($"{typeof(TSelf).Name} cannot be empty.", field);
+            return Result.Fail<TSelf>(Error.Validation($"{typeof(TSelf).Name} cannot be empty.", field));
 
         var cache = GetCache();
         if (cache.ByName.TryGetValue(name, out var member))
-            return member;
+            return Result.Ok(member);
 
         var validNames = string.Join(", ", cache.ByName.Keys.OrderBy(n => n));
-        return Error.Validation($"'{name}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}", field);
+        return Result.Fail<TSelf>(Error.Validation($"'{name}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}", field));
     }
 
     /// <summary>

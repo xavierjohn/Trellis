@@ -44,10 +44,10 @@ public partial class OrderState : RequiredEnum<OrderState>
     public Result<OrderState> TryTransitionTo(OrderState newState)
     {
         if (CanTransitionTo(newState))
-            return newState;
+            return Result.Ok(newState);
 
-        return Error.Validation(
+        return Result.Fail<OrderState>(Error.Validation(
             $"Cannot transition from '{this}' to '{newState}'. Allowed transitions: {string.Join(", ", AllowedTransitions)}",
-            "state");
+            "state"));
     }
 }

@@ -72,14 +72,14 @@ public static class StateMachineExtensions
         try
         {
             stateMachine.Fire(trigger);
-            return stateMachine.State;
+            return Result.Ok(stateMachine.State);
         }
         catch (InvalidOperationException exception) when (IsStatelessInvalidTransition(exception))
         {
-            return Error.Domain(
+            return Result.Fail<TState>(Error.Domain(
                 exception.Message,
                 code: "state.machine.invalid.transition",
-                instance: null);
+                instance: null));
         }
     }
 

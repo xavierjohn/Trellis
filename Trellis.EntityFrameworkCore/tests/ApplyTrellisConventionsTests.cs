@@ -645,9 +645,9 @@ internal sealed class InternalCustomerCode : ScalarValueObject<InternalCustomerC
     {
         var field = fieldName ?? "code";
         if (string.IsNullOrWhiteSpace(value))
-            return Error.Validation("Code is required.", field);
+            return Result.Fail<InternalCustomerCode>(Error.Validation("Code is required.", field));
 
-        return new InternalCustomerCode(value);
+        return Result.Ok(new InternalCustomerCode(value));
     }
 }
 

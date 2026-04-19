@@ -51,7 +51,7 @@ public static partial class MaybeExtensions
     /// <typeparam name="TValue">The type of the value.</typeparam>
     /// <param name="value">The value to wrap.</param>
     /// <returns>A successful Result containing the value.</returns>
-    public static Result<TValue> ToResult<TValue>(this TValue value) => value;
+    public static Result<TValue> ToResult<TValue>(this TValue value) => Result.Ok(value);
 }
 
 /// <summary>

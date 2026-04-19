@@ -19,7 +19,7 @@ internal static class PrimitiveConverter
         where TPrimitive : IComparable
     {
         if (string.IsNullOrEmpty(value))
-            return Error.Validation("Value is required.");
+            return Result.Fail<TPrimitive>(Error.Validation("Value is required."));
 
         var targetType = typeof(TPrimitive);
         var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
@@ -27,7 +27,7 @@ internal static class PrimitiveConverter
         try
         {
             if (underlyingType == typeof(string))
-                return (TPrimitive)(object)value;
+                return Result.Ok((TPrimitive)(object)value);
 
             if (underlyingType.IsEnum)
             {
@@ -35,88 +35,88 @@ internal static class PrimitiveConverter
                     && enumValue is not null
                     && (Enum.IsDefined(underlyingType, enumValue)
                         || underlyingType.IsDefined(typeof(FlagsAttribute), inherit: false)))
-                    return (TPrimitive)enumValue;
+                    return Result.Ok((TPrimitive)enumValue);
 
-                return Error.Validation("The value is not a recognized option.");
+                return Result.Fail<TPrimitive>(Error.Validation("The value is not a recognized option."));
             }
 
             if (underlyingType == typeof(Guid))
                 return Guid.TryParse(value, out var guid)
-                    ? (TPrimitive)(object)guid
-                    : Error.Validation("The value is not a valid GUID.");
+                    ? Result.Ok((TPrimitive)(object)guid)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid GUID."));
 
             if (underlyingType == typeof(int))
                 return int.TryParse(value, out var i)
-                    ? (TPrimitive)(object)i
-                    : Error.Validation("The value is not a valid integer.");
+                    ? Result.Ok((TPrimitive)(object)i)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid integer."));
 
             if (underlyingType == typeof(long))
                 return long.TryParse(value, out var l)
-                    ? (TPrimitive)(object)l
-                    : Error.Validation("The value is not a valid integer.");
+                    ? Result.Ok((TPrimitive)(object)l)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid integer."));
 
             if (underlyingType == typeof(short))
                 return short.TryParse(value, out var s)
-                    ? (TPrimitive)(object)s
-                    : Error.Validation("The value is not a valid integer.");
+                    ? Result.Ok((TPrimitive)(object)s)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid integer."));
 
             if (underlyingType == typeof(byte))
                 return byte.TryParse(value, out var by)
-                    ? (TPrimitive)(object)by
-                    : Error.Validation("The value is not a valid byte (0-255).");
+                    ? Result.Ok((TPrimitive)(object)by)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid byte (0-255)."));
 
             if (underlyingType == typeof(decimal))
                 return decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
-                    ? (TPrimitive)(object)d
-                    : Error.Validation("The value is not a valid decimal.");
+                    ? Result.Ok((TPrimitive)(object)d)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid decimal."));
 
             if (underlyingType == typeof(double))
                 return double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var dbl)
-                    ? (TPrimitive)(object)dbl
-                    : Error.Validation("The value is not a valid number.");
+                    ? Result.Ok((TPrimitive)(object)dbl)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid number."));
 
             if (underlyingType == typeof(float))
                 return float.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var flt)
-                    ? (TPrimitive)(object)flt
-                    : Error.Validation("The value is not a valid number.");
+                    ? Result.Ok((TPrimitive)(object)flt)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid number."));
 
             if (underlyingType == typeof(bool))
                 return bool.TryParse(value, out var b)
-                    ? (TPrimitive)(object)b
-                    : Error.Validation("The value is not a valid boolean.");
+                    ? Result.Ok((TPrimitive)(object)b)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid boolean."));
 
             if (underlyingType == typeof(DateTime))
                 return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt)
-                    ? (TPrimitive)(object)dt
-                    : Error.Validation("The value is not a valid date/time.");
+                    ? Result.Ok((TPrimitive)(object)dt)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid date/time."));
 
             if (underlyingType == typeof(DateTimeOffset))
                 return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto)
-                    ? (TPrimitive)(object)dto
-                    : Error.Validation("The value is not a valid date/time.");
+                    ? Result.Ok((TPrimitive)(object)dto)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid date/time."));
 
             if (underlyingType == typeof(DateOnly))
                 return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly)
-                    ? (TPrimitive)(object)dateOnly
-                    : Error.Validation("The value is not a valid date.");
+                    ? Result.Ok((TPrimitive)(object)dateOnly)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid date."));
 
             if (underlyingType == typeof(TimeOnly))
                 return TimeOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var timeOnly)
-                    ? (TPrimitive)(object)timeOnly
-                    : Error.Validation("The value is not a valid time.");
+                    ? Result.Ok((TPrimitive)(object)timeOnly)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid time."));
 
             if (underlyingType == typeof(TimeSpan))
                 return TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var timeSpan)
-                    ? (TPrimitive)(object)timeSpan
-                    : Error.Validation("The value is not a valid time span.");
+                    ? Result.Ok((TPrimitive)(object)timeSpan)
+                    : Result.Fail<TPrimitive>(Error.Validation("The value is not a valid time span."));
 
             // Fallback: try Convert.ChangeType
             var converted = Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
-            return (TPrimitive)converted;
+            return Result.Ok((TPrimitive)converted);
         }
         catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException or ArgumentException)
         {
-            return Error.Validation("The value could not be converted to the expected type.");
+            return Result.Fail<TPrimitive>(Error.Validation("The value could not be converted to the expected type."));
         }
     }
 }

@@ -49,9 +49,9 @@ public class Order : Aggregate<OrderId>
     public static Result<Order> TryCreate(CustomerId customerId)
     {
         if (customerId is null)
-            return Error.Validation("Customer ID is required", nameof(customerId));
+            return Result.Fail<EcommerceExample.Aggregates.Order>(Error.Validation("Customer ID is required", nameof(customerId)));
 
-        return new Order(customerId);
+        return Result.Ok(new Order(customerId));
     }
 
     public static Order Create(CustomerId customerId) =>
@@ -274,7 +274,7 @@ public class Order : Aggregate<OrderId>
         {
             var addResult = total.Add(line.LineTotal);
             if (addResult.TryGetError(out var addError))
-                return addError;
+                return Result.Fail<Unit>(addError);
 
             // Safe: TryGetError returned false above, so addResult is success.
             if (!addResult.TryGetValue(out var newTotal))

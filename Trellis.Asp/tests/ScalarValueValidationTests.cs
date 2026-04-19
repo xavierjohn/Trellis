@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Text.Json;
 using FluentAssertions;
@@ -28,8 +28,8 @@ public class ScalarValueValidationTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Name cannot be empty.", field);
-            return new Name(value.Trim());
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.Name>(Error.Validation("Name cannot be empty.", field));
+            return Result.Ok(new Name(value.Trim()));
         }
     }
 
@@ -44,10 +44,10 @@ public class ScalarValueValidationTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Email is required.", field);
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(Error.Validation("Email is required.", field));
             if (!value.Contains('@'))
-                return Error.Validation("Email must contain @.", field);
-            return new TestEmail(value);
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(Error.Validation("Email must contain @.", field));
+            return Result.Ok(new TestEmail(value));
         }
     }
 

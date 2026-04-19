@@ -41,7 +41,7 @@ public partial class Slug : ScalarValueObject<Slug, string>, IScalarValue<Slug, 
         // lower-case, numbers, hyphens, single hyphen separators
         if (!SlugRegex().IsMatch(trimmed))
             return Result.Fail<Slug>(Error.Validation("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.", field));
-        return new Slug(trimmed);
+        return Result.Ok(new Slug(trimmed));
     }
 
     /// <summary>

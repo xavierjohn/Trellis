@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Text.Json;
 using FluentAssertions;
@@ -31,8 +31,8 @@ public class PositionalRecordValidationTests
         private ProductName(string value) : base(value) { }
         public static Result<ProductName> TryCreate(string? value, string? fieldName = null) =>
             string.IsNullOrWhiteSpace(value)
-                ? Error.Validation("Product name is required.", fieldName ?? "productName")
-                : new ProductName(value);
+                ? Result.Fail<ProductName>(Error.Validation("Product name is required.", fieldName ?? "productName"))
+                : Result.Ok(new ProductName(value));
     }
 
     public sealed class Quantity : ScalarValueObject<Quantity, int>, IScalarValue<Quantity, int>
@@ -40,8 +40,8 @@ public class PositionalRecordValidationTests
         private Quantity(int value) : base(value) { }
         public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
             value > 0
-                ? new Quantity(value)
-                : Error.Validation("Quantity must be positive.", fieldName ?? "quantity");
+                ? Result.Ok(new Quantity(value))
+                : Result.Fail<Quantity>(Error.Validation("Quantity must be positive.", fieldName ?? "quantity"));
         public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -51,8 +51,8 @@ public class PositionalRecordValidationTests
         private Price(decimal value) : base(value) { }
         public static Result<Price> TryCreate(decimal value, string? fieldName = null) =>
             value >= 0
-                ? new Price(value)
-                : Error.Validation("Price cannot be negative.", fieldName ?? "price");
+                ? Result.Ok(new Price(value))
+                : Result.Fail<Price>(Error.Validation("Price cannot be negative.", fieldName ?? "price"));
         public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

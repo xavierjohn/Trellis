@@ -25,7 +25,7 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
         var trimmed = value.Trim();
         if (!HostnameRegex().IsMatch(trimmed))
             return Result.Fail<Hostname>(Error.Validation("Hostname must be RFC 1123 compliant.", field));
-        return new Hostname(trimmed);
+        return Result.Ok(new Hostname(trimmed));
     }
 
     /// <summary>

@@ -280,7 +280,7 @@ public class ResultEdgeCaseTests
     public void ImplicitConversion_FromNullValue_ShouldCreateSuccessResult()
     {
         // Arrange & Act
-        Result<string?> result = (string?)null;
+        Result<string?> result = Result.Ok((string?)null);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -294,7 +294,7 @@ public class ResultEdgeCaseTests
         Error error = Error.Unexpected("Something went wrong");
 
         // Act
-        Result<int> result = error;
+        Result<int> result = Result.Fail<int>(error);
 
         // Assert
         result.IsFailure.Should().BeTrue();

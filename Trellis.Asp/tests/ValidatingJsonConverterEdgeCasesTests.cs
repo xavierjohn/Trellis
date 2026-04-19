@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -22,8 +22,8 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Email is required.", field);
-            return new Email(value);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Email>(Error.Validation("Email is required.", field));
+            return Result.Ok(new Email(value));
         }
     }
 
@@ -34,8 +34,8 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Error.Validation("Age cannot be negative.", field);
-            return new Age(value);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Age>(Error.Validation("Age cannot be negative.", field));
+            return Result.Ok(new Age(value));
         }
         public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -49,9 +49,9 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "url";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("URL is required.", field);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.URL>(Error.Validation("URL is required.", field));
 
-            return new URL(value);
+            return Result.Ok(new URL(value));
         }
     }
 
@@ -68,8 +68,8 @@ public class ValidatingJsonConverterEdgeCasesTests
 
         public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
             value == ProcessingMode.Unknown
-                ? Error.Validation("Processing mode is required.", fieldName ?? "processingMode")
-                : new ProcessingModeVO(value);
+                ? Result.Fail<ProcessingModeVO>(Error.Validation("Processing mode is required.", fieldName ?? "processingMode"))
+                : Result.Ok(new ProcessingModeVO(value));
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -299,7 +299,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         private NonValidationErrorVO(int value) : base(value) { }
         public static Result<NonValidationErrorVO> TryCreate(int value, string? fieldName = null) =>
             // Return non-validation error
-            Error.Unexpected("Unexpected error", "code");
+            Result.Fail<NonValidationErrorVO>(Error.Unexpected("Unexpected error", "code"));
         public static Result<NonValidationErrorVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -570,12 +570,12 @@ public class ValidatingJsonConverterEdgeCasesTests
         public static Result<MultiValidationVO> TryCreate(string? value, string? fieldName = null)
         {
             if (string.IsNullOrEmpty(value))
-                return Error.Validation("Required", fieldName ?? "field");
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(Error.Validation("Required", fieldName ?? "field"));
             if (value.Length < 5)
-                return Error.Validation("Too short", fieldName ?? "field");
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(Error.Validation("Too short", fieldName ?? "field"));
             if (!value.Contains('@'))
-                return Error.Validation("Must contain @", fieldName ?? "field");
-            return new MultiValidationVO(value);
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(Error.Validation("Must contain @", fieldName ?? "field"));
+            return Result.Ok(new MultiValidationVO(value));
         }
     }
 

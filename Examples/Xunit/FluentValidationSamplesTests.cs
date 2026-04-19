@@ -26,9 +26,9 @@ public class FluentValidationSamplesTests
         public static Result<EmailAddress> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Email cannot be empty", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(Error.Validation("Email cannot be empty", nameof(value)));
             if (!value.Contains('@'))
-                return Error.Validation("Email must contain @", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.EmailAddress>(Error.Validation("Email must contain @", nameof(value)));
             return Result.Ok(new EmailAddress(value));
         }
     }
@@ -41,9 +41,9 @@ public class FluentValidationSamplesTests
         public static Result<Username> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Username cannot be empty", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(Error.Validation("Username cannot be empty", nameof(value)));
             if (value.Length is < 3 or > 20)
-                return Error.Validation("Username must be between 3 and 20 characters", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Username>(Error.Validation("Username must be between 3 and 20 characters", nameof(value)));
             return Result.Ok(new Username(value));
         }
     }
@@ -56,7 +56,7 @@ public class FluentValidationSamplesTests
         public static Result<PhoneNumber> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Phone number cannot be empty", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.PhoneNumber>(Error.Validation("Phone number cannot be empty", nameof(value)));
             return Result.Ok(new PhoneNumber(value));
         }
     }
@@ -300,7 +300,7 @@ public class FluentValidationSamplesTests
         public static Result<ProductId> TryCreate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Product ID cannot be empty", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.ProductId>(Error.Validation("Product ID cannot be empty", nameof(value)));
             return Result.Ok(new ProductId(value));
         }
     }
@@ -313,9 +313,9 @@ public class FluentValidationSamplesTests
         public static Result<Quantity> TryCreate(int value)
         {
             if (value <= 0)
-                return Error.Validation("Quantity must be positive", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(Error.Validation("Quantity must be positive", nameof(value)));
             if (value > 1000)
-                return Error.Validation("Quantity cannot exceed 1000", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Quantity>(Error.Validation("Quantity cannot exceed 1000", nameof(value)));
             return Result.Ok(new Quantity(value));
         }
     }
@@ -328,7 +328,7 @@ public class FluentValidationSamplesTests
         public static Result<Price> TryCreate(decimal value)
         {
             if (value <= 0)
-                return Error.Validation("Price must be positive", nameof(value));
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.Price>(Error.Validation("Price must be positive", nameof(value)));
             return Result.Ok(new Price(value));
         }
     }
@@ -355,7 +355,7 @@ public class FluentValidationSamplesTests
             Quantity quantity)
         {
             if (string.IsNullOrWhiteSpace(productName))
-                return Error.Validation("Product name cannot be empty");
+                return Result.Fail<Example.Tests.FluentValidationSamplesTests.OrderLine>(Error.Validation("Product name cannot be empty"));
 
             return Result.Ok(new OrderLine(productId, productName, price, quantity));
         }

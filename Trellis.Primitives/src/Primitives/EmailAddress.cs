@@ -216,7 +216,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
                 var isEmail = EmailRegEx().IsMatch(trimmed);
                 if (isEmail)
                 {
-                    return new EmailAddress(trimmed);
+                    return Result.Ok(new EmailAddress(trimmed));
                 }
             }
         }

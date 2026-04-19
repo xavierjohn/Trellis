@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System.Linq;
 using System.Text.Json;
@@ -29,8 +29,8 @@ public class ServiceCollectionExtensionsTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Name is required.", field);
-            return new TestName(value);
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestName>(Error.Validation("Name is required.", field));
+            return Result.Ok(new TestName(value));
         }
     }
 
@@ -42,10 +42,10 @@ public class ServiceCollectionExtensionsTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Email is required.", field);
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(Error.Validation("Email is required.", field));
             if (!value.Contains('@'))
-                return Error.Validation("Email must contain @.", field);
-            return new TestEmail(value);
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(Error.Validation("Email must contain @.", field));
+            return Result.Ok(new TestEmail(value));
         }
     }
 
@@ -55,8 +55,8 @@ public class ServiceCollectionExtensionsTests
 
         public static Result<TestAge> TryCreate(int value, string? fieldName = null) =>
             value is < 0 or > 150
-                ? Error.Validation("Age must be between 0 and 150.", fieldName ?? "age")
-                : new TestAge(value);
+                ? Result.Fail<TestAge>(Error.Validation("Age must be between 0 and 150.", fieldName ?? "age"))
+                : Result.Ok(new TestAge(value));
         public static Result<TestAge> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

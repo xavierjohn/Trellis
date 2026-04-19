@@ -52,7 +52,7 @@ public static class Maybe
         where TOut : notnull
     {
         if (value is null)
-            return Maybe<TOut>.None;
+            return Result.Ok<Maybe<TOut>>(Maybe<TOut>.None);
 
         return function(value).Map(r => Maybe.From(r));
     }
@@ -95,7 +95,7 @@ public static class Maybe
         where TOut : notnull
     {
         if (!value.HasValue)
-            return Maybe<TOut>.None;
+            return Result.Ok<Maybe<TOut>>(Maybe<TOut>.None);
 
         return function(value.Value).Map(r => Maybe.From(r));
     }

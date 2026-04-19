@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -22,8 +22,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private StringVO(string value) : base(value) { }
         public static Result<StringVO> TryCreate(string? value, string? fieldName = null) =>
             string.IsNullOrWhiteSpace(value)
-                ? Error.Validation("Required", fieldName ?? "value")
-                : new StringVO(value);
+                ? Result.Fail<StringVO>(Error.Validation("Required", fieldName ?? "value"))
+                : Result.Ok(new StringVO(value));
     }
 
     public sealed class GuidVO : ScalarValueObject<GuidVO, Guid>, IScalarValue<GuidVO, Guid>
@@ -31,8 +31,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private GuidVO(Guid value) : base(value) { }
         public static Result<GuidVO> TryCreate(Guid value, string? fieldName = null) =>
             value == Guid.Empty
-                ? Error.Validation("Cannot be empty", fieldName ?? "value")
-                : new GuidVO(value);
+                ? Result.Fail<GuidVO>(Error.Validation("Cannot be empty", fieldName ?? "value"))
+                : Result.Ok(new GuidVO(value));
         public static Result<GuidVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -42,8 +42,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private NonNegativeIntVO(int value) : base(value) { }
         public static Result<NonNegativeIntVO> TryCreate(int value, string? fieldName = null) =>
             value < 0
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new NonNegativeIntVO(value);
+                ? Result.Fail<NonNegativeIntVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new NonNegativeIntVO(value));
         public static Result<NonNegativeIntVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -53,8 +53,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private LongVO(long value) : base(value) { }
         public static Result<LongVO> TryCreate(long value, string? fieldName = null) =>
             value < 0
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new LongVO(value);
+                ? Result.Fail<LongVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new LongVO(value));
         public static Result<LongVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -64,8 +64,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DecimalVO(decimal value) : base(value) { }
         public static Result<DecimalVO> TryCreate(decimal value, string? fieldName = null) =>
             value < 0
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new DecimalVO(value);
+                ? Result.Fail<DecimalVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new DecimalVO(value));
         public static Result<DecimalVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -75,8 +75,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DoubleVO(double value) : base(value) { }
         public static Result<DoubleVO> TryCreate(double value, string? fieldName = null) =>
             value < 0
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new DoubleVO(value);
+                ? Result.Fail<DoubleVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new DoubleVO(value));
         public static Result<DoubleVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -85,7 +85,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         private BoolVO(bool value) : base(value) { }
         public static Result<BoolVO> TryCreate(bool value, string? fieldName = null) =>
-            new BoolVO(value);
+            Result.Ok(new BoolVO(value));
         public static Result<BoolVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -95,8 +95,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DateTimeVO(DateTime value) : base(value) { }
         public static Result<DateTimeVO> TryCreate(DateTime value, string? fieldName = null) =>
             value == default
-                ? Error.Validation("Required", fieldName ?? "value")
-                : new DateTimeVO(value);
+                ? Result.Fail<DateTimeVO>(Error.Validation("Required", fieldName ?? "value"))
+                : Result.Ok(new DateTimeVO(value));
         public static Result<DateTimeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -106,8 +106,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DateOnlyVO(DateOnly value) : base(value) { }
         public static Result<DateOnlyVO> TryCreate(DateOnly value, string? fieldName = null) =>
             value == default
-                ? Error.Validation("Required", fieldName ?? "value")
-                : new DateOnlyVO(value);
+                ? Result.Fail<DateOnlyVO>(Error.Validation("Required", fieldName ?? "value"))
+                : Result.Ok(new DateOnlyVO(value));
         public static Result<DateOnlyVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -116,7 +116,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         private TimeOnlyVO(TimeOnly value) : base(value) { }
         public static Result<TimeOnlyVO> TryCreate(TimeOnly value, string? fieldName = null) =>
-            new TimeOnlyVO(value);
+            Result.Ok(new TimeOnlyVO(value));
         public static Result<TimeOnlyVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -126,8 +126,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private TimeSpanVO(TimeSpan value) : base(value) { }
         public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
             value < TimeSpan.Zero
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new TimeSpanVO(value);
+                ? Result.Fail<TimeSpanVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new TimeSpanVO(value));
         public static Result<TimeSpanVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -137,8 +137,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DateTimeOffsetVO(DateTimeOffset value) : base(value) { }
         public static Result<DateTimeOffsetVO> TryCreate(DateTimeOffset value, string? fieldName = null) =>
             value == default
-                ? Error.Validation("Required", fieldName ?? "value")
-                : new DateTimeOffsetVO(value);
+                ? Result.Fail<DateTimeOffsetVO>(Error.Validation("Required", fieldName ?? "value"))
+                : Result.Ok(new DateTimeOffsetVO(value));
         public static Result<DateTimeOffsetVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -148,8 +148,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private ShortVO(short value) : base(value) { }
         public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
             value < 0
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new ShortVO(value);
+                ? Result.Fail<ShortVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new ShortVO(value));
         public static Result<ShortVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -158,7 +158,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         private ByteVO(byte value) : base(value) { }
         public static Result<ByteVO> TryCreate(byte value, string? fieldName = null) =>
-            new ByteVO(value);
+            Result.Ok(new ByteVO(value));
         public static Result<ByteVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -168,8 +168,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private SByteVO(sbyte value) : base(value) { }
         public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
             value < 0
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new SByteVO(value);
+                ? Result.Fail<SByteVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new SByteVO(value));
         public static Result<SByteVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -178,7 +178,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         private UShortVO(ushort value) : base(value) { }
         public static Result<UShortVO> TryCreate(ushort value, string? fieldName = null) =>
-            new UShortVO(value);
+            Result.Ok(new UShortVO(value));
         public static Result<UShortVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -187,7 +187,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         private UIntVO(uint value) : base(value) { }
         public static Result<UIntVO> TryCreate(uint value, string? fieldName = null) =>
-            new UIntVO(value);
+            Result.Ok(new UIntVO(value));
         public static Result<UIntVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -196,7 +196,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
     {
         private ULongVO(ulong value) : base(value) { }
         public static Result<ULongVO> TryCreate(ulong value, string? fieldName = null) =>
-            new ULongVO(value);
+            Result.Ok(new ULongVO(value));
         public static Result<ULongVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -206,8 +206,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private FloatVO(float value) : base(value) { }
         public static Result<FloatVO> TryCreate(float value, string? fieldName = null) =>
             value < 0
-                ? Error.Validation("Must be non-negative", fieldName ?? "value")
-                : new FloatVO(value);
+                ? Result.Fail<FloatVO>(Error.Validation("Must be non-negative", fieldName ?? "value"))
+                : Result.Ok(new FloatVO(value));
         public static Result<FloatVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -224,8 +224,8 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private ProcessingModeVO(ProcessingMode value) : base(value) { }
         public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
             value == ProcessingMode.Unknown
-                ? Error.Validation("Mode is required", fieldName ?? "value")
-                : new ProcessingModeVO(value);
+                ? Result.Fail<ProcessingModeVO>(Error.Validation("Mode is required", fieldName ?? "value"))
+                : Result.Ok(new ProcessingModeVO(value));
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

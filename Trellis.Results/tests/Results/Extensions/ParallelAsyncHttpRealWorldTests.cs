@@ -166,7 +166,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             {
                 // First attempt: transient error (503 Service Unavailable)
                 await Task.Delay(10); // Simulate network delay
-                return Error.ServiceUnavailable("Inventory service temporarily unavailable");
+                return Result.Fail<InventoryResponse>(Error.ServiceUnavailable("Inventory service temporarily unavailable"));
             }
 
             // Retry succeeds
@@ -209,7 +209,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             {
                 // Fail first 2 attempts (transient)
                 await Task.Delay(10);
-                return Error.ServiceUnavailable("Payment service timeout");
+                return Result.Fail<PaymentResponse>(Error.ServiceUnavailable("Payment service timeout"));
             }
 
             // Third attempt succeeds
@@ -249,7 +249,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         {
             attemptCount++;
             await Task.Delay(10);
-            return Error.ServiceUnavailable("Shipping service down");
+            return Result.Fail<ShippingResponse>(Error.ServiceUnavailable("Shipping service down"));
         }
 
         // Act - try with 2 retries (3 total attempts)
@@ -557,10 +557,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // High-risk scenarios
         if (user.UserId == "user-high-risk")
-            return Error.Forbidden("Suspicious transaction detected: high-risk user");
+            return Result.Fail<FraudCheckResponse>(Error.Forbidden("Suspicious transaction detected: high-risk user"));
 
         if (inventory.ProductId == "prod-expensive" && inventory.StockLevel < 10)
-            return Error.Forbidden("Suspicious transaction: expensive item with low stock");
+            return Result.Fail<FraudCheckResponse>(Error.Forbidden("Suspicious transaction: expensive item with low stock"));
 
         return Result.Ok(new FraudCheckResponse(true, "Low"));
     }
@@ -572,7 +572,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         await Task.Delay(40); // Simulate shipping calculation
 
         if (string.IsNullOrWhiteSpace(address))
-            return Error.Validation("Shipping address required");
+            return Result.Fail<ShippingResponse>(Error.Validation("Shipping address required"));
 
         // Calculate based on inventory (heavier items cost more)
         var rate = inventory.StockLevel > 50 ? 12.99m : 9.99m;
@@ -585,7 +585,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         await Task.Delay(25); // Simulate reservation
 
         if (!inventory.Available)
-            return Error.Conflict("Cannot reserve unavailable inventory");
+            return Result.Fail<InventoryReservation>(Error.Conflict("Cannot reserve unavailable inventory"));
 
         return Result.Ok(new InventoryReservation($"res-{Guid.NewGuid():N}", true));
     }
@@ -596,10 +596,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         return userId switch
         {
-            "nonexistent-user" => Error.NotFound($"User not found: {userId}"),
+            "nonexistent-user" => Result.Fail<UserResponse>(Error.NotFound($"User not found: {userId}")),
             "user-123" => Result.Ok(new UserResponse(userId, "user@example.com", true)),
             "user-high-risk" => Result.Ok(new UserResponse(userId, "highrisk@example.com", true)),
-            _ => Error.Unexpected("Unknown user ID")
+            _ => Result.Fail<UserResponse>(Error.Unexpected("Unknown user ID"))
         };
     }
 
@@ -609,10 +609,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         return productId switch
         {
-            "prod-out-of-stock" => Error.Conflict("Out of stock: product is unavailable"),
+            "prod-out-of-stock" => Result.Fail<InventoryResponse>(Error.Conflict("Out of stock: product is unavailable")),
             "prod-456" => Result.Ok(new InventoryResponse(productId, 100, true)),
             "prod-expensive" => Result.Ok(new InventoryResponse(productId, 5, true)),
-            _ => Error.NotFound($"Product not found: {productId}")
+            _ => Result.Fail<InventoryResponse>(Error.NotFound($"Product not found: {productId}"))
         };
     }
 
@@ -622,9 +622,9 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         return paymentMethodId switch
         {
-            "pm-expired" => Error.Validation("Payment method expired"),
+            "pm-expired" => Result.Fail<PaymentResponse>(Error.Validation("Payment method expired")),
             "pm-789" => Result.Ok(new PaymentResponse(paymentMethodId, true)),
-            _ => Error.NotFound($"Payment method not found: {paymentMethodId}")
+            _ => Result.Fail<PaymentResponse>(Error.NotFound($"Payment method not found: {paymentMethodId}"))
         };
     }
 
@@ -633,7 +633,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         await Task.Delay(50);
 
         if (string.IsNullOrWhiteSpace(address))
-            return Error.Validation("Shipping address required");
+            return Result.Fail<ShippingResponse>(Error.Validation("Shipping address required"));
 
         return Result.Ok(new ShippingResponse("USPS", 9.99m));
     }

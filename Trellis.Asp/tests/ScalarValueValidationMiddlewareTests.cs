@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
 using System.IO;
@@ -308,10 +308,10 @@ public class ScalarValueValidationMiddlewareTests
         {
             var field = fieldName ?? "orderCode";
             if (string.IsNullOrWhiteSpace(value))
-                return Error.Validation("Order code is required.", field);
+                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(Error.Validation("Order code is required.", field));
             if (!value.StartsWith("ORD-", StringComparison.Ordinal))
-                return Error.Validation("Order code must start with 'ORD-'.", field);
-            return new OrderCode(value);
+                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(Error.Validation("Order code must start with 'ORD-'.", field));
+            return Result.Ok(new OrderCode(value));
         }
     }
 
@@ -330,7 +330,7 @@ public class ScalarValueValidationMiddlewareTests
         public int Value { get; }
         private IntOnlyScalarValue(int value) => Value = value;
         public static Result<IntOnlyScalarValue> TryCreate(int value, string? fieldName = null) =>
-            value > 0 ? new IntOnlyScalarValue(value) : Error.Validation("Must be positive.", fieldName ?? "value");
+            value > 0 ? Result.Ok(new IntOnlyScalarValue(value) ): Result.Fail<IntOnlyScalarValue>(Error.Validation("Must be positive.", fieldName ?? "value"));
         public static Result<IntOnlyScalarValue> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

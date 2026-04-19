@@ -38,7 +38,7 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsLetter))
             return Result.Fail<CountryCode>(Error.Validation("Country code must be an ISO 3166-1 alpha-2 code.", field));
-        return new CountryCode(code.ToUpperInvariant());
+        return Result.Ok(new CountryCode(code.ToUpperInvariant()));
     }
 
     /// <summary>

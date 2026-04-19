@@ -23,19 +23,6 @@ public class ResultTests
     }
 
     [Fact]
-    public void Can_implicitly_convert_to_Result()
-    {
-        // Arrange
-        var hello = "Hello";
-
-        // Act
-        Result<string> result = hello;
-
-        // Assert
-        result.Should().HaveValue(hello);
-    }
-
-    [Fact]
     public void Success_Unit_Result()
     {
         // Arrange

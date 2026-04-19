@@ -61,7 +61,7 @@ public class OrderWorkflow
                 {
                     order.Cancel("Inventory unavailable");
                     // Don't publish events for cancelled orders due to inventory issues
-                    return reserveError;
+                    return Result.Fail<Order>(reserveError);
                 }
 
                 return Result.Ok(order);
@@ -87,7 +87,7 @@ public class OrderWorkflow
                     // Publish events including cancellation
                     await PublishEventsAndAcceptChangesAsync(order, ct);
                     await _notificationService.SendPaymentFailedEmailAsync(customerId, order.Id, ct);
-                    return paymentError;
+                    return Result.Fail<Order>(paymentError);
                 }
 
                 return Result.Ok(order);
@@ -112,7 +112,7 @@ public class OrderWorkflow
         CancellationToken cancellationToken)
     {
         if (items.Count == 0)
-            return Error.Validation("Order must contain at least one item");
+            return Result.Fail<EcommerceExample.Aggregates.Order>(Error.Validation("Order must contain at least one item"));
 
         // Validate all items - errors are automatically aggregated
         var validationResult = await items.TraverseAsync(
@@ -122,7 +122,7 @@ public class OrderWorkflow
 
         // If any validation failed, return aggregated errors
         if (validationResult.TryGetError(out var validationError))
-            return validationError;
+            return Result.Fail<EcommerceExample.Aggregates.Order>(validationError);
 
         // Add all items to order
         var currentOrder = Result.Ok(order);
@@ -211,7 +211,7 @@ public class OrderWorkflow
 
         // In a real system, this would query for similar products
         // For now, just return the original error
-        return Error.Domain("Products out of stock. Please check alternative products.");
+        return Result.Fail<Unit>(Error.Domain("Products out of stock. Please check alternative products."));
     }
 
     /// <summary>

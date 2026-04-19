@@ -51,20 +51,6 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     public bool IsFailure { get; }
 
     /// <summary>
-    /// Implicitly converts a value to a successful result.
-    /// </summary>
-    /// <param name="value">The value to wrap in a success result.</param>
-    /// <returns>A successful result containing the value.</returns>
-    public static implicit operator Result<TValue>(TValue value) => Result.Ok(value);
-
-    /// <summary>
-    /// Implicitly converts an error to a failed result.
-    /// </summary>
-    /// <param name="error">The error to wrap in a failed result.</param>
-    /// <returns>A failed result containing the error.</returns>
-    public static implicit operator Result<TValue>(Error error) => Result.Fail<TValue>(error);
-
-    /// <summary>
     /// Creates a failure result wrapping the given error.
     /// Used by generic pipeline behaviors that need to construct failure results
     /// without knowing the inner type parameter.
