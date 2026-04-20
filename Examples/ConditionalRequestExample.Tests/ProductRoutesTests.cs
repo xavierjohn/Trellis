@@ -5,28 +5,18 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using ConditionalRequestExample.Domain;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// Integration tests for <c>ConditionalRequestExample</c>. Exercises the OPTIONAL
 /// and REQUIRED ETag route groups so we can prove the RFC 9110 status codes
 /// (200, 201, 304, 412, 428) are wired up correctly through Trellis' helpers.
 /// </summary>
-/// <remarks>
-/// The sample's <c>{id:ProductId}</c> route constraint is not registered in its
-/// own <c>Program.cs</c> (the framework provides no automatic registration).
-/// To exercise the routes from tests we register a minimal <see cref="IRouteConstraint"/>
-/// that delegates to <see cref="ProductId.TryParse(string?, IFormatProvider?, out ProductId)"/>.
-/// This keeps production code untouched.
-/// </remarks>
-public class ProductRoutesTests : IClassFixture<ProductRoutesTests.Factory>
+public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly Factory _factory;
+    private readonly WebApplicationFactory<Program> _factory;
 
-    public ProductRoutesTests(Factory factory) => _factory = factory;
+    public ProductRoutesTests(WebApplicationFactory<Program> factory) => _factory = factory;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -178,32 +168,4 @@ public class ProductRoutesTests : IClassFixture<ProductRoutesTests.Factory>
         [property: JsonPropertyName("price")] decimal Price,
         [property: JsonPropertyName("eTag")] string ETag);
 
-    /// <summary>
-    /// Test-only WebApplicationFactory that registers the <c>ProductId</c> route
-    /// constraint. The sample's <c>Program.cs</c> does not register it, which would
-    /// otherwise cause the routing matcher to fail for every request.
-    /// </summary>
-    public sealed class Factory : WebApplicationFactory<Program>
-    {
-        protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder) =>
-            builder.ConfigureServices(services =>
-                services.Configure<RouteOptions>(options =>
-                    options.ConstraintMap["ProductId"] = typeof(ProductIdRouteConstraint)));
-    }
-
-    internal sealed class ProductIdRouteConstraint : IRouteConstraint
-    {
-        public bool Match(
-            HttpContext? httpContext,
-            IRouter? route,
-            string routeKey,
-            RouteValueDictionary values,
-            RouteDirection routeDirection)
-        {
-            if (!values.TryGetValue(routeKey, out var raw) || raw is null)
-                return false;
-
-            return ProductId.TryParse(raw.ToString(), provider: null, out _);
-        }
-    }
 }
