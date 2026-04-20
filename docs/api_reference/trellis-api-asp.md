@@ -363,6 +363,36 @@ public static class ServiceCollectionExtensions
 | --- | --- | --- |
 | See [Extension methods](#extension-methods). | — | Registration helpers for MVC, Minimal APIs, middleware, endpoint filters, and `TrellisAspOptions`. |
 
+### Namespace `Trellis.Asp.Routing`
+
+### `TrellisValueObjectRouteConstraint<T>`
+
+**Declaration**
+
+```csharp
+public sealed class TrellisValueObjectRouteConstraint<T> : IRouteConstraint
+    where T : IParsable<T>
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `bool Match(HttpContext?, IRouter?, string routeKey, RouteValueDictionary values, RouteDirection routeDirection)` | `bool` | Delegates to `T.TryParse(...)` against `CultureInfo.InvariantCulture`. Returns `false` when the route value is missing, null, or fails to parse. |
+
+### `RouteConstraintRegistrationExtensions`
+
+**Declaration**
+
+```csharp
+public static class RouteConstraintRegistrationExtensions
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `IServiceCollection AddTrellisRouteConstraints(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the supplied assemblies (or the calling assembly + `Trellis.DomainDrivenDesign` if none are supplied) for value objects implementing `IScalarValue<TSelf, TPrimitive>` and `IParsable<TSelf>`, then registers a `TrellisValueObjectRouteConstraint<T>` under the type's simple name. Existing entries in `RouteOptions.ConstraintMap` are preserved. Reflection-based; not Native AOT compatible. |
+| `IServiceCollection AddTrellisRouteConstraint<T>(this IServiceCollection services, string? constraintName = null) where T : IParsable<T>` | `IServiceCollection` | Registers a single value object route constraint without reflection. AOT-safe. |
+
+Once registered, route templates such as `"/products/{id:ProductId}"` parse and bind the segment via the value object's `IParsable<T>.TryParse` implementation.
+
 ### `TrellisAspOptions`
 
 **Declaration**

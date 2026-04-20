@@ -30,6 +30,8 @@
 | `TRLS020` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns the non-generic `Result`) instead. |
 | `TRLS021` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
 | `TRLS022` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
+| `TRLS024` | Warning | Unsafe Result deconstruction | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
+| `TRLS025` | Warning | Unsafe property pattern over Result.Value | Property patterns such as `result is { Value: ... }` or `result switch { { Value: var v } => ... }` succeed on failure results because `Value` is the default — they bypass the success discriminator. Pattern-match on `IsSuccess`/`IsFailure` first, or use `Match` / explicit guard. |
 
 ## Analyzer classes
 
@@ -211,6 +213,21 @@ result.Match(
   - `RequiredBool`
   - `RequiredDateTime`
   - `RequiredEnum`
+- No code fix.
+
+#### `UnsafeResultDeconstructionAnalyzer` — `TRLS024`
+- Flags reads of the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) when the read is not guarded by:
+  - an `if`/`while`/conditional on the success bool,
+  - an early-return on failure (`if (!success) return ...`),
+  - a check that the error is `null`, or
+  - the value being assigned to `_` (discard).
+- Skips deconstructions where the value identifier is never read.
+- No code fix.
+
+#### `UnsafeResultValuePropertyPatternAnalyzer` — `TRLS025`
+- Flags `RecursivePatternSyntax` patterns of the form `{ Value: ... }` applied to a `Result<T>` instance.
+- Triggers on `is`-patterns, `switch` statements, and `switch` expressions.
+- Property patterns succeed against failure results (`Value` is `default`), masking errors. Use a discriminator (`IsSuccess`/`IsFailure`) before inspecting `Value`.
 - No code fix.
 
 ## Code fix providers

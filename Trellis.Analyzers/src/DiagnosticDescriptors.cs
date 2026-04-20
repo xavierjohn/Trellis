@@ -312,4 +312,32 @@ public static class DiagnosticDescriptors
                  "Use the Trellis versions (namespace Trellis) instead.",
         helpLinkUri: HelpLinkBase + "TRLS022");
 
+    /// <summary>
+    /// TRLS024: Result&lt;T&gt; deconstruction reads the value slot without a success/error gate.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnsafeResultDeconstruction = new(
+        id: "TRLS024",
+        title: "Result<T> deconstruction reads value without success gate",
+        messageFormat: "'{0}' is read from a Result<T> deconstruction without checking the success/error component first. The value slot is default(T) on failure and may silently propagate fake data.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Deconstructing Result<T> as 'var (_, value, _) = result;' (or any tuple form) returns default(T) when the result is a failure. " +
+                     "For struct values like int/Guid this silently propagates a fake value rather than surfacing the error. " +
+                     "Either capture the success/error component and gate the value read with an if-check, or use Match/IsSuccess/TryGetValue instead.",
+        helpLinkUri: HelpLinkBase + "TRLS024");
+
+    /// <summary>
+    /// TRLS025: Property pattern over Result&lt;T&gt;.Value is not a safe guard.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnsafeResultValuePropertyPattern = new(
+        id: "TRLS025",
+        title: "Property pattern over Result<T>.Value is not a safe guard",
+        messageFormat: "Property pattern matches '.Value' on Result<T> without first discriminating on IsSuccess/Error. The pattern compiles but throws InvalidOperationException at runtime on a failed result.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Property patterns like 'result switch { { Value: var v } => ... }' or 'result is { Value: ... }' evaluate Result<T>.Value, which throws when the result is a failure. " +
+                     "Use Match, or pattern-match on the discriminator first: 'result.Error is { } e ? handle(e) : use(result.Value)' or check IsSuccess explicitly.",
+        helpLinkUri: HelpLinkBase + "TRLS025");
 }

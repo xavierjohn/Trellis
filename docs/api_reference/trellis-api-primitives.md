@@ -507,20 +507,28 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 | `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Returns `Zero` for empty collections. |
 | `public static MonetaryAmount Create(decimal value)` | `MonetaryAmount` | Inherited throwing scalar factory. |
 
-### `MoneyJsonConverter`
+### `CompositeValueObjectJsonConverter<T>`
 
 ```csharp
-public class MoneyJsonConverter : JsonConverter<Money>
+public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
+    where T : ValueObject
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | Converter type; no public properties. |
+Convention-based JSON converter for composite value objects. Each public read-only instance property
+becomes a JSON field (camelCase of the property name). The "primitive type" for each field is the
+underlying primitive of an `IScalarValue<TSelf, TPrimitive>` property, or the property's own type when it
+is already a primitive. The target type must expose a public static
+`Result<T> TryCreate(p1, ..., pN[, string? fieldName])` whose parameters are the primitive types in the
+order the properties are declared.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public override Money? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `Money?` | Reads `{ "amount": <number>, "currency": <string> }`; requires both properties. |
-| `public override void Write(Utf8JsonWriter writer, Money value, JsonSerializerOptions options)` | `void` | Writes `amount` as a JSON number and `currency` as a JSON string. |
+| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Reads a JSON object, populates parameters by JSON property name (case-insensitive), invokes `TryCreate`, and throws `TrellisJsonValidationException` with the error display message on failure. Throws `TrellisJsonValidationException` for missing required properties. |
+| `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes one JSON property per public instance property in declaration order, using the underlying primitive value for `IScalarValue<,>` properties. |
+
+Apply via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object type.
+Reflection is performed once per generic instantiation and cached. **Not Native AOT compatible** — for AOT
+scenarios, hand-write a `JsonConverter<T>`.
 
 ### `Money`
 

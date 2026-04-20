@@ -15,7 +15,7 @@ using Trellis;
 /// All arithmetic operations enforce currency matching and return Result for error handling.
 /// Amounts are automatically rounded to the appropriate number of decimal places for the currency.
 /// </remarks>
-[JsonConverter(typeof(MoneyJsonConverter))]
+[JsonConverter(typeof(CompositeValueObjectJsonConverter<Money>))]
 public class Money : ValueObject
 {
     /// <summary>
