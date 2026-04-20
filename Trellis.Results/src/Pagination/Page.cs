@@ -26,15 +26,51 @@ using System.Collections.Generic;
 /// makes server-side clamping observable without the client having to compare counts.
 /// </para>
 /// </remarks>
-public readonly record struct Page<T>(
-    IReadOnlyList<T> Items,
-    Cursor? Next,
-    Cursor? Previous,
-    int RequestedLimit,
-    int AppliedLimit)
+public readonly record struct Page<T>
 {
-    /// <summary>The number of items actually returned in this page (always equal to <c>Items.Count</c>).</summary>
-    public int DeliveredCount => Items.Count;
+    /// <summary>Constructs a validated page. Use <see cref="Page.Empty{T}(int, int)"/> for empty pages.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="Items"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A limit is non-positive, or <paramref name="AppliedLimit"/> exceeds <paramref name="RequestedLimit"/>.</exception>
+    public Page(
+        IReadOnlyList<T> Items,
+        Cursor? Next,
+        Cursor? Previous,
+        int RequestedLimit,
+        int AppliedLimit)
+    {
+        ArgumentNullException.ThrowIfNull(Items);
+        if (RequestedLimit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(RequestedLimit), "Limit must be positive.");
+        if (AppliedLimit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(AppliedLimit), "Limit must be positive.");
+        if (AppliedLimit > RequestedLimit)
+            throw new ArgumentOutOfRangeException(nameof(AppliedLimit), "AppliedLimit cannot exceed RequestedLimit.");
+
+        this.Items = Items;
+        this.Next = Next;
+        this.Previous = Previous;
+        this.RequestedLimit = RequestedLimit;
+        this.AppliedLimit = AppliedLimit;
+    }
+
+    /// <summary>The items returned for this page (never null when constructed via the public ctor).</summary>
+    public IReadOnlyList<T> Items { get; }
+
+    /// <summary>Cursor for the next page, or null when this is the last page.</summary>
+    public Cursor? Next { get; }
+
+    /// <summary>Cursor for the previous page, or null when this is the first page (or the source doesn't support reverse).</summary>
+    public Cursor? Previous { get; }
+
+    /// <summary>The limit the client requested.</summary>
+    public int RequestedLimit { get; }
+
+    /// <summary>The limit the server actually applied (after server-side cap).</summary>
+    public int AppliedLimit { get; }
+
+    /// <summary>The number of items actually returned in this page.</summary>
+    /// <remarks>Defensive against <c>default(Page&lt;T&gt;)</c>: returns 0 when <see cref="Items"/> is null.</remarks>
+    public int DeliveredCount => Items?.Count ?? 0;
 
     /// <summary>True when the server applied a smaller limit than the client requested.</summary>
     public bool WasCapped => AppliedLimit < RequestedLimit;

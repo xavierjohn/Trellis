@@ -1,8 +1,6 @@
 namespace Trellis.Asp;
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
@@ -12,7 +10,7 @@ using Microsoft.AspNetCore.Http;
 /// <list type="bullet">
 ///   <item><c>200 OK</c> with a <see cref="PagedResponse{TResponse}"/> JSON envelope (items, next/prev cursor + href, requestedLimit, appliedLimit, deliveredCount, wasCapped).</item>
 ///   <item>Co-emitted <c>Link</c> header per RFC 8288 with <c>rel="next"</c> and/or <c>rel="prev"</c>.</item>
-///   <item>Failure results are delegated to the standard error mapper (<see cref="HttpResultExtensions.ToHttpResult{TValue}(Result{TValue}, TrellisAspOptions?)"/>) — no Link header emitted.</item>
+///   <item>Failure results are delegated to the standard error mapper (<see cref="HttpResultExtensions.ToHttpResult{TValue}(Result{TValue}, TrellisAspOptions)"/>) — no Link header emitted.</item>
 /// </list>
 /// </summary>
 /// <remarks>
@@ -85,24 +83,9 @@ public static class PageHttpResultExtensions
         Func<Cursor, int, string> nextUrlBuilder,
         Func<T, TResponse> map)
     {
-        string? nextHref = page.Next is { } next ? nextUrlBuilder(next, page.AppliedLimit) : null;
-        string? prevHref = page.Previous is { } prev ? nextUrlBuilder(prev, page.AppliedLimit) : null;
-
-        var envelope = new PagedResponse<TResponse>(
-            Items: page.Items.Select(map).ToList(),
-            Next: page.Next is { } n && nextHref is not null ? new PageLink(n.Token, nextHref) : null,
-            Previous: page.Previous is { } p && prevHref is not null ? new PageLink(p.Token, prevHref) : null,
-            RequestedLimit: page.RequestedLimit,
-            AppliedLimit: page.AppliedLimit,
-            DeliveredCount: page.DeliveredCount,
-            WasCapped: page.WasCapped);
-
+        var (envelope, linkHeader) = PagedResponseBuilder.Build(page, nextUrlBuilder, map);
         var ok = Results.Ok(envelope);
-
-        if (nextHref is null && prevHref is null)
-            return ok;
-
-        return new PagedHttpResult(ok, nextHref, prevHref);
+        return linkHeader is null ? ok : new PagedHttpResult(ok, linkHeader);
     }
 }
 
@@ -121,31 +104,23 @@ public sealed record PageLink(string Cursor, string Href);
 
 /// <summary>
 /// <see cref="IResult"/> wrapper that delegates to an inner result and also emits an
-/// RFC 8288 <c>Link</c> header with <c>rel="next"</c> / <c>rel="prev"</c> entries.
+/// RFC 8288 <c>Link</c> header containing pre-formatted <c>rel="next"</c> / <c>rel="prev"</c> entries.
 /// </summary>
 internal sealed class PagedHttpResult : IResult
 {
     private readonly IResult _inner;
-    private readonly string? _nextHref;
-    private readonly string? _previousHref;
+    private readonly string _linkHeader;
 
-    public PagedHttpResult(IResult inner, string? nextHref, string? previousHref)
+    public PagedHttpResult(IResult inner, string linkHeader)
     {
         _inner = inner;
-        _nextHref = nextHref;
-        _previousHref = previousHref;
+        _linkHeader = linkHeader;
     }
 
     public Task ExecuteAsync(HttpContext httpContext)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
-
-        var links = new List<string>(2);
-        if (_nextHref is not null) links.Add($"<{_nextHref}>; rel=\"next\"");
-        if (_previousHref is not null) links.Add($"<{_previousHref}>; rel=\"prev\"");
-        if (links.Count > 0)
-            httpContext.Response.Headers.Append("Link", string.Join(", ", links));
-
+        httpContext.Response.Headers.Append("Link", _linkHeader);
         return _inner.ExecuteAsync(httpContext);
     }
 }

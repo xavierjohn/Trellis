@@ -112,6 +112,8 @@ public sealed class InMemoryAccountRepository : IAccountRepository
     private static bool TryDecodeCursor(Cursor cursor, out Guid afterId)
     {
         afterId = default;
+        if (string.IsNullOrEmpty(cursor.Token))
+            return false;
         try
         {
             var bytes = Base64UrlDecode(cursor.Token);

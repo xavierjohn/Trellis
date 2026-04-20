@@ -45,4 +45,44 @@ public class PageTests
         page.DeliveredCount.Should().Be(0);
         page.WasCapped.Should().BeTrue();
     }
+
+    [Fact]
+    public void Default_struct_returns_zero_for_derived_properties()
+    {
+        Page<int> def = default;
+        def.DeliveredCount.Should().Be(0);
+        def.WasCapped.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Constructor_rejects_null_items()
+    {
+        var act = () => new Page<int>(null!, null, null, 10, 10);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("Items");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Constructor_rejects_non_positive_requested_limit(int requested)
+    {
+        var act = () => new Page<int>(Array.Empty<int>(), null, null, requested, 1);
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("RequestedLimit");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Constructor_rejects_non_positive_applied_limit(int applied)
+    {
+        var act = () => new Page<int>(Array.Empty<int>(), null, null, 10, applied);
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("AppliedLimit");
+    }
+
+    [Fact]
+    public void Constructor_rejects_applied_greater_than_requested()
+    {
+        var act = () => new Page<int>(Array.Empty<int>(), null, null, 5, 10);
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("AppliedLimit");
+    }
 }

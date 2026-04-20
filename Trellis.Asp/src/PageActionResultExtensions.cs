@@ -1,8 +1,6 @@
 namespace Trellis.Asp;
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -46,23 +44,9 @@ public static class PageActionResultExtensions
 
         result.TryGetValue(out var page);
 
-        string? nextHref = page.Next is { } next ? nextUrlBuilder(next, page.AppliedLimit) : null;
-        string? prevHref = page.Previous is { } prev ? nextUrlBuilder(prev, page.AppliedLimit) : null;
-
-        var envelope = new PagedResponse<TResponse>(
-            Items: page.Items.Select(map).ToList(),
-            Next: page.Next is { } n && nextHref is not null ? new PageLink(n.Token, nextHref) : null,
-            Previous: page.Previous is { } p && prevHref is not null ? new PageLink(p.Token, prevHref) : null,
-            RequestedLimit: page.RequestedLimit,
-            AppliedLimit: page.AppliedLimit,
-            DeliveredCount: page.DeliveredCount,
-            WasCapped: page.WasCapped);
-
-        var links = new List<string>(2);
-        if (nextHref is not null) links.Add($"<{nextHref}>; rel=\"next\"");
-        if (prevHref is not null) links.Add($"<{prevHref}>; rel=\"prev\"");
-        if (links.Count > 0)
-            controller.Response.Headers.Append("Link", string.Join(", ", links));
+        var (envelope, linkHeader) = PagedResponseBuilder.Build(page, nextUrlBuilder, map);
+        if (linkHeader is not null)
+            controller.Response.Headers.Append("Link", linkHeader);
 
         return controller.Ok(envelope);
     }
