@@ -73,10 +73,12 @@ public class BankAccount : Aggregate<AccountId>
         _lifecycle.Configure(AccountStatus.Frozen)
             .Permit(AccountTrigger.Unfreeze, AccountStatus.Active);
 
-        _lifecycle.Configure(AccountStatus.Closed)
-            .Ignore(AccountTrigger.Freeze)
-            .Ignore(AccountTrigger.Unfreeze)
-            .Ignore(AccountTrigger.Close);
+        // Closed is terminal: any further trigger surfaces as Error.Conflict
+        // via FireResult (Stateless throws InvalidOperationException, which
+        // FireResult translates). We deliberately do NOT call .Ignore(...) here:
+        // ignoring a trigger would silently succeed and let the outer Tap(...)
+        // chain emit lifecycle events for a state that did not actually change.
+        _lifecycle.Configure(AccountStatus.Closed);
     }
 
     /// <summary>
@@ -219,6 +221,22 @@ public class BankAccount : Aggregate<AccountId>
         if (Id.Equals(toAccount.Id))
             return Result.Fail<(BankAccount From, BankAccount To)>(
                 new Error.Conflict(null, "transfer.same.account") { Detail = "Cannot transfer to the same account" });
+
+        // Pre-validate destination so a successful Withdraw is not followed by a failing Deposit,
+        // which would leave the source account debited while the destination is unchanged.
+        if (toAccount.Status != AccountStatus.Active)
+            return Result.Fail<(BankAccount From, BankAccount To)>(
+                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot transfer to {toAccount.Status} account" });
+
+        if (amount.Amount > 10000)
+            return Result.Fail<(BankAccount From, BankAccount To)>(
+                new Error.Conflict(null, "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" });
+
+        if (!toAccount.Balance.Currency.Equals(amount.Currency))
+            return Result.Fail<(BankAccount From, BankAccount To)>(
+                new Error.UnprocessableContent(EquatableArray.Create(
+                    new FieldViolation(InputPointer.ForProperty(nameof(amount)), "validation.currency")
+                    { Detail = $"Cannot deposit {amount.Currency} into {toAccount.Balance.Currency} account" })));
 
         return Withdraw(amount, $"{description} to {toAccount.Id}")
             .Bind(_ => toAccount.Deposit(amount, $"{description} from {Id}"))

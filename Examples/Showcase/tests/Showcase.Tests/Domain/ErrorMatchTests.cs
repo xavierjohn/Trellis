@@ -4,9 +4,9 @@ using Trellis;
 using Trellis.Primitives;
 
 /// <summary>
-/// Demonstrates exhaustive pattern matching over the Error ADT.
-/// The compiler enforces the cases at the discard arm — adding a new Error case is a
-/// deliberate, breaking change for callers.
+/// Demonstrates pattern matching over the Error ADT. This switch handles the cases the
+/// sample maps to HTTP responses; the discard arm throws to surface any unhandled case
+/// loudly during testing if a new <see cref="Error"/> case is introduced upstream.
 /// </summary>
 public class ErrorMatchTests
 {
@@ -42,6 +42,6 @@ public class ErrorMatchTests
         Error.Forbidden => "forbidden",
         Error.PreconditionFailed => "precondition",
         Error.InternalServerError => "internal",
-        _ => "other",
+        _ => throw new InvalidOperationException($"Unhandled Error case: {error.GetType().Name}"),
     };
 }

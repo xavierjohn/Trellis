@@ -139,6 +139,71 @@ public class BankAccountTests
     }
 
     [Fact]
+    public void Closed_account_freeze_returns_conflict_and_emits_no_events()
+    {
+        var account = NewActiveAccount(0m); // zero balance to allow Close
+        account.Close().IsSuccess.Should().BeTrue();
+        account.Status.Should().Be(AccountStatus.Closed);
+        account.AcceptChanges();
+
+        var result = account.Freeze("audit");
+
+        result.IsFailure.Should().BeTrue();
+        var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
+        conflict.ReasonCode.Should().Be("state.machine.invalid.transition");
+        account.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Closed_account_unfreeze_returns_conflict_and_emits_no_events()
+    {
+        var account = NewActiveAccount(0m);
+        account.Close().IsSuccess.Should().BeTrue();
+        account.AcceptChanges();
+
+        var result = account.Unfreeze();
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<Error.Conflict>();
+        account.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Closed_account_close_again_returns_conflict_and_emits_no_events()
+    {
+        var account = NewActiveAccount(0m);
+        account.Close().IsSuccess.Should().BeTrue();
+        account.AcceptChanges();
+
+        var result = account.Close();
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<Error.Conflict>();
+        account.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TransferTo_frozen_destination_does_not_mutate_source()
+    {
+        var from = NewActiveAccount(100m, dailyLimit: 1000m);
+        var to = NewActiveAccount(0m);
+        to.Freeze("audit").IsSuccess.Should().BeTrue();
+        from.AcceptChanges();
+        to.AcceptChanges();
+
+        var result = from.TransferTo(to, Money.Create(40m, "USD"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeOfType<Error.Conflict>();
+        from.Balance.Amount.Should().Be(100m);
+        to.Balance.Amount.Should().Be(0m);
+        from.Transactions.Should().BeEmpty();
+        to.Transactions.Should().BeEmpty();
+        from.UncommittedEvents().Should().BeEmpty();
+        to.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
     public void TransferTo_other_moves_money_and_emits_TransferCompleted()
     {
         var from = NewActiveAccount(100m, dailyLimit: 1000m);

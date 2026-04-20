@@ -22,7 +22,8 @@ builder.Services.AddSingleton<IIdentityVerifier, InMemoryIdentityVerifier>();
 builder.Services.AddSingleton<IEventPublisher, LoggingEventPublisher>();
 builder.Services.AddScoped<BankingWorkflow>();
 
-builder.Services.AddDevelopmentActorProvider();
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddDevelopmentActorProvider();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();

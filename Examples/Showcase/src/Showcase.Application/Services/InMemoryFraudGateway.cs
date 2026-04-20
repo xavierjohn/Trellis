@@ -10,7 +10,7 @@ using Trellis.Showcase.Domain.ValueObjects;
 /// an external risk-scoring service. Rules:
 /// <list type="bullet">
 ///   <item><description>Amount strictly greater than <see cref="SuspiciousAmountThreshold"/> → <see cref="Error.Conflict"/> with reason code <c>fraud.detected</c>.</description></item>
-///   <item><description>More than <see cref="MaxTransactionsPerHour"/> transactions on the account in the last hour → <see cref="Error.Conflict"/> with reason code <c>fraud.detected</c>.</description></item>
+///   <item><description><see cref="MaxTransactionsPerHour"/> or more transactions on the account in the last hour → <see cref="Error.Conflict"/> with reason code <c>fraud.detected</c>.</description></item>
 /// </list>
 /// </summary>
 public sealed class InMemoryFraudGateway : IFraudGateway

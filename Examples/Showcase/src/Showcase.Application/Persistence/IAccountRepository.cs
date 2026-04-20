@@ -13,10 +13,13 @@ public interface IAccountRepository
 }
 
 /// <summary>
-/// Thread-safe in-memory repository. Showcase deliberately avoids an EF Core mapping for the
-/// <see cref="BankAccount"/> aggregate — the Stateless <c>StateMachine</c> field would force a
-/// non-trivial materialization story that distracts from the error-handling lessons. EF Core
-/// integration is taught by the dedicated <c>EfCoreExample</c> sample and by the template.
+/// In-memory repository with synchronized access to its internal storage. Repository operations
+/// are protected by a lock, but returned <see cref="BankAccount"/> instances remain mutable live
+/// objects and are not safe for concurrent mutation without external synchronization. Showcase
+/// deliberately avoids an EF Core mapping for the <see cref="BankAccount"/> aggregate — the
+/// Stateless <c>StateMachine</c> field would force a non-trivial materialization story that
+/// distracts from the error-handling lessons. EF Core integration is taught by the dedicated
+/// <c>EfCoreExample</c> sample and by the template.
 /// </summary>
 public sealed class InMemoryAccountRepository : IAccountRepository
 {
