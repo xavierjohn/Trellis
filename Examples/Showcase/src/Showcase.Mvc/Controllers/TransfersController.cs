@@ -21,7 +21,7 @@ public class TransfersController : ControllerBase
         _workflow = workflow;
     }
 
-    [HttpPost("{fromId}")]
+    [HttpPost("{fromId:AccountId}")]
     public Task<ActionResult<AccountResponse>> Transfer(AccountId fromId, [FromBody] TransferRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(fromId)
             .Combine(_repository.GetById(request.ToAccountId))

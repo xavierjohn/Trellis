@@ -21,7 +21,7 @@ public static class AccountEndpoints
         group.MapGet("/", (IAccountRepository repo) =>
             Results.Ok(repo.All().Select(AccountResponse.From).ToList()));
 
-        group.MapGet("/{id}", (AccountId id, IAccountRepository repo) =>
+        group.MapGet("/{id:AccountId}", (AccountId id, IAccountRepository repo) =>
             repo.GetById(id)
                 .Map(AccountResponse.From)
                 .ToHttpResult())
@@ -35,41 +35,41 @@ public static class AccountEndpoints
                     map: AccountResponse.From))
             .WithScalarValueValidation();
 
-        group.MapPost("/{id}/deposit", (AccountId id, DepositRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
+        group.MapPost("/{id:AccountId}/deposit", (AccountId id, DepositRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.DepositAsync(account, request.Amount, request.Description, ct))
                 .MapAsync(AccountResponse.From)
                 .ToHttpResultAsync())
             .WithScalarValueValidation();
 
-        group.MapPost("/{id}/withdraw", (AccountId id, WithdrawRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
+        group.MapPost("/{id:AccountId}/withdraw", (AccountId id, WithdrawRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.WithdrawAsync(account, request.Amount, request.Description, ct))
                 .MapAsync(AccountResponse.From)
                 .ToHttpResultAsync())
             .WithScalarValueValidation();
 
-        group.MapPost("/{id}/secure-withdraw", (AccountId id, SecureWithdrawRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
+        group.MapPost("/{id:AccountId}/secure-withdraw", (AccountId id, SecureWithdrawRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.SecureWithdrawAsync(account, request.Amount, request.VerificationCode, ct))
                 .MapAsync(AccountResponse.From)
                 .ToHttpResultAsync())
             .WithScalarValueValidation();
 
-        group.MapPost("/{id}/freeze", (AccountId id, FreezeRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
+        group.MapPost("/{id:AccountId}/freeze", (AccountId id, FreezeRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.FreezeAsync(account, request.Reason, ct))
                 .MapAsync(AccountResponse.From)
                 .ToHttpResultAsync())
             .WithScalarValueValidation();
 
-        group.MapPost("/{id}/unfreeze", (AccountId id, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
+        group.MapPost("/{id:AccountId}/unfreeze", (AccountId id, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.UnfreezeAsync(account, ct))
                 .MapAsync(AccountResponse.From)
                 .ToHttpResultAsync());
 
-        group.MapPost("/{id}/close", (AccountId id, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
+        group.MapPost("/{id:AccountId}/close", (AccountId id, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.CloseAsync(account, ct))
                 .MapAsync(AccountResponse.From)

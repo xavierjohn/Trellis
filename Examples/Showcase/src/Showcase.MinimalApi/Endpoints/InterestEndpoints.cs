@@ -11,7 +11,7 @@ public static class InterestEndpoints
 {
     public static IEndpointRouteBuilder MapInterestEndpoints(this IEndpointRouteBuilder routes)
     {
-        var group = routes.MapGroup("/api/accounts/{id}/interest").WithTags("Interest");
+        var group = routes.MapGroup("/api/accounts/{id:AccountId}/interest").WithTags("Interest");
 
         group.MapPost("/", (AccountId id, InterestRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)

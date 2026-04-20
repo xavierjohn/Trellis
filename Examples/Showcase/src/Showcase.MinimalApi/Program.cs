@@ -2,15 +2,18 @@ using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
+using Trellis.Asp.Routing;
 using Trellis.Showcase.Application;
 using Trellis.Showcase.Application.Persistence;
 using Trellis.Showcase.Application.Services;
 using Trellis.Showcase.Application.Workflows;
+using Trellis.Showcase.Domain.ValueObjects;
 using Trellis.Showcase.MinimalApi.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScalarValueValidationForMinimalApi();
+builder.Services.AddTrellisRouteConstraint<AccountId>();
 builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
