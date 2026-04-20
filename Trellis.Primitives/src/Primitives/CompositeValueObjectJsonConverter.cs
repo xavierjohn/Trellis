@@ -1,4 +1,4 @@
-namespace Trellis.Primitives;
+﻿namespace Trellis.Primitives;
 
 #pragma warning disable IL2026, IL2070, IL2075, IL2090, IL3050 // Composite VO converter uses reflection by design; AOT users should hand-write a converter.
 
@@ -130,17 +130,37 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
             if (primitiveType == typeof(DateTimeOffset))
                 return reader.GetDateTimeOffset();
         }
-        catch (FormatException ex)
+        catch (FormatException)
         {
-            throw new TrellisJsonValidationException($"Property '{jsonName}' has an invalid value: {ex.Message}");
+            throw new TrellisJsonValidationException(
+                $"Property '{jsonName}' is not a valid {DescribePrimitive(primitiveType)}.");
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            throw new TrellisJsonValidationException($"Property '{jsonName}' has an invalid value: {ex.Message}");
+            throw new TrellisJsonValidationException(
+                $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.");
         }
 
         throw new TrellisJsonValidationException(
             $"Composite value object '{typeof(T).Name}' uses unsupported primitive '{primitiveType.Name}' for property '{jsonName}'.");
+    }
+
+    private static string DescribePrimitive(Type primitiveType)
+    {
+        if (primitiveType == typeof(string)) return "string";
+        if (primitiveType == typeof(decimal) || primitiveType == typeof(double) || primitiveType == typeof(float)) return "number";
+        if (primitiveType == typeof(int) || primitiveType == typeof(long) || primitiveType == typeof(short) || primitiveType == typeof(byte)) return "integer";
+        if (primitiveType == typeof(bool)) return "boolean";
+        if (primitiveType == typeof(Guid)) return "GUID";
+        if (primitiveType == typeof(DateTime)) return "date-time";
+        if (primitiveType == typeof(DateTimeOffset)) return "date-time with offset";
+        return primitiveType.Name;
+    }
+
+    private static string DescribePrimitiveWithArticle(Type primitiveType)
+    {
+        var d = DescribePrimitive(primitiveType);
+        return (d.Length > 0 && "aeiouAEIOU".Contains(d[0])) ? "an " + d : "a " + d;
     }
 
     private static void WritePrimitive(Utf8JsonWriter writer, string jsonName, object? raw, Type primitiveType)
@@ -342,11 +362,18 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
                     }
                 }
 
-                if (trailingAllOptional)
+                if (!trailingAllOptional)
+                    continue;
+
+                if (match is not null)
                 {
-                    match = m;
-                    break;
+                    throw new InvalidOperationException(
+                        $"CompositeValueObjectJsonConverter<{type.Name}> found multiple ambiguous 'TryCreate' overloads matching parameters " +
+                        $"[{string.Join(", ", primitiveTypes.Select(t => t.Name))}]. Define a single unambiguous overload " +
+                        $"(exact parameter count or distinct prefix) returning 'Result<{type.Name}>'.");
                 }
+
+                match = m;
             }
 
             if (match is null)
