@@ -27,6 +27,7 @@ the two hosting styles side-by-side over a single, identical contract.
 ```
 Examples/Showcase/
 ├── api.http                                 Single .http file — works against either host
+├── http-client.env.json                     Environments: `mvc` and `minimalapi` (host selector)
 ├── src/
 │   ├── Showcase.Domain/                     Pure domain — aggregate, value objects, events, lifecycle
 │   ├── Showcase.Application/                Hosting-agnostic: workflow, repo, services, DTOs, seed
@@ -72,8 +73,8 @@ dotnet run
 
 Open `<host>/scalar/v1` for the Scalar API explorer, or use [`api.http`](./api.http)
 (VS Code REST Client / Visual Studio HTTP file support) to exercise every endpoint with the seed
-data — the file's `@host` toggle switches between the two hosts. The same payloads work
-against both.
+data. Pick the target host from the environment selector — `mvc` or `minimalapi` — defined in
+[`http-client.env.json`](./http-client.env.json). The same payloads work against both.
 
 Seed accounts (created on startup):
 

@@ -1,7 +1,4 @@
 <Solution>
-  <Configurations>
-    <Platform Name="Any CPU" />
-  </Configurations>
   <Folder Name="/.github/">
     <File Path=".github/codecov.yml" />
     <File Path=".github/copilot-instructions.md" />
@@ -46,6 +43,7 @@
   </Folder>
   <Folder Name="/Examples/Showcase/">
     <Project Path="Examples/Showcase/src/Showcase.Domain/Showcase.Domain.csproj" />
+    <File Path="Examples/Showcase/api.http" />
     <Project Path="Examples/Showcase/src/Showcase.Application/Showcase.Application.csproj" />
     <Project Path="Examples/Showcase/src/Showcase.Mvc/Showcase.Mvc.csproj" />
     <Project Path="Examples/Showcase/src/Showcase.MinimalApi/Showcase.MinimalApi.csproj" />
