@@ -25,7 +25,7 @@ public class AccountsController : ControllerBase
     public ActionResult<IReadOnlyList<AccountResponse>> List() =>
         Ok(_repository.All().Select(AccountResponse.From).ToList());
 
-    [HttpGet("{id}", Name = "Showcase_GetAccount")]
+    [HttpGet("{id:AccountId}", Name = "Showcase_GetAccount")]
     public ActionResult<AccountResponse> Get(AccountId id) =>
         _repository.GetById(id)
             .Map(AccountResponse.From)
@@ -37,42 +37,42 @@ public class AccountsController : ControllerBase
             .MapAsync(AccountResponse.From)
             .ToCreatedAtActionResultAsync(this, actionName: nameof(Get), routeValues: a => new { id = a.Id });
 
-    [HttpPost("{id}/deposit")]
+    [HttpPost("{id:AccountId}/deposit")]
     public Task<ActionResult<AccountResponse>> Deposit(AccountId id, [FromBody] DepositRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
             .BindAsync(account => _workflow.DepositAsync(account, request.Amount, request.Description, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
-    [HttpPost("{id}/withdraw")]
+    [HttpPost("{id:AccountId}/withdraw")]
     public Task<ActionResult<AccountResponse>> Withdraw(AccountId id, [FromBody] WithdrawRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
             .BindAsync(account => _workflow.WithdrawAsync(account, request.Amount, request.Description, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
-    [HttpPost("{id}/secure-withdraw")]
+    [HttpPost("{id:AccountId}/secure-withdraw")]
     public Task<ActionResult<AccountResponse>> SecureWithdraw(AccountId id, [FromBody] SecureWithdrawRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
             .BindAsync(account => _workflow.SecureWithdrawAsync(account, request.Amount, request.VerificationCode, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
-    [HttpPost("{id}/freeze")]
+    [HttpPost("{id:AccountId}/freeze")]
     public Task<ActionResult<AccountResponse>> Freeze(AccountId id, [FromBody] FreezeRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
             .BindAsync(account => _workflow.FreezeAsync(account, request.Reason, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
-    [HttpPost("{id}/unfreeze")]
+    [HttpPost("{id:AccountId}/unfreeze")]
     public Task<ActionResult<AccountResponse>> Unfreeze(AccountId id, CancellationToken cancellationToken) =>
         _repository.GetById(id)
             .BindAsync(account => _workflow.UnfreezeAsync(account, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
-    [HttpPost("{id}/close")]
+    [HttpPost("{id:AccountId}/close")]
     public Task<ActionResult<AccountResponse>> Close(AccountId id, CancellationToken cancellationToken) =>
         _repository.GetById(id)
             .BindAsync(account => _workflow.CloseAsync(account, cancellationToken))

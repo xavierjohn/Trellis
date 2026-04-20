@@ -46,6 +46,14 @@ Accept: application/json
 GET {{host}}/api/accounts/00000000-0000-0000-0000-000000000099
 Accept: application/json
 
+### Get account — malformed id (404 from Trellis route constraint).
+### Both hosts register `AddTrellisRouteConstraint<AccountId>()`, so the
+### `{id:AccountId}` template rejects any value that fails AccountId.TryParse
+### before the request ever reaches the endpoint. The response is a routing
+### 404 — no handler is invoked, no model-binding error is produced.
+GET {{host}}/api/accounts/not-a-guid
+Accept: application/json
+
 ### Open new account (201 Created)
 POST {{host}}/api/accounts
 Content-Type: application/json

@@ -8,7 +8,7 @@ using Trellis.Showcase.Application.Workflows;
 using Trellis.Showcase.Domain.ValueObjects;
 
 [ApiController]
-[Route("api/accounts/{id}/interest")]
+[Route("api/accounts/{id:AccountId}/interest")]
 public class InterestController : ControllerBase
 {
     private readonly IAccountRepository _repository;

@@ -13,7 +13,7 @@ public static class TransferEndpoints
     {
         var group = routes.MapGroup("/api/transfers").WithTags("Transfers");
 
-        group.MapPost("/{fromId}", (AccountId fromId, TransferRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
+        group.MapPost("/{fromId:AccountId}", (AccountId fromId, TransferRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(fromId)
                 .Combine(repo.GetById(request.ToAccountId))
                 .BindAsync(pair => workflow.TransferAsync(pair.Item1, pair.Item2, request.Amount, request.Description, ct))
