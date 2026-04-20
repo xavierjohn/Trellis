@@ -10,8 +10,16 @@ using Trellis;
 /// Covers the overloads that accept <see cref="HttpRequest"/> and honor the <c>Prefer</c> header
 /// when mapping <see cref="WriteOutcome{T}"/> to ActionResult/IResult.
 /// </summary>
-public class WriteOutcomePreferTests
+public class WriteOutcomePreferTests : IDisposable
 {
+    public WriteOutcomePreferTests() => TrellisAspOptions.ResetCurrent();
+
+    public void Dispose()
+    {
+        TrellisAspOptions.ResetCurrent();
+        GC.SuppressFinalize(this);
+    }
+
     private static (ControllerBase Controller, DefaultHttpContext HttpContext) CreateControllerWithPrefer(string? preferValue = null)
     {
         var httpContext = new DefaultHttpContext();
