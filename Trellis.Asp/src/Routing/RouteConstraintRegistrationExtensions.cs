@@ -1,4 +1,4 @@
-﻿namespace Trellis.Asp;
+﻿namespace Trellis.Asp.Routing;
 
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Trellis.Asp.Routing;
 
 /// <summary>
 /// Extension methods that register Trellis value objects as ASP.NET Core route constraints.

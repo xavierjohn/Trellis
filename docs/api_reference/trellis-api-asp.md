@@ -388,7 +388,7 @@ public static class RouteConstraintRegistrationExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `IServiceCollection AddTrellisRouteConstraints(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the supplied assemblies (or the calling assembly + `Trellis.DomainDrivenDesign` if none are supplied) for value objects implementing `IScalarValue<TSelf, TPrimitive>` and `IParsable<TSelf>`, then registers a `TrellisValueObjectRouteConstraint<T>` under the type's simple name. Existing entries in `RouteOptions.ConstraintMap` are preserved. Reflection-based; not Native AOT compatible. |
+| `IServiceCollection AddTrellisRouteConstraints(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the supplied assemblies (or the calling assembly + the assembly containing `IScalarValue<TSelf, TPrimitive>` — `Trellis.Results` — if none are supplied) for value objects implementing `IScalarValue<TSelf, TPrimitive>` and `IParsable<TSelf>`, then registers a `TrellisValueObjectRouteConstraint<T>` under the type's simple name. Existing entries in `RouteOptions.ConstraintMap` are preserved. Reflection-based; not Native AOT compatible. |
 | `IServiceCollection AddTrellisRouteConstraint<T>(this IServiceCollection services, string? constraintName = null) where T : IParsable<T>` | `IServiceCollection` | Registers a single value object route constraint without reflection. AOT-safe. |
 
 Once registered, route templates such as `"/products/{id:ProductId}"` parse and bind the segment via the value object's `IParsable<T>.TryParse` implementation.

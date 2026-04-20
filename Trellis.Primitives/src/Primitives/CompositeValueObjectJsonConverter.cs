@@ -5,7 +5,6 @@ namespace Trellis.Primitives;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -202,7 +201,8 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
         }
         else
         {
-            writer.WriteString(jsonName, Convert.ToString(raw, CultureInfo.InvariantCulture));
+            throw new TrellisJsonValidationException(
+                $"Unsupported primitive type '{primitiveType}' for JSON property '{jsonName}'.");
         }
     }
 
@@ -232,6 +232,7 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
             var properties = type
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Where(p => p.GetMethod is not null)
+                .OrderBy(p => p.MetadataToken)
                 .ToList();
 
             var props = new List<PropertyMetadata>(properties.Count);
@@ -286,15 +287,20 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
             {
                 var valueProp = propInfo.PropertyType.GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
                 body = valueProp is not null && valueProp.PropertyType == primitiveType
-                    ? Expression.Condition(
-                        Expression.Equal(body, Expression.Constant(null, propInfo.PropertyType)),
-                        Expression.Constant(null, typeof(object)),
-                        Expression.Convert(Expression.Property(body, valueProp), typeof(object)))
+                    ? BuildScalarValueAccess(body, propInfo.PropertyType, valueProp)
                     : Expression.Convert(body, typeof(object));
             }
 
             return Expression.Lambda<Func<T, object?>>(body, instance).Compile();
         }
+
+        private static Expression BuildScalarValueAccess(Expression body, Type propertyType, PropertyInfo valueProp) =>
+            propertyType.IsValueType
+                ? Expression.Convert(Expression.Property(body, valueProp), typeof(object))
+                : Expression.Condition(
+                    Expression.Equal(body, Expression.Constant(null, propertyType)),
+                    Expression.Constant(null, typeof(object)),
+                    Expression.Convert(Expression.Property(body, valueProp), typeof(object)));
 
         private static Func<object?[], Result<T>> BuildInvoker(Type type, List<PropertyMetadata> props)
         {
