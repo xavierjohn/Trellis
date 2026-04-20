@@ -21,9 +21,24 @@ public class AccountsController : ControllerBase
         _workflow = workflow;
     }
 
-    [HttpGet]
-    public ActionResult<IReadOnlyList<AccountResponse>> List() =>
-        Ok(_repository.All().Select(AccountResponse.From).ToList());
+    [HttpGet(Name = "Showcase_GetAccounts")]
+    public ActionResult<PagedResponse<AccountResponse>> List(
+        [FromQuery] int? limit,
+        [FromQuery] string? cursor,
+        [FromServices] LinkGenerator links)
+    {
+        var requestedLimit = limit is int l && l > 0 ? l : 10;
+        Cursor? cursorOpt = string.IsNullOrEmpty(cursor) ? null : new Cursor(cursor);
+
+        return _repository.GetPage(requestedLimit, cursorOpt)
+            .ToPagedActionResult(
+                this,
+                nextUrlBuilder: (c, applied) =>
+                    links.GetUriByName(HttpContext, "Showcase_GetAccounts",
+                        values: new { limit = applied, cursor = c.Token })
+                    ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
+                map: AccountResponse.From);
+    }
 
     [HttpGet("{id:AccountId}", Name = "Showcase_GetAccount")]
     public ActionResult<AccountResponse> Get(AccountId id) =>

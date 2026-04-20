@@ -18,8 +18,24 @@ public static class AccountEndpoints
     {
         var group = routes.MapGroup("/api/accounts").WithTags("Accounts");
 
-        group.MapGet("/", (IAccountRepository repo) =>
-            Results.Ok(repo.All().Select(AccountResponse.From).ToList()));
+        group.MapGet("/", (
+            int? limit,
+            string? cursor,
+            IAccountRepository repo,
+            LinkGenerator links,
+            HttpContext http) =>
+            {
+                var requestedLimit = limit is int l && l > 0 ? l : 10;
+                Cursor? cursorOpt = string.IsNullOrEmpty(cursor) ? null : new Cursor(cursor);
+                return repo.GetPage(requestedLimit, cursorOpt)
+                    .ToPagedHttpResult(
+                        nextUrlBuilder: (c, applied) =>
+                            links.GetUriByName(http, "Showcase_GetAccounts",
+                                values: new { limit = applied, cursor = c.Token })
+                            ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
+                        map: AccountResponse.From);
+            })
+            .WithName("Showcase_GetAccounts");
 
         group.MapGet("/{id:AccountId}", (AccountId id, IAccountRepository repo) =>
             repo.GetById(id)
