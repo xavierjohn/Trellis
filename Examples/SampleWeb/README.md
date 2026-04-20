@@ -1,40 +1,31 @@
-# Sample Web
+# SampleWeb
 
-This folder contains three ASP.NET Core apps that expose the same kinds of Trellis-powered behavior through different hosting styles.
+Two related projects that share a single domain library and demonstrate how Trellis
+plugs into a Minimal API host.
 
-## What You'll Learn
-- How Trellis works in MVC controllers and Minimal APIs
-- How automatic scalar value validation and Problem Details responses behave in web apps
-- How the same shared domain model can back multiple API hosts
+| Project | Role |
+|---|---|
+| `SampleUserLibrary/` | Pure-domain class library — value objects, aggregates, services. No ASP.NET, no EF Core, no FluentValidation. Reusable across hosts. |
+| `SampleMinimalApi/` | Minimal API host that consumes `SampleUserLibrary` and exposes user/product/order endpoints. |
 
-## Prerequisites
-- .NET 10 SDK
+The MVC equivalent of this story is the [`Showcase`](../Showcase/) sample. SampleWeb
+exists to show the **Minimal API** flavor of the same patterns.
 
-## Run It
-```bash
+## Run it
+
+```pwsh
 dotnet run --project SampleMinimalApi/SampleMinimalApi.csproj
-dotnet run --project SampleMinimalApiNoAot/SampleMinimalApiNoAot.csproj
-dotnet run --project SampleWebApplication/src/SampleWebApplication.csproj
 ```
 
-## Projects
-| Project | URL | What It Shows |
-|------|--------------|--------------|
-| `SampleMinimalApi` | `http://localhost:5001` | Minimal API with source-generated JSON metadata |
-| `SampleMinimalApiNoAot` | `http://localhost:5002` | Minimal API using reflection fallback |
-| `SampleWebApplication` | `http://localhost:5003` | MVC controllers with OpenAPI and Scalar |
+## Why two projects?
 
-## Key Files
-| File | What It Shows |
-|------|--------------|
-| `SampleUserLibrary/Aggregate/User.cs` | Shared user aggregate and FluentValidation rules |
-| `SampleDataAccess/AppDbContext.cs` | Shared EF Core model and persistence setup |
-| `SampleMinimalApi/Program.cs` | AOT-friendly Minimal API host |
-| `SampleMinimalApiNoAot/Program.cs` | Reflection-based Minimal API host |
-| `SampleWebApplication/src/Program.cs` | MVC host and controller wiring |
-| `OrderApi.http` | Ready-made requests for exercising the sample APIs |
+`SampleUserLibrary` is intentionally a class library — it is the **canonical place
+to look for how a Trellis aggregate should be written** (pure ROP `TryCreate`, no
+FluentValidation, no framework refs). `SampleMinimalApi` is the host that wires
+that domain to HTTP. Splitting them keeps axiom A8 (domain purity) honest and shows
+the same domain library could back any number of hosts.
 
 ## Related Docs
+
 - [ASP.NET Core Integration](https://xavierjohn.github.io/Trellis/articles/integration-aspnet.html)
-- [FluentValidation Integration](https://xavierjohn.github.io/Trellis/articles/integration-fluentvalidation.html)
-- [Entity Framework Core Integration](https://xavierjohn.github.io/Trellis/articles/integration-ef.html)
+- [Examples README](../README.md) — the 11-axiom contract every sample is held to.
