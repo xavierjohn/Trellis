@@ -31,3 +31,6 @@ using (var scope = app.Services.CreateScope())
 app.MapOptionalETagRoutes();
 app.MapRequiredETagRoutes();
 app.Run();
+
+// Exposed so WebApplicationFactory<Program> can host the app in integration tests.
+public partial class Program;

@@ -37,8 +37,11 @@
   </Folder>
   <Folder Name="/Examples/">
     <Project Path="Examples/EfCoreExample/EfCoreExample.csproj" />
+    <Project Path="Examples/EfCoreExample.Tests/EfCoreExample.Tests.csproj" />
     <Project Path="Examples/ConditionalRequestExample/ConditionalRequestExample.csproj" />
+    <Project Path="Examples/ConditionalRequestExample.Tests/ConditionalRequestExample.Tests.csproj" />
     <Project Path="Examples/SsoExample/SsoExample.csproj" />
+    <Project Path="Examples/SsoExample.Tests/SsoExample.Tests.csproj" />
     <Project Path="Examples/TestingPatterns/TestingPatterns.Tests.csproj" />
   </Folder>
   <Folder Name="/Examples/Showcase/">
