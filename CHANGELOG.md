@@ -140,6 +140,40 @@ Full support for optional value object properties in DTOs:
 
 - `Maybe<T>` now requires `where T : notnull` — see [Migration Guide](MIGRATION_v3.md#maybe-notnull-constraint) for details
 
+#### Examples — Sample-perfection sweep (v2 Phase 1c PR2)
+
+The `Examples/` folder was rewritten end-to-end so every kept sample passes the v2 axiom scorecard (A1–A11). Samples are the source of truth that flows into the ASP template and from there into AI-generated code; imperfections at this layer compound, so the sweep was scored against an explicit set of rules — see [Examples README](Examples/README.md) for the full list.
+
+**Lineup changes:**
+- **Removed** as redundant or noisy: `Examples/AuthorizationExample`, `Examples/BankingExample`, `Examples/EcommerceExample`, `Examples/SampleWeb/SampleWebApplication`, `Examples/SampleWeb/SampleMinimalApiNoAot`, `Examples/SampleWeb/SampleDataAccess`. Their teachings are now consolidated in `Showcase` (auth, banking workflows, lifecycle) and the Minimal API sample (data access via in-memory repos).
+- **Renamed** `Examples/Xunit` → `Examples/TestingPatterns` (folder name now describes the *intent*, not the runner). The csproj is `TestingPatterns.Tests.csproj` so `IsTestProject` auto-detection still applies.
+
+**Showcase (`Examples/Showcase`):**
+- **Architectural fix** — every state-changing use case now crosses `BankingWorkflow`, which centralizes `mutate aggregate → publish events → AcceptChanges → persist`. Previously `AccountsController` mutated aggregates directly for `Open`/`Deposit`/`Withdraw`/`Freeze`/`Unfreeze`/`Close`, so domain events from those flows were never published or accepted (only `SecureWithdraw` and `Transfer` did the right thing). This was the canonical "boundary leak" bug.
+- **Wire-boundary alignment** — `AccountResponse` exposes `AccountId`, `CustomerId`, `AccountType`, `Money`, `AccountStatus` directly instead of `Guid`/`string`/`decimal`. The existing `Money` JSON converter emits `{"amount", "currency"}`.
+- **`System.TimeProvider`** replaces the ad-hoc `IClock`/`SystemClock` seam (BCL standard since .NET 8). Tests use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing`.
+- **`.Value` purged from production code.** Seed-time invariants are centralized in a `Required<T>()` helper that throws `InvalidOperationException` with a clear message at startup.
+
+**SampleUserLibrary (`Examples/SampleWeb/SampleUserLibrary`):**
+- Dropped the `RegisterUserRequest` raw-string DTO (A6 — one canonical solution per use-case; the VO-typed `RegisterUserDto` stays).
+- Rewrote `User.TryCreate` in pure ROP: `Result.Ok(password)` chained through `Ensure` for each business invariant (age ≥ 18, password complexity). No more `AbstractValidator`.
+- Removed the `Trellis.FluentValidation` project reference.
+
+**SampleMinimalApi (`Examples/SampleWeb/SampleMinimalApi`):**
+- New from scratch (the previous project was deleted because it depended on `SampleDataAccess` and EF). Consumes `SampleUserLibrary` to exercise the shared-VO-library pattern.
+- Endpoints group with `MapGroup` and use `ToHttpResultAsync` / `ToCreatedAtRouteHttpResultAsync` from `Trellis.Asp`.
+- Workflows mirror the `BankingWorkflow` pattern: load → domain method → commit (`TapAsync`) → render in one Result chain.
+- Includes a `SampleMinimalApi.Tests` project with a payment-commit-boundary recording test that proves `IPaymentService.ProcessPaymentAsync` is invoked exactly once per confirmed order.
+- **Not AOT-published in this PR.** The current `ScalarValueValidationMiddleware` parses exception text to extract field names, which doesn't survive AOT trimming. AOT support is deferred to a follow-up PR; that PR will replace the exception-text path with a typed contract.
+
+**ConditionalRequestExample:**
+- Route templates use `{id:ProductId}` (not `{id:guid}`). Handler signatures bind `ProductId id` directly (generator-emitted `IParsable`).
+- `ProductResponse` exposes `ProductId`/`ProductName`/`MonetaryAmount` instead of `Guid`/`string`/`decimal`.
+- New `ConditionalRequestExample.Tests` covers all six conditional-request branches (200/304/412/428/etc.).
+
+**SsoExample, EfCoreExample:**
+- Re-audited. New minimal `*.Tests` projects added.
+
 ---
 
 #### Trellis.Analyzers - NEW Package! 🎉
