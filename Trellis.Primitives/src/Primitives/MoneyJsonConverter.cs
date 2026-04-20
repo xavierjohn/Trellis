@@ -16,7 +16,7 @@ public class MoneyJsonConverter : JsonConverter<Money>
     public override Money? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.StartObject)
-            throw new JsonException("Expected StartObject token");
+            throw new TrellisJsonValidationException("Expected JSON object for Money value.");
 
         decimal amount = 0;
         string? currency = null;
@@ -46,14 +46,14 @@ public class MoneyJsonConverter : JsonConverter<Money>
         }
 
         if (!amountFound)
-            throw new JsonException("Required property 'amount' is missing.");
+            throw new TrellisJsonValidationException("Required property 'amount' is missing.");
 
         if (currency == null)
-            throw new JsonException("Currency is required.");
+            throw new TrellisJsonValidationException("Required property 'currency' is missing.");
 
         return Money.TryCreate(amount, currency).Match(
             onSuccess: money => money,
-            onFailure: error => throw new JsonException(error.GetDisplayMessage()));
+            onFailure: error => throw new TrellisJsonValidationException(error.GetDisplayMessage()));
     }
 
     /// <summary>

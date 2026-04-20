@@ -3,7 +3,7 @@
 namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
-using SampleUserLibrary;
+
 using Trellis;
 
 /// <summary>

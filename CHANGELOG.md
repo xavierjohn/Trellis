@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-#### Trellis.Results — Error redesigned as closed ADT (V6)
+#### Trellis.Results — Error redesigned as closed ADT
 
 The `Error` type is now an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, `Error.Conflict`, `Error.Forbidden`, …). The base type has a `private` constructor so the catalog is closed at the language level, and every `switch` over an `Error` reference is exhaustive at compile time.
 
@@ -23,7 +23,7 @@ Key changes:
 - **Renamed wire identifiers.** Default `Code` values changed from `"validation.error"`/`"not.found.error"`/etc. to the IANA-aligned slugs `"unprocessable-content"`/`"not-found"`/etc.
 - **TRLS005 analyzer (`UseMatchErrorAnalyzer`) removed** — the C# compiler now provides exhaustiveness for free.
 
-Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full V2 patterns and [api-results.md](docs/api_reference/trellis-api-results.md) for the reference table.
+Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full patterns and [api-results.md](docs/api_reference/trellis-api-results.md) for the reference table.
 
 #### Trellis.Testing — Package Restructure
 
@@ -35,6 +35,12 @@ Migration path: every `Error.X(...)` factory call site must be rewritten. `Match
 - **`Trellis.Testing` no longer depends on ASP.NET Core, EF Core, or MSAL** — The core package now only depends on `Trellis.Results`, `Trellis.DomainDrivenDesign`, `Trellis.Authorization`, and `FluentAssertions`.
 
 ### Added
+
+#### Trellis.DomainDrivenDesign + Trellis.Asp — Surfaceable JSON validation errors
+
+- **`TrellisJsonValidationException`** (new, in `Trellis.DomainDrivenDesign`) — A marker subclass of `System.Text.Json.JsonException` that Trellis JSON converters throw when a structured value object's invariants are violated during deserialization (e.g., `MoneyJsonConverter` rejecting a negative amount). The message is treated as curated/client-safe.
+- **`ScalarValueValidationMiddleware`** (Minimal API path) now surfaces the message of an inner `TrellisJsonValidationException` in the Problem Details body — using its `JsonException.Path` as the error key when populated. Plain `JsonException`s continue to map to the generic `"The request body contains invalid JSON."` message because their text can include internal type names (audit-respecting).
+- **`MoneyJsonConverter`** updated to throw `TrellisJsonValidationException` (was: plain `JsonException`). Callers see `"Amount cannot be negative."` etc. from the framework instead of the generic "invalid JSON" placeholder. This restores DX parity with MVC's model binder, which already includes per-field `JsonException` messages.
 
 #### Trellis.EntityFrameworkCore — Composite Value Object Convention
 
@@ -134,11 +140,60 @@ Full support for optional value object properties in DTOs:
 - **`MaybeModelBinder<TValue,TPrimitive>`** — MVC model binding: absent/empty → `Maybe.None`, valid → `Maybe.From(result)`, invalid → ModelState error
 - **`MaybeSuppressChildValidationMetadataProvider`** — Prevents MVC from requiring child properties on `Maybe<T>` (fixes MVC crash)
 - **`ScalarValueTypeHelper`** additions — `IsMaybeScalarValue()`, `GetMaybeInnerType()`, `GetMaybePrimitiveType()`
-- **SampleWeb apps** updated — `Maybe<Url> Website` on User/RegisterUserDto, `Maybe<FirstName> AssignedTo` on UpdateOrderDto
+- **SampleWeb apps** updated at the time — `Maybe<Url> Website` on User/RegisterUserDto, `Maybe<FirstName> AssignedTo` on UpdateOrderDto. (SampleWeb has since been removed; see _Showcase consolidated; SampleWeb removed_ below.)
 
 ### Changed
 
 - `Maybe<T>` now requires `where T : notnull` — see [Migration Guide](MIGRATION_v3.md#maybe-notnull-constraint) for details
+
+#### Examples — Showcase consolidated; SampleWeb removed
+
+The Showcase sample now hosts the **same banking domain** twice — once as MVC controllers and once as Minimal API endpoint groups — so users can compare hosting styles over an identical contract. This replaces the previously incoherent setup where Showcase was banking and `SampleMinimalApi` was a different (users/products/orders) domain with no shared code.
+
+**New project layout:**
+
+```
+Examples/Showcase/
+├── api.http                                 Single .http file with @host toggle (works on both hosts)
+├── src/
+│   ├── Showcase.Domain/                     (unchanged) pure domain
+│   ├── Showcase.Application/                NEW — workflows, services, persistence, DTOs, seed
+│   ├── Showcase.Mvc/                        renamed from Showcase.Api — controllers + Program.cs
+│   └── Showcase.MinimalApi/                 NEW — endpoint groups + Program.cs
+└── tests/
+    ├── Showcase.Tests/                      (unchanged) domain + MVC integration tests
+    └── Showcase.MinimalApi.Tests/           NEW — mirror of MVC integration tests against Minimal API host
+```
+
+The Minimal API host adds **zero** new application code — same DTOs, repository, `BankingWorkflow`, and seed. The only delta is route mapping and `ToHttpResult*` vs `ToActionResult*` for Result→HTTP conversion. `Showcase.MinimalApi.Tests` runs the same six integration assertions as the MVC tests against the Minimal API factory and proves identical HTTP behaviour.
+
+**Removed:** the entire `Examples/SampleWeb/` folder (`SampleMinimalApi`, `SampleMinimalApi.Tests`, `SampleUserLibrary`, four stale top-level `.http` files). `Trellis.Benchmark` no longer references the deleted `SampleUserLibrary`; the two VOs the benchmarks needed are now inlined in `Trellis.Benchmark/BenchmarkValueObjects.cs`.
+
+#### Examples — Sample-perfection sweep (v2 Phase 1c PR2)
+
+The `Examples/` folder was rewritten end-to-end so every kept sample passes the v2 axiom scorecard (A1–A11). Samples are the source of truth that flows into the ASP template and from there into AI-generated code; imperfections at this layer compound, so the sweep was scored against an explicit set of rules — see [Examples README](Examples/README.md) for the full list.
+
+**Lineup changes:**
+- **Removed** as redundant or noisy: `Examples/AuthorizationExample`, `Examples/BankingExample`, `Examples/EcommerceExample`, `Examples/SampleWeb/SampleWebApplication`, `Examples/SampleWeb/SampleMinimalApiNoAot`, `Examples/SampleWeb/SampleDataAccess`. Their teachings are now consolidated in `Showcase` (auth, banking workflows, lifecycle) and the Minimal API sample (data access via in-memory repos).
+- **Renamed** `Examples/Xunit` → `Examples/TestingPatterns` (folder name now describes the *intent*, not the runner). The csproj is `TestingPatterns.Tests.csproj` so `IsTestProject` auto-detection still applies.
+
+**Showcase (`Examples/Showcase`):**
+- **Architectural fix** — every state-changing use case now crosses `BankingWorkflow`, which centralizes `mutate aggregate → publish events → AcceptChanges → persist`. Previously `AccountsController` mutated aggregates directly for `Open`/`Deposit`/`Withdraw`/`Freeze`/`Unfreeze`/`Close`, so domain events from those flows were never published or accepted (only `SecureWithdraw` and `Transfer` did the right thing). This was the canonical "boundary leak" bug.
+- **Wire-boundary alignment** — `AccountResponse` exposes `AccountId`, `CustomerId`, `AccountType`, `Money`, `AccountStatus` directly instead of `Guid`/`string`/`decimal`. The existing `Money` JSON converter emits `{"amount", "currency"}`.
+- **`System.TimeProvider`** replaces the ad-hoc `IClock`/`SystemClock` seam (BCL standard since .NET 8). Tests use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing`.
+- **`.Value` purged from production code.** Seed-time invariants are centralized in a `Required<T>()` helper that throws `InvalidOperationException` with a clear message at startup.
+
+**SampleUserLibrary, SampleMinimalApi (`Examples/SampleWeb/*`):**
+- The standalone Minimal API sample and the shared `SampleUserLibrary` were folded into `Examples/Showcase/src/Showcase.MinimalApi`, which now hosts the same banking domain as `Showcase.Mvc` over identical DTOs. The shared-VO-library teaching is preserved by Showcase's `Showcase.Domain` / `Showcase.Application` split.
+- AOT publish for the Minimal API host is **deferred to a follow-up PR**. The current `ScalarValueValidationMiddleware` parses exception text to extract field names, which doesn't survive AOT trimming; the follow-up PR will replace the exception-text path with a typed contract.
+
+**ConditionalRequestExample:**
+- Route templates use `{id:ProductId}` (not `{id:guid}`). Handler signatures bind `ProductId id` directly (generator-emitted `IParsable`).
+- `ProductResponse` exposes `ProductId`/`ProductName`/`MonetaryAmount` instead of `Guid`/`string`/`decimal`.
+- New `ConditionalRequestExample.Tests` covers all six conditional-request branches (200/304/412/428/etc.).
+
+**SsoExample, EfCoreExample:**
+- Re-audited. New minimal `*.Tests` projects added.
 
 ---
 

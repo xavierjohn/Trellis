@@ -191,6 +191,22 @@ public abstract class Specification<T>
 | `public Specification<T> Not()` | `Specification<T>` | Returns a negated specification. |
 | `public static implicit operator Expression<Func<T, bool>>(Specification<T> spec)` | `Expression<Func<T, bool>>` | Converts the specification directly to its expression tree. |
 
+### `TrellisJsonValidationException`
+
+```csharp
+namespace Trellis;
+
+public sealed class TrellisJsonValidationException : System.Text.Json.JsonException
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public TrellisJsonValidationException()` | — | Default constructor. |
+| `public TrellisJsonValidationException(string message)` | — | Creates an instance with a curated, user-safe message. |
+| `public TrellisJsonValidationException(string message, Exception innerException)` | — | Wraps an inner exception with the supplied message. |
+
+Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON converters when a structured value object's invariants are violated during deserialization (e.g., `MoneyJsonConverter` rejecting a negative amount). `Trellis.Asp`'s `ScalarValueValidationMiddleware` recognizes this subtype and surfaces its `Message` and `JsonException.Path` in the resulting Problem Details payload, restoring DX parity with MVC's per-field model-binder error reporting. Plain `JsonException` instances are deliberately not surfaced because their messages can include internal type names; converters opt in to message surfacing by throwing this subclass with a curated message (e.g., `error.GetDisplayMessage()` from a `Result` failure).
+
 ## Extension methods
 
 ### `AggregateETagExtensions`

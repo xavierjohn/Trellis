@@ -26,6 +26,5 @@
     <ProjectReference Include="..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
     <ProjectReference Include="..\Trellis.DomainDrivenDesign\src\Trellis.DomainDrivenDesign.csproj" />
     <ProjectReference Include="..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
-    <ProjectReference Include="..\Examples\SampleWeb\SampleUserLibrary\SampleUserLibrary.csproj" />
   </ItemGroup>
 </Project>

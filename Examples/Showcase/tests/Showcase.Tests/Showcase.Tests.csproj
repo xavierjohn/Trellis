@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Showcase.Domain\Showcase.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Showcase.Application\Showcase.Application.csproj" />
+    <ProjectReference Include="..\..\src\Showcase.Mvc\Showcase.Mvc.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Testing.AspNetCore\src\Trellis.Testing.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>

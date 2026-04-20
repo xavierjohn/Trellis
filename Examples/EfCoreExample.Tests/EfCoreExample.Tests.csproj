@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EfCoreExample\EfCoreExample.csproj" />
+    <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

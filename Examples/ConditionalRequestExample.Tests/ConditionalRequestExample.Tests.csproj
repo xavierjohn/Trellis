@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ConditionalRequestExample\ConditionalRequestExample.csproj" />
+    <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+    <ProjectReference Include="..\..\Trellis.Testing.AspNetCore\src\Trellis.Testing.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>

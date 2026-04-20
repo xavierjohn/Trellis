@@ -47,7 +47,7 @@ Trellis separates them:
 - expected failures are `Error.X` cases inside `Result<T>` failures
 - unexpected exceptions become `Error.InternalServerError(faultId)` via `Result.Try` / `Result.TryAsync`
 
-## The V6 Error ADT
+## The Error ADT
 
 `Error` is an `abstract record` with **18 nested `sealed record` cases**. The catalog is closed (the base type has a `private` constructor) so every `switch` is exhaustive at compile time.
 
@@ -65,7 +65,7 @@ Trellis separates them:
 | `Error.ContentTooLarge` | `(long? MaxBytes = null)` | 413 | Request body too large |
 | `Error.UnsupportedMediaType` | `(EquatableArray<string> Supported)` | 415 | Content-Type not supported |
 | `Error.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | 416 | Requested range invalid |
-| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | Domain-validation failures (the V2 replacement for v1's `ValidationError`) |
+| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | Domain-validation failures (replaces the pre-V2 `ValidationError` class) |
 | `Error.PreconditionRequired` | `(PreconditionKind Condition)` | 428 | Required precondition header missing |
 | `Error.TooManyRequests` | `(RetryAfter? RetryAfter = null)` | 429 | Rate-limited |
 | `Error.InternalServerError` | `(string FaultId)` | 500 | Unhandled failure; rich diagnostics live in your log indexed by `FaultId` |
@@ -180,7 +180,7 @@ var message = LoadUser("42").Match(
 The C# compiler verifies exhaustiveness against the closed catalog. Add a new case to `Error` and every `switch` that doesn't handle it lights up.
 
 > [!NOTE]
-> The v1 `MatchError` / `SwitchError` extensions and `FlattenValidationErrors` were removed in V2. Use `switch` patterns and `Combine` instead.
+> The pre-V2 `MatchError` / `SwitchError` extensions and `FlattenValidationErrors` were removed. Use `switch` patterns and `Combine` instead.
 
 ## Side Effects Without Breaking the Pipeline
 
@@ -256,7 +256,7 @@ var result = Result.Try(
 
 ## Equality
 
-V6 errors are records — two errors compare equal when their **`Kind` and payload are equal**. The `Cause` chain is excluded from equality (so two semantically identical errors raised from different code paths compare equal).
+Errors are records — two errors compare equal when their **`Kind` and payload are equal**. The `Cause` chain is excluded from equality (so two semantically identical errors raised from different code paths compare equal).
 
 ```csharp
 var a = new Error.NotFound(new ResourceRef("User", "42")) { Detail = "x" };

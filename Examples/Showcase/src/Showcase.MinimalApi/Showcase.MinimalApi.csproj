@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Trellis.Showcase.MinimalApi</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    AOT publish is currently OFF. Two known blockers must land first (see BACKLOG.md):
+      1. Trellis.Asp.ScalarValueValidationMiddleware uses exception-text parsing that won't survive trimming.
+      2. The composite-VO JsonConverter (Money) is hand-written; the generator must emit it.
+    Once both ship, flip <PublishAot>true</PublishAot> here and re-verify with `dotnet publish -p:PublishAot=true`.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="Scalar.AspNetCore.Microsoft" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Showcase.Domain\Showcase.Domain.csproj" />
+    <ProjectReference Include="..\Showcase.Application\Showcase.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Asp.Authorization\src\Trellis.Asp.Authorization.csproj" />
+  </ItemGroup>
+
+</Project>

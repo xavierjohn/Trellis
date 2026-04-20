@@ -166,9 +166,17 @@ public sealed partial class ScalarValueValidationMiddleware
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
+        // Surface the inner exception's message ONLY for TrellisJsonValidationException, which is
+        // the dedicated marker thrown by Trellis converters with curated, client-safe messages
+        // (e.g. Money: "Amount cannot be negative"). Plain JsonException keeps the generic message
+        // because System.Text.Json's built-in errors can include internal type names.
+        var (key, message) = ex.InnerException is Trellis.TrellisJsonValidationException tjx
+            ? (string.IsNullOrEmpty(tjx.Path) ? "$" : tjx.Path!, tjx.Message)
+            : ("$", "The request body contains invalid JSON.");
+
         var errors = new Dictionary<string, string[]>
         {
-            ["$"] = ["The request body contains invalid JSON."]
+            [key] = [message],
         };
 
         var result = Results.ValidationProblem(errors);

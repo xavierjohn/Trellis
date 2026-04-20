@@ -539,6 +539,35 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_ReadParameterFailure_TrellisJsonValidationException_SurfacesMessageAndPath()
+    {
+        // Trellis converters (e.g. MoneyJsonConverter) throw TrellisJsonValidationException with
+        // a curated, client-safe message. The middleware MUST surface that message and the JsonPath
+        // so callers can see *why* their structured-VO payload was rejected.
+        // Note: JsonException.Path is auto-populated by System.Text.Json based on the reader
+        // state when the exception bubbles up through the deserialization stack — no need to
+        // pass it explicitly from this converter.
+        var innerException = new Trellis.TrellisJsonValidationException("Amount cannot be negative.");
+        var context = CreateHttpContextWithServices();
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException(
+                """Failed to read parameter "OpenAccountRequest request" from the request body as JSON.""",
+                400,
+                innerException));
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        var errors = problem.GetProperty("errors");
+        // No JSON path was set on the exception (STJ would normally fill it during deserialization),
+        // so the middleware falls back to the "$" key — but the message MUST come from the exception.
+        errors.GetProperty("$")[0].GetString()
+            .Should().Be("Amount cannot be negative.");
+    }
+
+    [Fact]
     public async Task InvokeAsync_ReadParameterFailure_NoInnerException_UsesGenericMessage()
     {
         // Arrange
