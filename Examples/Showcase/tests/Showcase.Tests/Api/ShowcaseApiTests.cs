@@ -2,6 +2,8 @@ namespace Trellis.Showcase.Tests.Api;
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Primitives;
 using Trellis.Showcase.Application;
@@ -14,6 +16,10 @@ using Trellis.Showcase.Application.Models;
 /// </summary>
 public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
     private readonly WebApplicationFactory<Program> _factory;
 
     public ShowcaseApiTests(WebApplicationFactory<Program> factory) => _factory = factory;
@@ -36,7 +42,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.GetAsync(new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}", UriKind.Relative), Ct);
 
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<AccountResponse>(Ct);
+        var body = await response.Content.ReadFromJsonAsync<AccountResponse>(JsonOptions, Ct);
         body.Should().NotBeNull();
         body!.Status.Should().Be(Trellis.Showcase.Domain.Aggregates.AccountStatus.Active);
     }
@@ -84,5 +90,30 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Open_account_with_string_enum_payload_returns_201()
+    {
+        // Mirrors api.http: AccountType is sent as a string ("Checking"), not a number.
+        // Requires JsonStringEnumConverter to be registered globally.
+        var client = _factory.CreateClient();
+        var json = """
+            {
+              "customerId": "11111111-1111-1111-1111-111111111111",
+              "accountType": "Checking",
+              "initialDeposit":       { "amount": 250.00, "currency": "USD" },
+              "dailyWithdrawalLimit": { "amount": 500.00, "currency": "USD" },
+              "overdraftLimit":       { "amount":   0.00, "currency": "USD" }
+            }
+            """;
+        using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(
+            new Uri("/api/accounts", UriKind.Relative),
+            content,
+            Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 }

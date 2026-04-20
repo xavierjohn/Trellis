@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
@@ -10,6 +11,8 @@ using Trellis.Showcase.MinimalApi.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScalarValueValidationForMinimalApi();
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
 builder.Services.AddSingleton(TimeProvider.System);

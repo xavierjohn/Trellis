@@ -25,7 +25,7 @@ public class AccountsController : ControllerBase
     public ActionResult<IReadOnlyList<AccountResponse>> List() =>
         Ok(_repository.All().Select(AccountResponse.From).ToList());
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = "Showcase_GetAccount")]
     public ActionResult<AccountResponse> Get(AccountId id) =>
         _repository.GetById(id)
             .Map(AccountResponse.From)
@@ -35,7 +35,7 @@ public class AccountsController : ControllerBase
     public Task<ActionResult<AccountResponse>> Open([FromBody] OpenAccountRequest request, CancellationToken cancellationToken) =>
         _workflow.OpenAccountAsync(request.CustomerId, request.AccountType, request.InitialDeposit, request.DailyWithdrawalLimit, request.OverdraftLimit, cancellationToken)
             .MapAsync(AccountResponse.From)
-            .ToActionResultAsync(this);
+            .ToCreatedAtActionResultAsync(this, actionName: nameof(Get), routeValues: a => new { id = a.Id });
 
     [HttpPost("{id}/deposit")]
     public Task<ActionResult<AccountResponse>> Deposit(AccountId id, [FromBody] DepositRequest request, CancellationToken cancellationToken) =>

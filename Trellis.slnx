@@ -44,6 +44,7 @@
   <Folder Name="/Examples/Showcase/">
     <Project Path="Examples/Showcase/src/Showcase.Domain/Showcase.Domain.csproj" />
     <File Path="Examples/Showcase/api.http" />
+    <File Path="Examples/Showcase/http-client.env.json" />
     <Project Path="Examples/Showcase/src/Showcase.Application/Showcase.Application.csproj" />
     <Project Path="Examples/Showcase/src/Showcase.Mvc/Showcase.Mvc.csproj" />
     <Project Path="Examples/Showcase/src/Showcase.MinimalApi/Showcase.MinimalApi.csproj" />
