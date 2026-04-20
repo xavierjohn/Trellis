@@ -117,4 +117,35 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
+
+    [Fact]
+    public async Task Open_account_with_negative_money_surfaces_validation_message()
+    {
+        // Locks the framework fix: TrellisJsonValidationException thrown from MoneyJsonConverter
+        // (e.g. "Amount cannot be negative") MUST be surfaced in the Problem Details body so callers
+        // can see *why* their request was rejected. Previously Minimal API returned the generic
+        // "The request body contains invalid JSON." with no actionable info.
+        var client = _factory.CreateClient();
+        var json = """
+            {
+              "customerId": "11111111-1111-1111-1111-111111111111",
+              "accountType": "Checking",
+              "initialDeposit":       { "amount": -100.00, "currency": "USD" },
+              "dailyWithdrawalLimit": { "amount":  500.00, "currency": "USD" },
+              "overdraftLimit":       { "amount":    0.00, "currency": "USD" }
+            }
+            """;
+        using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(
+            new Uri("/api/accounts", UriKind.Relative),
+            content,
+            Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync(Ct);
+        body.Should().NotContain("The request body contains invalid JSON",
+            "the framework should surface the curated TrellisJsonValidationException message instead of the generic placeholder");
+        body.Should().Contain("negative", "the Money converter's curated message must reach the client");
+    }
 }
