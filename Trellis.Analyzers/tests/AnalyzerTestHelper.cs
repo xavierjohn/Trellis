@@ -136,6 +136,13 @@ public static class AnalyzerTestHelper
                     error = default!;
                     return IsFailure;
                 }
+
+                public void Deconstruct(out bool isSuccess, out T? value, out Error? error)
+                {
+                    isSuccess = IsSuccess;
+                    value = IsSuccess ? Value : default;
+                    error = IsFailure ? Error : null;
+                }
             }
 
             // Error stub (NOT abstract - can be instantiated directly)
