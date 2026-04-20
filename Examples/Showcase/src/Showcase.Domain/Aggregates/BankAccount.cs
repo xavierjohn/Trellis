@@ -181,6 +181,37 @@ public class BankAccount : Aggregate<AccountId>
             .Map(_ => this);
     }
 
+    public Result<BankAccount> PayInterest(Money interestAmount, decimal annualRate)
+    {
+        if (AccountType != AccountType.Savings)
+            return Result.Fail<BankAccount>(
+                new Error.Conflict(null, "interest.savings.only") { Detail = "Interest is only paid on savings accounts." });
+
+        if (Status != AccountStatus.Active)
+            return Result.Fail<BankAccount>(
+                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot pay interest to {Status} account." });
+
+        if (Balance.Amount <= 0)
+            return Result.Fail<BankAccount>(
+                new Error.Conflict(null, "interest.zero.balance") { Detail = "No interest on accounts with zero balance." });
+
+        if (interestAmount.Amount <= 0)
+            return Result.Fail<BankAccount>(
+                new Error.UnprocessableContent(EquatableArray.Create(
+                    new FieldViolation(InputPointer.ForProperty(nameof(interestAmount)), "validation.range") { Detail = "Interest amount must be positive" })));
+
+        return Balance.Add(interestAmount)
+            .Tap(newBalance =>
+            {
+                Balance = newBalance;
+                var now = _timeProvider.GetUtcNow().UtcDateTime;
+                var description = $"Interest at {annualRate:P2} APR";
+                _transactions.Add(Transaction.CreateInterest(TransactionId.NewUniqueV4(), interestAmount, Balance, description, now));
+                DomainEvents.Add(new InterestPaid(Id, interestAmount, Balance, annualRate, now));
+            })
+            .Map(_ => this);
+    }
+
     public Result<(BankAccount From, BankAccount To)> TransferTo(BankAccount toAccount, Money amount, string description = "Transfer")
     {
         ArgumentNullException.ThrowIfNull(toAccount);

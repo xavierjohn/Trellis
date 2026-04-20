@@ -140,7 +140,7 @@ Full support for optional value object properties in DTOs:
 - **`MaybeModelBinder<TValue,TPrimitive>`** — MVC model binding: absent/empty → `Maybe.None`, valid → `Maybe.From(result)`, invalid → ModelState error
 - **`MaybeSuppressChildValidationMetadataProvider`** — Prevents MVC from requiring child properties on `Maybe<T>` (fixes MVC crash)
 - **`ScalarValueTypeHelper`** additions — `IsMaybeScalarValue()`, `GetMaybeInnerType()`, `GetMaybePrimitiveType()`
-- **SampleWeb apps** updated — `Maybe<Url> Website` on User/RegisterUserDto, `Maybe<FirstName> AssignedTo` on UpdateOrderDto
+- **SampleWeb apps** updated at the time — `Maybe<Url> Website` on User/RegisterUserDto, `Maybe<FirstName> AssignedTo` on UpdateOrderDto. (SampleWeb has since been removed; see _Showcase consolidated; SampleWeb removed_ below.)
 
 ### Changed
 
@@ -183,17 +183,9 @@ The `Examples/` folder was rewritten end-to-end so every kept sample passes the 
 - **`System.TimeProvider`** replaces the ad-hoc `IClock`/`SystemClock` seam (BCL standard since .NET 8). Tests use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing`.
 - **`.Value` purged from production code.** Seed-time invariants are centralized in a `Required<T>()` helper that throws `InvalidOperationException` with a clear message at startup.
 
-**SampleUserLibrary (`Examples/SampleWeb/SampleUserLibrary`):**
-- Dropped the `RegisterUserRequest` raw-string DTO (A6 — one canonical solution per use-case; the VO-typed `RegisterUserDto` stays).
-- Rewrote `User.TryCreate` in pure ROP: `Result.Ok(password)` chained through `Ensure` for each business invariant (age ≥ 18, password complexity). No more `AbstractValidator`.
-- Removed the `Trellis.FluentValidation` project reference.
-
-**SampleMinimalApi (`Examples/SampleWeb/SampleMinimalApi`):**
-- New from scratch (the previous project was deleted because it depended on `SampleDataAccess` and EF). Consumes `SampleUserLibrary` to exercise the shared-VO-library pattern.
-- Endpoints group with `MapGroup` and use `ToHttpResultAsync` / `ToCreatedAtRouteHttpResultAsync` from `Trellis.Asp`.
-- Workflows mirror the `BankingWorkflow` pattern: load → domain method → commit (`TapAsync`) → render in one Result chain.
-- Includes a `SampleMinimalApi.Tests` project with a payment-commit-boundary recording test that proves `IPaymentService.ProcessPaymentAsync` is invoked exactly once per confirmed order.
-- **Not AOT-published in this PR.** The current `ScalarValueValidationMiddleware` parses exception text to extract field names, which doesn't survive AOT trimming. AOT support is deferred to a follow-up PR; that PR will replace the exception-text path with a typed contract.
+**SampleUserLibrary, SampleMinimalApi (`Examples/SampleWeb/*`):**
+- The standalone Minimal API sample and the shared `SampleUserLibrary` were folded into `Examples/Showcase/src/Showcase.MinimalApi`, which now hosts the same banking domain as `Showcase.Mvc` over identical DTOs. The shared-VO-library teaching is preserved by Showcase's `Showcase.Domain` / `Showcase.Application` split.
+- AOT publish for the Minimal API host is **deferred to a follow-up PR**. The current `ScalarValueValidationMiddleware` parses exception text to extract field names, which doesn't survive AOT trimming; the follow-up PR will replace the exception-text path with a typed contract.
 
 **ConditionalRequestExample:**
 - Route templates use `{id:ProductId}` (not `{id:guid}`). Handler signatures bind `ProductId id` directly (generator-emitted `IParsable`).

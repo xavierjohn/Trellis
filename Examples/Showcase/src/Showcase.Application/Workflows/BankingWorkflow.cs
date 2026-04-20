@@ -118,19 +118,10 @@ public class BankingWorkflow
 
     public Task<Result<BankAccount>> PayInterestAsync(BankAccount account, decimal annualRate, CancellationToken cancellationToken = default)
     {
-        var preconditions = account.ToResult()
-            .Ensure(acc => acc.AccountType == AccountType.Savings,
-                new Error.Conflict(null, "interest.savings.only") { Detail = "Interest is only paid on savings accounts." })
-            .Ensure(acc => acc.Status == AccountStatus.Active,
-                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot pay interest to {account.Status} account." })
-            .Ensure(acc => acc.Balance.Amount > 0,
-                new Error.Conflict(null, "interest.zero.balance") { Detail = "No interest on accounts with zero balance." });
-
         var dailyAmount = account.Balance.Amount * (annualRate / 365m);
 
-        return preconditions
-            .Combine(Money.TryCreate(dailyAmount, account.Balance.Currency.Value))
-            .Bind(pair => pair.Item1.Deposit(pair.Item2, $"Daily interest at {annualRate:P2} APR"))
+        return Money.TryCreate(dailyAmount, account.Balance.Currency.Value)
+            .Bind(interest => account.PayInterest(interest, annualRate))
             .TapAsync(updated => CommitAsync(updated, cancellationToken));
     }
 

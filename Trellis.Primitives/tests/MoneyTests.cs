@@ -546,7 +546,7 @@ public class MoneyTests
 
         // Assert
         act.Should().Throw<JsonException>()
-            .WithMessage("Currency is required.");
+            .WithMessage("Required property 'currency' is missing.");
     }
 
     #region Taxonomy Tests

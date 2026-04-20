@@ -86,7 +86,9 @@ POST {{host}}/api/accounts/{{aliceChecking}}/unfreeze
 ### Unfreeze an Active account (409 from Error.Conflict — invalid state transition)
 POST {{host}}/api/accounts/{{bobChecking}}/unfreeze
 
-### Close account
+### Close account — fails (409 from Error.Conflict) because balance is non-zero.
+### Close requires the balance to be exactly zero; withdraw or transfer the
+### remaining funds first, then retry.
 POST {{host}}/api/accounts/{{bobChecking}}/close
 
 ###############################################################################
@@ -127,14 +129,17 @@ Content-Type: application/json
   "amount": { "amount": 10000.00, "currency": "USD" }
 }
 
-### Secure withdraw — requires verification code; the in-memory verifier returns
-### 403 Error.Forbidden (with policyId) when the code does not match.
+### Secure withdraw — withdrawals greater than $1,000 require a verification
+### code. The in-memory verifier returns:
+###   * 401 Error.Unauthorized        when the code is "000000" or empty
+###   * 422 Error.UnprocessableContent when the code is not exactly six digits
+### Use a six-digit code other than "000000" (e.g. "123456") for the happy path.
 POST {{host}}/api/accounts/{{aliceChecking}}/secure-withdraw
 Content-Type: application/json
 
 {
-  "amount": { "amount": 200.00, "currency": "USD" },
-  "verificationCode": "abc"
+  "amount": { "amount": 1500.00, "currency": "USD" },
+  "verificationCode": "000000"
 }
 
 ### Pay interest (annual rate as decimal — 0.05 = 5%)
