@@ -1,0 +1,45 @@
+###############################################################################
+# SsoExample — convert an authenticated principal into a Trellis Actor
+#
+# Two launch profiles:
+#   dotnet run --launch-profile Development   (http://localhost:5050)
+#     -> uses DevelopmentActorProvider; reads X-Test-Actor header
+#   dotnet run --launch-profile Production    (http://localhost:5051)
+#     -> uses ClaimsActorProvider; requires a real bearer token
+###############################################################################
+
+###############################################################################
+# Development profile — actor comes from X-Test-Actor header
+###############################################################################
+
+@devHost = http://localhost:5050
+
+### Get current actor (development)
+GET {{devHost}}/api/me
+Accept: application/json
+X-Test-Actor: {"id":"alice","permissions":["accounts:read","accounts:write"],"attributes":{"tenant":"acme"}}
+
+### Get current actor — different identity / permissions
+GET {{devHost}}/api/me
+Accept: application/json
+X-Test-Actor: {"id":"bob","permissions":["accounts:read"]}
+
+### Get current actor — missing header (anonymous; framework default behavior)
+GET {{devHost}}/api/me
+Accept: application/json
+
+###############################################################################
+# Production profile — actor comes from JWT claims
+###############################################################################
+
+@prodHost = http://localhost:5051
+@token = paste-your-bearer-token-here
+
+### Get current actor (production)
+GET {{prodHost}}/api/me
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Get current actor — no token (401 Unauthorized)
+GET {{prodHost}}/api/me
+Accept: application/json

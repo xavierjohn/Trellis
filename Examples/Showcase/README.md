@@ -59,7 +59,9 @@ cd Examples/Showcase/src/Showcase.Api
 dotnet run
 ```
 
-Open `https://localhost:<port>/scalar/v1` for the Scalar API explorer.
+Open `https://localhost:<port>/scalar/v1` for the Scalar API explorer, or use
+[`src/Showcase.Api/api.http`](src/Showcase.Api/api.http) (VS Code REST Client /
+Visual Studio HTTP file support) to exercise every endpoint with the seed data.
 
 Seed accounts (created on startup):
 

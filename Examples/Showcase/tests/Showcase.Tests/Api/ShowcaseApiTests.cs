@@ -3,6 +3,7 @@ namespace Trellis.Showcase.Tests.Api;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Trellis.Primitives;
 using Trellis.Showcase.Api;
 using Trellis.Showcase.Api.Models;
 
@@ -45,7 +46,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         var client = _factory.CreateClient();
         var response = await client.PostAsJsonAsync(
             new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}/deposit", UriKind.Relative),
-            new DepositRequest(0m),
+            new DepositRequest(Money.Create(0m, "USD")),
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
@@ -57,7 +58,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         var client = _factory.CreateClient();
         var response = await client.PostAsJsonAsync(
             new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}/secure-withdraw", UriKind.Relative),
-            new SecureWithdrawRequest(2000m, VerificationCode: "abc"),
+            new SecureWithdrawRequest(Money.Create(2000m, "USD"), VerificationCode: "abc"),
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);

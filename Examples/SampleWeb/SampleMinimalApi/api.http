@@ -1,0 +1,157 @@
+###############################################################################
+# SampleMinimalApi — Minimal API endpoints for users, products, and orders
+#
+# Run the host first:
+#   dotnet run --project SampleMinimalApi.csproj
+#
+# Default URL: http://localhost:5080 (see Properties/launchSettings.json)
+###############################################################################
+
+@host = http://localhost:5080
+
+###############################################################################
+# Users — RegisterUserDto with VOs at the wire boundary (axiom A1a)
+###############################################################################
+
+### Register user (201 Created + Location: /users/{userId})
+POST {{host}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "firstName": "Xavier",
+  "lastName": "John",
+  "email": "xavier@example.com",
+  "phone": "+14155551234",
+  "age": 28,
+  "country": "US",
+  "website": "https://xavier.com",
+  "password": "Secure!Pass123"
+}
+
+### Register user — website omitted (Maybe.None, no error)
+POST {{host}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "firstName": "Alice",
+  "lastName": "Doe",
+  "email": "alice@example.com",
+  "phone": "+14155555678",
+  "age": 30,
+  "country": "GB",
+  "password": "Another!Pass456"
+}
+
+### Register user — multiple validation failures (422 UnprocessableContent + FieldViolations)
+POST {{host}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "firstName": "",
+  "lastName": "",
+  "email": "not-an-email",
+  "phone": "555-1234",
+  "age": 200,
+  "country": "USA",
+  "password": "weak"
+}
+
+### Get user by id (paste the userId returned by register)
+# @name getUser
+GET {{host}}/users/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###############################################################################
+# Products — CreateProductDto with ProductName + MonetaryAmount VOs (A1a/A1b)
+###############################################################################
+
+### Create product (201 Created + Location: /products/{productId})
+# @name createProduct
+POST {{host}}/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Ergonomic Keyboard",
+  "price": 129.99,
+  "stockQuantity": 40
+}
+
+### List products
+GET {{host}}/products
+Accept: application/json
+
+### List products — Specification filtering (in-stock only)
+GET {{host}}/products?inStock=true
+Accept: application/json
+
+### List products — Specification filtering (price range)
+GET {{host}}/products?minPrice=50&maxPrice=200
+Accept: application/json
+
+### List products — combined filters
+GET {{host}}/products?inStock=true&minPrice=50&maxPrice=200
+Accept: application/json
+
+### Get product by id (paste productId from create response)
+GET {{host}}/products/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Create product — validation failures (422 UnprocessableContent)
+POST {{host}}/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "",
+  "price": -10,
+  "stockQuantity": -5
+}
+
+###############################################################################
+# Orders — workflow boundary (axiom A10): mutate -> publish -> accept -> persist
+###############################################################################
+
+### Create draft order (201 Created + Location: /orders/{orderId})
+POST {{host}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "customerId": "11111111-1111-1111-1111-111111111111"
+}
+
+### Get order by id
+GET {{host}}/orders/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Add line to existing order (paste orderId + productId)
+POST {{host}}/orders/00000000-0000-0000-0000-000000000000/lines
+Content-Type: application/json
+Accept: application/json
+
+{
+  "productId": "00000000-0000-0000-0000-000000000000",
+  "quantity": 2
+}
+
+### Confirm order (state machine transition)
+POST {{host}}/orders/00000000-0000-0000-0000-000000000000/confirm
+
+### Ship order
+POST {{host}}/orders/00000000-0000-0000-0000-000000000000/ship
+
+### Cancel order
+POST {{host}}/orders/00000000-0000-0000-0000-000000000000/cancel
+
+### Create order — invalid CustomerId VO (422 UnprocessableContent)
+POST {{host}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "customerId": "not-a-guid"
+}

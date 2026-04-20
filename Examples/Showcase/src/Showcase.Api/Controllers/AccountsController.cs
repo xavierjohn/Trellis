@@ -3,7 +3,6 @@ namespace Trellis.Showcase.Api.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Trellis;
 using Trellis.Asp;
-using Trellis.Primitives;
 using Trellis.Showcase.Api.Models;
 using Trellis.Showcase.Api.Persistence;
 using Trellis.Showcase.Api.Workflows;
@@ -34,38 +33,28 @@ public class AccountsController : ControllerBase
 
     [HttpPost]
     public Task<ActionResult<AccountResponse>> Open([FromBody] OpenAccountRequest request, CancellationToken cancellationToken) =>
-        Money.TryCreate(request.InitialDeposit, request.Currency)
-            .Combine(Money.TryCreate(request.DailyWithdrawalLimit, request.Currency))
-            .Combine(Money.TryCreate(request.OverdraftLimit, request.Currency))
-            .BindAsync(values =>
-            {
-                var (deposit, daily, overdraft) = values;
-                return _workflow.OpenAccountAsync(request.CustomerId, request.AccountType, deposit, daily, overdraft, cancellationToken);
-            })
+        _workflow.OpenAccountAsync(request.CustomerId, request.AccountType, request.InitialDeposit, request.DailyWithdrawalLimit, request.OverdraftLimit, cancellationToken)
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
     [HttpPost("{id}/deposit")]
     public Task<ActionResult<AccountResponse>> Deposit(AccountId id, [FromBody] DepositRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
-            .Combine(Money.TryCreate(request.Amount, request.Currency))
-            .BindAsync(pair => _workflow.DepositAsync(pair.Item1, pair.Item2, request.Description, cancellationToken))
+            .BindAsync(account => _workflow.DepositAsync(account, request.Amount, request.Description, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
     [HttpPost("{id}/withdraw")]
     public Task<ActionResult<AccountResponse>> Withdraw(AccountId id, [FromBody] WithdrawRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
-            .Combine(Money.TryCreate(request.Amount, request.Currency))
-            .BindAsync(pair => _workflow.WithdrawAsync(pair.Item1, pair.Item2, request.Description, cancellationToken))
+            .BindAsync(account => _workflow.WithdrawAsync(account, request.Amount, request.Description, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 
     [HttpPost("{id}/secure-withdraw")]
     public Task<ActionResult<AccountResponse>> SecureWithdraw(AccountId id, [FromBody] SecureWithdrawRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
-            .Combine(Money.TryCreate(request.Amount, request.Currency))
-            .BindAsync(pair => _workflow.SecureWithdrawAsync(pair.Item1, pair.Item2, request.VerificationCode, cancellationToken))
+            .BindAsync(account => _workflow.SecureWithdrawAsync(account, request.Amount, request.VerificationCode, cancellationToken))
             .MapAsync(AccountResponse.From)
             .ToActionResultAsync(this);
 

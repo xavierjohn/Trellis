@@ -23,6 +23,9 @@ dotnet run --launch-profile Production
 | `Development` | `http://localhost:5050/api/me` | Reads actor data from `X-Test-Actor` |
 | `Production` | `http://localhost:5051/api/me` | Requires a bearer token |
 
+Use [`api.http`](api.http) to exercise both profiles from VS Code REST Client
+or Visual Studio's HTTP file support.
+
 ## Key Files
 | File | What It Shows |
 |------|--------------|

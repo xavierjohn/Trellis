@@ -32,6 +32,10 @@ cd Examples/SampleWeb/SampleMinimalApi
 dotnet run
 ```
 
+The host listens on `http://localhost:5080`. Use [`api.http`](api.http)
+(VS Code REST Client / Visual Studio HTTP file support) to exercise every
+endpoint without writing curl by hand.
+
 ## Test it
 
 ```pwsh
