@@ -46,17 +46,11 @@
   </Folder>
   <Folder Name="/Examples/Showcase/">
     <Project Path="Examples/Showcase/src/Showcase.Domain/Showcase.Domain.csproj" />
-    <Project Path="Examples/Showcase/src/Showcase.Api/Showcase.Api.csproj" />
+    <Project Path="Examples/Showcase/src/Showcase.Application/Showcase.Application.csproj" />
+    <Project Path="Examples/Showcase/src/Showcase.Mvc/Showcase.Mvc.csproj" />
+    <Project Path="Examples/Showcase/src/Showcase.MinimalApi/Showcase.MinimalApi.csproj" />
     <Project Path="Examples/Showcase/tests/Showcase.Tests/Showcase.Tests.csproj" />
-  </Folder>
-  <Folder Name="/Examples/SampleWeb/">
-    <File Path="Examples/SampleWeb/ErrorResponse.http" />
-    <File Path="Examples/SampleWeb/MoneyApi.http" />
-    <File Path="Examples/SampleWeb/OrderApi.http" />
-    <File Path="Examples/SampleWeb/UserApi.http" />
-    <Project Path="Examples/SampleWeb/SampleMinimalApi/SampleMinimalApi.csproj" />
-    <Project Path="Examples/SampleWeb/SampleMinimalApi.Tests/SampleMinimalApi.Tests.csproj" />
-    <Project Path="Examples/SampleWeb/SampleUserLibrary/SampleUserLibrary.csproj" />
+    <Project Path="Examples/Showcase/tests/Showcase.MinimalApi.Tests/Showcase.MinimalApi.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />

@@ -1,22 +1,23 @@
-namespace Trellis.Showcase.Tests.Api;
+namespace Trellis.Showcase.MinimalApi.Tests;
 
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Primitives;
 using Trellis.Showcase.Application;
-using Trellis.Showcase.Mvc;
 using Trellis.Showcase.Application.Models;
+using Trellis.Showcase.MinimalApi;
 
 /// <summary>
-/// Black-box integration tests over the Showcase HTTP API. Each test verifies that an Error case
-/// is mapped to the correct HTTP status and Problem Details payload.
+/// Black-box integration tests over the Showcase Minimal API host. Mirrors
+/// <c>Trellis.Showcase.Tests.Api.ShowcaseApiTests</c> verbatim — proves that the same DTOs,
+/// repository, and <c>BankingWorkflow</c> produce identical HTTP behaviour across hosting styles.
 /// </summary>
-public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
+public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
 
-    public ShowcaseApiTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public ShowcaseMinimalApiTests(WebApplicationFactory<Program> factory) => _factory = factory;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

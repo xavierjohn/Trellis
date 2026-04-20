@@ -3,7 +3,7 @@ using Trellis.Primitives;
 namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
-using SampleUserLibrary;
+
 using Trellis;
 using static Trellis.Result;
 

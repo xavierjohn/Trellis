@@ -1,9 +1,9 @@
-﻿using Trellis.Primitives;
+using Trellis.Primitives;
 
 namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
-using SampleUserLibrary;
+
 using Trellis;
 
 /// <summary>

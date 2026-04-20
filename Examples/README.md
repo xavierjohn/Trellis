@@ -19,9 +19,7 @@ A curated set of runnable samples that demonstrate the canonical Trellis pattern
 
 | Sample | Stack | Primary teachings |
 |---|---|---|
-| [`Showcase`](./Showcase) | MVC, in-memory | Aggregate + workflow + controller pattern; full Error ADT walkthrough; `System.TimeProvider`; lifecycle state machine via `Trellis.Stateless`; integration tests with `WebApplicationFactory`. **Start here.** |
-| [`SampleWeb/SampleMinimalApi`](./SampleWeb/SampleMinimalApi) | Minimal API, in-memory | The same workflow pattern as Showcase, expressed in Minimal API endpoints. Consumes [`SampleUserLibrary`](./SampleWeb/SampleUserLibrary) to demonstrate the *shared VO library* pattern. |
-| [`SampleWeb/SampleUserLibrary`](./SampleWeb/SampleUserLibrary) | class library | A reusable domain library: VOs, aggregates (`User`, `Order`, `Product`, `OrderLine`), services, and DTOs. Pure ROP — no FluentValidation. |
+| [`Showcase`](./Showcase) | MVC + Minimal API over one banking domain | Aggregate + workflow + (controllers ‖ endpoints); full Error ADT walkthrough; `System.TimeProvider`; lifecycle state machine via `Trellis.Stateless`; integration tests with `WebApplicationFactory` for both hosting styles. **Start here.** |
 | [`ConditionalRequestExample`](./ConditionalRequestExample) | Minimal API + EF Sqlite | RFC 9110 conditional requests (`If-Match` / `If-None-Match`), strong ETags, and 304/412/428 mapping via `Trellis.Asp` extensions. |
 | [`SsoExample`](./SsoExample) | MVC | Two authentication modes wired side-by-side: `AddDevelopmentActorProvider()` (reads `X-Test-Actor` for local/dev) and `AddClaimsActorProvider()` (JWT bearer for production). |
 | [`EfCoreExample`](./EfCoreExample) | console | EF Core conventions and interceptors that Trellis layers on top of `DbContext`: VO ID conversions, automatic timestamps, value object composition. |
@@ -30,8 +28,8 @@ A curated set of runnable samples that demonstrate the canonical Trellis pattern
 ## Run a web sample
 
 ```bash
-dotnet run --project Showcase/src/Showcase.Api/Showcase.Api.csproj
-dotnet run --project SampleWeb/SampleMinimalApi/SampleMinimalApi.csproj
+dotnet run --project Showcase/src/Showcase.Mvc/Showcase.Mvc.csproj
+dotnet run --project Showcase/src/Showcase.MinimalApi/Showcase.MinimalApi.csproj
 dotnet run --project ConditionalRequestExample/ConditionalRequestExample.csproj
 dotnet run --project SsoExample/SsoExample.csproj --launch-profile Development
 ```

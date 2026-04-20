@@ -140,6 +140,29 @@ Full support for optional value object properties in DTOs:
 
 - `Maybe<T>` now requires `where T : notnull` — see [Migration Guide](MIGRATION_v3.md#maybe-notnull-constraint) for details
 
+#### Examples — Showcase consolidated; SampleWeb removed
+
+The Showcase sample now hosts the **same banking domain** twice — once as MVC controllers and once as Minimal API endpoint groups — so users can compare hosting styles over an identical contract. This replaces the previously incoherent setup where Showcase was banking and `SampleMinimalApi` was a different (users/products/orders) domain with no shared code.
+
+**New project layout:**
+
+```
+Examples/Showcase/
+├── api.http                                 Single .http file with @host toggle (works on both hosts)
+├── src/
+│   ├── Showcase.Domain/                     (unchanged) pure domain
+│   ├── Showcase.Application/                NEW — workflows, services, persistence, DTOs, seed
+│   ├── Showcase.Mvc/                        renamed from Showcase.Api — controllers + Program.cs
+│   └── Showcase.MinimalApi/                 NEW — endpoint groups + Program.cs
+└── tests/
+    ├── Showcase.Tests/                      (unchanged) domain + MVC integration tests
+    └── Showcase.MinimalApi.Tests/           NEW — mirror of MVC integration tests against Minimal API host
+```
+
+The Minimal API host adds **zero** new application code — same DTOs, repository, `BankingWorkflow`, and seed. The only delta is route mapping and `ToHttpResult*` vs `ToActionResult*` for Result→HTTP conversion. `Showcase.MinimalApi.Tests` runs the same six integration assertions as the MVC tests against the Minimal API factory and proves identical HTTP behaviour.
+
+**Removed:** the entire `Examples/SampleWeb/` folder (`SampleMinimalApi`, `SampleMinimalApi.Tests`, `SampleUserLibrary`, four stale top-level `.http` files). `Trellis.Benchmark` no longer references the deleted `SampleUserLibrary`; the two VOs the benchmarks needed are now inlined in `Trellis.Benchmark/BenchmarkValueObjects.cs`.
+
 #### Examples — Sample-perfection sweep (v2 Phase 1c PR2)
 
 The `Examples/` folder was rewritten end-to-end so every kept sample passes the v2 axiom scorecard (A1–A11). Samples are the source of truth that flows into the ASP template and from there into AI-generated code; imperfections at this layer compound, so the sweep was scored against an explicit set of rules — see [Examples README](Examples/README.md) for the full list.
