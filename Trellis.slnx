@@ -51,6 +51,8 @@
     <File Path="Examples/SampleWeb/MoneyApi.http" />
     <File Path="Examples/SampleWeb/OrderApi.http" />
     <File Path="Examples/SampleWeb/UserApi.http" />
+    <Project Path="Examples/SampleWeb/SampleMinimalApi/SampleMinimalApi.csproj" />
+    <Project Path="Examples/SampleWeb/SampleMinimalApi.Tests/SampleMinimalApi.Tests.csproj" />
     <Project Path="Examples/SampleWeb/SampleUserLibrary/SampleUserLibrary.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
