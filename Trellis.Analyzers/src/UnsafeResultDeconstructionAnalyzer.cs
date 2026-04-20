@@ -56,6 +56,8 @@ public sealed class UnsafeResultDeconstructionAnalyzer : DiagnosticAnalyzer
             .Where(id => id.SpanStart > assignment.Span.End && id.Identifier.Text == valueLocal.Name)
             .Where(id => SymbolEqualityComparer.Default.Equals(
                 context.SemanticModel.GetSymbolInfo(id).Symbol, valueLocal))
+            .Where(id => !IsInsideNameof(id))
+            .Where(id => !IsWritePosition(id))
             .ToList();
 
         if (valueReads.Count == 0)
@@ -72,6 +74,44 @@ public sealed class UnsafeResultDeconstructionAnalyzer : DiagnosticAnalyzer
                 return;
             }
         }
+    }
+
+    private static bool IsInsideNameof(SyntaxNode node)
+    {
+        for (var current = node.Parent; current is not null; current = current.Parent)
+        {
+            if (current is InvocationExpressionSyntax invocation &&
+                invocation.Expression is IdentifierNameSyntax id &&
+                id.Identifier.Text == "nameof")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsWritePosition(IdentifierNameSyntax id)
+    {
+        // Walk past member access / parenthesized so we find the immediate syntactic role.
+        SyntaxNode candidate = id;
+        while (candidate.Parent is ParenthesizedExpressionSyntax pe && pe.Expression == candidate)
+            candidate = pe;
+
+        var parent = candidate.Parent;
+
+        // Left-hand side of an assignment.
+        if (parent is AssignmentExpressionSyntax assign && assign.Left == candidate)
+            return true;
+
+        // out / ref / in argument position.
+        if (parent is ArgumentSyntax arg && arg.Expression == candidate &&
+            arg.RefKindKeyword.Kind() is SyntaxKind.OutKeyword or SyntaxKind.RefKeyword)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private readonly struct Slot

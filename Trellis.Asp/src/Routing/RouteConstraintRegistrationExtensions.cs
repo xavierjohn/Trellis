@@ -100,7 +100,11 @@ public static class RouteConstraintRegistrationExtensions
 
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Caller registers a known constraint type at compile time.")]
     private static void ConfigureSingle(RouteOptions options, string name, Type constraintType)
-        => options.ConstraintMap[name] = constraintType;
+    {
+        // Match the assembly-scanning variant: preserve any existing entry under the same name.
+        if (!options.ConstraintMap.ContainsKey(name))
+            options.ConstraintMap[name] = constraintType;
+    }
 
     [RequiresUnreferencedCode("Reflects over assembly types.")]
     [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Discovery is gated by RequiresUnreferencedCode on public entry point.")]
@@ -136,7 +140,37 @@ public static class RouteConstraintRegistrationExtensions
             }
         }
 
+        ThrowIfDuplicateConstraintNames(results);
         return results;
+    }
+
+    private static void ThrowIfDuplicateConstraintNames(List<(string Name, Type Type)> discoveredTypes)
+    {
+        var duplicates = discoveredTypes
+            .GroupBy(x => x.Name, StringComparer.Ordinal)
+            .Where(g => g.Select(x => x.Type).Distinct().Count() > 1)
+            .Select(g => new
+            {
+                Name = g.Key,
+                Types = g.Select(x => x.Type).Distinct()
+                    .OrderBy(t => t.FullName, StringComparer.Ordinal)
+                    .ToArray(),
+            })
+            .OrderBy(x => x.Name, StringComparer.Ordinal)
+            .ToArray();
+
+        if (duplicates.Length == 0)
+            return;
+
+        var details = string.Join(
+            "; ",
+            duplicates.Select(x => $"{x.Name}: {string.Join(", ", x.Types.Select(t => $"{t.FullName} ({t.Assembly.GetName().Name})"))}"));
+
+        throw new InvalidOperationException(
+            "Multiple Trellis value object types were discovered with the same route constraint name. " +
+            "Route constraints are registered by simple type name, so registration would be ambiguous. " +
+            "Resolve the duplicate names or stop scanning conflicting assemblies. " +
+            $"Conflicts: {details}");
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Discovery is gated by RequiresUnreferencedCode on public entry point.")]

@@ -106,7 +106,14 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
         try
         {
             if (primitiveType == typeof(string))
+            {
+                if (reader.TokenType == JsonTokenType.Null)
+                    throw new TrellisJsonValidationException(
+                        $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.");
+
                 return reader.GetString();
+            }
+
             if (primitiveType == typeof(decimal))
                 return reader.GetDecimal();
             if (primitiveType == typeof(int))
@@ -251,7 +258,10 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
         {
             var properties = type
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                .Where(p => p.GetMethod is not null)
+                .Where(p =>
+                    p.GetMethod is not null &&
+                    p.GetIndexParameters().Length == 0 &&
+                    (p.SetMethod is null || !p.SetMethod.IsPublic))
                 .OrderBy(p => p.MetadataToken)
                 .ToList();
 
