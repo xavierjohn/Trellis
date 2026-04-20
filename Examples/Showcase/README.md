@@ -1,7 +1,8 @@
 # Showcase
 
-End-to-end Trellis sample using a banking domain. Demonstrates idiomatic V6 `Error` ADT usage
-across a domain aggregate, an MVC HTTP API, and a unit + integration test suite.
+End-to-end Trellis sample using a banking domain. Demonstrates idiomatic use of
+the typed `Error` discriminated union across a domain aggregate, an MVC HTTP API,
+and a unit + integration test suite.
 
 ## What this teaches
 

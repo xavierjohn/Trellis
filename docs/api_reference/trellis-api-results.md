@@ -10,7 +10,7 @@ See also: [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.m
 
 ## Breaking changes from v1 (Phase 1a)
 
-Running list of v2 breaking changes in `Trellis.Results`. See `docs/adr/ADR-001-result-api-surface.md` for the full V6 design rationale.
+Running list of v2 breaking changes in `Trellis.Results`. See `docs/adr/ADR-001-result-api-surface.md` for the full design rationale.
 
 | Change | v1 | v2 | Migration |
 |---|---|---|---|
@@ -24,7 +24,7 @@ Running list of v2 breaking changes in `Trellis.Results`. See `docs/adr/ADR-001-
 | Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(new Error.InternalServerError(faultId) { Detail = ex.Message, Cause = ... })` or rely on `Result.Try` / `Result.TryAsync` for inline exception capture. |
 | Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
 | Non-generic `Result` for void flows | `Result<Unit>` | `Result` (non-generic struct) | `Result<Unit>` is still accepted for source compat, but new code should write `Result`. `Unit` is retained for tuple-result interop. |
-| `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, …). Closed via `private` constructor; no static factories. | Replace `Error.X("msg")` factories with `new Error.X(payload) { Detail = "msg" }`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.UnprocessableContent`, `Error.NotFound`. See "Error API (V6 closed ADT)" below. |
+| `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, …). Closed via `private` constructor; no static factories. | Replace `Error.X("msg")` factories with `new Error.X(payload) { Detail = "msg" }`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.UnprocessableContent`, `Error.NotFound`. See "Error Cases (closed ADT)" below. |
 | `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.UnprocessableContent uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
 | `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.UnprocessableContent.Fields` and `.Rules`. |
 | `Error.Instance` field | `error.Instance` (string-shaped HTTP vocabulary) | *(removed)* | The ASP wire layer synthesizes `ProblemDetails.Instance` from the request URL plus any `ResourceRef` carried by the typed payload. |
@@ -702,7 +702,7 @@ For tuple-enabled families, generated overloads cover the declared arity ranges 
 
 ---
 
-## Error Cases (V6 closed ADT)
+## Error Cases (closed ADT)
 
 | Case | Constructor | Default `Code` | HTTP Status |
 | --- | --- | --- | --- |

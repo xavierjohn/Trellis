@@ -176,14 +176,14 @@ For `Result<T>`, `Maybe<T>`, `Error`, and all ROP extension methods (`Bind`, `Ma
 
 For `Maybe<T>` usage in ASP.NET DTOs and EF Core, see `docs/api_reference/trellis-api-asp.md` and `docs/api_reference/trellis-api-efcore.md`.
 
-### Error API Discipline (V2 / V6 Closed ADT)
+### Error API Discipline (V2 Closed ADT)
 
 `Error` is a **closed discriminated union**: each HTTP-aligned case (`NotFound`, `Conflict`, `UnprocessableContent`, `Forbidden`, `InternalServerError`, …) is a `sealed record` nested inside the `Error` base record. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit. See `docs/adr/ADR-001-result-api-surface.md` for design rationale.
 
 **Construct errors with `new Error.X(...)`. There are no static factory helpers.**
 
 ```csharp
-// ✅ V2 — direct construction with typed payload
+// ✅ Direct construction with typed payload
 new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found" }
 new Error.Forbidden("only-creator-can-edit") { Detail = "Only the creator can edit." }
 new Error.Conflict("etag_mismatch") { Detail = "ETag does not match current version." }
@@ -192,7 +192,7 @@ new Error.UnprocessableContent(EquatableArray.Create(
     { Detail = "Due date must be in the future." }))
 new Error.InternalServerError(faultId: Guid.NewGuid().ToString("N")) { Detail = "Persisted to log; see faultId." }
 
-// ❌ V1 (removed) — do not write
+// ❌ Old factory style (removed) — do not write
 Error.NotFound("User not found")
 Error.Validation("Due date must be in the future.", "dueDate")
 Error.Forbidden("Only the creator can edit.")

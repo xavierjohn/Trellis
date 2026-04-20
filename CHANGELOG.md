@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-#### Trellis.Results — Error redesigned as closed ADT (V6)
+#### Trellis.Results — Error redesigned as closed ADT
 
 The `Error` type is now an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, `Error.Conflict`, `Error.Forbidden`, …). The base type has a `private` constructor so the catalog is closed at the language level, and every `switch` over an `Error` reference is exhaustive at compile time.
 
@@ -23,7 +23,7 @@ Key changes:
 - **Renamed wire identifiers.** Default `Code` values changed from `"validation.error"`/`"not.found.error"`/etc. to the IANA-aligned slugs `"unprocessable-content"`/`"not-found"`/etc.
 - **TRLS005 analyzer (`UseMatchErrorAnalyzer`) removed** — the C# compiler now provides exhaustiveness for free.
 
-Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full V2 patterns and [api-results.md](docs/api_reference/trellis-api-results.md) for the reference table.
+Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full patterns and [api-results.md](docs/api_reference/trellis-api-results.md) for the reference table.
 
 #### Trellis.Testing — Package Restructure
 
