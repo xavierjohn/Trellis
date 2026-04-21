@@ -89,6 +89,7 @@ Accept: application/json
 }
 
 ### Open account — invalid Money (negative amount fails JSON deserialization → 400)
+### @parity: status-only
 # @expect status: 400
 POST {{host}}/api/accounts
 Content-Type: application/json
