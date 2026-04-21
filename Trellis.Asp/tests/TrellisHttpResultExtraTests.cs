@@ -144,6 +144,24 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
+    public async Task Response_is_412_with_IfUnmodifiedSince_kind_when_resource_modified_after_header_value()
+    {
+        // Regression: previously the precondition kind was hard-coded to IfMatch even
+        // when the failure came from If-Unmodified-Since. ConditionalRequestEvaluatorTests
+        // covers the kind reporting; here we assert the end-to-end 412 status survives.
+        var ctx = NewContext();
+        ctx.Request.Method = "GET";
+        var when = new DateTimeOffset(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
+        ctx.Request.Headers["If-Unmodified-Since"] = when.AddDays(-1).ToString("R");
+        var r = Result.Ok(new Todo(1, "x", "abc", when));
+
+        await r.ToHttpResponse(TodoBody.From, o => o.WithLastModified(t => t.Modified).EvaluatePreconditions())
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(412);
+    }
+
+    [Fact]
     public async Task Response_is_304_when_If_Modified_Since_is_after_Last_Modified()
     {
         var ctx = NewContext();

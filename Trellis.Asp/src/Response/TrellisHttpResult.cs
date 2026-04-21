@@ -84,13 +84,13 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
                 var metadata = BuildMetadataForEvaluation(domain);
                 if (metadata is not null)
                 {
-                    var decision = ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata);
+                    var decision = ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata, out var failedKind);
                     if (decision == ConditionalDecision.NotModified)
                         return Results.StatusCode(StatusCodes.Status304NotModified).ExecuteAsync(httpContext);
 
                     if (decision == ConditionalDecision.PreconditionFailed)
                     {
-                        var pf = new Error.PreconditionFailed(new ResourceRef(typeof(TDomain).Name, null), PreconditionKind.IfMatch)
+                        var pf = new Error.PreconditionFailed(new ResourceRef(typeof(TDomain).Name, null), failedKind ?? PreconditionKind.IfMatch)
                         { Detail = "A conditional request header evaluated to false." };
 
                         return ResponseFailureWriter.WriteAsync(httpContext, pf, ResolveErrorStatusCode(pf, _options));
