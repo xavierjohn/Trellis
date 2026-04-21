@@ -27,8 +27,10 @@ internal static class PagedResponseBuilder
         string? nextHref = page.Next is { } next ? nextUrlBuilder(next, page.AppliedLimit) : null;
         string? prevHref = page.Previous is { } prev ? nextUrlBuilder(prev, page.AppliedLimit) : null;
 
+        var items = page.Items ?? (IReadOnlyList<T>)Array.Empty<T>();
+
         var envelope = new PagedResponse<TResponse>(
-            Items: page.Items.Select(map).ToList(),
+            Items: items.Select(map).ToList(),
             Next: page.Next is { } n && nextHref is not null ? new PageLink(n.Token, nextHref) : null,
             Previous: page.Previous is { } p && prevHref is not null ? new PageLink(p.Token, prevHref) : null,
             RequestedLimit: page.RequestedLimit,
