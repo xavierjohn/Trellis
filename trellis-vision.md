@@ -241,7 +241,7 @@ Full rule table: [Analyzer Documentation](https://xavierjohn.github.io/Trellis/a
 **Core packages:**
 | Package | Purpose |
 |---------|---------|
-| `Trellis.Results` | Result\<T\>, Maybe\<T\>, error types, pipeline operators |
+| `Trellis.Core` | Result\<T\>, Maybe\<T\>, error types, pipeline operators |
 | `Trellis.DomainDrivenDesign` | Aggregate, Entity, ValueObject, Domain Events, Specification |
 | `Trellis.Primitives` | 12 ready-to-use value objects + base types |
 | `Trellis.Primitives.Generator` | Source generator for value object boilerplate |
@@ -281,7 +281,7 @@ Semantic versioning. All packages versioned together. Migration guide with every
 
 ### Adoption Path
 
-1. Install `Trellis.Results` — start returning `Result<T>` from new methods
+1. Install `Trellis.Core` — start returning `Result<T>` from new methods
 2. Add `Trellis.Primitives` — introduce value objects for new domain concepts
 3. Add `Trellis.Asp` — use `ToActionResult()` on new endpoints
 4. Migrate gradually — convert existing endpoints one at a time

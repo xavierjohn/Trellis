@@ -10,7 +10,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 
 | When using... | Read first |
 |--------------|------------|
-| Result, Maybe, Bind, Map, Tap, Ensure, Combine, Check | `docs/api_reference/trellis-api-results.md` |
+| Result, Maybe, Bind, Map, Tap, Ensure, Combine, Check | `docs/api_reference/trellis-api-core.md` |
 | Aggregate, Entity, ValueObject, Specification | `docs/api_reference/trellis-api-ddd.md` |
 | RequiredString, RequiredGuid, Money, EmailAddress, etc. | `docs/api_reference/trellis-api-primitives.md` |
 | ToActionResult, ToHttpResult, ETag, Prefer, WriteOutcome | `docs/api_reference/trellis-api-asp.md` |
@@ -43,11 +43,11 @@ The single namespace for all structural types. These have zero dependencies beyo
 
 | From Package | Types in `Trellis` Namespace |
 |-------------|------------------------------|
-| Trellis.Results | `Result<T>`, `Maybe<T>`, `Error` |
+| Trellis.Core | `Result<T>`, `Maybe<T>`, `Error` |
 | Trellis.DomainDrivenDesign | `Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>` |
 | Trellis.Primitives | `RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum` base classes |
 
-For complete API details, see `docs/api_reference/trellis-api-results.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`.
+For complete API details, see `docs/api_reference/trellis-api-core.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`.
 
 ### `Trellis.Primitives` — Opinionated Ready-to-Use Value Objects
 
@@ -107,7 +107,7 @@ If it pulls in a **third-party or framework dependency** → its own namespace m
 
 For value object creation patterns (`TryCreate`/`Create`), async ROP chain patterns (`BindAsync`, `MapAsync`, `TapAsync`, etc.), and all extension method signatures and overloads, read the API reference files:
 
-- `docs/api_reference/trellis-api-results.md` — Result/Maybe operations, async patterns, mixing sync and async in chains
+- `docs/api_reference/trellis-api-core.md` — Result/Maybe operations, async patterns, mixing sync and async in chains
 - `docs/api_reference/trellis-api-primitives.md` — Value object creation, `[StringLength]`, culture-aware parsing
 - `docs/api_reference/trellis-api-ddd.md` — Aggregate, Entity, Specification patterns
 
@@ -172,7 +172,7 @@ When both `Task<T>` and `ValueTask<T>` overloads exist, use explicit constructor
 
 ## Railway Oriented Programming (ROP)
 
-For `Result<T>`, `Maybe<T>`, `Error`, and all ROP extension methods (`Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `Check`, `Match`, `RecoverOnFailure`, `ParallelAsync`, etc.), see `docs/api_reference/trellis-api-results.md`.
+For `Result<T>`, `Maybe<T>`, `Error`, and all ROP extension methods (`Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `Check`, `Match`, `RecoverOnFailure`, `ParallelAsync`, etc.), see `docs/api_reference/trellis-api-core.md`.
 
 For `Maybe<T>` usage in ASP.NET DTOs and EF Core, see `docs/api_reference/trellis-api-asp.md` and `docs/api_reference/trellis-api-efcore.md`.
 
@@ -241,7 +241,7 @@ Before considering work complete, verify:
 1. **Build succeeds** — `dotnet build` with zero errors and zero warnings
 2. **All tests pass** — `dotnet test` with zero failures
 3. **Documentation updated:**
-   - `docs/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-results.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`, etc.)
+   - `docs/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-core.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`, etc.)
    - `docs/api_reference/trellis-api-testing-reference.md` — if test helpers were added or changed
    - Package `README.md` — if the package's public surface changed
    - Docfx articles in `docs/docfx_project/articles/` — if relevant articles exist for the feature area
@@ -346,7 +346,7 @@ predicateInvoked.Should().BeFalse("predicate should not be invoked for failed re
 
 | Area | Source | Tests |
 |------|--------|-------|
-| Core ROP | `Trellis.Results/src/Result/Extensions/` | `Trellis.Results/tests/Results/Extensions/` |
+| Core ROP | `Trellis.Core/src/Result/Extensions/` | `Trellis.Core/tests/Results/Extensions/` |
 | Value Objects | `Trellis.Primitives/src/` | `Trellis.Primitives/tests/` |
 | DDD | `Trellis.DomainDrivenDesign/src/` | `Trellis.DomainDrivenDesign/tests/` |
 | Authorization | `Trellis.Authorization/src/` | `Trellis.Authorization/tests/` |
@@ -371,7 +371,7 @@ When adding or modifying a package, verify these documentation artifacts:
 | Article TOC | `docs/docfx_project/articles/toc.yml` | Add entry under the appropriate section (e.g., Integration Guides) |
 | `NUGET_README.md` | `Trellis.{Package}/NUGET_README.md` | Create or update — this is the NuGet.org package description |
 | `README.md` | `Trellis.{Package}/README.md` | Create or update — this is the GitHub-facing documentation |
-| `trellis-api-*.md` | `docs/api_reference/trellis-api-{library}.md` | Update the per-library AI API reference file (e.g., `trellis-api-results.md`, `trellis-api-efcore.md`) with any new or changed public types, methods, or extension methods — these documents are consumed by AI coding assistants |
+| `trellis-api-*.md` | `docs/api_reference/trellis-api-{library}.md` | Update the per-library AI API reference file (e.g., `trellis-api-core.md`, `trellis-api-efcore.md`) with any new or changed public types, methods, or extension methods — these documents are consumed by AI coding assistants |
 
 ```csharp
 /// <summary>
@@ -528,7 +528,7 @@ When running PowerShell commands in the terminal:
 
 ### `Trellis.Unit` vs `Mediator.Unit`
 
-Projects referencing both `Trellis.Results` and `Mediator` will encounter ambiguous `Unit` references. Both libraries define a `Unit` type.
+Projects referencing both `Trellis.Core` and `Mediator` will encounter ambiguous `Unit` references. Both libraries define a `Unit` type.
 
 **Workarounds:**
 

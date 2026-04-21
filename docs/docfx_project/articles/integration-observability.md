@@ -20,7 +20,7 @@ Trellis can emit spans from three useful places:
 | --- | --- | --- |
 | Mediator pipeline | `Trellis.Mediator` | command/query tracing |
 | Primitive value objects | `Trellis.Primitives` | validation and parsing boundaries |
-| Result operations | `Trellis.Results` | deep ROP debugging |
+| Result operations | `Trellis.Core` | deep ROP debugging |
 
 ```mermaid
 flowchart LR
@@ -60,7 +60,7 @@ builder.Services.AddOpenTelemetry()
 
 ## When to enable `AddResultsInstrumentation()`
 
-`AddResultsInstrumentation()` traces Railway-Oriented Programming operations from `Trellis.Results`.
+`AddResultsInstrumentation()` traces Railway-Oriented Programming operations from `Trellis.Core`.
 
 That is powerful, but noisy.
 

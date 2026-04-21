@@ -128,6 +128,6 @@ Result<string?> result = validator.ValidateToResult(alias, message: "Alias is re
 
 ## Cross-references
 
-- [trellis-api-results.md](trellis-api-results.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-asp.md](trellis-api-asp.md)
 - [trellis-api-mediator.md](trellis-api-mediator.md)

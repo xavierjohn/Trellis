@@ -27,7 +27,7 @@ That is good news: you usually do **not** need to rethink your domain model or r
 
 | Old package | New package |
 | --- | --- |
-| `FunctionalDdd.RailwayOrientedProgramming` | `Trellis.Results` |
+| `FunctionalDdd.RailwayOrientedProgramming` | `Trellis.Core` |
 | `FunctionalDdd.DomainDrivenDesign` | `Trellis.DomainDrivenDesign` |
 | `FunctionalDdd.PrimitiveValueObjects` | `Trellis.Primitives` |
 | `FunctionalDdd.PrimitiveValueObjectGenerator` | `Trellis.Primitives.Generator` |
@@ -62,7 +62,7 @@ If you centralize package versions in `Directory.Packages.props`, this is the fa
 
 ```xml
 <ItemGroup>
-  <PackageVersion Include="Trellis.Results" Version="3.x.x" />
+  <PackageVersion Include="Trellis.Core" Version="3.x.x" />
   <PackageVersion Include="Trellis.DomainDrivenDesign" Version="3.x.x" />
   <PackageVersion Include="Trellis.Asp" Version="3.x.x" />
   <PackageVersion Include="Trellis.Primitives" Version="3.x.x" />

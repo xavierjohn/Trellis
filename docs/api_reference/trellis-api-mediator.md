@@ -309,5 +309,5 @@ public sealed class SomeMessageInApplicationAssembly { }
 ## Cross-references
 
 - [trellis-api-authorization.md](trellis-api-authorization.md)
-- [trellis-api-results.md](trellis-api-results.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-asp.md](trellis-api-asp.md)

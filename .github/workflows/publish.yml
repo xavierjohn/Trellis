@@ -75,7 +75,7 @@ jobs:
           Copy-Item -Path $packageFile.FullName -Destination $dropDirectory -Force
         }
 
-        $packageVersion = (dotnet msbuild .\Trellis.Results\src\Trellis.Results.csproj --getProperty:PackageVersion).Trim()
+        $packageVersion = (dotnet msbuild .\Trellis.Core\src\Trellis.Core.csproj --getProperty:PackageVersion).Trim()
 
         sbom-tool generate `
           -b $dropDirectory `

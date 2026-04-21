@@ -562,6 +562,6 @@ services.AddDevelopmentActorProvider(options =>
 ## Cross-references
 
 - [trellis-api-mediator.md](trellis-api-mediator.md)
-- [trellis-api-results.md](trellis-api-results.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-asp.md](trellis-api-asp.md)
 - [trellis-api-testing-reference.md](trellis-api-testing-reference.md)

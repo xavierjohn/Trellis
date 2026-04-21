@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore.Generator.Tests;
+namespace Trellis.EntityFrameworkCore.Generator.Tests;
 
 using System.Globalization;
 using Microsoft.CodeAnalysis;
@@ -300,7 +300,7 @@ public class MaybePartialPropertyGeneratorTests
                 references.Add(MetadataReference.CreateFromFile(assembly.Location));
         }
 
-        // Ensure Trellis.Results is included (contains Maybe<T> in namespace Trellis)
+        // Ensure Trellis.Core is included (contains Maybe<T> in namespace Trellis)
         var trellisLocation = typeof(Maybe<>).Assembly.Location;
         if (!references.Any(r => r.Display?.Equals(trellisLocation, StringComparison.OrdinalIgnoreCase) == true))
             references.Add(MetadataReference.CreateFromFile(trellisLocation));

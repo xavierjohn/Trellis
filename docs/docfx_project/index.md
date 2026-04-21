@@ -90,7 +90,7 @@ public static Result<User> RegisterUser(
 Start with the packages most developers need first:
 
 ```bash
-dotnet add package Trellis.Results
+dotnet add package Trellis.Core
 dotnet add package Trellis.Primitives
 dotnet add package Trellis.Primitives.Generator
 dotnet add package Trellis.Analyzers

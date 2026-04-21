@@ -1,6 +1,6 @@
 # Clean Architecture with Trellis
 
-**Level:** Intermediate | **Packages:** `Trellis.DomainDrivenDesign`, `Trellis.Results`, `Trellis.Primitives`
+**Level:** Intermediate | **Packages:** `Trellis.DomainDrivenDesign`, `Trellis.Core`, `Trellis.Primitives`
 
 If your API starts as “just a few endpoints,” it is easy for validation, orchestration, persistence, and business rules to end up tangled together.
 
