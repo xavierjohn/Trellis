@@ -44,3 +44,5 @@
   href: TRLS021.md
 - name: TRLS022 - Wrong attribute namespace
   href: TRLS022.md
+- name: TRLS029 - Avoid default(Result/Maybe)
+  href: TRLS029.md

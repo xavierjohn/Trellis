@@ -114,6 +114,12 @@ None.
 
 Static factory and helper surface for `Result<TValue>` and the non-generic `Result` (success/failure for void flows).
 
+> **Default-state invariant (ADR-002 §3.5.1).** `default(Result)` represents a **failure** carrying the
+> shared `new Error.Unexpected("default_initialized")` sentinel — *not* success. This makes uninitialized
+> state a typed failure rather than a silent success that would hide a programming error. Always
+> construct via `Result.Ok()` or `Result.Fail(error)`. Analyzer **`TRLS029`** flags explicit
+> `default(Result)` at call sites.
+
 #### Properties
 
 None.
@@ -145,6 +151,13 @@ None.
 
 Represents either a successful `TValue` or a failure `Error`.
 
+> **Default-state invariant (ADR-002 §3.5.1).** `default(Result<T>)` represents a **failure** carrying
+> the shared `new Error.Unexpected("default_initialized")` sentinel — *not* success with `default(T)`.
+> All failure-facing APIs (`Error`, `TryGetError`, `Deconstruct`, `Equals`, `GetHashCode`, `ToString`,
+> `AsUnit`) route through this sentinel so that `default(Result<T>)` is observationally equivalent to
+> `Result.Fail<T>(new Error.Unexpected("default_initialized"))`. Always construct via `Result.Ok(value)`
+> or `Result.Fail<T>(error)`. Analyzer **`TRLS029`** flags explicit `default(Result<T>)` at call sites.
+
 #### Properties
 
 | Name | Type | Notes |
@@ -160,8 +173,9 @@ Represents either a successful `TValue` or a failure `Error`.
 | --- | --- |
 | `public static Result<TValue> CreateFailure(Error error)` | Implements `IFailureFactory<Result<TValue>>` |
 | `public bool TryGetValue(out TValue value)` | Non-throwing success extractor |
-| `public bool TryGetError(out Error error)` | Non-throwing failure extractor |
+| `public bool TryGetError(out Error? error)` | Non-throwing failure extractor; on `default(Result<T>)` returns `true` with the `Error.Unexpected` sentinel |
 | `public void Deconstruct(out bool isSuccess, out TValue? value, out Error? error)` | Deconstruction support |
+| `public Result AsUnit()` | Discards the success value, returning a non-generic `Result`. On a default-initialized failure, returns an explicit `Result.Fail(sentinel)` (never another `default`). |
 | `public bool Equals(Result<TValue> other)` | Value equality |
 | `public override bool Equals(object? obj)` | Object equality |
 | `public override int GetHashCode()` | Hash code |
@@ -254,6 +268,11 @@ MaybeInvariant.ExactlyOne(command.Email, command.Phone, "email", "phone");
 ### `public readonly struct Maybe<T> where T : notnull`
 
 Optional value container for domain optionality.
+
+> **Default-state invariant.** `default(Maybe<T>)` equals `Maybe<T>.None` (the type already uses an
+> `_isValueSet` discriminator). Although correct, prefer the explicit `Maybe<T>.None` for readability.
+> Analyzer **`TRLS029`** flags explicit `default(Maybe<T>)` at call sites and recommends `Maybe<T>.None`
+> instead.
 
 #### Properties
 
@@ -399,6 +418,7 @@ Eighteen nested `sealed record` cases under `Error`. Each case constructor is `i
 | `Error.PreconditionRequired` | `(PreconditionKind Condition)` | 428 | Missing concurrency token on PUT. |
 | `Error.TooManyRequests` | `(RetryAfterValue? RetryAfter = null)` | 429 | |
 | `Error.InternalServerError` | `(string FaultId)` | 500 | `Code` returns `FaultId`. **Never holds a live `Exception`**; the `FaultId` indexes into the logging/telemetry layer. |
+| `Error.Unexpected` | `(string ReasonCode)` | 500 | "Shouldn't happen" condition: default-initialized `Result`/`Result<T>` (per §3.5.1), exhausted match arms, internal invariant violations. `Code` returns `ReasonCode` (e.g. `"default_initialized"`). Distinct from `InternalServerError`: no opaque per-incident `FaultId`, and the ASP boundary does **not** attach a `faultId` extension. |
 | `Error.NotImplemented` | `(string Feature)` | 501 | `Code` returns `Feature`. |
 | `Error.ServiceUnavailable` | `(RetryAfterValue? RetryAfter = null)` | 503 | |
 | `Error.Aggregate` | `(EquatableArray<Error> Errors)` | 207 / `extensions.errors` | Composition node. **Disallows `Cause`** (pure composition). Auto-flattens nested `Aggregate` instances at construction. |
@@ -731,6 +751,7 @@ For tuple-enabled families, generated overloads cover the declared arity ranges 
 | `Error.PreconditionRequired` | `(PreconditionKind Condition)` | `precondition-required` | 428 |
 | `Error.TooManyRequests` | `(RetryAfterValue? RetryAfter = null)` | `too-many-requests` | 429 |
 | `Error.InternalServerError` | `(string FaultId)` | `FaultId` | 500 |
+| `Error.Unexpected` | `(string ReasonCode)` | `ReasonCode` | 500 |
 | `Error.NotImplemented` | `(string Feature)` | `Feature` | 501 |
 | `Error.ServiceUnavailable` | `(RetryAfterValue? RetryAfter = null)` | `service-unavailable` | 503 |
 | `Error.Aggregate` | `(EquatableArray<Error> Errors)` | `aggregate` | depends on contained errors; serialized via `ProblemDetails.Extensions["errors"]` (RFC 9457) |

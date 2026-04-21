@@ -32,6 +32,7 @@
 | `TRLS022` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
 | `TRLS024` | Warning | Unsafe Result deconstruction | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
 | `TRLS025` | Warning | Unsafe property pattern over Result.Value | Property patterns such as `result is { Value: ... }` or `result switch { { Value: var v } => ... }` evaluate `Result<T>.Value`, which throws `InvalidOperationException` on failure results. Pattern-match on `IsSuccess`/`IsFailure` first, or use `Match` / explicit guard. |
+| `TRLS029` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | Per ADR-002 §3.5.1, `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", "TRLS029")]` or `#pragma warning disable TRLS029` for sanctioned sentinel/test-helper sites. |
 
 ## Analyzer classes
 
@@ -229,6 +230,20 @@ result.Match(
 - Triggers on `is`-patterns, `switch` statements, and `switch` expressions.
 - Property patterns evaluate `Result<T>.Value`, which throws `InvalidOperationException` on failure results — `{ Value: ... }` against a failure result throws at runtime instead of safely matching. Use a discriminator (`IsSuccess`/`IsFailure`) before inspecting `Value`, or use `TryGetValue`/`Match`.
 - No code fix.
+
+#### `DefaultResultOrMaybeAnalyzer` — `TRLS029`
+- Flags explicit `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` expressions at use sites.
+- Uses `IDefaultValueOperation` (operation-based, not syntax-based) so it covers all surface forms equivalently:
+  - `default(T)` typeof-style: `return default(Result<int>);`
+  - Target-typed `default`: `return default;` in a `Result<T>`-returning method, parameter defaults, etc.
+  - Null-suppressed `default!`: `return default!;` is treated identically — the null-suppressing operator does not change the underlying value.
+- Per ADR-002 §3.5.1, `default(Result)`/`default(Result<T>)` represent typed failures carrying the shared `new Error.Unexpected("default_initialized")` sentinel — *never* silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` (semantically correct) but the explicit literal obscures intent.
+- Suggested replacements:
+  - `Result` → `Result.Ok()` or `Result.Fail(error)`
+  - `Result<T>` → `Result.Ok(value)` or `Result.Fail<T>(error)`
+  - `Maybe<T>` → `Maybe<T>.None` or `Maybe.From(value)`
+- For sanctioned sentinel/test-helper sites, suppress with `[SuppressMessage("Trellis", "TRLS029", Justification = "...")]` on the enclosing member or `#pragma warning disable TRLS029` around the offending span.
+- No code fix (the appropriate replacement depends on intent — success vs. failure for `Result`, value vs. None for `Maybe`).
 
 ## Code fix providers
 

@@ -8,9 +8,18 @@ using System.Diagnostics;
 /// </summary>
 /// <typeparam name="TValue">Success value type.</typeparam>
 /// <remarks>
+/// <para>
 /// Result is the core type for Railway Oriented Programming. It forces explicit handling of both
 /// success and failure cases, making error handling visible in the type system. Use Result when
 /// an operation can fail in a predictable way that should be handled by the caller.
+/// </para>
+/// <para>
+/// Per ADR-002 §3.5.1, <c>default(Result&lt;T&gt;)</c> represents a <em>failure</em> carrying a sentinel
+/// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c>. This makes
+/// uninitialized state a typed failure rather than a silent success that would hide a programming error.
+/// Always construct via <see cref="Result.Ok{T}(T)"/> or <see cref="Result.Fail{T}(Error)"/>; analyzer
+/// <c>TRLS029</c> flags explicit <c>default(Result&lt;T&gt;)</c> at call sites.
+/// </para>
 /// </remarks>
 /// <example>
 /// <code>
@@ -34,7 +43,7 @@ using System.Diagnostics;
 ///     .Map(user => user.Name);
 /// </code>
 /// </example>
-[DebuggerDisplay("{IsSuccess ? \"Success\" : \"Failure\"}, Value = {(_value is null ? \"<null>\" : _value)}, Error = {(_error is null ? \"<none>\" : _error.Code)}")]
+[DebuggerDisplay("{IsSuccess ? \"Success\" : \"Failure\"}, Value = {(_value is null ? \"<null>\" : _value)}, Error = {(IsSuccess ? \"<none>\" : EffectiveError().Code)}")]
 [DebuggerTypeProxy(typeof(ResultDebugView<>))]
 public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValue>>, IFailureFactory<Result<TValue>>
 {
@@ -43,14 +52,17 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// </summary>
     /// <value>True if successful; otherwise false.</value>
     [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(false, nameof(Error))]
-    public bool IsSuccess => !IsFailure;
+    public bool IsSuccess => _isOk;
 
     /// <summary>
     /// True when the result represents failure.
     /// </summary>
     /// <value>True if failed; otherwise false.</value>
+    /// <remarks>
+    /// <c>default(Result&lt;T&gt;).IsFailure</c> is <see langword="true"/> per ADR-002 §3.5.1.
+    /// </remarks>
     [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
-    public bool IsFailure { get; }
+    public bool IsFailure => !_isOk;
 
     /// <summary>
     /// Creates a failure result wrapping the given error.
@@ -76,7 +88,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
                 throw new ArgumentException("If 'isFailure' is false, 'error' must be null.", nameof(error));
         }
 
-        IsFailure = isFailure;
+        _isOk = !isFailure;
         _error = error;
         _value = ok;
 
@@ -91,8 +103,15 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
 
     internal void LogActivityStatus() => Activity.Current?.SetStatus(IsFailure ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
 
+    private readonly bool _isOk;
     private readonly TValue? _value;
     private readonly Error? _error;
+
+    /// <summary>
+    /// Returns the failure-side error, routing default-initialized failures through the shared
+    /// <see cref="ResultDefaults.Sentinel"/>. Caller is responsible for checking <see cref="IsFailure"/> first.
+    /// </summary>
+    private Error EffectiveError() => _error ?? ResultDefaults.Sentinel;
 
     // ------------- Public accessors -------------
 
@@ -117,7 +136,9 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <remarks>
     /// Reading this property never throws. The nullable return type is the discriminator: a non-null
     /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
-    /// Pattern-match on the value to handle individual error cases.
+    /// For <c>default(Result&lt;T&gt;)</c>, returns the shared <see cref="Trellis.Error.Unexpected"/>
+    /// sentinel (per ADR-002 §3.5.1) so default-initialized failures are observationally equivalent to
+    /// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default_initialized"))</c>.
     /// </remarks>
     /// <example>
     /// <code>
@@ -129,7 +150,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     ///     };
     /// </code>
     /// </example>
-    public Error? Error => _error;
+    public Error? Error => _isOk ? null : EffectiveError();
 
     // ------------- Convenience / ergonomic APIs ------------
 
@@ -161,8 +182,14 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <returns><see langword="true"/> if the result is a failure; otherwise <see langword="false"/>.</returns>
     public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Error? error)
     {
-        error = _error;
-        return error is not null;
+        if (_isOk)
+        {
+            error = null;
+            return false;
+        }
+
+        error = EffectiveError();
+        return true;
     }
 
     /// <summary>
@@ -184,7 +211,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     {
         isSuccess = IsSuccess;
         value = _value;
-        error = _error;
+        error = _isOk ? null : EffectiveError();
     }
 
     // ------------- Equality & hashing -------------
@@ -196,12 +223,15 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <returns>True if the specified result is equal to the current result; otherwise false.</returns>
     /// <remarks>
     /// Two results are equal if they have the same success/failure state and equal values/errors.
+    /// Default-initialized failures use the shared sentinel <see cref="Trellis.Error.Unexpected"/>
+    /// per ADR-002 §3.5.1, so two <c>default(Result&lt;T&gt;)</c> values are equal, and a default
+    /// equals an explicit <c>Result.Fail&lt;T&gt;(...)</c> with the same sentinel.
     /// </remarks>
     public bool Equals(Result<TValue> other)
     {
-        if (IsFailure != other.IsFailure) return false;
-        if (IsFailure) return _error!.Equals(other._error);
-        return EqualityComparer<TValue>.Default.Equals(_value, other._value);
+        if (_isOk != other._isOk) return false;
+        if (_isOk) return EqualityComparer<TValue>.Default.Equals(_value, other._value);
+        return EffectiveError().Equals(other.EffectiveError());
     }
 
     /// <summary>
@@ -216,9 +246,9 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// </summary>
     /// <returns>A hash code for the current result.</returns>
     public override int GetHashCode() =>
-        IsFailure
-            ? HashCode.Combine(true, _error)
-            : HashCode.Combine(false, _value);
+        _isOk
+            ? HashCode.Combine(false, _value)
+            : HashCode.Combine(true, EffectiveError());
 
     /// <summary>
     /// Determines whether two results are equal.
@@ -243,17 +273,21 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <remarks>
     /// Use <see cref="AsUnit"/> when a pipeline returns a value but the next step only cares about success/failure
     /// (e.g., bridging a value-producing operation into a void/Unit-shaped consumer). Replaces the v1 idiom
-    /// <c>result.Map(_ =&gt; Unit.Default)</c> / <c>Result&lt;Unit&gt;</c>.
+    /// <c>result.Map(_ =&gt; Unit.Default)</c> / <c>Result&lt;Unit&gt;</c>. For default-initialized failures
+    /// the returned non-generic <see cref="Result"/> is constructed via <see cref="Result.Fail(Error)"/> with
+    /// the shared sentinel — never returns <c>default(Result)</c>.
     /// </remarks>
     /// <returns>A non-generic <see cref="Result"/> mirroring this result's success/failure state.</returns>
-    public Result AsUnit() => IsFailure ? Result.Fail(_error!) : Result.Ok();
+    public Result AsUnit() => _isOk ? Result.Ok() : Result.Fail(EffectiveError());
 
     /// <summary>
     /// Returns a string representation of the result.
     /// </summary>
     /// <returns>A string in the format "Success(value)" or "Failure(ErrorCode: detail)".</returns>
-    public override string ToString() =>
-        _error is { } error
-            ? $"Failure({error.Code}: {error.Detail})"
-            : $"Success({(_value is null ? "<null>" : _value)})";
+    public override string ToString()
+    {
+        if (_isOk) return $"Success({(_value is null ? "<null>" : _value)})";
+        var error = EffectiveError();
+        return $"Failure({error.Code}: {error.Detail})";
+    }
 }

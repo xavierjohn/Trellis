@@ -16,7 +16,7 @@ using Trellis;
 ///         <term>Error Type</term>
 ///         <description>Default HTTP Status</description>
 ///     </listheader>
-///     <item><term><see cref="Error.UnprocessableContent"/></term><description>400 Bad Request</description></item>
+///     <item><term><see cref="Error.UnprocessableContent"/></term><description>422 Unprocessable Entity</description></item>
 ///     <item><term><see cref="Error.BadRequest"/></term><description>400 Bad Request</description></item>
 ///     <item><term><see cref="Error.Unauthorized"/></term><description>401 Unauthorized</description></item>
 ///     <item><term><see cref="Error.Forbidden"/></term><description>403 Forbidden</description></item>
@@ -24,9 +24,9 @@ using Trellis;
 ///     <item><term><see cref="Error.Conflict"/></term><description>409 Conflict</description></item>
 ///     <item><term><see cref="Error.PreconditionFailed"/></term><description>412 Precondition Failed</description></item>
 ///     <item><term><see cref="Error.PreconditionRequired"/></term><description>428 Precondition Required</description></item>
-///     <item><term><see cref="Error.Conflict"/></term><description>422 Unprocessable Entity</description></item>
 ///     <item><term><see cref="Error.TooManyRequests"/></term><description>429 Too Many Requests</description></item>
 ///     <item><term><see cref="Error.InternalServerError"/></term><description>500 Internal Server Error</description></item>
+///     <item><term><see cref="Error.Unexpected"/></term><description>500 Internal Server Error</description></item>
 ///     <item><term><see cref="Error.ServiceUnavailable"/></term><description>503 Service Unavailable</description></item>
 /// </list>
 /// </para>
@@ -79,6 +79,7 @@ public sealed class TrellisAspOptions
         [typeof(Error.PreconditionRequired)] = StatusCodes.Status428PreconditionRequired,
         [typeof(Error.TooManyRequests)] = StatusCodes.Status429TooManyRequests,
         [typeof(Error.InternalServerError)] = StatusCodes.Status500InternalServerError,
+        [typeof(Error.Unexpected)] = StatusCodes.Status500InternalServerError,
         [typeof(Error.NotImplemented)] = StatusCodes.Status501NotImplemented,
         [typeof(Error.ServiceUnavailable)] = StatusCodes.Status503ServiceUnavailable,
     };
