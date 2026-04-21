@@ -3,6 +3,7 @@ namespace Trellis.Testing.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 /// <summary>
 /// Mutable state shared across a sequence of HTTP file requests. Captures each
@@ -21,21 +22,21 @@ public sealed class ScenarioContext
     public void Record(string name, int status, IReadOnlyDictionary<string, string> headers, string? body)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
-        JsonDocument? doc = null;
+        JsonNode? node = null;
         if (!string.IsNullOrWhiteSpace(body))
         {
             try
             {
-                doc = JsonDocument.Parse(body);
+                node = JsonNode.Parse(body);
             }
             catch (JsonException)
             {
                 // Not JSON — substitution can still use headers and raw body.
-                doc = null;
+                node = null;
             }
         }
 
-        _named[name] = new NamedResponse(status, headers, body, doc);
+        _named[name] = new NamedResponse(status, headers, body, node);
     }
 
     /// <summary>
@@ -111,21 +112,21 @@ public sealed class ScenarioContext
                 return false;
             }
 
-            var current = response.Json.RootElement;
+            var current = response.Json;
             for (int i = 3; i < parts.Length; i++)
             {
-                if (current.ValueKind != JsonValueKind.Object)
+                if (current is not JsonObject obj)
                 {
                     return false;
                 }
 
-                if (!TryGetPropertyCaseInsensitive(current, parts[i], out current))
+                if (!TryGetPropertyCaseInsensitive(obj, parts[i], out current!))
                 {
                     return false;
                 }
             }
 
-            value = JsonElementToString(current);
+            value = JsonNodeToString(current);
             return true;
         }
 
@@ -138,39 +139,46 @@ public sealed class ScenarioContext
         return false;
     }
 
-    private static bool TryGetPropertyCaseInsensitive(JsonElement obj, string name, out JsonElement result)
+    private static bool TryGetPropertyCaseInsensitive(JsonObject obj, string name, out JsonNode? result)
     {
-        if (obj.TryGetProperty(name, out result))
+        if (obj.TryGetPropertyValue(name, out result))
         {
             return true;
         }
 
-        foreach (var prop in obj.EnumerateObject())
+        foreach (var prop in obj)
         {
-            if (string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(prop.Key, name, StringComparison.OrdinalIgnoreCase))
             {
                 result = prop.Value;
                 return true;
             }
         }
 
-        result = default;
+        result = null;
         return false;
     }
 
-    private static string JsonElementToString(JsonElement e) => e.ValueKind switch
+    private static string JsonNodeToString(JsonNode? node)
     {
-        JsonValueKind.String => e.GetString() ?? string.Empty,
-        JsonValueKind.Number => e.GetRawText(),
-        JsonValueKind.True => "true",
-        JsonValueKind.False => "false",
-        JsonValueKind.Null => string.Empty,
-        _ => e.GetRawText(),
-    };
+        if (node is null)
+            return string.Empty;
+
+        if (node is JsonValue value)
+        {
+            if (value.TryGetValue<string>(out var s))
+                return s ?? string.Empty;
+            if (value.TryGetValue<bool>(out var b))
+                return b ? "true" : "false";
+            return value.ToJsonString();
+        }
+
+        return node.ToJsonString();
+    }
 
     private sealed record NamedResponse(
         int Status,
         IReadOnlyDictionary<string, string> Headers,
         string? Body,
-        JsonDocument? Json);
+        JsonNode? Json);
 }

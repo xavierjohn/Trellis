@@ -207,4 +207,20 @@ public class ScenarioContextTests
         ctx.TryResolve("x.response.body.a", out var v).Should().BeTrue();
         v.Should().Be("2");
     }
+
+    [Fact]
+    public void Record_repeated_overwrites_do_not_leak_resources_or_corrupt_state()
+    {
+        // Regression: previously each Record stored a JsonDocument that was never
+        // disposed and was discarded on overwrite. The captured JSON state must
+        // remain usable across many overwrites without throwing.
+        var ctx = new ScenarioContext();
+        for (int i = 0; i < 1000; i++)
+        {
+            ctx.Record("x", 200, new Dictionary<string, string>(), $"{{\"n\":{i}}}");
+        }
+
+        ctx.TryResolve("x.response.body.n", out var v).Should().BeTrue();
+        v.Should().Be("999");
+    }
 }
