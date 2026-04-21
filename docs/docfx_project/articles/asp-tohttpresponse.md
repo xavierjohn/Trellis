@@ -83,9 +83,16 @@ result.ToHttpResponse<TodoItem, TodoDto>(opts => opts.WithBody(t => TodoDto.From
 
 ## Error mapping
 
-Default mapping comes from `TrellisAspOptions.Current`. Override per call:
+Default mapping is configured at startup with `AddTrellisAsp`. Override per call:
 
 ```csharp
+// Startup — configure global defaults:
+builder.Services.AddTrellisAsp(options =>
+{
+    options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+});
+
+// Per call — override for a single endpoint:
 opts.WithErrorMapping<Error.NotFound>(StatusCodes.Status410Gone);
 ```
 
@@ -110,8 +117,8 @@ the same `IResult` you would use in Minimal API.
 The previous extension classes
 (`HttpResultExtensions`, `HttpResultExtensionsAsync`, `ActionResultExtensions`,
 `ActionResultExtensionsAsync`, `WriteOutcomeExtensions`,
-`PageHttpResultExtensions`, `PageActionResultExtensions`) are now marked
-`[Obsolete]` and will be removed in a future major. Migrate as follows:
+`PageHttpResultExtensions`, `PageActionResultExtensions`) have been **deleted**
+in v3. Migrate as follows:
 
 | Old                                                | New                                                              |
 |----------------------------------------------------|------------------------------------------------------------------|
@@ -133,5 +140,6 @@ The previous extension classes
   `var http = (await result).ToHttpResponse(); await http.ExecuteAsync(httpContext);`
 - **MVC formatter bypass.** `ToHttpResponse` writes responses through the
   Minimal API `Results.*` infrastructure, bypassing MVC output formatters.
-  If you depend on a custom MVC formatter (e.g. XML), keep using the legacy
-  `ToActionResult` for those endpoints until the formatter is migrated.
+  If an endpoint depends on a custom MVC formatter (e.g. XML), return an MVC
+  `ActionResult` / `ObjectResult` directly from the controller for that
+  endpoint and use `ToHttpResponse().AsActionResult<T>()` for the rest.
