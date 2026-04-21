@@ -43,7 +43,8 @@ public static class ModelConfigurationBuilderExtensions
         var coreAssembly = typeof(RequiredEnum<>).Assembly;
         var primitivesAssembly = typeof(EmailAddress).Assembly;
         var allAssemblies = new HashSet<Assembly>(assemblies) { coreAssembly, primitivesAssembly };
-        var compositeTypes = new HashSet<Type>();
+        var scalars = new List<(Type ClrType, Type ProviderType)>();
+        var composites = new HashSet<Type>();
 
         foreach (var assembly in allAssemblies)
         {
@@ -54,20 +55,63 @@ public static class ModelConfigurationBuilderExtensions
 
                 var valueObject = TrellisTypeScanner.FindValueObject(type);
                 if (valueObject is not null)
-                {
-                    var converterType = typeof(TrellisScalarConverter<,>)
-                        .MakeGenericType(type, valueObject.Value.ProviderType);
-                    configurationBuilder.Properties(type).HaveConversion(converterType);
-                }
+                    scalars.Add((type, valueObject.Value.ProviderType));
                 else if (TrellisTypeScanner.IsCompositeValueObject(type))
-                {
-                    compositeTypes.Add(type);
-                }
+                    composites.Add(type);
             }
         }
 
+        return configurationBuilder.ApplyTrellisConventionsCore(scalars, composites);
+    }
+
+    /// <summary>
+    /// Low-level convention-registration helper used by both the reflection-based
+    /// <see cref="ApplyTrellisConventions(ModelConfigurationBuilder, Assembly[])"/> overload
+    /// and the source-generated <c>ApplyTrellisConventionsFor&lt;TContext&gt;</c> entry point.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Most users should call <see cref="ApplyTrellisConventions(ModelConfigurationBuilder, Assembly[])"/>
+    /// or the generated <c>ApplyTrellisConventionsFor&lt;TContext&gt;</c> extension instead. This method
+    /// is exposed for source generators that have already classified Trellis value object types at
+    /// compile time.
+    /// </para>
+    /// <para>
+    /// Registers a <see cref="TrellisScalarConverter{TSelf, T}"/> for each scalar entry, then adds the
+    /// fixed Trellis conventions (<c>MaybeConvention</c>, <c>CompositeValueObjectConvention</c>,
+    /// <c>MoneyConvention</c>, <c>AggregateETagConvention</c>, <c>AggregateTransientPropertyConvention</c>).
+    /// </para>
+    /// </remarks>
+    /// <param name="configurationBuilder">The model configuration builder.</param>
+    /// <param name="scalars">
+    /// Scalar Trellis value object types, each paired with the EF Core provider primitive type that
+    /// the converter should round-trip to (e.g. <c>(typeof(CustomerId), typeof(Guid))</c>).
+    /// </param>
+    /// <param name="composites">
+    /// Composite (non-scalar) Trellis <c>ValueObject</c> types to register with
+    /// <c>CompositeValueObjectConvention</c>.
+    /// </param>
+    /// <returns>The same <see cref="ModelConfigurationBuilder"/> for chaining.</returns>
+    public static ModelConfigurationBuilder ApplyTrellisConventionsCore(
+        this ModelConfigurationBuilder configurationBuilder,
+        IEnumerable<(Type ClrType, Type ProviderType)> scalars,
+        IEnumerable<Type> composites)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        ArgumentNullException.ThrowIfNull(scalars);
+        ArgumentNullException.ThrowIfNull(composites);
+
+        foreach (var (clrType, providerType) in scalars)
+        {
+            ArgumentNullException.ThrowIfNull(clrType, nameof(scalars));
+            ArgumentNullException.ThrowIfNull(providerType, nameof(scalars));
+            var converterType = typeof(TrellisScalarConverter<,>).MakeGenericType(clrType, providerType);
+            configurationBuilder.Properties(clrType).HaveConversion(converterType);
+        }
+
+        var compositeSet = composites as HashSet<Type> ?? new HashSet<Type>(composites);
         configurationBuilder.Conventions.Add(static _ => new MaybeConvention());
-        configurationBuilder.Conventions.Add(_ => new CompositeValueObjectConvention(compositeTypes));
+        configurationBuilder.Conventions.Add(_ => new CompositeValueObjectConvention(compositeSet));
         configurationBuilder.Conventions.Add(static _ => new MoneyConvention());
         configurationBuilder.Conventions.Add(static _ => new AggregateETagConvention());
         configurationBuilder.Conventions.Add(static _ => new AggregateTransientPropertyConvention());

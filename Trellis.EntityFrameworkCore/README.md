@@ -18,6 +18,9 @@ using Trellis.EntityFrameworkCore;
 protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
     configurationBuilder.ApplyTrellisConventions(typeof(AppDbContext).Assembly);
 
+// AOT-friendly alternative — generated at compile time, no reflection scan:
+//   configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
+
 Maybe<Customer> customer = await dbContext.Customers.FirstOrDefaultMaybeAsync(cancellationToken);
 Result<int> saved = await dbContext.SaveChangesResultAsync(cancellationToken);
 ```
