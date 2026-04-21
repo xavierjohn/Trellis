@@ -501,3 +501,26 @@ public record RegisterUserDto
 - [ ] Commit changes with message: "Migrate to Trellis v3.0"
 
 **Estimated migration time:** 5-15 minutes for most projects (depending on size)
+
+---
+
+## Trellis.Asp v3 - legacy response verbs removed
+
+As part of Phase 3 of the v2 redesign, the seven extension classes listed below (previously marked `[Obsolete]`) have been **deleted**. Code that still calls any of them will not compile against v3.
+
+| Removed verb | Replacement |
+|--------------|-------------|
+| `result.ToActionResult(controller)` (MVC) | `result.ToHttpResponse(...).AsActionResult<T>()` |
+| `result.ToHttpResult(options)` (Minimal API) | `result.ToHttpResponse(configure)` |
+| `result.ToCreatedAtActionResult(...)` | `result.ToHttpResponse(body, opts => opts.CreatedAtAction(...))` |
+| `result.ToCreatedAtRouteHttpResult(...)` | `result.ToHttpResponse(body, opts => opts.CreatedAtRoute(...))` |
+| `result.ToCreatedHttpResult(httpContext, locationFn, metadataSelector, map)` | `result.ToHttpResponse(map, opts => opts.Created(locationFn).WithETag(...))` |
+| `result.ToUpdatedActionResult / ToUpdatedHttpResult` | `result.ToHttpResponse(...)` with `WriteOutcome<T>.Updated` (Prefer handling is built-in) |
+| `result.ToPagedActionResult / ToPagedHttpResult` | `result.ToHttpResponse(nextUrlBuilder, body, configure)` |
+| `outcome.ToActionResult / ToHttpResult` (`WriteOutcome<T>`) | Return `Result<WriteOutcome<T>>` from workflows; call `.ToHttpResponse(configure)` |
+
+**Removed classes:** `ActionResultExtensions`, `ActionResultExtensionsAsync`, `HttpResultExtensions`, `HttpResultExtensionsAsync`, `PageActionResultExtensions`, `PageHttpResultExtensions`, `WriteOutcomeExtensions`.
+
+**Kept (not obsolete):** `OptionalETagAsync` / `RequireETagAsync` (`Result<T>` pipeline operators in `Trellis.Core`), `EntityTagValue`, `RepresentationMetadata`, `WriteOutcome<T>`, `PagedResponse<T>` / `PageLink` (moved alongside `PagedResponseBuilder`).
+
+See [`docs/docfx_project/articles/asp-tohttpresponse.md`](docs/docfx_project/articles/asp-tohttpresponse.md) for canonical examples of every pattern.

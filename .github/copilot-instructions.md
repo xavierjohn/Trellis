@@ -26,7 +26,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 | Result, Maybe, Bind, Map, Tap, Ensure, Combine, Check | `docs/api_reference/trellis-api-core.md` |
 | Aggregate, Entity, ValueObject, Specification | `docs/api_reference/trellis-api-core.md` |
 | RequiredString, RequiredGuid, Money, EmailAddress, etc. | `docs/api_reference/trellis-api-primitives.md` |
-| ToActionResult, ToHttpResult, ETag, Prefer, WriteOutcome | `docs/api_reference/trellis-api-asp.md` |
+| ToHttpResponse, ETag, Prefer, WriteOutcome | `docs/api_reference/trellis-api-asp.md` |
 | EF Core integration | `docs/api_reference/trellis-api-efcore.md` |
 | Actor, IActorProvider, IAuthorize | `docs/api_reference/trellis-api-authorization.md` |
 | FluentValidation integration | `docs/api_reference/trellis-api-fluentvalidation.md` |
@@ -112,7 +112,7 @@ If it pulls in a **third-party or framework dependency** → its own namespace m
 ### Do NOT
 
 - Do NOT create one namespace per package (e.g., `Trellis.RailwayOrientedProgramming`). Core types share `Trellis`.
-- Do NOT put `ToMinimalApiResult` or `ToActionResult` in the `Trellis` namespace. They depend on ASP.NET Core and belong in `Trellis.Asp`.
+- Do NOT put `ToHttpResponse` or `AsActionResult<T>` in the `Trellis` namespace. They depend on ASP.NET Core and belong in `Trellis.Asp`.
 - Do NOT put ready-to-use value objects like `EmailAddress` in the `Trellis` namespace. They belong in `Trellis.Primitives` to avoid collision.
 
 ## Value Object and ROP API Usage

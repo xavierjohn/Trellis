@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+#### Trellis.Asp — legacy response verbs removed (Phase 3 cleanup)
+
+The seven extension classes deprecated by Phase 3 of the v2 redesign have been deleted. The single supported response API is now `result.ToHttpResponse(...)` / `result.ToHttpResponseAsync(...)` (returns `IResult`), with `.AsActionResult<T>()` / `.AsActionResultAsync<T>()` adapters for MVC.
+
+Removed types:
+- `ActionResultExtensions`, `ActionResultExtensionsAsync` (MVC `ToActionResult`, `ToCreatedAtActionResult`, metadata selector overloads)
+- `HttpResultExtensions`, `HttpResultExtensionsAsync` (Minimal API `ToHttpResult`, `ToCreatedAtRouteHttpResult`, `ToCreatedHttpResult`, `ToUpdatedHttpResult`, range overloads)
+- `PageActionResultExtensions` (`ToPagedActionResult`)
+- `PageHttpResultExtensions` (`ToPagedHttpResult`)
+- `WriteOutcomeExtensions` (`WriteOutcome<T>.ToActionResult`, `WriteOutcome<T>.ToHttpResult`, `ToUpdatedActionResult`)
+
+Migration: replace every call with the single fluent builder overload of `ToHttpResponse` / `ToHttpResponseAsync`. See [`docs/docfx_project/articles/asp-tohttpresponse.md`](docs/docfx_project/articles/asp-tohttpresponse.md) and [`MIGRATION_v3.md`](MIGRATION_v3.md) for the full mapping.
+
 ### Breaking Changes
 
 #### Trellis.Core — Error redesigned as closed ADT

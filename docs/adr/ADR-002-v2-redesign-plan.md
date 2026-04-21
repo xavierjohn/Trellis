@@ -1324,3 +1324,9 @@ These are explicitly *future work*, not part of the proposal.
 This v2 proposal is grounded in what C# can actually deliver, retains the load-bearing capabilities the v1 silently dropped (resource auth, tracing, `MaybeInvariant`, protocol-specific errors, EF persistence diagnostics, `Result.Try`, `WriteOutcome<T>`), and right-sizes the foundational work. The aggressive AI-correctness wins (seven verbs, removed `Value`/`Error` properties, deleted `IConvertible`, single `ToHttpResponse`) survive intact.
 
 If approved, the next deliverable is a per-package implementation plan starting with **Phase 1a** (Result/Maybe rewrite), because every other phase depends on it.
+
+---
+
+## Post-Phase 3 cleanup (v3 release)
+
+**Status:** the Phase 3 obsolete-verb cleanup has landed. The seven legacy Trellis.Asp extension classes (`ActionResultExtensions`, `ActionResultExtensionsAsync`, `HttpResultExtensions`, `HttpResultExtensionsAsync`, `PageActionResultExtensions`, `PageHttpResultExtensions`, `WriteOutcomeExtensions`) and their verbs (`ToActionResult`, `ToHttpResult`, `ToCreatedAtActionResult`, `ToCreatedAtRouteHttpResult`, `ToCreatedHttpResult`, `ToUpdatedActionResult`, `ToUpdatedHttpResult`, `ToPagedActionResult`, `ToPagedHttpResult`) have been deleted outright. The single supported verb is `result.ToHttpResponse(...)` / `result.ToHttpResponseAsync(...)`, with `.AsActionResult<T>()` / `.AsActionResultAsync<T>()` as the MVC typed-signature adapter. All in-tree examples (`Showcase.MinimalApi`, `Showcase.Mvc`, `ConditionalRequestExample`) use the new API exclusively. See [`MIGRATION_v3.md`](../../MIGRATION_v3.md) for the per-verb replacement table and [`articles/asp-tohttpresponse.md`](../docfx_project/articles/asp-tohttpresponse.md) for canonical patterns.

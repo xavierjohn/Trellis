@@ -4,20 +4,21 @@
 **Namespaces:** `Trellis.Asp`, `Trellis.Asp.ModelBinding`, `Trellis.Asp.Validation`, `Trellis.Asp.Authorization` (actor providers; documented separately in [`trellis-api-authorization.md`](trellis-api-authorization.md))
 **Purpose:** ASP.NET Core integration for mapping Trellis results to HTTP responses, evaluating HTTP preconditions/ranges/preferences, validating scalar value objects in MVC and Minimal APIs, and emitting AOT-friendly `JsonConverter`s for Trellis scalar values.
 
-> **v2.x recommended verb: `ToHttpResponse`.** The single fluent verb
-> `Result<T>.ToHttpResponse(...)` (and its `WriteOutcome`, `Page` and async
-> overloads) replaces the entire family of legacy verbs documented below
-> (`ToActionResult`, `ToHttpResult`, `ToActionResultAsync`,
-> `ToHttpResultAsync`, `ToPageHttpResult`, …). It returns
-> `Microsoft.AspNetCore.Http.IResult` for Minimal API and converts to MVC
-> via `.AsActionResult<T>()`. The legacy classes
-> (`ActionResultExtensions`, `ActionResultExtensionsAsync`,
+> **v3 (current): the legacy verbs have been removed.** The single supported
+> verb is `Result<T>.ToHttpResponse(...)` (and its `WriteOutcome`, `Page` and
+> async overloads). It returns `Microsoft.AspNetCore.Http.IResult` for
+> Minimal API and converts to MVC via `.AsActionResult<T>()`. The legacy
+> classes (`ActionResultExtensions`, `ActionResultExtensionsAsync`,
 > `HttpResultExtensions`, `HttpResultExtensionsAsync`,
 > `PageActionResultExtensions`, `PageHttpResultExtensions`,
-> `WriteOutcomeExtensions`) are now `[Obsolete]` and slated for removal in a
-> future major. See
+> `WriteOutcomeExtensions`) and the legacy verbs (`ToActionResult`,
+> `ToHttpResult`, `ToCreatedAtActionResult`, `ToCreatedAtRouteHttpResult`,
+> `ToCreatedHttpResult`, `ToUpdatedActionResult`, `ToUpdatedHttpResult`,
+> `ToPagedActionResult`, `ToPagedHttpResult`) were deleted after one
+> release cycle under `[Obsolete]`. See
 > [`articles/asp-tohttpresponse.md`](../docfx_project/articles/asp-tohttpresponse.md)
-> for the full migration guide.
+> for the full reference. The type/method tables below may still mention
+> the removed verbs while the generated API reference is refreshed.
 
 ## Types
 
