@@ -15,7 +15,7 @@ If you are touching package layout (csproj split/merge, `Trellis.slnx`, NuGet `P
 Phase status as of last update:
 - **Phase 1a — `Trellis.Results` → `Trellis.Core` rename:** shipped in PR #401.
 - **Phase 2 — package consolidation** (DDD into Core, Required* moves, all 3 source generators bundled into host packages, `Trellis.Asp.Authorization` merged into `Trellis.Asp`): in flight in PR #403.
-- **Phase 4a — `Trellis.Stateless` → `Trellis.StateMachine` rename:** in flight on `dev/xavier/v2-phase4a-statemachine-rename`.
+- **Phase 4a — `Trellis.Stateless` → `Trellis.StateMachine` rename:** in flight.
 - Later phases — not started; see ADR-002 §15.
 
 ## Before Writing Code That Uses Trellis APIs
