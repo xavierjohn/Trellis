@@ -236,9 +236,9 @@ public static class HttpResponseExtensions
             });
         }
 
-#pragma warning disable CS0618 // Internal delegation to existing helper.
-        return PageHttpResultExtensions.ToPagedHttpResult(result, nextUrlBuilder, body);
-#pragma warning restore CS0618
+        var (envelope, linkHeader) = PagedResponseBuilder.Build(result.Value, nextUrlBuilder, body);
+        var ok = Results.Ok(envelope);
+        return linkHeader is null ? ok : new PagedHttpResult(ok, linkHeader);
     }
 
     /// <summary>Async <see cref="Task"/> overload.</summary>

@@ -12,9 +12,7 @@ using Trellis;
 /// <summary>
 /// IResult implementation for <see cref="Result{T}"/> of <see cref="WriteOutcome{T}"/>.
 /// Handles RFC 9110 status mapping (Created/Updated/UpdatedNoContent/Accepted/AcceptedNoContent)
-/// and RFC 7240 Prefer semantics by delegating to the shared
-/// <see cref="WriteOutcomeExtensions.ToHttpResult{T,TOut}(WriteOutcome{T},HttpContext,Func{T,TOut}?)"/>
-/// helper after applying builder-supplied metadata overrides.
+/// and RFC 7240 Prefer semantics after applying builder-supplied metadata overrides.
 /// </summary>
 internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
     Microsoft.AspNetCore.Http.IResult,
@@ -53,9 +51,74 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
 
         ApplyBuilderMetadata(response, outcome);
 
-#pragma warning disable CS0618 // Internal delegation to existing tested helper.
-        return WriteOutcomeExtensions.ToHttpResult<TDomain, TBody>(outcome, httpContext, _body).ExecuteAsync(httpContext);
-#pragma warning restore CS0618
+        var prefer = PreferHeader.Parse(httpContext.Request);
+
+        switch (outcome)
+        {
+            case WriteOutcome<TDomain>.Created created:
+                if (created.Metadata is not null)
+                    ApplyMetadataHeaders(response, created.Metadata);
+                if (_body is not null)
+                    return Results.Created(created.Location, _body(created.Value)).ExecuteAsync(httpContext);
+                return Results.Created(created.Location, created.Value).ExecuteAsync(httpContext);
+
+            case WriteOutcome<TDomain>.Updated replaced:
+                if (replaced.Metadata is not null)
+                    ApplyMetadataHeaders(response, replaced.Metadata);
+
+                if (prefer.ReturnMinimal)
+                {
+                    TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, "Prefer");
+                    response.Headers["Preference-Applied"] = "return=minimal";
+                    return Results.NoContent().ExecuteAsync(httpContext);
+                }
+
+                TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, "Prefer");
+                if (prefer.ReturnRepresentation)
+                    response.Headers["Preference-Applied"] = "return=representation";
+
+                if (_body is not null)
+                    return Results.Ok(_body(replaced.Value)).ExecuteAsync(httpContext);
+                return Results.Ok(replaced.Value).ExecuteAsync(httpContext);
+
+            case WriteOutcome<TDomain>.UpdatedNoContent noContent:
+                if (noContent.Metadata is not null)
+                    ApplyMetadataHeaders(response, noContent.Metadata);
+                return Results.NoContent().ExecuteAsync(httpContext);
+
+            case WriteOutcome<TDomain>.Accepted accepted:
+                if (accepted.RetryAfter is not null)
+                    response.Headers["Retry-After"] = accepted.RetryAfter.ToHeaderValue();
+                if (_body is not null)
+                    return Results.Accepted(accepted.MonitorUri, _body(accepted.StatusBody)).ExecuteAsync(httpContext);
+                return Results.Accepted(accepted.MonitorUri, accepted.StatusBody).ExecuteAsync(httpContext);
+
+            case WriteOutcome<TDomain>.AcceptedNoContent acceptedNoContent:
+                if (acceptedNoContent.MonitorUri is not null)
+                    response.Headers.Location = acceptedNoContent.MonitorUri;
+                if (acceptedNoContent.RetryAfter is not null)
+                    response.Headers["Retry-After"] = acceptedNoContent.RetryAfter.ToHeaderValue();
+                return Results.StatusCode(StatusCodes.Status202Accepted).ExecuteAsync(httpContext);
+
+            default:
+                throw new InvalidOperationException($"Unknown WriteOutcome type: {outcome.GetType().Name}");
+        }
+    }
+
+    private static void ApplyMetadataHeaders(HttpResponse response, RepresentationMetadata metadata)
+    {
+        if (metadata.ETag is not null)
+            response.Headers.ETag = metadata.ETag.ToHeaderValue();
+        if (metadata.LastModified.HasValue)
+            response.Headers["Last-Modified"] = metadata.LastModified.Value.ToString("R");
+        if (metadata.Vary is { Count: > 0 })
+            response.Headers.Vary = string.Join(", ", metadata.Vary);
+        if (metadata.ContentLanguage is { Count: > 0 })
+            response.Headers.ContentLanguage = string.Join(", ", metadata.ContentLanguage);
+        if (metadata.ContentLocation is not null)
+            response.Headers["Content-Location"] = metadata.ContentLocation;
+        if (metadata.AcceptRanges is not null)
+            response.Headers["Accept-Ranges"] = metadata.AcceptRanges;
     }
 
     private void ApplyBuilderMetadata(HttpResponse response, WriteOutcome<TDomain> outcome)

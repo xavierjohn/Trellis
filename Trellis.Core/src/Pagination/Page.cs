@@ -12,7 +12,7 @@ using System.Collections.Generic;
 /// <para>
 /// <b>Wire shape:</b> Trellis projects <see cref="Page{T}"/> to <c>200 OK</c> with a JSON
 /// body envelope and a co-emitted <c>Link</c> header (RFC 8288). See
-/// <c>Trellis.Asp.PageHttpResultExtensions.ToPagedHttpResult</c>.
+/// <c>Trellis.Asp.HttpResponseExtensions.ToHttpResponse</c> for the <c>Result&lt;Page&lt;T&gt;&gt;</c> overload.
 /// </para>
 /// <para>
 /// <b>Why not 206 Partial Content?</b> RFC 9110 §14 was designed for byte-range transfer

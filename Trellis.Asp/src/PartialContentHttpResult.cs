@@ -17,8 +17,8 @@ using Microsoft.AspNetCore.Http;
 /// <example>Content-Range: items 0-24/100</example>
 /// </para>
 /// <para>
-/// This class is typically used by the <c>ToHttpResult</c> pagination overloads in
-/// <see cref="HttpResultExtensions"/> and should rarely be instantiated directly in endpoint code.
+/// This class is typically used by the <c>ToHttpResponse</c> pagination overloads and
+/// should rarely be instantiated directly in endpoint code.
 /// </para>
 /// </remarks>
 public sealed class PartialContentHttpResult : IResult
