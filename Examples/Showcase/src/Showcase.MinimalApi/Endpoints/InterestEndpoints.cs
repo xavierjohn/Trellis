@@ -16,8 +16,7 @@ public static class InterestEndpoints
         group.MapPost("/", (AccountId id, InterestRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.PayInterestAsync(account, request.AnnualRate, ct))
-                .MapAsync(AccountResponse.From)
-                .ToHttpResultAsync())
+                .ToHttpResponseAsync(AccountResponse.From))
             .WithScalarValueValidation();
 
         return routes;

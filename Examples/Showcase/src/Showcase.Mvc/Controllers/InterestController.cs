@@ -24,6 +24,6 @@ public class InterestController : ControllerBase
     public Task<ActionResult<AccountResponse>> Pay(AccountId id, [FromBody] InterestRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(id)
             .BindAsync(account => _workflow.PayInterestAsync(account, request.AnnualRate, cancellationToken))
-            .MapAsync(AccountResponse.From)
-            .ToActionResultAsync(this);
+            .ToHttpResponseAsync(AccountResponse.From)
+            .AsActionResultAsync<AccountResponse>();
 }

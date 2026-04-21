@@ -13,9 +13,9 @@ using Trellis.Asp;
 public class DiagnosticsController : ControllerBase
 {
     [HttpGet("fault")]
-    public ActionResult Fault() =>
+    public Microsoft.AspNetCore.Http.IResult Fault() =>
         new Error.InternalServerError("DIAG-FAULT-001")
         {
             Detail = "Deterministic fault path used to demonstrate Error.InternalServerError mapping.",
-        }.ToActionResult(this);
+        }.ToHttpResponse();
 }

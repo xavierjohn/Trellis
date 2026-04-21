@@ -18,7 +18,7 @@ public static class TransferEndpoints
                 .Combine(repo.GetById(request.ToAccountId))
                 .BindAsync(pair => workflow.TransferAsync(pair.Item1, pair.Item2, request.Amount, request.Description, ct))
                 .MapAsync(pair => AccountResponse.From(pair.From))
-                .ToHttpResultAsync())
+                .ToHttpResponseAsync())
             .WithScalarValueValidation();
 
         return routes;

@@ -17,7 +17,7 @@ public static class DiagnosticsEndpoints
             new Error.InternalServerError("DIAG-FAULT-001")
             {
                 Detail = "Deterministic fault path used to demonstrate Error.InternalServerError mapping.",
-            }.ToHttpResult());
+            }.ToHttpResponse());
 
         return routes;
     }
