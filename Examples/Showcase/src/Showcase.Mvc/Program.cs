@@ -16,6 +16,12 @@ builder.Services
     .AddScalarValueValidation()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+// Trellis' ToHttpResponse() returns IResult, which executes via HttpContext and
+// reads ConfigureHttpJsonOptions (not MVC's AddJsonOptions). Configure both so
+// MVC formatters and IResult-based responses serialize enums identically.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddTrellisRouteConstraint<AccountId>();
 
 builder.Services.AddOpenApi();
