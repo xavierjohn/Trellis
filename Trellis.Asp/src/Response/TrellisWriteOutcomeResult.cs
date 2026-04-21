@@ -112,7 +112,11 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
         if (metadata.LastModified.HasValue)
             response.Headers["Last-Modified"] = metadata.LastModified.Value.ToString("R");
         if (metadata.Vary is { Count: > 0 })
-            response.Headers.Vary = string.Join(", ", metadata.Vary);
+        {
+            foreach (var v in metadata.Vary)
+                TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, v);
+        }
+
         if (metadata.ContentLanguage is { Count: > 0 })
             response.Headers.ContentLanguage = string.Join(", ", metadata.ContentLanguage);
         if (metadata.ContentLocation is not null)

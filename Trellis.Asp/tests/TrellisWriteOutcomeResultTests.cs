@@ -277,4 +277,28 @@ public sealed class TrellisWriteOutcomeResultTests : IDisposable
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => http.ExecuteAsync(null!));
     }
+
+    [Fact]
+    public async Task Vary_header_unions_builder_HonorPrefer_and_metadata_tokens()
+    {
+        // Regression: ApplyMetadataHeaders previously overwrote the Vary header,
+        // dropping builder-supplied entries and the automatic "Vary: Prefer" added
+        // by HonorPrefer. All three sources must contribute to the final Vary.
+        var ctx = NewContext();
+        var meta = RepresentationMetadata.Create()
+            .AddVary("Accept")
+            .Build();
+        var outcome = new WriteOutcome<Item>.UpdatedNoContent(meta);
+
+        await Result.Ok<WriteOutcome<Item>>(outcome)
+            .ToHttpResponse((Action<HttpResponseOptionsBuilder<Item>>)(o => o.Vary("Accept-Encoding").HonorPrefer()))
+            .ExecuteAsync(ctx);
+
+        var tokens = string.Join(",", ctx.Response.Headers.Vary.ToArray()!)
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        tokens.Should().Contain("Accept");
+        tokens.Should().Contain("Accept-Encoding");
+        tokens.Should().Contain("Prefer");
+    }
 }
