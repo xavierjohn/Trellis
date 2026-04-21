@@ -332,6 +332,28 @@ public abstract record Error
         public override string Code => FaultId;
     }
 
+    /// <summary>
+    /// HTTP 500 — an "shouldn't happen" condition. Used for default-initialized <see cref="Result"/>/<see cref="Result{TValue}"/>
+    /// (per ADR-002 §3.5.1), exhausted match arms, or other internal invariant violations whose root cause
+    /// is a programming error rather than a documented server-side fault.
+    /// </summary>
+    /// <param name="ReasonCode">A stable, machine-readable identifier of the invariant that was violated
+    /// (e.g. <c>"default_initialized"</c>, <c>"invariant_violation"</c>). Distinct per logical cause; not a per-incident id.</param>
+    /// <remarks>
+    /// Distinct from <see cref="InternalServerError"/>: that case carries an opaque per-incident <c>FaultId</c>
+    /// for correlating with telemetry. <see cref="Unexpected"/> identifies the *kind* of unexpected condition.
+    /// Both map to HTTP 500 at the ASP boundary, but only <see cref="InternalServerError"/> attaches a
+    /// <c>faultId</c> extension to the problem-details payload.
+    /// </remarks>
+    public sealed record Unexpected(string ReasonCode) : Error
+    {
+        /// <inheritdoc />
+        public override string Kind => "unexpected";
+
+        /// <inheritdoc />
+        public override string Code => ReasonCode;
+    }
+
     /// <summary>HTTP 501 — the requested feature is not implemented.</summary>
     /// <param name="Feature">Identifier of the feature that is not implemented.</param>
     public sealed record NotImplemented(string Feature) : Error

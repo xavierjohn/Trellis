@@ -27,6 +27,7 @@ using Trellis;
 ///     <item><term><see cref="Error.Conflict"/></term><description>422 Unprocessable Entity</description></item>
 ///     <item><term><see cref="Error.TooManyRequests"/></term><description>429 Too Many Requests</description></item>
 ///     <item><term><see cref="Error.InternalServerError"/></term><description>500 Internal Server Error</description></item>
+///     <item><term><see cref="Error.Unexpected"/></term><description>500 Internal Server Error</description></item>
 ///     <item><term><see cref="Error.ServiceUnavailable"/></term><description>503 Service Unavailable</description></item>
 /// </list>
 /// </para>
@@ -79,6 +80,7 @@ public sealed class TrellisAspOptions
         [typeof(Error.PreconditionRequired)] = StatusCodes.Status428PreconditionRequired,
         [typeof(Error.TooManyRequests)] = StatusCodes.Status429TooManyRequests,
         [typeof(Error.InternalServerError)] = StatusCodes.Status500InternalServerError,
+        [typeof(Error.Unexpected)] = StatusCodes.Status500InternalServerError,
         [typeof(Error.NotImplemented)] = StatusCodes.Status501NotImplemented,
         [typeof(Error.ServiceUnavailable)] = StatusCodes.Status503ServiceUnavailable,
     };
