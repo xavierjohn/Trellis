@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
-    <ProjectReference Include="..\..\Trellis.DomainDrivenDesign\src\Trellis.DomainDrivenDesign.csproj" />
     <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
   </ItemGroup>
 

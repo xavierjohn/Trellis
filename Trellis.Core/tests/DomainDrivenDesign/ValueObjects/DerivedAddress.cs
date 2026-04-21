@@ -1,4 +1,4 @@
-﻿namespace Trellis.DomainDrivenDesign.Tests.ValueObjects;
+namespace Trellis.Core.Tests.DomainDrivenDesign.ValueObjects;
 
 internal class DerivedAddress : Address
 {

@@ -16,7 +16,6 @@
     <ProjectReference Include="..\Showcase.Domain\Showcase.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
-    <ProjectReference Include="..\..\..\..\Trellis.DomainDrivenDesign\src\Trellis.DomainDrivenDesign.csproj" />
   </ItemGroup>
 
 </Project>

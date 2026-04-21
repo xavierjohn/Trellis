@@ -1,6 +1,6 @@
-# Trellis.Authorization / Trellis.Asp.Authorization — API Reference
+# Trellis.Authorization — API Reference
 
-**Packages:** `Trellis.Authorization`, `Trellis.Asp.Authorization`
+**Package:** `Trellis.Authorization` (domain layer). ASP.NET actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`) ship inside `Trellis.Asp.nupkg` since Phase 2; their CLR namespace is still `Trellis.Asp.Authorization`.
 **Namespaces:** `Trellis.Authorization`, `Trellis.Asp.Authorization`
 **Purpose:** Defines actor/resource authorization primitives plus ASP.NET Core actor providers and DI registration helpers.
 

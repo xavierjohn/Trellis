@@ -1,8 +1,8 @@
 # Trellis.Asp — API Reference
 
-**Package:** `Trellis.Asp`  
-**Namespaces:** `Trellis.Asp`, `Trellis.Asp.ModelBinding`, `Trellis.Asp.Validation`  
-**Purpose:** ASP.NET Core integration for mapping Trellis results to HTTP responses, evaluating HTTP preconditions/ranges/preferences, and validating scalar value objects in MVC and Minimal APIs.
+**Package:** `Trellis.Asp` (since Phase 2 of the v2 redesign, this single package also bundles the AOT-friendly `Trellis.AspSourceGenerator.dll` at `analyzers/dotnet/cs/` — installing `Trellis.Asp` attaches the generator automatically — and contains the ASP.NET actor providers formerly published as `Trellis.Asp.Authorization`).
+**Namespaces:** `Trellis.Asp`, `Trellis.Asp.ModelBinding`, `Trellis.Asp.Validation`, `Trellis.Asp.Authorization` (actor providers; documented separately in [`trellis-api-authorization.md`](trellis-api-authorization.md))
+**Purpose:** ASP.NET Core integration for mapping Trellis results to HTTP responses, evaluating HTTP preconditions/ranges/preferences, validating scalar value objects in MVC and Minimal APIs, and emitting AOT-friendly `JsonConverter`s for Trellis scalar values.
 
 ## Types
 
@@ -801,6 +801,6 @@ static IResult UpdateWidget(HttpContext httpContext)
 ## Cross-references
 
 - [trellis-api-core.md](trellis-api-core.md)
-- [trellis-api-ddd.md](trellis-api-ddd.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-primitives.md](trellis-api-primitives.md)
 - [trellis-api-http.md](trellis-api-http.md)

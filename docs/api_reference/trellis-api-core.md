@@ -8,7 +8,7 @@ See also: [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.m
 
 ---
 
-## Breaking changes from v1 (Phase 1a)
+## Breaking changes from v1
 
 Running list of v2 breaking changes in `Trellis.Core`. See `docs/adr/ADR-001-result-api-surface.md` for the full design rationale.
 
@@ -33,6 +33,12 @@ Running list of v2 breaking changes in `Trellis.Core`. See `docs/adr/ADR-001-res
 | Package id | `Trellis.Results` | `Trellis.Core` | Replace `<PackageReference Include="Trellis.Results" ... />` with `<PackageReference Include="Trellis.Core" ... />`. The CLR namespace stays `Trellis` — no `using` changes are needed. The legacy `Trellis.Results` package is unlisted at v2.0.0 with a redirect notice; there is no metapackage shim. |
 | OpenTelemetry `ActivitySource` name | `"Trellis.Results"` | `"Trellis.Core"` | Update OTel subscriptions: `builder.AddSource("Trellis.Results")` → `builder.AddSource("Trellis.Core")`. The `RopTrace.ActivitySourceName` constant exposes the name programmatically. |
 | Test helper namespace | `Trellis.Results.Tests.*` | `Trellis.Core.Tests.*` | Internal change only — affects users who took an InternalsVisibleTo dependency on the test assembly (none expected). |
+| Package merge: DDD | <PackageReference Include="Trellis.DomainDrivenDesign" .../> | *(removed)* | All DDD types (`Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, etc.) moved into `Trellis.Core`. Drop the `Trellis.DomainDrivenDesign` PackageReference; the types are still in `namespace Trellis;` so no using changes are needed. |
+| Package merge: Primitives generator | <PackageReference Include="Trellis.Primitives.Generator" .../> | *(removed)* | The Required* source generator is now bundled inside `Trellis.Core.nupkg` (`analyzers/dotnet/cs/Trellis.Core.Generator.dll`). Installing `Trellis.Core` (or any package depending on it) attaches the analyzer automatically. Drop the standalone PackageReference. |
+| `Required*` base classes | `Trellis.Primitives` | `Trellis.Core` | Source-tree consumers may need to ensure they reference `Trellis.Core`. Namespace is unchanged (`Trellis`), so no using edits are required. |
+| Package merge: Asp generator | `<PackageReference Include="Trellis.AspSourceGenerator" .../>` | *(removed)* | The ASP source generator is now bundled inside `Trellis.Asp.nupkg` (`analyzers/dotnet/cs/Trellis.AspSourceGenerator.dll`). Installing `Trellis.Asp` attaches the analyzer automatically. Drop the standalone PackageReference. |
+| Package merge: EF Core generator | `<PackageReference Include="Trellis.EntityFrameworkCore.Generator" .../>` | *(removed)* | The EF Core source generator (Maybe&lt;T&gt; partial properties + owned value-object helpers) is now bundled inside `Trellis.EntityFrameworkCore.nupkg` (`analyzers/dotnet/cs/Trellis.EntityFrameworkCore.Generator.dll`). Installing `Trellis.EntityFrameworkCore` attaches the analyzer automatically. Drop the standalone PackageReference. |
+| Package merge: Asp authorization | `<PackageReference Include="Trellis.Asp.Authorization" .../>` | *(removed)* | The ASP.NET actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`, `AddTrellisAspAuthorization()`) are now part of `Trellis.Asp.nupkg`. The CLR namespace stays `Trellis.Asp.Authorization` — no `using` changes needed. Drop the standalone PackageReference. `Trellis.Asp` now transitively brings in `Trellis.Authorization`. |
 
 The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form.
 
@@ -791,4 +797,718 @@ var contact    = MaybeInvariant.ExactlyOne(cmd.Email, cmd.Phone, "email", "phone
 return Result.Combine(streetCity, contact)
     .Map(_ => new Address(cmd.Street, cmd.City));
 ```
+
+
+---
+
+## Domain-Driven Design
+
+The DDD primitives (Aggregate<T>, Entity<T>, ValueObject, Specification<T>, ...) live in `Trellis.Core` (Phase 2). They share the `Trellis` namespace.
+
+### Types
+
+### `IEntity`
+
+```csharp
+public interface IEntity
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `CreatedAt` | `DateTimeOffset` | UTC timestamp for the first successful persistence of the entity. |
+| `LastModified` | `DateTimeOffset` | UTC timestamp for the latest successful persistence update. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| — | — | No methods. |
+
+### `Entity<TId>`
+
+```csharp
+public abstract class Entity<TId> : IEntity where TId : notnull
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Id` | `TId` | Immutable identity value for the entity. |
+| `CreatedAt` | `DateTimeOffset` | Infrastructure-managed creation timestamp. |
+| `LastModified` | `DateTimeOffset` | Infrastructure-managed last-modified timestamp. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `protected Entity(TId id)` | — | Initializes the entity identity. |
+| `public override bool Equals(object? obj)` | `bool` | Returns `true` for the same reference before checking default IDs; otherwise compares exact runtime type and non-default IDs. |
+| `public static bool operator ==(Entity<TId>? a, Entity<TId>? b)` | `bool` | Identity-based equality operator. |
+| `public static bool operator !=(Entity<TId>? a, Entity<TId>? b)` | `bool` | Identity-based inequality operator. |
+| `public override int GetHashCode()` | `int` | Combines runtime type and `Id`. |
+
+### `IAggregate`
+
+```csharp
+public interface IAggregate : IChangeTracking
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `ETag` | `string` | Optimistic concurrency token for the aggregate. |
+| `IsChanged` | `bool` | Inherited from `IChangeTracking`; implemented by `Aggregate<TId>` as domain-event-based change tracking by default. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `IReadOnlyList<IDomainEvent> UncommittedEvents()` | `IReadOnlyList<IDomainEvent>` | Returns the domain events raised since the last `AcceptChanges()`. |
+| `void AcceptChanges()` | `void` | Inherited from `IChangeTracking`; marks the aggregate as committed. |
+
+### `Aggregate<TId>`
+
+```csharp
+public abstract class Aggregate<TId> : Entity<TId>, IAggregate where TId : notnull
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `DomainEvents` | `List<IDomainEvent>` | Protected mutable event buffer for derived aggregate methods. |
+| `ETag` | `string` | Persistence-managed optimistic concurrency token. |
+| `IsChanged` | `bool` | `[JsonIgnore]` virtual change-tracking flag; default implementation is `DomainEvents.Count > 0`. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `protected Aggregate(TId id)` | — | Initializes the aggregate identity. |
+| `public IReadOnlyList<IDomainEvent> UncommittedEvents()` | `IReadOnlyList<IDomainEvent>` | Returns a read-only snapshot of current domain events. |
+| `public void AcceptChanges()` | `void` | Clears `DomainEvents`. |
+
+### `IDomainEvent`
+
+```csharp
+public interface IDomainEvent
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `OccurredAt` | `DateTime` | UTC timestamp for when the domain event occurred. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| — | — | No methods. |
+
+### `ValueObject`
+
+```csharp
+public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEquatable<ValueObject>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | No public or protected properties. Equality and ordering are driven by methods. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `protected abstract IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Returns the ordered components used for equality, comparison, and hash-code generation. |
+| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. |
+| `public override bool Equals(object? obj)` | `bool` | Delegates to `Equals(ValueObject? other)`. |
+| `public bool Equals(ValueObject? other)` | `bool` | Structural equality check against the same runtime type. |
+| `public override int GetHashCode()` | `int` | Computes and caches a hash code from the equality components. |
+| `public virtual int CompareTo(ValueObject? other)` | `int` | Compares equality components in order. |
+| `public static bool operator ==(ValueObject? a, ValueObject? b)` | `bool` | Structural equality operator. |
+| `public static bool operator !=(ValueObject? a, ValueObject? b)` | `bool` | Structural inequality operator. |
+| `public static bool operator <(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
+| `public static bool operator <=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
+| `public static bool operator >(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
+| `public static bool operator >=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
+
+### `ScalarValueObject<TSelf, T>`
+
+```csharp
+public abstract class ScalarValueObject<TSelf, T> : ValueObject, IConvertible, IFormattable
+where TSelf : ScalarValueObject<TSelf, T>, IScalarValue<TSelf, T>
+where T : IComparable
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `T` | Wrapped scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `protected ScalarValueObject(T value)` | — | Stores the wrapped scalar value. |
+| `protected override IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Default scalar equality uses only `Value`. |
+| `public override string ToString()` | `string` | Returns `Value?.ToString() ?? string.Empty`. |
+| `public static implicit operator T(ScalarValueObject<TSelf, T> valueObject)` | `T` | Unwraps the scalar value object to its primitive value. |
+| `public static TSelf Create(T value)` | `TSelf` | Calls `TSelf.TryCreate(value)` and throws `InvalidOperationException` on failure. |
+| `public TypeCode GetTypeCode()` | `TypeCode` | Returns `Type.GetTypeCode(typeof(T))`. |
+| `public bool ToBoolean(IFormatProvider? provider)` | `bool` | Converts `Value` with `Convert.ToBoolean`. |
+| `public byte ToByte(IFormatProvider? provider)` | `byte` | Converts `Value` with `Convert.ToByte`. |
+| `public char ToChar(IFormatProvider? provider)` | `char` | Converts `Value` with `Convert.ToChar`. |
+| `public DateTime ToDateTime(IFormatProvider? provider)` | `DateTime` | Converts `Value` with `Convert.ToDateTime`. |
+| `public decimal ToDecimal(IFormatProvider? provider)` | `decimal` | Converts `Value` with `Convert.ToDecimal`. |
+| `public double ToDouble(IFormatProvider? provider)` | `double` | Converts `Value` with `Convert.ToDouble`. |
+| `public short ToInt16(IFormatProvider? provider)` | `short` | Converts `Value` with `Convert.ToInt16`. |
+| `public int ToInt32(IFormatProvider? provider)` | `int` | Converts `Value` with `Convert.ToInt32`. |
+| `public long ToInt64(IFormatProvider? provider)` | `long` | Converts `Value` with `Convert.ToInt64`. |
+| `public sbyte ToSByte(IFormatProvider? provider)` | `sbyte` | Converts `Value` with `Convert.ToSByte`. |
+| `public float ToSingle(IFormatProvider? provider)` | `float` | Converts `Value` with `Convert.ToSingle`. |
+| `public string ToString(IFormatProvider? provider)` | `string` | Converts `Value` with `Convert.ToString`. |
+| `public string ToString(string? format, IFormatProvider? formatProvider)` | `string` | Uses `IFormattable` when the wrapped value supports it; otherwise uses `Convert.ToString`. |
+| `public object ToType(Type conversionType, IFormatProvider? provider)` | `object` | Converts `Value` to an arbitrary type via `Convert.ChangeType`. |
+| `public ushort ToUInt16(IFormatProvider? provider)` | `ushort` | Converts `Value` with `Convert.ToUInt16`. |
+| `public uint ToUInt32(IFormatProvider? provider)` | `uint` | Converts `Value` with `Convert.ToUInt32`. |
+| `public ulong ToUInt64(IFormatProvider? provider)` | `ulong` | Converts `Value` with `Convert.ToUInt64`. |
+
+### `AggregateETagExtensions`
+
+```csharp
+public static class AggregateETagExtensions
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | No public properties. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<T> OptionalETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate` | `Result<T>` | If `expectedETags` is `null`, returns the original result unchanged; otherwise enforces strong ETag matching. |
+| `public static Result<T> RequireETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate` | `Result<T>` | Requires an `If-Match` value and enforces strong ETag matching. |
+| `public static Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate` | `Task<Result<T>>` | Async `Task` wrapper for `OptionalETag<T>`. |
+| `public static ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate` | `ValueTask<Result<T>>` | Async `ValueTask` wrapper for `OptionalETag<T>`. |
+| `public static Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate` | `Task<Result<T>>` | Async `Task` wrapper for `RequireETag<T>`. |
+| `public static ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate` | `ValueTask<Result<T>>` | Async `ValueTask` wrapper for `RequireETag<T>`. |
+
+### `Specification<T>`
+
+```csharp
+public abstract class Specification<T>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `CacheCompilation` | `bool` | Protected virtual switch that controls whether `IsSatisfiedBy(T entity)` reuses a lazily compiled delegate. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `protected Specification()` | — | Initializes the lazy compiled delegate cache. |
+| `public abstract Expression<Func<T, bool>> ToExpression()` | `Expression<Func<T, bool>>` | Returns the canonical expression tree for the specification. |
+| `public bool IsSatisfiedBy(T entity)` | `bool` | Evaluates the specification in memory. |
+| `public Specification<T> And(Specification<T> other)` | `Specification<T>` | Returns a composed AND specification. |
+| `public Specification<T> Or(Specification<T> other)` | `Specification<T>` | Returns a composed OR specification. |
+| `public Specification<T> Not()` | `Specification<T>` | Returns a negated specification. |
+| `public static implicit operator Expression<Func<T, bool>>(Specification<T> spec)` | `Expression<Func<T, bool>>` | Converts the specification directly to its expression tree. |
+
+### `TrellisJsonValidationException`
+
+```csharp
+namespace Trellis;
+
+public sealed class TrellisJsonValidationException : System.Text.Json.JsonException
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public TrellisJsonValidationException()` | — | Default constructor. |
+| `public TrellisJsonValidationException(string message)` | — | Creates an instance with a curated, user-safe message. |
+| `public TrellisJsonValidationException(string message, Exception innerException)` | — | Wraps an inner exception with the supplied message. |
+
+Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON converters when a structured value object's invariants are violated during deserialization (e.g., `CompositeValueObjectJsonConverter<Money>` rejecting a negative amount). `Trellis.Asp`'s `ScalarValueValidationMiddleware` recognizes this subtype and surfaces its `Message` and `JsonException.Path` in the resulting Problem Details payload, restoring DX parity with MVC's per-field model-binder error reporting. Plain `JsonException` instances are deliberately not surfaced because their messages can include internal type names; converters opt in to message surfacing by throwing this subclass with a curated message (e.g., `error.GetDisplayMessage()` from a `Result` failure).
+
+## Primitive value object base classes
+
+These types ship in `Trellis.Core` (since Phase 2; previously in `Trellis.Primitives`). They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`) attach declarative invariants that the generator wires into the generated validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md).
+
+### `RangeAttribute`
+
+```csharp
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public sealed class RangeAttribute : Attribute
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | Constructor arguments are consumed by the source generator; no public properties are exposed. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public RangeAttribute(int minimum, int maximum)` | `RangeAttribute` | Range metadata for `RequiredInt<TSelf>` and whole-number `RequiredDecimal<TSelf>`. |
+| `public RangeAttribute(long minimum, long maximum)` | `RangeAttribute` | Range metadata for `RequiredLong<TSelf>`. |
+| `public RangeAttribute(double minimum, double maximum)` | `RangeAttribute` | Fractional range metadata for `RequiredDecimal<TSelf>`. |
+
+### `StringLengthAttribute`
+
+```csharp
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public sealed class StringLengthAttribute : Attribute
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `MaximumLength` | `int` | Inclusive maximum length. |
+| `MinimumLength` | `int` | Inclusive minimum length; defaults to `0`. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public StringLengthAttribute(int maximumLength)` | `StringLengthAttribute` | Length metadata for `RequiredString<TSelf>`. |
+
+### `EnumValueAttribute`
+
+```csharp
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = false, Inherited = false)]
+public sealed class EnumValueAttribute : Attribute
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `string` | Canonical symbolic name for a `RequiredEnum<TSelf>` member. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public EnumValueAttribute(string value)` | `EnumValueAttribute` | Overrides the default field-name-based symbolic value. |
+
+### `StringExtensions`
+
+```csharp
+public static class StringExtensions
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | Static helper type. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static string NormalizeFieldName(this string? fieldName, string defaultName)` | `string` | Uses `fieldName` when present, otherwise camel-cases `defaultName`. |
+| `public static T ParseScalarValue<T>(string? s) where T : class, IScalarValue<T, string>` | `T` | Throws `FormatException` based on `T.TryCreate`. |
+| `public static bool TryParseScalarValue<T>([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out T result) where T : class, IScalarValue<T, string>` | `bool` | Safe parsing helper based on `T.TryCreate`. |
+| `public static string ToCamelCase(this string? str)` | `string` | Lowercases the first character only. |
+
+### `RequiredEnumJsonConverter<TRequiredEnum>`
+
+```csharp
+public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TRequiredEnum> : JsonConverter<TRequiredEnum>
+    where TRequiredEnum : RequiredEnum<TRequiredEnum>, IScalarValue<TRequiredEnum, string>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | Converter type; no public properties. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TRequiredEnum?` | Accepts only JSON `string` and `null`; string values are resolved through `RequiredEnum<TRequiredEnum>.TryFromName(name)`. |
+| `public override void Write(Utf8JsonWriter writer, TRequiredEnum value, JsonSerializerOptions options)` | `void` | Writes `value.Value` as a JSON string. |
+
+### `RequiredString<TSelf>`
+
+```csharp
+public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
+    where TSelf : RequiredString<TSelf>, IScalarValue<TSelf, string>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `string` | Inherited scalar value. |
+| `Length` | `int` | Convenience access to `Value.Length`. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public bool StartsWith(string value)` | `bool` | Delegates to `string.StartsWith(string)`. |
+| `public bool Contains(string value)` | `bool` | Delegates to `string.Contains(string)`. |
+| `public bool EndsWith(string value)` | `bool` | Delegates to `string.EndsWith(string)`. |
+| `public static TSelf Create(string value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredGuid<TSelf>`
+
+```csharp
+public abstract class RequiredGuid<TSelf> : ScalarValueObject<TSelf, Guid>
+    where TSelf : RequiredGuid<TSelf>, IScalarValue<TSelf, Guid>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `Guid` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(Guid value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredInt<TSelf>`
+
+```csharp
+public abstract class RequiredInt<TSelf> : ScalarValueObject<TSelf, int>
+    where TSelf : RequiredInt<TSelf>, IScalarValue<TSelf, int>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `int` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(int value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredDecimal<TSelf>`
+
+```csharp
+public abstract class RequiredDecimal<TSelf> : ScalarValueObject<TSelf, decimal>
+    where TSelf : RequiredDecimal<TSelf>, IScalarValue<TSelf, decimal>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `decimal` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(decimal value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredLong<TSelf>`
+
+```csharp
+public abstract class RequiredLong<TSelf> : ScalarValueObject<TSelf, long>
+    where TSelf : RequiredLong<TSelf>, IScalarValue<TSelf, long>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `long` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(long value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredBool<TSelf>`
+
+```csharp
+public abstract class RequiredBool<TSelf> : ScalarValueObject<TSelf, bool>
+    where TSelf : RequiredBool<TSelf>, IScalarValue<TSelf, bool>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `bool` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(bool value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredDateTime<TSelf>`
+
+```csharp
+public abstract class RequiredDateTime<TSelf> : ScalarValueObject<TSelf, DateTime>
+    where TSelf : RequiredDateTime<TSelf>, IScalarValue<TSelf, DateTime>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `DateTime` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public override string ToString()` | `string` | Formats `Value` using invariant round-trip format `"O"`. |
+| `public static TSelf Create(DateTime value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredEnum<TSelf>`
+
+```csharp
+public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf>
+    : IEquatable<RequiredEnum<TSelf>>
+    where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `string` | Canonical symbolic identity; defaults to the public static field name unless `[EnumValue]` overrides it. |
+| `Ordinal` | `int` | Declaration-order metadata; not a wire/storage identity. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IReadOnlyCollection<TSelf> GetAll()` | `IReadOnlyCollection<TSelf>` | Returns all discovered public static readonly members. |
+| `public static Result<TSelf> TryFromName(string? name, string? fieldName = null)` | `Result<TSelf>` | Case-insensitive symbolic lookup. |
+| `public bool Is(params TSelf[] values)` | `bool` | True when this instance matches any provided member. |
+| `public bool IsNot(params TSelf[] values)` | `bool` | Negation of `Is(params TSelf[])`. |
+| `public override string ToString()` | `string` | Returns `Value`. |
+| `public override int GetHashCode()` | `int` | Case-insensitive hash of `Value`. |
+| `public override bool Equals(object? obj)` | `bool` | Case-insensitive symbolic equality. |
+| `public bool Equals(RequiredEnum<TSelf>? other)` | `bool` | Case-insensitive symbolic equality. |
+| `public static bool operator ==(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Equality operator. |
+| `public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Inequality operator. |
+
+### Source-generated members
+
+The incremental generator at `Trellis.Core/generator/RequiredPartialClassGenerator.cs` (bundled inside `Trellis.Core.nupkg` at `analyzers/dotnet/cs/Trellis.Core.Generator.dll`) augments partial classes that inherit a `Required*<TSelf>` base type.
+
+#### `RequiredString<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(string? value, string? fieldName = null)
+public static TSelf Create(string? value, string? fieldName = null)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(string value)
+static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: null/empty/whitespace rejection, trimming, optional `[StringLength]` checks.
+
+#### `RequiredGuid<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static TSelf NewUniqueV4()
+public static TSelf NewUniqueV7()
+public static Result<TSelf> TryCreate(Guid value, string? fieldName = null)
+public static Result<TSelf> TryCreate(Guid? requiredGuidOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static new TSelf Create(Guid value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(Guid value)
+static partial void ValidateAdditional(Guid value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `Guid.Empty` rejection.
+
+#### `RequiredInt<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(int value, string? fieldName = null)
+public static Result<TSelf> TryCreate(int? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(int value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(int value)
+static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs, optional `[Range(int, int)]`.
+
+#### `RequiredDecimal<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(decimal value, string? fieldName = null)
+public static Result<TSelf> TryCreate(decimal? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(decimal value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(decimal value)
+static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs, optional `[Range(int, int)]` or `[Range(double, double)]`.
+
+#### `RequiredLong<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(long value, string? fieldName = null)
+public static Result<TSelf> TryCreate(long? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(long value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(long value)
+static partial void ValidateAdditional(long value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs, optional `[Range(long, long)]`.
+
+#### `RequiredBool<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(bool value, string? fieldName = null)
+public static Result<TSelf> TryCreate(bool? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static new TSelf Create(bool value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(bool value)
+static partial void ValidateAdditional(bool value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs; `false` is valid.
+
+#### `RequiredDateTime<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(DateTime value, string? fieldName = null)
+public static Result<TSelf> TryCreate(DateTime? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(DateTime value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(DateTime value)
+static partial void ValidateAdditional(DateTime value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `DateTime.MinValue` rejection.
+
+#### `RequiredEnum<TSelf>`
+
+```csharp
+[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(string value)
+public static Result<TSelf> TryCreate(string? value, string? fieldName = null)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static TSelf Create(string value)
+```
+
+- Generated `TryCreate` delegates only to `TryFromName`.
+- The enum JSON converter also uses only `TryFromName`; there is no `TryFromValue` path.
+
+### Building your own primitive
+
+```csharp
+using System.Globalization;
+using Trellis;
+
+namespace Demo;
+
+[StringLength(50)]
+public partial class CustomerName : RequiredString<CustomerName> { }
+
+public partial class OrderId : RequiredGuid<OrderId> { }
+
+[Range(1, 999)]
+public partial class LineCount : RequiredInt<LineCount> { }
+
+public partial class SubmittedAt : RequiredDateTime<SubmittedAt> { }
+
+public partial class OrderState : RequiredEnum<OrderState>
+{
+    public static readonly OrderState Draft = new();
+
+    [EnumValue("submitted")]
+    public static readonly OrderState Submitted = new();
+}
+
+public static class Example
+{
+    public static void Run()
+    {
+        var orderId = OrderId.NewUniqueV7();
+        var name = CustomerName.Create("Ada");
+        var lines = LineCount.TryCreate("42", CultureInfo.InvariantCulture).Value;
+        var submittedAt = SubmittedAt.Parse("2026-01-15T12:00:00Z", CultureInfo.InvariantCulture);
+        var state = OrderState.Create("submitted");
+
+        _ = (orderId, name, lines, submittedAt, state);
+    }
+}
+```
+
+## Extension methods
+
+### `AggregateETagExtensions`
+
+```csharp
+public static Result<T> OptionalETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate
+public static Result<T> RequireETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate
+public static Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate
+public static ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate
+public static Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate
+public static ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate
+```
+
+Notes:
+
+- Matching is always strong RFC 9110 comparison.
+- `expectedETags is null` means “no `If-Match` header supplied”.
+- `expectedETags.Length == 0` fails with `Error.PreconditionFailed` because the header contained only weak ETags.
+- `EntityTagValue.Wildcard()` bypasses value comparison and succeeds immediately.
+
+## Internal types
+
+- `AndSpecification<T>`, `OrSpecification<T>`, and `NotSpecification<T>` are internal implementation types returned by the public combinators on `Specification<T>`.
+
+## Code examples
+
+### Aggregate, entity, and ETag validation
+
+```csharp
+using System;
+using Trellis;
+
+public sealed class OrderId : ScalarValueObject<OrderId, Guid>, IScalarValue<OrderId, Guid>
+{
+    private OrderId(Guid value) : base(value) { }
+
+    public static Result<OrderId> TryCreate(Guid value, string? fieldName = null) =>
+        value == Guid.Empty
+            ? Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "required") { Detail = "Order ID is required." })))
+            : Result.Ok(new OrderId(value));
+
+    public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
+        Guid.TryParse(value, out var guid)
+            ? TryCreate(guid, fieldName)
+            : Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "must_be_guid") { Detail = "Order ID must be a GUID." })));
+}
+
+public sealed record OrderPlaced(OrderId OrderId, DateTime OccurredAt) : IDomainEvent;
+
+public sealed class Order : Aggregate<OrderId>
+{
+    public string Description { get; private set; }
+
+    private Order(OrderId id, string description) : base(id) => Description = description;
+
+    public static Result<Order> Create(string description)
+    {
+        var order = new Order(OrderId.Create(Guid.NewGuid()), description);
+        order.DomainEvents.Add(new OrderPlaced(order.Id, DateTime.UtcNow));
+        return Result.Ok(order);
+    }
+}
+
+Result<Order> orderResult = Order.Create("starter-order");
+var guarded = orderResult.OptionalETag(new[] { EntityTagValue.Strong(orderResult.Value.ETag) });
+```
+
+### Specification composition
+
+```csharp
+using System;
+using System.Linq.Expressions;
+using Trellis;
+
+public sealed class Subscription
+{
+    public DateTimeOffset ExpiresAt { get; init; }
+    public bool IsCancelled { get; init; }
+}
+
+public sealed class ExpiredSubscriptionSpec(DateTimeOffset now) : Specification<Subscription>
+{
+    public override Expression<Func<Subscription, bool>> ToExpression() =>
+        subscription => subscription.ExpiresAt < now;
+}
+
+public sealed class ActiveSubscriptionSpec : Specification<Subscription>
+{
+    public override Expression<Func<Subscription, bool>> ToExpression() =>
+        subscription => !subscription.IsCancelled;
+}
+
+var spec = new ExpiredSubscriptionSpec(DateTimeOffset.UtcNow)
+    .And(new ActiveSubscriptionSpec());
+```
+
+## Cross-references
+
+- [Trellis.Core API reference](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Error`, `EntityTagValue`, `IScalarValue<TSelf, TPrimitive>`, and `IFormattableScalarValue<TSelf, TPrimitive>`
+- [Trellis.Primitives API reference](trellis-api-primitives.md) — built-in scalar and composite value objects that build on these DDD primitives
+- [Trellis.EntityFrameworkCore API reference](trellis-api-efcore.md) — EF Core conventions and interceptors for `IEntity`, `IAggregate`, `ValueObject`, and `Maybe<T>`
 

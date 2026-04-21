@@ -92,7 +92,7 @@ Start with the packages most developers need first:
 ```bash
 dotnet add package Trellis.Core
 dotnet add package Trellis.Primitives
-dotnet add package Trellis.Primitives.Generator
+dotnet add package Trellis.Core.Generator
 dotnet add package Trellis.Analyzers
 ```
 

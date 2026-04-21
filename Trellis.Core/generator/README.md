@@ -1,12 +1,12 @@
-# Trellis.Primitives.Generator
+# Trellis.Core.Generator
 
-[![NuGet Package](https://img.shields.io/nuget/v/Trellis.Primitives.Generator.svg)](https://www.nuget.org/packages/Trellis.Primitives.Generator)
+[![NuGet Package](https://img.shields.io/nuget/v/Trellis.Core.Generator.svg)](https://www.nuget.org/packages/Trellis.Core.Generator)
 
 Source generation for custom scalar value objects built on `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, and related Trellis primitives.
 
 ## Installation
 ```bash
-dotnet add package Trellis.Primitives.Generator
+dotnet add package Trellis.Core.Generator
 ```
 
 ## Quick Example

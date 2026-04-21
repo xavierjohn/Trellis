@@ -130,4 +130,4 @@ StateMachine<DocumentState, DocumentTrigger> machine = lazyMachine.Machine;
 ## Cross-references
 
 - [trellis-api-core.md](trellis-api-core.md)
-- [trellis-api-ddd.md](trellis-api-ddd.md)
+- [trellis-api-core.md](trellis-api-core.md)

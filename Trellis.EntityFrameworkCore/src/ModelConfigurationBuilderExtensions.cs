@@ -2,6 +2,7 @@
 
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Trellis.Primitives;
 
 /// <summary>
 /// Extension methods for <see cref="ModelConfigurationBuilder"/> that register
@@ -39,8 +40,9 @@ public static class ModelConfigurationBuilderExtensions
         this ModelConfigurationBuilder configurationBuilder,
         params Assembly[] assemblies)
     {
-        var primitivesAssembly = typeof(RequiredEnum<>).Assembly;
-        var allAssemblies = new HashSet<Assembly>(assemblies) { primitivesAssembly };
+        var coreAssembly = typeof(RequiredEnum<>).Assembly;
+        var primitivesAssembly = typeof(EmailAddress).Assembly;
+        var allAssemblies = new HashSet<Assembly>(assemblies) { coreAssembly, primitivesAssembly };
         var compositeTypes = new HashSet<Type>();
 
         foreach (var assembly in allAssemblies)

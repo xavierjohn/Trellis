@@ -95,8 +95,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 
 | Namespace | What it does | Guide |
 |-----------|-------------|-------|
-| [`Trellis.Asp`](xref:Trellis.Asp) | `Result<T>` → HTTP responses for MVC and Minimal APIs | [ASP.NET Core](~/articles/integration-aspnet.md) |
-| [`Trellis.Asp.Authorization`](xref:Trellis.Asp.Authorization) | Claims, Entra ID, and development actor providers | [Authorization](~/articles/integration-asp-authorization.md) |
+| [`Trellis.Asp`](xref:Trellis.Asp) | `Result<T>` → HTTP responses for MVC and Minimal APIs; ASP.NET actor providers (Claims, Entra, Development) | [ASP.NET Core](~/articles/integration-aspnet.md) · [Authorization](~/articles/integration-asp-authorization.md) |
 | [`Trellis.Authorization`](xref:Trellis.Authorization) | `Actor`, permission checks, resource authorization | [Authorization](~/articles/integration-asp-authorization.md) |
 | [`Trellis.Http`](xref:Trellis.Http) | `HttpClient` extensions that stay inside the Result pipeline | [HTTP Client](~/articles/integration-http.md) |
 | [`Trellis.FluentValidation`](xref:Trellis.FluentValidation) | FluentValidation output → Trellis `Result` | [FluentValidation](~/articles/integration-fluentvalidation.md) |
@@ -112,9 +111,8 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 | Package | What it does |
 |---------|-------------|
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | 19+ Roslyn analyzers that catch common mistakes at build time |
-| [Trellis.Primitives.Generator](https://www.nuget.org/packages/Trellis.Primitives.Generator) | Source generation for `RequiredString` and related primitives |
-| [Trellis.AspSourceGenerator](https://www.nuget.org/packages/Trellis.AspSourceGenerator) | AOT-friendly JSON converter generation for scalar values |
-| [Trellis.EntityFrameworkCore.Generator](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Generator) | Generated backing fields for `Maybe<T>` and owned value objects |
+| [Trellis.Core.Generator](https://www.nuget.org/packages/Trellis.Core.Generator) | Source generation for `RequiredString` and related primitives |
+
 
 > See all analyzer rules: [Analyzer Rules](~/articles/analyzers/toc.yml)
 
@@ -122,7 +120,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 
 ## Observability
 
-Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xref:Trellis.CoreTraceProviderBuilderExtensions) and [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions). Automatic span creation for pipeline operations and value object creation boundaries.
+Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xref:Trellis.ResultsTraceProviderBuilderExtensions) and [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions). Automatic span creation for pipeline operations and value object creation boundaries.
 
 > Learn more: [Observability & Monitoring](~/articles/integration-observability.md)
 
@@ -138,3 +136,4 @@ Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xre
 | Browse working code | [Examples](~/articles/examples.md) |
 | Set up integrations | [Integration Overview](~/articles/integration.md) |
 | Run the benchmarks | [Performance](~/articles/performance.md) |
+

@@ -13,7 +13,6 @@
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Trellis.DomainDrivenDesign\src\Trellis.DomainDrivenDesign.csproj" />
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
   </ItemGroup>
 </Project>

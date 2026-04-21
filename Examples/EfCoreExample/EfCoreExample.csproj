@@ -16,8 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
-    <ProjectReference Include="..\..\Trellis.DomainDrivenDesign\src\Trellis.DomainDrivenDesign.csproj" />
-    <ProjectReference Include="..\..\Trellis.Primitives\generator\Trellis.Primitives.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
   </ItemGroup>
 

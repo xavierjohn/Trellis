@@ -25,7 +25,6 @@
     <ProjectReference Include="..\Showcase.Domain\Showcase.Domain.csproj" />
     <ProjectReference Include="..\Showcase.Application\Showcase.Application.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
-    <ProjectReference Include="..\..\..\..\Trellis.Asp.Authorization\src\Trellis.Asp.Authorization.csproj" />
   </ItemGroup>
 
 </Project>
