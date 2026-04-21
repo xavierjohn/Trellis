@@ -173,7 +173,7 @@ Represents either a successful `TValue` or a failure `Error`.
 | --- | --- |
 | `public static Result<TValue> CreateFailure(Error error)` | Implements `IFailureFactory<Result<TValue>>` |
 | `public bool TryGetValue(out TValue value)` | Non-throwing success extractor |
-| `public bool TryGetError(out Error error)` | Non-throwing failure extractor; on `default(Result<T>)` returns `true` with the `Error.Unexpected` sentinel |
+| `public bool TryGetError(out Error? error)` | Non-throwing failure extractor; on `default(Result<T>)` returns `true` with the `Error.Unexpected` sentinel |
 | `public void Deconstruct(out bool isSuccess, out TValue? value, out Error? error)` | Deconstruction support |
 | `public Result AsUnit()` | Discards the success value, returning a non-generic `Result`. On a default-initialized failure, returns an explicit `Result.Fail(sentinel)` (never another `default`). |
 | `public bool Equals(Result<TValue> other)` | Value equality |

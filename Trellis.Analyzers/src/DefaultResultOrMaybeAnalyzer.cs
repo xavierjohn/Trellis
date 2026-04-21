@@ -73,7 +73,7 @@ public sealed class DefaultResultOrMaybeAnalyzer : DiagnosticAnalyzer
 
             case "Maybe`1":
                 typeDisplay = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                suggestion = "Maybe<T>.None";
+                suggestion = "Maybe<T>.None or Maybe.From(...)";
                 break;
 
             default:

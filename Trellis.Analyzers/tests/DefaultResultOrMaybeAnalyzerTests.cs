@@ -71,7 +71,7 @@ public class DefaultResultOrMaybeAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.DefaultResultOrMaybe)
                 .WithLocation(11, 16)
-                .WithArguments("Maybe<int>", "Maybe<T>.None"));
+                .WithArguments("Maybe<int>", "Maybe<T>.None or Maybe.From(...)"));
 
         await test.RunAsync();
     }
