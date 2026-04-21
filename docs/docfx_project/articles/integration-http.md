@@ -152,7 +152,7 @@ public sealed class InvoicesClient(HttpClient httpClient)
                 return response.StatusCode switch
                 {
                     HttpStatusCode.Conflict   => new Error.Conflict(null, "conflict") { Detail = body },
-                    HttpStatusCode.BadRequest => new Error.InternalServerError("bad-req") { Detail = body },
+                    HttpStatusCode.BadRequest => new Error.BadRequest("bad-req") { Detail = body },
                     _ => new Error.InternalServerError("upstream") { Detail = $"Invoice request failed with {(int)response.StatusCode}: {body}" },
                 };
             }, ct)

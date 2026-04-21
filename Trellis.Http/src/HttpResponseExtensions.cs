@@ -3,7 +3,6 @@ namespace Trellis.Http;
 using System;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using System.Threading;
@@ -70,12 +69,24 @@ public static class HttpResponseExtensions
         this Task<HttpResponseMessage> response,
         Func<HttpStatusCode, Error?>? statusMap = null)
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         var message = await response.ConfigureAwait(false);
 
         if (statusMap is null)
             return Result.Ok(message);
 
-        var mapped = statusMap(message.StatusCode);
+        Error? mapped;
+        try
+        {
+            mapped = statusMap(message.StatusCode);
+        }
+        catch
+        {
+            message.Dispose();
+            throw;
+        }
+
         if (mapped is null)
             return Result.Ok(message);
 
@@ -109,6 +120,7 @@ public static class HttpResponseExtensions
         Func<HttpResponseMessage, CancellationToken, Task<Error?>> mapper,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(mapper);
 
         var message = await response.ConfigureAwait(false);
@@ -116,7 +128,17 @@ public static class HttpResponseExtensions
         if (message.IsSuccessStatusCode)
             return Result.Ok(message);
 
-        var error = await mapper(message, ct).ConfigureAwait(false);
+        Error? error;
+        try
+        {
+            error = await mapper(message, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            message.Dispose();
+            throw;
+        }
+
         if (error is null)
             return Result.Ok(message);
 
@@ -142,6 +164,8 @@ public static class HttpResponseExtensions
         this Task<HttpResponseMessage> response,
         Error.NotFound error)
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         var message = await response.ConfigureAwait(false);
 
         if (message.StatusCode == HttpStatusCode.NotFound)
@@ -169,6 +193,8 @@ public static class HttpResponseExtensions
         this Task<HttpResponseMessage> response,
         Error.Conflict error)
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         var message = await response.ConfigureAwait(false);
 
         if (message.StatusCode == HttpStatusCode.Conflict)
@@ -196,6 +222,8 @@ public static class HttpResponseExtensions
         this Task<HttpResponseMessage> response,
         Error.Unauthorized error)
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         var message = await response.ConfigureAwait(false);
 
         if (message.StatusCode == HttpStatusCode.Unauthorized)
@@ -231,6 +259,8 @@ public static class HttpResponseExtensions
         CancellationToken ct = default)
         where T : notnull
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         var result = await response.ConfigureAwait(false);
         if (result.IsFailure)
             return Result.Fail<T>(result.Error!);
@@ -322,6 +352,8 @@ public static class HttpResponseExtensions
         CancellationToken ct = default)
         where T : notnull
     {
+        ArgumentNullException.ThrowIfNull(response);
+
         var result = await response.ConfigureAwait(false);
         if (result.IsFailure)
             return Result.Fail<Maybe<T>>(result.Error!);

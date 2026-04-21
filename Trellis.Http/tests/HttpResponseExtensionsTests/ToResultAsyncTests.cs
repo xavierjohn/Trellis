@@ -144,4 +144,70 @@ public class ToResultAsyncTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    // ----- Null-task and exception-disposal guards -----
+
+    [Fact]
+    public async Task Throws_ArgumentNullException_when_response_task_is_null()
+    {
+        Task<HttpResponseMessage> task = null!;
+
+        var act = async () => await task.ToResultAsync();
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("response");
+    }
+
+    [Fact]
+    public async Task Body_aware_overload_throws_ArgumentNullException_when_response_task_is_null()
+    {
+        Task<HttpResponseMessage> task = null!;
+
+        var act = async () => await task.ToResultAsync(
+            (_, _) => Task.FromResult<Error?>(null),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("response");
+    }
+
+    [Fact]
+    public async Task Status_map_throwing_disposes_response_before_propagating()
+    {
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.ToResultAsync(_ => throw new InvalidOperationException("boom"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        tracker.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Body_aware_mapper_throwing_disposes_response_before_propagating()
+    {
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.BadRequest);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.ToResultAsync(
+            (_, _) => throw new InvalidOperationException("mapper-failed"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("mapper-failed");
+        tracker.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Body_aware_mapper_async_failure_disposes_response_before_propagating()
+    {
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.BadRequest);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.ToResultAsync(
+            (_, _) => Task.FromException<Error?>(new InvalidOperationException("async-fail")),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("async-fail");
+        tracker.Disposed.Should().BeTrue();
+    }
 }

@@ -51,4 +51,15 @@ public class HandleNotFoundAsyncTests
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
+
+    [Fact]
+    public async Task Throws_ArgumentNullException_when_response_task_is_null()
+    {
+        Task<HttpResponseMessage> task = null!;
+
+        var act = async () => await task.HandleNotFoundAsync(_notFound);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("response");
+    }
 }

@@ -31,6 +31,7 @@ public sealed record ProfileDto(string DisplayName);
 [JsonSerializable(typeof(ProfileDto))]
 public partial class ProfileJsonContext : JsonSerializerContext { }
 
+var userId = "current-user";
 var result = await httpClient.GetAsync("/profile", cancellationToken)
     .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Profile", userId)))
     .ReadJsonAsync(ProfileJsonContext.Default.ProfileDto, cancellationToken);

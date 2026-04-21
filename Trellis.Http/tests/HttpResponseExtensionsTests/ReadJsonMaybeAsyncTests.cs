@@ -126,4 +126,15 @@ public class ReadJsonMaybeAsyncTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task Throws_ArgumentNullException_when_response_task_is_null()
+    {
+        Task<Result<HttpResponseMessage>> task = null!;
+
+        var act = async () => await task.ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("response");
+    }
 }
