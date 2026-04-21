@@ -168,5 +168,5 @@ public static class ProfileClient
 
 ## Cross-references
 
-- [trellis-api-results.md](trellis-api-results.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-asp.md](trellis-api-asp.md)

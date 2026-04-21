@@ -581,5 +581,5 @@ string debug = db.ToMaybeMappingDebugString();
 ## Cross-references
 
 - [Trellis.DomainDrivenDesign API reference](trellis-api-ddd.md) — `IEntity`, `IAggregate`, `Aggregate<TId>`, `Entity<TId>`, `ValueObject`, `ScalarValueObject<TSelf, T>`, and `Specification<T>`
-- [Trellis.Results API reference](trellis-api-results.md) — `Result<T>`, `Maybe<T>`, `Error`, `Unit`, `IScalarValue<TSelf, TPrimitive>`, and `EntityTagValue`
+- [Trellis.Core API reference](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Error`, `Unit`, `IScalarValue<TSelf, TPrimitive>`, and `EntityTagValue`
 - [Trellis.Primitives API reference](trellis-api-primitives.md) — `Money`, `RequiredEnum<T>`, and built-in value objects commonly scanned by `ApplyTrellisConventions`

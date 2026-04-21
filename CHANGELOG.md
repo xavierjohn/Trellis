@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-#### Trellis.Results — Error redesigned as closed ADT
+#### Trellis.Core — Error redesigned as closed ADT
 
 The `Error` type is now an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, `Error.Conflict`, `Error.Forbidden`, …). The base type has a `private` constructor so the catalog is closed at the language level, and every `switch` over an `Error` reference is exhaustive at compile time.
 
@@ -23,7 +23,7 @@ Key changes:
 - **Renamed wire identifiers.** Default `Code` values changed from `"validation.error"`/`"not.found.error"`/etc. to the IANA-aligned slugs `"unprocessable-content"`/`"not-found"`/etc.
 - **TRLS005 analyzer (`UseMatchErrorAnalyzer`) removed** — the C# compiler now provides exhaustiveness for free.
 
-Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full patterns and [api-results.md](docs/api_reference/trellis-api-results.md) for the reference table.
+Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full patterns and [api-results.md](docs/api_reference/trellis-api-core.md) for the reference table.
 
 #### Trellis.Testing — Package Restructure
 
@@ -32,7 +32,7 @@ Migration path: every `Error.X(...)` factory call site must be rewritten. `Match
 - **Removed `Trellis.Testing.Builders` namespace** — All builder types have been removed.
 - **Removed `Trellis.Testing.Fakes` namespace** — `FakeRepository`, `FakeSharedResourceLoader`, `TestActorProvider`, and `TestActorScope` now live in the `Trellis.Testing` namespace. Replace `using Trellis.Testing.Fakes;` with `using Trellis.Testing;`.
 - **New package: `Trellis.Testing.AspNetCore`** — ASP.NET Core integration test helpers (`WebApplicationFactoryExtensions`, `WebApplicationFactoryTimeExtensions`, `ServiceCollectionExtensions`, `ServiceCollectionDbProviderExtensions`, `MsalTestTokenProvider`, `MsalTestOptions`, `TestUserCredentials`) moved to this new package. Add `dotnet add package Trellis.Testing.AspNetCore` and add `using Trellis.Testing.AspNetCore;` for these types. Projects using both core assertions and ASP.NET helpers will need both packages.
-- **`Trellis.Testing` no longer depends on ASP.NET Core, EF Core, or MSAL** — The core package now only depends on `Trellis.Results`, `Trellis.DomainDrivenDesign`, `Trellis.Authorization`, and `FluentAssertions`.
+- **`Trellis.Testing` no longer depends on ASP.NET Core, EF Core, or MSAL** — The core package now only depends on `Trellis.Core`, `Trellis.DomainDrivenDesign`, `Trellis.Authorization`, and `FluentAssertions`.
 
 ### Added
 
@@ -72,7 +72,7 @@ Migration path: every `Error.X(...)` factory call site must be rewritten. `Match
 
 #### Trellis.Authorization — NEW Package!
 
-Lightweight authorization primitives with zero dependencies beyond `Trellis.Results`:
+Lightweight authorization primitives with zero dependencies beyond `Trellis.Core`:
 
 - **`Actor`** — Sealed record representing an authenticated user (`Id` + `Permissions`) with `HasPermission`, `HasAllPermissions`, `HasAnyPermission` helpers
 - **`IActorProvider`** — Abstraction for resolving the current actor (implement in API layer)
@@ -95,7 +95,7 @@ Result-aware pipeline behaviors for [martinothamar/Mediator](https://github.com/
 - **`ExceptionBehavior`** — Catches unhandled exceptions → `Error.Unexpected`
 - **`ServiceCollectionExtensions`** — `PipelineBehaviors` array and `AddTrellisBehaviors()` DI registration
 
-#### Trellis.Results — IFailureFactory
+#### Trellis.Core — IFailureFactory
 
 - **`IFailureFactory<TSelf>`** — Static abstract interface for AOT-friendly typed failure creation in generic pipeline behaviors
 - **`Result<TValue>`** now implements `IFailureFactory<Result<TValue>>`

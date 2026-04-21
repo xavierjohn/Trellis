@@ -230,7 +230,7 @@ Notes:
 ## Internal types
 
 - `AndSpecification<T>`, `OrSpecification<T>`, and `NotSpecification<T>` are internal implementation types returned by the public combinators on `Specification<T>`.
-- `IScalarValue<TSelf, TPrimitive>` and `IFormattableScalarValue<TSelf, TPrimitive>` are **not** in this package. They are defined in `Trellis.Results` and are referenced by `ScalarValueObject<TSelf, T>` through its generic constraint.
+- `IScalarValue<TSelf, TPrimitive>` and `IFormattableScalarValue<TSelf, TPrimitive>` are **not** in this package. They are defined in `Trellis.Core` and are referenced by `ScalarValueObject<TSelf, T>` through its generic constraint.
 
 ## Code examples
 
@@ -306,6 +306,6 @@ var spec = new ExpiredSubscriptionSpec(DateTimeOffset.UtcNow)
 
 ## Cross-references
 
-- [Trellis.Results API reference](trellis-api-results.md) — `Result<T>`, `Maybe<T>`, `Error`, `EntityTagValue`, `IScalarValue<TSelf, TPrimitive>`, and `IFormattableScalarValue<TSelf, TPrimitive>`
+- [Trellis.Core API reference](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Error`, `EntityTagValue`, `IScalarValue<TSelf, TPrimitive>`, and `IFormattableScalarValue<TSelf, TPrimitive>`
 - [Trellis.Primitives API reference](trellis-api-primitives.md) — built-in scalar and composite value objects that build on these DDD primitives
 - [Trellis.EntityFrameworkCore API reference](trellis-api-efcore.md) — EF Core conventions and interceptors for `IEntity`, `IAggregate`, `ValueObject`, and `Maybe<T>`

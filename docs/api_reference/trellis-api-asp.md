@@ -388,7 +388,7 @@ public static class RouteConstraintRegistrationExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `IServiceCollection AddTrellisRouteConstraints(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the supplied assemblies (or the calling assembly + the assembly containing `IScalarValue<TSelf, TPrimitive>` — `Trellis.Results` — if none are supplied) for value objects implementing `IScalarValue<TSelf, TPrimitive>` and `IParsable<TSelf>`, then registers a `TrellisValueObjectRouteConstraint<T>` under the type's simple name. Existing entries in `RouteOptions.ConstraintMap` are preserved. Reflection-based; not Native AOT compatible. |
+| `IServiceCollection AddTrellisRouteConstraints(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the supplied assemblies (or the calling assembly + the assembly containing `IScalarValue<TSelf, TPrimitive>` — `Trellis.Core` — if none are supplied) for value objects implementing `IScalarValue<TSelf, TPrimitive>` and `IParsable<TSelf>`, then registers a `TrellisValueObjectRouteConstraint<T>` under the type's simple name. Existing entries in `RouteOptions.ConstraintMap` are preserved. Reflection-based; not Native AOT compatible. |
 | `IServiceCollection AddTrellisRouteConstraint<T>(this IServiceCollection services, string? constraintName = null) where T : IParsable<T>` | `IServiceCollection` | Registers a single value object route constraint without reflection. AOT-safe. |
 
 Once registered, route templates such as `"/products/{id:ProductId}"` parse and bind the segment via the value object's `IParsable<T>.TryParse` implementation.
@@ -426,7 +426,7 @@ public static class ValidationErrorsContext
 | `public static IDisposable BeginScope()` | `IDisposable` | Starts a new async-local validation collection scope; disposing restores the previous scope and property name. |
 | `public static Error.UnprocessableContent? GetUnprocessableContent()` | `Error.UnprocessableContent?` | Returns the aggregated `Error.UnprocessableContent` for the current scope (with `Fields`/`Rules` populated from collected `FieldViolation`s), or `null` when no errors were collected. |
 
-> **Note:** `WriteOutcome<T>` and its case records (`Created`, `Updated`, `UpdatedNoContent`, `Accepted`, `AcceptedNoContent`) live in `Trellis.Results` (namespace `Trellis`) — see [`trellis-api-results.md`](./trellis-api-results.md). They are documented there because Application-layer repositories (which cannot reference `Trellis.Asp`) must declare them as return types. The `WriteOutcomeExtensions` mappers below are the ASP.NET-specific surface that translates each case to `ActionResult` / `IResult`.
+> **Note:** `WriteOutcome<T>` and its case records (`Created`, `Updated`, `UpdatedNoContent`, `Accepted`, `AcceptedNoContent`) live in `Trellis.Core` (namespace `Trellis`) — see [`trellis-api-core.md`](./trellis-api-core.md). They are documented there because Application-layer repositories (which cannot reference `Trellis.Asp`) must declare them as return types. The `WriteOutcomeExtensions` mappers below are the ASP.NET-specific surface that translates each case to `ActionResult` / `IResult`.
 
 ### `WriteOutcomeExtensions`
 
@@ -800,7 +800,7 @@ static IResult UpdateWidget(HttpContext httpContext)
 
 ## Cross-references
 
-- [trellis-api-results.md](trellis-api-results.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-ddd.md](trellis-api-ddd.md)
 - [trellis-api-primitives.md](trellis-api-primitives.md)
 - [trellis-api-http.md](trellis-api-http.md)

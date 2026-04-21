@@ -1,6 +1,6 @@
 # Trellis API Primitives
 
-**Packages:** `Trellis.Primitives`, `Trellis.Results`, `Trellis.DomainDrivenDesign` | **Namespaces:** `Trellis`, `Trellis.Primitives` | **Purpose:** strongly typed scalar and structured value objects, JSON converters, validation attributes, tracing helpers, and built-in concrete primitives.
+**Packages:** `Trellis.Primitives`, `Trellis.Core`, `Trellis.DomainDrivenDesign` | **Namespaces:** `Trellis`, `Trellis.Primitives` | **Purpose:** strongly typed scalar and structured value objects, JSON converters, validation attributes, tracing helpers, and built-in concrete primitives.
 
 ## Types
 
@@ -875,6 +875,6 @@ public static class Example
 
 ## Cross-references
 
-- [trellis-api-results.md](trellis-api-results.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-ddd.md](trellis-api-ddd.md)
 - [trellis-api-efcore.md](trellis-api-efcore.md)

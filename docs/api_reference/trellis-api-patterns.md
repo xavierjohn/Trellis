@@ -1,10 +1,10 @@
 # Trellis Patterns API Reference
 
-**Package:** multiple (`Trellis.Results`, `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Http`, `Trellis.Authorization`, `Trellis.Mediator`)  
+**Package:** multiple (`Trellis.Core`, `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Http`, `Trellis.Authorization`, `Trellis.Mediator`)  
 **Namespace:** mixed  
 **Purpose:** Documents the supported cross-package usage patterns Trellis builds around results, scalar values, ASP.NET integration, EF Core, HTTP clients, and mediator pipelines.
 
-See also: [trellis-api-results.md](trellis-api-results.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-entityframeworkcore.md](trellis-api-entityframeworkcore.md).
+See also: [trellis-api-core.md](trellis-api-core.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-entityframeworkcore.md](trellis-api-entityframeworkcore.md).
 
 ---
 

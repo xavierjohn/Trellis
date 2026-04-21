@@ -15,6 +15,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\Trellis.Results\src\Trellis.Results.csproj" />
+	  <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
 	</ItemGroup>
 </Project>

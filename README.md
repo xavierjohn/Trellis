@@ -2,8 +2,8 @@
 
 [![Build](https://github.com/xavierjohn/Trellis/actions/workflows/build.yml/badge.svg)](https://github.com/xavierjohn/Trellis/actions/workflows/build.yml)
 [![codecov](https://codecov.io/gh/xavierjohn/Trellis/branch/main/graph/badge.svg)](https://codecov.io/gh/xavierjohn/Trellis)
-[![NuGet](https://img.shields.io/nuget/v/Trellis.Results.svg)](https://www.nuget.org/packages/Trellis.Results)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Trellis.Results.svg)](https://www.nuget.org/packages/Trellis.Results)
+[![NuGet](https://img.shields.io/nuget/v/Trellis.Core.svg)](https://www.nuget.org/packages/Trellis.Core)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Trellis.Core.svg)](https://www.nuget.org/packages/Trellis.Core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download)
 [![C#](https://img.shields.io/badge/C%23-14.0-blue.svg)](https://docs.microsoft.com/en-us/dotnet/csharp/)
@@ -53,7 +53,7 @@ return EmailAddress.TryCreate(request.Email)
 ## Quick Start
 
 ```bash
-dotnet add package Trellis.Results
+dotnet add package Trellis.Core
 ```
 
 ```csharp
@@ -71,7 +71,7 @@ var result = Result.Ok("ada@example.com")
 
 | Package | What it gives you |
 | --- | --- |
-| [Trellis.Results](https://www.nuget.org/packages/Trellis.Results) | `Result<T>`, `Maybe<T>`, typed errors, and pipeline operators |
+| [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, and pipeline operators |
 | [Trellis.DomainDrivenDesign](https://www.nuget.org/packages/Trellis.DomainDrivenDesign) | `Aggregate`, `Entity`, `ValueObject`, `Specification`, and domain events |
 | [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use value objects plus base classes for your own |
 | [Trellis.Primitives.Generator](https://www.nuget.org/packages/Trellis.Primitives.Generator) | Source generation for `RequiredString<TSelf>` and related primitives |

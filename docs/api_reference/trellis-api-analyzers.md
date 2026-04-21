@@ -185,7 +185,7 @@ result.Match(
 
 #### `ErrorBaseClassAnalyzer` — `TRLS010`
 - Flags any attempt to construct the abstract base `Error` directly (which won't compile but is sometimes attempted via `new Error(...)` or implicit `new(...)` inference).
-- Construct one of the nested cases instead: `new Error.NotFound(resource)`, `new Error.UnprocessableContent(fields)`, etc. See `docs/api_reference/trellis-api-results.md` for the full case catalog.
+- Construct one of the nested cases instead: `new Error.NotFound(resource)`, `new Error.UnprocessableContent(fields)`, etc. See `docs/api_reference/trellis-api-core.md` for the full case catalog.
 - No code fix.
 
 #### `UseSaveChangesResultAnalyzer` — `TRLS020`
@@ -285,7 +285,7 @@ public static class EfExample
 
 ## Cross-references
 
-- [trellis-api-results.md](trellis-api-results.md) — `Result<T>`, `Maybe<T>`, `Bind`, `Map`, `Match`, `Combine`
+- [trellis-api-core.md](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Bind`, `Map`, `Match`, `Combine`
 - [trellis-api-efcore.md](trellis-api-efcore.md) — `SaveChangesResultAsync`, `SaveChangesResultUnitAsync`, `HasTrellisIndex`
 - [trellis-api-primitives.md](trellis-api-primitives.md) — Trellis `[StringLength]` and `[Range]`
 - [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — testing helpers that intentionally work with analyzer rules

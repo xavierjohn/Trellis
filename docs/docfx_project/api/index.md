@@ -122,7 +122,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 
 ## Observability
 
-Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xref:Trellis.ResultsTraceProviderBuilderExtensions) and [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions). Automatic span creation for pipeline operations and value object creation boundaries.
+Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xref:Trellis.CoreTraceProviderBuilderExtensions) and [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions). Automatic span creation for pipeline operations and value object creation boundaries.
 
 > Learn more: [Observability & Monitoring](~/articles/integration-observability.md)
 
