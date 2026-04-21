@@ -62,7 +62,7 @@ public static class HttpFileRunner
         ArgumentNullException.ThrowIfNull(context);
 
         var url = Substitute(request.Url, context);
-        var httpRequest = new HttpRequestMessage(new HttpMethod(request.Method), BuildUri(client, url));
+        using var httpRequest = new HttpRequestMessage(new HttpMethod(request.Method), BuildUri(client, url));
 
         HttpContent? content = null;
         if (!string.IsNullOrEmpty(request.Body))

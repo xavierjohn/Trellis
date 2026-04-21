@@ -167,6 +167,30 @@ public class HttpFileRunnerTests
         capturedUri.Query.Should().Be("?limit=10");
     }
 
+    [Fact]
+    public async Task RunSingleAsync_can_be_invoked_repeatedly_without_disposing_the_caller_response()
+    {
+        // Regression: the request HttpRequestMessage was previously not disposed.
+        // Wrapping it in a using block must not cause the caller's response to be
+        // disposed prematurely (SendAsync awaits to completion before the using
+        // scope exits).
+        using var handler = new StubHandler((req, _) => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"ok\":true}", Encoding.UTF8, "application/json"),
+        });
+        using var client = new HttpClient(handler) { BaseAddress = new Uri("http://fake/") };
+        var reqs = HttpFileParser.Parse("### loop\nGET /probe\n");
+        var ctx = new ScenarioContext();
+
+        for (int i = 0; i < 200; i++)
+        {
+            var result = await HttpFileRunner.RunSingleAsync(client, reqs[0], ctx, Ct);
+            result.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            // Body should still be readable from the returned response after the request was disposed.
+            (await result.Response.Content.ReadAsStringAsync(Ct)).Should().Be("{\"ok\":true}");
+        }
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> responder) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
