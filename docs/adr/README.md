@@ -10,6 +10,7 @@ new files; superseded decisions stay in place with a status update.
 | #  | Title | Status |
 |----|-------|--------|
 | 001 | [Result API Surface — `Value` / `Error` Accessors](ADR-001-result-api-surface.md) | Accepted (PR7) |
+| 002 | [Trellis v2 — Forward-Looking Architectural Redesign](ADR-002-v2-redesign-plan.md) | Accepted, in execution (PR #401 = Phase 1a shipped; PR #403 = Phase 2 in flight) |
 
 ## When to write an ADR
 

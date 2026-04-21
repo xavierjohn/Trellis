@@ -4,6 +4,19 @@
 
 Functional programming library for .NET 10 implementing Railway Oriented Programming (ROP), Domain-Driven Design (DDD) primitives, and value objects.
 
+## Before Doing v2 Redesign Work — REQUIRED READING
+
+The framework is currently executing a multi-phase v2 redesign. The authoritative plan — package map, type moves, generator-bundling decisions, phasing, and explicit "do NOT merge these" rationale — is captured in:
+
+> **`docs/adr/ADR-002-v2-redesign-plan.md`**
+
+If you are touching package layout (csproj split/merge, `Trellis.slnx`, NuGet `PackageId`), generator packaging, the namespace/package map in this file, the package table in `README.md`, or the v1→v2 breaking-changes table in `docs/api_reference/trellis-api-core.md`, **read ADR-002 §2 (Proposed Package Map) and §15 (Phasing) first**. Anything in this repo that contradicts ADR-002 is the bug.
+
+Phase status as of last update:
+- **Phase 1a — `Trellis.Results` → `Trellis.Core` rename:** shipped in PR #401.
+- **Phase 2 — package consolidation** (DDD into Core, Required* moves, all 3 source generators bundled into host packages, `Trellis.Asp.Authorization` merged into `Trellis.Asp`): in flight in PR #403.
+- Later phases (rename `Trellis.Stateless` → `Trellis.StateMachine`, etc.) — not started; see ADR-002 §15.
+
 ## Before Writing Code That Uses Trellis APIs
 
 Always read the relevant API reference files in `docs/api_reference/` **before** writing or generating code that uses Trellis types:
