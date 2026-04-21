@@ -4,6 +4,21 @@
 **Namespaces:** `Trellis.Asp`, `Trellis.Asp.ModelBinding`, `Trellis.Asp.Validation`, `Trellis.Asp.Authorization` (actor providers; documented separately in [`trellis-api-authorization.md`](trellis-api-authorization.md))
 **Purpose:** ASP.NET Core integration for mapping Trellis results to HTTP responses, evaluating HTTP preconditions/ranges/preferences, validating scalar value objects in MVC and Minimal APIs, and emitting AOT-friendly `JsonConverter`s for Trellis scalar values.
 
+> **v2.x recommended verb: `ToHttpResponse`.** The single fluent verb
+> `Result<T>.ToHttpResponse(...)` (and its `WriteOutcome`, `Page` and async
+> overloads) replaces the entire family of legacy verbs documented below
+> (`ToActionResult`, `ToHttpResult`, `ToActionResultAsync`,
+> `ToHttpResultAsync`, `ToPageHttpResult`, …). It returns
+> `Microsoft.AspNetCore.Http.IResult` for Minimal API and converts to MVC
+> via `.AsActionResult<T>()`. The legacy classes
+> (`ActionResultExtensions`, `ActionResultExtensionsAsync`,
+> `HttpResultExtensions`, `HttpResultExtensionsAsync`,
+> `PageActionResultExtensions`, `PageHttpResultExtensions`,
+> `WriteOutcomeExtensions`) are now `[Obsolete]` and slated for removal in a
+> future major. See
+> [`articles/asp-tohttpresponse.md`](../docfx_project/articles/asp-tohttpresponse.md)
+> for the full migration guide.
+
 ## Types
 
 ### Namespace `Trellis.Asp`

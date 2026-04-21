@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 /// Failure results delegate to <see cref="ActionResultExtensions.ToActionResult{TValue}(Error, ControllerBase)"/>;
 /// no <c>Link</c> header is emitted on the failure path.
 /// </remarks>
+[Obsolete("Use Result<Page<T>>.ToHttpResponse(nextUrlBuilder, body, opts) instead. See migration guide at docs/articles/asp-tohttpresponse.md.")]
 public static class PageActionResultExtensions
 {
     /// <summary>

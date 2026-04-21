@@ -7,7 +7,7 @@ using Trellis;
 /// <summary>
 /// Decision returned by the conditional request evaluator per RFC 9110 §13.2.2.
 /// </summary>
-public enum ConditionalDecision
+internal enum ConditionalDecision
 {
     /// <summary>Preconditions satisfied — proceed with the method.</summary>
     PreconditionsSatisfied,
@@ -22,7 +22,7 @@ public enum ConditionalDecision
 /// applying the correct precedence rules from §13.2.2:
 /// 1. If-Match → 2. If-Unmodified-Since → 3. If-None-Match → 4. If-Modified-Since
 /// </summary>
-public static class ConditionalRequestEvaluator
+internal static class ConditionalRequestEvaluator
 {
     /// <summary>
     /// Evaluates all conditional request headers against the given representation metadata.

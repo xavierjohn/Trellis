@@ -27,6 +27,7 @@ using Microsoft.AspNetCore.Http;
 /// owns route construction.
 /// </para>
 /// </remarks>
+[Obsolete("Use Result<Page<T>>.ToHttpResponse(nextUrlBuilder, body, opts) instead. See migration guide at docs/articles/asp-tohttpresponse.md.")]
 public static class PageHttpResultExtensions
 {
     /// <summary>

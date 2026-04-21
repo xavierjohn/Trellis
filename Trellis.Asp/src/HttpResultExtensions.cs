@@ -36,6 +36,7 @@ using Trellis;
 /// </code>
 /// </para>
 /// </remarks>
+[Obsolete("Use ToHttpResponse(...) instead. See migration guide at docs/articles/asp-tohttpresponse.md.")]
 public static class HttpResultExtensions
 {
     /// <summary>

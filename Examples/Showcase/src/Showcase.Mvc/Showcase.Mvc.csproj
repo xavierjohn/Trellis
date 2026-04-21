@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <RootNamespace>Trellis.Showcase.Mvc</RootNamespace>
+    <NoWarn>$(NoWarn);CS0618;CS0619;CS0612;CS0672</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

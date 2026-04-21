@@ -7,6 +7,7 @@ using Trellis;
 /// <summary>
 /// Maps <see cref="WriteOutcome{T}"/> to ActionResult/IResult with correct status codes and headers.
 /// </summary>
+[Obsolete("Use Result<WriteOutcome<T>>.ToHttpResponse(...) instead. See migration guide at docs/articles/asp-tohttpresponse.md.")]
 public static class WriteOutcomeExtensions
 {
     /// <summary>

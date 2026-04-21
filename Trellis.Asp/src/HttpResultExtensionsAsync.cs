@@ -41,6 +41,7 @@ using Trellis;
 /// through this token, enabling proper timeout handling and graceful shutdown.
 /// </para>
 /// </remarks>
+[Obsolete("Use ToHttpResponseAsync(...) instead. See migration guide at docs/articles/asp-tohttpresponse.md.")]
 public static class HttpResultExtensionsAsync
 {
 
