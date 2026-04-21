@@ -274,10 +274,9 @@ public sealed class Product
 | --- | --- |
 | Not found mapping | `public static Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<HttpResponseMessage> responseTask, Error.NotFound notFoundError)` |
 | Unauthorized mapping | `public static Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<HttpResponseMessage> responseTask, Error.Unauthorized unauthorizedError)` |
-| Forbidden mapping | `public static Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<HttpResponseMessage> responseTask, Error.Forbidden forbiddenError)` |
 | Conflict mapping | `public static Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<HttpResponseMessage> responseTask, Error.Conflict conflictError)` |
-| Success enforcement | `EnsureSuccessAsync(...)` overloads on `Task<HttpResponseMessage>` |
-| JSON materialization | `ReadResultFromJsonAsync(...)` overloads on `Result<HttpResponseMessage>` / `Task<Result<HttpResponseMessage>>` |
+| Forbidden / multi-status / success enforcement | `ToResultAsync(status => ...)` &mdash; supply a `Func<HttpStatusCode, Error?>` returning `null` to pass through, or an `Error` to fail. |
+| JSON materialization | `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken)` |
 
 ### Compile-correct example
 
@@ -290,8 +289,7 @@ using Trellis.Http;
 public static Task<Result<UserResponse>> GetUserAsync(HttpClient httpClient, Guid id, CancellationToken cancellationToken) =>
     httpClient.GetAsync($"/users/{id}", cancellationToken)
         .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found." })
-        .EnsureSuccessAsync()
-        .ReadResultFromJsonAsync(UserJsonContext.Default.UserResponse, cancellationToken);
+        .ReadJsonAsync(UserJsonContext.Default.UserResponse, cancellationToken);
 
 public sealed record UserResponse(Guid Id, string Name);
 

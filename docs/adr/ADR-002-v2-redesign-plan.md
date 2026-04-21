@@ -1330,3 +1330,29 @@ If approved, the next deliverable is a per-package implementation plan starting 
 ## Post-Phase 3 cleanup (v3 release)
 
 **Status:** the Phase 3 obsolete-verb cleanup has landed. The seven legacy Trellis.Asp extension classes (`ActionResultExtensions`, `ActionResultExtensionsAsync`, `HttpResultExtensions`, `HttpResultExtensionsAsync`, `PageActionResultExtensions`, `PageHttpResultExtensions`, `WriteOutcomeExtensions`) and their verbs (`ToActionResult`, `ToHttpResult`, `ToCreatedAtActionResult`, `ToCreatedAtRouteHttpResult`, `ToCreatedHttpResult`, `ToUpdatedActionResult`, `ToUpdatedHttpResult`, `ToPagedActionResult`, `ToPagedHttpResult`) have been deleted outright. The single supported verb is `result.ToHttpResponse(...)` / `result.ToHttpResponseAsync(...)`, with `.AsActionResult<T>()` / `.AsActionResultAsync<T>()` as the MVC typed-signature adapter. All in-tree examples (`Showcase.MinimalApi`, `Showcase.Mvc`, `ConditionalRequestExample`) use the new API exclusively. See [`MIGRATION_v3.md`](../../MIGRATION_v3.md) for the per-verb replacement table and [`articles/asp-tohttpresponse.md`](../docfx_project/articles/asp-tohttpresponse.md) for canonical patterns.
+
+---
+
+## Decision log
+
+Append-only record of design decisions taken during phased v2 implementation that diverged from, refined, or extended the literal text of the sections above. The original sections are preserved unchanged for historical context.
+
+### Phase 4b &mdash; `Trellis.Http` slim (refines §7)
+
+Section 7 sketched the canonical surface but deferred several details to implementation. Phase 4b resolves them as follows:
+
+1. **`Async` suffix on every method.** §7's example used bare `ToResult` / `HandleNotFound` etc. The repo's pervasive convention is that any method whose return type is `Task<...>` carries an `Async` suffix. The implemented surface therefore uses `ToResultAsync`, `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync`, `ReadJsonAsync`, `ReadJsonMaybeAsync`. Repo convention wins over the ADR's example.
+
+2. **Body-aware `ToResultAsync` overload added.** §7 deletes `HandleFailureAsync<TContext>` ("the `TContext` channel is anti-pattern; closures are fine"). To preserve the load-bearing capability of synthesizing an `Error` from the response body (for example, decoding RFC 9457 problem-details), Phase 4b ships a second `ToResultAsync` overload taking `Func<HttpResponseMessage, CancellationToken, Task<Error?>>`. The mapper is invoked **only** for non-success status codes, returning `null` to pass through or an `Error` to fail. State that the v1 `TContext` channel carried is now captured by closure.
+
+3. **Explicit disposal contract.** §7 did not specify ownership of the underlying `HttpResponseMessage`. Phase 4b commits the library to the following contract, reflected in the type-level XML remarks and tested via a dispose-tracking subclass:
+    - `ToResultAsync` (both overloads): dispose on the `Fail` path; pass-through on `Ok`.
+    - `HandleNotFoundAsync` / `HandleConflictAsync` / `HandleUnauthorizedAsync`: dispose on the matched-status `Fail` path; pass-through otherwise.
+    - `ReadJsonAsync` / `ReadJsonMaybeAsync`: **always** dispose after reading (success, structured failure, or thrown `JsonException` from the `Maybe` overload).
+    - Already-failed `Result<HttpResponseMessage>` short-circuits `ReadJson*` with the upstream error preserved (no response to dispose; caller never owned one).
+
+4. **Single canonical shape for the post-bridge chain.** §7's example showed `HandleNotFound(this Task<HttpResponseMessage> r, ...)` (singular). Phase 4b implements `Handle*Async` strictly on `Task<HttpResponseMessage>` &mdash; they are *entry points*, not composable mid-chain operators. Multi-status mapping after the bridge is expressed via `ToResultAsync(statusMap)`. This avoids the v1 trap of having both `Task<HRM>` and `Task<Result<HRM>>` overloads for every verb.
+
+5. **Clean cut, no shims.** Pre-GA, every removed/renamed verb is deleted outright; there are no `[Obsolete]` redirects. Migration is mechanical (per the table in `docs/api_reference/trellis-api-http.md`) and tightly scoped &mdash; the framework had zero in-tree production callers of the removed verbs.
+
+These decisions are implemented in PR for branch `dev/xavier/v2-phase4b-http-slim` and codified in tests under `Trellis.Http/tests/HttpResponseExtensionsTests/`.

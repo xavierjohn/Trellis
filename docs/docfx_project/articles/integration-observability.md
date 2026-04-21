@@ -140,7 +140,7 @@ public sealed class CheckoutClient(HttpClient httpClient)
                 OrdersJsonContext.Default.CreateOrderRequest,
                 cancellationToken)
             .HandleConflictAsync(new Error.Conflict(null, "conflict") { Detail = "An order with the same data already exists." })
-            .ReadResultFromJsonAsync(OrdersJsonContext.Default.OrderReceiptDto, cancellationToken);
+            .ReadJsonAsync(OrdersJsonContext.Default.OrderReceiptDto, cancellationToken);
 
         if (result.IsFailure)
         {
