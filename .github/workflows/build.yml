@@ -43,6 +43,7 @@ jobs:
 
     - name: Test with Coverage
       # --coverage: Native MTP coverage (requires Microsoft.Testing.Extensions.CodeCoverage)
+      # --coverage-settings: Excludes auto-generated sources (*.g.cs, [GeneratedCode], etc.)
       # --report-trx: Native MTP TRX generation (requires Microsoft.Testing.Extensions.TrxReport)
       # --results-directory is a VSTest-only flag that forces the VSTest code path, breaking MTP flags.
       # MTP writes TRX to TestResults/ relative to each test project directory; coverage path is set explicitly via --coverage-output.
@@ -50,6 +51,7 @@ jobs:
         dotnet test --no-build -c Release \
           --filter-not-trait "Category=Integration" \
           --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml \
+          --coverage-settings build/codecoverage.runsettings \
           --report-trx
 
     - name: Publish Test Results

@@ -35,12 +35,6 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
-  <PropertyGroup Label="Coverage">
-    <!-- Exclude T4-generated and source-generated files from coverage to keep metrics meaningful -->
-    <ExcludeByFile>$(ExcludeByFile);**/*.g.cs;**/System.Text.RegularExpressions.Generator/**/*.cs</ExcludeByFile>
-    <Exclude>$(Exclude);[System.Text.RegularExpressions.Generated.*]*</Exclude>
-  </PropertyGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="$(MSBuildProjectName).Tests" />
     <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
