@@ -7,7 +7,7 @@ using Trellis;
 /// <summary>
 /// Decision returned by the conditional request evaluator per RFC 9110 §13.2.2.
 /// </summary>
-public enum ConditionalDecision
+internal enum ConditionalDecision
 {
     /// <summary>Preconditions satisfied — proceed with the method.</summary>
     PreconditionsSatisfied,
@@ -22,7 +22,7 @@ public enum ConditionalDecision
 /// applying the correct precedence rules from §13.2.2:
 /// 1. If-Match → 2. If-Unmodified-Since → 3. If-None-Match → 4. If-Modified-Since
 /// </summary>
-public static class ConditionalRequestEvaluator
+internal static class ConditionalRequestEvaluator
 {
     /// <summary>
     /// Evaluates all conditional request headers against the given representation metadata.
@@ -31,7 +31,20 @@ public static class ConditionalRequestEvaluator
     /// <param name="metadata">Metadata for the selected representation (ETag, LastModified).</param>
     /// <returns>A <see cref="ConditionalDecision"/> indicating what the server should do.</returns>
     public static ConditionalDecision Evaluate(HttpRequest request, RepresentationMetadata metadata)
+        => Evaluate(request, metadata, out _);
+
+    /// <summary>
+    /// Evaluates conditional headers and reports which precondition failed (when applicable).
+    /// </summary>
+    /// <param name="request">The HTTP request containing conditional headers.</param>
+    /// <param name="metadata">Metadata for the selected representation (ETag, LastModified).</param>
+    /// <param name="failedKind">
+    /// Set to the precondition that caused a <see cref="ConditionalDecision.PreconditionFailed"/>
+    /// result; <see langword="null"/> for any other decision.
+    /// </param>
+    public static ConditionalDecision Evaluate(HttpRequest request, RepresentationMetadata metadata, out PreconditionKind? failedKind)
     {
+        failedKind = null;
         var typedHeaders = request.GetTypedHeaders();
         var method = request.Method;
         var isSafeMethod = HttpMethods.IsGet(method) || HttpMethods.IsHead(method);
@@ -41,7 +54,10 @@ public static class ConditionalRequestEvaluator
         if (ifMatch is { Count: > 0 })
         {
             if (!EvaluateIfMatch(ifMatch, metadata))
+            {
+                failedKind = PreconditionKind.IfMatch;
                 return ConditionalDecision.PreconditionFailed;
+            }
             // Proceed to step 3 (skip step 2 per §13.2.2)
         }
         else
@@ -51,7 +67,10 @@ public static class ConditionalRequestEvaluator
             if (ifUnmodifiedSince.HasValue && metadata.LastModified.HasValue)
             {
                 if (metadata.LastModified.Value > ifUnmodifiedSince.Value)
+                {
+                    failedKind = PreconditionKind.IfUnmodifiedSince;
                     return ConditionalDecision.PreconditionFailed;
+                }
             }
         }
 
@@ -61,10 +80,11 @@ public static class ConditionalRequestEvaluator
         {
             if (EvaluateIfNoneMatch(ifNoneMatch, metadata))
             {
-                // Match found
-                return isSafeMethod
-                    ? ConditionalDecision.NotModified   // GET/HEAD → 304
-                    : ConditionalDecision.PreconditionFailed; // Unsafe → 412
+                if (isSafeMethod)
+                    return ConditionalDecision.NotModified;   // GET/HEAD -> 304
+
+                failedKind = PreconditionKind.IfNoneMatch;
+                return ConditionalDecision.PreconditionFailed; // Unsafe -> 412
             }
             // No match — proceed (skip step 4 per §13.2.2)
         }

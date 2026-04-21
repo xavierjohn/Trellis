@@ -27,5 +27,6 @@ public class TransfersController : ControllerBase
             .Combine(_repository.GetById(request.ToAccountId))
             .BindAsync(pair => _workflow.TransferAsync(pair.Item1, pair.Item2, request.Amount, request.Description, cancellationToken))
             .MapAsync(pair => AccountResponse.From(pair.From))
-            .ToActionResultAsync(this);
+            .ToHttpResponseAsync()
+            .AsActionResultAsync<AccountResponse>();
 }

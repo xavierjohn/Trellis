@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <NoWarn>$(NoWarn)</NoWarn>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
@@ -10,6 +13,11 @@
     <ProjectReference Include="..\..\src\Showcase.MinimalApi\Showcase.MinimalApi.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Testing.AspNetCore\src\Trellis.Testing.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\api.http" CopyToOutputDirectory="PreserveNewest" Link="api.http" />
+    <Content Include="..\..\http-client.env.json" CopyToOutputDirectory="PreserveNewest" Link="http-client.env.json" />
   </ItemGroup>
 
 </Project>

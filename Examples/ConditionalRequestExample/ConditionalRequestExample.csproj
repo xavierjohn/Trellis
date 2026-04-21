@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>ConditionalRequestExample</RootNamespace>
+    <NoWarn>$(NoWarn)</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -32,6 +32,7 @@ If-Match: "{{createOptional.response.body.eTag}}"
 }
 
 ### 5. Update with STALE If-Match → 412 Precondition Failed
+# @expect status: 412
 PUT {{host}}/optional/products/{{createOptional.response.body.id}}
 Content-Type: application/json
 If-Match: "stale-etag-value"
@@ -76,6 +77,7 @@ If-Match: "{{createRequired.response.body.eTag}}"
 }
 
 ### 10. Update WITHOUT If-Match → 428 Precondition Required
+# @expect status: 428
 PUT {{host}}/required/products/{{createRequired.response.body.id}}
 Content-Type: application/json
 
@@ -84,6 +86,7 @@ Content-Type: application/json
 }
 
 ### 11. Update with STALE If-Match → 412 Precondition Failed
+# @expect status: 412
 PUT {{host}}/required/products/{{createRequired.response.body.id}}
 Content-Type: application/json
 If-Match: "stale-etag-value"

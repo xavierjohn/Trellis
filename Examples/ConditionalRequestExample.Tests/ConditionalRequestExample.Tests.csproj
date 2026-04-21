@@ -1,9 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <NoWarn>$(NoWarn)</NoWarn>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ConditionalRequestExample\ConditionalRequestExample.csproj" />
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
     <ProjectReference Include="..\..\Trellis.Testing.AspNetCore\src\Trellis.Testing.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\ConditionalRequestExample\api.http" CopyToOutputDirectory="PreserveNewest" Link="api.http" />
   </ItemGroup>
 
 </Project>

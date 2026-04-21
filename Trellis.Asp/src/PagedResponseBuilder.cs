@@ -3,11 +3,12 @@ namespace Trellis.Asp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Http;
 
 /// <summary>
 /// Internal helper that builds the <see cref="PagedResponse{TResponse}"/> envelope and the
-/// matching RFC 8288 <c>Link</c> header value from a <see cref="Page{T}"/>. Used by both
-/// <see cref="PageHttpResultExtensions"/> (Minimal API) and <see cref="PageActionResultExtensions"/>
+/// matching RFC 8288 <c>Link</c> header value from a <see cref="Page{T}"/>. Used by the
+/// <c>ToHttpResponse&lt;T,TBody&gt;</c> paginated overload to guarantee consistent wire output
 /// (MVC) to guarantee byte-identical wire output across hosting styles.
 /// </summary>
 internal static class PagedResponseBuilder
@@ -44,5 +45,41 @@ internal static class PagedResponseBuilder
         var linkHeader = links.Count > 0 ? string.Join(", ", links) : null;
 
         return (envelope, linkHeader);
+    }
+}
+
+/// <summary>JSON envelope wrapping a single page of items and its cursor links.</summary>
+public sealed record PagedResponse<TResponse>(
+    IReadOnlyList<TResponse> Items,
+    PageLink? Next,
+    PageLink? Previous,
+    int RequestedLimit,
+    int AppliedLimit,
+    int DeliveredCount,
+    bool WasCapped);
+
+/// <summary>A cursor + the absolute URL the client should follow to fetch the linked page.</summary>
+public sealed record PageLink(string Cursor, string Href);
+
+/// <summary>
+/// <see cref="Microsoft.AspNetCore.Http.IResult"/> wrapper that delegates to an inner result and also emits an
+/// RFC 8288 <c>Link</c> header containing pre-formatted <c>rel="next"</c> / <c>rel="prev"</c> entries.
+/// </summary>
+internal sealed class PagedHttpResult : Microsoft.AspNetCore.Http.IResult
+{
+    private readonly Microsoft.AspNetCore.Http.IResult _inner;
+    private readonly string _linkHeader;
+
+    public PagedHttpResult(Microsoft.AspNetCore.Http.IResult inner, string linkHeader)
+    {
+        _inner = inner;
+        _linkHeader = linkHeader;
+    }
+
+    public System.Threading.Tasks.Task ExecuteAsync(Microsoft.AspNetCore.Http.HttpContext httpContext)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        httpContext.Response.Headers.Append("Link", _linkHeader);
+        return _inner.ExecuteAsync(httpContext);
     }
 }

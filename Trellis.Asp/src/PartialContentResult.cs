@@ -25,7 +25,7 @@ using Trellis;
 /// <example>Content-Range: items 0-24/100</example>
 /// </para>
 /// <para>
-/// This class is typically used by <see cref="ActionResultExtensions"/> partial content overloads
+/// This class is typically used by the <c>ToHttpResponse</c> partial content overloads
 /// and should rarely be instantiated directly in controller code.
 /// </para>
 /// </remarks>
@@ -53,25 +53,6 @@ using Trellis;
 /// // Response headers:
 /// // HTTP/1.1 206 Partial Content
 /// // Content-Range: items 0-24/100
-/// </code>
-/// </example>
-/// <example>
-/// Using with ActionResultExtensions (recommended approach):
-/// <code>
-/// [HttpGet]
-/// public ActionResult&lt;IEnumerable&lt;UserDto&gt;&gt; GetUsers(
-///     [FromQuery] int page = 0,
-///     [FromQuery] int pageSize = 25)
-/// {
-///     return _userService
-///         .GetPagedUsers(page, pageSize)
-///         .ToActionResult(
-///             this,
-///             funcRange: r => new ContentRangeHeaderValue(r.From, r.To, r.TotalCount) { Unit = "items" },
-///             funcValue: r => r.Users.Select(u => new UserDto(u)));
-///     
-///     // Automatically returns PartialContentResult when appropriate
-/// }
 /// </code>
 /// </example>
 public class PartialContentResult : ObjectResult

@@ -406,4 +406,67 @@ public class ConditionalRequestEvaluatorTests
     }
 
     #endregion
+
+    #region Failed kind reporting
+
+    [Fact]
+    public void Evaluate_IfMatch_mismatch_reports_IfMatch_failed_kind()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Put;
+        context.Request.Headers.IfMatch = "\"abc123\"";
+        var metadata = RepresentationMetadata.WithStrongETag("different");
+
+        var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata, out var kind);
+
+        decision.Should().Be(ConditionalDecision.PreconditionFailed);
+        kind.Should().Be(PreconditionKind.IfMatch);
+    }
+
+    [Fact]
+    public void Evaluate_IfUnmodifiedSince_failure_reports_IfUnmodifiedSince_failed_kind()
+    {
+        // Regression: callers that previously assumed PreconditionFailed implied If-Match
+        // need the actual failing kind so 412 ProblemDetails reports the right header.
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        var when = new DateTimeOffset(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
+        context.Request.GetTypedHeaders().IfUnmodifiedSince = when.AddDays(-1);
+        var metadata = RepresentationMetadata.Create().SetLastModified(when).Build();
+
+        var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata, out var kind);
+
+        decision.Should().Be(ConditionalDecision.PreconditionFailed);
+        kind.Should().Be(PreconditionKind.IfUnmodifiedSince);
+    }
+
+    [Fact]
+    public void Evaluate_IfNoneMatch_failure_on_unsafe_method_reports_IfNoneMatch_failed_kind()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.Headers.IfNoneMatch = "\"abc123\"";
+        var metadata = RepresentationMetadata.WithStrongETag("abc123");
+
+        var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata, out var kind);
+
+        decision.Should().Be(ConditionalDecision.PreconditionFailed);
+        kind.Should().Be(PreconditionKind.IfNoneMatch);
+    }
+
+    [Fact]
+    public void Evaluate_NotModified_does_not_report_failed_kind()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
+        context.Request.Headers.IfNoneMatch = "\"abc123\"";
+        var metadata = RepresentationMetadata.WithStrongETag("abc123");
+
+        var decision = ConditionalRequestEvaluator.Evaluate(context.Request, metadata, out var kind);
+
+        decision.Should().Be(ConditionalDecision.NotModified);
+        kind.Should().BeNull();
+    }
+
+    #endregion
 }
