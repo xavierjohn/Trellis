@@ -40,7 +40,7 @@ Optional new packages with no direct one-to-one predecessor include:
 
 - `Trellis.Analyzers`
 - `Trellis.Testing`
-- `Trellis.Stateless`
+- `Trellis.StateMachine`
 
 ## Step 1: update package references
 

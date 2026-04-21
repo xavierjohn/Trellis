@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+	  <Using Include="Trellis.StateMachine" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\src\Trellis.StateMachine.csproj" />
+	</ItemGroup>
+
+</Project>

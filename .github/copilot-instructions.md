@@ -15,7 +15,8 @@ If you are touching package layout (csproj split/merge, `Trellis.slnx`, NuGet `P
 Phase status as of last update:
 - **Phase 1a — `Trellis.Results` → `Trellis.Core` rename:** shipped in PR #401.
 - **Phase 2 — package consolidation** (DDD into Core, Required* moves, all 3 source generators bundled into host packages, `Trellis.Asp.Authorization` merged into `Trellis.Asp`): in flight in PR #403.
-- Later phases (rename `Trellis.Stateless` → `Trellis.StateMachine`, etc.) — not started; see ADR-002 §15.
+- **Phase 4a — `Trellis.Stateless` → `Trellis.StateMachine` rename:** in flight.
+- Later phases — not started; see ADR-002 §15.
 
 ## Before Writing Code That Uses Trellis APIs
 
@@ -32,7 +33,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 | FluentValidation integration | `docs/api_reference/trellis-api-fluentvalidation.md` |
 | HttpClient extensions | `docs/api_reference/trellis-api-http.md` |
 | Mediator pipeline behaviors | `docs/api_reference/trellis-api-mediator.md` |
-| State machine integration | `docs/api_reference/trellis-api-stateless.md` |
+| State machine integration | `docs/api_reference/trellis-api-statemachine.md` |
 | Testing helpers | `docs/api_reference/trellis-api-testing-reference.md` |
 | Analyzer rules (TRLS001-TRLS022) | `docs/api_reference/trellis-api-analyzers.md` |
 
@@ -96,7 +97,7 @@ Each integration package gets its own namespace because it pulls in a third-part
 | `Trellis.Asp.Authorization` | API layer only | ASP.NET actor providers (Claims, Entra, Development) |
 | `Trellis.Asp` | API layer only | Result-to-HTTP response mapping |
 | `Trellis.Http` | ACL layer only | HttpClient → Result extensions |
-| `Trellis.Stateless` | Domain layer (when needed) | Stateless state machine integration |
+| `Trellis.StateMachine` | Domain layer (when needed) | Stateless state machine integration |
 | `Trellis.FluentValidation` | Domain layer (when needed) | FluentValidation integration |
 | `Trellis.Testing` | Test projects only | FluentAssertions extensions for Result/Maybe |
 | `Trellis.Mediator` | Application layer (CQRS only) | Mediator pipeline behaviors |

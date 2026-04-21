@@ -101,7 +101,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 | [`Trellis.FluentValidation`](xref:Trellis.FluentValidation) | FluentValidation output → Trellis `Result` | [FluentValidation](~/articles/integration-fluentvalidation.md) |
 | [`Trellis.EntityFrameworkCore`](xref:Trellis.EntityFrameworkCore) | Value object converters, `Maybe<T>` queries, safe save | [EF Core](~/articles/integration-ef.md) |
 | [`Trellis.Mediator`](xref:Trellis.Mediator) | Result-aware pipeline behaviors for Mediator | [Mediator](~/articles/integration-mediator.md) |
-| [`Trellis.Stateless`](xref:Trellis.Stateless) | State machine transitions returning `Result<TState>` | [State Machines](~/articles/state-machines.md) |
+| [`Trellis.StateMachine`](xref:Trellis.StateMachine) | State machine transitions returning `Result<TState>` | [State Machines](~/articles/state-machines.md) |
 | [`Trellis.Testing`](xref:Trellis.Testing) | FluentAssertions extensions for `Result<T>` and `Maybe<T>` | [Testing](~/articles/integration-testing.md) |
 
 ---

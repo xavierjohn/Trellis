@@ -7,7 +7,7 @@ using Trellis.Showcase.Domain.Entities;
 using Trellis.Showcase.Domain.Events;
 using Trellis.Showcase.Domain.Lifecycle;
 using Trellis.Showcase.Domain.ValueObjects;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 public enum AccountStatus
 {

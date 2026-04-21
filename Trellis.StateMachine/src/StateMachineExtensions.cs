@@ -1,4 +1,4 @@
-﻿namespace Trellis.Stateless;
+﻿namespace Trellis.StateMachine;
 
 using System;
 using global::Stateless;

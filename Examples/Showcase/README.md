@@ -16,7 +16,7 @@ the two hosting styles side-by-side over a single, identical contract.
 | `Error.InternalServerError(faultId)` | `Showcase.Mvc/Controllers/DiagnosticsController.cs` and `Showcase.MinimalApi/Endpoints/DiagnosticsEndpoints.cs` |
 | `Error.Unauthorized` from a boundary adapter | `Showcase.Application/Services/InMemoryIdentityVerifier.cs` |
 | Plain ROP (`Ensure`/`Bind`/`Tap`/`Map`) | `Showcase.Domain/Aggregates/BankAccount.cs` (money operations) |
-| `Trellis.Stateless` lifecycle modeling | `Showcase.Domain/Aggregates/BankAccount.cs` (`Freeze`, `Unfreeze`, `Close`) |
+| `Trellis.StateMachine` lifecycle modeling | `Showcase.Domain/Aggregates/BankAccount.cs` (`Freeze`, `Unfreeze`, `Close`) |
 | Invalid state transition → `Error.Conflict` via `FireResult` | `BankAccount.Unfreeze` on an Active account |
 | Application/workflow boundary (events → AcceptChanges → persist) | `Showcase.Application/Workflows/BankingWorkflow.cs` |
 | `Trellis.Asp.ToActionResult` mapping (MVC) | `Showcase.Mvc/Controllers/*` |

@@ -38,7 +38,7 @@ With Trellis, the same invalid transition can stay inside the railway:
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 public enum OrderState { Draft, Submitted, Approved, Shipped, Cancelled }
 public enum OrderTrigger { Submit, Approve, Ship, Cancel }
@@ -53,7 +53,7 @@ Result<OrderState> result = machine.FireResult(OrderTrigger.Ship);
 ## Installation
 
 ```bash
-dotnet add package Trellis.Stateless
+dotnet add package Trellis.StateMachine
 ```
 
 ## A simple working example
@@ -61,7 +61,7 @@ dotnet add package Trellis.Stateless
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 public enum OrderState { Draft, Submitted, Approved, Shipped, Cancelled }
 public enum OrderTrigger { Submit, Approve, Ship, Cancel }
@@ -129,7 +129,7 @@ The main benefit is not just avoiding exceptions. It is that state changes now c
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 public sealed class OrderWorkflow
 {
@@ -173,7 +173,7 @@ The object is constructed first, and only then are its properties populated. If 
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 public enum DocumentState { Draft, Published }
 public enum DocumentTrigger { Publish }

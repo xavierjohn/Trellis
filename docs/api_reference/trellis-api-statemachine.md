@@ -1,9 +1,9 @@
-# Trellis.Stateless — API Reference
+# Trellis.StateMachine — API Reference
 
 ## Header
 
-- **Package:** `Trellis.Stateless`
-- **Namespace:** `Trellis.Stateless`
+- **Package:** `Trellis.StateMachine`
+- **Namespace:** `Trellis.StateMachine`
 - **Purpose:** Wraps Stateless state transitions in Trellis `Result<TState>` APIs and provides lazy state-machine construction for aggregate materialization scenarios.
 
 ## Types
@@ -91,7 +91,7 @@ public static Result<TState> FireResult<TState, TTrigger>(
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 enum OrderState { Draft, Submitted, Cancelled }
 enum OrderTrigger { Submit, Cancel }
@@ -110,7 +110,7 @@ Result<OrderState> invalidResult = machine.FireResult(OrderTrigger.Submit);
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 enum DocumentState { Draft, Published }
 enum DocumentTrigger { Publish }
@@ -131,3 +131,10 @@ StateMachine<DocumentState, DocumentTrigger> machine = lazyMachine.Machine;
 
 - [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-core.md](trellis-api-core.md)
+
+## Breaking changes from v1
+
+- **Package renamed:** `Trellis.Stateless` → `Trellis.StateMachine` (ADR-002 §9). Vendor independence in the *name*, not the *implementation* — the underlying [Stateless](https://github.com/dotnet-state-machine/stateless) library is still referenced directly, and `StateMachine<TState, TTrigger>` from the `Stateless` namespace remains visible in user code.
+- **Namespace renamed:** `Trellis.Stateless` → `Trellis.StateMachine`. Replace `using Trellis.Stateless;` with `using Trellis.StateMachine;`.
+- **Public surface is otherwise identical:** `StateMachineExtensions.FireResult<TState, TTrigger>(...)` and `LazyStateMachine<TState, TTrigger>` are unchanged.
+- **No metapackage redirect.** Clean cut at v2.0.0 — the old `Trellis.Stateless` package is not shipped in v2 and there is no shim. Update your `PackageReference` directly.
