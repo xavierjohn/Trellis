@@ -15,4 +15,9 @@
     <ProjectReference Include="..\..\..\..\Trellis.Testing.AspNetCore\src\Trellis.Testing.AspNetCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\api.http" CopyToOutputDirectory="PreserveNewest" Link="api.http" />
+    <Content Include="..\..\http-client.env.json" CopyToOutputDirectory="PreserveNewest" Link="http-client.env.json" />
+  </ItemGroup>
+
 </Project>
