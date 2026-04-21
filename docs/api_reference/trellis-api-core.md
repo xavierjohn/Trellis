@@ -1008,6 +1008,408 @@ public sealed class TrellisJsonValidationException : System.Text.Json.JsonExcept
 
 Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON converters when a structured value object's invariants are violated during deserialization (e.g., `CompositeValueObjectJsonConverter<Money>` rejecting a negative amount). `Trellis.Asp`'s `ScalarValueValidationMiddleware` recognizes this subtype and surfaces its `Message` and `JsonException.Path` in the resulting Problem Details payload, restoring DX parity with MVC's per-field model-binder error reporting. Plain `JsonException` instances are deliberately not surfaced because their messages can include internal type names; converters opt in to message surfacing by throwing this subclass with a curated message (e.g., `error.GetDisplayMessage()` from a `Result` failure).
 
+## Primitive value object base classes
+
+These types ship in `Trellis.Core` (since Phase 2; previously in `Trellis.Primitives`). They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`) attach declarative invariants that the generator wires into the generated validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md).
+
+### `RangeAttribute`
+
+```csharp
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public sealed class RangeAttribute : Attribute
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | Constructor arguments are consumed by the source generator; no public properties are exposed. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public RangeAttribute(int minimum, int maximum)` | `RangeAttribute` | Range metadata for `RequiredInt<TSelf>` and whole-number `RequiredDecimal<TSelf>`. |
+| `public RangeAttribute(long minimum, long maximum)` | `RangeAttribute` | Range metadata for `RequiredLong<TSelf>`. |
+| `public RangeAttribute(double minimum, double maximum)` | `RangeAttribute` | Fractional range metadata for `RequiredDecimal<TSelf>`. |
+
+### `StringLengthAttribute`
+
+```csharp
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public sealed class StringLengthAttribute : Attribute
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `MaximumLength` | `int` | Inclusive maximum length. |
+| `MinimumLength` | `int` | Inclusive minimum length; defaults to `0`. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public StringLengthAttribute(int maximumLength)` | `StringLengthAttribute` | Length metadata for `RequiredString<TSelf>`. |
+
+### `EnumValueAttribute`
+
+```csharp
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = false, Inherited = false)]
+public sealed class EnumValueAttribute : Attribute
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `string` | Canonical symbolic name for a `RequiredEnum<TSelf>` member. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public EnumValueAttribute(string value)` | `EnumValueAttribute` | Overrides the default field-name-based symbolic value. |
+
+### `StringExtensions`
+
+```csharp
+public static class StringExtensions
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | Static helper type. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static string NormalizeFieldName(this string? fieldName, string defaultName)` | `string` | Uses `fieldName` when present, otherwise camel-cases `defaultName`. |
+| `public static T ParseScalarValue<T>(string? s) where T : class, IScalarValue<T, string>` | `T` | Throws `FormatException` based on `T.TryCreate`. |
+| `public static bool TryParseScalarValue<T>([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out T result) where T : class, IScalarValue<T, string>` | `bool` | Safe parsing helper based on `T.TryCreate`. |
+| `public static string ToCamelCase(this string? str)` | `string` | Lowercases the first character only. |
+
+### `RequiredEnumJsonConverter<TRequiredEnum>`
+
+```csharp
+public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TRequiredEnum> : JsonConverter<TRequiredEnum>
+    where TRequiredEnum : RequiredEnum<TRequiredEnum>, IScalarValue<TRequiredEnum, string>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| — | — | Converter type; no public properties. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TRequiredEnum?` | Accepts only JSON `string` and `null`; string values are resolved through `RequiredEnum<TRequiredEnum>.TryFromName(name)`. |
+| `public override void Write(Utf8JsonWriter writer, TRequiredEnum value, JsonSerializerOptions options)` | `void` | Writes `value.Value` as a JSON string. |
+
+### `RequiredString<TSelf>`
+
+```csharp
+public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
+    where TSelf : RequiredString<TSelf>, IScalarValue<TSelf, string>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `string` | Inherited scalar value. |
+| `Length` | `int` | Convenience access to `Value.Length`. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public bool StartsWith(string value)` | `bool` | Delegates to `string.StartsWith(string)`. |
+| `public bool Contains(string value)` | `bool` | Delegates to `string.Contains(string)`. |
+| `public bool EndsWith(string value)` | `bool` | Delegates to `string.EndsWith(string)`. |
+| `public static TSelf Create(string value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredGuid<TSelf>`
+
+```csharp
+public abstract class RequiredGuid<TSelf> : ScalarValueObject<TSelf, Guid>
+    where TSelf : RequiredGuid<TSelf>, IScalarValue<TSelf, Guid>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `Guid` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(Guid value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredInt<TSelf>`
+
+```csharp
+public abstract class RequiredInt<TSelf> : ScalarValueObject<TSelf, int>
+    where TSelf : RequiredInt<TSelf>, IScalarValue<TSelf, int>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `int` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(int value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredDecimal<TSelf>`
+
+```csharp
+public abstract class RequiredDecimal<TSelf> : ScalarValueObject<TSelf, decimal>
+    where TSelf : RequiredDecimal<TSelf>, IScalarValue<TSelf, decimal>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `decimal` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(decimal value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredLong<TSelf>`
+
+```csharp
+public abstract class RequiredLong<TSelf> : ScalarValueObject<TSelf, long>
+    where TSelf : RequiredLong<TSelf>, IScalarValue<TSelf, long>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `long` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(long value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredBool<TSelf>`
+
+```csharp
+public abstract class RequiredBool<TSelf> : ScalarValueObject<TSelf, bool>
+    where TSelf : RequiredBool<TSelf>, IScalarValue<TSelf, bool>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `bool` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TSelf Create(bool value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredDateTime<TSelf>`
+
+```csharp
+public abstract class RequiredDateTime<TSelf> : ScalarValueObject<TSelf, DateTime>
+    where TSelf : RequiredDateTime<TSelf>, IScalarValue<TSelf, DateTime>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `DateTime` | Inherited scalar value. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public override string ToString()` | `string` | Formats `Value` using invariant round-trip format `"O"`. |
+| `public static TSelf Create(DateTime value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+### `RequiredEnum<TSelf>`
+
+```csharp
+public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf>
+    : IEquatable<RequiredEnum<TSelf>>
+    where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>
+```
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Value` | `string` | Canonical symbolic identity; defaults to the public static field name unless `[EnumValue]` overrides it. |
+| `Ordinal` | `int` | Declaration-order metadata; not a wire/storage identity. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IReadOnlyCollection<TSelf> GetAll()` | `IReadOnlyCollection<TSelf>` | Returns all discovered public static readonly members. |
+| `public static Result<TSelf> TryFromName(string? name, string? fieldName = null)` | `Result<TSelf>` | Case-insensitive symbolic lookup. |
+| `public bool Is(params TSelf[] values)` | `bool` | True when this instance matches any provided member. |
+| `public bool IsNot(params TSelf[] values)` | `bool` | Negation of `Is(params TSelf[])`. |
+| `public override string ToString()` | `string` | Returns `Value`. |
+| `public override int GetHashCode()` | `int` | Case-insensitive hash of `Value`. |
+| `public override bool Equals(object? obj)` | `bool` | Case-insensitive symbolic equality. |
+| `public bool Equals(RequiredEnum<TSelf>? other)` | `bool` | Case-insensitive symbolic equality. |
+| `public static bool operator ==(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Equality operator. |
+| `public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Inequality operator. |
+
+### Source-generated members
+
+The incremental generator at `Trellis.Core/generator/RequiredPartialClassGenerator.cs` (bundled inside `Trellis.Core.nupkg` at `analyzers/dotnet/cs/Trellis.Core.Generator.dll`) augments partial classes that inherit a `Required*<TSelf>` base type.
+
+#### `RequiredString<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(string? value, string? fieldName = null)
+public static TSelf Create(string? value, string? fieldName = null)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(string value)
+static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: null/empty/whitespace rejection, trimming, optional `[StringLength]` checks.
+
+#### `RequiredGuid<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static TSelf NewUniqueV4()
+public static TSelf NewUniqueV7()
+public static Result<TSelf> TryCreate(Guid value, string? fieldName = null)
+public static Result<TSelf> TryCreate(Guid? requiredGuidOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static new TSelf Create(Guid value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(Guid value)
+static partial void ValidateAdditional(Guid value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `Guid.Empty` rejection.
+
+#### `RequiredInt<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(int value, string? fieldName = null)
+public static Result<TSelf> TryCreate(int? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(int value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(int value)
+static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs, optional `[Range(int, int)]`.
+
+#### `RequiredDecimal<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(decimal value, string? fieldName = null)
+public static Result<TSelf> TryCreate(decimal? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(decimal value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(decimal value)
+static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs, optional `[Range(int, int)]` or `[Range(double, double)]`.
+
+#### `RequiredLong<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(long value, string? fieldName = null)
+public static Result<TSelf> TryCreate(long? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(long value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(long value)
+static partial void ValidateAdditional(long value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs, optional `[Range(long, long)]`.
+
+#### `RequiredBool<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(bool value, string? fieldName = null)
+public static Result<TSelf> TryCreate(bool? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static new TSelf Create(bool value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(bool value)
+static partial void ValidateAdditional(bool value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `null` rejection for nullable inputs; `false` is valid.
+
+#### `RequiredDateTime<TSelf>`
+
+```csharp
+[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(DateTime value, string? fieldName = null)
+public static Result<TSelf> TryCreate(DateTime? valueOrNothing, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
+public static Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
+public static new TSelf Create(DateTime value)
+public static TSelf Create(string stringValue)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static explicit operator TSelf(DateTime value)
+static partial void ValidateAdditional(DateTime value, string fieldName, ref string? errorMessage)
+```
+
+- Built-in validation: `DateTime.MinValue` rejection.
+
+#### `RequiredEnum<TSelf>`
+
+```csharp
+[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]
+public static Result<TSelf> TryCreate(string value)
+public static Result<TSelf> TryCreate(string? value, string? fieldName = null)
+public static TSelf Parse(string s, IFormatProvider? provider)
+public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TSelf result)
+public static TSelf Create(string value)
+```
+
+- Generated `TryCreate` delegates only to `TryFromName`.
+- The enum JSON converter also uses only `TryFromName`; there is no `TryFromValue` path.
+
+### Building your own primitive
+
+```csharp
+using System.Globalization;
+using Trellis;
+
+namespace Demo;
+
+[StringLength(50)]
+public partial class CustomerName : RequiredString<CustomerName> { }
+
+public partial class OrderId : RequiredGuid<OrderId> { }
+
+[Range(1, 999)]
+public partial class LineCount : RequiredInt<LineCount> { }
+
+public partial class SubmittedAt : RequiredDateTime<SubmittedAt> { }
+
+public partial class OrderState : RequiredEnum<OrderState>
+{
+    public static readonly OrderState Draft = new();
+
+    [EnumValue("submitted")]
+    public static readonly OrderState Submitted = new();
+}
+
+public static class Example
+{
+    public static void Run()
+    {
+        var orderId = OrderId.NewUniqueV7();
+        var name = CustomerName.Create("Ada");
+        var lines = LineCount.TryCreate("42", CultureInfo.InvariantCulture).Value;
+        var submittedAt = SubmittedAt.Parse("2026-01-15T12:00:00Z", CultureInfo.InvariantCulture);
+        var state = OrderState.Create("submitted");
+
+        _ = (orderId, name, lines, submittedAt, state);
+    }
+}
+```
+
 ## Extension methods
 
 ### `AggregateETagExtensions`
@@ -1031,7 +1433,6 @@ Notes:
 ## Internal types
 
 - `AndSpecification<T>`, `OrSpecification<T>`, and `NotSpecification<T>` are internal implementation types returned by the public combinators on `Specification<T>`.
-- `IScalarValue<TSelf, TPrimitive>` and `IFormattableScalarValue<TSelf, TPrimitive>` are **not** in this package. They are defined in `Trellis.Core` and are referenced by `ScalarValueObject<TSelf, T>` through its generic constraint.
 
 ## Code examples
 
