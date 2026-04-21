@@ -15,4 +15,32 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
   </ItemGroup>
+
+  <!--
+    Phase 2: bundle the (formerly standalone) Trellis.AspSourceGenerator into
+    Trellis.Asp.nupkg under analyzers/dotnet/cs. Source-tree consumers reference
+    the generator csproj directly via OutputItemType="Analyzer" (see
+    Examples/ConditionalRequestExample, generator-tests). NuGet consumers get
+    the generator transparently via the bundled dll.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\generator\Trellis.AspSourceGenerator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Target Name="_GetAspGeneratorTargetPath" Returns="@(_AspGeneratorTargetPath)">
+    <MSBuild Projects="..\generator\Trellis.AspSourceGenerator.csproj" Targets="GetTargetPath">
+      <Output TaskParameter="TargetOutputs" ItemName="_AspGeneratorTargetPath" />
+    </MSBuild>
+  </Target>
+
+  <Target Name="_PackAspGenerator" BeforeTargets="_GetPackageFiles" DependsOnTargets="_GetAspGeneratorTargetPath">
+    <ItemGroup>
+      <None Include="@(_AspGeneratorTargetPath)"
+            Pack="true"
+            PackagePath="analyzers/dotnet/cs"
+            Visible="false" />
+    </ItemGroup>
+  </Target>
 </Project>

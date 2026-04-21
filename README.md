@@ -79,15 +79,13 @@ var result = Result.Ok("ada@example.com")
 
 | Package | What it gives you |
 | --- | --- |
-| [Trellis.Asp](https://www.nuget.org/packages/Trellis.Asp) | Result-to-HTTP mapping, scalar validation, and JSON/model binding |
-| [Trellis.AspSourceGenerator](https://www.nuget.org/packages/Trellis.AspSourceGenerator) | AOT-friendly JSON converter generation for Trellis scalar values |
+| [Trellis.Asp](https://www.nuget.org/packages/Trellis.Asp) | Result-to-HTTP mapping, scalar validation, and JSON/model binding (bundles the AOT-friendly JSON converter generator) |
 | [Trellis.Authorization](https://www.nuget.org/packages/Trellis.Authorization) | `Actor`, permission checks, and resource authorization primitives |
 | [Trellis.Asp.Authorization](https://www.nuget.org/packages/Trellis.Asp.Authorization) | Claims, Entra, and development actor providers for ASP.NET Core |
 | [Trellis.Http](https://www.nuget.org/packages/Trellis.Http) | `HttpClient` extensions that stay inside the Result pipeline |
 | [Trellis.Mediator](https://www.nuget.org/packages/Trellis.Mediator) | Result-aware pipeline behaviors for [Mediator](https://github.com/martinothamar/Mediator) |
 | [Trellis.FluentValidation](https://www.nuget.org/packages/Trellis.FluentValidation) | FluentValidation output converted into Trellis results |
-| [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, and safe save helpers |
-| [Trellis.EntityFrameworkCore.Generator](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Generator) | Generated backing fields for `Maybe<T>` and owned value-object helpers |
+| [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, and safe save helpers (bundles the `Maybe<T>` / owned value-object source generator) |
 | [Trellis.Stateless](https://www.nuget.org/packages/Trellis.Stateless) | Stateless transitions that return `Result<TState>` |
 | [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions for `Result<T>` and `Maybe<T>` |
 

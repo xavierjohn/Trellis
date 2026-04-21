@@ -113,8 +113,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 |---------|-------------|
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | 19+ Roslyn analyzers that catch common mistakes at build time |
 | [Trellis.Core.Generator](https://www.nuget.org/packages/Trellis.Core.Generator) | Source generation for `RequiredString` and related primitives |
-| [Trellis.AspSourceGenerator](https://www.nuget.org/packages/Trellis.AspSourceGenerator) | AOT-friendly JSON converter generation for scalar values |
-| [Trellis.EntityFrameworkCore.Generator](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Generator) | Generated backing fields for `Maybe<T>` and owned value objects |
+
 
 > See all analyzer rules: [Analyzer Rules](~/articles/analyzers/toc.yml)
 
