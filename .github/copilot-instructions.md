@@ -11,7 +11,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 | When using... | Read first |
 |--------------|------------|
 | Result, Maybe, Bind, Map, Tap, Ensure, Combine, Check | `docs/api_reference/trellis-api-core.md` |
-| Aggregate, Entity, ValueObject, Specification | `docs/api_reference/trellis-api-ddd.md` |
+| Aggregate, Entity, ValueObject, Specification | `docs/api_reference/trellis-api-core.md` |
 | RequiredString, RequiredGuid, Money, EmailAddress, etc. | `docs/api_reference/trellis-api-primitives.md` |
 | ToActionResult, ToHttpResult, ETag, Prefer, WriteOutcome | `docs/api_reference/trellis-api-asp.md` |
 | EF Core integration | `docs/api_reference/trellis-api-efcore.md` |
@@ -43,11 +43,10 @@ The single namespace for all structural types. These have zero dependencies beyo
 
 | From Package | Types in `Trellis` Namespace |
 |-------------|------------------------------|
-| Trellis.Core | `Result<T>`, `Maybe<T>`, `Error` |
-| Trellis.DomainDrivenDesign | `Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>` |
-| Trellis.Primitives | `RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum` base classes |
+| Trellis.Core | `Result<T>`, `Maybe<T>`, `Error`, `Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, `RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum` base classes |
+| Trellis.Primitives | Concrete VOs (`EmailAddress`, `Money`, etc.) — see `Trellis.Primitives` namespace below |
 
-For complete API details, see `docs/api_reference/trellis-api-core.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`.
+For complete API details, see `docs/api_reference/trellis-api-core.md`, `trellis-api-core.md`, `trellis-api-primitives.md`.
 
 ### `Trellis.Primitives` — Opinionated Ready-to-Use Value Objects
 
@@ -109,7 +108,7 @@ For value object creation patterns (`TryCreate`/`Create`), async ROP chain patte
 
 - `docs/api_reference/trellis-api-core.md` — Result/Maybe operations, async patterns, mixing sync and async in chains
 - `docs/api_reference/trellis-api-primitives.md` — Value object creation, `[StringLength]`, culture-aware parsing
-- `docs/api_reference/trellis-api-ddd.md` — Aggregate, Entity, Specification patterns
+- `docs/api_reference/trellis-api-core.md` — Aggregate, Entity, Specification patterns
 
 **Do not assume API signatures.** The API references document the exact overloads available (including sync-on-async variants).
 
@@ -241,7 +240,7 @@ Before considering work complete, verify:
 1. **Build succeeds** — `dotnet build` with zero errors and zero warnings
 2. **All tests pass** — `dotnet test` with zero failures
 3. **Documentation updated:**
-   - `docs/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-core.md`, `trellis-api-ddd.md`, `trellis-api-primitives.md`, etc.)
+   - `docs/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-core.md`, `trellis-api-core.md`, `trellis-api-primitives.md`, etc.)
    - `docs/api_reference/trellis-api-testing-reference.md` — if test helpers were added or changed
    - Package `README.md` — if the package's public surface changed
    - Docfx articles in `docs/docfx_project/articles/` — if relevant articles exist for the feature area
@@ -346,9 +345,9 @@ predicateInvoked.Should().BeFalse("predicate should not be invoked for failed re
 
 | Area | Source | Tests |
 |------|--------|-------|
-| Core ROP | `Trellis.Core/src/Result/Extensions/` | `Trellis.Core/tests/Results/Extensions/` |
+| Core ROP | `Trellis.Core/src/Result/Extensions/` | `Trellis.Core/tests/Result/Extensions/` |
 | Value Objects | `Trellis.Primitives/src/` | `Trellis.Primitives/tests/` |
-| DDD | `Trellis.DomainDrivenDesign/src/` | `Trellis.DomainDrivenDesign/tests/` |
+| DDD | `Trellis.Core/src/DomainDrivenDesign/` | `Trellis.Core/tests/DomainDrivenDesign/` |
 | Authorization | `Trellis.Authorization/src/` | `Trellis.Authorization/tests/` |
 | Mediator | `Trellis.Mediator/src/` | `Trellis.Mediator/tests/` |
 | ASP.NET | `Trellis.Asp/src/` | `Trellis.Asp/tests/` |

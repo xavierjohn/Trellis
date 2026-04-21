@@ -801,6 +801,6 @@ static IResult UpdateWidget(HttpContext httpContext)
 ## Cross-references
 
 - [trellis-api-core.md](trellis-api-core.md)
-- [trellis-api-ddd.md](trellis-api-ddd.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-primitives.md](trellis-api-primitives.md)
 - [trellis-api-http.md](trellis-api-http.md)

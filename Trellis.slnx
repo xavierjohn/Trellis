@@ -83,11 +83,6 @@
   <Folder Name="/Trellis.Benchmark/">
     <Project Path="Trellis.Benchmark/Trellis.Benchmark.csproj" />
   </Folder>
-  <Folder Name="/Trellis.DomainDrivenDesign/">
-    <File Path="Trellis.DomainDrivenDesign/SAMPLES.md" />
-    <Project Path="Trellis.DomainDrivenDesign/src/Trellis.DomainDrivenDesign.csproj" />
-    <Project Path="Trellis.DomainDrivenDesign/tests/Trellis.DomainDrivenDesign.Tests.csproj" />
-  </Folder>
   <Folder Name="/Trellis.EntityFrameworkCore/">
     <Project Path="Trellis.EntityFrameworkCore/generator/Trellis.EntityFrameworkCore.Generator.csproj" />
     <Project Path="Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj" />
@@ -107,11 +102,11 @@
   </Folder>
   <Folder Name="/Trellis.Primitives/">
     <File Path="Trellis.Primitives/SAMPLES.md" />
-    <Project Path="Trellis.Primitives/generator/Trellis.Primitives.Generator.csproj" />
     <Project Path="Trellis.Primitives/src/Trellis.Primitives.csproj" />
     <Project Path="Trellis.Primitives/tests/Trellis.Primitives.Tests.csproj" />
   </Folder>
   <Folder Name="/Trellis.Core/">
+    <Project Path="Trellis.Core/generator/Trellis.Core.Generator.csproj" />
     <Project Path="Trellis.Core/src/Trellis.Core.csproj" />
     <Project Path="Trellis.Core/tests/Trellis.Core.Tests.csproj" />
   </Folder>

@@ -1,5 +1,5 @@
 using Trellis.Testing;
-namespace Trellis.DomainDrivenDesign.Tests.Aggregates;
+namespace Trellis.Core.Tests.DomainDrivenDesign.Aggregates;
 
 using Trellis;
 

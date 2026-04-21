@@ -398,5 +398,5 @@ public static class Example
 
 - [trellis-api-primitives.md](trellis-api-primitives.md)
 - [trellis-api-core.md](trellis-api-core.md)
-- [trellis-api-ddd.md](trellis-api-ddd.md)
+- [trellis-api-core.md](trellis-api-core.md)
 - [trellis-api-efcore.md](trellis-api-efcore.md)

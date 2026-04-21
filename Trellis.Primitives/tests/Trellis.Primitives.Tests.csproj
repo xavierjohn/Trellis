@@ -3,8 +3,8 @@
       <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
    </PropertyGroup>
    <ItemGroup>
-      <ProjectReference Include="..\generator\Trellis.Primitives.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-      <ProjectReference Include="..\generator\Trellis.Primitives.Generator.csproj" />
+      <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" />
       <ProjectReference Include="..\src\Trellis.Primitives.csproj" />
    </ItemGroup>
    <ItemGroup>

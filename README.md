@@ -72,9 +72,7 @@ var result = Result.Ok("ada@example.com")
 | Package | What it gives you |
 | --- | --- |
 | [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, and pipeline operators |
-| [Trellis.DomainDrivenDesign](https://www.nuget.org/packages/Trellis.DomainDrivenDesign) | `Aggregate`, `Entity`, `ValueObject`, `Specification`, and domain events |
 | [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use value objects plus base classes for your own |
-| [Trellis.Primitives.Generator](https://www.nuget.org/packages/Trellis.Primitives.Generator) | Source generation for `RequiredString<TSelf>` and related primitives |
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | Compile-time guidance for Result, Maybe, and EF Core usage |
 
 ### Integration

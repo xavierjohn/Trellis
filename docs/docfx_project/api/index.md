@@ -112,7 +112,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 | Package | What it does |
 |---------|-------------|
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | 19+ Roslyn analyzers that catch common mistakes at build time |
-| [Trellis.Primitives.Generator](https://www.nuget.org/packages/Trellis.Primitives.Generator) | Source generation for `RequiredString` and related primitives |
+| [Trellis.Core.Generator](https://www.nuget.org/packages/Trellis.Core.Generator) | Source generation for `RequiredString` and related primitives |
 | [Trellis.AspSourceGenerator](https://www.nuget.org/packages/Trellis.AspSourceGenerator) | AOT-friendly JSON converter generation for scalar values |
 | [Trellis.EntityFrameworkCore.Generator](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Generator) | Generated backing fields for `Maybe<T>` and owned value objects |
 
@@ -122,7 +122,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 
 ## Observability
 
-Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xref:Trellis.CoreTraceProviderBuilderExtensions) and [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions). Automatic span creation for pipeline operations and value object creation boundaries.
+Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xref:Trellis.ResultsTraceProviderBuilderExtensions) and [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions). Automatic span creation for pipeline operations and value object creation boundaries.
 
 > Learn more: [Observability & Monitoring](~/articles/integration-observability.md)
 
@@ -138,3 +138,4 @@ Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xre
 | Browse working code | [Examples](~/articles/examples.md) |
 | Set up integrations | [Integration Overview](~/articles/integration.md) |
 | Run the benchmarks | [Performance](~/articles/performance.md) |
+

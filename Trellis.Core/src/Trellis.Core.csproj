@@ -18,6 +18,34 @@
     <PackageReference Include="T4.Build" PrivateAssets="all" />
   </ItemGroup>
 
+  <!--
+    Phase 2: bundle the (formerly standalone) Trellis.Primitives.Generator
+    into Trellis.Core.nupkg under analyzers/dotnet/cs. Source-tree consumers
+    reference the generator csproj directly via OutputItemType="Analyzer"
+    (see Examples/*, Trellis.Primitives.Tests, etc.). NuGet consumers get
+    the generator transparently via the bundled dll.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\generator\Trellis.Core.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Target Name="_GetCoreGeneratorTargetPath" Returns="@(_CoreGeneratorTargetPath)">
+    <MSBuild Projects="..\generator\Trellis.Core.Generator.csproj" Targets="GetTargetPath">
+      <Output TaskParameter="TargetOutputs" ItemName="_CoreGeneratorTargetPath" />
+    </MSBuild>
+  </Target>
+
+  <Target Name="_PackCoreGenerator" BeforeTargets="_GetPackageFiles" DependsOnTargets="_GetCoreGeneratorTargetPath">
+    <ItemGroup>
+      <None Include="@(_CoreGeneratorTargetPath)"
+            Pack="true"
+            PackagePath="analyzers/dotnet/cs"
+            Visible="false" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <Compile Update="Result\Extensions\WhenAllTs.g.cs">
       <DesignTime>True</DesignTime>

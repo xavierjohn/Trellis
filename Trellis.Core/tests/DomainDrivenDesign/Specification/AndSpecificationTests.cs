@@ -1,4 +1,4 @@
-﻿namespace Trellis.DomainDrivenDesign.Tests.Specification;
+namespace Trellis.Core.Tests.DomainDrivenDesign.Specification;
 
 /// <summary>
 /// Tests for the And composition of <see cref="Trellis.Specification{T}"/>.

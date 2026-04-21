@@ -1,4 +1,4 @@
-﻿# Specifications
+# Specifications
 
 The same business rule often shows up in three places:
 
@@ -225,4 +225,4 @@ That is the main win. They are less about pattern purity and more about preventi
 
 - [Clean Architecture](clean-architecture.md)
 - [Primitive Value Objects](primitives.md)
-- [Trellis DDD API reference](../../api_reference/trellis-api-ddd.md)
+- [Trellis DDD API reference](../../api_reference/trellis-api-core.md)

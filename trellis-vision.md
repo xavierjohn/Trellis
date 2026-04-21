@@ -244,7 +244,7 @@ Full rule table: [Analyzer Documentation](https://xavierjohn.github.io/Trellis/a
 | `Trellis.Core` | Result\<T\>, Maybe\<T\>, error types, pipeline operators |
 | `Trellis.DomainDrivenDesign` | Aggregate, Entity, ValueObject, Domain Events, Specification |
 | `Trellis.Primitives` | 12 ready-to-use value objects + base types |
-| `Trellis.Primitives.Generator` | Source generator for value object boilerplate |
+| `Trellis.Core.Generator` | Source generator for value object boilerplate |
 | `Trellis.Analyzers` | 19 Roslyn analyzers |
 
 **Integration packages:**

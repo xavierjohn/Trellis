@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageId>Trellis.Primitives.Generator</PackageId>
-    <Description>Source code generator for RequiredString and RequiredGuid primitive value objects. Automatically generates TryCreate, Parse, TryParse methods and explicit cast operators with IParsable&lt;T&gt; support. Part of the Trellis.Primitives library.</Description>
-    <PackageTags>trellis;source-generator;roslyn;code-generation;value-objects;required-string;required-guid;ddd;domain-primitives</PackageTags>
+    <Description>Source code generator for RequiredString and RequiredGuid primitive value objects. Automatically generates TryCreate, Parse, TryParse methods and explicit cast operators with IParsable&lt;T&gt; support. Bundled inside Trellis.Core.nupkg; not published as a standalone NuGet package.</Description>
+    <!-- Bundled into Trellis.Core.nupkg in Phase 2; do not produce a standalone .nupkg. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
    <PropertyGroup>
       <!-- 👇 Source generators must target netstandard 2.0 -->
@@ -14,19 +14,13 @@
       <!-- CS1574: XML comment cref attributes cannot be resolved in generator project (expected) -->
       <NoWarn>$(NoWarn);NU5128;CS1574</NoWarn>
       <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-      
+
       <!-- .NET Standard 2.0 doesn't support AOT/Trim analyzers -->
       <IsTrimmable>false</IsTrimmable>
       <EnableAotAnalyzer>false</EnableAotAnalyzer>
       <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
    </PropertyGroup>
 
-   <!-- This ensures the library will be packaged as a source generator when we use `dotnet pack` -->
-   <ItemGroup>
-      <None Include="$(TargetPath)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-      <None Include="README.md" Pack="true" PackagePath="\" />
-   </ItemGroup>
-   
    <ItemGroup>
       <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
       <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />

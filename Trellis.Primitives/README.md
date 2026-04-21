@@ -9,7 +9,7 @@ Strongly typed value objects for .NET, with built-in primitives like `EmailAddre
 dotnet add package Trellis.Primitives
 ```
 
-For custom `Required*` types, also add `Trellis.Primitives.Generator`.
+For custom `Required*` types, also add `Trellis.Core.Generator`.
 
 ## Quick Example
 ```csharp

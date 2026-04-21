@@ -248,7 +248,7 @@ namespace Trellis;
 /// </example>
 /// <seealso cref="ScalarValueObject{TSelf, T}"/>
 /// <seealso cref="RequiredGuid{TSelf}"/>
-/// <seealso cref="Trellis.Primitives.EmailAddress"/>
+/// <seealso href="xref:Trellis.EmailAddress"/>
 public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     where TSelf : RequiredString<TSelf>, IScalarValue<TSelf, string>
 {
@@ -311,3 +311,4 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     public bool EndsWith(string value) => Value.EndsWith(value);
 #pragma warning restore CA1310
 }
+

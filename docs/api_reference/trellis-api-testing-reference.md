@@ -576,7 +576,7 @@ fakeTimeProvider.SetUtcNow(DateTimeOffset.UtcNow.AddHours(1));
 ## Cross-references
 
 - [trellis-api-core.md](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Error`, `Unit`
-- [trellis-api-ddd.md](trellis-api-ddd.md) — `Aggregate<TId>`, `Specification<T>`
+- [trellis-api-core.md](trellis-api-core.md) — `Aggregate<TId>`, `Specification<T>`
 - [trellis-api-authorization.md](trellis-api-authorization.md) — `Actor`, `IActorProvider`, `IResourceLoader`, `SharedResourceLoaderById`
 - [trellis-api-efcore.md](trellis-api-efcore.md) — `SaveChangesResultAsync`, `SaveChangesResultUnitAsync`, `AddTrellisInterceptors`
 - [trellis-api-asp.md](trellis-api-asp.md) — API/integration patterns used with `WebApplicationFactory`
