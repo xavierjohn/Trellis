@@ -115,7 +115,7 @@ None.
 Static factory and helper surface for `Result<TValue>` and the non-generic `Result` (success/failure for void flows).
 
 > **Default-state invariant (ADR-002 §3.5.1).** `default(Result)` represents a **failure** carrying the
-> shared `Error.Unexpected("default_initialized")` sentinel — *not* success. This makes uninitialized
+> shared `new Error.Unexpected("default_initialized")` sentinel — *not* success. This makes uninitialized
 > state a typed failure rather than a silent success that would hide a programming error. Always
 > construct via `Result.Ok()` or `Result.Fail(error)`. Analyzer **`TRLS029`** flags explicit
 > `default(Result)` at call sites.
@@ -152,10 +152,10 @@ None.
 Represents either a successful `TValue` or a failure `Error`.
 
 > **Default-state invariant (ADR-002 §3.5.1).** `default(Result<T>)` represents a **failure** carrying
-> the shared `Error.Unexpected("default_initialized")` sentinel — *not* success with `default(T)`.
+> the shared `new Error.Unexpected("default_initialized")` sentinel — *not* success with `default(T)`.
 > All failure-facing APIs (`Error`, `TryGetError`, `Deconstruct`, `Equals`, `GetHashCode`, `ToString`,
 > `AsUnit`) route through this sentinel so that `default(Result<T>)` is observationally equivalent to
-> `Result.Fail<T>(Error.Unexpected("default_initialized"))`. Always construct via `Result.Ok(value)`
+> `Result.Fail<T>(new Error.Unexpected("default_initialized"))`. Always construct via `Result.Ok(value)`
 > or `Result.Fail<T>(error)`. Analyzer **`TRLS029`** flags explicit `default(Result<T>)` at call sites.
 
 #### Properties

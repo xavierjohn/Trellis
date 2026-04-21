@@ -9,8 +9,8 @@ using Trellis.Testing;
 /// <remarks>
 /// <para>
 /// <c>default(Result)</c> and <c>default(Result&lt;T&gt;)</c> must be observationally
-/// equivalent to <c>Result.Fail(Error.Unexpected("default_initialized"))</c> /
-/// <c>Result.Fail&lt;T&gt;(...)</c>. This means every failure-facing API
+/// equivalent to <c>Result.Fail(new Error.Unexpected("default_initialized"))</c> /
+/// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default_initialized"))</c>. This means every failure-facing API
 /// (<see cref="Result.Error"/>, <c>TryGetError</c>, <c>Deconstruct</c>, <c>Equals</c>,
 /// <c>GetHashCode</c>, <c>ToString</c>, <c>AsUnit</c>) must route through the same
 /// effective-error helper so that callers cannot distinguish the two forms.

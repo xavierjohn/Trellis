@@ -16,7 +16,7 @@ using Trellis;
 ///         <term>Error Type</term>
 ///         <description>Default HTTP Status</description>
 ///     </listheader>
-///     <item><term><see cref="Error.UnprocessableContent"/></term><description>400 Bad Request</description></item>
+///     <item><term><see cref="Error.UnprocessableContent"/></term><description>422 Unprocessable Entity</description></item>
 ///     <item><term><see cref="Error.BadRequest"/></term><description>400 Bad Request</description></item>
 ///     <item><term><see cref="Error.Unauthorized"/></term><description>401 Unauthorized</description></item>
 ///     <item><term><see cref="Error.Forbidden"/></term><description>403 Forbidden</description></item>
@@ -24,7 +24,6 @@ using Trellis;
 ///     <item><term><see cref="Error.Conflict"/></term><description>409 Conflict</description></item>
 ///     <item><term><see cref="Error.PreconditionFailed"/></term><description>412 Precondition Failed</description></item>
 ///     <item><term><see cref="Error.PreconditionRequired"/></term><description>428 Precondition Required</description></item>
-///     <item><term><see cref="Error.Conflict"/></term><description>422 Unprocessable Entity</description></item>
 ///     <item><term><see cref="Error.TooManyRequests"/></term><description>429 Too Many Requests</description></item>
 ///     <item><term><see cref="Error.InternalServerError"/></term><description>500 Internal Server Error</description></item>
 ///     <item><term><see cref="Error.Unexpected"/></term><description>500 Internal Server Error</description></item>

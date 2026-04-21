@@ -49,35 +49,26 @@ public sealed class DefaultResultOrMaybeAnalyzer : DiagnosticAnalyzer
         if (op.Type is not INamedTypeSymbol type)
             return;
 
-        // Match by metadata name + containing namespace to avoid string-display fragility.
-        var ns = type.ContainingNamespace?.ToDisplayString();
-        if (ns != "Trellis")
-            return;
-
-        var original = type.OriginalDefinition;
-        var metadataName = original.MetadataName; // "Result", "Result`1", "Maybe`1"
-
         string typeDisplay;
         string suggestion;
-        switch (metadataName)
+        if (type.IsNonGenericResultType())
         {
-            case "Result" when original.TypeKind == TypeKind.Struct && !original.IsGenericType:
-                typeDisplay = "Result";
-                suggestion = "Result.Ok() or Result.Fail(...)";
-                break;
-
-            case "Result`1":
-                typeDisplay = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                suggestion = "Result.Ok(...) or Result.Fail<T>(...)";
-                break;
-
-            case "Maybe`1":
-                typeDisplay = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                suggestion = "Maybe<T>.None or Maybe.From(...)";
-                break;
-
-            default:
-                return;
+            typeDisplay = "Result";
+            suggestion = "Result.Ok() or Result.Fail(...)";
+        }
+        else if (type.IsResultType())
+        {
+            typeDisplay = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            suggestion = "Result.Ok(...) or Result.Fail<T>(...)";
+        }
+        else if (type.IsMaybeType())
+        {
+            typeDisplay = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            suggestion = "Maybe<T>.None or Maybe.From(...)";
+        }
+        else
+        {
+            return;
         }
 
         context.ReportDiagnostic(Diagnostic.Create(

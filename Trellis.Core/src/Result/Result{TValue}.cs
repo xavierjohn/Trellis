@@ -138,7 +138,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
     /// For <c>default(Result&lt;T&gt;)</c>, returns the shared <see cref="Trellis.Error.Unexpected"/>
     /// sentinel (per ADR-002 §3.5.1) so default-initialized failures are observationally equivalent to
-    /// <c>Result.Fail&lt;T&gt;(Error.Unexpected("default_initialized"))</c>.
+    /// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default_initialized"))</c>.
     /// </remarks>
     /// <example>
     /// <code>

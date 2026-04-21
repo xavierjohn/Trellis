@@ -81,7 +81,7 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
     /// For <c>default(Result)</c>, returns the shared <see cref="Trellis.Error.Unexpected"/> sentinel
     /// (per ADR-002 §3.5.1) so default-initialized failures are observationally equivalent to
-    /// <c>Result.Fail(Error.Unexpected("default_initialized"))</c>.
+    /// <c>Result.Fail(new Error.Unexpected("default_initialized"))</c>.
     /// </remarks>
     /// <example>
     /// <code>
