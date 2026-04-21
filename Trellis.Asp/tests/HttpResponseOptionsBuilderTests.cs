@@ -107,10 +107,9 @@ public sealed class HttpResponseOptionsBuilderTests
     }
 
     [Fact]
-    public void WithRange_static_overload_clears_selector_overload_and_vice_versa()
+    public void Both_WithRange_overloads_are_chainable()
     {
         var b = new HttpResponseOptionsBuilder<Thing>();
-        // Smoke-test both overloads exist and are chainable.
         b.WithRange(0, 1, 2).WithRange(_ => new ContentRangeHeaderValue(10))
             .WithRange(0, 5, 10).Should().BeSameAs(b);
     }

@@ -110,7 +110,7 @@ public sealed class ResponseFailureWriterTests : IDisposable
     }
 
     [Fact]
-    public async Task InternalServerError_redacts_detail_and_propagates_faultId()
+    public async Task InternalServerError_writes_500_problem_response()
     {
         var ctx = NewContext();
         var r = Result.Fail<T>(new Error.InternalServerError("FAULT-7") { Detail = "stack trace leak" });
@@ -118,9 +118,6 @@ public sealed class ResponseFailureWriterTests : IDisposable
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(500);
-        // Detail redaction is observable indirectly: the writer chooses the redacted detail
-        // when statusCode >= 500. We can't easily inspect ProblemDetails body here, but the
-        // status path is exercised which is the goal.
     }
 
     [Fact]

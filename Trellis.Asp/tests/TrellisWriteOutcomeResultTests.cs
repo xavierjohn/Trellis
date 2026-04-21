@@ -239,26 +239,24 @@ public sealed class TrellisWriteOutcomeResultTests : IDisposable
     }
 
     [Fact]
-    public async Task Builder_metadata_skipped_when_outcome_has_no_domain()
+    public async Task UpdatedNoContent_omits_ETag_header_even_when_builder_supplies_selector()
     {
         var ctx = NewContext();
-        // UpdatedNoContent has no domain so ETag selector should not be invoked.
         var outcome = new WriteOutcome<Item>.UpdatedNoContent();
-        bool selectorInvoked = false;
 
         await Result.Ok<WriteOutcome<Item>>(outcome).ToHttpResponse(o => o
-            .WithETag(i => { selectorInvoked = true; return i.ETag; })
+            .WithETag(i => i.ETag)
             .Vary("Accept"))
             .ExecuteAsync(ctx);
 
-        selectorInvoked.Should().BeFalse();
         ctx.Response.StatusCode.Should().Be(204);
+        ctx.Response.Headers.ContainsKey("ETag").Should().BeFalse();
         // Vary still added (does not depend on domain).
         ctx.Response.Headers.Vary.ToString().Should().Contain("Accept");
     }
 
     [Fact]
-    public async Task HonorPrefer_emits_Vary_Prefer_even_for_failure_pre_check()
+    public async Task HonorPrefer_emits_Vary_Prefer_header_on_response()
     {
         // The Vary: Prefer is emitted before the switch on outcome variants for the success path.
         var ctx = NewContext();
@@ -272,20 +270,11 @@ public sealed class TrellisWriteOutcomeResultTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_throws_on_null_HttpContext()
+    public async Task ExecuteAsync_throws_when_HttpContext_is_null()
     {
         var outcome = new WriteOutcome<Item>.UpdatedNoContent();
-        var inner = new TrellisWriteOutcomeResultUnderTest(
-            Result.Ok<WriteOutcome<Item>>(outcome));
+        var http = Result.Ok<WriteOutcome<Item>>(outcome).ToHttpResponse();
 
-        await Assert.ThrowsAsync<ArgumentNullException>(() => inner.ExecuteAsync(null!));
-    }
-
-    private sealed class TrellisWriteOutcomeResultUnderTest : Microsoft.AspNetCore.Http.IResult
-    {
-        private readonly Microsoft.AspNetCore.Http.IResult _inner;
-        public TrellisWriteOutcomeResultUnderTest(Result<WriteOutcome<Item>> r)
-            => _inner = r.ToHttpResponse();
-        public Task ExecuteAsync(HttpContext ctx) => _inner.ExecuteAsync(ctx);
+        await Assert.ThrowsAsync<ArgumentNullException>(() => http.ExecuteAsync(null!));
     }
 }

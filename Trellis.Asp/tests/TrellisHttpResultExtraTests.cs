@@ -4,7 +4,6 @@ using System.IO;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,9 +11,10 @@ using Trellis;
 using Trellis.Asp;
 
 /// <summary>
-/// Extra coverage for <see cref="TrellisHttpResult{TDomain,TBody}"/> branches not exercised by
-/// the higher-level <c>ToHttpResponseTests</c>. Focuses on metadata projection, range handling,
-/// precondition decisions, location resolution, error-status resolution and metadata interfaces.
+/// Outcome-level coverage for <c>ToHttpResponse</c> branches not exercised by the higher-level
+/// <c>ToHttpResponseTests</c>: metadata headers, range handling, conditional-request decisions,
+/// location resolution, and per-call error-mapping overrides. Every test drives the public
+/// extension and asserts on what a caller observes (status code, headers, body bytes).
 /// </summary>
 [Collection("TrellisAspOptionsState")]
 public sealed class TrellisHttpResultExtraTests : IDisposable
@@ -54,7 +54,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task ApplyMetadata_writes_LastModified_ContentLanguage_ContentLocation_AcceptRanges()
+    public async Task Response_includes_LastModified_ContentLanguage_ContentLocation_and_AcceptRanges_headers()
     {
         var ctx = NewContext();
         var when = new DateTimeOffset(2024, 1, 2, 3, 4, 5, TimeSpan.Zero);
@@ -74,7 +74,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task ApplyMetadata_skips_null_selector_returns()
+    public async Task ETag_and_ContentLocation_headers_are_omitted_when_selectors_return_null()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", null!, default));
@@ -90,7 +90,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task ETag_overload_taking_EntityTagValue_emits_weak_tag()
+    public async Task Weak_ETag_is_serialized_with_W_prefix()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", "v1", default));
@@ -102,7 +102,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task EvaluatePreconditions_skipped_for_non_safe_method()
+    public async Task POST_request_with_If_None_Match_does_not_short_circuit_to_304()
     {
         var ctx = NewContext();
         ctx.Request.Method = "POST";
@@ -116,7 +116,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task EvaluatePreconditions_no_metadata_skipped()
+    public async Task GET_request_with_If_None_Match_returns_200_when_no_validator_metadata()
     {
         var ctx = NewContext();
         ctx.Request.Method = "GET";
@@ -130,7 +130,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task EvaluatePreconditions_returns_412_when_If_Match_fails()
+    public async Task Response_is_412_when_If_Match_does_not_match_current_ETag()
     {
         var ctx = NewContext();
         ctx.Request.Method = "GET";
@@ -144,7 +144,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task EvaluatePreconditions_returns_304_when_If_Modified_Since_not_modified()
+    public async Task Response_is_304_when_If_Modified_Since_is_after_Last_Modified()
     {
         var ctx = NewContext();
         ctx.Request.Method = "GET";
@@ -159,7 +159,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Static_range_partial_writes_206()
+    public async Task Partial_static_range_returns_206_with_Content_Range_header()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", "abc", default));
@@ -171,7 +171,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Static_range_full_falls_back_to_200()
+    public async Task Full_static_range_returns_200_instead_of_206()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", "abc", default));
@@ -186,7 +186,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     [InlineData(5, 4, 100)]    // To < From
     [InlineData(0, 0, 0)]      // Total <= 0
     [InlineData(100, 105, 100)] // From >= Total
-    public async Task Static_range_invalid_ranges_fall_back_to_200(long from, long to, long total)
+    public async Task Invalid_static_range_returns_200_instead_of_206(long from, long to, long total)
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", "abc", default));
@@ -197,7 +197,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Range_selector_returning_partial_writes_206()
+    public async Task Range_selector_returning_partial_range_returns_206_with_Content_Range_header()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", "abc", default));
@@ -211,7 +211,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Range_selector_with_full_range_falls_back_to_200()
+    public async Task Range_selector_returning_full_range_returns_200()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", "abc", default));
@@ -224,7 +224,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Range_selector_without_concrete_range_falls_back_to_200()
+    public async Task Range_selector_without_concrete_From_To_returns_200()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(1, "x", "abc", default));
@@ -238,7 +238,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Created_with_selector_writes_201_with_dynamic_Location()
+    public async Task Created_with_location_selector_returns_201_with_dynamic_Location_header()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(7, "x", "e", default));
@@ -251,7 +251,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task CreatedAtRoute_with_unresolvable_route_writes_500()
+    public async Task CreatedAtRoute_with_unknown_route_name_returns_500()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(7, "x", "e", default));
@@ -265,7 +265,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task CreatedAtAction_with_unresolvable_action_writes_500()
+    public async Task CreatedAtAction_with_unknown_action_returns_500()
     {
         var ctx = NewContext();
         var r = Result.Ok(new Todo(7, "x", "e", default));
@@ -278,7 +278,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Failure_uses_per_call_ErrorMapper_when_provided()
+    public async Task Failure_response_uses_per_call_error_mapper_status_code()
     {
         var ctx = NewContext();
         var r = Result.Fail<Todo>(new Error.NotFound(new ResourceRef("Todo", "1")));
@@ -290,7 +290,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task ErrorOverrides_match_via_base_type()
+    public async Task Failure_response_uses_typed_error_override_status_code()
     {
         var ctx = NewContext();
         var r = Result.Fail<Todo>(new Error.Conflict(null, "dup"));
@@ -303,7 +303,7 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task Vary_dedupes_case_insensitively_against_existing_header()
+    public async Task Vary_header_does_not_duplicate_case_insensitive_token_already_present()
     {
         var ctx = NewContext();
         ctx.Response.Headers["Vary"] = "accept";
@@ -319,71 +319,37 @@ public sealed class TrellisHttpResultExtraTests : IDisposable
     }
 
     [Fact]
-    public async Task IValueHttpResultTBody_Value_is_default_when_no_projector()
+    public async Task Success_response_advertises_application_json_Content_Type()
     {
-        var inner = new TrellisHttpResult<Todo, Todo>(
-            Result.Ok(new Todo(1, "x", "e", default)),
-            null,
-            new HttpResponseOptionsBuilder<Todo>().Build_ForTest());
-        // No projector: IValueHttpResult<TBody>.Value falls through to default(TBody) which
-        // is null for the reference-type Todo.
-        ((IValueHttpResult<Todo>)inner).Value.Should().BeNull();
-        await Task.CompletedTask;
+        var ctx = NewContext();
+        var r = Result.Ok(new Todo(1, "x", "e", default));
+
+        await r.ToHttpResponse(TodoBody.From).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(200);
+        ctx.Response.ContentType.Should().StartWith("application/json");
+        ctx.Response.Body.Position = 0;
+        new StreamReader(ctx.Response.Body).ReadToEnd().Should().Contain("\"id\":1");
     }
 
     [Fact]
-    public void StatusCode_hint_is_201_when_LocationKind_set()
+    public async Task Created_response_writes_201_and_Location_header_for_literal_path()
     {
-        var opts = new HttpResponseOptionsBuilder<Todo>().Created("/x").Build_ForTest();
-        var inner = new TrellisHttpResult<Todo, TodoBody>(
-            Result.Ok(new Todo(1, "x", "e", default)), TodoBody.From, opts);
+        var ctx = NewContext();
+        var r = Result.Ok(new Todo(3, "x", "e", default));
 
-        inner.StatusCode.Should().Be(StatusCodes.Status201Created);
-        inner.ContentType.Should().Be("application/json");
-        ((IValueHttpResult)inner).Value.Should().NotBeNull();
-        ((IValueHttpResult<TodoBody>)inner).Value!.Id.Should().Be(1);
+        await r.ToHttpResponse(TodoBody.From, o => o.Created("/todos/3")).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(201);
+        ctx.Response.Headers.Location.ToString().Should().Be("/todos/3");
+        ctx.Response.ContentType.Should().StartWith("application/json");
     }
 
     [Fact]
-    public void StatusCode_hint_is_200_when_no_LocationKind()
+    public async Task ExecuteAsync_throws_when_HttpContext_is_null()
     {
-        var opts = new HttpResponseOptionsBuilder<Todo>().Build_ForTest();
-        var inner = new TrellisHttpResult<Todo, TodoBody>(
-            Result.Fail<Todo>(new Error.NotFound(new ResourceRef("Todo"))), TodoBody.From, opts);
+        var http = Result.Ok(new Todo(1, "x", "e", default)).ToHttpResponse(TodoBody.From);
 
-        inner.StatusCode.Should().Be(StatusCodes.Status200OK);
-        inner.Value.Should().BeNull();           // failure path
-        ((IValueHttpResult<TodoBody>)inner).Value.Should().BeNull();
-    }
-
-    [Fact]
-    public void Value_returns_domain_when_no_projector_on_success()
-    {
-        var opts = new HttpResponseOptionsBuilder<Todo>().Build_ForTest();
-        var inner = new TrellisHttpResult<Todo, Todo>(
-            Result.Ok(new Todo(2, "y", "e", default)), null, opts);
-
-        inner.Value.Should().BeOfType<Todo>().Which.Id.Should().Be(2);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_throws_on_null_HttpContext()
-    {
-        var inner = new TrellisHttpResult<Todo, TodoBody>(
-            Result.Ok(new Todo(1, "x", "e", default)), TodoBody.From,
-            new HttpResponseOptionsBuilder<Todo>().Build_ForTest());
-
-        await Assert.ThrowsAsync<ArgumentNullException>(() => inner.ExecuteAsync(null!));
-    }
-}
-
-internal static class HttpResponseOptionsBuilderTestExtensions
-{
-    /// <summary>Test-only access to internal Build().</summary>
-    internal static HttpResponseOptions<T> Build_ForTest<T>(this HttpResponseOptionsBuilder<T> b)
-    {
-        var m = typeof(HttpResponseOptionsBuilder<T>).GetMethod(
-            "Build", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-        return (HttpResponseOptions<T>)m.Invoke(b, null)!;
+        await Assert.ThrowsAsync<ArgumentNullException>(() => http.ExecuteAsync(null!));
     }
 }
