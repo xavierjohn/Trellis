@@ -340,4 +340,22 @@ public static class DiagnosticDescriptors
         description: "Property patterns like 'result switch { { Value: var v } => ... }' or 'result is { Value: ... }' evaluate Result<T>.Value, which throws when the result is a failure. " +
                      "Use Match, or pattern-match on the discriminator first: 'result.Error is { } e ? handle(e) : use(result.Value)' or check IsSuccess explicitly.",
         helpLinkUri: HelpLinkBase + "TRLS025");
+
+    /// <summary>
+    /// TRLS029: Explicit default(Result), default(Result&lt;T&gt;), or default(Maybe&lt;T&gt;) at a use site.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DefaultResultOrMaybe = new(
+        id: "TRLS029",
+        title: "Avoid default(Result), default(Result<T>), and default(Maybe<T>)",
+        messageFormat: "Explicit 'default' of '{0}' is a known footgun. Use {1} instead.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Per ADR-002 §3.5.1, default(Result) and default(Result<T>) are typed failures carrying " +
+                     "the Error.Unexpected(\"default_initialized\") sentinel — never a silent success. " +
+                     "default(Maybe<T>) equals Maybe<T>.None but the explicit literal obscures intent. " +
+                     "Always construct via Result.Ok(...)/Result.Fail(...) or Maybe<T>.None / Maybe.From(...). " +
+                     "Suppress with [SuppressMessage(\"Trellis\", \"TRLS029\")] or '#pragma warning disable TRLS029' " +
+                     "for sanctioned sentinel/test-helper sites.",
+        helpLinkUri: HelpLinkBase + "TRLS029");
 }

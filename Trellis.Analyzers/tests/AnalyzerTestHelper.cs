@@ -73,6 +73,7 @@ public static class AnalyzerTestHelper
     /// Stub source code for Trellis types used in analyzer tests.
     /// </summary>
     private const string TrellisStubSource = """
+        #pragma warning disable TRLS029 // stub returns intentional defaults — not subject to TRLS029
         namespace Trellis
         {
             using System;
@@ -165,9 +166,15 @@ public static class AnalyzerTestHelper
                 public NotFoundError(string message) : base(message) { }
             }
 
-            // Static Result factory class
-            public static class Result
+            // Non-generic Result struct + static Result factory class (combined as a struct so 'default(Result)' compiles).
+            public readonly struct Result
             {
+                public bool IsSuccess { get; }
+                public bool IsFailure => !IsSuccess;
+                public Error Error => IsFailure ? default! : throw new InvalidOperationException();
+
+                public static Result Ok() => default;
+                public static Result Fail(Error error) => default;
                 public static Result<T> Ok<T>(T value) => value;
                 public static Result<T> Fail<T>(Error error) => error;
 
