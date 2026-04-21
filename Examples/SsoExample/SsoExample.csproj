@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Trellis.Asp.Authorization\src\Trellis.Asp.Authorization.csproj" />
+    <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <Using Include="Trellis.Asp" />
+    <Using Include="Trellis.Asp.Authorization" />
+    <Using Include="Trellis.Authorization" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />

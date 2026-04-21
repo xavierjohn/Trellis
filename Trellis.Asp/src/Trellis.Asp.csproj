@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
-    <Description>These extension methods are used to convert the ROP Result object to ActionResult. If the Result is in a failed state, it returns the corresponding HTTP error code.</Description>
-    <PackageTags>trellis;aspnetcore;mvc;minimal-api;web-api;railway-oriented;result;http;error-handling</PackageTags>
+    <Description>ASP.NET Core integration for Trellis. Result-to-HTTP response mapping, scalar value validation, JSON converters (with bundled AOT source generator), and ASP.NET actor providers (Claims, Entra, Development) for Trellis.Authorization.</Description>
+    <PackageTags>trellis;aspnetcore;mvc;minimal-api;web-api;railway-oriented;result;http;error-handling;authorization;actor;entra;claims</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>asp</TrellisApiRefName>
@@ -14,6 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
+    <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
   </ItemGroup>
 
   <!--

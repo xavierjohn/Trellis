@@ -72,10 +72,6 @@
     <Project Path="Trellis.Asp/src/Trellis.Asp.csproj" />
     <Project Path="Trellis.Asp/tests/Trellis.Asp.Tests.csproj" />
   </Folder>
-  <Folder Name="/Trellis.Asp.Authorization/">
-    <Project Path="Trellis.Asp.Authorization/src/Trellis.Asp.Authorization.csproj" />
-    <Project Path="Trellis.Asp.Authorization/tests/Trellis.Asp.Authorization.Tests.csproj" />
-  </Folder>
   <Folder Name="/Trellis.Authorization/">
     <Project Path="Trellis.Authorization/src/Trellis.Authorization.csproj" />
     <Project Path="Trellis.Authorization/tests/Trellis.Authorization.Tests.csproj" />

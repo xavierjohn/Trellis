@@ -95,8 +95,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 
 | Namespace | What it does | Guide |
 |-----------|-------------|-------|
-| [`Trellis.Asp`](xref:Trellis.Asp) | `Result<T>` → HTTP responses for MVC and Minimal APIs | [ASP.NET Core](~/articles/integration-aspnet.md) |
-| [`Trellis.Asp.Authorization`](xref:Trellis.Asp.Authorization) | Claims, Entra ID, and development actor providers | [Authorization](~/articles/integration-asp-authorization.md) |
+| [`Trellis.Asp`](xref:Trellis.Asp) | `Result<T>` → HTTP responses for MVC and Minimal APIs; ASP.NET actor providers (Claims, Entra, Development) | [ASP.NET Core](~/articles/integration-aspnet.md) · [Authorization](~/articles/integration-asp-authorization.md) |
 | [`Trellis.Authorization`](xref:Trellis.Authorization) | `Actor`, permission checks, resource authorization | [Authorization](~/articles/integration-asp-authorization.md) |
 | [`Trellis.Http`](xref:Trellis.Http) | `HttpClient` extensions that stay inside the Result pipeline | [HTTP Client](~/articles/integration-http.md) |
 | [`Trellis.FluentValidation`](xref:Trellis.FluentValidation) | FluentValidation output → Trellis `Result` | [FluentValidation](~/articles/integration-fluentvalidation.md) |
