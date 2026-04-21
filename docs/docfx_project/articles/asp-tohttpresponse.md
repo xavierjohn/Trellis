@@ -25,8 +25,8 @@ public Task<ActionResult<TodoItem>> Get(Guid id, CancellationToken ct) =>
 In Minimal API:
 
 ```csharp
-app.MapGet("/todos/{id:guid}", async (Guid id, IMediator m, CancellationToken ct) =>
-    await (await m.SendAsync(new GetTodo(id), ct)).ToHttpResponse());
+app.MapGet("/todos/{id:guid}", (Guid id, IMediator m, CancellationToken ct) =>
+    m.SendAsync(new GetTodo(id), ct).ToHttpResponseAsync());
 ```
 
 ## Write endpoint (`Result<WriteOutcome<T>>`)
