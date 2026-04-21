@@ -20,6 +20,11 @@ public static class ShowcaseSeed
     public static readonly AccountId AliceSavingsId = Required(AccountId.TryCreate(new Guid("aaaaaaa2-0000-0000-0000-000000000000")));
     public static readonly AccountId BobCheckingId = Required(AccountId.TryCreate(new Guid("bbbbbbb1-0000-0000-0000-000000000000")));
 
+    // Filler accounts so the cap=5 pagination demo yields multiple pages (8 extra → 11 total).
+    private static readonly AccountId[] FillerIds = Enumerable.Range(1, 8)
+        .Select(i => Required(AccountId.TryCreate(new Guid($"cccccccc-0000-0000-0000-{i:D12}"))))
+        .ToArray();
+
     public static void Apply(IAccountRepository repository, TimeProvider timeProvider)
     {
         var aliceChecking = BankAccount.Hydrate(AliceCheckingId, AliceId, AccountType.Checking, Money.Create(1000m, "USD"), Money.Create(500m, "USD"), Money.Create(0m, "USD"), AccountStatus.Active, timeProvider);
@@ -29,6 +34,13 @@ public static class ShowcaseSeed
         repository.Add(aliceChecking);
         repository.Add(aliceSavings);
         repository.Add(bobChecking);
+
+        foreach (var id in FillerIds)
+        {
+            repository.Add(BankAccount.Hydrate(id, AliceId, AccountType.Checking,
+                Money.Create(100m, "USD"), Money.Create(500m, "USD"), Money.Create(0m, "USD"),
+                AccountStatus.Active, timeProvider));
+        }
     }
 
     private static T Required<T>(Result<T> result) =>

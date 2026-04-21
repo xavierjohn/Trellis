@@ -24,6 +24,7 @@
 #   Alice    | aaaaaaa1-0000-0000-0000-000000000000    | Checking | $1,000
 #   Alice    | aaaaaaa2-0000-0000-0000-000000000000    | Savings  | $5,000
 #   Bob      | bbbbbbb1-0000-0000-0000-000000000000    | Checking | $250
+#   (8 filler accounts cccccccc-0000-0000-0000-000000000001..8 — for pagination demo)
 #
 #   Customer IDs:
 #     Alice = 11111111-1111-1111-1111-111111111111
@@ -34,8 +35,21 @@
 # Accounts — list / get / open / freeze / unfreeze / close
 ###############################################################################
 
-### List all accounts
-GET {{host}}/api/accounts
+### List accounts — paginated (server hard-cap = 5)
+### Body envelope (`items`, `next`, `previous`, `requestedLimit`, `appliedLimit`,
+### `deliveredCount`, `wasCapped`) is co-emitted with an RFC 8288 `Link` header.
+### Behaviour is identical on both hosts (MVC and Minimal API).
+GET {{host}}/api/accounts?limit=10
+Accept: application/json
+
+### List accounts — follow the `next` cursor returned by the previous request.
+### Replace the placeholder below with the value of `next.cursor` from the
+### body (or just GET the URL from the `Link: <…>; rel="next"` header).
+GET {{host}}/api/accounts?limit=5&cursor=REPLACE_WITH_NEXT_CURSOR
+Accept: application/json
+
+### List accounts — malformed cursor (400 from Error.BadRequest("invalid_cursor"))
+GET {{host}}/api/accounts?cursor=not-a-real-cursor
 Accept: application/json
 
 ### Get account by id
