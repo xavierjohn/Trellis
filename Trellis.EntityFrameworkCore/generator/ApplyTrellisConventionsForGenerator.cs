@@ -96,7 +96,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
                 continue;
             if (propType.TypeArguments.Length != 1)
                 continue;
-            if (propType.TypeArguments[0] is INamedTypeSymbol entity)
+            if (propType.TypeArguments[0] is INamedTypeSymbol entity && IsAtLeastInternal(entity))
                 entityRoots.Add(entity);
         }
 
@@ -147,6 +147,8 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
                 continue;
             if (IsExcludedFramework(named))
                 continue;
+            if (!IsAtLeastInternal(named))
+                continue;
             WalkType(named, scalarBase, requiredEnumBase, valueObjectBase, maybeSymbol,
                 visited, classified, scalars, composites);
         }
@@ -166,6 +168,8 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
     {
         isComposite = false;
         if (type.IsAbstract || type.IsUnboundGenericType || type.IsGenericType)
+            return;
+        if (!IsAtLeastInternal(type))
             return;
 
         var fqn = ToFullyQualifiedName(type);
@@ -391,7 +395,26 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
             else sb.Append('_');
         }
 
+        // Append a stable hash to disambiguate names that mangle to the same identifier
+        // (e.g. "N.Outer.Inner" and "N.Outer_Inner" both collapse underscores).
+        sb.Append('_');
+        sb.Append(StableHash(fullyQualifiedName).ToString("x8", System.Globalization.CultureInfo.InvariantCulture));
         return sb.ToString();
+    }
+
+    private static uint StableHash(string value)
+    {
+        // FNV-1a 32-bit over UTF-16 code units. Deterministic across processes/runtimes.
+        const uint offset = 2166136261u;
+        const uint prime = 16777619u;
+        var hash = offset;
+        foreach (var ch in value)
+        {
+            hash ^= ch;
+            hash *= prime;
+        }
+
+        return hash;
     }
 
     private readonly struct ScalarRegistration : IEquatable<ScalarRegistration>

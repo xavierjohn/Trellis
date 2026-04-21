@@ -224,6 +224,67 @@ public class ApplyTrellisConventionsForGeneratorTests
         generated.Should().Contain("typeof(global::MyApp.DbTwo)");
     }
 
+    [Fact]
+    public void Private_nested_entity_reachable_from_DbSet_is_excluded()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var src = Stubs + """
+
+            namespace MyApp
+            {
+                public class CustomerId : Trellis.ScalarValueObject<CustomerId, System.Guid> { }
+                public class Holder
+                {
+                    private class HiddenEntity { public CustomerId Id { get; set; } }
+                }
+                public class PublicEntity { public CustomerId Id { get; set; } }
+                public class MyDb : Microsoft.EntityFrameworkCore.DbContext
+                {
+                    public Microsoft.EntityFrameworkCore.DbSet<PublicEntity> Items { get; set; }
+                    private Microsoft.EntityFrameworkCore.DbSet<Holder> HiddenSet { get; set; }
+                }
+            }
+            """;
+
+        var (sources, _, _) = RunGenerator(src, ct);
+
+        var generated = sources.Single();
+        generated.Should().NotContain("HiddenEntity");
+        generated.Should().Contain("typeof(global::MyApp.CustomerId)");
+    }
+
+    [Fact]
+    public void Helper_names_that_mangle_equally_get_distinct_hash_suffixes()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        // "Outer.Inner" and "Outer_Inner" both collapse to the same alpha-numeric-underscore
+        // identifier; the hash suffix must make the emitted helper method names unique.
+        var src = Stubs + """
+
+            namespace MyApp
+            {
+                public class CustomerId : Trellis.ScalarValueObject<CustomerId, System.Guid> { }
+                public class E { public CustomerId Id { get; set; } }
+                public class Outer_Inner : Microsoft.EntityFrameworkCore.DbContext
+                { public Microsoft.EntityFrameworkCore.DbSet<E> Items { get; set; } }
+                public class Outer
+                {
+                    public class Inner : Microsoft.EntityFrameworkCore.DbContext
+                    { public Microsoft.EntityFrameworkCore.DbSet<E> Items { get; set; } }
+                }
+            }
+            """;
+
+        var (sources, _, _) = RunGenerator(src, ct);
+
+        var generated = sources.Single();
+        var applyForCount = System.Text.RegularExpressions.Regex.Count(
+            generated, @"private static .*? ApplyFor_\w+\(");
+        applyForCount.Should().Be(2);
+    }
+
     private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics, List<string> HintNames) RunGenerator(
         string source, System.Threading.CancellationToken ct)
     {
