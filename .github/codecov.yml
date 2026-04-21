@@ -3,13 +3,3 @@
     project:
       default:
         target: 80
-
-# Exclude auto-generated source from coverage. These files are emitted from
-# T4 templates / source generators (typically tuple-arity overloads, T3..T9)
-# whose behaviour is mechanically derived from a hand-written tuple-2 case
-# that IS covered. Treating each generated overload as separately measured
-# code over-weights boilerplate and obscures the real coverage signal.
-ignore:
-  - "**/*.g.cs"
-  - "**/*.Generated.cs"
-  - "**/Generated/**"
