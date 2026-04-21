@@ -140,6 +140,33 @@ public class HttpFileRunnerTests
         act.Should().Throw<HttpFileAssertionException>().WithMessage("*ETag*");
     }
 
+    [Fact]
+    public async Task RunAsync_preserves_query_string_when_url_starts_with_slash()
+    {
+        // Regression: on Unix, Uri.TryCreate("/api/x?limit=10", Absolute) succeeds
+        // as a file:// URI and percent-encodes '?' into the path. BuildUri must
+        // route leading-slash URLs through HttpClient.BaseAddress instead.
+        Uri? capturedUri = null;
+        using var handler = new StubHandler((req, _) =>
+        {
+            capturedUri = req.RequestUri;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+            };
+        });
+        using var client = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
+
+        var reqs = HttpFileParser.Parse("### list\nGET /api/accounts?limit=10\n");
+        var results = await HttpFileRunner.RunAsync(client, reqs, Ct);
+
+        results.Should().HaveCount(1);
+        capturedUri.Should().NotBeNull();
+        capturedUri!.Scheme.Should().Be("http");
+        capturedUri.AbsolutePath.Should().Be("/api/accounts");
+        capturedUri.Query.Should().Be("?limit=10");
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> responder) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

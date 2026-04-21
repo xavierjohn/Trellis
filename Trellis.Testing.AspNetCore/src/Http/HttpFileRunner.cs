@@ -113,7 +113,13 @@ public static class HttpFileRunner
 
     private static Uri BuildUri(HttpClient client, string url)
     {
-        if (Uri.TryCreate(url, UriKind.Absolute, out var abs))
+        // Only attempt absolute parsing when the URL carries an explicit scheme.
+        // On Unix, Uri.TryCreate(absolute) accepts leading-slash paths as file://
+        // URIs (because '/' is a valid absolute filesystem path), which would
+        // bypass HttpClient.BaseAddress and percent-encode '?' into the path —
+        // breaking query strings on Linux while quietly working on Windows.
+        if (url.Contains("://", StringComparison.Ordinal)
+            && Uri.TryCreate(url, UriKind.Absolute, out var abs))
         {
             return abs;
         }
