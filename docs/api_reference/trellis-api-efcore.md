@@ -1,6 +1,6 @@
 # Trellis.EntityFrameworkCore
 
-**Package:** `Trellis.EntityFrameworkCore`  
+**Package:** `Trellis.EntityFrameworkCore` (since Phase 2 of the v2 redesign, this single package also bundles the `Trellis.EntityFrameworkCore.Generator.dll` source generator at `analyzers/dotnet/cs/` — installing `Trellis.EntityFrameworkCore` attaches the `Maybe<T>` / `[OwnedEntity]` generator automatically; there is no separate `Trellis.EntityFrameworkCore.Generator` NuGet package).
 **Namespace:** `Trellis.EntityFrameworkCore`  
 **Purpose:** EF Core conventions, interceptors, converters, and query/update helpers for Trellis aggregates, value objects, and `Maybe<T>`.
 
@@ -473,7 +473,7 @@ public static string ToMaybeMappingDebugString(this DbContext dbContext)
 - `MaybeConvention` is internal. It ignores the `Maybe<T>` CLR property, requires the generated `_camelCase` storage member, maps scalar `Maybe<T>` properties to nullable backing-field columns, and maps `Maybe<T>` where `T` is already owned as an optional ownership navigation.
 - `CompositeValueObjectConvention` is internal. It only registers composite value objects discovered in the assemblies passed to `ApplyTrellisConventions` (plus built-in Trellis primitives scanning for scalar value objects). For `Maybe<T>` composite owned types, it uses nullable owned columns only when table-splitting is valid; it switches to a separate table named `{OwnerTypeName}_{PropertyName}` when nested owned navigations exist **or** when the owned type contains non-nullable value-type properties.
 - `MoneyConvention` is internal. It registers `Money` as an owned type, names the amount column `{PropertyName}`, names the currency column `{PropertyName}Currency`, sets `decimal(18,3)` precision/scale for `Amount`, and handles optional `Maybe<Money>` columns through the annotation written by `MaybeConvention`.
-- `MaybePartialPropertyGenerator` and `OwnedEntityGenerator` are compiler-time helpers from `Trellis.EntityFrameworkCore.Generator`, not runtime APIs. `TRLSGEN100` is reported only for non-partial auto-properties of type `Maybe<T>` whose containing type is partial. `TRLSGEN101`, `TRLSGEN102`, and `TRLSGEN103` come from `[OwnedEntity]` validation and generation.
+- `MaybePartialPropertyGenerator` and `OwnedEntityGenerator` are compiler-time helpers shipped in the `Trellis.EntityFrameworkCore.Generator.dll` assembly, which is bundled inside `Trellis.EntityFrameworkCore.nupkg` at `analyzers/dotnet/cs/` since Phase 2 of the v2 redesign — there is no separate `Trellis.EntityFrameworkCore.Generator` NuGet package. `TRLSGEN100` is reported only for non-partial auto-properties of type `Maybe<T>` whose containing type is partial. `TRLSGEN101`, `TRLSGEN102`, and `TRLSGEN103` come from `[OwnedEntity]` validation and generation.
 
 ## Code examples
 
@@ -580,6 +580,6 @@ string debug = db.ToMaybeMappingDebugString();
 
 ## Cross-references
 
-- [Trellis.DomainDrivenDesign API reference](trellis-api-core.md) — `IEntity`, `IAggregate`, `Aggregate<TId>`, `Entity<TId>`, `ValueObject`, `ScalarValueObject<TSelf, T>`, and `Specification<T>`
+- [Trellis DDD primitives in `Trellis.Core` (API reference)](trellis-api-core.md) — `IEntity`, `IAggregate`, `Aggregate<TId>`, `Entity<TId>`, `ValueObject`, `ScalarValueObject<TSelf, T>`, and `Specification<T>`
 - [Trellis.Core API reference](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Error`, `Unit`, `IScalarValue<TSelf, TPrimitive>`, and `EntityTagValue`
 - [Trellis.Primitives API reference](trellis-api-primitives.md) — `Money`, `RequiredEnum<T>`, and built-in value objects commonly scanned by `ApplyTrellisConventions`

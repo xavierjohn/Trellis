@@ -1,6 +1,6 @@
 # Trellis API Primitives
 
-**Packages:** `Trellis.Primitives`, `Trellis.Core`, `Trellis.DomainDrivenDesign` | **Namespaces:** `Trellis`, `Trellis.Primitives` | **Purpose:** strongly typed scalar and structured value objects, JSON converters, validation attributes, tracing helpers, and built-in concrete primitives.
+**Packages:** `Trellis.Primitives` (the 13 concrete VOs: `EmailAddress`, `Money`, `Url`, `PhoneNumber`, `MonetaryAmount`, `Percentage`, etc.); `Trellis.Core` (since Phase 2: scalar/composite VO base classes — `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredEnum<TSelf>` — plus the Trellis-namespaced validation attributes `StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute` and `StringExtensions`. The `Trellis.Core.Generator` source generator that emits `partial` bodies for these base classes is bundled inside `Trellis.Core.nupkg` under `analyzers/dotnet/cs/`). | **Namespaces:** `Trellis`, `Trellis.Primitives` | **Purpose:** strongly typed scalar and structured value objects, JSON converters, validation attributes, tracing helpers, and built-in concrete primitives.
 
 ## Types
 

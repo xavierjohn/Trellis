@@ -1,6 +1,6 @@
 # Trellis Value Object Taxonomy
 
-**Packages:** `Trellis.DomainDrivenDesign`, `Trellis.Core`, `Trellis.Primitives` | **Namespaces:** `Trellis`, `Trellis.Primitives` | **Purpose:** canonical category map for Trellis value-like types: scalar, symbolic, structured, and optionality wrappers.
+**Packages:** `Trellis.Core` (since Phase 2 of the v2 redesign: DDD primitives `Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, `IDomainEvent`, plus VO base classes `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredEnum<TSelf>`); `Trellis.Primitives` (concrete VOs only — `EmailAddress`, `Money`, etc.) | **Namespaces:** `Trellis`, `Trellis.Primitives` | **Purpose:** canonical category map for Trellis value-like types: scalar, symbolic, structured, and optionality wrappers.
 
 ## Types
 
