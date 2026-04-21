@@ -5,7 +5,7 @@
     <PackageTags>trellis;stateless;state-machine;railway-oriented;result;functional-programming;error-handling</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TrellisApiRefName>stateless</TrellisApiRefName>
+    <TrellisApiRefName>statemachine</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />

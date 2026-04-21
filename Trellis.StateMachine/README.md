@@ -1,19 +1,19 @@
-# Trellis.Stateless
+# Trellis.StateMachine
 
-[![NuGet Package](https://img.shields.io/nuget/v/Trellis.Stateless.svg)](https://www.nuget.org/packages/Trellis.Stateless)
+[![NuGet Package](https://img.shields.io/nuget/v/Trellis.StateMachine.svg)](https://www.nuget.org/packages/Trellis.StateMachine)
 
 A thin Trellis wrapper for [Stateless](https://github.com/dotnet-state-machine/stateless) that returns `Result<TState>` for transitions.
 
 ## Installation
 ```bash
-dotnet add package Trellis.Stateless
+dotnet add package Trellis.StateMachine
 ```
 
 ## Quick Example
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 enum OrderState { Draft, Submitted }
 enum OrderTrigger { Submit }

@@ -13,7 +13,7 @@
             "Trellis.Primitives/src/Trellis.Primitives.csproj",
             "Trellis.Testing/src/Trellis.Testing.csproj",
             "Trellis.Testing.AspNetCore/src/Trellis.Testing.AspNetCore.csproj",
-            "Trellis.Stateless/src/Trellis.Stateless.csproj",
+            "Trellis.StateMachine/src/Trellis.StateMachine.csproj",
             "Trellis.Authorization/src/Trellis.Authorization.csproj",
             "Trellis.Mediator/src/Trellis.Mediator.csproj",
             "Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj"

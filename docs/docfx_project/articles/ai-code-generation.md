@@ -135,7 +135,7 @@ If your specification describes a workflow, Trellis gives the AI a better patter
 ```csharp
 using Stateless;
 using Trellis;
-using Trellis.Stateless;
+using Trellis.StateMachine;
 
 public enum OrderState { Draft, Submitted, Approved }
 public enum OrderTrigger { Submit, Approve }

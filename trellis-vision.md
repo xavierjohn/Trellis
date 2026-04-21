@@ -254,7 +254,7 @@ Full rule table: [Analyzer Documentation](https://xavierjohn.github.io/Trellis/a
 | `Trellis.Http` | HttpClient extensions returning Result\<T\> |
 | `Trellis.FluentValidation` | Bridge FluentValidation into the pipeline |
 | `Trellis.Testing` | FluentAssertions extensions, test builders |
-| `Trellis.Stateless` | State machine integration |
+| `Trellis.StateMachine` | State machine integration |
 | `Trellis.Authorization` | Actor, permissions, resource-based auth (ASP.NET actor providers — Claims, Entra, Development — ship inside `Trellis.Asp`) |
 | `Trellis.Mediator` | CQRS pipeline behaviors |
 | `Trellis.EntityFrameworkCore` | EF Core conventions, query extensions |

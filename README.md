@@ -85,7 +85,7 @@ var result = Result.Ok("ada@example.com")
 | [Trellis.Mediator](https://www.nuget.org/packages/Trellis.Mediator) | Result-aware pipeline behaviors for [Mediator](https://github.com/martinothamar/Mediator) |
 | [Trellis.FluentValidation](https://www.nuget.org/packages/Trellis.FluentValidation) | FluentValidation output converted into Trellis results |
 | [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, and safe save helpers (bundles the `Maybe<T>` / owned value-object source generator) |
-| [Trellis.Stateless](https://www.nuget.org/packages/Trellis.Stateless) | Stateless transitions that return `Result<TState>` |
+| [Trellis.StateMachine](https://www.nuget.org/packages/Trellis.StateMachine) | Stateless transitions that return `Result<TState>` |
 | [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions for `Result<T>` and `Maybe<T>` |
 
 ## Performance
