@@ -1,6 +1,6 @@
 # HTTP Integration
 
-**Level:** Beginner 📗 | **Time:** 15-20 min | **Prerequisites:** [Basics](basics.md)
+**Level:** Beginner 📗 | **Time:** 10-15 min | **Prerequisites:** [Basics](basics.md)
 
 When you call another HTTP service, the hard part is rarely `HttpClient`. The hard part is turning status codes, empty bodies, and bad payloads into errors your application can reason about.
 
@@ -15,12 +15,12 @@ Without Trellis, HTTP client code often turns into a mix of:
 - ad-hoc JSON null checks
 - exception handling that leaks transport concerns into business code
 
-With Trellis, you can describe the outcomes you expect and keep composing with the rest of your result pipeline.
+With Trellis, you describe the outcomes you expect and keep composing with the rest of your result pipeline.
 
 ```mermaid
 flowchart LR
-    A[HttpClient call] --> B[Status handlers]
-    B --> C[JSON reader]
+    A[HttpClient call] --> B[ToResultAsync / Handle*Async]
+    B --> C[ReadJsonAsync / ReadJsonMaybeAsync]
     C --> D[Result<T> or Result<Maybe<T>>]
     D --> E[Bind / Map / Tap / Ensure]
 ```
@@ -31,60 +31,61 @@ flowchart LR
 dotnet add package Trellis.Http
 ```
 
+## The v2 surface
+
+`Trellis.Http` is a single static class &mdash; `HttpResponseExtensions` &mdash; with seven methods.
+
+| Method | Receiver | Purpose |
+| --- | --- | --- |
+| `ToResultAsync(statusMap?)` | `Task<HttpResponseMessage>` | Bridge into `Task<Result<HttpResponseMessage>>`. Map any status to an `Error?` (return `null` to pass through). |
+| `ToResultAsync(mapper, ct)` | `Task<HttpResponseMessage>` | Body-aware bridge. Async mapper invoked only on non-success status codes. Replaces the v1 `HandleFailureAsync<TContext>`. |
+| `HandleNotFoundAsync(error)` | `Task<HttpResponseMessage>` | Map 404 to `Fail`. |
+| `HandleConflictAsync(error)` | `Task<HttpResponseMessage>` | Map 409 to `Fail`. |
+| `HandleUnauthorizedAsync(error)` | `Task<HttpResponseMessage>` | Map 401 to `Fail`. |
+| `ReadJsonAsync<T>(jsonTypeInfo, ct)` | `Task<Result<HttpResponseMessage>>` | Read and deserialize the body. Required-payload semantics: empty / `null` / invalid JSON / `204` / `205` &rarr; `Fail`. |
+| `ReadJsonMaybeAsync<T>(jsonTypeInfo, ct)` | `Task<Result<HttpResponseMessage>>` | Optional-payload variant. `204`, `205`, empty body, JSON `null` &rarr; `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). |
+
+> [!TIP]
+> `ReadJsonAsync<T>` and `ReadJsonMaybeAsync<T>` require `T : notnull`. Use them with real payload types, not nullable reference types.
+
 ## Quick start
 
-Start with the most common case: call an endpoint, map one expected status code, then deserialize JSON.
+The most common case: call an endpoint, map one expected status code, then deserialize JSON.
 
 ```csharp
-using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Trellis;
 using Trellis.Http;
 
 [JsonSerializable(typeof(UserDto))]
-internal partial class ApiJsonContext : JsonSerializerContext
-{
-}
+internal partial class ApiJsonContext : JsonSerializerContext { }
 
 public sealed record UserDto(string Id, string DisplayName);
 
 public sealed class UserDirectoryClient(HttpClient httpClient)
 {
-    public async Task<Result<UserDto>> GetUserAsync(
-        string userId,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.GetAsync($"users/{userId}", cancellationToken)
-            .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Resource", userId)) { Detail = $"User {userId} not found" })
-            .ReadResultFromJsonAsync(ApiJsonContext.Default.UserDto, cancellationToken);
-    }
+    public Task<Result<UserDto>> GetUserAsync(string userId, CancellationToken cancellationToken) =>
+        httpClient.GetAsync($"users/{userId}", cancellationToken)
+            .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("User", userId)) { Detail = $"User {userId} not found" })
+            .ReadJsonAsync(ApiJsonContext.Default.UserDto, cancellationToken);
 }
 ```
 
-> [!TIP]
-> `ReadResultFromJsonAsync<T>` requires `T : notnull`. In practice, that means these helpers are for real payload types, not nullable reference types.
-
 ## Status handling
 
-Why handle status codes before deserializing? Because it keeps transport failures obvious and prevents “try to read JSON from an error page” bugs.
+Why handle status codes before deserializing? Because it keeps transport failures obvious and prevents "try to read JSON from an error page" bugs.
 
-### Specific status handlers
+### Single-status convenience handlers
 
 Use these when you know which failures are part of the contract.
 
 | Handler | HTTP status | Produces |
 | --- | --- | --- |
-| `HandleNotFound` | `404` | `Error.NotFound` |
-| `HandleUnauthorized` | `401` | `Error.Unauthorized` |
-| `HandleForbidden` | `403` | `Error.Forbidden` |
-| `HandleConflict` | `409` | `Error.Conflict` |
+| `HandleNotFoundAsync` | `404` | `Error.NotFound` |
+| `HandleUnauthorizedAsync` | `401` | `Error.Unauthorized` |
+| `HandleConflictAsync` | `409` | `Error.Conflict` |
 
-Each handler has async overloads for:
-
-- `Task<HttpResponseMessage>`
-- `Task<Result<HttpResponseMessage>>`
-
-That means you can keep chaining even after you already wrapped a response in `Result<HttpResponseMessage>`.
+Each handler operates on `Task<HttpResponseMessage>` &mdash; the *entry point* of the chain. After it the result is `Task<Result<HttpResponseMessage>>` and the next operator is `ReadJsonAsync` / `ReadJsonMaybeAsync`.
 
 ```csharp
 using System.Net.Http.Json;
@@ -94,280 +95,128 @@ using Trellis.Http;
 
 [JsonSerializable(typeof(CreateOrderRequest))]
 [JsonSerializable(typeof(OrderDto))]
-internal partial class OrdersJsonContext : JsonSerializerContext
-{
-}
+internal partial class OrdersJsonContext : JsonSerializerContext { }
 
 public sealed record CreateOrderRequest(string CustomerId, decimal Total);
 public sealed record OrderDto(string Id, decimal Total);
 
 public sealed class OrdersClient(HttpClient httpClient)
 {
-    public async Task<Result<OrderDto>> CreateAsync(
-        CreateOrderRequest request,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.PostAsJsonAsync(
-                "orders",
-                request,
-                OrdersJsonContext.Default.CreateOrderRequest,
-                cancellationToken)
+    public Task<Result<OrderDto>> CreateAsync(CreateOrderRequest request, CancellationToken ct) =>
+        httpClient.PostAsJsonAsync("orders", request, OrdersJsonContext.Default.CreateOrderRequest, ct)
             .HandleUnauthorizedAsync(new Error.Unauthorized() { Detail = "Sign in before creating orders." })
-            .HandleForbiddenAsync(new Error.Forbidden("policy.id") { Detail = "You are not allowed to create orders." })
-            .HandleConflictAsync(new Error.Conflict(null, "conflict") { Detail = "An order with the same id already exists." })
-            .ReadResultFromJsonAsync(OrdersJsonContext.Default.OrderDto, cancellationToken);
-    }
+            .ReadJsonAsync(OrdersJsonContext.Default.OrderDto, ct);
 }
 ```
 
-### Range handlers
+### Multi-status mapping with `ToResultAsync(statusMap)`
 
-Use range handlers when you want a fallback for “some other 4xx” or “some other 5xx”.
+Use `ToResultAsync` with a `Func<HttpStatusCode, Error?>` when you need to map multiple statuses, including 403, ranges, or "everything that is not 2xx". Returning `null` lets the response flow through; returning an `Error` short-circuits the chain.
 
 ```csharp
 using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
-using Trellis;
-using Trellis.Http;
-
-[JsonSerializable(typeof(ProductDto))]
-internal partial class ProductsJsonContext : JsonSerializerContext
-{
-}
-
-public sealed record ProductDto(string Id, string Name);
 
 public sealed class ProductsClient(HttpClient httpClient)
 {
-    public async Task<Result<ProductDto>> GetAsync(
-        string productId,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.GetAsync($"products/{productId}", cancellationToken)
-            .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Resource", productId)) { Detail = $"Product {productId} not found" })
-            .HandleClientErrorAsync(statusCode => statusCode switch
+    public Task<Result<ProductDto>> GetAsync(string productId, CancellationToken ct) =>
+        httpClient.GetAsync($"products/{productId}", ct)
+            .ToResultAsync(status => status switch
             {
-                HttpStatusCode.BadRequest => new Error.BadRequest("bad.request") { Detail = "The product request was invalid." },
-                _ => new Error.InternalServerError("fault-id") { Detail = $"Unexpected client error: {(int)statusCode}." }
+                HttpStatusCode.NotFound  => new Error.NotFound(new ResourceRef("Product", productId)),
+                HttpStatusCode.Forbidden => new Error.Forbidden("products.read"),
+                _ when (int)status >= 500 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
+                _ when (int)status >= 400 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"client error {status}" },
+                _ => null,
             })
-            .HandleServerErrorAsync(statusCode =>
-                Error.ServiceUnavailable($"Product service failed with {(int)statusCode}."))
-            .ReadResultFromJsonAsync(ProductsJsonContext.Default.ProductDto, cancellationToken);
-    }
+            .ReadJsonAsync(ProductsJsonContext.Default.ProductDto, ct);
 }
 ```
 
-> [!NOTE]
-> Order matters. Put the specific handlers first, then the range-based fallback handlers.
+This single primitive subsumes the v1 `HandleClientError`, `HandleServerError`, `HandleForbidden`, and `EnsureSuccess` verbs.
 
-### `EnsureSuccess`
+### Body-aware mapping with `ToResultAsync(mapper, ct)`
 
-Use `EnsureSuccess` when you do not care about differentiating individual failure codes and just want a result instead of an exception.
-
-```csharp
-using Trellis;
-using Trellis.Http;
-
-public sealed class CacheClient(HttpClient httpClient)
-{
-    public async Task<Result<HttpResponseMessage>> PurgeAsync(
-        string cacheKey,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.DeleteAsync($"cache/{cacheKey}", cancellationToken)
-            .EnsureSuccessAsync(statusCode =>
-                new Error.InternalServerError("fault-id") { Detail = $"Cache purge failed with status {(int)statusCode}." });
-    }
-}
-```
-
-## Reading JSON
-
-Why split this into two helpers? Because “missing payload is a bug” and “missing payload is acceptable” are different cases.
-
-### `ReadResultFromJsonAsync`
-
-Choose this when a payload is required.
-
-- non-success status → failure
-- `204 NoContent` / `205 ResetContent` → failure
-- JSON `null` → failure
-- invalid JSON → failure
-
-```csharp
-using System.Text.Json.Serialization;
-using Trellis;
-using Trellis.Http;
-
-[JsonSerializable(typeof(CustomerDto))]
-internal partial class CustomersJsonContext : JsonSerializerContext
-{
-}
-
-public sealed record CustomerDto(string Id, string Name);
-
-public sealed class CustomersClient(HttpClient httpClient)
-{
-    public async Task<Result<CustomerDto>> GetAsync(
-        string customerId,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.GetAsync($"customers/{customerId}", cancellationToken)
-            .ReadResultFromJsonAsync(CustomersJsonContext.Default.CustomerDto, cancellationToken);
-    }
-}
-```
-
-### `ReadResultMaybeFromJsonAsync`
-
-Choose this when “no payload” is a valid outcome.
-
-- non-success status → failure
-- `204`, `205`, empty content, or JSON `null` → `Success(Maybe.None)`
-- valid JSON body → `Success(Maybe.From(value))`
-
-```csharp
-using System.Text.Json.Serialization;
-using Trellis;
-using Trellis.Http;
-
-[JsonSerializable(typeof(UserProfileDto))]
-internal partial class ProfilesJsonContext : JsonSerializerContext
-{
-}
-
-public sealed record UserProfileDto(string Bio);
-
-public sealed class ProfilesClient(HttpClient httpClient)
-{
-    public async Task<Result<Maybe<UserProfileDto>>> GetAsync(
-        string userId,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.GetAsync($"users/{userId}/profile", cancellationToken)
-            .ReadResultMaybeFromJsonAsync(ProfilesJsonContext.Default.UserProfileDto, cancellationToken);
-    }
-}
-```
-
-> [!WARNING]
-> `ReadResultMaybeFromJsonAsync` does **not** catch `JsonException`. Use it when “optional body” is allowed, not when you want malformed JSON silently treated as “no value”.
-
-## When you need the raw response
-
-Sometimes status code alone is not enough. `HandleFailureAsync` lets you inspect the response body and build a richer error.
+When status code alone is not enough, supply a `Func<HttpResponseMessage, CancellationToken, Task<Error?>>`. The mapper is invoked **only** for non-success responses and may read the body, headers, or problem-details payload to build a richer error.
 
 ```csharp
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json.Serialization;
-using Trellis;
-using Trellis.Http;
-
-[JsonSerializable(typeof(CreateInvoiceRequest))]
-[JsonSerializable(typeof(InvoiceDto))]
-internal partial class InvoicesJsonContext : JsonSerializerContext
-{
-}
-
-public sealed record CreateInvoiceRequest(string CustomerId, decimal Amount);
-public sealed record InvoiceDto(string Id, decimal Amount);
 
 public sealed class InvoicesClient(HttpClient httpClient)
 {
-    public async Task<Result<InvoiceDto>> CreateAsync(
-        CreateInvoiceRequest request,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.PostAsJsonAsync(
-                "invoices",
-                request,
-                InvoicesJsonContext.Default.CreateInvoiceRequest,
-                cancellationToken)
-            .HandleFailureAsync(
-                async (response, _, ct) =>
+    public Task<Result<InvoiceDto>> CreateAsync(CreateInvoiceRequest request, CancellationToken ct) =>
+        httpClient.PostAsJsonAsync("invoices", request, InvoicesJsonContext.Default.CreateInvoiceRequest, ct)
+            .ToResultAsync(async (response, token) =>
+            {
+                var body = await response.Content.ReadAsStringAsync(token);
+                return response.StatusCode switch
                 {
-                    var body = await response.Content.ReadAsStringAsync(ct);
-
-                    return response.StatusCode switch
-                    {
-                        HttpStatusCode.BadRequest => new Error.BadRequest("bad.request") { Detail = body },
-                        HttpStatusCode.Conflict => new Error.Conflict(null, "conflict") { Detail = body },
-                        _ => new Error.InternalServerError("fault-id") { Detail = $"Invoice request failed with {(int)response.StatusCode}: {body}" }
-                    };
-                },
-                context: 0,
-                cancellationToken)
-            .ReadResultFromJsonAsync(InvoicesJsonContext.Default.InvoiceDto, cancellationToken);
-    }
+                    HttpStatusCode.Conflict   => new Error.Conflict(null, "conflict") { Detail = body },
+                    HttpStatusCode.BadRequest => new Error.InternalServerError("bad-req") { Detail = body },
+                    _ => new Error.InternalServerError("upstream") { Detail = $"Invoice request failed with {(int)response.StatusCode}: {body}" },
+                };
+            }, ct)
+            .ReadJsonAsync(InvoicesJsonContext.Default.InvoiceDto, ct);
 }
 ```
 
+Capture additional caller state via closure &mdash; the v1 `TContext` channel is gone (it was redundant).
+
+## Reading JSON
+
+Why split this into two helpers? Because "missing payload is a bug" and "missing payload is acceptable" are different cases.
+
+### `ReadJsonAsync` &mdash; payload required
+
+- non-success status &rarr; `Fail<InternalServerError>`
+- `204 NoContent` / `205 ResetContent` &rarr; `Fail`
+- `null`, empty body, or invalid JSON &rarr; `Fail`
+
+### `ReadJsonMaybeAsync` &mdash; payload optional
+
+- non-success status &rarr; `Fail<InternalServerError>`
+- `204`, `205`, empty content, JSON `null` &rarr; `Ok(Maybe.None)`
+- valid JSON body &rarr; `Ok(Maybe.From(value))`
+
+> [!WARNING]
+> `ReadJsonMaybeAsync` does **not** catch `JsonException`. Use it when "optional body" is allowed, not when you want malformed JSON silently treated as "no value". The response is still disposed before the exception escapes.
+
+## Disposal contract
+
+The library owns `HttpResponseMessage` disposal on terminal or transformative paths:
+
+- `ToResultAsync` (both overloads) and `Handle*Async` dispose the response on the `Fail` path.
+- `ReadJsonAsync` and `ReadJsonMaybeAsync` always dispose after reading, success or failure.
+- Pass-through paths (no `statusMap`, non-matching `Handle*Async`, mapper returning `null`) leave disposal to the caller until the chain reaches `ReadJson*`.
+
+In practice: **once you call `ReadJson*`, you no longer need to dispose the response yourself.**
+
 ## Composing HTTP with the rest of Trellis
 
-This is the main payoff: once the HTTP call becomes `Result<T>`, it fits naturally into the rest of your workflow.
+Once an HTTP call becomes `Result<T>`, it composes naturally with `Bind`, `Map`, `Ensure`, etc.:
 
 ```csharp
-using System.Text.Json.Serialization;
-using Trellis;
-using Trellis.Http;
-
-[JsonSerializable(typeof(InventoryCheckDto))]
-[JsonSerializable(typeof(PaymentReceiptDto))]
-internal partial class CheckoutJsonContext : JsonSerializerContext
-{
-}
-
-public sealed record InventoryCheckDto(bool InStock);
-public sealed record PaymentReceiptDto(string ReceiptId);
-
-public sealed class CheckoutService(HttpClient httpClient)
-{
-    public async Task<Result<PaymentReceiptDto>> ChargeAsync(
-        string productId,
-        CancellationToken cancellationToken)
-    {
-        return await httpClient.GetAsync($"inventory/{productId}", cancellationToken)
-            .ReadResultFromJsonAsync(CheckoutJsonContext.Default.InventoryCheckDto, cancellationToken)
-            .EnsureAsync(
-                inventory => inventory.InStock,
-                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(productId)), "validation.error") { Detail = "The product is out of stock." })))
-            .BindAsync(
-                (_, ct) => httpClient.PostAsync($"payments/{productId}", null, ct)
-                    .ReadResultFromJsonAsync(CheckoutJsonContext.Default.PaymentReceiptDto, ct),
-                cancellationToken);
-    }
-}
+public Task<Result<PaymentReceiptDto>> ChargeAsync(string productId, CancellationToken ct) =>
+    httpClient.GetAsync($"inventory/{productId}", ct)
+        .ToResultAsync()
+        .ReadJsonAsync(CheckoutJsonContext.Default.InventoryCheckDto, ct)
+        .EnsureAsync(
+            inventory => inventory.InStock,
+            new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(productId)), "validation.error") { Detail = "Out of stock." })))
+        .BindAsync(
+            (_, token) => httpClient.PostAsync($"payments/{productId}", null, token)
+                .ToResultAsync()
+                .ReadJsonAsync(CheckoutJsonContext.Default.PaymentReceiptDto, token),
+            ct);
 ```
 
 ## Practical guidance
 
-### Prefer source-generated JSON metadata
+- **Prefer source-generated JSON metadata** &mdash; keeps the chain AOT-friendly and matches the `JsonTypeInfo<T>` overloads.
+- **Handle expected failures explicitly.** If `404` is part of normal control flow, map it with `HandleNotFoundAsync`; do not fold it into a generic `ToResultAsync` mapping.
+- **Always pass the `CancellationToken`.** Every Trellis HTTP helper accepts it for a reason.
+- **Need a sync receiver?** Wrap with `Task.FromResult(response)`. In practice every `HttpClient` call is already async, so this is rarely necessary.
 
-It keeps your examples AOT-friendly and matches the overloads Trellis is designed to work with.
+## Breaking changes from v1
 
-### Handle expected failures explicitly
-
-If `404` is part of normal control flow, map it with `HandleNotFoundAsync` instead of collapsing everything into `EnsureSuccessAsync`.
-
-### Always pass the `CancellationToken`
-
-Every Trellis HTTP helper accepts it for a reason. Pass it all the way through.
-
-### Remember Trellis error codes
-
-Default codes end in `.error`, for example:
-
-- `not.found.error`
-- `forbidden.error`
-- `validation.error`
-
-That is useful when you log or assert on machine-readable failures.
-
-## Next steps
-
-- [Mediator Pipeline](integration-mediator.md)
-- [Testing](integration-testing.md)
-- [Error Handling](error-handling.md)
-- [trellis-api-http.md](../api_reference/trellis-api-http.md)
+The v1 surface (60+ overloads) has been collapsed. The deleted verbs &mdash; `HandleForbidden*`, `HandleClientError*`, `HandleServerError*`, `EnsureSuccess` / `EnsureSuccessAsync`, `HandleFailureAsync<TContext>`, every sync overload, every `Result<HttpResponseMessage>`-receiver overload &mdash; are all expressible with `ToResultAsync(statusMap)` or `ToResultAsync(mapper, ct)`. The renamed verbs are `ReadResultFromJsonAsync` &rarr; `ReadJsonAsync` and `ReadResultMaybeFromJsonAsync` &rarr; `ReadJsonMaybeAsync`. See the [API reference](../../api_reference/trellis-api-http.md#breaking-changes-from-v1) for the full migration table.

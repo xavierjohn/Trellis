@@ -1,172 +1,114 @@
-# Trellis.Http — API Reference
+# Trellis.Http &mdash; API Reference
 
-**Package:** `Trellis.Http`  
-**Namespace:** `Trellis.Http`  
-**Purpose:** Fluent `HttpResponseMessage` / `Result<HttpResponseMessage>` extensions for status handling and JSON deserialization into `Result<T>` and `Result<Maybe<T>>`.
+**Package:** `Trellis.Http`
+**Namespace:** `Trellis.Http`
+**Purpose:** Bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>` pipelines and deserialize JSON payloads into `Result<T>` / `Result<Maybe<T>>`.
 
-## Types
+> **v2 surface (ADR-002 §7).** This package was reduced from 60+ overloads to a single static class with seven canonical methods. See the *Breaking changes from v1* section at the end of this file.
 
-### `HttpResponseExtensions`
-
-**Declaration**
-
-```csharp
-public static partial class HttpResponseExtensions
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static Result<HttpResponseMessage> HandleNotFound(this HttpResponseMessage response, Error.NotFound notFoundError)` | `Result<HttpResponseMessage>` | Returns `Result.Fail(notFoundError)` only when `response.StatusCode == HttpStatusCode.NotFound`; otherwise returns `Result.Ok(response)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<HttpResponseMessage> responseTask, Error.NotFound notFoundError)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `HandleNotFound(HttpResponseMessage, Error.NotFound)`. |
-| `public static Result<HttpResponseMessage> HandleUnauthorized(this HttpResponseMessage response, Error.Unauthorized unauthorizedError)` | `Result<HttpResponseMessage>` | Returns `Result.Fail(unauthorizedError)` only when `response.StatusCode == HttpStatusCode.Unauthorized`; otherwise returns `Result.Ok(response)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<HttpResponseMessage> responseTask, Error.Unauthorized unauthorizedError)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `HandleUnauthorized(HttpResponseMessage, Error.Unauthorized)`. |
-| `public static Result<HttpResponseMessage> HandleForbidden(this HttpResponseMessage response, Error.Forbidden forbiddenError)` | `Result<HttpResponseMessage>` | Returns `Result.Fail(forbiddenError)` only when `response.StatusCode == HttpStatusCode.Forbidden`; otherwise returns `Result.Ok(response)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<HttpResponseMessage> responseTask, Error.Forbidden forbiddenError)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `HandleForbidden(HttpResponseMessage, Error.Forbidden)`. |
-| `public static Result<HttpResponseMessage> HandleConflict(this HttpResponseMessage response, Error.Conflict conflictError)` | `Result<HttpResponseMessage>` | Returns `Result.Fail(conflictError)` only when `response.StatusCode == HttpStatusCode.Conflict`; otherwise returns `Result.Ok(response)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<HttpResponseMessage> responseTask, Error.Conflict conflictError)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `HandleConflict(HttpResponseMessage, Error.Conflict)`. |
-| `public static Result<HttpResponseMessage> HandleClientError(this HttpResponseMessage response, Func<HttpStatusCode, Error> errorFactory)` | `Result<HttpResponseMessage>` | Returns `Result.Fail(errorFactory(response.StatusCode))` only for `400 <= status < 500`; otherwise returns `Result.Ok(response)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleClientErrorAsync(this Task<HttpResponseMessage> responseTask, Func<HttpStatusCode, Error> errorFactory)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `HandleClientError(HttpResponseMessage, Func<HttpStatusCode, Error>)`. |
-| `public static Result<HttpResponseMessage> HandleServerError(this HttpResponseMessage response, Func<HttpStatusCode, Error> errorFactory)` | `Result<HttpResponseMessage>` | Returns `Result.Fail(errorFactory(response.StatusCode))` only for `500 <= status < 600`; otherwise returns `Result.Ok(response)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleServerErrorAsync(this Task<HttpResponseMessage> responseTask, Func<HttpStatusCode, Error> errorFactory)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `HandleServerError(HttpResponseMessage, Func<HttpStatusCode, Error>)`. |
-| `public static Result<HttpResponseMessage> EnsureSuccess(this HttpResponseMessage response, Func<HttpStatusCode, Error>? errorFactory = null)` | `Result<HttpResponseMessage>` | Returns `Result.Ok(response)` for any successful status code; otherwise returns `Result.Fail(errorFactory(status))` or `Result.Fail(new Error.InternalServerError(faultId) { Detail = ... })` when `errorFactory` is `null`. |
-| `public static async Task<Result<HttpResponseMessage>> EnsureSuccessAsync(this Task<HttpResponseMessage> responseTask, Func<HttpStatusCode, Error>? errorFactory = null)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `EnsureSuccess(HttpResponseMessage, Func<HttpStatusCode, Error>?)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this HttpResponseMessage response, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)` | `Task<Result<HttpResponseMessage>>` | Invokes `callbackFailedStatusCode` only when `response.IsSuccessStatusCode == false`; otherwise returns `Result.Ok(response)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this Task<HttpResponseMessage> responseTask, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)` | `Task<Result<HttpResponseMessage>>` | Awaits `responseTask`, then applies `HandleFailureAsync<TContext>(HttpResponseMessage, ...)`. |
-| `public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this HttpResponseMessage response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<TValue>>` | Fails on non-success status, `204 NoContent`, `205 ResetContent`, `JsonException`, or `null` JSON value; otherwise returns the deserialized value. |
-| `public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this Task<HttpResponseMessage> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<TValue>>` | Awaits `responseTask`, then applies `ReadResultFromJsonAsync<TValue>(HttpResponseMessage, ...)`. |
-| `public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this Result<HttpResponseMessage> response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<TValue>>` | Propagates failure from `response`; on success, deserializes the wrapped `HttpResponseMessage`. |
-| `public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this Task<Result<HttpResponseMessage>> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<TValue>>` | Awaits `responseTask`, then applies `ReadResultFromJsonAsync<TValue>(Result<HttpResponseMessage>, ...)`. |
-| `public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this HttpResponseMessage response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<Maybe<TValue>>>` | Fails on non-success status. Returns `Result.Ok(Maybe.None)` for `204`, `205`, `response.Content is null`, empty content, or JSON `null`; otherwise returns `Result.Ok(Maybe.From(value))`. `JsonException` is not caught. |
-| `public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this Task<HttpResponseMessage> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<Maybe<TValue>>>` | Awaits `responseTask`, then applies `ReadResultMaybeFromJsonAsync<TValue>(HttpResponseMessage, ...)`. |
-| `public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this Result<HttpResponseMessage> response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<Maybe<TValue>>>` | Propagates failure from `response`; on success, deserializes the wrapped `HttpResponseMessage` into `Maybe<TValue>`. |
-| `public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this Task<Result<HttpResponseMessage>> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull` | `Task<Result<Maybe<TValue>>>` | Awaits `responseTask`, then applies `ReadResultMaybeFromJsonAsync<TValue>(Result<HttpResponseMessage>, ...)`. |
-| `public static Result<HttpResponseMessage> HandleNotFound(this Result<HttpResponseMessage> result, Error.NotFound notFoundError)` | `Result<HttpResponseMessage>` | Applies `HandleNotFound(HttpResponseMessage, Error.NotFound)` inside a successful `Result<HttpResponseMessage>`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.NotFound notFoundError)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `HandleNotFound(Result<HttpResponseMessage>, Error.NotFound)`. |
-| `public static Result<HttpResponseMessage> HandleUnauthorized(this Result<HttpResponseMessage> result, Error.Unauthorized unauthorizedError)` | `Result<HttpResponseMessage>` | Applies `HandleUnauthorized(HttpResponseMessage, Error.Unauthorized)` inside a successful `Result<HttpResponseMessage>`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.Unauthorized unauthorizedError)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `HandleUnauthorized(Result<HttpResponseMessage>, Error.Unauthorized)`. |
-| `public static Result<HttpResponseMessage> HandleForbidden(this Result<HttpResponseMessage> result, Error.Forbidden forbiddenError)` | `Result<HttpResponseMessage>` | Applies `HandleForbidden(HttpResponseMessage, Error.Forbidden)` inside a successful `Result<HttpResponseMessage>`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.Forbidden forbiddenError)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `HandleForbidden(Result<HttpResponseMessage>, Error.Forbidden)`. |
-| `public static Result<HttpResponseMessage> HandleConflict(this Result<HttpResponseMessage> result, Error.Conflict conflictError)` | `Result<HttpResponseMessage>` | Applies `HandleConflict(HttpResponseMessage, Error.Conflict)` inside a successful `Result<HttpResponseMessage>`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.Conflict conflictError)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `HandleConflict(Result<HttpResponseMessage>, Error.Conflict)`. |
-| `public static Result<HttpResponseMessage> HandleClientError(this Result<HttpResponseMessage> result, Func<HttpStatusCode, Error> errorFactory)` | `Result<HttpResponseMessage>` | Applies `HandleClientError(HttpResponseMessage, Func<HttpStatusCode, Error>)` inside a successful `Result<HttpResponseMessage>`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleClientErrorAsync(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpStatusCode, Error> errorFactory)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `HandleClientError(Result<HttpResponseMessage>, Func<HttpStatusCode, Error>)`. |
-| `public static Result<HttpResponseMessage> HandleServerError(this Result<HttpResponseMessage> result, Func<HttpStatusCode, Error> errorFactory)` | `Result<HttpResponseMessage>` | Applies `HandleServerError(HttpResponseMessage, Func<HttpStatusCode, Error>)` inside a successful `Result<HttpResponseMessage>`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleServerErrorAsync(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpStatusCode, Error> errorFactory)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `HandleServerError(Result<HttpResponseMessage>, Func<HttpStatusCode, Error>)`. |
-| `public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this Result<HttpResponseMessage> result, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)` | `Task<Result<HttpResponseMessage>>` | Propagates failure from `result`; on success, invokes the response-based `HandleFailureAsync<TContext>` overload. |
-| `public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `HandleFailureAsync<TContext>(Result<HttpResponseMessage>, ...)`. |
-| `public static Result<HttpResponseMessage> EnsureSuccess(this Result<HttpResponseMessage> result, Func<HttpStatusCode, Error>? errorFactory = null)` | `Result<HttpResponseMessage>` | Propagates failure from `result`; on success, invokes `EnsureSuccess(HttpResponseMessage, Func<HttpStatusCode, Error>?)`. |
-| `public static async Task<Result<HttpResponseMessage>> EnsureSuccessAsync(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpStatusCode, Error>? errorFactory = null)` | `Task<Result<HttpResponseMessage>>` | Awaits `resultTask`, then applies `EnsureSuccess(Result<HttpResponseMessage>, Func<HttpStatusCode, Error>?)`. |
-
-## Extension methods
+## Type
 
 ### `HttpResponseExtensions`
 
 ```csharp
-public static Result<HttpResponseMessage> HandleNotFound(this HttpResponseMessage response, Error.NotFound notFoundError)
-public static async Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<HttpResponseMessage> responseTask, Error.NotFound notFoundError)
-public static Result<HttpResponseMessage> HandleUnauthorized(this HttpResponseMessage response, Error.Unauthorized unauthorizedError)
-public static async Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<HttpResponseMessage> responseTask, Error.Unauthorized unauthorizedError)
-public static Result<HttpResponseMessage> HandleForbidden(this HttpResponseMessage response, Error.Forbidden forbiddenError)
-public static async Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<HttpResponseMessage> responseTask, Error.Forbidden forbiddenError)
-public static Result<HttpResponseMessage> HandleConflict(this HttpResponseMessage response, Error.Conflict conflictError)
-public static async Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<HttpResponseMessage> responseTask, Error.Conflict conflictError)
-public static Result<HttpResponseMessage> HandleClientError(this HttpResponseMessage response, Func<HttpStatusCode, Error> errorFactory)
-public static async Task<Result<HttpResponseMessage>> HandleClientErrorAsync(this Task<HttpResponseMessage> responseTask, Func<HttpStatusCode, Error> errorFactory)
-public static Result<HttpResponseMessage> HandleServerError(this HttpResponseMessage response, Func<HttpStatusCode, Error> errorFactory)
-public static async Task<Result<HttpResponseMessage>> HandleServerErrorAsync(this Task<HttpResponseMessage> responseTask, Func<HttpStatusCode, Error> errorFactory)
-public static Result<HttpResponseMessage> EnsureSuccess(this HttpResponseMessage response, Func<HttpStatusCode, Error>? errorFactory = null)
-public static async Task<Result<HttpResponseMessage>> EnsureSuccessAsync(this Task<HttpResponseMessage> responseTask, Func<HttpStatusCode, Error>? errorFactory = null)
-public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this HttpResponseMessage response, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)
-public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this Task<HttpResponseMessage> responseTask, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)
-public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this HttpResponseMessage response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this Task<HttpResponseMessage> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this Result<HttpResponseMessage> response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static async Task<Result<TValue>> ReadResultFromJsonAsync<TValue>(this Task<Result<HttpResponseMessage>> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this HttpResponseMessage response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this Task<HttpResponseMessage> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this Result<HttpResponseMessage> response, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static async Task<Result<Maybe<TValue>>> ReadResultMaybeFromJsonAsync<TValue>(this Task<Result<HttpResponseMessage>> responseTask, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken) where TValue : notnull
-public static Result<HttpResponseMessage> HandleNotFound(this Result<HttpResponseMessage> result, Error.NotFound notFoundError)
-public static async Task<Result<HttpResponseMessage>> HandleNotFoundAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.NotFound notFoundError)
-public static Result<HttpResponseMessage> HandleUnauthorized(this Result<HttpResponseMessage> result, Error.Unauthorized unauthorizedError)
-public static async Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.Unauthorized unauthorizedError)
-public static Result<HttpResponseMessage> HandleForbidden(this Result<HttpResponseMessage> result, Error.Forbidden forbiddenError)
-public static async Task<Result<HttpResponseMessage>> HandleForbiddenAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.Forbidden forbiddenError)
-public static Result<HttpResponseMessage> HandleConflict(this Result<HttpResponseMessage> result, Error.Conflict conflictError)
-public static async Task<Result<HttpResponseMessage>> HandleConflictAsync(this Task<Result<HttpResponseMessage>> resultTask, Error.Conflict conflictError)
-public static Result<HttpResponseMessage> HandleClientError(this Result<HttpResponseMessage> result, Func<HttpStatusCode, Error> errorFactory)
-public static async Task<Result<HttpResponseMessage>> HandleClientErrorAsync(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpStatusCode, Error> errorFactory)
-public static Result<HttpResponseMessage> HandleServerError(this Result<HttpResponseMessage> result, Func<HttpStatusCode, Error> errorFactory)
-public static async Task<Result<HttpResponseMessage>> HandleServerErrorAsync(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpStatusCode, Error> errorFactory)
-public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this Result<HttpResponseMessage> result, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)
-public static async Task<Result<HttpResponseMessage>> HandleFailureAsync<TContext>(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpResponseMessage, TContext, CancellationToken, Task<Error>> callbackFailedStatusCode, TContext context, CancellationToken cancellationToken)
-public static Result<HttpResponseMessage> EnsureSuccess(this Result<HttpResponseMessage> result, Func<HttpStatusCode, Error>? errorFactory = null)
-public static async Task<Result<HttpResponseMessage>> EnsureSuccessAsync(this Task<Result<HttpResponseMessage>> resultTask, Func<HttpStatusCode, Error>? errorFactory = null)
+public static class HttpResponseExtensions
 ```
 
-## Enums
+| Signature | Returns | Notes |
+| --- | --- | --- |
+| `ToResultAsync(this Task<HttpResponseMessage> response, Func<HttpStatusCode, Error?>? statusMap = null)` | `Task<Result<HttpResponseMessage>>` | When `statusMap` is `null`, every status passes through as `Ok(response)`. When supplied, a `null` return passes through; a non-null `Error` becomes `Fail` and the underlying response is disposed. |
+| `ToResultAsync(this Task<HttpResponseMessage> response, Func<HttpResponseMessage, CancellationToken, Task<Error?>> mapper, CancellationToken ct = default)` | `Task<Result<HttpResponseMessage>>` | Body-aware bridge. The mapper is invoked **only** when `IsSuccessStatusCode == false`. `null` return -> `Ok(response)`; non-null -> `Fail` (response disposed). |
+| `HandleNotFoundAsync(this Task<HttpResponseMessage> response, Error.NotFound error)` | `Task<Result<HttpResponseMessage>>` | Maps `404` to `Fail(error)` (response disposed); any other status passes through as `Ok(response)`. |
+| `HandleConflictAsync(this Task<HttpResponseMessage> response, Error.Conflict error)` | `Task<Result<HttpResponseMessage>>` | Maps `409` to `Fail(error)` (response disposed); pass through otherwise. |
+| `HandleUnauthorizedAsync(this Task<HttpResponseMessage> response, Error.Unauthorized error)` | `Task<Result<HttpResponseMessage>>` | Maps `401` to `Fail(error)` (response disposed); pass through otherwise. |
+| `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<T>>` | Already-failed input short-circuits with the upstream error. Otherwise reads the body and deserializes; non-success status, `204`, `205`, empty body, null payload, or `JsonException` (caught) all map to `Fail<InternalServerError>`. **Always disposes** the response after reading. |
+| `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Already-failed input short-circuits. Non-success status -> `Fail<InternalServerError>`. `204`, `205`, empty body, JSON `null` -> `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). **Always disposes** the response. |
 
-This package exposes no public enums.
+## Disposal contract
 
-## Code examples
+The library owns the `HttpResponseMessage` lifecycle on terminal or transformative paths:
 
-### Read a required JSON payload
+- `ToResultAsync` (both overloads) dispose the response on the `Fail` path.
+- `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync` dispose on the matched-status `Fail` path.
+- `ReadJsonAsync` and `ReadJsonMaybeAsync` **always** dispose after reading, success or failure (including when `JsonException` propagates from the `Maybe` overload).
+- Pass-through paths (no `statusMap`, non-matching `Handle*`, mapper returning `null`) leave disposal to the caller.
+
+In practice: once you call `ReadJson*`, you no longer need to dispose the response yourself.
+
+## Examples
+
+### Happy path: GET, map 404, deserialize
 
 ```csharp
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Text.Json.Serialization;
 using Trellis;
 using Trellis.Http;
-
-public sealed record TodoDto(int Id, string Title);
 
 [JsonSerializable(typeof(TodoDto))]
-public partial class AppJsonContext : JsonSerializerContext
-{
-}
+internal partial class AppJsonContext : JsonSerializerContext { }
 
-public static class TodoClient
-{
-    public static Task<Result<TodoDto>> GetTodoAsync(HttpClient httpClient, CancellationToken cancellationToken) =>
-        httpClient.GetAsync("/todos/1", cancellationToken)
-            .EnsureSuccessAsync()
-            .ReadResultFromJsonAsync(AppJsonContext.Default.TodoDto, cancellationToken);
-}
+public sealed record TodoDto(Guid Id, string Title);
+
+public Task<Result<TodoDto>> GetTodoAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    client.GetAsync($"/todos/{id}", ct)
+        .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Todo", id.ToString())))
+        .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
 ```
 
-### Read an optional JSON payload
+### Multi-status mapping with `ToResultAsync(statusMap)`
 
 ```csharp
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Text.Json.Serialization;
-using Trellis;
-using Trellis.Http;
-
-public sealed record ProfileDto(string DisplayName);
-
-[JsonSerializable(typeof(ProfileDto))]
-public partial class ProfileJsonContext : JsonSerializerContext
-{
-}
-
-public static class ProfileClient
-{
-    public static Task<Result<Maybe<ProfileDto>>> GetProfileAsync(HttpClient httpClient, CancellationToken cancellationToken) =>
-        httpClient.GetAsync("/profile", cancellationToken)
-            .EnsureSuccessAsync()
-            .ReadResultMaybeFromJsonAsync(ProfileJsonContext.Default.ProfileDto, cancellationToken);
-}
+public Task<Result<TodoDto>> GetTodoStrictAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    client.GetAsync($"/todos/{id}", ct)
+        .ToResultAsync(status => status switch
+        {
+            HttpStatusCode.NotFound => new Error.NotFound(new ResourceRef("Todo", id.ToString())),
+            HttpStatusCode.Forbidden => new Error.Forbidden("todo.read"),
+            _ when (int)status >= 500 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
+            _ => null,
+        })
+        .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
 ```
 
-## Cross-references
+### Body-aware mapping (replaces `HandleFailureAsync<TContext>`)
 
-- [trellis-api-core.md](trellis-api-core.md)
-- [trellis-api-asp.md](trellis-api-asp.md)
+```csharp
+public Task<Result<TodoDto>> GetTodoWithProblemDetailsAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    client.GetAsync($"/todos/{id}", ct)
+        .ToResultAsync(async (response, token) =>
+        {
+            // Read RFC 9457 problem-details body to synthesize a richer error.
+            var problem = await response.Content
+                .ReadFromJsonAsync(AppJsonContext.Default.ProblemDetails, token);
+            return problem is null
+                ? null
+                : new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = problem.Detail ?? "upstream error" };
+        }, ct)
+        .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
+```
+
+### Optional resource with `ReadJsonMaybeAsync`
+
+```csharp
+public Task<Result<Maybe<TodoDto>>> FindTodoAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    client.GetAsync($"/todos/{id}", ct)
+        .ToResultAsync()
+        .ReadJsonMaybeAsync(AppJsonContext.Default.TodoDto, ct);
+```
+
+## Breaking changes from v1
+
+The v1 surface (60+ overloads across two static classes) has been collapsed into a single seven-method class. There are no shims or compatibility redirects: this is a clean cut, taken pre-GA.
+
+| v1 API | v2 replacement |
+| --- | --- |
+| `HandleNotFound`, `HandleNotFoundAsync` (sync, `Result<HRM>`, `Task<Result<HRM>>` overloads) | `HandleNotFoundAsync(this Task<HttpResponseMessage>, Error.NotFound)` |
+| `HandleConflict*` | `HandleConflictAsync(this Task<HttpResponseMessage>, Error.Conflict)` |
+| `HandleUnauthorized*` | `HandleUnauthorizedAsync(this Task<HttpResponseMessage>, Error.Unauthorized)` |
+| `HandleForbidden*` | **Deleted.** Use `ToResultAsync(status => status == HttpStatusCode.Forbidden ? new Error.Forbidden(...) : null)`. |
+| `HandleClientError*` (4xx range), `HandleServerError*` (5xx range) | **Deleted.** Use `ToResultAsync(statusMap)` with a `switch` over `HttpStatusCode`. |
+| `EnsureSuccess`, `EnsureSuccessAsync` (all shapes) | **Deleted.** Use `ToResultAsync(status => status >= ... ? error : null)` or the body-aware `ToResultAsync(mapper, ct)`. |
+| `HandleFailureAsync<TContext>` (response-shape and `Result<HRM>`-shape) | **Deleted.** Use the body-aware `ToResultAsync(mapper, ct)`; capture additional state via closure. |
+| `ReadResultFromJsonAsync<T>` (sync, `Result<HRM>`, `Task<HRM>`, `Task<Result<HRM>>`) | **Renamed** `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken)`. |
+| `ReadResultMaybeFromJsonAsync<T>` (all shapes) | **Renamed** `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken)`. |
+| Sync receivers (`HttpResponseMessage`, `Result<HRM>`) | **Deleted.** Wrap with `Task.FromResult(...)` if needed; in practice every `HttpClient` call is already async. |

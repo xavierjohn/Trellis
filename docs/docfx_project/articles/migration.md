@@ -204,3 +204,18 @@ For most codebases, the migration is intentionally boring:
 - keep your domain logic largely unchanged
 
 That is exactly what you want from a rebrand-style migration.
+
+## v2 framework changes (post-rename)
+
+Beyond the rename, v2 also ships incremental package-level redesigns. Each is described in detail in the relevant API reference; this section is the scannable index.
+
+### Phase 4b &mdash; `Trellis.Http` slim
+
+`Trellis.Http` collapsed from 60+ overloads to a single seven-method static class. The full migration table lives in [`docs/api_reference/trellis-api-http.md`](../../api_reference/trellis-api-http.md#breaking-changes-from-v1); the headlines:
+
+- **Renamed:** `ReadResultFromJsonAsync` &rarr; `ReadJsonAsync`, `ReadResultMaybeFromJsonAsync` &rarr; `ReadJsonMaybeAsync` (single canonical shape on `Task<Result<HttpResponseMessage>>`).
+- **Removed verbs:** `HandleForbidden*`, `HandleClientError*`, `HandleServerError*`, `EnsureSuccess` / `EnsureSuccessAsync`, `HandleFailureAsync<TContext>`. All are expressible via the new `ToResultAsync(statusMap)` (status-only map) or body-aware `ToResultAsync(mapper, ct)` overload.
+- **Removed shapes:** every sync overload, every `HttpResponseMessage`-receiver overload, every `Result<HttpResponseMessage>`-receiver overload. The canonical chain is `Task<HttpResponseMessage>` &rarr; `ToResultAsync` / `Handle*Async` &rarr; `ReadJson*Async`.
+- **New disposal contract:** `Trellis.Http` now disposes the underlying `HttpResponseMessage` on terminal/transformative paths. Pass-through paths still leave disposal to the caller until the chain reaches `ReadJson*`.
+
+There are no shims or compatibility redirects: this is a clean, pre-GA cut.
