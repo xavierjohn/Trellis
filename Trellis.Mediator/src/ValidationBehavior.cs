@@ -50,6 +50,7 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
         CancellationToken cancellationToken)
     {
         List<FieldViolation>? violations = null;
+        List<RuleViolation>? rules = null;
 
         if (message is IValidate validatable)
         {
@@ -57,7 +58,12 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
             if (validateResult.TryGetError(out var error))
             {
                 if (error is Error.UnprocessableContent upc)
-                    violations = [.. upc.Fields.Items];
+                {
+                    if (upc.Fields.Items.Length > 0)
+                        violations = [.. upc.Fields.Items];
+                    if (upc.Rules.Items.Length > 0)
+                        rules = [.. upc.Rules.Items];
+                }
                 else
                     return TResponse.CreateFailure(error);
             }
@@ -74,16 +80,34 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
 
             if (error is Error.UnprocessableContent upc)
             {
-                violations ??= [];
-                violations.AddRange(upc.Fields.Items);
+                if (upc.Fields.Items.Length > 0)
+                {
+                    violations ??= [];
+                    violations.AddRange(upc.Fields.Items);
+                }
+
+                if (upc.Rules.Items.Length > 0)
+                {
+                    rules ??= [];
+                    rules.AddRange(upc.Rules.Items);
+                }
+
                 continue;
             }
 
             return TResponse.CreateFailure(error);
         }
 
-        if (violations is { Count: > 0 })
-            return TResponse.CreateFailure(new Error.UnprocessableContent(EquatableArray.Create(violations.ToArray())));
+        if (violations is { Count: > 0 } || rules is { Count: > 0 })
+        {
+            var fieldsArray = violations is { Count: > 0 }
+                ? EquatableArray.Create(violations.ToArray())
+                : EquatableArray<FieldViolation>.Empty;
+            var rulesArray = rules is { Count: > 0 }
+                ? EquatableArray.Create(rules.ToArray())
+                : EquatableArray<RuleViolation>.Empty;
+            return TResponse.CreateFailure(new Error.UnprocessableContent(fieldsArray, rulesArray));
+        }
 
         return await next(message, cancellationToken).ConfigureAwait(false);
     }

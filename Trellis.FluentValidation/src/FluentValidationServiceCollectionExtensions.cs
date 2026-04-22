@@ -77,21 +77,45 @@ public static class FluentValidationServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(assemblies);
         if (assemblies.Length == 0)
             throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
+        for (var i = 0; i < assemblies.Length; i++)
+        {
+            if (assemblies[i] is null)
+                throw new ArgumentException($"Assembly at index {i} is null.", nameof(assemblies));
+        }
 
         AddTrellisFluentValidation(services);
 
         var validatorDef = typeof(IValidator<>);
+        // Dedup across (potentially repeated) assemblies and across (serviceType, implType)
+        // pairs that may already have been registered by a prior call. Without this,
+        // calling the scanner twice — or scanning an assembly whose validator types are
+        // also reachable via another scanned assembly — would register the same validator
+        // multiple times and cause it to execute multiple times per request.
+        var seenTypes = new HashSet<Type>();
+        var registered = new HashSet<(Type Service, Type Impl)>(
+            services
+                .Where(d => d.ImplementationType is not null
+                    && d.ServiceType.IsGenericType
+                    && d.ServiceType.GetGenericTypeDefinition() == validatorDef)
+                .Select(d => (d.ServiceType, d.ImplementationType!)));
+
         foreach (var assembly in assemblies)
         {
             foreach (var type in GetLoadableTypes(assembly))
             {
                 if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                     continue;
+                if (!seenTypes.Add(type))
+                    continue;
 
                 foreach (var iface in type.GetInterfaces())
                 {
-                    if (iface.IsGenericType && iface.GetGenericTypeDefinition() == validatorDef)
+                    if (iface.IsGenericType
+                        && iface.GetGenericTypeDefinition() == validatorDef
+                        && registered.Add((iface, type)))
+                    {
                         services.AddScoped(iface, type);
+                    }
                 }
             }
         }

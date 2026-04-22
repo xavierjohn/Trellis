@@ -167,6 +167,78 @@ public class FluentValidationMessageValidatorAdapterTests
     }
 
     [Fact]
+    public void AddTrellisFluentValidation_with_null_assembly_element_throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellisFluentValidation([null!]);
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("assemblies")
+            .WithMessage("*index 0*");
+    }
+
+    [Fact]
+    public void AddTrellisFluentValidation_called_twice_with_same_assembly_does_not_double_register_validators()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellisFluentValidation(typeof(FluentValidationMessageValidatorAdapterTests).Assembly);
+        services.AddTrellisFluentValidation(typeof(FluentValidationMessageValidatorAdapterTests).Assembly);
+
+        services
+            .Where(d => d.ServiceType == typeof(IValidator<CreateUserCommand>)
+                && d.ImplementationType == typeof(CreateUserCommandNameValidator))
+            .Should().ContainSingle("validators must not be registered twice when the same assembly is scanned twice");
+        services
+            .Where(d => d.ServiceType == typeof(IValidator<CreateUserCommand>)
+                && d.ImplementationType == typeof(CreateUserCommandEmailValidator))
+            .Should().ContainSingle();
+    }
+
+    [Fact]
+    public void AddTrellisFluentValidation_with_duplicate_assemblies_in_one_call_does_not_double_register()
+    {
+        var services = new ServiceCollection();
+        var assembly = typeof(FluentValidationMessageValidatorAdapterTests).Assembly;
+
+        services.AddTrellisFluentValidation(assembly, assembly);
+
+        services
+            .Where(d => d.ServiceType == typeof(IValidator<CreateUserCommand>)
+                && d.ImplementationType == typeof(CreateUserCommandNameValidator))
+            .Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AddTrellisFluentValidation_called_twice_each_validator_runs_only_once_per_message()
+    {
+        var command = new CreateUserCommand(string.Empty, "bad");
+
+        // Baseline: scan once.
+        var singleServices = new ServiceCollection();
+        singleServices.AddTrellisFluentValidation(typeof(FluentValidationMessageValidatorAdapterTests).Assembly);
+        using var singleProvider = singleServices.BuildServiceProvider();
+        using var singleScope = singleProvider.CreateScope();
+        var singleAdapter = singleScope.ServiceProvider.GetRequiredService<IMessageValidator<CreateUserCommand>>();
+        var singleResult = await singleAdapter.ValidateAsync(command, CancellationToken.None);
+        var singleError = ExtractError(singleResult).Should().BeOfType<Error.UnprocessableContent>().Which;
+        var baselineCount = singleError.Fields.Items.Length;
+
+        // Scan twice — must produce the same count, not double.
+        var doubleServices = new ServiceCollection();
+        doubleServices.AddTrellisFluentValidation(typeof(FluentValidationMessageValidatorAdapterTests).Assembly);
+        doubleServices.AddTrellisFluentValidation(typeof(FluentValidationMessageValidatorAdapterTests).Assembly);
+        using var doubleProvider = doubleServices.BuildServiceProvider();
+        using var doubleScope = doubleProvider.CreateScope();
+        var doubleAdapter = doubleScope.ServiceProvider.GetRequiredService<IMessageValidator<CreateUserCommand>>();
+        var doubleResult = await doubleAdapter.ValidateAsync(command, CancellationToken.None);
+        var doubleError = ExtractError(doubleResult).Should().BeOfType<Error.UnprocessableContent>().Which;
+
+        doubleError.Fields.Items.Length.Should().Be(baselineCount, "scanning the same assembly twice must not double validator execution");
+    }
+
+    [Fact]
     public void AddTrellisFluentValidation_resolves_validators_through_di()
     {
         var services = new ServiceCollection();

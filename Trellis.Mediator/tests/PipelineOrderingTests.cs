@@ -13,12 +13,15 @@ using Trellis.Mediator.Tests.Helpers;
 /// The full canonical 7-behavior pipeline (outermost to innermost) is documented on
 /// <see cref="ServiceCollectionExtensions.PipelineBehaviors"/>:
 /// Exception → Tracing → Logging → Authorization → ResourceAuthorization → Validation →
-/// FluentValidation (opt-in, <c>Trellis.FluentValidation</c>) → TransactionalCommand
-/// (opt-in, <c>Trellis.EntityFrameworkCore</c>).
+/// TransactionalCommand (opt-in, <c>Trellis.EntityFrameworkCore</c>).
 /// </para>
 /// <para>
-/// FluentValidation and TransactionalCommand live outside this package and are covered by their
-/// own tests (<c>FluentValidationBehaviorTests</c>, <c>UnitOfWorkServiceCollectionExtensionsTests</c>).
+/// FluentValidation (opt-in, <c>Trellis.FluentValidation</c>) does <b>not</b> occupy a
+/// pipeline slot; it contributes <c>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</c>
+/// to the existing <see cref="ValidationBehavior{TMessage, TResponse}"/> via the
+/// <see cref="IMessageValidator{TMessage}"/> abstraction. It is covered by
+/// <c>FluentValidationMessageValidatorAdapterTests</c>; the transactional behavior is covered
+/// by <c>UnitOfWorkServiceCollectionExtensionsTests</c>.
 /// </para>
 /// </summary>
 public class PipelineOrderingTests

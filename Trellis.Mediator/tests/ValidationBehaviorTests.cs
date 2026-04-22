@@ -215,6 +215,56 @@ public class ValidationBehaviorTests
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
     }
 
+    [Fact]
+    public async Task Handle_aggregates_rule_violations_from_IValidate_and_external_validators()
+    {
+        var ruleA = new RuleViolation("rule.a") { Detail = "rule a failed" };
+        var ruleB = new RuleViolation("rule.b") { Detail = "rule b failed" };
+        var ivalidateError = new Error.UnprocessableContent(
+            EquatableArray<FieldViolation>.Empty,
+            EquatableArray.Create(ruleA));
+        var externalError = new Error.UnprocessableContent(
+            EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("Email"), "validation.error") { Detail = "bad email" }),
+            EquatableArray.Create(ruleB));
+
+        var external = new StubMessageValidator<TestCommandNoValidation>(Result.Fail(externalError));
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("nope"));
+
+        var ivalidateExternal = new StubMessageValidator<TestCommandNoValidation>(Result.Fail(ivalidateError));
+        var bothBehavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([ivalidateExternal, external]);
+        var result = await bothBehavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse();
+        var error = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        error.Fields.Items.Should().HaveCount(1);
+        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/Email");
+        error.Rules.Items.Should().HaveCount(2);
+        error.Rules.Items.Select(r => r.ReasonCode).Should().BeEquivalentTo(["rule.a", "rule.b"]);
+    }
+
+    [Fact]
+    public async Task Handle_rule_only_failure_still_short_circuits_handler()
+    {
+        var rule = new RuleViolation("rule.only") { Detail = "rule failure with no field" };
+        var external = new StubMessageValidator<TestCommandNoValidation>(
+            Result.Fail(new Error.UnprocessableContent(
+                EquatableArray<FieldViolation>.Empty,
+                EquatableArray.Create(rule))));
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("nope"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse("rule-only UPC failures must still short-circuit");
+        var error = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        error.Fields.Items.Should().BeEmpty();
+        error.Rules.Items.Should().HaveCount(1);
+        error.Rules.Items[0].ReasonCode.Should().Be("rule.only");
+    }
+
     private static Error.UnprocessableContent UpcWith(string field, string detail)
         => new(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = detail }));
 
