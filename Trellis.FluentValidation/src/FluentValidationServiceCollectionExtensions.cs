@@ -45,7 +45,17 @@ public static class FluentValidationServiceCollectionExtensions
     public static IServiceCollection AddTrellisFluentValidation(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddScoped(typeof(IMessageValidator<>), typeof(FluentValidationMessageValidatorAdapter<>));
+        // Idempotent: calling AddTrellisFluentValidation() multiple times (directly or via the
+        // scanning overload) must not register the open-generic adapter more than once. Without
+        // this guard, DI would resolve multiple IMessageValidator<TMessage> instances and the
+        // adapter would execute every IValidator<TMessage> twice per request.
+        if (!services.Any(d =>
+                d.ServiceType == typeof(IMessageValidator<>)
+                && d.ImplementationType == typeof(FluentValidationMessageValidatorAdapter<>)))
+        {
+            services.AddScoped(typeof(IMessageValidator<>), typeof(FluentValidationMessageValidatorAdapter<>));
+        }
+
         return services;
     }
 

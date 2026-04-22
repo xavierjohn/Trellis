@@ -24,7 +24,14 @@ using global::Mediator;
 ///   <item><description>Multiple <see cref="Error.UnprocessableContent"/> failures (from
 ///   <see cref="IValidate"/> and any number of <see cref="IMessageValidator{TMessage}"/>
 ///   instances) are merged into a single <see cref="Error.UnprocessableContent"/> whose
-///   <see cref="Error.UnprocessableContent.Fields"/> contains every reported violation.</description></item>
+///   <see cref="Error.UnprocessableContent.Fields"/> contains every reported
+///   <see cref="FieldViolation"/> and whose <see cref="Error.UnprocessableContent.Rules"/>
+///   contains every reported <see cref="RuleViolation"/>.</description></item>
+///   <item><description>An <see cref="Error.UnprocessableContent"/> with empty
+///   <see cref="Error.UnprocessableContent.Fields"/> AND empty
+///   <see cref="Error.UnprocessableContent.Rules"/> still short-circuits the handler:
+///   the original failure semantics from the validator are preserved, even when no
+///   violations are reported.</description></item>
 ///   <item><description>A non-<see cref="Error.UnprocessableContent"/> failure (e.g.,
 ///   <see cref="Error.Conflict"/>, <see cref="Error.Forbidden"/>) returned by any validation
 ///   source short-circuits the stage immediately and that failure is propagated as-is, with
@@ -51,6 +58,7 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
     {
         List<FieldViolation>? violations = null;
         List<RuleViolation>? rules = null;
+        var sawUnprocessableContent = false;
 
         if (message is IValidate validatable)
         {
@@ -59,6 +67,7 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
             {
                 if (error is Error.UnprocessableContent upc)
                 {
+                    sawUnprocessableContent = true;
                     if (upc.Fields.Items.Length > 0)
                         violations = [.. upc.Fields.Items];
                     if (upc.Rules.Items.Length > 0)
@@ -80,6 +89,7 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
 
             if (error is Error.UnprocessableContent upc)
             {
+                sawUnprocessableContent = true;
                 if (upc.Fields.Items.Length > 0)
                 {
                     violations ??= [];
@@ -98,7 +108,7 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
             return TResponse.CreateFailure(error);
         }
 
-        if (violations is { Count: > 0 } || rules is { Count: > 0 })
+        if (sawUnprocessableContent)
         {
             var fieldsArray = violations is { Count: > 0 }
                 ? EquatableArray.Create(violations.ToArray())

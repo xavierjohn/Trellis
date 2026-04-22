@@ -128,6 +128,39 @@ public class FluentValidationMessageValidatorAdapterTests
     }
 
     [Fact]
+    public void AddTrellisFluentValidation_called_twice_registers_adapter_only_once()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellisFluentValidation();
+        services.AddTrellisFluentValidation();
+
+        services
+            .Where(d => d.ServiceType == typeof(IMessageValidator<>)
+                && d.ImplementationType == typeof(FluentValidationMessageValidatorAdapter<>))
+            .Should().ContainSingle("registration must be idempotent so the adapter resolves once per scope");
+    }
+
+    [Fact]
+    public async Task AddTrellisFluentValidation_called_twice_each_validator_runs_only_once()
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisFluentValidation();
+        services.AddTrellisFluentValidation();
+        services.AddScoped<IValidator<CreateUserCommand>, CreateUserCommandNameValidator>();
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var adapter = scope.ServiceProvider.GetRequiredService<IMessageValidator<CreateUserCommand>>();
+
+        var result = await adapter.ValidateAsync(
+            new CreateUserCommand(string.Empty, "ada@example.com"),
+            CancellationToken.None);
+
+        var error = ExtractError(result).Should().BeOfType<Error.UnprocessableContent>().Which;
+        error.Fields.Items.Should().HaveCount(1, "calling AddTrellisFluentValidation() twice must not duplicate adapter execution");
+    }
+
+    [Fact]
     public void AddTrellisFluentValidation_does_not_register_a_pipeline_behavior()
     {
         var services = new ServiceCollection();

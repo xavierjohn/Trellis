@@ -16,7 +16,7 @@ public static class ServiceCollectionExtensions
     /// Gets the ordered array of Trellis Result-aware pipeline behavior types contributed by this
     /// package. Assign this to <c>MediatorOptions.PipelineBehaviors</c> in your <c>AddMediator</c>
     /// call when wiring the AOT-friendly source generator path.
-    /// <para>The full canonical 7-behavior pipeline (outermost to innermost) is:</para>
+    /// <para>The canonical Trellis pipeline (outermost to innermost) is:</para>
     /// <list type="number">
     ///   <item><description><see cref="ExceptionBehavior{TMessage, TResponse}"/> — catches unhandled exceptions and converts to typed failures.</description></item>
     ///   <item><description><see cref="TracingBehavior{TMessage, TResponse}"/> — emits an OpenTelemetry activity span around the message.</description></item>
@@ -37,7 +37,10 @@ public static class ServiceCollectionExtensions
     ///   so it lands innermost (closest to the handler).</description></item>
     /// </list>
     /// <para>
-    /// This array contains the always-on five behaviors. The resource-authorization and
+    /// This array contains the always-on behaviors (<see cref="ExceptionBehavior{TMessage, TResponse}"/>,
+    /// <see cref="TracingBehavior{TMessage, TResponse}"/>, <see cref="LoggingBehavior{TMessage, TResponse}"/>,
+    /// <see cref="AuthorizationBehavior{TMessage, TResponse}"/>, and
+    /// <see cref="ValidationBehavior{TMessage, TResponse}"/>). The resource-authorization and
     /// transactional behaviors are opt-in and supplied by separate registration helpers.
     /// FluentValidation (and any other external validation source) participates inside
     /// the existing <see cref="ValidationBehavior{TMessage, TResponse}"/> via the

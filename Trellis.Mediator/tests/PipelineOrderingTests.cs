@@ -10,7 +10,7 @@ using Trellis.Mediator.Tests.Helpers;
 /// <see cref="ServiceCollectionExtensions"/> (and the closed-generic insertion done by
 /// <see cref="ServiceCollectionExtensions.AddResourceAuthorization{TMessage, TResource, TResponse}"/>).
 /// <para>
-/// The full canonical 7-behavior pipeline (outermost to innermost) is documented on
+/// The canonical Trellis pipeline (outermost to innermost) is documented on
 /// <see cref="ServiceCollectionExtensions.PipelineBehaviors"/>:
 /// Exception → Tracing → Logging → Authorization → ResourceAuthorization → Validation →
 /// TransactionalCommand (opt-in, <c>Trellis.EntityFrameworkCore</c>).

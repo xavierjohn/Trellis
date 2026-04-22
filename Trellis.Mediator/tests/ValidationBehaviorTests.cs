@@ -265,6 +265,29 @@ public class ValidationBehaviorTests
         error.Rules.Items[0].ReasonCode.Should().Be("rule.only");
     }
 
+    [Fact]
+    public async Task Handle_empty_unprocessable_content_failure_still_short_circuits_handler()
+    {
+        // A validator returning UPC with empty Fields AND empty Rules still indicates failure
+        // (TryGetError returns true). The behavior must propagate the failure rather than
+        // silently fall through to the handler.
+        var external = new StubMessageValidator<TestCommandNoValidation>(
+            Result.Fail(new Error.UnprocessableContent(
+                EquatableArray<FieldViolation>.Empty,
+                EquatableArray<RuleViolation>.Empty)));
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("must not run"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse("empty UPC is still a failure and must short-circuit");
+        result.IsFailure.Should().BeTrue();
+        var error = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        error.Fields.Items.Should().BeEmpty();
+        error.Rules.Items.Should().BeEmpty();
+    }
+
     private static Error.UnprocessableContent UpcWith(string field, string detail)
         => new(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = detail }));
 
