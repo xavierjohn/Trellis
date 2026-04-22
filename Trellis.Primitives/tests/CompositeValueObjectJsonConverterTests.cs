@@ -1,3 +1,5 @@
+using Trellis.Testing;
+
 namespace Trellis.Primitives.Tests;
 
 using System.Text.Json;
@@ -146,22 +148,43 @@ public class CompositeValueObjectJsonConverterTests
     #region Write — null and unsupported
 
     [Fact]
-    public void Write_throws_for_null_writer_or_value()
+    public void Write_throws_for_null_writer()
     {
         var converter = new CompositeValueObjectJsonConverter<IntStringVo>();
         var vo = IntStringVo.Create(1, "x");
 
         Action nullWriter = () => converter.Write(null!, vo, new JsonSerializerOptions());
-        nullWriter.Should().Throw<ArgumentNullException>();
+        nullWriter.Should().Throw<ArgumentNullException>().WithParameterName("writer");
     }
 
     [Fact]
-    public void Write_emits_null_for_null_scalar_property()
+    public void Write_throws_for_null_value()
     {
-        // Property type is a reference scalar VO; underlying value is non-null only when set.
+        var converter = new CompositeValueObjectJsonConverter<IntStringVo>();
+        using var stream = new MemoryStream();
+        using var writer = new Utf8JsonWriter(stream);
+
+        Action nullValue = () => converter.Write(writer, null!, new JsonSerializerOptions());
+        nullValue.Should().Throw<ArgumentNullException>().WithParameterName("value");
+    }
+
+    [Fact]
+    public void Write_emits_null_when_nullable_scalar_VO_property_is_null()
+    {
+        // Optional is a nullable scalar VO (CurrencyCode? — a reference scalar value object).
+        // BuildScalarValueAccess emits a null-check that returns null when the VO instance is null,
+        // exercising the conditional null-projection branch.
         var vo = NullableScalarVo.Create("abc", null);
         var json = JsonSerializer.Serialize(vo);
         json.Should().Be("{\"label\":\"abc\",\"optional\":null}");
+    }
+
+    [Fact]
+    public void Write_projects_underlying_string_when_nullable_scalar_VO_property_is_set()
+    {
+        var vo = NullableScalarVo.Create("abc", CurrencyCode.TryCreate("USD").Unwrap());
+        var json = JsonSerializer.Serialize(vo);
+        json.Should().Be("{\"label\":\"abc\",\"optional\":\"USD\"}");
     }
 
     [Fact]
@@ -190,9 +213,10 @@ public class CompositeValueObjectJsonConverterTests
     public void Throws_when_no_matching_TryCreate_exists()
     {
         Action act = () => JsonSerializer.Serialize(new MissingTryCreateVo());
-        // TypeInitializationException wraps the InvalidOperationException from the static field init.
-        act.Should().Throw<Exception>()
-            .Where(e => e is TypeInitializationException || e is InvalidOperationException);
+        // Static field init wraps the InvalidOperationException in TypeInitializationException.
+        act.Should().Throw<TypeInitializationException>()
+            .WithInnerException<InvalidOperationException>()
+            .WithMessage("*requires a public static 'TryCreate'*");
     }
 
     [Fact]
@@ -209,8 +233,9 @@ public class CompositeValueObjectJsonConverterTests
     public void Throws_when_TryCreate_overloads_are_ambiguous()
     {
         Action act = () => JsonSerializer.Serialize(new AmbiguousTryCreateVo(1));
-        act.Should().Throw<Exception>()
-            .Where(e => e is TypeInitializationException || e is InvalidOperationException);
+        act.Should().Throw<TypeInitializationException>()
+            .WithInnerException<InvalidOperationException>()
+            .WithMessage("*found multiple ambiguous 'TryCreate' overloads*");
     }
 
     #endregion
@@ -305,16 +330,18 @@ public class CompositeValueObjectJsonConverterTests
     {
         public string Label { get; private set; } = string.Empty;
 
-        public string? Optional { get; private set; }
+        public CurrencyCode? Optional { get; private set; }
 
         private NullableScalarVo() { }
 
-        private NullableScalarVo(string l, string? o) { Label = l; Optional = o; }
+        private NullableScalarVo(string l, CurrencyCode? o) { Label = l; Optional = o; }
 
-        public static NullableScalarVo Create(string l, string? o) => new(l, o);
+        public static NullableScalarVo Create(string l, CurrencyCode? o) => new(l, o);
 
         public static Result<NullableScalarVo> TryCreate(string label, string? optional, string? fieldName = null) =>
-            Result.Ok(new NullableScalarVo(label, optional));
+            optional is null
+                ? Result.Ok(new NullableScalarVo(label, null))
+                : CurrencyCode.TryCreate(optional).Map(c => new NullableScalarVo(label, c));
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<UnsupportedPrimitiveVo>))]
