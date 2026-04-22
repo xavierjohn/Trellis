@@ -10,6 +10,36 @@ public class EnsureAllTests
     #region Sync
 
     [Fact]
+    public void EnsureAll_with_null_predicate_in_array_throws_with_correct_paramName_and_index()
+    {
+        var sut = Result.Ok("Hello");
+
+        var act = () => sut.EnsureAll(
+            (s => s.Length > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty)),
+            (null!, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty)));
+
+        // ArgumentNullException.ParamName must be the actual parameter name ("checks") so callers
+        // catching by ParamName work, and the message must identify the offending index/field.
+        act.Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "checks")
+            .And.Message.Should().Contain("checks[1]").And.Contain("predicate");
+    }
+
+    [Fact]
+    public void EnsureAll_with_null_error_in_array_throws_with_correct_paramName_and_index()
+    {
+        var sut = Result.Ok("Hello");
+
+        var act = () => sut.EnsureAll(
+            (s => s.Length > 0, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty)),
+            (s => s.Length > 0, null!));
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "checks")
+            .And.Message.Should().Contain("checks[1]").And.Contain("error");
+    }
+
+    [Fact]
     public void EnsureAll_WithNullChecks_ShouldThrowArgumentNullException()
     {
         var sut = Result.Ok("Hello");
