@@ -303,15 +303,31 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
     /// <summary>
     /// Provides OpenAPI/ApiExplorer metadata. Declares the success status code, body type, and
-    /// common error envelope responses. Consumers can layer their own
-    /// <c>[ProducesResponseType]</c>/<c>Produces&lt;T&gt;</c> on top.
+    /// the full set of error envelope responses the result writer can emit. Consumers can layer
+    /// their own <c>[ProducesResponseType]</c>/<c>Produces&lt;T&gt;</c> on top.
     /// </summary>
+    /// <remarks>
+    /// Because this contract is invoked statically by the endpoint pipeline (it has no access to
+    /// the per-instance <see cref="HttpResponseOptions{TDomain}"/>), we declare the union of
+    /// statuses any configuration of this result type may produce:
+    /// <list type="bullet">
+    ///   <item><description>200 OK — default success path with body.</description></item>
+    ///   <item><description>201 Created — when a Location is configured (Created/CreatedAtRoute/CreatedAtAction).</description></item>
+    ///   <item><description>206 Partial Content — when a Range selector is configured and the request asked for a sub-range.</description></item>
+    ///   <item><description>304 Not Modified — when conditional-request evaluation matches an If-None-Match / If-Modified-Since precondition.</description></item>
+    ///   <item><description>400, 404, 412, 500 — error envelopes (problem+json) for the most common failure mappings.</description></item>
+    /// </list>
+    /// </remarks>
     public static void PopulateMetadata(System.Reflection.MethodInfo method, EndpointBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status200OK, typeof(TBody), ["application/json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status201Created, typeof(TBody), ["application/json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status206PartialContent, typeof(TBody), ["application/json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status304NotModified, typeof(void)));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status400BadRequest, typeof(ProblemDetails), ["application/problem+json"]));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status404NotFound, typeof(ProblemDetails), ["application/problem+json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status412PreconditionFailed, typeof(ProblemDetails), ["application/problem+json"]));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status500InternalServerError, typeof(ProblemDetails), ["application/problem+json"]));
     }
 }
