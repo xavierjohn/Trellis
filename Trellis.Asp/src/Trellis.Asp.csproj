@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>ASP.NET Core integration for Trellis. Result-to-HTTP response mapping, scalar value validation, JSON converters (with bundled AOT source generator), and ASP.NET actor providers (Claims, Entra, Development) for Trellis.Authorization.</Description>
@@ -31,11 +31,12 @@
   <ItemGroup>
     <ProjectReference Include="..\generator\Trellis.AspSourceGenerator.csproj"
                       OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="false"
+                      Properties="PublishAot=false" />
   </ItemGroup>
 
   <Target Name="_GetAspGeneratorTargetPath" Returns="@(_AspGeneratorTargetPath)">
-    <MSBuild Projects="..\generator\Trellis.AspSourceGenerator.csproj" Targets="GetTargetPath">
+    <MSBuild Projects="..\generator\Trellis.AspSourceGenerator.csproj" Targets="GetTargetPath" Properties="PublishAot=false">
       <Output TaskParameter="TargetOutputs" ItemName="_AspGeneratorTargetPath" />
     </MSBuild>
   </Target>

@@ -28,11 +28,12 @@
   <ItemGroup>
     <ProjectReference Include="..\generator\Trellis.Core.Generator.csproj"
                       OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="false"
+                      Properties="PublishAot=false" />
   </ItemGroup>
 
   <Target Name="_GetCoreGeneratorTargetPath" Returns="@(_CoreGeneratorTargetPath)">
-    <MSBuild Projects="..\generator\Trellis.Core.Generator.csproj" Targets="GetTargetPath">
+    <MSBuild Projects="..\generator\Trellis.Core.Generator.csproj" Targets="GetTargetPath" Properties="PublishAot=false">
       <Output TaskParameter="TargetOutputs" ItemName="_CoreGeneratorTargetPath" />
     </MSBuild>
   </Target>

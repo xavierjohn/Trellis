@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <RootNamespace>ConditionalRequestExample</RootNamespace>
@@ -8,10 +8,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
-    <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
-    <ProjectReference Include="..\..\Trellis.Asp\generator\Trellis.AspSourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Trellis.Asp\generator\Trellis.AspSourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
   </ItemGroup>
 
   <ItemGroup>

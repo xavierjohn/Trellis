@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- Phase 2: this generator is no longer published as its own NuGet package.
          It is bundled into Trellis.EntityFrameworkCore.nupkg (see ../src/Trellis.EntityFrameworkCore.csproj). -->
@@ -26,4 +26,18 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
+   <!--
+      Force-disable PublishAot/PublishTrimmed inherited from a parent AOT-publishing project.
+      Source generators target netstandard2.0 (mandated by Roslyn) and cannot satisfy the
+      AOT/Trim gate (NETSDK1207). This target runs before ProcessFrameworkReferences which
+      is gated on _RequiresILLinkPack=true (set by PublishAot/PublishTrimmed).
+   -->
+   <Target Name="_TrellisDisablePublishAotForGenerator"
+           BeforeTargets="ProcessFrameworkReferences;_CheckForUnsupportedNETCoreSdkVersion;CollectPackageReferences;Restore">
+      <PropertyGroup>
+         <PublishAot>false</PublishAot>
+         <PublishTrimmed>false</PublishTrimmed>
+         <_RequiresILLinkPack>false</_RequiresILLinkPack>
+      </PropertyGroup>
+   </Target>
 </Project>

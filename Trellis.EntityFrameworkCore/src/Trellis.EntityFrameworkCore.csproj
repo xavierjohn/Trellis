@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>EF Core integration for Trellis. Convention-based value converter registration for Trellis primitives, Result-returning SaveChanges wrappers, Maybe/Result query extensions, and provider-agnostic database exception classification.</Description>
@@ -32,11 +32,12 @@
   <ItemGroup>
     <ProjectReference Include="..\generator\Trellis.EntityFrameworkCore.Generator.csproj"
                       OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="false"
+                      Properties="PublishAot=false" />
   </ItemGroup>
 
   <Target Name="_GetEfCoreGeneratorTargetPath" Returns="@(_EfCoreGeneratorTargetPath)">
-    <MSBuild Projects="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" Targets="GetTargetPath">
+    <MSBuild Projects="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" Targets="GetTargetPath" Properties="PublishAot=false">
       <Output TaskParameter="TargetOutputs" ItemName="_EfCoreGeneratorTargetPath" />
     </MSBuild>
   </Target>
