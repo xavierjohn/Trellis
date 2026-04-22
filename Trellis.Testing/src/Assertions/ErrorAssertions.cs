@@ -31,6 +31,12 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
     /// <inheritdoc/>
     protected override string Identifier => "error";
 
+    private bool RequireNonNullSubject(string because, object[] becauseArgs) =>
+        Execute.Assertion
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(Subject is not null)
+            .FailWith("Expected {context:error} to not be <null>{reason}.");
+
     /// <summary>
     /// Asserts that the error equals the expected error (based on Error.Equals which compares by Code).
     /// </summary>
@@ -46,11 +52,14 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         string because = "",
         params object[] becauseArgs)
     {
-        Execute.Assertion
-            .BecauseOf(because, becauseArgs)
-            .ForCondition(Subject.Equals(expected))
-            .FailWith("Expected {context:error} to be {0}{reason}, but found {1}",
-                expected, Subject);
+        if (RequireNonNullSubject(because, becauseArgs))
+        {
+            Execute.Assertion
+                .BecauseOf(because, becauseArgs)
+                .ForCondition(Subject!.Equals(expected))
+                .FailWith("Expected {context:error} to be {0}{reason}, but found {1}",
+                    expected, Subject);
+        }
 
         return new AndConstraint<ErrorAssertions>(this);
     }
@@ -70,7 +79,8 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         string because = "",
         params object[] becauseArgs)
     {
-        Subject.Code.Should().Be(expectedCode, because, becauseArgs);
+        if (RequireNonNullSubject(because, becauseArgs))
+            Subject!.Code.Should().Be(expectedCode, because, becauseArgs);
         return new AndConstraint<ErrorAssertions>(this);
     }
 
@@ -89,7 +99,8 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         string because = "",
         params object[] becauseArgs)
     {
-        Subject.Detail!.Should().Be(expectedDetail, because, becauseArgs);
+        if (RequireNonNullSubject(because, becauseArgs))
+            Subject!.Detail!.Should().Be(expectedDetail, because, becauseArgs);
         return new AndConstraint<ErrorAssertions>(this);
     }
 
@@ -108,7 +119,8 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         string because = "",
         params object[] becauseArgs)
     {
-        Subject.Detail!.Should().Contain(substring, because, becauseArgs);
+        if (RequireNonNullSubject(because, becauseArgs))
+            Subject!.Detail!.Should().Contain(substring, because, becauseArgs);
         return new AndConstraint<ErrorAssertions>(this);
     }
 
@@ -127,13 +139,16 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         params object[] becauseArgs)
         where TError : Error
     {
+        if (!RequireNonNullSubject(because, becauseArgs))
+            return new AndWhichConstraint<ErrorAssertions, TError>(this, default(TError)!);
+
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
             .ForCondition(Subject is TError)
             .FailWith("Expected {context:error} to be of type {0}{reason}, but found {1}",
                 typeof(TError).Name,
-                Subject.GetType().Name);
+                Subject!.GetType().Name);
 
-        return new AndWhichConstraint<ErrorAssertions, TError>(this, (TError)Subject);
+        return new AndWhichConstraint<ErrorAssertions, TError>(this, (TError)Subject!);
     }
 }

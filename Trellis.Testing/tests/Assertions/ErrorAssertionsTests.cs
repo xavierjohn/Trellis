@@ -197,4 +197,98 @@ public class ErrorAssertionsTests
     }
 
     #endregion
+
+    #region Null Subject (defensive — Should() accepts Error?)
+
+    [Fact]
+    public void HaveCode_OnNullSubject_Fails_Cleanly_Not_NRE()
+    {
+        Error? nullError = null;
+
+        var act = () => nullError.Should().HaveCode("not-found");
+
+        act.Should().Throw<Xunit.Sdk.XunitException>("FluentAssertions should report a clean failure, not throw NullReferenceException");
+        act.Should().NotThrow<NullReferenceException>();
+    }
+
+    [Fact]
+    public void HaveDetail_OnNullSubject_Fails_Cleanly_Not_NRE()
+    {
+        Error? nullError = null;
+
+        var act = () => nullError.Should().HaveDetail("anything");
+
+        act.Should().Throw<Xunit.Sdk.XunitException>();
+        act.Should().NotThrow<NullReferenceException>();
+    }
+
+    [Fact]
+    public void HaveDetailContaining_OnNullSubject_Fails_Cleanly_Not_NRE()
+    {
+        Error? nullError = null;
+
+        var act = () => nullError.Should().HaveDetailContaining("anything");
+
+        act.Should().Throw<Xunit.Sdk.XunitException>();
+        act.Should().NotThrow<NullReferenceException>();
+    }
+
+    [Fact]
+    public void BeOfType_OnNullSubject_Fails_Cleanly_Not_NRE()
+    {
+        Error? nullError = null;
+
+        var act = () => nullError.Should().BeOfType<Error.NotFound>();
+
+        act.Should().Throw<Xunit.Sdk.XunitException>();
+        act.Should().NotThrow<NullReferenceException>();
+    }
+
+    [Fact]
+    public void Be_OnNullSubject_Fails_Cleanly_Not_NRE()
+    {
+        Error? nullError = null;
+        var expected = new Error.NotFound(new ResourceRef("R", null)) { Detail = "x" };
+
+        var act = () => nullError.Should().Be(expected);
+
+        act.Should().Throw<Xunit.Sdk.XunitException>();
+        act.Should().NotThrow<NullReferenceException>();
+    }
+
+    [Fact]
+    public void BeNull_OnNullSubject_Passes()
+    {
+        Error? nullError = null;
+        nullError.Should().BeNull();
+    }
+
+    [Fact]
+    public void BeNull_OnNonNullSubject_Fails()
+    {
+        Error err = new Error.NotFound(new ResourceRef("R", null)) { Detail = "x" };
+
+        var act = () => err.Should().BeNull();
+
+        act.Should().Throw<Xunit.Sdk.XunitException>();
+    }
+
+    [Fact]
+    public void NotBeNull_OnNonNullSubject_Passes()
+    {
+        Error err = new Error.NotFound(new ResourceRef("R", null)) { Detail = "x" };
+        err.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void NotBeNull_OnNullSubject_Fails()
+    {
+        Error? nullError = null;
+
+        var act = () => nullError.Should().NotBeNull();
+
+        act.Should().Throw<Xunit.Sdk.XunitException>();
+    }
+
+    #endregion
 }
