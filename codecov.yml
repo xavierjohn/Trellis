@@ -1,0 +1,28 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+    patch:
+      default:
+        target: 80%
+        threshold: 1%
+
+# Exclude non-framework code from coverage reporting.
+# Examples/ and samples/ are demonstration apps, not library code shipped to consumers.
+# Test projects and generated files should never count toward framework coverage.
+ignore:
+  - "Examples/"
+  - "samples/"
+  - "**/tests/"
+  - "**/generator-tests/"
+  - "**/*.g.cs"
+  - "**/*.designer.cs"
+  - "**/obj/"
+  - "**/bin/"
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
