@@ -52,13 +52,20 @@ using Trellis;
 public sealed class TrellisAspOptions
 {
     /// <summary>
-    /// Immutable, zero-configuration default mappings used when the runtime cannot resolve
+    /// Zero-configuration default mappings used when the runtime cannot resolve
     /// <see cref="TrellisAspOptions"/> from the request's <see cref="IServiceProvider"/>
     /// (e.g. the host did not call <c>AddTrellisAsp</c>, or a result is executed outside an
     /// ASP.NET request). Production code paths obtain the configured instance from DI;
-    /// this fallback exists strictly to keep `IResult.ExecuteAsync` total.
+    /// this fallback exists strictly to keep <c>IResult.ExecuteAsync</c> total.
     /// </summary>
-    public static TrellisAspOptions SystemDefault { get; } = new();
+    /// <remarks>
+    /// Internal to prevent consumers from accidentally calling
+    /// <see cref="MapError{TError}"/> on this shared instance, which would mutate
+    /// global state and reintroduce the cross-host / cross-test leakage that the
+    /// DI-resolved options model exists to eliminate. Hosts that want a different
+    /// default must call <c>AddTrellisAsp(options =&gt; ...)</c>.
+    /// </remarks>
+    internal static TrellisAspOptions SystemDefault { get; } = new();
 
     private readonly Dictionary<Type, int> _errorMappings = new()
     {

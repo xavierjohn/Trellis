@@ -295,6 +295,26 @@ public class TrellisAspOptionsTests
         ctx.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);
     }
 
+    [Fact]
+    public void SystemDefault_property_must_be_internal_to_prevent_global_mutation()
+    {
+        // Regression: SystemDefault was previously public, allowing
+        // `TrellisAspOptions.SystemDefault.MapError<X>(...)` to mutate a process-wide
+        // singleton and reintroduce the cross-host / cross-test leakage that the
+        // DI-resolved options model exists to eliminate. Keep it internal.
+        var prop = typeof(TrellisAspOptions).GetProperty(
+            "SystemDefault",
+            System.Reflection.BindingFlags.Static
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic);
+
+        prop.Should().NotBeNull();
+        var getter = prop!.GetGetMethod(nonPublic: true)!;
+        getter.IsPublic.Should().BeFalse(
+            "TrellisAspOptions.SystemDefault must not be publicly accessible — exposing it lets consumers mutate the shared fallback via MapError, leaking error mappings across tests and hosts.");
+        getter.IsAssembly.Should().BeTrue("getter should be 'internal'.");
+    }
+
     #endregion
 
     #region New RFC 9110 Error Type Mappings
