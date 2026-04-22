@@ -163,8 +163,8 @@ Testing side effects without changing the Result.
 | Tap_ThreeActions_Success | 14.84 ns | 0.0038 | 64 B |
 | Tap_ThreeActions_Failure | 14.45 ns | 0.0038 | 64 B |
 | Tap_WithLogging_Success | 33.03 ns | 0.0038 | 64 B |
-| TapError_OnFailure | 10.73 ns | - | - |
-| TapError_OnSuccess | 11.82 ns | - | - |
+| TapOnFailure_OnFailure | 10.73 ns | - | - |
+| TapOnFailure_OnSuccess | 11.82 ns | - | - |
 | Tap_MixedWithMap_Success | 27.55 ns | - | - |
 | Tap_ComplexSideEffect_Success | 16.15 ns | 0.0038 | 64 B |
 | Tap_FiveActions_Success | 23.90 ns | 0.0076 | 128 B |
@@ -183,7 +183,7 @@ Testing side effects without changing the Result.
 await GetUserAsync(userId)
     .TapAsync(user => _logger.LogInformation("Retrieved user {UserId}", user.Id))
     .TapAsync(user => _cache.SetAsync(user.Id, user))
-    .TapErrorAsync(error => _logger.LogError("Failed to get user: {Error}", error));
+    .TapOnFailureAsync(error => _logger.LogError("Failed to get user: {Error}", error));
 ```
 
 ### Ensure Operations

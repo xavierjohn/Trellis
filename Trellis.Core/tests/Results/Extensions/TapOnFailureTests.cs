@@ -102,7 +102,7 @@ public class TapOnFailureTests : TestBase
 
     #endregion
 
-    #region TapErrorAsync - Task<Result<T>> with Action
+    #region TapOnFailureAsync - Task<Result<T>> with Action
 
     [Fact]
     public async Task TapOnFailureAsync_TaskResult_WithNullResultTask_ThrowsArgumentNullException()
@@ -164,7 +164,7 @@ public class TapOnFailureTests : TestBase
 
     #endregion
 
-    #region TapErrorAsync - Result<T> with Func<Task>
+    #region TapOnFailureAsync - Result<T> with Func<Task>
 
     [Fact]
     public async Task TapOnFailureAsync_Result_WithNullFuncTask_ThrowsArgumentNullException()
@@ -235,7 +235,7 @@ public class TapOnFailureTests : TestBase
 
     #endregion
 
-    #region TapErrorAsync - Task<Result<T>> with Func<Task>
+    #region TapOnFailureAsync - Task<Result<T>> with Func<Task>
 
     [Fact]
     public async Task TapOnFailureAsync_TaskResult_WithFuncTask_FailureResult_ExecutesFunction()
@@ -277,7 +277,7 @@ public class TapOnFailureTests : TestBase
 
     #endregion
 
-    #region TapErrorAsync - ValueTask<Result<T>> with Action
+    #region TapOnFailureAsync - ValueTask<Result<T>> with Action
 
     [Fact]
     public async Task TapOnFailureAsync_ValueTaskResult_WithAction_FailureResult_ExecutesAction()
@@ -328,7 +328,7 @@ public class TapOnFailureTests : TestBase
 
     #endregion
 
-    #region TapErrorAsync - Result<T> with Func<ValueTask>
+    #region TapOnFailureAsync - Result<T> with Func<ValueTask>
 
     [Fact]
     public async Task TapOnFailureAsync_Result_WithFuncValueTask_FailureResult_ExecutesFunction()

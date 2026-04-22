@@ -62,7 +62,7 @@ public class TapBenchmarks
     }
 
     [Benchmark]
-    public Result<int> TapError_OnFailure()
+    public Result<int> TapOnFailure_OnFailure()
     {
         return _failureResult
             .TapOnFailure(err => LogError(err))
@@ -70,7 +70,7 @@ public class TapBenchmarks
     }
 
     [Benchmark]
-    public Result<int> TapError_OnSuccess()
+    public Result<int> TapOnFailure_OnSuccess()
     {
         return _successResult
             .TapOnFailure(err => LogError(err))
