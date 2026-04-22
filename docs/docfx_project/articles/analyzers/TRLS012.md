@@ -1,16 +1,16 @@
-# TRLS012 — Consider using Result.Combine
+# TRLS012 — Don't compare Result or Maybe to null
 
-- **Severity:** Info
+- **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags conditional logic that manually combines two or more `Result` state checks, such as `&&` chains over `.IsSuccess` or `||` chains over `.IsFailure`.
+Flags `== null`, `!= null`, `is null`, and `is not null` when the checked value is a Trellis `Result<T>` or `Maybe<T>`.
 
 ## Why it matters
-`Result.Combine` expresses intent more clearly and scales better than repeated manual branching.
+These are structs. Presence and success are represented by state members such as `HasValue`, `HasNoValue`, `IsSuccess`, and `IsFailure`, not by nullability.
 
 > [!WARNING]
-> Manual combination logic tends to duplicate error-selection code and becomes noisy as soon as you add a third or fourth result.
+> A null check can look harmless, but it asks the wrong question and hides the actual success or optionality rule.
 
 ## Bad example
 ```csharp
@@ -18,15 +18,8 @@ using Trellis;
 
 static class Example
 {
-    public static Result<int> Bad(Result<int> first, Result<int> second)
-    {
-        if (first.IsSuccess && second.IsSuccess)
-            return Result.Ok(first.Value + second.Value);
-
-        return first.IsFailure
-            ? Result.Fail<int>(first.Error)
-            : Result.Fail<int>(second.Error);
-    }
+    public static string Bad(Maybe<string> nickname) =>
+        nickname == null ? "Anonymous" : nickname.Value;
 }
 ```
 
@@ -36,10 +29,8 @@ using Trellis;
 
 static class Example
 {
-    public static Result<int> Good(Result<int> first, Result<int> second) =>
-        first
-            .Combine(second)
-            .Map((left, right) => left + right);
+    public static string Good(Maybe<string> nickname) =>
+        nickname.HasNoValue ? "Anonymous" : nickname.Value;
 }
 ```
 
@@ -60,5 +51,5 @@ dotnet_diagnostic.TRLS012.severity = none
 ```
 
 > [!TIP]
-> Use `Result.Combine(...)` or `.Combine(...)` chaining, then continue with `Map`, `Bind`, or `Match`.
+> Check the state you actually care about: `HasValue` for `Maybe<T>`, `IsSuccess` or `IsFailure` for `Result<T>`.
 

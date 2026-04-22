@@ -1,16 +1,16 @@
-# TRLS009 — Incorrect async Result usage
+# TRLS009 — Use async method variant for async lambda
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags blocking access on `Task<Result<T>>` and `ValueTask<Result<T>>`: `.Result`, `.Wait()`, and `.GetAwaiter().GetResult()`.
+Flags synchronous Trellis methods such as `Map`, `Bind`, `Tap`, `Ensure`, and `TapOnFailure` when any supplied lambda or method group does async work.
 
 ## Why it matters
-Blocking async Result pipelines can deadlock, hide cancellation behavior, and makes failure handling harder to reason about.
+The sync method treats the returned `Task` or `ValueTask` as just another value. The async work does not get awaited by the Trellis pipeline.
 
 > [!WARNING]
-> This rule covers both `Task` and `ValueTask`. Replacing `.Result` with `.GetAwaiter().GetResult()` does not avoid the diagnostic.
+> This rule covers three cases: `async` lambdas, non-async lambdas whose converted return type is `Task` or `ValueTask`, and method groups returning `Task` or `ValueTask`.
 
 ## Bad example
 ```csharp
@@ -19,14 +19,14 @@ using Trellis;
 
 static class Example
 {
-    public static Result<int> Bad()
+    public static Result<Task<int>> Bad()
     {
-        var pending = GetCountAsync();
-        return pending.GetAwaiter().GetResult();
+        var result = Result.Ok("Ada");
+        return result.Map(LookupLengthAsync);
     }
 
-    static ValueTask<Result<int>> GetCountAsync() =>
-        new(Result.Ok(42));
+    static Task<int> LookupLengthAsync(string value) =>
+        Task.FromResult(value.Length);
 }
 ```
 
@@ -37,16 +37,19 @@ using Trellis;
 
 static class Example
 {
-    public static async ValueTask<Result<int>> Good() =>
-        await GetCountAsync();
+    public static Task<Result<int>> Good()
+    {
+        var result = Result.Ok("Ada");
+        return result.MapAsync(LookupLengthAsync);
+    }
 
-    static ValueTask<Result<int>> GetCountAsync() =>
-        new(Result.Ok(42));
+    static Task<int> LookupLengthAsync(string value) =>
+        Task.FromResult(value.Length);
 }
 ```
 
 ## Code fix available
-No.
+Yes — renames the sync API to the matching async API, such as `MapAsync`, `BindAsync`, `TapAsync`, `EnsureAsync`, or `TapOnFailureAsync`.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -62,5 +65,5 @@ dotnet_diagnostic.TRLS009.severity = none
 ```
 
 > [!TIP]
-> Once a method touches `Task<Result<T>>` or `ValueTask<Result<T>>`, keep the method async and `await` the result all the way through.
+> If the callback does async work, move to the matching async API immediately instead of returning a `Task` from the sync overload.
 

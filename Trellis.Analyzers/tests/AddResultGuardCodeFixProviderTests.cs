@@ -1,16 +1,16 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
 /// <summary>
-/// Tests for <see cref="AddResultGuardCodeFixProvider"/> (TRLS006 — Maybe.Value).
+/// Tests for <see cref="AddResultGuardCodeFixProvider"/> (TRLS003 — Maybe.Value).
 /// The Result-side fixes for TRLS003 / TRLS004 were removed in v2 along with the analyzers
 /// themselves: <c>Result&lt;T&gt;.Value</c> no longer exists, and <c>Result&lt;T&gt;.Error</c>
 /// is nullable so NRT handles the unsafe access at the language level.
 /// </summary>
 public class AddResultGuardCodeFixProviderTests
 {
-    #region TRLS006 - Maybe.Value Access Tests
+    #region TRLS003 - Maybe.Value Access Tests
 
     [Fact]
     public async Task MaybeValue_SingleStatement_AddsHasValueGuard()

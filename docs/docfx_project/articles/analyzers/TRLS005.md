@@ -1,25 +1,66 @@
-# TRLS005 — *(removed in v2)*
+# TRLS005 — Incorrect async Result usage
 
-This analyzer (`UseMatchErrorAnalyzer`) was deleted in V2.
+- **Severity:** Warning
+- **Category:** Trellis
 
-## Why it was removed
+## What it detects
+Flags blocking access on `Task<Result<T>>` and `ValueTask<Result<T>>`: `.Result`, `.Wait()`, and `.GetAwaiter().GetResult()`.
 
-Before V2 the rule encouraged use of the `MatchError(...)` extension to discriminate error types. With the V2 closed-ADT `Error` (see [ADR-001](../../../adr/ADR-001-result-api-surface.md)), a `switch` expression over an `Error` reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled, and adding a new case lights up every site that doesn't handle it. Manual `switch` patterns are now the recommended idiom.
+## Why it matters
+Blocking async Result pipelines can deadlock, hide cancellation behavior, and makes failure handling harder to reason about.
 
-## Recommended replacement
+> [!WARNING]
+> This rule covers both `Task` and `ValueTask`. Replacing `.Result` with `.GetAwaiter().GetResult()` does not avoid the diagnostic.
 
+## Bad example
 ```csharp
+using System.Threading.Tasks;
 using Trellis;
 
-static string Render(Result<int> result) =>
-    result.Match(
-        onSuccess: value => $"Value: {value}",
-        onFailure: error => error switch
-        {
-            Error.UnprocessableContent uc => $"Validation: {uc.GetDisplayMessage()}",
-            Error.NotFound nf             => $"Missing: {nf.Detail}",
-            _                              => $"Error: {error.Detail}"
-        });
+static class Example
+{
+    public static Result<int> Bad()
+    {
+        var pending = GetCountAsync();
+        return pending.GetAwaiter().GetResult();
+    }
+
+    static ValueTask<Result<int>> GetCountAsync() =>
+        new(Result.Ok(42));
+}
 ```
 
-The `MatchError` / `SwitchError` extensions and the `FlattenValidationErrors` helper were removed alongside this analyzer; use `switch` patterns and `Combine` instead.
+## Good example
+```csharp
+using System.Threading.Tasks;
+using Trellis;
+
+static class Example
+{
+    public static async ValueTask<Result<int>> Good() =>
+        await GetCountAsync();
+
+    static ValueTask<Result<int>> GetCountAsync() =>
+        new(Result.Ok(42));
+}
+```
+
+## Code fix available
+No.
+
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS005.severity = none
+```
+
+```csharp
+#pragma warning disable TRLS005
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS005
+```
+
+> [!TIP]
+> Once a method touches `Task<Result<T>>` or `ValueTask<Result<T>>`, keep the method async and `await` the result all the way through.
+

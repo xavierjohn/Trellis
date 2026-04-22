@@ -1,36 +1,59 @@
-# TRLS016 — Error message should not be empty
+# TRLS016 — HasIndex references a Maybe<T> property
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags empty or whitespace-only messages passed to Trellis error factory methods such as `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }`, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, `new Error.Unauthorized() { Detail = ... }`, `new Error.Forbidden("policy.id") { Detail = ... }`, and `new Error.InternalServerError("fault-id") { Detail = ... }`.
+Flags `EntityTypeBuilder.HasIndex(...)` lambda expressions that reference a `Maybe<T>` property when Trellis.EntityFrameworkCore's Maybe convention is active.
 
 ## Why it matters
-Empty error messages make logs, diagnostics, and HTTP responses much harder to understand.
+EF Core indexes the generated storage member, not the `Maybe<T>` CLR property. A normal `HasIndex` call can silently fail to create the index you thought you configured.
 
 > [!WARNING]
-> `string.Empty`, `""`, whitespace-only literals, and interpolated strings that contain only whitespace all trigger this rule.
+> The diagnostic tells you both the `Maybe<T>` property name and the generated storage-member fallback name so you can see what EF Core actually maps.
 
 ## Bad example
 ```csharp
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Trellis;
 
-static class Example
+sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
-    public static Result<int> Bad(string quantity) =>
-        Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "" })));
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.HasIndex(order => order.SubmittedAt);
+    }
+}
+
+sealed class Order
+{
+    public string Status { get; set; } = string.Empty;
+    public Maybe<DateTime> SubmittedAt { get; set; }
 }
 ```
 
 ## Good example
 ```csharp
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Trellis;
+using Trellis.EntityFrameworkCore;
 
-static class Example
+sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
-    public static Result<int> Good(string quantity) =>
-        Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be a whole number." })));
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.HasTrellisIndex(order => new { order.Status, order.SubmittedAt });
+    }
+}
+
+sealed class Order
+{
+    public string Status { get; set; } = string.Empty;
+    public Maybe<DateTime> SubmittedAt { get; set; }
 }
 ```
 
@@ -51,5 +74,5 @@ dotnet_diagnostic.TRLS016.severity = none
 ```
 
 > [!TIP]
-> Write the message for the next person who will debug the failure. A short, specific sentence is enough.
+> Prefer `HasTrellisIndex(...)` for mixed regular and `Maybe<T>` properties. Use string-based `HasIndex(...)` only when you need the storage member directly.
 

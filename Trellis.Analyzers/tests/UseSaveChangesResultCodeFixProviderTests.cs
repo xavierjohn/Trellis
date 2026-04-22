@@ -1,11 +1,11 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 
 /// <summary>
-/// Tests for UseSaveChangesResultCodeFixProvider (TRLS020).
+/// Tests for UseSaveChangesResultCodeFixProvider (TRLS015).
 /// Verifies that SaveChangesAsync/SaveChanges is correctly replaced with SaveChangesResultUnitAsync.
 /// </summary>
 public class UseSaveChangesResultCodeFixProviderTests

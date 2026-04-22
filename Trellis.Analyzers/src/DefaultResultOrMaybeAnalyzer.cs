@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers;
+namespace Trellis.Analyzers;
 
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>
-/// TRLS029 — flags explicit <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and
+/// TRLS019 — flags explicit <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and
 /// <c>default(Maybe&lt;T&gt;)</c> at use sites. Per ADR-002 §3.5.1, default-initialized
 /// <see cref="Trellis.Result"/> and <see cref="Trellis.Result{TValue}"/> represent a typed
 /// failure (<see cref="Trellis.Error.Unexpected"/> sentinel), and <c>default(Maybe&lt;T&gt;)</c>
@@ -23,8 +23,8 @@ using Microsoft.CodeAnalysis.Operations;
 /// </list>
 /// </para>
 /// <para>
-/// To suppress: use <c>[SuppressMessage("Trellis", "TRLS029", Justification = "...")]</c>
-/// on the enclosing member, or <c>#pragma warning disable TRLS029</c> on the offending span.
+/// To suppress: use <c>[SuppressMessage("Trellis", "TRLS019", Justification = "...")]</c>
+/// on the enclosing member, or <c>#pragma warning disable TRLS019</c> on the offending span.
 /// Both are sanctioned by the ADR for legitimate sentinel/test-helper sites.
 /// </para>
 /// </remarks>

@@ -1,55 +1,86 @@
-# TRLS014 — Use async method variant for async lambda
+# TRLS014 — Combine chain exceeds maximum supported tuple size
 
-- **Severity:** Warning
+- **Severity:** Error
 - **Category:** Trellis
 
 ## What it detects
-Flags synchronous Trellis methods such as `Map`, `Bind`, `Tap`, `Ensure`, and `TapOnFailure` when any supplied lambda or method group does async work.
+Flags the outermost `Combine(...)` or `CombineAsync(...)` chain when it grows past Trellis's supported tuple width of nine elements.
 
 ## Why it matters
-The sync method treats the returned `Task` or `ValueTask` as just another value. The async work does not get awaited by the Trellis pipeline.
+Downstream Trellis tuple-based APIs also stop at nine elements. Large combine chains are a sign that related inputs should be grouped first.
 
 > [!WARNING]
-> This rule covers three cases: `async` lambdas, non-async lambdas whose converted return type is `Task` or `ValueTask`, and method groups returning `Task` or `ValueTask`.
+> This is the one rule where the bad example usually also causes a compile error: the tenth `Combine` has no matching overload. The analyzer gives you a clearer explanation of what to refactor.
 
 ## Bad example
 ```csharp
-using System.Threading.Tasks;
 using Trellis;
 
 static class Example
 {
-    public static Result<Task<int>> Bad()
+    public static void Bad(
+        Result<int> r1,
+        Result<int> r2,
+        Result<int> r3,
+        Result<int> r4,
+        Result<int> r5,
+        Result<int> r6,
+        Result<int> r7,
+        Result<int> r8,
+        Result<int> r9,
+        Result<int> r10)
     {
-        var result = Result.Ok("Ada");
-        return result.Map(LookupLengthAsync);
+        var combined = r1
+            .Combine(r2)
+            .Combine(r3)
+            .Combine(r4)
+            .Combine(r5)
+            .Combine(r6)
+            .Combine(r7)
+            .Combine(r8)
+            .Combine(r9)
+            .Combine(r10);
     }
-
-    static Task<int> LookupLengthAsync(string value) =>
-        Task.FromResult(value.Length);
 }
 ```
 
 ## Good example
 ```csharp
-using System.Threading.Tasks;
 using Trellis;
 
 static class Example
 {
-    public static Task<Result<int>> Good()
+    public static void Good(
+        Result<int> r1,
+        Result<int> r2,
+        Result<int> r3,
+        Result<int> r4,
+        Result<int> r5,
+        Result<int> r6,
+        Result<int> r7,
+        Result<int> r8,
+        Result<int> r9,
+        Result<int> r10)
     {
-        var result = Result.Ok("Ada");
-        return result.MapAsync(LookupLengthAsync);
-    }
+        var customerGroup = r1
+            .Combine(r2)
+            .Combine(r3)
+            .Combine(r4)
+            .Combine(r5);
 
-    static Task<int> LookupLengthAsync(string value) =>
-        Task.FromResult(value.Length);
+        var orderGroup = r6
+            .Combine(r7)
+            .Combine(r8)
+            .Combine(r9)
+            .Combine(r10);
+
+        var combined = customerGroup.Combine(orderGroup);
+    }
 }
 ```
 
 ## Code fix available
-Yes — renames the sync API to the matching async API, such as `MapAsync`, `BindAsync`, `TapAsync`, `EnsureAsync`, or `TapOnFailureAsync`.
+No.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -65,5 +96,5 @@ dotnet_diagnostic.TRLS014.severity = none
 ```
 
 > [!TIP]
-> If the callback does async work, move to the matching async API immediately instead of returning a `Task` from the sync overload.
+> Create intermediate value objects or grouped validation results, then combine those smaller units.
 

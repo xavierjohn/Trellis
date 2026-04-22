@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers;
+namespace Trellis.Analyzers;
 
 using System.Collections.Immutable;
 using System.Composition;
@@ -44,7 +44,7 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
         if (memberAccess == null)
             return;
 
-        if (diagnostic.Id != "TRLS006")
+        if (diagnostic.Id != "TRLS003")
             return;
 
         var title = TitleMaybe;

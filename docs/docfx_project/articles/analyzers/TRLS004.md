@@ -1,30 +1,55 @@
-# TRLS004 — *(removed in v2)*
+# TRLS004 — Result is double-wrapped
 
-This analyzer (`UnsafeValueAccessAnalyzer` for `Result<T>.Error`) was deleted in V2.
+- **Severity:** Warning
+- **Category:** Trellis
 
-## Why it was removed
+## What it detects
+Flags declared or inferred `Result<Result<T>>`, and also flags `Result.Ok(existingResult)` or `Result.Fail(existingResult)` when the value is already a `Result<T>`.
 
-In V1, `Result<T>.Error` threw `InvalidOperationException` on a success result. In V2 the property is `Error?` — it returns `null` on success and the failure value (or the `Error.Unexpected("default_initialized")` sentinel for `default(Result<T>)`) otherwise. Reading `.Error` never throws, so the original "unsafe access" framing no longer applies. Genuine misuse (forcing the value with `!` or dereferencing without a null check) is caught natively by C# nullable-reference-type analysis, which is strictly more precise than the deleted analyzer.
+## Why it matters
+Double-wrapped results are awkward to handle and usually mean the pipeline used `Map` where `Bind` was intended.
 
-## Recommended pattern
+> [!WARNING]
+> A nested `Result` is almost never the domain model you actually want. It usually signals a flattened pipeline that never got flattened.
 
-Use ordinary nullable patterns. NRT will warn if you dereference without a guard:
-
+## Bad example
 ```csharp
 using Trellis;
 
-static string Describe(Result<int> result)
+static class Example
 {
-    if (result.Error is { } error)
-        return error switch
-        {
-            Error.NotFound nf            => $"Missing: {nf.Detail}",
-            Error.UnprocessableContent u => $"Invalid: {u.Detail}",
-            _                            => $"Error: {error.Detail}"
-        };
-
-    return result.TryGetValue(out var value) ? value.ToString() : "?";
+    public static Result<Result<int>> Bad() =>
+        Result.Ok(Result.Ok(42));
 }
 ```
 
-`TryGetError` and the `[MemberNotNullWhen(true, nameof(Error))] IsFailure` attribute remain available for flow-typed access.
+## Good example
+```csharp
+using Trellis;
+
+static class Example
+{
+    public static Result<int> Good() =>
+        Result.Ok(42);
+}
+```
+
+## Code fix available
+No.
+
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS004.severity = none
+```
+
+```csharp
+#pragma warning disable TRLS004
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS004
+```
+
+> [!TIP]
+> If the inner expression already returns `Result<T>`, switch to `Bind` or return the inner result directly.
+

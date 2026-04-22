@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
@@ -73,7 +73,7 @@ public static class AnalyzerTestHelper
     /// Stub source code for Trellis types used in analyzer tests.
     /// </summary>
     private const string TrellisStubSource = """
-        #pragma warning disable TRLS029 // stub returns intentional defaults — not subject to TRLS029
+        #pragma warning disable TRLS019 // stub returns intentional defaults — not subject to TRLS019
         namespace Trellis
         {
             using System;

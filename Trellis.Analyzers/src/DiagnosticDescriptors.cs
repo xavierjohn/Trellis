@@ -39,7 +39,7 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase + "TRLS002");
 
     /// <summary>
-    /// TRLS006: Accessing Maybe.Value without checking HasValue.
+    /// TRLS003: Accessing Maybe.Value without checking HasValue.
     /// </summary>
     public static readonly DiagnosticDescriptor UnsafeMaybeValueAccess = new(
         id: TrellisDiagnosticIds.UnsafeMaybeValueAccess,
@@ -50,10 +50,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Maybe.Value throws an InvalidOperationException if the Maybe has no value. " +
                      "Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult.",
-        helpLinkUri: HelpLinkBase + "TRLS006");
+        helpLinkUri: HelpLinkBase + "TRLS003");
 
     /// <summary>
-    /// TRLS008: Result is double-wrapped as Result&lt;Result&lt;T&gt;&gt;.
+    /// TRLS004: Result is double-wrapped as Result&lt;Result&lt;T&gt;&gt;.
     /// </summary>
     public static readonly DiagnosticDescriptor ResultDoubleWrapping = new(
         id: TrellisDiagnosticIds.ResultDoubleWrapping,
@@ -64,10 +64,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Result should not be wrapped inside another Result. This creates Result<Result<T>> which is almost always unintended. " +
                      "If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result.",
-        helpLinkUri: HelpLinkBase + "TRLS008");
+        helpLinkUri: HelpLinkBase + "TRLS004");
 
     /// <summary>
-    /// TRLS009: Blocking on async Result or accessing properties incorrectly.
+    /// TRLS005: Blocking on async Result or accessing properties incorrectly.
     /// </summary>
     public static readonly DiagnosticDescriptor AsyncResultMisuse = new(
         id: TrellisDiagnosticIds.AsyncResultMisuse,
@@ -78,10 +78,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Task<Result<T>> should be awaited, not blocked with .Result or .Wait(). " +
                      "Blocking can cause deadlocks and prevents proper async execution. Use await instead.",
-        helpLinkUri: HelpLinkBase + "TRLS009");
+        helpLinkUri: HelpLinkBase + "TRLS005");
 
     /// <summary>
-    /// TRLS010: Using Error base class directly instead of specific error types.
+    /// TRLS006: Using Error base class directly instead of specific error types.
     /// </summary>
     public static readonly DiagnosticDescriptor UseSpecificErrorType = new(
         id: TrellisDiagnosticIds.UseSpecificErrorType,
@@ -92,10 +92,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Using specific error types (ValidationError, NotFoundError, etc.) enables type-safe error handling with MatchError. " +
                      "Avoid instantiating the base Error class directly.",
-        helpLinkUri: HelpLinkBase + "TRLS010");
+        helpLinkUri: HelpLinkBase + "TRLS006");
 
     /// <summary>
-    /// TRLS011: Maybe is double-wrapped as Maybe&lt;Maybe&lt;T&gt;&gt;.
+    /// TRLS007: Maybe is double-wrapped as Maybe&lt;Maybe&lt;T&gt;&gt;.
     /// </summary>
     public static readonly DiagnosticDescriptor MaybeDoubleWrapping = new(
         id: TrellisDiagnosticIds.MaybeDoubleWrapping,
@@ -107,10 +107,10 @@ public static class DiagnosticDescriptors
         description: "Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. " +
                      "Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. " +
                      "Consider converting to Result with ToResult() for better composability.",
-        helpLinkUri: HelpLinkBase + "TRLS011");
+        helpLinkUri: HelpLinkBase + "TRLS007");
 
     /// <summary>
-    /// TRLS012: Consider using Result.Combine for multiple Result checks.
+    /// TRLS008: Consider using Result.Combine for multiple Result checks.
     /// </summary>
     public static readonly DiagnosticDescriptor UseResultCombine = new(
         id: TrellisDiagnosticIds.UseResultCombine,
@@ -121,10 +121,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach " +
                      "than manually checking IsSuccess on each result.",
-        helpLinkUri: HelpLinkBase + "TRLS012");
+        helpLinkUri: HelpLinkBase + "TRLS008");
 
     /// <summary>
-    /// TRLS014: Using async lambda with synchronous Map/Bind instead of async variant.
+    /// TRLS009: Using async lambda with synchronous Map/Bind instead of async variant.
     /// </summary>
     public static readonly DiagnosticDescriptor UseAsyncMethodVariant = new(
         id: TrellisDiagnosticIds.UseAsyncMethodVariant,
@@ -135,10 +135,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) " +
                      "to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited.",
-        helpLinkUri: HelpLinkBase + "TRLS014");
+        helpLinkUri: HelpLinkBase + "TRLS009");
 
     /// <summary>
-    /// TRLS015: Throwing exception inside Result chain instead of returning failure.
+    /// TRLS010: Throwing exception inside Result chain instead of returning failure.
     /// </summary>
     public static readonly DiagnosticDescriptor ThrowInResultChain = new(
         id: TrellisDiagnosticIds.ThrowInResultChain,
@@ -149,10 +149,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. " +
                      "Return Result.Fail<T>() to signal errors and keep the error on the failure track.",
-        helpLinkUri: HelpLinkBase + "TRLS015");
+        helpLinkUri: HelpLinkBase + "TRLS010");
 
     /// <summary>
-    /// TRLS016: Empty or missing error message.
+    /// TRLS011: Empty or missing error message.
     /// </summary>
     public static readonly DiagnosticDescriptor EmptyErrorMessage = new(
         id: TrellisDiagnosticIds.EmptyErrorMessage,
@@ -163,10 +163,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Error messages should provide context for debugging and user feedback. " +
                      "Empty error messages make it difficult to diagnose issues.",
-        helpLinkUri: HelpLinkBase + "TRLS016");
+        helpLinkUri: HelpLinkBase + "TRLS011");
 
     /// <summary>
-    /// TRLS017: Comparing Result or Maybe to null.
+    /// TRLS012: Comparing Result or Maybe to null.
     /// </summary>
     public static readonly DiagnosticDescriptor ComparingToNull = new(
         id: TrellisDiagnosticIds.ComparingToNull,
@@ -177,10 +177,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Result<T> and Maybe<T> are structs and cannot be null. " +
                      "Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe.",
-        helpLinkUri: HelpLinkBase + "TRLS017");
+        helpLinkUri: HelpLinkBase + "TRLS012");
 
     /// <summary>
-    /// TRLS018: Using <c>Maybe&lt;T&gt;.Value</c> in LINQ without checking HasValue.
+    /// TRLS013: Using <c>Maybe&lt;T&gt;.Value</c> in LINQ without checking HasValue.
     /// </summary>
     public static readonly DiagnosticDescriptor UnsafeValueInLinq = new(
         id: TrellisDiagnosticIds.UnsafeMaybeValueInLinq,
@@ -191,10 +191,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "When using LINQ on collections of Maybe<T>, filter by HasValue first, " +
                      "or use Select with Match to safely extract values.",
-        helpLinkUri: HelpLinkBase + "TRLS018");
+        helpLinkUri: HelpLinkBase + "TRLS013");
 
     /// <summary>
-    /// TRLS019: Combine chain exceeds maximum supported tuple size.
+    /// TRLS014: Combine chain exceeds maximum supported tuple size.
     /// </summary>
     public static readonly DiagnosticDescriptor CombineChainTooLong = new(
         id: TrellisDiagnosticIds.CombineChainTooLong,
@@ -205,10 +205,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. " +
                      "Group related fields into intermediate value objects or sub-results, then combine those groups.",
-        helpLinkUri: HelpLinkBase + "TRLS019");
+        helpLinkUri: HelpLinkBase + "TRLS014");
 
     /// <summary>
-    /// TRLS020: Use SaveChangesResultAsync instead of SaveChangesAsync.
+    /// TRLS015: Use SaveChangesResultAsync instead of SaveChangesAsync.
     /// </summary>
     public static readonly DiagnosticDescriptor UseSaveChangesResult = new(
         id: TrellisDiagnosticIds.UseSaveChangesResult,
@@ -219,10 +219,10 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
                      "Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result) instead.",
-        helpLinkUri: HelpLinkBase + "TRLS020");
+        helpLinkUri: HelpLinkBase + "TRLS015");
 
     /// <summary>
-    /// TRLS021: HasIndex references a Maybe&lt;T&gt; property.
+    /// TRLS016: HasIndex references a Maybe&lt;T&gt; property.
     /// </summary>
     public static readonly DiagnosticDescriptor HasIndexMaybeProperty = new(
         id: TrellisDiagnosticIds.HasIndexMaybeProperty,
@@ -236,10 +236,10 @@ public static class DiagnosticDescriptors
                  "Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. " +
                  "If needed, you can also use string-based HasIndex with the storage member name directly. " +
                  "Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex(\"Status\", \"_submittedAt\").",
-        helpLinkUri: HelpLinkBase + "TRLS021");
+        helpLinkUri: HelpLinkBase + "TRLS016");
 
     /// <summary>
-    /// TRLS022: Wrong attribute namespace — System.ComponentModel.DataAnnotations instead of Trellis.
+    /// TRLS017: Wrong attribute namespace — System.ComponentModel.DataAnnotations instead of Trellis.
     /// </summary>
     public static readonly DiagnosticDescriptor WrongAttributeNamespace = new(
         id: TrellisDiagnosticIds.WrongAttributeNamespace,
@@ -252,10 +252,10 @@ public static class DiagnosticDescriptors
                  "Using the wrong namespace compiles silently but the Trellis source generator ignores them, " +
                  "resulting in value objects without the expected validation constraints. " +
                  "Use the Trellis versions (namespace Trellis) instead.",
-        helpLinkUri: HelpLinkBase + "TRLS022");
+        helpLinkUri: HelpLinkBase + "TRLS017");
 
     /// <summary>
-    /// TRLS024: Result&lt;T&gt; deconstruction reads the value slot without a success/error gate.
+    /// TRLS018: Result&lt;T&gt; deconstruction reads the value slot without a success/error gate.
     /// </summary>
     public static readonly DiagnosticDescriptor UnsafeResultDeconstruction = new(
         id: TrellisDiagnosticIds.UnsafeResultDeconstruction,
@@ -267,10 +267,10 @@ public static class DiagnosticDescriptors
         description: "Deconstructing Result<T> as 'var (_, value, _) = result;' (or any tuple form) returns default(T) when the result is a failure. " +
                      "For struct values like int/Guid this silently propagates a fake value rather than surfacing the error. " +
                      "Either capture the success/error component and gate the value read with an if-check, or use Match/IsSuccess/TryGetValue instead.",
-        helpLinkUri: HelpLinkBase + "TRLS024");
+        helpLinkUri: HelpLinkBase + "TRLS018");
 
     /// <summary>
-    /// TRLS029: Explicit default(Result), default(Result&lt;T&gt;), or default(Maybe&lt;T&gt;) at a use site.
+    /// TRLS019: Explicit default(Result), default(Result&lt;T&gt;), or default(Maybe&lt;T&gt;) at a use site.
     /// </summary>
     public static readonly DiagnosticDescriptor DefaultResultOrMaybe = new(
         id: TrellisDiagnosticIds.DefaultResultOrMaybe,
@@ -283,7 +283,7 @@ public static class DiagnosticDescriptors
                      "the Error.Unexpected(\"default_initialized\") sentinel — never a silent success. " +
                      "default(Maybe<T>) equals Maybe<T>.None but the explicit literal obscures intent. " +
                      "Always construct via Result.Ok(...)/Result.Fail(...) or Maybe<T>.None / Maybe.From(...). " +
-                     "Suppress with [SuppressMessage(\"Trellis\", \"TRLS029\")] or '#pragma warning disable TRLS029' " +
+                     "Suppress with [SuppressMessage(\"Trellis\", \"TRLS019\")] or '#pragma warning disable TRLS019' " +
                      "for sanctioned sentinel/test-helper sites.",
-        helpLinkUri: HelpLinkBase + "TRLS029");
+        helpLinkUri: HelpLinkBase + "TRLS019");
 }

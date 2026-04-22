@@ -1,63 +1,55 @@
-# TRLS018 — Unsafe access to Maybe.Value in LINQ expression
+# TRLS018 — Unsafe Result&lt;T&gt; deconstruction
 
-- **Severity:** Warning
-- **Category:** Trellis
+**Category:** Usage — Result safety
+**Severity:** Warning
+**Enabled by default:** Yes
 
-## What it detects
-Flags `.Value` access on a `Maybe<T>` LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier `Where(...)` guard proves the value is safe.
+## What it flags
 
-The Result-side equivalent was removed in V2 along with `Result<T>.Value` (see [TRLS003](TRLS003.md)). This rule now applies only to `Maybe<T>`.
+`Result<T>` deconstruction that reads the value slot without gating on the success/error component. The value slot is only meaningful when the Result is successful; reading it on a failed Result yields `default(T)` silently.
 
-## Why it matters
-Collection pipelines make it easy to forget that some items may be `Maybe<T>.None`. One unsafe `.Value` access can throw for the whole query.
-
-> [!WARNING]
-> The analyzer understands guard chains like `.Where(x => x.HasValue)`. Without that filter, `.Value` is treated as unsafe.
-
-## Bad example
 ```csharp
-using System.Collections.Generic;
-using System.Linq;
-using Trellis;
+// ❌ TRLS018
+var (value, _) = GetOrderAsync(id).Result;   // value is default if GetOrderAsync failed
+Console.WriteLine(value.Number);
 
-static class Example
+// ✅ No warning
+var result = await GetOrderAsync(id);
+if (result.IsSuccess)
 {
-    public static List<int> Bad(IEnumerable<Maybe<int>> values) =>
-        values.Select(maybe => maybe.Value).ToList();
+    var (value, _) = result;
+    Console.WriteLine(value.Number);
 }
+
+// ✅ Preferred — use Match / TryGetValue / Unwrap
+result.Match(
+    onSuccess: order => Console.WriteLine(order.Number),
+    onFailure: error => Console.WriteLine(error.Code));
 ```
 
-## Good example
-```csharp
-using System.Collections.Generic;
-using System.Linq;
-using Trellis;
+## Why
 
-static class Example
-{
-    public static List<int> Good(IEnumerable<Maybe<int>> values) =>
-        values
-            .Where(maybe => maybe.HasValue)
-            .Select(maybe => maybe.Value)
-            .ToList();
-}
-```
+`Result<T>` is a discriminated union. The deconstruction pattern exposes both slots as tuple elements for ergonomics, but consuming the value slot without a success check defeats the whole point of the Result abstraction — the failure is silently swallowed into `default(T)` and subsequent code operates on a value that may never have existed.
 
-## Code fix available
-No.
+## How to fix
 
-## Configuration
-Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+Use one of:
 
-```ini
-dotnet_diagnostic.TRLS018.severity = none
-```
+- `if (result.IsSuccess)` gate before deconstructing.
+- `result.TryGetValue(out var value)` — returns false on failure.
+- `result.Match(onSuccess, onFailure)` — exhaustive branching.
+- `result.Unwrap()` — throws on failure (test helpers only).
+
+## Suppressing
+
+At a sanctioned site (e.g. a test that has already asserted success):
 
 ```csharp
-#pragma warning disable TRLS018
-// Intentional: documented exception or test-only pattern.
-#pragma warning restore TRLS018
+[SuppressMessage("Trellis", TrellisDiagnosticIds.UnsafeResultDeconstruction,
+    Justification = "Success already asserted above.")]
 ```
 
-> [!TIP]
-> Filter first, then project. If you need both present and absent paths, use `Match` inside the projection instead of `.Value`.
+## See also
+
+- TRLS003 — Unsafe `Maybe.Value` access
+- TRLS013 — Unsafe `Maybe.Value` in LINQ

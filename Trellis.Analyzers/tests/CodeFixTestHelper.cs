@@ -86,7 +86,7 @@ public static class CodeFixTestHelper
     /// Stub source code for Trellis types used in code fix tests.
     /// </summary>
     private const string TrellisStubSource = """
-        #pragma warning disable TRLS006 // Unsafe Maybe.Value access
+        #pragma warning disable TRLS003 // Unsafe Maybe.Value access
         namespace Trellis
         {
             using System;
@@ -256,6 +256,6 @@ public static class CodeFixTestHelper
                 public void NotBeNull() { }
             }
         }
-        #pragma warning restore TRLS006
+        #pragma warning restore TRLS003
         """;
 }

@@ -3,7 +3,7 @@ namespace Trellis.Analyzers.Tests;
 using Xunit;
 
 /// <summary>
-/// Tests for ThrowInResultChainAnalyzer (TRLS015).
+/// Tests for ThrowInResultChainAnalyzer (TRLS010).
 /// Verifies that throw statements inside Result chain lambdas are detected.
 /// </summary>
 public class ThrowInResultChainAnalyzerTests

@@ -3,7 +3,7 @@ namespace Trellis.Analyzers.Tests;
 using Xunit;
 
 /// <summary>
-/// Tests for <see cref="UnsafeValueInLinqAnalyzer"/> (TRLS018 — Maybe.Value in LINQ).
+/// Tests for <see cref="UnsafeValueInLinqAnalyzer"/> (TRLS013 — Maybe.Value in LINQ).
 /// The Result-side path was removed in v2 along with <c>Result&lt;T&gt;.Value</c>.
 /// </summary>
 public class UnsafeValueInLinqAnalyzerTests

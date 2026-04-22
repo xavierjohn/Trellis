@@ -1,55 +1,58 @@
-# TRLS015 — Don't throw exceptions in Result chains
+# TRLS015 — Use SaveChangesResultAsync instead of SaveChangesAsync
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags `throw` statements and `throw` expressions inside lambdas passed to Trellis chain methods such as `Bind`, `Map`, `Tap`, `Ensure`, and their async and failure-track variants.
+Flags direct `DbContext.SaveChanges()` and `DbContext.SaveChangesAsync()` calls when `Trellis.EntityFrameworkCore` is referenced.
 
 ## Why it matters
-Throwing inside a Result pipeline bypasses the railway and turns a modeled failure back into an exception.
+Raw EF Core save calls throw exceptions on database failures. Trellis save helpers keep persistence inside the `Result` pipeline.
 
 > [!WARNING]
-> This rule also applies to failure-track APIs like `TapOnFailure`, `MapOnFailure`, `RecoverOnFailure`, and `DebugOnFailure`.
+> The analyzer catches both sync and async saves. The code fix chooses `SaveChangesResultAsync` when the count is used and `SaveChangesResultUnitAsync` when it is discarded.
 
 ## Bad example
 ```csharp
-using System;
-using Trellis;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 static class Example
 {
-    public static Result<string> Bad(string value) =>
-        Result.Ok(value).Map(text =>
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                throw new InvalidOperationException("Value is required.");
+    public static async Task SaveAsync(AppDbContext db, CancellationToken ct)
+    {
+        await db.SaveChangesAsync(ct);
+    }
+}
 
-            return text.Trim();
-        });
+sealed class AppDbContext : DbContext
+{
 }
 ```
 
 ## Good example
 ```csharp
-using System;
-using Trellis;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Trellis.EntityFrameworkCore;
 
 static class Example
 {
-    public static Result<string> Good(string value) =>
-        Result.Ok(value).Bind(text =>
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Value is required." })));
+    public static async Task SaveAsync(AppDbContext db, CancellationToken ct)
+    {
+        await db.SaveChangesResultUnitAsync(ct);
+    }
+}
 
-            return Result.Ok(text.Trim());
-        });
+sealed class AppDbContext : DbContext
+{
 }
 ```
 
 ## Code fix available
-No.
+Yes — replaces `SaveChanges` or `SaveChangesAsync` with `SaveChangesResultAsync` or `SaveChangesResultUnitAsync`, and can add `await`, `async`, and missing `using` directives.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -65,5 +68,5 @@ dotnet_diagnostic.TRLS015.severity = none
 ```
 
 > [!TIP]
-> Return `Result.Fail<T>(...)` when the callback discovers a business or validation problem. Reserve exceptions for truly exceptional situations.
+> Add `using Trellis.EntityFrameworkCore;` and keep saves inside your Trellis pipeline so persistence errors become `Result` values.
 

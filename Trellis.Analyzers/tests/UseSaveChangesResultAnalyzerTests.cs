@@ -1,9 +1,9 @@
-﻿namespace Trellis.Analyzers.Tests;
+namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
 /// <summary>
-/// Tests for UseSaveChangesResultAnalyzer (TRLS020).
+/// Tests for UseSaveChangesResultAnalyzer (TRLS015).
 /// Verifies that direct SaveChangesAsync/SaveChanges calls on DbContext produce a warning.
 /// </summary>
 public class UseSaveChangesResultAnalyzerTests

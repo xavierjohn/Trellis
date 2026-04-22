@@ -1,36 +1,50 @@
-# TRLS010 — Use specific error type instead of base Error class
+# TRLS010 — Don't throw exceptions in Result chains
 
-- **Severity:** Info
+- **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags direct construction of the base `Error` type, including implicit `new(...)`, when the created type is exactly Trellis `Error`.
+Flags `throw` statements and `throw` expressions inside lambdas passed to Trellis chain methods such as `Bind`, `Map`, `Tap`, `Ensure`, and their async and failure-track variants.
 
 ## Why it matters
-Specific error types such as validation, not found, and conflict are easier to match, log, and translate at boundaries.
+Throwing inside a Result pipeline bypasses the railway and turns a modeled failure back into an exception.
 
 > [!WARNING]
-> A plain `Error` works, but it throws away domain meaning that Trellis error factories already encode for you.
+> This rule also applies to failure-track APIs like `TapOnFailure`, `MapOnFailure`, `RecoverOnFailure`, and `DebugOnFailure`.
 
 ## Bad example
 ```csharp
+using System;
 using Trellis;
 
 static class Example
 {
-    public static Result<int> Bad() =>
-        Result.Fail<int>(new Error("Unknown customer", "customer.not_found"));
+    public static Result<string> Bad(string value) =>
+        Result.Ok(value).Map(text =>
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                throw new InvalidOperationException("Value is required.");
+
+            return text.Trim();
+        });
 }
 ```
 
 ## Good example
 ```csharp
+using System;
 using Trellis;
 
 static class Example
 {
-    public static Result<int> Good() =>
-        Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Unknown customer" });
+    public static Result<string> Good(string value) =>
+        Result.Ok(value).Bind(text =>
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return Result.Fail<string>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Value is required." })));
+
+            return Result.Ok(text.Trim());
+        });
 }
 ```
 
@@ -51,5 +65,5 @@ dotnet_diagnostic.TRLS010.severity = none
 ```
 
 > [!TIP]
-> Reach for `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }`, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and similar factories before constructing `Error` yourself.
+> Return `Result.Fail<T>(...)` when the callback discovers a business or validation problem. Reserve exceptions for truly exceptional situations.
 

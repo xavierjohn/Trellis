@@ -1,16 +1,16 @@
-# TRLS011 — Maybe is double-wrapped
+# TRLS011 — Error message should not be empty
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags declared `Maybe<Maybe<T>>` in variables, properties, method return types, and parameters.
+Flags empty or whitespace-only messages passed to Trellis error factory methods such as `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }`, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, `new Error.Unauthorized() { Detail = ... }`, `new Error.Forbidden("policy.id") { Detail = ... }`, and `new Error.InternalServerError("fault-id") { Detail = ... }`.
 
 ## Why it matters
-Double optionality is usually a modeling smell. Consumers now have to unwrap presence twice before they can use the value.
+Empty error messages make logs, diagnostics, and HTTP responses much harder to understand.
 
 > [!WARNING]
-> Nested `Maybe` often appears after using `Map` with a transformation that already returns `Maybe<T>`.
+> `string.Empty`, `""`, whitespace-only literals, and interpolated strings that contain only whitespace all trigger this rule.
 
 ## Bad example
 ```csharp
@@ -18,8 +18,8 @@ using Trellis;
 
 static class Example
 {
-    public static Maybe<Maybe<int>> Bad() =>
-        Maybe.From(Maybe.From(42));
+    public static Result<int> Bad(string quantity) =>
+        Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "" })));
 }
 ```
 
@@ -29,8 +29,8 @@ using Trellis;
 
 static class Example
 {
-    public static Maybe<int> Good() =>
-        Maybe.From(42);
+    public static Result<int> Good(string quantity) =>
+        Result.Fail<int>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity must be a whole number." })));
 }
 ```
 
@@ -51,5 +51,5 @@ dotnet_diagnostic.TRLS011.severity = none
 ```
 
 > [!TIP]
-> If the inner computation can fail with details, consider `Result<T>` instead. Otherwise return a single `Maybe<T>`.
+> Write the message for the next person who will debug the failure. A short, specific sentence is enough.
 

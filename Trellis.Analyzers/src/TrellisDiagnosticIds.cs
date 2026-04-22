@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 /// <summary>
 /// Canonical string constants for every Trellis diagnostic ID emitted by the
@@ -14,12 +14,14 @@
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS029</c> range are emitted by the
+/// IDs in the <c>TRLS001</c>–<c>TRLS019</c> range are emitted by the
 /// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS038</c>
 /// range are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c> and <c>Trellis.EntityFrameworkCore.Generator</c>).
-/// Removed-rule tombstones live under
-/// <c>docs/docfx_project/articles/analyzers/TRLS00X.md</c>.
+/// Analyzer IDs were renumbered to be contiguous in v3-alpha; prior IDs
+/// (former <c>TRLS006/008/009/010/011/012/014/015/016/017/018/019/020/021/022/024/029</c>)
+/// are now <c>TRLS003</c>–<c>TRLS019</c>. Consumers suppressing by numeric ID should
+/// prefer these constants rather than string literals.
 /// </para>
 /// </remarks>
 public static class TrellisDiagnosticIds
@@ -32,56 +34,56 @@ public static class TrellisDiagnosticIds
     /// <summary>TRLS002 — Use <c>Bind</c> instead of <c>Map</c> when lambda returns <c>Result</c>.</summary>
     public const string UseBindInsteadOfMap = "TRLS002";
 
-    /// <summary>TRLS006 — Unsafe access to <c>Maybe.Value</c>.</summary>
-    public const string UnsafeMaybeValueAccess = "TRLS006";
+    /// <summary>TRLS003 — Unsafe access to <c>Maybe.Value</c>.</summary>
+    public const string UnsafeMaybeValueAccess = "TRLS003";
 
-    /// <summary>TRLS008 — <c>Result</c> is double-wrapped.</summary>
-    public const string ResultDoubleWrapping = "TRLS008";
+    /// <summary>TRLS004 — <c>Result</c> is double-wrapped.</summary>
+    public const string ResultDoubleWrapping = "TRLS004";
 
-    /// <summary>TRLS009 — Incorrect async <c>Result</c> usage.</summary>
-    public const string AsyncResultMisuse = "TRLS009";
+    /// <summary>TRLS005 — Incorrect async <c>Result</c> usage.</summary>
+    public const string AsyncResultMisuse = "TRLS005";
 
-    /// <summary>TRLS010 — Use specific error type instead of base <c>Error</c> class.</summary>
-    public const string UseSpecificErrorType = "TRLS010";
+    /// <summary>TRLS006 — Use specific error type instead of base <c>Error</c> class.</summary>
+    public const string UseSpecificErrorType = "TRLS006";
 
-    /// <summary>TRLS011 — <c>Maybe</c> is double-wrapped.</summary>
-    public const string MaybeDoubleWrapping = "TRLS011";
+    /// <summary>TRLS007 — <c>Maybe</c> is double-wrapped.</summary>
+    public const string MaybeDoubleWrapping = "TRLS007";
 
-    /// <summary>TRLS012 — Consider using <c>Result.Combine</c>.</summary>
-    public const string UseResultCombine = "TRLS012";
+    /// <summary>TRLS008 — Consider using <c>Result.Combine</c>.</summary>
+    public const string UseResultCombine = "TRLS008";
 
-    /// <summary>TRLS014 — Use async method variant for async lambda.</summary>
-    public const string UseAsyncMethodVariant = "TRLS014";
+    /// <summary>TRLS009 — Use async method variant for async lambda.</summary>
+    public const string UseAsyncMethodVariant = "TRLS009";
 
-    /// <summary>TRLS015 — Don't throw exceptions in <c>Result</c> chains.</summary>
-    public const string ThrowInResultChain = "TRLS015";
+    /// <summary>TRLS010 — Don't throw exceptions in <c>Result</c> chains.</summary>
+    public const string ThrowInResultChain = "TRLS010";
 
-    /// <summary>TRLS016 — Error message should not be empty.</summary>
-    public const string EmptyErrorMessage = "TRLS016";
+    /// <summary>TRLS011 — Error message should not be empty.</summary>
+    public const string EmptyErrorMessage = "TRLS011";
 
-    /// <summary>TRLS017 — Don't compare <c>Result</c> or <c>Maybe</c> to null.</summary>
-    public const string ComparingToNull = "TRLS017";
+    /// <summary>TRLS012 — Don't compare <c>Result</c> or <c>Maybe</c> to null.</summary>
+    public const string ComparingToNull = "TRLS012";
 
-    /// <summary>TRLS018 — Unsafe access to <c>Maybe.Value</c> in LINQ expression.</summary>
-    public const string UnsafeMaybeValueInLinq = "TRLS018";
+    /// <summary>TRLS013 — Unsafe access to <c>Maybe.Value</c> in LINQ expression.</summary>
+    public const string UnsafeMaybeValueInLinq = "TRLS013";
 
-    /// <summary>TRLS019 — Combine chain exceeds maximum supported tuple size.</summary>
-    public const string CombineChainTooLong = "TRLS019";
+    /// <summary>TRLS014 — Combine chain exceeds maximum supported tuple size.</summary>
+    public const string CombineChainTooLong = "TRLS014";
 
-    /// <summary>TRLS020 — Use <c>SaveChangesResultAsync</c> instead of <c>SaveChangesAsync</c>.</summary>
-    public const string UseSaveChangesResult = "TRLS020";
+    /// <summary>TRLS015 — Use <c>SaveChangesResultAsync</c> instead of <c>SaveChangesAsync</c>.</summary>
+    public const string UseSaveChangesResult = "TRLS015";
 
-    /// <summary>TRLS021 — <c>HasIndex</c> references a <c>Maybe&lt;T&gt;</c> property.</summary>
-    public const string HasIndexMaybeProperty = "TRLS021";
+    /// <summary>TRLS016 — <c>HasIndex</c> references a <c>Maybe&lt;T&gt;</c> property.</summary>
+    public const string HasIndexMaybeProperty = "TRLS016";
 
-    /// <summary>TRLS022 — Wrong <c>[StringLength]</c> or <c>[Range]</c> attribute namespace.</summary>
-    public const string WrongAttributeNamespace = "TRLS022";
+    /// <summary>TRLS017 — Wrong <c>[StringLength]</c> or <c>[Range]</c> attribute namespace.</summary>
+    public const string WrongAttributeNamespace = "TRLS017";
 
-    /// <summary>TRLS024 — <c>Result&lt;T&gt;</c> deconstruction reads value without success gate.</summary>
-    public const string UnsafeResultDeconstruction = "TRLS024";
+    /// <summary>TRLS018 — <c>Result&lt;T&gt;</c> deconstruction reads value without success gate.</summary>
+    public const string UnsafeResultDeconstruction = "TRLS018";
 
-    /// <summary>TRLS029 — Avoid <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and <c>default(Maybe&lt;T&gt;)</c>.</summary>
-    public const string DefaultResultOrMaybe = "TRLS029";
+    /// <summary>TRLS019 — Avoid <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and <c>default(Maybe&lt;T&gt;)</c>.</summary>
+    public const string DefaultResultOrMaybe = "TRLS019";
 
     // ---- Generator IDs (Trellis.Core.Generator / Trellis.EntityFrameworkCore.Generator) ----
     // Renumbered from TRLSGEN### to TRLS### in v2 (see ADR-002 §3.5). Mapping:

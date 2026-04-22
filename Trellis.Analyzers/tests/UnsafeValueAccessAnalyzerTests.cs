@@ -3,7 +3,7 @@ namespace Trellis.Analyzers.Tests;
 using Xunit;
 
 /// <summary>
-/// Tests for <see cref="UnsafeValueAccessAnalyzer"/> (TRLS006 — Maybe.Value).
+/// Tests for <see cref="UnsafeValueAccessAnalyzer"/> (TRLS003 — Maybe.Value).
 /// The Result-side rules (TRLS003, TRLS004) were removed in v2: <c>Result&lt;T&gt;.Value</c>
 /// no longer exists, and <c>Result&lt;T&gt;.Error</c> is nullable so NRT handles unsafe access.
 /// </summary>
@@ -139,7 +139,7 @@ public class UnsafeValueAccessAnalyzerTests
         await test.RunAsync();
     }
 
-    #region Assignment guard — TRLS006
+    #region Assignment guard — TRLS003
 
     [Fact]
     public async Task AssignmentGuard_MaybeFromThenValue_NoDiagnostic()
@@ -241,7 +241,7 @@ public class UnsafeValueAccessAnalyzerTests
 
     #endregion
 
-    #region Expression tree short-circuit — TRLS006
+    #region Expression tree short-circuit — TRLS003
 
     [Fact]
     public async Task ExpressionTreeShortCircuit_HasValueAndValue_NoDiagnostic()

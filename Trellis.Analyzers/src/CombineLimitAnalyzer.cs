@@ -1,4 +1,4 @@
-﻿namespace Trellis.Analyzers;
+namespace Trellis.Analyzers;
 
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
 /// Analyzer that detects Combine chains exceeding the maximum supported tuple size (9 elements).
-/// When a Combine call would produce a 10+ element tuple, reports TRLS019 with guidance
+/// When a Combine call would produce a 10+ element tuple, reports TRLS014 with guidance
 /// to refactor into logical sub-groups.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]

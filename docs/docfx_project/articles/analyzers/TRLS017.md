@@ -1,25 +1,24 @@
-# TRLS017 — Don't compare Result or Maybe to null
+# TRLS017 — Wrong [StringLength] or [Range] attribute namespace
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags `== null`, `!= null`, `is null`, and `is not null` when the checked value is a Trellis `Result<T>` or `Maybe<T>`.
+Flags `System.ComponentModel.DataAnnotations.StringLengthAttribute` and `RangeAttribute` when they are applied to Trellis value-object base types.
 
 ## Why it matters
-These are structs. Presence and success are represented by state members such as `HasValue`, `HasNoValue`, `IsSuccess`, and `IsFailure`, not by nullability.
+The code compiles, but the Trellis source generator only understands the Trellis versions of these attributes. Your intended validation rules never make it into the generated type.
 
 > [!WARNING]
-> A null check can look harmless, but it asks the wrong question and hides the actual success or optionality rule.
+> This is a namespace problem, not a syntax problem. The attribute name looks right, but the generator ignores the DataAnnotations version.
 
 ## Bad example
 ```csharp
 using Trellis;
 
-static class Example
+[System.ComponentModel.DataAnnotations.StringLength(50)]
+public sealed partial class FirstName : RequiredString<FirstName>
 {
-    public static string Bad(Maybe<string> nickname) =>
-        nickname == null ? "Anonymous" : nickname.Value;
 }
 ```
 
@@ -27,10 +26,9 @@ static class Example
 ```csharp
 using Trellis;
 
-static class Example
+[StringLength(50)]
+public sealed partial class FirstName : RequiredString<FirstName>
 {
-    public static string Good(Maybe<string> nickname) =>
-        nickname.HasNoValue ? "Anonymous" : nickname.Value;
 }
 ```
 
@@ -51,5 +49,5 @@ dotnet_diagnostic.TRLS017.severity = none
 ```
 
 > [!TIP]
-> Check the state you actually care about: `HasValue` for `Maybe<T>`, `IsSuccess` or `IsFailure` for `Result<T>`.
+> Import or fully qualify `Trellis.StringLength` and `Trellis.Range` on Trellis value objects.
 

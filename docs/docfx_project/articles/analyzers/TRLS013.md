@@ -1,23 +1,63 @@
-# TRLS013 — *(removed in v2)*
+# TRLS013 — Unsafe access to Maybe.Value in LINQ expression
 
-This analyzer (`TernaryValueOrDefaultAnalyzer`) and its code fix (`UseFunctionalValueOrDefaultCodeFixProvider`) were deleted in V2.
+- **Severity:** Warning
+- **Category:** Trellis
 
-## Why it was removed
+## What it detects
+Flags `.Value` access on a `Maybe<T>` LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier `Where(...)` guard proves the value is safe.
 
-The pattern the rule targeted — `result.IsSuccess ? result.Value : fallback` — cannot compile in V2 because `Result<T>.Value` was removed (see [TRLS003](TRLS003.md)). There is no surface form left for the analyzer to flag.
+The Result-side equivalent was removed in V2 along with `Result<T>.Value` (see [TRLS003](TRLS003.md)). This rule now applies only to `Maybe<T>`.
 
-## Recommended replacement
+## Why it matters
+Collection pipelines make it easy to forget that some items may be `Maybe<T>.None`. One unsafe `.Value` access can throw for the whole query.
 
-Use `GetValueOrDefault` for value extraction, or `Match` when you also need to react to the failure:
+> [!WARNING]
+> The analyzer understands guard chains like `.Where(x => x.HasValue)`. Without that filter, `.Value` is treated as unsafe.
 
+## Bad example
 ```csharp
+using System.Collections.Generic;
+using System.Linq;
 using Trellis;
 
-static int Pick(Result<int> result, int fallback) =>
-    result.GetValueOrDefault(fallback);
-
-static string Render(Result<int> result) =>
-    result.Match(
-        onSuccess: v => v.ToString(),
-        onFailure: e => e.Detail);
+static class Example
+{
+    public static List<int> Bad(IEnumerable<Maybe<int>> values) =>
+        values.Select(maybe => maybe.Value).ToList();
+}
 ```
+
+## Good example
+```csharp
+using System.Collections.Generic;
+using System.Linq;
+using Trellis;
+
+static class Example
+{
+    public static List<int> Good(IEnumerable<Maybe<int>> values) =>
+        values
+            .Where(maybe => maybe.HasValue)
+            .Select(maybe => maybe.Value)
+            .ToList();
+}
+```
+
+## Code fix available
+No.
+
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS013.severity = none
+```
+
+```csharp
+#pragma warning disable TRLS013
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS013
+```
+
+> [!TIP]
+> Filter first, then project. If you need both present and absent paths, use `Match` inside the projection instead of `.Value`.

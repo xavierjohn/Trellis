@@ -1,30 +1,55 @@
-# TRLS003 — *(removed in v2)*
+# TRLS003 — Unsafe access to Maybe.Value
 
-This analyzer (`UnsafeValueAccessAnalyzer` for `Result<T>.Value`) was deleted in V2.
+- **Severity:** Warning
+- **Category:** Trellis
 
-## Why it was removed
+## What it detects
+Flags `maybe.Value` when the analyzer cannot prove the `Maybe<T>` definitely contains a value.
 
-In V1, `Result<T>.Value` was a property that threw `InvalidOperationException` on a failure result, and TRLS003 flagged unguarded accesses. In V2 the property was removed entirely (see [ADR-002](../../../adr/ADR-002-v2-redesign-plan.md) §3.1 and the `ga-03` commit). `result.Value` no longer compiles, so the analyzer has nothing left to detect.
+## Why it matters
+`Maybe.Value` throws when the instance is empty. That turns optional data into an exception path.
 
-## Recommended replacement
+> [!WARNING]
+> This commonly shows up in DTO mapping, logging, and formatting code where an empty `Maybe<T>` is easy to overlook.
 
-Use `TryGetValue`, `Match`, or deconstruction to extract the success value safely:
-
+## Bad example
 ```csharp
 using Trellis;
 
-static int Render(Result<int> result)
+static class Example
 {
-    if (result.TryGetValue(out var value))
-        return value;
-    return 0;
+    public static string Bad(Maybe<string> nickname) =>
+        nickname.Value.ToUpperInvariant();
 }
-
-// or
-static int RenderViaMatch(Result<int> result) =>
-    result.Match(
-        onSuccess: value => value,
-        onFailure: _ => 0);
 ```
 
-The TRLS006 (`Maybe<T>.Value`) rule is unchanged — `Maybe<T>` still exposes `Value` and still requires a `HasValue` guard.
+## Good example
+```csharp
+using Trellis;
+
+static class Example
+{
+    public static string Good(Maybe<string> nickname) =>
+        nickname.GetValueOrDefault("unknown").ToUpperInvariant();
+}
+```
+
+## Code fix available
+Yes — wraps the current usage in an `if (maybe.HasValue)` guard.
+
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS003.severity = none
+```
+
+```csharp
+#pragma warning disable TRLS003
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS003
+```
+
+> [!TIP]
+> Prefer `GetValueOrDefault`, `TryGetValue`, or a `HasValue` guard when you only need a fallback or a conditional branch.
+

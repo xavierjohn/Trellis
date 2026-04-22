@@ -1,4 +1,4 @@
-﻿namespace Trellis;
+namespace Trellis;
 
 using System;
 using System.Diagnostics;
@@ -18,7 +18,7 @@ using System.Diagnostics;
 /// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success that would hide a programming error.
 /// Always construct via <see cref="Result.Ok{T}(T)"/> or <see cref="Result.Fail{T}(Error)"/>; analyzer
-/// <c>TRLS029</c> flags explicit <c>default(Result&lt;T&gt;)</c> at call sites.
+/// <c>TRLS019</c> flags explicit <c>default(Result&lt;T&gt;)</c> at call sites.
 /// </para>
 /// </remarks>
 /// <example>

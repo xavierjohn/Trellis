@@ -3,7 +3,7 @@ namespace Trellis.Analyzers.Tests;
 using Xunit;
 
 /// <summary>
-/// Tests for UseAsyncMethodVariantCodeFixProvider (TRLS014).
+/// Tests for UseAsyncMethodVariantCodeFixProvider (TRLS009).
 /// Verifies that sync methods are replaced with async variants when lambda is async.
 /// </summary>
 public class UseAsyncMethodVariantCodeFixProviderTests

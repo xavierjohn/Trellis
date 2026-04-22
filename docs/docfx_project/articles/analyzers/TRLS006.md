@@ -1,16 +1,16 @@
-# TRLS006 — Unsafe access to Maybe.Value
+# TRLS006 — Use specific error type instead of base Error class
 
-- **Severity:** Warning
+- **Severity:** Info
 - **Category:** Trellis
 
 ## What it detects
-Flags `maybe.Value` when the analyzer cannot prove the `Maybe<T>` definitely contains a value.
+Flags direct construction of the base `Error` type, including implicit `new(...)`, when the created type is exactly Trellis `Error`.
 
 ## Why it matters
-`Maybe.Value` throws when the instance is empty. That turns optional data into an exception path.
+Specific error types such as validation, not found, and conflict are easier to match, log, and translate at boundaries.
 
 > [!WARNING]
-> This commonly shows up in DTO mapping, logging, and formatting code where an empty `Maybe<T>` is easy to overlook.
+> A plain `Error` works, but it throws away domain meaning that Trellis error factories already encode for you.
 
 ## Bad example
 ```csharp
@@ -18,8 +18,8 @@ using Trellis;
 
 static class Example
 {
-    public static string Bad(Maybe<string> nickname) =>
-        nickname.Value.ToUpperInvariant();
+    public static Result<int> Bad() =>
+        Result.Fail<int>(new Error("Unknown customer", "customer.not_found"));
 }
 ```
 
@@ -29,13 +29,13 @@ using Trellis;
 
 static class Example
 {
-    public static string Good(Maybe<string> nickname) =>
-        nickname.GetValueOrDefault("unknown").ToUpperInvariant();
+    public static Result<int> Good() =>
+        Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Unknown customer" });
 }
 ```
 
 ## Code fix available
-Yes — wraps the current usage in an `if (maybe.HasValue)` guard.
+No.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -51,5 +51,5 @@ dotnet_diagnostic.TRLS006.severity = none
 ```
 
 > [!TIP]
-> Prefer `GetValueOrDefault`, `TryGetValue`, or a `HasValue` guard when you only need a fallback or a conditional branch.
+> Reach for `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }`, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and similar factories before constructing `Error` yourself.
 

@@ -1,26 +1,55 @@
-# TRLS007 — *(removed in v2)*
+# TRLS007 — Maybe is double-wrapped
 
-This analyzer (`TryCreateValueAccessAnalyzer`) and its code fix (`UseCreateInsteadOfTryCreateValueCodeFixProvider`) were deleted in V2.
+- **Severity:** Warning
+- **Category:** Trellis
 
-## Why it was removed
+## What it detects
+Flags declared `Maybe<Maybe<T>>` in variables, properties, method return types, and parameters.
 
-The pattern `SomeValueObject.TryCreate(...).Value` cannot compile in V2: `TryCreate` returns `Result<TValueObject>` and `Result<T>.Value` no longer exists (see [TRLS003](TRLS003.md)). With the offending pattern unrepresentable, the analyzer has nothing to detect.
+## Why it matters
+Double optionality is usually a modeling smell. Consumers now have to unwrap presence twice before they can use the value.
 
-## Recommended replacement
+> [!WARNING]
+> Nested `Maybe` often appears after using `Map` with a transformation that already returns `Maybe<T>`.
 
-If you have a known-good input and want a throwing constructor, call `Create(...)` directly:
-
+## Bad example
 ```csharp
 using Trellis;
 
-var email = EmailAddress.Create("alice@example.com"); // throws InvalidOperationException with the validation detail on bad input
+static class Example
+{
+    public static Maybe<Maybe<int>> Bad() =>
+        Maybe.From(Maybe.From(42));
+}
 ```
 
-If the input might be invalid, handle the `Result` explicitly:
+## Good example
+```csharp
+using Trellis;
+
+static class Example
+{
+    public static Maybe<int> Good() =>
+        Maybe.From(42);
+}
+```
+
+## Code fix available
+No.
+
+## Configuration
+Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+```ini
+dotnet_diagnostic.TRLS007.severity = none
+```
 
 ```csharp
-if (!EmailAddress.TryCreate(rawInput).TryGetValue(out var email))
-    return Result.Fail<Order>(new Error.UnprocessableContent("email"));
+#pragma warning disable TRLS007
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS007
 ```
 
-Or compose with `Bind`/`Map` so the failure stays on the failure track.
+> [!TIP]
+> If the inner computation can fail with details, consider `Result<T>` instead. Otherwise return a single `Maybe<T>`.
+
