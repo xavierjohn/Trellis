@@ -13,17 +13,8 @@ using Trellis.Asp;
 /// Vary path on <c>TrellisEmptyResult</c>, the standalone Error path, and Page&lt;T&gt; success +
 /// failure paths.
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public sealed class HttpResponseExtensionsExtraTests : IDisposable
+public sealed class HttpResponseExtensionsExtraTests
 {
-    public HttpResponseExtensionsExtraTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private sealed record Thing(int Id, string Name);
 
     private static DefaultHttpContext NewContext()

@@ -8,17 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
 
-[Collection("TrellisAspOptionsState")]
-public sealed class ToHttpResponseTests : IDisposable
+public sealed class ToHttpResponseTests
 {
-    public ToHttpResponseTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private sealed record Todo(int Id, string Title, string ETag);
 
     private sealed record TodoResponse(int Id, string Title)

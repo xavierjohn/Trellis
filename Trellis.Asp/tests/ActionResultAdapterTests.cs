@@ -14,17 +14,8 @@ using Trellis.Asp;
 /// Coverage for the async overloads of <see cref="ActionResultAdapterExtensions.AsActionResultAsync{T}"/>
 /// (Task and ValueTask), plus the null-argument guards.
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public sealed class ActionResultAdapterTests : IDisposable
+public sealed class ActionResultAdapterTests
 {
-    public ActionResultAdapterTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private sealed record Thing(int Id);
 
     private static DefaultHttpContext NewContext()

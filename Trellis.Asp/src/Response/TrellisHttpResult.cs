@@ -61,7 +61,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
         return _result.IsSuccess
             ? ExecuteSuccessAsync(httpContext)
-            : ResponseFailureWriter.WriteAsync(httpContext, _result.Error!, ResolveErrorStatusCode(_result.Error!, _options));
+            : ResponseFailureWriter.WriteAsync(httpContext, _result.Error!, ResolveErrorStatusCode(httpContext, _result.Error!, _options));
     }
 
     private Task ExecuteSuccessAsync(HttpContext httpContext)
@@ -91,7 +91,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
                         var pf = new Error.PreconditionFailed(new ResourceRef(typeof(TDomain).Name, null), failedKind ?? PreconditionKind.IfMatch)
                         { Detail = "A conditional request header evaluated to false." };
 
-                        return ResponseFailureWriter.WriteAsync(httpContext, pf, ResolveErrorStatusCode(pf, _options));
+                        return ResponseFailureWriter.WriteAsync(httpContext, pf, ResolveErrorStatusCode(httpContext, pf, _options));
                     }
                 }
             }
@@ -102,7 +102,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         {
             var (from, to, total, error) = rangeOutcome.Value;
             if (error is not null)
-                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(error, _options));
+                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, _options));
 
             var bodyValue = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
             return new PartialContentHttpResult(from, to, total, Results.Ok(bodyValue)).ExecuteAsync(httpContext);
@@ -116,7 +116,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
                 var error = new Error.InternalServerError(Guid.NewGuid().ToString("N"))
                 { Detail = "Could not generate Location URI for created resource." };
 
-                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(error, _options));
+                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, _options));
             }
 
             var body = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
@@ -127,7 +127,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         return Results.Ok(payload).ExecuteAsync(httpContext);
     }
 
-    internal static int ResolveErrorStatusCode(Error error, HttpResponseOptions<TDomain> options)
+    internal static int ResolveErrorStatusCode(HttpContext httpContext, Error error, HttpResponseOptions<TDomain> options)
     {
         if (options.ErrorMapper is not null)
             return options.ErrorMapper(error);
@@ -144,7 +144,8 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             }
         }
 
-        return TrellisAspOptions.Default.GetStatusCode(error);
+        var ambient = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+        return ambient.GetStatusCode(error);
     }
 
     private RepresentationMetadata? BuildMetadataForEvaluation(TDomain domain)

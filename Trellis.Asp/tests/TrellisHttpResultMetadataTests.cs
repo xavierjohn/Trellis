@@ -21,17 +21,8 @@ using Trellis.Asp;
 /// and the <see cref="IEndpointMetadataProvider"/> contract that supplies
 /// <c>ProducesResponseTypeMetadata</c> to the endpoint builder.
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public sealed class TrellisHttpResultMetadataTests : IDisposable
+public sealed class TrellisHttpResultMetadataTests
 {
-    public TrellisHttpResultMetadataTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private sealed record Thing(int Id, string Name);
 
     private sealed record ThingBody(int Id);

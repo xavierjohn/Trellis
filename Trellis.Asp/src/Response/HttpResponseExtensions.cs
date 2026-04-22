@@ -4,6 +4,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 
 /// <summary>
@@ -228,7 +229,6 @@ public static class HttpResponseExtensions
 
         if (!result.TryGetValue(out var page))
         {
-            var sc = TrellisHttpResult<Page<T>, Page<T>>.ResolveErrorStatusCode(result.Error!, opts);
             return new TrellisErrorOnlyResult(result.Error!, new HttpResponseOptions<object>
             {
                 ErrorMapper = opts.ErrorMapper,
@@ -274,11 +274,11 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
 
     public Task ExecuteAsync(HttpContext httpContext)
     {
-        var statusCode = ResolveStatusCode(_error);
+        var statusCode = ResolveStatusCode(httpContext, _error);
         return ResponseFailureWriter.WriteAsync(httpContext, _error, statusCode);
     }
 
-    private int ResolveStatusCode(Error error)
+    private int ResolveStatusCode(HttpContext httpContext, Error error)
     {
         if (_options.ErrorMapper is not null)
             return _options.ErrorMapper(error);
@@ -295,7 +295,8 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
             }
         }
 
-        return TrellisAspOptions.Default.GetStatusCode(error);
+        var ambient = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+        return ambient.GetStatusCode(error);
     }
 }
 

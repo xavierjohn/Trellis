@@ -1,6 +1,7 @@
-﻿namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.Tests;
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
@@ -10,17 +11,8 @@ using Xunit;
 /// Tests for <see cref="TrellisAspOptions"/> default mappings, override behavior,
 /// and <c>AddTrellisAsp</c> integration.
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public class TrellisAspOptionsTests : IDisposable
+public class TrellisAspOptionsTests
 {
-    public TrellisAspOptionsTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     #region Default Mappings
 
     [Fact]
@@ -263,6 +255,44 @@ public class TrellisAspOptionsTests : IDisposable
         var resolved = provider.GetRequiredService<TrellisAspOptions>();
 
         resolved.GetStatusCode(new Error.Conflict(null, "domain.violation") { Detail = "test" }).Should().Be(StatusCodes.Status409Conflict);
+    }
+
+    [Fact]
+    public async Task ResultExecuteAsync_uses_TrellisAspOptions_resolved_from_request_services()
+    {
+        // ga-09 contract: error → status mapping flows through DI, not ambient static state.
+        // A configured override registered via AddTrellisAsp must take effect for any
+        // TrellisHttpResult / TrellisErrorOnlyResult executed inside that request scope.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddTrellisAsp(o => o.MapError<Error.Conflict>(StatusCodes.Status418ImATeapot));
+        var sp = services.BuildServiceProvider();
+
+        var ctx = new DefaultHttpContext { RequestServices = sp };
+        ctx.Response.Body = new System.IO.MemoryStream();
+
+        var failed = Result.Fail<int>(new Error.Conflict(null, "k") { Detail = "x" });
+        await failed.ToHttpResponse().ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(StatusCodes.Status418ImATeapot);
+    }
+
+    [Fact]
+    public async Task ResultExecuteAsync_falls_back_to_SystemDefault_when_options_not_registered()
+    {
+        // Without a TrellisAspOptions registration, the writer uses the immutable SystemDefault
+        // mappings — no ambient state, no leakage between hosts.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var sp = services.BuildServiceProvider();
+
+        var ctx = new DefaultHttpContext { RequestServices = sp };
+        ctx.Response.Body = new System.IO.MemoryStream();
+
+        var failed = Result.Fail<int>(new Error.Conflict(null, "k") { Detail = "x" });
+        await failed.ToHttpResponse().ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);
     }
 
     #endregion
