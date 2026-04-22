@@ -130,6 +130,71 @@ public class ClaimsActorProviderTests
 
     #endregion
 
+    #region Nested-claim mapping (ga-15)
+
+    [Fact]
+    public async Task GetCurrentActorAsync_NestedJsonClaim_NotAutoFlattened()
+    {
+        // ga-15: ClaimsActorProvider does flat ClaimType matching only — a JSON-object
+        // claim is stored as the raw serialized string, not unwrapped. Consumers must
+        // subclass to project nested values into Actor.Permissions.
+        var nested = """{"role":"admin","tier":"gold"}""";
+        var user = AuthenticatedUser(
+            new Claim("sub", "user-1"),
+            new Claim("app_metadata", nested));
+        var options = new ClaimsActorOptions { PermissionsClaim = "app_metadata" };
+
+        var actor = await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.Permissions.Should().BeEquivalentTo([nested],
+            "the default provider returns the raw claim value verbatim and does not parse JSON");
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_Subclass_CanProjectNestedJsonClaim()
+    {
+        // ga-15: documented subclassing pattern for nested-claim mapping.
+        var user = AuthenticatedUser(
+            new Claim("sub", "user-1"),
+            new Claim("app_metadata", """{"roles":["orders:read","orders:write"]}"""));
+
+        var httpContext = new DefaultHttpContext { User = user };
+        var accessor = new HttpContextAccessor { HttpContext = httpContext };
+        var provider = new NestedJsonRolesActorProvider(accessor, Options.Create(new ClaimsActorOptions()));
+
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.Id.Should().Be("user-1");
+        actor.Permissions.Should().BeEquivalentTo(["orders:read", "orders:write"]);
+    }
+
+    private sealed class NestedJsonRolesActorProvider(
+        IHttpContextAccessor httpContextAccessor,
+        IOptions<ClaimsActorOptions> options) : ClaimsActorProvider(httpContextAccessor, options)
+    {
+        public override Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var httpContext = HttpContextAccessor.HttpContext!;
+            var identity = (ClaimsIdentity)httpContext.User.Identities.First(i => i.IsAuthenticated);
+
+            var id = identity.FindFirst(Options.ActorIdClaim)!.Value;
+            var nested = identity.FindFirst("app_metadata")?.Value;
+            var permissions = nested is null
+                ? new HashSet<string>()
+                : System.Text.Json.JsonDocument.Parse(nested)
+                    .RootElement.GetProperty("roles")
+                    .EnumerateArray()
+                    .Select(e => e.GetString()!)
+                    .ToHashSet();
+
+            return Task.FromResult(Actor.Create(id, permissions));
+        }
+    }
+
+    #endregion
+
     #region Multi-identity claim spoofing (S1)
 
     [Fact]
