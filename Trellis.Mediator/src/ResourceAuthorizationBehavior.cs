@@ -59,25 +59,29 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
                 $"requires a registered {typeof(IResourceLoader<TMessage, TResource>).Name}. " +
                 $"Register IResourceLoader<{typeof(TMessage).Name}, {typeof(TResource).Name}> in the current DI scope.");
 
-        // 1. Load the resource
+        // 1. Check the caller is authenticated BEFORE doing any I/O. Avoids spending a database
+        //    round-trip on the resource loader when the request would be rejected anyway, and
+        //    closes a small enumeration / timing-side-channel surface (an attacker could
+        //    otherwise probe resource existence without credentials).
+        var actor = await actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
+        if (actor is null)
+            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
+
+        // 2. Load the resource
         var loadResult = await loader.LoadAsync(message, cancellationToken).ConfigureAwait(false);
         if (loadResult.TryGetError(out var loadError))
             return TResponse.CreateFailure(loadError);
 
-        // 2. Authorize against the loaded resource
-        var actor = await actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
-
-        if (actor is null)
-            throw new InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured and the user is authenticated.");
-
         // Safe: TryGetError returned false above, so loadResult is success.
         if (!loadResult.TryGetValue(out var resource))
             throw new InvalidOperationException("Result is in an unexpected state.");
+
+        // 3. Authorize against the loaded resource
         var authResult = message.Authorize(actor, resource);
         if (authResult.TryGetError(out var authError))
             return TResponse.CreateFailure(authError);
 
-        // 3. Proceed to handler
+        // 4. Proceed to handler
         return await next(message, cancellationToken).ConfigureAwait(false);
     }
 }
