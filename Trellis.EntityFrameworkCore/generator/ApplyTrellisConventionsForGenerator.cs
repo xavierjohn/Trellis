@@ -74,10 +74,11 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
             return null;
         if (symbol.IsAbstract || symbol.IsGenericType)
             return null;
-        if (!IsAtLeastInternal(symbol))
-            return null;
 
         var compilation = ctx.SemanticModel.Compilation;
+        if (!compilation.IsSymbolAccessibleWithin(symbol, compilation.Assembly))
+            return null;
+
         var dbContextSymbol = compilation.GetTypeByMetadataName(DbContextMetadataName);
         if (dbContextSymbol is null)
             return null;
@@ -108,8 +109,11 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
                 continue;
             if (propType.TypeArguments.Length != 1)
                 continue;
-            if (propType.TypeArguments[0] is INamedTypeSymbol entity && IsAtLeastInternal(entity))
+            if (propType.TypeArguments[0] is INamedTypeSymbol entity
+                && compilation.IsSymbolAccessibleWithin(entity, compilation.Assembly))
+            {
                 entityRoots.Add(entity);
+            }
         }
 
         var scalarBuilder = ImmutableArray.CreateBuilder<ScalarRegistration>();
@@ -119,7 +123,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
 
         foreach (var root in entityRoots)
         {
-            WalkType(root, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, maybeSymbol,
+            WalkType(root, compilation, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, maybeSymbol,
                 visited, classified, scalarBuilder, compositeBuilder);
         }
 
@@ -135,6 +139,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
 
     private static void WalkType(
         INamedTypeSymbol type,
+        Compilation compilation,
         INamedTypeSymbol? scalarBase,
         INamedTypeSymbol? scalarInterface,
         INamedTypeSymbol? requiredEnumBase,
@@ -149,7 +154,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
             return;
 
         // Classify this type itself (relevant for property types reached through recursion).
-        TryClassify(type, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, classified, scalars, composites);
+        TryClassify(type, compilation, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, classified, scalars, composites);
 
         // Walk properties of this type (and inherited) to find more reachable VO types.
         foreach (var prop in EnumerateInstanceProperties(type))
@@ -159,15 +164,16 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
                 continue;
             if (IsExcludedFramework(named))
                 continue;
-            if (!IsAtLeastInternal(named))
+            if (!compilation.IsSymbolAccessibleWithin(named, compilation.Assembly))
                 continue;
-            WalkType(named, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, maybeSymbol,
+            WalkType(named, compilation, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, maybeSymbol,
                 visited, classified, scalars, composites);
         }
     }
 
     private static void TryClassify(
         INamedTypeSymbol type,
+        Compilation compilation,
         INamedTypeSymbol? scalarBase,
         INamedTypeSymbol? scalarInterface,
         INamedTypeSymbol? requiredEnumBase,
@@ -183,7 +189,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         // match the reflection-based scanner's behavior (TrellisTypeScanner.IsCompositeValueObject).
         if (type.IsGenericType && type.TypeArguments.Any(a => a is ITypeParameterSymbol))
             return;
-        if (!IsAtLeastInternal(type))
+        if (!compilation.IsSymbolAccessibleWithin(type, compilation.Assembly))
             return;
 
         var fqn = ToFullyQualifiedName(type);
@@ -318,25 +324,6 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         }
 
         return false;
-    }
-
-    private static bool IsAtLeastInternal(INamedTypeSymbol type)
-    {
-        for (var t = type; t is not null; t = t.ContainingType)
-        {
-            switch (t.DeclaredAccessibility)
-            {
-                case Accessibility.Public:
-                case Accessibility.Internal:
-                case Accessibility.ProtectedOrInternal:
-                case Accessibility.NotApplicable:
-                    continue;
-                default:
-                    return false;
-            }
-        }
-
-        return true;
     }
 
     private static bool IsExcludedFramework(INamedTypeSymbol type)
