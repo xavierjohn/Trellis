@@ -20,6 +20,19 @@ public sealed class TracingBehavior<TMessage, TResponse>
     public const string ActivitySourceName = "Trellis.Mediator";
     internal static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
+    private readonly TrellisMediatorTelemetryOptions _options;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TracingBehavior{TMessage, TResponse}"/> class.
+    /// </summary>
+    /// <param name="options">
+    /// Telemetry redaction options resolved from DI. When <c>null</c> (i.e. not registered)
+    /// the safe-by-default options are used and <see cref="Error.Detail"/> is redacted from
+    /// the activity status description.
+    /// </param>
+    public TracingBehavior(TrellisMediatorTelemetryOptions? options = null)
+        => _options = options ?? new TrellisMediatorTelemetryOptions();
+
     /// <inheritdoc />
     public async ValueTask<TResponse> Handle(
         TMessage message,
@@ -46,7 +59,10 @@ public sealed class TracingBehavior<TMessage, TResponse>
         {
             if (response.TryGetError(out var error))
             {
-                activity.SetStatus(ActivityStatusCode.Error, error.GetDisplayMessage());
+                // The Code and stable type tags are operator-defined and PII-free. The Detail
+                // string is opt-in (ga-12) — it can carry user input or domain payloads.
+                var description = _options.IncludeErrorDetail ? error.GetDisplayMessage() : null;
+                activity.SetStatus(ActivityStatusCode.Error, description);
                 activity.SetTag("error.type", FormatErrorTypeName(error.GetType()));
                 activity.SetTag("error.code", error.Code);
             }

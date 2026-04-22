@@ -73,9 +73,28 @@ public class TracingBehaviorTests : IDisposable
         _activities.Should().ContainSingle();
         var activity = _activities[0];
         activity.Status.Should().Be(ActivityStatusCode.Error);
-        activity.StatusDescription.Should().Be("Bad input.");
+        // ga-12: Detail is redacted from StatusDescription by default; only the stable Code
+        // and type tags are emitted.
+        activity.StatusDescription.Should().BeNullOrEmpty(
+            "Error.Detail can carry user input or PII and must not leak into trace status descriptions by default");
         activity.GetTagItem("error.type").Should().Be("Error.UnprocessableContent");
         activity.GetTagItem("error.code").Should().Be("unprocessable-content");
+    }
+
+    [Fact]
+    public async Task Handle_FailedResult_IncludesDetailInDescription_WhenOptedIn()
+    {
+        var options = new TrellisMediatorTelemetryOptions { IncludeErrorDetail = true };
+        var behavior = new TracingBehavior<TestCommand, Result<string>>(options);
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
+            Result.Fail<string>(new Error.NotFound(new ResourceRef("Order", "42")) { Detail = "order 42 for tenant acme" }));
+
+        await behavior.Handle(command, next, CancellationToken.None);
+
+        var activity = _activities.Should().ContainSingle().Subject;
+        activity.StatusDescription.Should().Be("order 42 for tenant acme",
+            "operators may explicitly opt in to including Error.Detail in trace output");
     }
 
     #endregion

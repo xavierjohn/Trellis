@@ -113,4 +113,47 @@ public class PipelineOrderingTests
             ServiceCollectionExtensions.PipelineBehaviors,
             o => o.WithStrictOrdering());
     }
+
+    [Fact]
+    public void AddTrellisBehaviors_registers_safe_by_default_TelemetryOptions()
+    {
+        // ga-12: Telemetry redaction options are registered as a singleton with
+        // IncludeErrorDetail = false so behaviors don't leak Error.Detail into logs/traces.
+        var services = new ServiceCollection();
+
+        services.AddTrellisBehaviors();
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetService<TrellisMediatorTelemetryOptions>();
+
+        options.Should().NotBeNull();
+        options!.IncludeErrorDetail.Should().BeFalse(
+            "Detail can carry user input or PII and is opt-in for telemetry surfaces");
+    }
+
+    [Fact]
+    public void AddTrellisBehaviors_with_configure_applies_TelemetryOptions()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellisBehaviors(o => o.IncludeErrorDetail = true);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<TrellisMediatorTelemetryOptions>();
+        options.IncludeErrorDetail.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddTrellisBehaviors_with_configure_overrides_prior_default_registration()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellisBehaviors();
+        services.AddTrellisBehaviors(o => o.IncludeErrorDetail = true);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<TrellisMediatorTelemetryOptions>();
+        options.IncludeErrorDetail.Should().BeTrue(
+            "an explicit configure call must win over an earlier default-only registration");
+    }
 }

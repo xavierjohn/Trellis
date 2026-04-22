@@ -52,7 +52,45 @@ public class LoggingBehaviorTests
         logEntries[0].Level.Should().Be(LogLevel.Information);
         logEntries[1].Level.Should().Be(LogLevel.Warning);
         logEntries[1].Message.Should().Contain("TestCommand");
-        logEntries[1].Message.Should().Contain("Something failed.");
+        // ga-12: Detail is redacted by default (it can contain user input/PII). Only the
+        // stable error Code is emitted unless TrellisMediatorTelemetryOptions.IncludeErrorDetail
+        // is opted in.
+        logEntries[1].Message.Should().Contain("unprocessable-content");
+        logEntries[1].Message.Should().NotContain("Something failed.");
+    }
+
+    [Fact]
+    public async Task Handle_FailedResult_RedactsErrorDetailByDefault()
+    {
+        var logEntries = new List<(LogLevel Level, string Message)>();
+        var logger = new FakeLogger<LoggingBehavior<TestCommand, Result<string>>>(logEntries);
+        var behavior = new LoggingBehavior<TestCommand, Result<string>>(logger);
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
+            Result.Fail<string>(new Error.NotFound(new ResourceRef("Order", "42")) { Detail = "order 42 for tenant acme" }));
+
+        await behavior.Handle(command, next, CancellationToken.None);
+
+        logEntries[1].Message.Should().Contain("not-found");
+        logEntries[1].Message.Should().NotContain("order 42 for tenant acme",
+            "Error.Detail can carry user input or PII and must not leak into logs by default");
+    }
+
+    [Fact]
+    public async Task Handle_FailedResult_IncludesErrorDetailWhenOptedIn()
+    {
+        var logEntries = new List<(LogLevel Level, string Message)>();
+        var logger = new FakeLogger<LoggingBehavior<TestCommand, Result<string>>>(logEntries);
+        var options = new TrellisMediatorTelemetryOptions { IncludeErrorDetail = true };
+        var behavior = new LoggingBehavior<TestCommand, Result<string>>(logger, options);
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
+            Result.Fail<string>(new Error.NotFound(new ResourceRef("Order", "42")) { Detail = "order 42 for tenant acme" }));
+
+        await behavior.Handle(command, next, CancellationToken.None);
+
+        logEntries[1].Message.Should().Contain("order 42 for tenant acme",
+            "operators may explicitly opt in to including Error.Detail in log output");
     }
 
     #endregion

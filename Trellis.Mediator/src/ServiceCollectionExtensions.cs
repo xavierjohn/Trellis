@@ -84,6 +84,10 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)
     {
+        // Safe-by-default telemetry options (Detail redacted). Registered as TryAddSingleton so
+        // a prior call to AddTrellisBehaviors(configure) wins — idempotency is preserved.
+        services.TryAddSingleton<TrellisMediatorTelemetryOptions>();
+
         // TryAddEnumerable deduplicates by (ServiceType, ImplementationType), preserving the
         // canonical insertion order documented on PipelineBehaviors.
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>)));
@@ -91,6 +95,43 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers Trellis pipeline behaviors and configures
+    /// <see cref="TrellisMediatorTelemetryOptions"/> for logging/tracing redaction. Equivalent
+    /// to calling <see cref="AddTrellisBehaviors(IServiceCollection)"/> followed by mutating
+    /// the resolved singleton via <paramref name="configure"/>.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">
+    /// Callback invoked with the singleton telemetry options instance. Use this to opt in to
+    /// including <see cref="Error.Detail"/> in log messages and activity descriptions.
+    /// </param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddTrellisBehaviors(
+        this IServiceCollection services,
+        Action<TrellisMediatorTelemetryOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var instance = new TrellisMediatorTelemetryOptions();
+        configure(instance);
+
+        // Replace any prior TryAddSingleton<TrellisMediatorTelemetryOptions>() registration
+        // with the configured instance so this call wins regardless of ordering.
+        for (int i = services.Count - 1; i >= 0; i--)
+        {
+            if (services[i].ServiceType == typeof(TrellisMediatorTelemetryOptions))
+            {
+                services.RemoveAt(i);
+            }
+        }
+
+        services.AddSingleton(instance);
+        AddTrellisBehaviors(services);
 
         return services;
     }
