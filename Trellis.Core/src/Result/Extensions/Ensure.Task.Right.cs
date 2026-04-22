@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Async Ensure extensions where only the RIGHT (predicates) are async (Task), input is sync.

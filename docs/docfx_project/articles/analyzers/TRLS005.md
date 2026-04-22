@@ -1,4 +1,4 @@
-# TRLS005 — Incorrect async Result usage
+﻿# TRLS005 — Incorrect async Result usage
 
 - **Severity:** Warning
 - **Category:** Trellis

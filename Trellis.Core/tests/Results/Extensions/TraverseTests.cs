@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results.Extensions.Traverse;
+﻿namespace Trellis.Core.Tests.Results.Extensions.Traverse;
 
 using Trellis.Testing;
 

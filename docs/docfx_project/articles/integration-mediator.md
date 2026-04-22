@@ -1,4 +1,4 @@
-# Mediator Pipeline
+﻿# Mediator Pipeline
 
 **Level:** Intermediate 📘 | **Time:** 20-25 min | **Prerequisites:** [Basics](basics.md), [ASP.NET Core Authorization](integration-asp-authorization.md)
 

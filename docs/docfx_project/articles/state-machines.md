@@ -1,4 +1,4 @@
-# State Machines
+﻿# State Machines
 
 State machines matter when the order of operations is part of the business rule.
 

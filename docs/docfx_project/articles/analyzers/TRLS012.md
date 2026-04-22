@@ -1,4 +1,4 @@
-# TRLS012 — Don't compare Result or Maybe to null
+﻿# TRLS012 — Don't compare Result or Maybe to null
 
 - **Severity:** Warning
 - **Category:** Trellis

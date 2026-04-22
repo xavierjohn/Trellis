@@ -1,4 +1,4 @@
-# TRLS015 — Use SaveChangesResultAsync instead of SaveChangesAsync
+﻿# TRLS015 — Use SaveChangesResultAsync instead of SaveChangesAsync
 
 - **Severity:** Warning
 - **Category:** Trellis

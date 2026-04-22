@@ -1,4 +1,4 @@
-namespace EfCoreExample.Tests;
+﻿namespace EfCoreExample.Tests;
 
 using Trellis.Testing;
 

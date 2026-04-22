@@ -1,4 +1,4 @@
-namespace SourceGenerator;
+﻿namespace SourceGenerator;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;

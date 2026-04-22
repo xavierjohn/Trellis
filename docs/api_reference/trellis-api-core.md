@@ -1,4 +1,4 @@
-# Trellis.Core API Reference
+﻿# Trellis.Core API Reference
 
 **Package:** `Trellis.Core`  
 **Namespace:** `Trellis`  

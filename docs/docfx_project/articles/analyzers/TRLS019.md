@@ -1,4 +1,4 @@
-# TRLS019 — Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)`
+﻿# TRLS019 — Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)`
 
 - **Severity:** Warning
 - **Category:** Trellis

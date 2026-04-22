@@ -1,4 +1,4 @@
-namespace Trellis.Analyzers.Tests;
+﻿namespace Trellis.Analyzers.Tests;
 
 /// <summary>
 /// Shared stub source for Entity Framework Core types used in TRLS015 analyzer and code fix tests.

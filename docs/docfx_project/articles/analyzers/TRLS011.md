@@ -1,4 +1,4 @@
-# TRLS011 — Error message should not be empty
+﻿# TRLS011 — Error message should not be empty
 
 - **Severity:** Warning
 - **Category:** Trellis

@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Async BindZip extension where the input is synchronous and the function returns a Task.

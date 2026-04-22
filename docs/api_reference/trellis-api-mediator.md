@@ -1,4 +1,4 @@
-# Trellis.Mediator — API Reference
+﻿# Trellis.Mediator — API Reference
 
 **Package:** `Trellis.Mediator`
 **Namespace:** `Trellis.Mediator`

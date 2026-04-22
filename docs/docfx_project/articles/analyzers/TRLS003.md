@@ -1,4 +1,4 @@
-# TRLS003 — Unsafe access to Maybe.Value
+﻿# TRLS003 — Unsafe access to Maybe.Value
 
 - **Severity:** Warning
 - **Category:** Trellis

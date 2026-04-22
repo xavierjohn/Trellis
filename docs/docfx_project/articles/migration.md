@@ -1,4 +1,4 @@
-# Migrating from FunctionalDDD
+﻿# Migrating from FunctionalDDD
 
 Migrating from `FunctionalDdd.*` to `Trellis.*` is mostly a **rename exercise**, not a redesign.
 

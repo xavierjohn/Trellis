@@ -1,4 +1,4 @@
-namespace Trellis.Testing.AspNetCore.Tests;
+﻿namespace Trellis.Testing.AspNetCore.Tests;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

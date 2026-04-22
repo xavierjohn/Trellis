@@ -1,4 +1,4 @@
-# TRLS006 — Use specific error type instead of base Error class
+﻿# TRLS006 — Use specific error type instead of base Error class
 
 - **Severity:** Info
 - **Category:** Trellis

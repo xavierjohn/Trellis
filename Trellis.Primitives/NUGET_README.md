@@ -1,4 +1,4 @@
-# Trellis.Primitives
+﻿# Trellis.Primitives
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Primitives.svg)](https://www.nuget.org/packages/Trellis.Primitives)
 

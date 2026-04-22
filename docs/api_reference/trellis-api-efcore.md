@@ -1,4 +1,4 @@
-# Trellis.EntityFrameworkCore
+﻿# Trellis.EntityFrameworkCore
 
 **Package:** `Trellis.EntityFrameworkCore` (since Phase 2 of the v2 redesign, this single package also bundles the `Trellis.EntityFrameworkCore.Generator.dll` source generator at `analyzers/dotnet/cs/` — installing `Trellis.EntityFrameworkCore` attaches the `Maybe<T>` / `[OwnedEntity]` generator automatically; there is no separate `Trellis.EntityFrameworkCore.Generator` NuGet package).
 **Namespace:** `Trellis.EntityFrameworkCore`  

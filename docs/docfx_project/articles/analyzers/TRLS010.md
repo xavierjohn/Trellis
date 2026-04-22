@@ -1,4 +1,4 @@
-# TRLS010 — Don't throw exceptions in Result chains
+﻿# TRLS010 — Don't throw exceptions in Result chains
 
 - **Severity:** Warning
 - **Category:** Trellis

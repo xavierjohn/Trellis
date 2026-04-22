@@ -1,4 +1,4 @@
-namespace Trellis.Asp;
+﻿namespace Trellis.Asp;
 
 using System;
 using System.Threading.Tasks;

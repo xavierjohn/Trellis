@@ -1,4 +1,4 @@
-# Trellis API Reference
+﻿# Trellis API Reference
 
 Trellis is a .NET framework that **guides AI to develop structured, maintainable enterprise software**. It combines Railway-Oriented Programming and Domain-Driven Design into building blocks where the compiler enforces correctness — errors must be handled, objects cannot be constructed in invalid states, and business logic reads like the specification it was generated from.
 

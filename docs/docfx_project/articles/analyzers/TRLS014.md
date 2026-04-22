@@ -1,4 +1,4 @@
-# TRLS014 — Combine chain exceeds maximum supported tuple size
+﻿# TRLS014 — Combine chain exceeds maximum supported tuple size
 
 - **Severity:** Error
 - **Category:** Trellis

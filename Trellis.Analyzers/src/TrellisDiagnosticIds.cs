@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Canonical string constants for every Trellis diagnostic ID emitted by the

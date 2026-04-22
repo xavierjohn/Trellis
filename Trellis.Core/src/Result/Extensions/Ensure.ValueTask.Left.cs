@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Async Ensure extensions where only the LEFT (input) is async (ValueTask), predicates are sync.

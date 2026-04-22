@@ -1,4 +1,4 @@
-# TRLS004 — Result is double-wrapped
+﻿# TRLS004 — Result is double-wrapped
 
 - **Severity:** Warning
 - **Category:** Trellis

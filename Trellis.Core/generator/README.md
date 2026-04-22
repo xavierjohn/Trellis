@@ -1,4 +1,4 @@
-# Trellis.Core.Generator (bundled inside Trellis.Core)
+﻿# Trellis.Core.Generator (bundled inside Trellis.Core)
 
 > [!IMPORTANT]
 > Since Phase 2 of the v3 redesign, **`Trellis.Core.Generator` is no longer published as a standalone NuGet package**. It is bundled inside `Trellis.Core.nupkg` under `analyzers/dotnet/cs/` and is attached automatically when you reference `Trellis.Core` (or any package depending on it, e.g. `Trellis.Primitives`).

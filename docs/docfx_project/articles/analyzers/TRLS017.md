@@ -1,4 +1,4 @@
-# TRLS017 — Wrong [StringLength] or [Range] attribute namespace
+﻿# TRLS017 — Wrong [StringLength] or [Range] attribute namespace
 
 - **Severity:** Warning
 - **Category:** Trellis

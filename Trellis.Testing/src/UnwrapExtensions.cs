@@ -1,4 +1,4 @@
-namespace Trellis.Testing;
+﻿namespace Trellis.Testing;
 
 /// <summary>
 /// Provides <c>Unwrap()</c> extension methods for extracting values from <see cref="Result{T}"/>

@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for Trellis
+﻿# GitHub Copilot Instructions for Trellis
 
 ## Project Overview
 
@@ -36,7 +36,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 | Mediator pipeline behaviors | `docs/api_reference/trellis-api-mediator.md` |
 | State machine integration | `docs/api_reference/trellis-api-statemachine.md` |
 | Testing helpers | `docs/api_reference/trellis-api-testing-reference.md` |
-| Analyzer rules (TRLS001-TRLS017) | `docs/api_reference/trellis-api-analyzers.md` |
+| Analyzer rules (TRLS001-TRLS019) | `docs/api_reference/trellis-api-analyzers.md` |
 
 These files document the exact method signatures, overloads, and usage patterns. Do not assume APIs based on naming conventions — read the reference first.
 

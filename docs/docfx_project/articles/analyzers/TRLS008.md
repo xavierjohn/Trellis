@@ -1,4 +1,4 @@
-# TRLS008 — Consider using Result.Combine
+﻿# TRLS008 — Consider using Result.Combine
 
 - **Severity:** Info
 - **Category:** Trellis

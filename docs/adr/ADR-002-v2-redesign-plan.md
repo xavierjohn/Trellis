@@ -1,4 +1,4 @@
-# ADR-002 — Trellis v2: Forward-Looking Architectural Redesign
+﻿# ADR-002 — Trellis v2: Forward-Looking Architectural Redesign
 
 > **Status:** Accepted (in execution). Phase 1a shipped in PR #401 (Trellis.Results → Trellis.Core rename). Phase 2 is in flight in PR #403 (DDD merge into Core, Required* base-class moves, all three source generators bundled into their host packages, Trellis.Asp.Authorization project merge).
 >

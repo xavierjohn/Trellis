@@ -1,4 +1,4 @@
-# TRLS007 — Maybe is double-wrapped
+﻿# TRLS007 — Maybe is double-wrapped
 
 - **Severity:** Warning
 - **Category:** Trellis

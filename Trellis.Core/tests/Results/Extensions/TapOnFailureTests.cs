@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results.Extensions.TapOnFailure;
+﻿namespace Trellis.Core.Tests.Results.Extensions.TapOnFailure;
 
 using Trellis.Testing;
 

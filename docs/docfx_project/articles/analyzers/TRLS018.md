@@ -1,4 +1,4 @@
-# TRLS018 — Unsafe Result&lt;T&gt; deconstruction
+﻿# TRLS018 — Unsafe Result&lt;T&gt; deconstruction
 
 **Category:** Usage — Result safety
 **Severity:** Warning

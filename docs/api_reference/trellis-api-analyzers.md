@@ -1,4 +1,4 @@
-# Trellis.Analyzers — API Reference
+﻿# Trellis.Analyzers — API Reference
 
 - **Package:** `Trellis.Analyzers`
 - **Namespace:** `Trellis.Analyzers`

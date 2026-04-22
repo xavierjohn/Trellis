@@ -1,4 +1,4 @@
-# Trellis.EntityFrameworkCore
+﻿# Trellis.EntityFrameworkCore
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Trellis.EntityFrameworkCore)
 

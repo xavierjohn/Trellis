@@ -1,4 +1,4 @@
-namespace Trellis.Mediator.Tests;
+﻿namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.Logging;
 using Trellis.Mediator.Tests.Helpers;

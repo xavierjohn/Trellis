@@ -1,4 +1,4 @@
-namespace Trellis.Analyzers;
+﻿namespace Trellis.Analyzers;
 
 using System.Collections.Immutable;
 using System.Composition;
@@ -44,8 +44,8 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
         if (memberAccess == null)
             return;
 
-        if (diagnostic.Id != "TRLS003")
-            return;
+        // FixableDiagnosticIds already restricts this provider to TRLS003 (UnsafeMaybeValueAccess);
+        // no defensive ID re-check needed here.
 
         var title = TitleMaybe;
         var guardProperty = "HasValue";

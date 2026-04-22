@@ -1,4 +1,4 @@
-# TRLS016 — HasIndex references a Maybe<T> property
+﻿# TRLS016 — HasIndex references a Maybe<T> property
 
 - **Severity:** Warning
 - **Category:** Trellis

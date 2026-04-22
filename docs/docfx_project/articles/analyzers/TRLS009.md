@@ -1,4 +1,4 @@
-# TRLS009 — Use async method variant for async lambda
+﻿# TRLS009 — Use async method variant for async lambda
 
 - **Severity:** Warning
 - **Category:** Trellis

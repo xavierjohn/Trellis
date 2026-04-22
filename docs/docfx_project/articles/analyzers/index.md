@@ -1,4 +1,4 @@
-# Trellis analyzer rules
+﻿# Trellis analyzer rules
 
 Trellis analyzers help you keep `Result<T>`, `Maybe<T>`, EF Core integration, and Trellis value objects on the happy path. Every rule below uses the **Trellis** analyzer category.
 

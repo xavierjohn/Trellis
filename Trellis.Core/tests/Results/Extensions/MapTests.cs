@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results.Extensions.Map;
+﻿namespace Trellis.Core.Tests.Results.Extensions.Map;
 
 using Trellis.Testing;
 

@@ -1,4 +1,4 @@
-namespace Trellis.Mediator;
+﻿namespace Trellis.Mediator;
 
 /// <summary>
 /// Operator-tunable redaction settings for the Trellis mediator pipeline's logging and

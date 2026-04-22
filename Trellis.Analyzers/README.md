@@ -1,4 +1,4 @@
-# Trellis.Analyzers
+﻿# Trellis.Analyzers
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Analyzers.svg)](https://www.nuget.org/packages/Trellis.Analyzers)
 
