@@ -12,9 +12,11 @@
   </ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="FluentValidation" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
+	  <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
 	</ItemGroup>
 </Project>

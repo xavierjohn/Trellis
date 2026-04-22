@@ -142,11 +142,21 @@ public static class FluentValidationResultExtensions
     /// </returns>
     /// <remarks>
     /// <para>
-    /// Each <see cref="ValidationFailure"/> becomes one <see cref="FieldViolation"/> with the
-    /// failure's property name as a JSON Pointer (<see cref="InputPointer.ForProperty(string)"/>),
-    /// the <see cref="ValidationFailure.ErrorCode"/> as <see cref="FieldViolation.ReasonCode"/>
+    /// Each <see cref="ValidationFailure"/> becomes one <see cref="FieldViolation"/>. The
+    /// failure's <see cref="ValidationFailure.PropertyName"/> is normalized to an RFC 6901
+    /// JSON Pointer before being placed on <see cref="FieldViolation.Field"/>: dotted member
+    /// paths become path segments and array/list indexers become numeric segments
+    /// (e.g., <c>"Address.PostCode"</c> → <c>/Address/PostCode</c>,
+    /// <c>"Lines[0].Sku"</c> → <c>/Lines/0/Sku</c>). Special characters in segments are
+    /// escaped per RFC 6901 (<c>~</c> → <c>~0</c>, <c>/</c> → <c>~1</c>). Property names that
+    /// already start with <c>/</c> are passed through unchanged. When
+    /// <see cref="ValidationFailure.PropertyName"/> is empty, the caller-captured
+    /// <paramref name="paramName"/> is normalized and used as the pointer.
+    /// </para>
+    /// <para>
+    /// The <see cref="ValidationFailure.ErrorCode"/> becomes <see cref="FieldViolation.ReasonCode"/>
     /// (falling back to <c>"validation.error"</c>), and the <see cref="ValidationFailure.ErrorMessage"/>
-    /// as <see cref="FieldViolation.Detail"/>. Multiple failures on the same property produce
+    /// becomes <see cref="FieldViolation.Detail"/>. Multiple failures on the same property produce
     /// multiple <see cref="FieldViolation"/> entries — no information is lost.
     /// </para>
     /// <para>
@@ -195,9 +205,10 @@ public static class FluentValidationResultExtensions
         var violations = validationResult.Errors
             .Select(e =>
             {
-                var propertyName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
+                var rawName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
+                var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
                 var reasonCode = string.IsNullOrWhiteSpace(e.ErrorCode) ? "validation.error" : e.ErrorCode;
-                return new FieldViolation(InputPointer.ForProperty(propertyName), reasonCode) { Detail = e.ErrorMessage };
+                return new FieldViolation(new InputPointer(pointerPath), reasonCode) { Detail = e.ErrorMessage };
             })
             .ToArray();
 

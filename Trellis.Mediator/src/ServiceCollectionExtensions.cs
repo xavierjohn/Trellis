@@ -13,21 +13,39 @@ using Trellis.Authorization;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Gets the ordered array of Trellis Result-aware pipeline behavior types.
-    /// Assign this to <c>MediatorOptions.PipelineBehaviors</c> in your <c>AddMediator</c> call.
-    /// <para>Behaviors execute in this order (outermost to innermost):</para>
+    /// Gets the ordered array of Trellis Result-aware pipeline behavior types contributed by this
+    /// package. Assign this to <c>MediatorOptions.PipelineBehaviors</c> in your <c>AddMediator</c>
+    /// call when wiring the AOT-friendly source generator path.
+    /// <para>The canonical Trellis pipeline (outermost to innermost) is:</para>
     /// <list type="number">
-    ///   <item><description><see cref="ExceptionBehavior{TMessage, TResponse}"/> — catches unhandled exceptions</description></item>
-    ///   <item><description><see cref="TracingBehavior{TMessage, TResponse}"/> — OpenTelemetry activity span</description></item>
-    ///   <item><description><see cref="LoggingBehavior{TMessage, TResponse}"/> — structured logging with duration</description></item>
-    ///   <item><description><see cref="AuthorizationBehavior{TMessage, TResponse}"/> — checks static permissions (<see cref="IAuthorize"/>)</description></item>
-    ///   <item><description><see cref="ValidationBehavior{TMessage, TResponse}"/> — short-circuits on validation failure</description></item>
+    ///   <item><description><see cref="ExceptionBehavior{TMessage, TResponse}"/> — catches unhandled exceptions and converts to typed failures.</description></item>
+    ///   <item><description><see cref="TracingBehavior{TMessage, TResponse}"/> — emits an OpenTelemetry activity span around the message.</description></item>
+    ///   <item><description><see cref="LoggingBehavior{TMessage, TResponse}"/> — structured logging with duration and outcome.</description></item>
+    ///   <item><description><see cref="AuthorizationBehavior{TMessage, TResponse}"/> — checks static permissions declared by <see cref="IAuthorize"/>.</description></item>
+    ///   <item><description><see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> — checks resource-bound authorization for <see cref="IAuthorizeResource{TResource}"/> commands. Inserted by <see cref="AddResourceAuthorization{TMessage, TResource, TResponse}"/> or <see cref="AddResourceAuthorization(IServiceCollection, Assembly[])"/> immediately before the validation behavior so the loaded resource is checked once per request.</description></item>
+    ///   <item><description><see cref="ValidationBehavior{TMessage, TResponse}"/> — unified
+    ///   validation stage. Runs <see cref="IValidate.Validate"/> when the message implements it
+    ///   AND every <see cref="IMessageValidator{TMessage}"/> registered in DI for the message,
+    ///   aggregating <see cref="Error.UnprocessableContent"/> failures into a single response.
+    ///   External validation sources (e.g., the optional <c>Trellis.FluentValidation</c> package
+    ///   contributes <c>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</c> via
+    ///   <c>AddTrellisFluentValidation()</c>) plug in here without an extra pipeline behavior.</description></item>
+    ///   <item><description><c>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</c>
+    ///   (in the optional <c>Trellis.EntityFrameworkCore</c> package) — runs the handler then
+    ///   calls <c>IUnitOfWork.CommitAsync</c> on success. Opt in via
+    ///   <c>AddTrellisUnitOfWork&lt;TContext&gt;()</c> after all other behavior registrations
+    ///   so it lands innermost (closest to the handler).</description></item>
     /// </list>
     /// <para>
-    /// To add resource-based authorization with a loaded resource, call
-    /// <see cref="AddResourceAuthorization(IServiceCollection, Assembly[])"/> to auto-discover commands
-    /// implementing <see cref="IAuthorizeResource{TResource}"/>, or register per-command via
-    /// <see cref="AddResourceAuthorization{TMessage, TResource, TResponse}"/>.
+    /// This array contains the always-on behaviors (<see cref="ExceptionBehavior{TMessage, TResponse}"/>,
+    /// <see cref="TracingBehavior{TMessage, TResponse}"/>, <see cref="LoggingBehavior{TMessage, TResponse}"/>,
+    /// <see cref="AuthorizationBehavior{TMessage, TResponse}"/>, and
+    /// <see cref="ValidationBehavior{TMessage, TResponse}"/>). The resource-authorization and
+    /// transactional behaviors are opt-in and supplied by separate registration helpers.
+    /// FluentValidation (and any other external validation source) participates inside
+    /// the existing <see cref="ValidationBehavior{TMessage, TResponse}"/> via the
+    /// <see cref="IMessageValidator{TMessage}"/> abstraction, so it does not occupy its own
+    /// pipeline slot.
     /// </para>
     /// </summary>
     /// <example>

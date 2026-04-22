@@ -15,6 +15,7 @@ This article starts with the everyday case first, then covers null handling, asy
 - [Async validation](#async-validation)
 - [Null input behavior](#null-input-behavior)
 - [Converting an existing `ValidationResult`](#converting-an-existing-validationresult)
+- [Mediator integration: `AddTrellisFluentValidation()`](#mediator-integration-addtrellisfluentvalidation)
 - [Practical guidance](#practical-guidance)
 
 ## Quick start
@@ -270,9 +271,105 @@ That is the right helper when:
 - you only need the Trellis conversion step
 - you want to preserve the original validated value
 
-## Practical guidance
+## Mediator integration: `AddTrellisFluentValidation()`
 
-Use this adapter when you want FluentValidation rules but Trellis flow control.
+If you use [`Trellis.Mediator`](integration-mediator.md), you do **not** need to call `validator.ValidateToResult(...)` by hand inside every handler. `AddTrellisFluentValidation()` plugs FluentValidation into the unified `ValidationBehavior` stage so every `IValidator<TMessage>` registered for the message runs automatically before the handler is invoked, and its failures aggregate with any `IValidate.Validate()` failures into a single `Error.UnprocessableContent` response.
+
+### Wiring
+
+```csharp
+using FluentValidation;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+builder.Services.AddTrellisFluentValidation();
+
+// Register every validator explicitly (AOT-friendly):
+builder.Services.AddScoped<IValidator<SubmitBatchTransfersCommand>, SubmitBatchTransfersValidator>();
+```
+
+The parameterless overload registers an open-generic `FluentValidationMessageValidatorAdapter<TMessage>` as `IMessageValidator<>`. This is **AOT-friendly**: open-generic DI registration is a first-class NativeAOT pattern, and no reflection over assemblies happens on the hot path.
+
+For non-AOT apps that prefer assembly scanning:
+
+```csharp
+builder.Services.AddTrellisFluentValidation(typeof(SubmitBatchTransfersValidator).Assembly);
+```
+
+The scanning overload is annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]`. Use the parameterless overload + explicit `AddScoped<IValidator<T>, ...>()` for trimming/AOT scenarios.
+
+### Composing with `IValidate`
+
+A message can implement `IValidate` (for cross-cutting business invariants) **and** have one or more `IValidator<TMessage>` implementations (for property-shaped rules) registered in DI. The `ValidationBehavior` runs every source and merges all `Error.UnprocessableContent` failures into one response — callers see the full violation list in a single round trip:
+
+```csharp
+using FluentValidation;
+using Mediator;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed record SubmitBatchTransfersCommand(
+    AccountId FromId,
+    BatchMetadata Metadata,
+    IReadOnlyList<BatchTransferLine> Lines)
+    : ICommand<Result<BatchTransferReceipt>>, IValidate
+{
+    // Cross-cutting business invariant — awkward in FluentValidation:
+    public IResult Validate()
+    {
+        var violations = new List<FieldViolation>();
+        if (Lines.Count == 0)
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(Lines)), "batch.empty")
+            { Detail = "At least one line is required." });
+        for (var i = 0; i < Lines.Count; i++)
+            if (Lines[i].ToAccountId == FromId)
+                violations.Add(new FieldViolation(new InputPointer($"/Lines/{i}/ToAccountId"), "batch.self-transfer")
+                { Detail = "A line may not target the source account." });
+
+        return violations.Count == 0
+            ? Result.Ok()
+            : Result.Fail(new Error.UnprocessableContent(EquatableArray.Create([.. violations])));
+    }
+}
+
+public sealed class SubmitBatchTransfersValidator : AbstractValidator<SubmitBatchTransfersCommand>
+{
+    public SubmitBatchTransfersValidator()
+    {
+        // Property-shaped rules — natural fit for FluentValidation:
+        RuleFor(c => c.Metadata.Reference)
+            .NotEmpty().Matches(@"^BATCH-\d{4}-\d{3}$");
+
+        RuleForEach(c => c.Lines).ChildRules(line =>
+            line.RuleFor(l => l.Memo).NotEmpty().MaximumLength(200));
+    }
+}
+```
+
+A request that violates both sources at once produces one 422 with **every** violation aggregated under its proper JSON Pointer.
+
+### JSON Pointer normalization
+
+FluentValidation reports property names in its own dotted-with-brackets shape: `Metadata.Reference`, `Lines[0].Memo`. The Trellis adapter translates those into RFC 6901 JSON Pointers before placing them on `FieldViolation.Pointer`:
+
+| FluentValidation property | `FieldViolation.Pointer` |
+| --- | --- |
+| `Reference` (root property) | `/Reference` |
+| `Metadata.Reference` (nested) | `/Metadata/Reference` |
+| `Lines[0].Memo` (indexer) | `/Lines/0/Memo` |
+| `Items[0].Tags[2]` (multi-indexer) | `/Items/0/Tags/2` |
+
+Special characters in segments are escaped per RFC 6901 (`~` → `~0`, `/` → `~1`). Property names that already start with `/` are passed through unchanged.
+
+The pre-existing `validationResult.ToResult(value)` helper applies the same normalization, so direct callers benefit from the fix too.
+
+### Failure-source semantics
+
+- All `Error.UnprocessableContent` failures (from `IValidate` and every `IMessageValidator<TMessage>`) merge into a single response.
+- Any non-UPC failure (`Error.Conflict`, `Error.Forbidden`, …) returned by any validator short-circuits the stage immediately and is propagated as-is. This lets `IValidate` model "this is a domain rule violation, not a field problem" without losing exit semantics.
+
 
 ### Good defaults
 

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Trellis.Mediator + Trellis.FluentValidation — Unified validation stage with composition
+
+- **`IMessageValidator<TMessage>`** (new, in `Trellis.Mediator`) — Extensibility seam that lets validator packages plug into the single `ValidationBehavior` stage instead of occupying their own pipeline slot. Multiple validators per message are supported; their `Error.UnprocessableContent` failures aggregate into one response.
+- **`ValidationBehavior` now runs for every message** (no longer constrained to `IValidate`). It composes `IValidate.Validate()` (when implemented) with every registered `IMessageValidator<TMessage>` and merges all field violations into a single `Error.UnprocessableContent`. Non-UPC failures (`Error.Conflict`, `Error.Forbidden`, …) short-circuit and propagate as-is.
+- **`AddTrellisFluentValidation()`** (`Trellis.FluentValidation`) — Parameterless overload registers an open-generic `FluentValidationMessageValidatorAdapter<TMessage>` as `IMessageValidator<>`. AOT-friendly (no assembly scanning, no reflection on the hot path); register each `IValidator<TCommand>` explicitly via `AddScoped<IValidator<...>, ...>()`. Assembly-scanning overload is annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` for non-AOT scenarios.
+- **JSON Pointer normalization** — `FluentValidationMessageValidatorAdapter` and `validationResult.ToResult(value)` now translate FluentValidation property names into RFC 6901 JSON Pointers: `Metadata.Reference` → `/Metadata/Reference`, `Lines[0].Memo` → `/Lines/0/Memo`. Special characters are escaped per RFC 6901 (`~` → `~0`, `/` → `~1`).
+- **Showcase canonical demo** — `POST /api/transfers/batch/{fromId}` exercises `AddMediator(Scoped)` + `AddTrellisBehaviors()` + `AddTrellisFluentValidation()` end-to-end with nested + indexer FluentValidation rules and an `IValidate` business invariant. See [`Examples/Showcase/README.md`](Examples/Showcase/README.md).
+
+> **Note:** `AddMediator(...)` should be called as `AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped)` in any host with a request scope. Mediator's default Singleton lifetime conflicts with the scoped Trellis behaviors and fails ASP.NET's root-scope validation. See [Mediator integration docs](docs/docfx_project/articles/integration-mediator.md).
+
 ### Removed
 
 #### Trellis.Asp — legacy response verbs removed (Phase 3 cleanup)

@@ -23,13 +23,17 @@ public sealed record GetOrderQuery(string Id) : IQuery<Result<string>>, IValidat
             : Result.Ok();
 }
 
-builder.Services.AddMediator();
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
 builder.Services.AddTrellisBehaviors();
 ```
+
+> [!IMPORTANT]
+> Use `ServiceLifetime.Scoped` when calling `AddMediator(...)` in a host with a request scope. The Trellis behaviors are scoped (they depend on per-request services); the Mediator default of `Singleton` will fail ASP.NET's root-scope validation as soon as the first behavior tries to resolve a scoped dependency.
 
 ## Key Features
 - Adds validation, authorization, tracing, logging, and exception behaviors that understand `Result<T>`.
 - Short-circuits failures before handlers do unnecessary work.
+- Unified `ValidationBehavior` composes `IValidate` + every `IMessageValidator<TMessage>` (e.g., the `Trellis.FluentValidation` adapter) and aggregates failures into one response.
 - Supports resource authorization with explicit or assembly-scanned registration.
 
 ## Documentation

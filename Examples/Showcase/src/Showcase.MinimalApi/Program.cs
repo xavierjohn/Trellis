@@ -1,9 +1,14 @@
 using System.Text.Json.Serialization;
+using FluentValidation;
+using Mediator;
 using Scalar.AspNetCore;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
 using Trellis.Asp.Routing;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
 using Trellis.Showcase.Application;
+using Trellis.Showcase.Application.Features.SubmitBatchTransfers;
 using Trellis.Showcase.Application.Persistence;
 using Trellis.Showcase.Application.Services;
 using Trellis.Showcase.Application.Workflows;
@@ -24,6 +29,16 @@ builder.Services.AddSingleton<IFraudGateway, InMemoryFraudGateway>();
 builder.Services.AddSingleton<IIdentityVerifier, InMemoryIdentityVerifier>();
 builder.Services.AddSingleton<IEventPublisher, LoggingEventPublisher>();
 builder.Services.AddScoped<BankingWorkflow>();
+
+// v2 Mediator pipeline: AddTrellisBehaviors() registers the canonical
+// (Exception, Tracing, Logging, Authorization, Validation) stack.
+// AddTrellisFluentValidation() plugs the open-generic FluentValidation adapter into the
+// Validation stage via IMessageValidator<>, so IValidate failures and FluentValidation
+// failures aggregate into a single response (no second behavior slot, AOT-friendly).
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+builder.Services.AddTrellisFluentValidation();
+builder.Services.AddScoped<IValidator<SubmitBatchTransfersCommand>, SubmitBatchTransfersValidator>();
 
 if (builder.Environment.IsDevelopment())
     builder.Services.AddDevelopmentActorProvider();
@@ -49,6 +64,7 @@ app.UseAuthorization();
 
 app.MapAccountEndpoints();
 app.MapTransferEndpoints();
+app.MapBatchTransferEndpoints();
 app.MapInterestEndpoints();
 app.MapDiagnosticsEndpoints();
 
