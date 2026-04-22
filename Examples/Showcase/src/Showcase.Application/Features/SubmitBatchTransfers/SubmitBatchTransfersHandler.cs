@@ -19,6 +19,21 @@ public sealed class SubmitBatchTransfersHandler
         SubmitBatchTransfersCommand command,
         System.Threading.CancellationToken cancellationToken)
     {
+        // Defense in depth: the validation pipeline (IValidate on the command) normally
+        // short-circuits on an empty batch, but a handler must still fail soft when invoked
+        // directly (e.g., from a test or a misconfigured pipeline) rather than throwing.
+        if (command.Lines.Count == 0)
+        {
+            return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(
+                new Error.UnprocessableContent(EquatableArray.Create(
+                [
+                    new FieldViolation(
+                        InputPointer.ForProperty(nameof(command.Lines)),
+                        "batch.empty")
+                    { Detail = "At least one line is required." },
+                ]))));
+        }
+
         var currency = command.Lines[0].Amount.Currency.Value;
         var sum = 0m;
         foreach (var line in command.Lines)
