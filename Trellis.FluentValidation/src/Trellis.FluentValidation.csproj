@@ -12,6 +12,8 @@
   </ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="FluentValidation" />
+		<PackageReference Include="Mediator.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 	</ItemGroup>
 
 	<ItemGroup>
