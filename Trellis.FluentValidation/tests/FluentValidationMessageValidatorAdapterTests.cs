@@ -150,14 +150,21 @@ public class FluentValidationMessageValidatorAdapterTests
         services.AddScoped<IValidator<CreateUserCommand>, CreateUserCommandNameValidator>();
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
-        var adapter = scope.ServiceProvider.GetRequiredService<IMessageValidator<CreateUserCommand>>();
+        // Mirror the production path: ValidationBehavior injects IEnumerable<IMessageValidator<T>>
+        // and runs every resolved instance. Using GetRequiredService here would mask duplicate
+        // adapter registrations because it returns only the last-registered descriptor.
+        var adapters = scope.ServiceProvider
+            .GetServices<IMessageValidator<CreateUserCommand>>()
+            .ToList();
 
-        var result = await adapter.ValidateAsync(
+        adapters.Should().ContainSingle("a duplicate adapter registration would cause IValidator<T> to run twice per request");
+
+        var result = await adapters[0].ValidateAsync(
             new CreateUserCommand(string.Empty, "ada@example.com"),
             CancellationToken.None);
 
         var error = ExtractError(result).Should().BeOfType<Error.UnprocessableContent>().Which;
-        error.Fields.Items.Should().HaveCount(1, "calling AddTrellisFluentValidation() twice must not duplicate adapter execution");
+        error.Fields.Items.Should().HaveCount(1);
     }
 
     [Fact]
