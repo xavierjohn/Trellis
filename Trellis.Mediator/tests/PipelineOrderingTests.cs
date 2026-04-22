@@ -94,10 +94,11 @@ public class PipelineOrderingTests
     }
 
     [Fact]
-    public void AddTrellisBehaviors_called_twice_registers_each_behavior_twice()
+    public void AddTrellisBehaviors_is_idempotent_when_called_twice()
     {
-        // Documents current behavior: AddTrellisBehaviors does not deduplicate.
-        // Callers should invoke it exactly once.
+        // ga-10: AddTrellisBehaviors must be safe to call from a plug-in extension method
+        // (e.g. AddTrellisFluentValidation, AddTrellisAsp) that calls it as a precondition,
+        // even if the consumer has already wired the behaviors up themselves.
         var services = new ServiceCollection();
 
         services.AddTrellisBehaviors();
@@ -107,6 +108,9 @@ public class PipelineOrderingTests
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
             .ToList();
 
-        behaviors.Should().HaveCount(10);
+        behaviors.Should().HaveCount(5);
+        behaviors.Select(d => d.ImplementationType).Should().BeEquivalentTo(
+            ServiceCollectionExtensions.PipelineBehaviors,
+            o => o.WithStrictOrdering());
     }
 }

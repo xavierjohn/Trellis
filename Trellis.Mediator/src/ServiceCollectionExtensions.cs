@@ -74,15 +74,23 @@ public static class ServiceCollectionExtensions
     /// <see cref="IPipelineBehavior{TMessage, TResponse}"/> implementations.
     /// Use this when NOT using <c>MediatorOptions.PipelineBehaviors</c> (non-AOT scenario).
     /// </summary>
+    /// <remarks>
+    /// Idempotent: calling this method more than once registers each behavior exactly once,
+    /// so plug-in extension methods (e.g. <c>AddTrellisFluentValidation</c>, <c>AddTrellisAsp</c>)
+    /// that defensively call it as a precondition will not produce duplicate pipeline entries
+    /// when the consumer also calls it explicitly.
+    /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)
     {
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        // TryAddEnumerable deduplicates by (ServiceType, ImplementationType), preserving the
+        // canonical insertion order documented on PipelineBehaviors.
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
 
         return services;
     }
