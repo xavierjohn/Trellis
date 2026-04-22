@@ -151,15 +151,17 @@ Working rule: do not force structured value objects like `Money` through the sca
 
 ## Diagnostic ID Conventions
 
-Analyzers (`Trellis.Analyzers`) and source generators use **separate ID prefixes** to avoid collisions:
+Analyzers (`Trellis.Analyzers`) and the bundled source generators emit diagnostics under a **single unified `TRLS` prefix** as of v2. Use the `Trellis.TrellisDiagnosticIds` constants (in `Trellis.Analyzers`) to reference IDs from `[SuppressMessage]` attributes and rule sets.
 
-| Prefix | Owner | Range | Example |
-|--------|-------|-------|---------|
-| `TRLS` | Trellis.Analyzers | `TRLS001`–`TRLS999` | `TRLS006` — Unsafe access to `Maybe.Value` |
-| `TRLSGEN` | Primitives source generator | `TRLSGEN001`–`TRLSGEN099` | `TRLSGEN002` — `MinimumLength` exceeds `MaximumLength` |
-| `TRLSGEN` | EF Core source generator | `TRLSGEN100`–`TRLSGEN199` | `TRLSGEN100` — `Maybe<T>` property should be partial |
+| Range | Owner | Example |
+|-------|-------|---------|
+| `TRLS001`–`TRLS029` | `Trellis.Analyzers` | `TRLS006` — Unsafe access to `Maybe.Value` |
+| `TRLS031`–`TRLS034` | `Trellis.Core.Generator` (Primitives) | `TRLS032` — `MinimumLength` exceeds `MaximumLength` |
+| `TRLS035`–`TRLS038` | `Trellis.EntityFrameworkCore.Generator` | `TRLS035` — `Maybe<T>` property should be `partial` |
 
-**Do NOT** reuse a `TRLS` ID in a source generator or vice versa. Do NOT overlap generator ranges.
+The legacy `TRLSGEN###` prefix (used in v1) was retired in v2: `TRLSGEN001`–`TRLSGEN004` mapped to `TRLS031`–`TRLS034`, `TRLSGEN100`–`TRLSGEN103` mapped to `TRLS035`–`TRLS038`. Removed analyzer IDs (TRLS003/004/007/013/025) keep documentation tombstones under `docs/docfx_project/articles/analyzers/`.
+
+**Do NOT** introduce a parallel ID prefix in new analyzers or generators. Allocate the next free `TRLS###` slot and add it to `TrellisDiagnosticIds`.
 
 ## Code Style
 

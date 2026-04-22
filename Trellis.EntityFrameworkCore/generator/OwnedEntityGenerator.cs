@@ -25,10 +25,10 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
     /// Diagnostic reported when [OwnedEntity] is applied to a non-partial type.
     /// </summary>
     private static readonly DiagnosticDescriptor s_shouldBePartial = new(
-        id: "TRLSGEN101",
+        id: Ids.OwnedEntityShouldBePartial,
         title: "[OwnedEntity] type should be partial",
         messageFormat: "Type '{0}' is decorated with [OwnedEntity] but is not declared 'partial'. The source generator cannot emit the private parameterless constructor.",
-        category: "Trellis.EntityFrameworkCore.Generator",
+        category: "Trellis",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
@@ -37,10 +37,10 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
     /// a parameterless constructor.
     /// </summary>
     private static readonly DiagnosticDescriptor s_alreadyHasParameterlessCtor = new(
-        id: "TRLSGEN102",
+        id: Ids.OwnedEntityAlreadyHasParameterlessCtor,
         title: "[OwnedEntity] type already has a parameterless constructor",
         messageFormat: "Type '{0}' already has a parameterless constructor. Remove it to let the [OwnedEntity] source generator emit one, or remove the [OwnedEntity] attribute.",
-        category: "Trellis.EntityFrameworkCore.Generator",
+        category: "Trellis",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
@@ -49,12 +49,24 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
     /// inherit from <c>Trellis.ValueObject</c>.
     /// </summary>
     private static readonly DiagnosticDescriptor s_doesNotInheritValueObject = new(
-        id: "TRLSGEN103",
+        id: Ids.OwnedEntityMustInheritValueObject,
         title: "[OwnedEntity] type must inherit from ValueObject",
         messageFormat: "Type '{0}' is decorated with [OwnedEntity] but does not inherit from 'Trellis.ValueObject'. [OwnedEntity] is only supported on ValueObject-derived types.",
-        category: "Trellis.EntityFrameworkCore.Generator",
+        category: "Trellis",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// Canonical IDs for diagnostics emitted by this generator. See
+    /// <c>Trellis.TrellisDiagnosticIds</c> in <c>Trellis.Analyzers</c> for the
+    /// consumer-facing equivalents.
+    /// </summary>
+    private static class Ids
+    {
+        public const string OwnedEntityShouldBePartial = "TRLS036";
+        public const string OwnedEntityAlreadyHasParameterlessCtor = "TRLS037";
+        public const string OwnedEntityMustInheritValueObject = "TRLS038";
+    }
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)

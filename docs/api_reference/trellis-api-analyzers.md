@@ -32,7 +32,27 @@
 | `TRLS022` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
 | `TRLS024` | Warning | Unsafe Result deconstruction | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
 | `TRLS025` | *(removed)* | *(removed in v2)* | The `UnsafeResultValuePropertyPatternAnalyzer` was deleted because property patterns over `Result<T>.Value` no longer compile in v2. Discriminate on `IsSuccess`/`IsFailure` first, or use `Match` / `TryGetValue`. |
-| `TRLS029` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | Per ADR-002 §3.5.1, `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", "TRLS029")]` or `#pragma warning disable TRLS029` for sanctioned sentinel/test-helper sites. |
+| `TRLS029` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | Per ADR-002 §3.5.1, `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS029` for sanctioned sentinel/test-helper sites. |
+| `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
+| `TRLS032` | Error | `MinimumLength` exceeds `MaximumLength` | Emitted by the Primitives source generator when a `[StringLength]` attribute has `MinimumLength > MaximumLength`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN002`)* |
+| `TRLS033` | Error | `Range` minimum exceeds maximum | Emitted by the Primitives source generator when a `[Range]` attribute on `int`/`long`/`decimal` has `Min > Max`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN003`)* |
+| `TRLS034` | Error | Decimal range exceeds `decimal` bounds | Emitted by the Primitives source generator when a `[Range]` attribute on `decimal` exceeds the CLR `decimal` value range. Use a tighter range. *(formerly `TRLSGEN004`)* |
+| `TRLS035` | Warning | `Maybe<T>` property should be `partial` | Emitted by the EF Core generator (`MaybePartialPropertyGenerator`) for non-partial auto-properties of type `Maybe<T>` whose containing type is `partial`. Declare the property `partial` so the generator can emit the backing field and storage member. *(formerly `TRLSGEN100`)* |
+| `TRLS036` | Error | `[OwnedEntity]` type should be `partial` | Emitted by the EF Core generator (`OwnedEntityGenerator`) when `[OwnedEntity]` is applied to a non-partial type. Declare the type `partial` so the generator can emit the private parameterless constructor. *(formerly `TRLSGEN101`)* |
+| `TRLS037` | Warning | `[OwnedEntity]` type already has a parameterless constructor | Emitted by the EF Core generator when `[OwnedEntity]` is applied to a type that already has a parameterless constructor. Remove the existing constructor or remove `[OwnedEntity]`. *(formerly `TRLSGEN102`)* |
+| `TRLS038` | Error | `[OwnedEntity]` type must inherit from `ValueObject` | Emitted by the EF Core generator when `[OwnedEntity]` is applied to a type that does not inherit from `Trellis.ValueObject`. *(formerly `TRLSGEN103`)* |
+
+## Constants — `TrellisDiagnosticIds`
+
+The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzers` assembly) exposes every diagnostic ID above as a `public const string`. Use it from `[SuppressMessage]` attributes and rule sets to avoid magic strings:
+
+```csharp
+[SuppressMessage("Trellis", TrellisDiagnosticIds.UnsafeMaybeValueAccess,
+    Justification = "guarded by HasValue check earlier in the pipeline")]
+public string GetCity(Maybe<Address> address) => address.Value.City;
+```
+
+Generator IDs (`TRLS031`–`TRLS038`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
 
 ## Analyzer classes
 

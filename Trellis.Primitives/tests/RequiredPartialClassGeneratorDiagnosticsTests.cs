@@ -1,4 +1,4 @@
-﻿namespace Trellis.Primitives.Tests;
+namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using Microsoft.CodeAnalysis;
@@ -11,7 +11,7 @@ using SourceGenerator;
 public class RequiredPartialClassGeneratorDiagnosticsTests
 {
     [Fact]
-    public void InvalidStringLengthRange_Reports_TRLSGEN002()
+    public void InvalidStringLengthRange_Reports_TRLS032()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -48,9 +48,9 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Concat(outputCompilation.GetDiagnostics(cancellationToken))
             .ToArray();
 
-        diagnostics.Should().ContainSingle(diagnostic => diagnostic.Id == "TRLSGEN002");
+        diagnostics.Should().ContainSingle(diagnostic => diagnostic.Id == "TRLS032");
 
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN002");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS032");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("ImpossibleName");
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("StringLength(5, MinimumLength = 10)");
@@ -122,7 +122,7 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .ToArray();
 
     [Fact]
-    public void InvalidIntRange_Reports_TRLSGEN003()
+    public void InvalidIntRange_Reports_TRLS033()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -153,14 +153,14 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Concat(outputCompilation.GetDiagnostics(cancellationToken))
             .ToArray();
 
-        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN003");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN003");
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLS033");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS033");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadQuantity");
     }
 
     [Fact]
-    public void InvalidDecimalRange_Reports_TRLSGEN003()
+    public void InvalidDecimalRange_Reports_TRLS033()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -191,14 +191,14 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Concat(outputCompilation.GetDiagnostics(cancellationToken))
             .ToArray();
 
-        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN003");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN003");
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLS033");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS033");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadPrice");
     }
 
     [Fact]
-    public void InvalidLongRange_Reports_TRLSGEN003()
+    public void InvalidLongRange_Reports_TRLS033()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -229,14 +229,14 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Concat(outputCompilation.GetDiagnostics(cancellationToken))
             .ToArray();
 
-        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN003");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN003");
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLS033");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS033");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadSequence");
     }
 
     [Fact]
-    public void DecimalRangeExceedsDecimalRange_Reports_TRLSGEN004()
+    public void DecimalRangeExceedsDecimalRange_Reports_TRLS034()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -267,8 +267,8 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Concat(outputCompilation.GetDiagnostics(cancellationToken))
             .ToArray();
 
-        diagnostics.Should().ContainSingle(d => d.Id == "TRLSGEN004");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLSGEN004");
+        diagnostics.Should().ContainSingle(d => d.Id == "TRLS034");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS034");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("TooBigPrice");
     }

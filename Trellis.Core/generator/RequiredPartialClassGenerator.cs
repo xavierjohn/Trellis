@@ -130,6 +130,19 @@ using Trellis.PrimitiveValueObjectGenerator;
 public class RequiredPartialClassGenerator : IIncrementalGenerator
 {
     /// <summary>
+    /// Canonical IDs for diagnostics emitted by this generator. See
+    /// <c>Trellis.TrellisDiagnosticIds</c> in <c>Trellis.Analyzers</c> for the
+    /// consumer-facing equivalents.
+    /// </summary>
+    private static class Ids
+    {
+        public const string UnsupportedRequiredBaseType = "TRLS031";
+        public const string InvalidStringLengthRange = "TRLS032";
+        public const string InvalidRangeMinExceedsMax = "TRLS033";
+        public const string DecimalRangeExceedsDecimalRange = "TRLS034";
+    }
+
+    /// <summary>
     /// Initializes the incremental generator, setting up the syntax provider and compilation pipeline.
     /// </summary>
     /// <param name="context">The initialization context provided by the compiler.</param>
@@ -216,10 +229,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor(
-                        id: "TRLSGEN001",
+                        id: Ids.UnsupportedRequiredBaseType,
                         title: "Unsupported base type for RequiredPartialClassGenerator",
                         messageFormat: "Class '{0}' inherits from unsupported base type '{1}'. Supported bases: RequiredGuid, RequiredString, RequiredInt, RequiredDecimal, RequiredLong, RequiredBool, RequiredDateTime, RequiredEnum.",
-                        category: "SourceGenerator",
+                        category: "Trellis",
                         DiagnosticSeverity.Warning,
                         isEnabledByDefault: true),
                     location: null,
@@ -517,10 +530,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor(
-                    id: "TRLSGEN002",
+                    id: Ids.InvalidStringLengthRange,
                     title: "StringLength MinimumLength exceeds MaximumLength",
                     messageFormat: "Class '{0}' has [StringLength({1}, MinimumLength = {2})] where MinimumLength exceeds MaximumLength. No value can satisfy both constraints.",
-                    category: "SourceGenerator",
+                    category: "Trellis",
                     DiagnosticSeverity.Error,
                     isEnabledByDefault: true),
                 location: null,
@@ -609,10 +622,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor(
-                    id: "TRLSGEN003",
+                    id: Ids.InvalidRangeMinExceedsMax,
                     title: "Range Minimum exceeds Maximum",
                     messageFormat: "Class '{0}' has [Range({1}, {2})] where Minimum exceeds Maximum. No value can satisfy both constraints.",
-                    category: "SourceGenerator",
+                    category: "Trellis",
                     DiagnosticSeverity.Error,
                     isEnabledByDefault: true),
                 location: null,
@@ -835,10 +848,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor(
-                    id: "TRLSGEN003",
+                    id: Ids.InvalidRangeMinExceedsMax,
                     title: "Range Minimum exceeds Maximum",
                     messageFormat: "Class '{0}' has [Range({1}, {2})] where Minimum exceeds Maximum. No value can satisfy both constraints.",
-                    category: "SourceGenerator",
+                    category: "Trellis",
                     DiagnosticSeverity.Error,
                     isEnabledByDefault: true),
                 location: null,
@@ -858,10 +871,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor(
-                        id: "TRLSGEN004",
+                        id: Ids.DecimalRangeExceedsDecimalRange,
                         title: "Range value exceeds decimal range",
                         messageFormat: "Class '{0}' has [Range] values that exceed the decimal type range (±7.9×10²⁸). Use ValidateAdditional for bounds that exceed decimal range.",
-                        category: "SourceGenerator",
+                        category: "Trellis",
                         DiagnosticSeverity.Error,
                         isEnabledByDefault: true),
                     location: null,
@@ -1078,10 +1091,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor(
-                    id: "TRLSGEN003",
+                    id: Ids.InvalidRangeMinExceedsMax,
                     title: "Range Minimum exceeds Maximum",
                     messageFormat: "Class '{0}' has [Range({1}, {2})] where Minimum exceeds Maximum. No value can satisfy both constraints.",
-                    category: "SourceGenerator",
+                    category: "Trellis",
                     DiagnosticSeverity.Error,
                     isEnabledByDefault: true),
                 location: null,

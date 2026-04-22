@@ -9,13 +9,13 @@ using Microsoft.CodeAnalysis.CSharp;
 /// </summary>
 public class OwnedEntityGeneratorTests
 {
-    #region TRLSGEN103 — does not inherit from ValueObject
+    #region TRLS038 — does not inherit from ValueObject
 
     /// <summary>
-    /// A plain class decorated with [OwnedEntity] — not inheriting ValueObject — must emit TRLSGEN103.
+    /// A plain class decorated with [OwnedEntity] — not inheriting ValueObject — must emit TRLS038.
     /// </summary>
     [Fact]
-    public void OwnedEntity_On_NonValueObject_Class_Should_Emit_TRLSGEN103()
+    public void OwnedEntity_On_NonValueObject_Class_Should_Emit_TRLS038()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -36,16 +36,16 @@ public class OwnedEntityGeneratorTests
 
         var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLSGEN103")
+        diagnostics.Where(d => d.Id == "TRLS038")
             .Should().ContainSingle()
             .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("PlainClass");
     }
 
     /// <summary>
-    /// TRLSGEN103 message must name the type that does not inherit from ValueObject.
+    /// TRLS038 message must name the type that does not inherit from ValueObject.
     /// </summary>
     [Fact]
-    public void TRLSGEN103_Message_Should_Include_TypeName()
+    public void TRLS038_Message_Should_Include_TypeName()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -64,16 +64,16 @@ public class OwnedEntityGeneratorTests
 
         var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLSGEN103")
+        diagnostics.Where(d => d.Id == "TRLS038")
             .Should().ContainSingle()
             .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("NotAValueObject");
     }
 
     /// <summary>
-    /// TRLSGEN103 must be an error, not a warning.
+    /// TRLS038 must be an error, not a warning.
     /// </summary>
     [Fact]
-    public void TRLSGEN103_Should_Be_Error_Severity()
+    public void TRLS038_Should_Be_Error_Severity()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -92,13 +92,13 @@ public class OwnedEntityGeneratorTests
 
         var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLSGEN103")
+        diagnostics.Where(d => d.Id == "TRLS038")
             .Should().ContainSingle()
             .Which.Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
     /// <summary>
-    /// When TRLSGEN103 fires, no source should be generated (generation is skipped).
+    /// When TRLS038 fires, no source should be generated (generation is skipped).
     /// </summary>
     [Fact]
     public void OwnedEntity_On_NonValueObject_Should_Not_Generate_Constructor()
@@ -122,15 +122,15 @@ public class OwnedEntityGeneratorTests
 
         var (generatedSources, _, _) = RunGenerator(source, cancellationToken);
 
-        generatedSources.Should().BeEmpty("generation must be skipped when TRLSGEN103 fires");
+        generatedSources.Should().BeEmpty("generation must be skipped when TRLS038 fires");
     }
 
     /// <summary>
-    /// When TRLSGEN103 fires (wrong base class), TRLSGEN101 (non-partial) must NOT also fire —
+    /// When TRLS038 fires (wrong base class), TRLS036 (non-partial) must NOT also fire —
     /// only one diagnostic per type is emitted due to the early-return ordering.
     /// </summary>
     [Fact]
-    public void OwnedEntity_On_NonValueObject_NonPartial_Should_Emit_Only_TRLSGEN103()
+    public void OwnedEntity_On_NonValueObject_NonPartial_Should_Emit_Only_TRLS038()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -149,8 +149,8 @@ public class OwnedEntityGeneratorTests
 
         var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLSGEN103").Should().ContainSingle();
-        diagnostics.Where(d => d.Id == "TRLSGEN101").Should().BeEmpty();
+        diagnostics.Where(d => d.Id == "TRLS038").Should().ContainSingle();
+        diagnostics.Where(d => d.Id == "TRLS036").Should().BeEmpty();
     }
 
     #endregion
@@ -158,10 +158,10 @@ public class OwnedEntityGeneratorTests
     #region Happy path — ValueObject-derived types
 
     /// <summary>
-    /// A class inheriting directly from ValueObject must NOT emit TRLSGEN103.
+    /// A class inheriting directly from ValueObject must NOT emit TRLS038.
     /// </summary>
     [Fact]
-    public void OwnedEntity_On_ValueObject_Derived_Class_Should_Not_Emit_TRLSGEN103()
+    public void OwnedEntity_On_ValueObject_Derived_Class_Should_Not_Emit_TRLS038()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -189,7 +189,7 @@ public class OwnedEntityGeneratorTests
 
         var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLSGEN103").Should().BeEmpty();
+        diagnostics.Where(d => d.Id == "TRLS038").Should().BeEmpty();
     }
 
     /// <summary>
@@ -233,10 +233,10 @@ public class OwnedEntityGeneratorTests
 
     /// <summary>
     /// A class inheriting from a class that itself inherits ValueObject (indirect inheritance)
-    /// must NOT emit TRLSGEN103.
+    /// must NOT emit TRLS038.
     /// </summary>
     [Fact]
-    public void OwnedEntity_On_Indirect_ValueObject_Derived_Class_Should_Not_Emit_TRLSGEN103()
+    public void OwnedEntity_On_Indirect_ValueObject_Derived_Class_Should_Not_Emit_TRLS038()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -265,7 +265,7 @@ public class OwnedEntityGeneratorTests
 
         var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLSGEN103").Should().BeEmpty();
+        diagnostics.Where(d => d.Id == "TRLS038").Should().BeEmpty();
     }
 
     #endregion
