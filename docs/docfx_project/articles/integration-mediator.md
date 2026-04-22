@@ -46,9 +46,12 @@ using Trellis.Mediator;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMediator();
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
 builder.Services.AddTrellisBehaviors();
 ```
+
+> [!IMPORTANT]
+> Pass `opts => opts.ServiceLifetime = ServiceLifetime.Scoped`. The Trellis pipeline behaviors are registered as scoped (they depend on per-request services such as `IActorProvider`, `IUnitOfWork`, and `IMessageValidator<>` adapters). The Mediator default lifetime is **Singleton**, which fails ASP.NET's root-scope validation as soon as the first behavior tries to resolve a scoped dependency. `Scoped` is the right lifetime for any host that has a request scope (Web API, Worker with scoped processing, etc.).
 
 That registration adds these behaviors, in this order:
 
@@ -58,7 +61,7 @@ That registration adds these behaviors, in this order:
 | `TracingBehavior` | all messages | Creates an OpenTelemetry activity |
 | `LoggingBehavior` | all messages | Logs execution and failures |
 | `AuthorizationBehavior` | messages implementing `IAuthorize` | Enforces required permissions |
-| `ValidationBehavior` | messages implementing `IValidate` | Returns whatever `Validate()` returns on failure |
+| `ValidationBehavior` | **all messages** | Runs `IValidate.Validate()` (when implemented) AND every registered `IMessageValidator<TMessage>` (e.g., the FluentValidation adapter); aggregates `Error.UnprocessableContent` failures from every source into one response |
 
 > [!NOTE]
 > `ResourceAuthorizationBehavior` is **not** included by `AddTrellisBehaviors()`. It is only added when you call `AddResourceAuthorization(...)`.
@@ -155,7 +158,7 @@ using Trellis.Mediator;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMediator();
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
 builder.Services.AddTrellisBehaviors();
 builder.Services.AddResourceAuthorization(
     typeof(RenameDocumentCommand).Assembly,
@@ -203,9 +206,15 @@ public sealed class RenameDocumentHandler(IDocumentRepository repository)
 
 ## Validation behavior details
 
-Why call this out? Because the pipeline is intentionally lightweight.
+Why call this out? Because `ValidationBehavior` is the single, unified validation stage. It runs for **every** message and pulls failures from two independent sources:
 
-`ValidationBehavior` does **not** force a `Error.UnprocessableContent`. It returns whatever `Validate()` produced.
+1. **`IValidate.Validate()`** on the message itself — for cross-cutting business invariants that are awkward to express as property rules (e.g., "the batch must be non-empty" or "no line may target the source account").
+2. **Every `IMessageValidator<TMessage>` registered in DI** — the extension seam used by `Trellis.FluentValidation` (and any other validator package) to plug into the same stage without occupying its own pipeline slot.
+
+### Aggregation rules
+
+- All `Error.UnprocessableContent` failures from both sources are merged into a single response whose `Fields` array contains every reported violation. The pipeline never returns "the first failure"; the caller always gets the full list in one round trip.
+- Any **non-UPC** failure (`Error.Conflict`, `Error.Forbidden`, …) returned by any validator short-circuits the stage immediately and is propagated as-is. No further validators are consulted. This lets `IValidate` express "this is not a field problem, this is a domain rule violation":
 
 ```csharp
 using Mediator;
@@ -222,7 +231,24 @@ public sealed record ArchiveDocumentCommand(Guid DocumentId, bool IsArchived)
 }
 ```
 
-That is useful when the failure is business-oriented instead of field-validation-oriented.
+### Plugging in FluentValidation
+
+Add the optional `Trellis.FluentValidation` package and call `AddTrellisFluentValidation()` to make every `IValidator<TMessage>` registered for the message participate in the same validation stage:
+
+```csharp
+using FluentValidation;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+builder.Services.AddTrellisFluentValidation();
+builder.Services.AddScoped<IValidator<SubmitBatchTransfersCommand>, SubmitBatchTransfersValidator>();
+```
+
+`AddTrellisFluentValidation()` registers an open-generic `FluentValidationMessageValidatorAdapter<>` as `IMessageValidator<>`. The adapter normalizes FluentValidation property names (e.g., `Metadata.Reference`, `Lines[0].Memo`) into RFC 6901 JSON Pointers (`/Metadata/Reference`, `/Lines/0/Memo`) so the resulting `Error.UnprocessableContent.Fields` has consistent pointer shapes regardless of which validation source produced each violation.
+
+See [FluentValidation Integration](integration-fluentvalidation.md#mediator-integration-addtrellisfluentvalidation) for the full Mediator-pipeline section, including the AOT vs. assembly-scanning overloads.
 
 ## Exception behavior details
 
@@ -242,7 +268,7 @@ using Trellis.Mediator;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMediator();
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
 builder.Services.AddTrellisBehaviors();
 builder.Services.AddResourceAuthorization(typeof(Program).Assembly);
 
