@@ -9,16 +9,26 @@ Strongly typed value objects for .NET, with built-in primitives like `EmailAddre
 dotnet add package Trellis.Primitives
 ```
 
-For custom `Required*` types, also add `Trellis.Core.Generator`.
+The source generator that powers the `Required*<TSelf>` and `ScalarValueObject<TSelf, TUnderlying>` base classes is bundled inside the `Trellis.Core` package (transitively referenced by `Trellis.Primitives`) — no extra package is required.
 
 ## Quick Example
 ```csharp
+using Trellis;
 using Trellis.Primitives;
 
-var email = EmailAddress.TryCreate("ada@example.com");
-var total = Money.Create(12.34m, "USD");
+// TryCreate returns Result<T>; pattern-match before using the value.
+var emailResult = EmailAddress.TryCreate("ada@example.com");
+
+// Money.Create throws on invalid input; use TryCreate for user input.
+var subtotal = Money.Create(12.34m, "USD");
 var shipping = Money.Create(2.00m, "USD");
-var grandTotal = total.Add(shipping);
+
+// Arithmetic on Money returns Result<Money> (currency-mismatch / overflow safe).
+Result<Money> grandTotal = subtotal.Add(shipping);
+
+// Define a custom value object — the source generator emits TryCreate, equality, JSON converters, etc.
+public sealed partial class CustomerEmail : RequiredString<CustomerEmail>;
+public sealed partial class OrderId : RequiredGuid<OrderId>;
 ```
 
 ## Key Features

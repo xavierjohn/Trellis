@@ -111,7 +111,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 | Package | What it does |
 |---------|-------------|
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | 19+ Roslyn analyzers that catch common mistakes at build time |
-| [Trellis.Core.Generator](https://www.nuget.org/packages/Trellis.Core.Generator) | Source generation for `RequiredString` and related primitives |
+| _Trellis.Core.Generator_ | Source generation for `RequiredString` and related primitives — **bundled inside `Trellis.Core` (no separate package)** |
 
 
 > See all analyzer rules: [Analyzer Rules](~/articles/analyzers/toc.yml)

@@ -30,7 +30,7 @@ That is good news: you usually do **not** need to rethink your domain model or r
 | `FunctionalDdd.RailwayOrientedProgramming` | `Trellis.Core` |
 | `FunctionalDdd.DomainDrivenDesign` | `Trellis.DomainDrivenDesign` |
 | `FunctionalDdd.PrimitiveValueObjects` | `Trellis.Primitives` |
-| `FunctionalDdd.PrimitiveValueObjectGenerator` | `Trellis.Core.Generator` |
+| `FunctionalDdd.PrimitiveValueObjectGenerator` | _bundled inside `Trellis.Core` (no separate package)_ |
 | `FunctionalDdd.Asp` | `Trellis.Asp` |
 | `FunctionalDdd.Http` | `Trellis.Http` |
 | `FunctionalDdd.FluentValidation` | `Trellis.FluentValidation` |
@@ -66,7 +66,7 @@ If you centralize package versions in `Directory.Packages.props`, this is the fa
   <PackageVersion Include="Trellis.DomainDrivenDesign" Version="3.x.x" />
   <PackageVersion Include="Trellis.Asp" Version="3.x.x" />
   <PackageVersion Include="Trellis.Primitives" Version="3.x.x" />
-  <PackageVersion Include="Trellis.Core.Generator" Version="3.x.x" />
+  <!-- Trellis.Core.Generator is bundled inside Trellis.Core; no separate package -->
   <PackageVersion Include="Trellis.Analyzers" Version="3.x.x" />
 </ItemGroup>
 ```

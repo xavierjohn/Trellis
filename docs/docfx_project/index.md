@@ -92,9 +92,10 @@ Start with the packages most developers need first:
 ```bash
 dotnet add package Trellis.Core
 dotnet add package Trellis.Primitives
-dotnet add package Trellis.Core.Generator
 dotnet add package Trellis.Analyzers
 ```
+
+> The source generator that backs the `Required*<TSelf>` base classes is bundled inside `Trellis.Core` (under `analyzers/dotnet/cs/`); no separate `Trellis.Core.Generator` package is needed.
 
 Then create your first value object and use it in a result flow.
 
