@@ -12,6 +12,7 @@ This guide starts with the smallest useful setup, then builds up to query patter
 - [Querying without null checks everywhere](#querying-without-null-checks-everywhere)
 - [Saving without exception-driven flow](#saving-without-exception-driven-flow)
 - [What `ApplyTrellisConventions` actually does](#what-applytrellisconventions-actually-does)
+- [Reflection-free alternative: `ApplyTrellisConventionsFor<TContext>()`](#reflection-free-alternative-applytrellisconventionsfortcontext)
 - [Optimistic concurrency with ETags](#optimistic-concurrency-with-etags)
 - [When to use `Maybe<T>` vs `Result<T>`](#when-to-use-maybet-vs-resultt)
 - [Manual EF Core setup without the package](#manual-ef-core-setup-without-the-package)
@@ -223,6 +224,34 @@ That matters because:
 
 > [!WARNING]
 > `ApplyTrellisConventions(...)` only discovers composite value objects in the assemblies you explicitly pass in. If a composite type lives in another assembly, include that assembly too.
+
+## Reflection-free alternative: `ApplyTrellisConventionsFor<TContext>()`
+
+For AOT-published or trim-sensitive applications, Trellis ships a Roslyn source generator that emits a compile-time-discovered alternative to the reflection-based path:
+
+```csharp
+public class AppDbContext : DbContext
+{
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Order> Orders => Set<Order>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+        configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
+}
+```
+
+The generator walks every concrete `DbContext`-derived type in your project, follows each `DbSet<T>`'s reachable property graph (recursing into composite value objects, and unwrapping `Nullable<T>` and `Maybe<T>`), classifies the discovered Trellis value object types by their base-type chain, and emits explicit converter and convention registrations. The result is a `partial`-free, reflection-free dispatch:
+
+- no runtime assembly scanning
+- no calls to `Type.MakeGenericType`, `Assembly.GetTypes`, or `Activator.CreateInstance`
+- behaviorally equivalent to `ApplyTrellisConventions(typeof(SomethingInThisAssembly).Assembly)` for the entity types reachable from `TContext`'s `DbSet<>` properties
+
+> [!NOTE]
+> The generator only discovers `DbContext` types defined in the **current** compilation. It does not scan referenced assemblies. If your `DbContext` lives in a separate project, define the call to `ApplyTrellisConventionsFor<TContext>()` from that project too.
+> Composite and scalar value object types may live in any referenced assembly — the reachability walk crosses assembly boundaries through entity properties.
+
+> [!NOTE]
+> Calling `ApplyTrellisConventionsFor<T>()` for a `T` that has no generated body (e.g. a private nested `DbContext` excluded from generation) throws `InvalidOperationException` at runtime. Use the reflection-based `ApplyTrellisConventions(...)` for such cases.
 
 ## Maybe property convention
 
