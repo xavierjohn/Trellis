@@ -849,16 +849,17 @@ The v1 plan to consolidate Mediator + Authorization + FluentValidation into a si
 
 ### 5.1 `Trellis.Mediator` — pipeline behaviors only
 
-Keep as a thin package providing pipeline behaviors:
-- `ExceptionBehavior` — catches unhandled exceptions, returns `UnexpectedError`.
-- `ValidationBehavior` — runs `IValidate.Validate()` and FluentValidation validators discovered from DI.
-- `AuthorizationBehavior` — checks `[Authorize]` permissions via `IActorProvider`.
-- `ResourceAuthorizationBehavior` — checks `IAuthorizeResource<T>` with loader caching (see §5.3).
-- `TracingBehavior` — OpenTelemetry spans.
-- `LoggingBehavior` — structured logs.
-- `TransactionalCommandBehavior` — wraps commands in `IUnitOfWork.CommitAsync`.
+Keep as a thin package providing pipeline behaviors. The canonical pipeline (outermost → innermost) is **six Mediator-first-party behaviors plus one opt-in EF-Core behavior**:
 
-`AddTrellisMediator(...)` registers them in a fixed canonical order. Users add their own behaviors but cannot reorder the built-ins (most production CQRS bugs come from reordering).
+1. `ExceptionBehavior` — catches unhandled exceptions, returns `UnexpectedError`.
+2. `TracingBehavior` — OpenTelemetry spans.
+3. `LoggingBehavior` — structured logs with duration and outcome.
+4. `AuthorizationBehavior` — checks `[Authorize]` permissions via `IActorProvider`.
+5. `ResourceAuthorizationBehavior` — *opt-in*; checks `IAuthorizeResource<T>` with loader caching (see §5.3). Inserted by `AddResourceAuthorization(...)` immediately before `ValidationBehavior` so the loaded resource is checked once per request.
+6. `ValidationBehavior` — **unified validation stage**. Runs `IValidate.Validate()` when the message implements it AND every `IMessageValidator<TMessage>` registered in DI for the message, aggregating `Error.UnprocessableContent` failures (both `Fields` and `Rules`) into a single response. **External validation sources plug in here through `IMessageValidator<TMessage>` instead of occupying their own pipeline slot** — in particular, `Trellis.FluentValidation` contributes a `FluentValidationMessageValidatorAdapter<TMessage>` registered by `AddTrellisFluentValidation()`. Empty `UnprocessableContent` failures still short-circuit; calling `AddTrellisFluentValidation()` is idempotent.
+7. `TransactionalCommandBehavior` — *opt-in*; lives in `Trellis.EntityFrameworkCore`. Wraps commands in `IUnitOfWork.CommitAsync`. Opt in via `AddTrellisUnitOfWork<TContext>()` after all other behavior registrations so it lands innermost (closest to the handler).
+
+`AddTrellisMediator(...)` (or `MediatorOptions.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors.ToArray()` in the AOT path) registers the always-on behaviors (1–4 + 6) in this fixed canonical order. Users add their own behaviors but cannot reorder the built-ins (most production CQRS bugs come from reordering).
 
 The `IFailureFactory<TSelf>` constraint stays — it is necessary to let pipeline behaviors construct a typed failure response without reflection. (v1 proposed removing it; that removal was conditioned on owning the dispatcher, which we are no longer doing.)
 
