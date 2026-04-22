@@ -205,9 +205,12 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// Does not call <c>SaveChanges</c> — the commit is deferred to the pipeline or
     /// <see cref="IUnitOfWork.CommitAsync"/>.
     /// <para>
-    /// <b>Note:</b> <c>FindAsync</c> bypasses EF Core global query filters. If your repository
-    /// uses soft-delete or tenant filters, override this method to apply the appropriate
-    /// filtered lookup (e.g., using <see cref="BuildIdPredicate"/> with a filtered query).
+    /// <b>Query filters:</b> Starting with EF Core 8, <c>FindAsync</c> applies global
+    /// query filters (soft-delete, multi-tenant). A row excluded by a filter is treated
+    /// as not-existing and yields <see cref="Error.NotFound"/> — the safe default. Tests
+    /// in <c>RepositoryBaseFilterTests</c> guard this contract. Override this method only
+    /// if you intentionally want to operate over filtered rows (in which case use
+    /// <c>DbSet.IgnoreQueryFilters().FirstOrDefaultAsync(BuildIdPredicate(id), ct)</c>).
     /// </para>
     /// </summary>
     /// <param name="id">The aggregate identifier to remove.</param>
