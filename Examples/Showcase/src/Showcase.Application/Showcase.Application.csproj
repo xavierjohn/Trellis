@@ -10,12 +10,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Mediator.Abstractions" />
+    <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Showcase.Domain\Showcase.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
   </ItemGroup>
 
 </Project>

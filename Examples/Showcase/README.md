@@ -21,6 +21,21 @@ the two hosting styles side-by-side over a single, identical contract.
 | Application/workflow boundary (events → AcceptChanges → persist) | `Showcase.Application/Workflows/BankingWorkflow.cs` |
 | `Trellis.Asp.ToActionResult` mapping (MVC) | `Showcase.Mvc/Controllers/*` |
 | `Trellis.Asp.ToHttpResultAsync` mapping (Minimal API) | `Showcase.MinimalApi/Endpoints/*` |
+| **v2 Mediator pipeline** (`AddMediator` + `AddTrellisBehaviors`) | `Showcase.MinimalApi/Program.cs` |
+| **`IValidate` + FluentValidation composition** in one `ValidationBehavior` stage | `Showcase.Application/Features/SubmitBatchTransfers/*` |
+| **JSON Pointer normalization** for FluentValidation nested (`/Metadata/Reference`) and indexer (`/Lines/0/Memo`) paths | `Showcase.Application/Features/SubmitBatchTransfers/SubmitBatchTransfersValidator.cs` |
+| AOT-friendly `AddTrellisFluentValidation()` + explicit `AddScoped<IValidator<T>, ...>` | `Showcase.MinimalApi/Program.cs` |
+
+> [!NOTE]
+> The Showcase intentionally does **not** demonstrate every v2 pipeline surface. The following
+> are tracked in the workspace `BACKLOG.md` ("ASP Template — items the Showcase can't
+> demonstrate") for the `TrellisAspTemplate`:
+>
+> - `AddTrellisUnitOfWork<TContext>()` + `TransactionalCommandBehavior` (no `DbContext` here).
+> - Resource authorization (`IAuthorizeResource<T>` + `IResourceLoader<,>`).
+> - Assembly-scanning `AddTrellisFluentValidation(typeof(...).Assembly)` overload.
+> - `<PublishAot>true</PublishAot>` end-to-end (blocked on EF Core AOT readiness and the
+>   scalar-VO middleware rewrite).
 
 ## Project layout
 
