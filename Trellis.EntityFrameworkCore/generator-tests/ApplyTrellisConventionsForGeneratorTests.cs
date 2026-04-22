@@ -34,9 +34,13 @@ public class ApplyTrellisConventionsForGeneratorTests
         {
             public static class ModelConfigurationBuilderExtensions
             {
-                public static Microsoft.EntityFrameworkCore.ModelConfigurationBuilder ApplyTrellisConventionsCore(
+                public static Microsoft.EntityFrameworkCore.ModelConfigurationBuilder AddTrellisScalarConverter<TClr, TProvider>(
+                    this Microsoft.EntityFrameworkCore.ModelConfigurationBuilder b)
+                    where TClr : class
+                    where TProvider : notnull
+                    => b;
+                public static Microsoft.EntityFrameworkCore.ModelConfigurationBuilder AddTrellisCoreConventions(
                     this Microsoft.EntityFrameworkCore.ModelConfigurationBuilder b,
-                    System.Collections.Generic.IEnumerable<(System.Type ClrType, System.Type ProviderType)> scalars,
                     System.Collections.Generic.IEnumerable<System.Type> composites)
                     => b;
             }
@@ -83,8 +87,7 @@ public class ApplyTrellisConventionsForGeneratorTests
         var generated = sources[0];
         generated.Should().Contain("ApplyTrellisConventionsFor<TContext>");
         generated.Should().Contain("typeof(global::MyApp.MyDb)");
-        generated.Should().Contain("typeof(global::MyApp.CustomerId)");
-        generated.Should().Contain("typeof(global::System.Guid)");
+        generated.Should().Contain("AddTrellisScalarConverter<global::MyApp.CustomerId, global::System.Guid>");
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
     }
 
@@ -109,8 +112,35 @@ public class ApplyTrellisConventionsForGeneratorTests
         var (sources, _, _) = RunGenerator(src, ct);
 
         var generated = sources.Single();
-        generated.Should().Contain("typeof(global::MyApp.Status)");
-        generated.Should().Contain("typeof(global::System.String)");
+        generated.Should().Contain("AddTrellisScalarConverter<global::MyApp.Status, global::System.String>");
+    }
+
+    [Fact]
+    public void Generated_source_contains_no_MakeGenericType_or_assembly_reflection()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var src = Stubs + """
+
+            namespace MyApp
+            {
+                public class CustomerId : Trellis.ScalarValueObject<CustomerId, System.Guid> { }
+                public class Email : Trellis.ScalarValueObject<Email, string> { }
+                public class Address : Trellis.ValueObject { }
+                public class Customer { public CustomerId Id { get; set; } public Email E { get; set; } public Address A { get; set; } }
+                public class MyDb : Microsoft.EntityFrameworkCore.DbContext
+                {
+                    public Microsoft.EntityFrameworkCore.DbSet<Customer> Customers { get; set; }
+                }
+            }
+            """;
+
+        var (sources, _, _) = RunGenerator(src, ct);
+
+        var generated = sources.Single();
+        generated.Should().NotContain("MakeGenericType");
+        generated.Should().NotContain("GetTypes");
+        generated.Should().NotContain("Activator.CreateInstance");
     }
 
     [Fact]
@@ -133,7 +163,7 @@ public class ApplyTrellisConventionsForGeneratorTests
 
         var (sources, _, _) = RunGenerator(src, ct);
 
-        sources.Single().Should().Contain("typeof(global::MyApp.Phone)");
+        sources.Single().Should().Contain("AddTrellisScalarConverter<global::MyApp.Phone, string>");
     }
 
     [Fact]
@@ -251,7 +281,7 @@ public class ApplyTrellisConventionsForGeneratorTests
 
         var generated = sources.Single();
         generated.Should().NotContain("HiddenEntity");
-        generated.Should().Contain("typeof(global::MyApp.CustomerId)");
+        generated.Should().Contain("AddTrellisScalarConverter<global::MyApp.CustomerId, global::System.Guid>");
     }
 
     [Fact]

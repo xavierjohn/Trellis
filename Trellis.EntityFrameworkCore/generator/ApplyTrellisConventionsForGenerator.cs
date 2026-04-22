@@ -281,8 +281,10 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         if (type.SpecialType != SpecialType.None) return true;
         var ns = type.ContainingNamespace?.ToDisplayString();
         if (string.IsNullOrEmpty(ns)) return false;
-        return ns!.StartsWith("System", StringComparison.Ordinal)
-            || ns.StartsWith("Microsoft", StringComparison.Ordinal);
+        return ns == "System"
+            || ns!.StartsWith("System.", StringComparison.Ordinal)
+            || ns == "Microsoft"
+            || ns.StartsWith("Microsoft.", StringComparison.Ordinal);
     }
 
     private static string ToFullyQualifiedName(ITypeSymbol type) =>
@@ -359,18 +361,15 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         sb.Append(helperName);
         sb.AppendLine("(ModelConfigurationBuilder b)");
         sb.AppendLine("    {");
-        sb.AppendLine("        var scalars = new (global::System.Type ClrType, global::System.Type ProviderType)[]");
-        sb.AppendLine("        {");
         foreach (var s in ctxInfo.Scalars)
         {
-            sb.Append("            (typeof(");
+            sb.Append("        global::Trellis.EntityFrameworkCore.ModelConfigurationBuilderExtensions.AddTrellisScalarConverter<");
             sb.Append(s.ClrTypeFqn);
-            sb.Append("), typeof(");
+            sb.Append(", ");
             sb.Append(s.ProviderTypeFqn);
-            sb.AppendLine(")),");
+            sb.AppendLine(">(b);");
         }
 
-        sb.AppendLine("        };");
         sb.AppendLine("        var composites = new global::System.Type[]");
         sb.AppendLine("        {");
         foreach (var c in ctxInfo.Composites)
@@ -381,7 +380,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         }
 
         sb.AppendLine("        };");
-        sb.AppendLine("        return global::Trellis.EntityFrameworkCore.ModelConfigurationBuilderExtensions.ApplyTrellisConventionsCore(b, scalars, composites);");
+        sb.AppendLine("        return global::Trellis.EntityFrameworkCore.ModelConfigurationBuilderExtensions.AddTrellisCoreConventions(b, composites);");
         sb.AppendLine("    }");
         sb.AppendLine();
     }

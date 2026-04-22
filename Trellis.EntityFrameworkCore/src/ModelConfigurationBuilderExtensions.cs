@@ -109,6 +109,51 @@ public static class ModelConfigurationBuilderExtensions
             configurationBuilder.Properties(clrType).HaveConversion(converterType);
         }
 
+        return configurationBuilder.AddTrellisCoreConventions(composites);
+    }
+
+    /// <summary>
+    /// Registers a strongly-typed <see cref="TrellisScalarConverter{TSelf, T}"/> for
+    /// <typeparamref name="TClr"/> properties that round-trip to <typeparamref name="TProvider"/>.
+    /// </summary>
+    /// <remarks>
+    /// AOT/trim-friendly: no calls to <see cref="Type.MakeGenericType(Type[])"/> or other
+    /// runtime reflection. Intended for source-generated convention registration.
+    /// </remarks>
+    /// <typeparam name="TClr">The Trellis scalar value object CLR type (e.g. <c>CustomerId</c>).</typeparam>
+    /// <typeparam name="TProvider">The provider primitive type (e.g. <c>Guid</c>, <c>string</c>).</typeparam>
+    /// <param name="configurationBuilder">The model configuration builder.</param>
+    /// <returns>The same <see cref="ModelConfigurationBuilder"/> for chaining.</returns>
+    public static ModelConfigurationBuilder AddTrellisScalarConverter<TClr, TProvider>(
+        this ModelConfigurationBuilder configurationBuilder)
+        where TClr : class
+        where TProvider : notnull
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        configurationBuilder.Properties<TClr>().HaveConversion<TrellisScalarConverter<TClr, TProvider>>();
+        return configurationBuilder;
+    }
+
+    /// <summary>
+    /// Adds the fixed Trellis EF Core conventions: <c>MaybeConvention</c>,
+    /// <c>CompositeValueObjectConvention</c>, <c>MoneyConvention</c>, <c>AggregateETagConvention</c>,
+    /// and <c>AggregateTransientPropertyConvention</c>.
+    /// </summary>
+    /// <remarks>
+    /// AOT/trim-friendly: no calls to <see cref="Type.MakeGenericType(Type[])"/>. The
+    /// <paramref name="composites"/> argument carries already-closed <see cref="Type"/> tokens
+    /// supplied by the caller (typically the source generator).
+    /// </remarks>
+    /// <param name="configurationBuilder">The model configuration builder.</param>
+    /// <param name="composites">Composite Trellis <c>ValueObject</c> types.</param>
+    /// <returns>The same <see cref="ModelConfigurationBuilder"/> for chaining.</returns>
+    public static ModelConfigurationBuilder AddTrellisCoreConventions(
+        this ModelConfigurationBuilder configurationBuilder,
+        IEnumerable<Type> composites)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        ArgumentNullException.ThrowIfNull(composites);
+
         var compositeSet = composites as HashSet<Type> ?? new HashSet<Type>(composites);
         configurationBuilder.Conventions.Add(static _ => new MaybeConvention());
         configurationBuilder.Conventions.Add(_ => new CompositeValueObjectConvention(compositeSet));
