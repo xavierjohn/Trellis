@@ -52,12 +52,15 @@ public static class WebApplicationFactoryTimeExtensions
     /// </remarks>
     /// <example>
     /// <code>
+    /// // Seed the fake clock 8 days before the "now" the test cares about so the test
+    /// // only ever advances time forward — FakeTimeProvider.Advance rejects negative spans.
     /// var fakeTime = new FakeTimeProvider(WebApplicationFactoryTimeExtensions.DefaultTestStartInstant);
     /// _factory = _factory.WithFakeTimeProvider(fakeTime);
     ///
-    /// fakeTime.Advance(TimeSpan.FromDays(-8));
+    /// // The order is submitted at "T0" (the deterministic baseline).
     /// await client.PostAsync("/api/orders/1/submission", null, ct);
     ///
+    /// // Advance 8 days; the overdue endpoint now sees the order as past-due.
     /// fakeTime.Advance(TimeSpan.FromDays(8));
     /// var response = await client.GetAsync("/api/orders/overdue", ct);
     /// </code>

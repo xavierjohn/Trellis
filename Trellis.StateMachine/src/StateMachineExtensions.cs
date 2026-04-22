@@ -87,7 +87,25 @@ public static class StateMachineExtensions
         where TState : notnull
         where TTrigger : notnull
     {
-        if (!stateMachine.CanFire(trigger))
+        if (stateMachine.CanFire(trigger))
+        {
+            stateMachine.Fire(trigger);
+            return Result.Ok(stateMachine.State);
+        }
+
+        // Trigger is not permitted from the current state. Still invoke Fire so any
+        // user-configured OnUnhandledTrigger callback runs and can apply its own policy
+        // (silent suppression, custom exception, logging, etc.). If Stateless's default
+        // unhandled-trigger handler is in effect it throws InvalidOperationException —
+        // because we already know CanFire returned false, any InvalidOperationException
+        // from this Fire call is by definition the unhandled-trigger path, so we translate
+        // it to Error.Conflict without inspecting its message text. Other exception types
+        // (custom user handlers throwing typed exceptions) propagate untouched.
+        try
+        {
+            stateMachine.Fire(trigger);
+        }
+        catch (InvalidOperationException)
         {
             return Result.Fail<TState>(new Error.Conflict(
                 Resource: null,
@@ -95,7 +113,7 @@ public static class StateMachineExtensions
             { Detail = $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'." });
         }
 
-        stateMachine.Fire(trigger);
+        // Custom OnUnhandledTrigger swallowed the trigger — surface the (unchanged) state as success.
         return Result.Ok(stateMachine.State);
     }
 }

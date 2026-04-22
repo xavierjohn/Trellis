@@ -137,6 +137,44 @@ public class StateMachineExtensionsTests
         err!.Should().BeOfType<Error.Conflict>();
     }
 
+    [Fact]
+    public void FireResult_CustomOnUnhandledTriggerThatSuppresses_ReturnsSuccessWithCurrentState()
+    {
+        // ga-18 regression: a custom OnUnhandledTrigger callback may intentionally
+        // suppress invalid-trigger exceptions (e.g. log + ignore). FireResult must
+        // honor that policy by invoking Fire even on the !CanFire path — the user's
+        // handler runs, no exception escapes, and we surface the (unchanged) state
+        // as success rather than synthesizing an Error.Conflict the user opted out of.
+        var unhandledCalls = 0;
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.OnUnhandledTrigger((_, _) => unhandledCalls++); // swallow, do not throw
+
+        var result = machine.FireResult(Trigger.Pause);
+
+        result.IsSuccess.Should().BeTrue();
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Idle);
+        unhandledCalls.Should().Be(1, "the user's OnUnhandledTrigger callback must run");
+        machine.State.Should().Be(State.Idle);
+    }
+
+    [Fact]
+    public void FireResult_CustomOnUnhandledTriggerThatThrowsTypedException_PropagatesException()
+    {
+        // ga-18 regression: when a custom OnUnhandledTrigger callback throws a non-
+        // InvalidOperationException, FireResult must propagate it untouched (we only
+        // translate InvalidOperationException since that is what Stateless's default
+        // handler throws, and CanFire == false guarantees we are on the unhandled path).
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.OnUnhandledTrigger((_, _) => throw new NotSupportedException("custom"));
+
+        var exception = Assert.Throws<NotSupportedException>(() => machine.FireResult(Trigger.Pause));
+
+        exception.Message.Should().Be("custom");
+    }
+
     #endregion
 
     #region Guarded transitions
