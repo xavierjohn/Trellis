@@ -18,7 +18,7 @@ public class UseResultCombineAnalyzerTests
                     
                     if (result1.IsSuccess && result2.IsSuccess)
                     {
-                        var combined = (result1.Value, result2.Value);
+                        var combined = (result1.GetValueOrDefault(0), result2.GetValueOrDefault(0));
                     }
                 }
             }
@@ -46,7 +46,7 @@ public class UseResultCombineAnalyzerTests
                     
                     if (result1.IsSuccess && result2.IsSuccess && result3.IsSuccess)
                     {
-                        var combined = (result1.Value, result2.Value, result3.Value);
+                        var combined = (result1.GetValueOrDefault(0), result2.GetValueOrDefault(0), result3.GetValueOrDefault(0));
                     }
                 }
             }
@@ -139,7 +139,7 @@ public class UseResultCombineAnalyzerTests
                     
                     if (result.IsSuccess)
                     {
-                        var value = result.Value;
+                        result.TryGetValue(out var value);
                     }
                 }
             }
@@ -185,7 +185,7 @@ public class UseResultCombineAnalyzerTests
                     
                     if (result.IsSuccess && condition)
                     {
-                        var value = result.Value;
+                        result.TryGetValue(out var value);
                     }
                 }
             }

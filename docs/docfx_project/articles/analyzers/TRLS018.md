@@ -1,16 +1,18 @@
-# TRLS018 — Unsafe access to Value in LINQ expression
+# TRLS018 — Unsafe access to Maybe.Value in LINQ expression
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags `.Value` access on a LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier `Where(...)` guard proves the value is safe.
+Flags `.Value` access on a `Maybe<T>` LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier `Where(...)` guard proves the value is safe.
+
+The Result-side equivalent was removed in V2 along with `Result<T>.Value` (see [TRLS003](TRLS003.md)). This rule now applies only to `Maybe<T>`.
 
 ## Why it matters
-Collection pipelines make it easy to forget that some items may be failures or empty values. One unsafe access can throw for the whole query.
+Collection pipelines make it easy to forget that some items may be `Maybe<T>.None`. One unsafe `.Value` access can throw for the whole query.
 
 > [!WARNING]
-> The analyzer understands guard chains like `.Where(x => x.IsSuccess)` and `.Where(x => x.HasValue)`. Without that filter, `.Value` is treated as unsafe.
+> The analyzer understands guard chains like `.Where(x => x.HasValue)`. Without that filter, `.Value` is treated as unsafe.
 
 ## Bad example
 ```csharp
@@ -20,8 +22,8 @@ using Trellis;
 
 static class Example
 {
-    public static List<int> Bad(IEnumerable<Result<int>> values) =>
-        values.Select(result => result.Value).ToList();
+    public static List<int> Bad(IEnumerable<Maybe<int>> values) =>
+        values.Select(maybe => maybe.Value).ToList();
 }
 ```
 
@@ -33,10 +35,10 @@ using Trellis;
 
 static class Example
 {
-    public static List<int> Good(IEnumerable<Result<int>> values) =>
+    public static List<int> Good(IEnumerable<Maybe<int>> values) =>
         values
-            .Where(result => result.IsSuccess)
-            .Select(result => result.Value)
+            .Where(maybe => maybe.HasValue)
+            .Select(maybe => maybe.Value)
             .ToList();
 }
 ```
@@ -58,5 +60,4 @@ dotnet_diagnostic.TRLS018.severity = none
 ```
 
 > [!TIP]
-> Filter first, then project. If you need both success and failure paths, use `Match` inside the projection instead of `.Value`.
-
+> Filter first, then project. If you need both present and absent paths, use `Match` inside the projection instead of `.Value`.

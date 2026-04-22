@@ -21,7 +21,7 @@ var result = Parse("abc")
 ```
 
 ## Key Features
-- Flags unsafe `Result.Value`, `Result.Error`, and `Maybe.Value` access.
+- Flags unsafe `Maybe.Value` access (TRLS006).
 - Catches async misuse, double-wrapped results, and common ROP anti-patterns.
 - Includes fixes for Trellis-specific issues such as `SaveChangesAsync` vs. `SaveChangesResultAsync`.
 

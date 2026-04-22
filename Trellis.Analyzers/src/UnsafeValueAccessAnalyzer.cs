@@ -7,25 +7,17 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
-/// Analyzer that detects unsafe access to Result.Value, Result.Error, and Maybe.Value
-/// without proper null/state checks.
+/// Analyzer that detects unsafe access to <c>Maybe&lt;T&gt;.Value</c> without proper
+/// presence checks. The corresponding rules for <c>Result&lt;T&gt;.Value</c> (TRLS003)
+/// and <c>Result&lt;T&gt;.Error</c> (TRLS004) were removed in v2: <c>Value</c> no longer
+/// exists on <c>Result&lt;T&gt;</c>, and <c>Error</c> is now nullable so NRT handles
+/// unsafe access at the language level.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
 {
-    private enum GuardedAccessKind
-    {
-        ResultValue,
-        ResultError,
-        MaybeValue,
-    }
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        [
-            DiagnosticDescriptors.UnsafeResultValueAccess,
-            DiagnosticDescriptors.UnsafeResultErrorAccess,
-            DiagnosticDescriptors.UnsafeMaybeValueAccess,
-        ];
+        [DiagnosticDescriptors.UnsafeMaybeValueAccess];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -38,67 +30,24 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeMemberAccess(SyntaxNodeAnalysisContext context)
     {
         var memberAccess = (MemberAccessExpressionSyntax)context.Node;
-        var memberName = memberAccess.Name.Identifier.Text;
 
-        // We're looking for .Value or .Error access
-        if (memberName is not ("Value" or "Error"))
+        if (memberAccess.Name.Identifier.Text != "Value")
             return;
 
         var typeInfo = context.SemanticModel.GetTypeInfo(memberAccess.Expression);
         var type = typeInfo.Type;
 
-        if (type == null)
+        if (type is null || !type.IsMaybeType())
             return;
 
-        // Check for Result<T>.Value or Result<T>.Error
-        if (type.IsResultType())
-        {
-            if (memberName == "Value" && !IsGuardedBySuccessCheck(memberAccess, context.SemanticModel))
-            {
-                // Skip invocation patterns like TryCreate().Value - they're handled by TRLS007
-                if (memberAccess.Expression is InvocationExpressionSyntax)
-                    return;
+        if (IsGuardedByHasValueCheck(memberAccess, context.SemanticModel))
+            return;
 
-                var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.UnsafeResultValueAccess,
-                    memberAccess.Name.GetLocation());
-                context.ReportDiagnostic(diagnostic);
-            }
-            else if (memberName == "Error" && !IsGuardedByFailureCheck(memberAccess, context.SemanticModel))
-            {
-                var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.UnsafeResultErrorAccess,
-                    memberAccess.Name.GetLocation());
-                context.ReportDiagnostic(diagnostic);
-            }
-        }
-        // Check for Maybe<T>.Value
-        else if (type.IsMaybeType() && memberName == "Value")
-        {
-            if (!IsGuardedByHasValueCheck(memberAccess, context.SemanticModel))
-            {
-                var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.UnsafeMaybeValueAccess,
-                    memberAccess.Name.GetLocation());
-                context.ReportDiagnostic(diagnostic);
-            }
-        }
+        var diagnostic = Diagnostic.Create(
+            DiagnosticDescriptors.UnsafeMaybeValueAccess,
+            memberAccess.Name.GetLocation());
+        context.ReportDiagnostic(diagnostic);
     }
-
-    private static bool IsGuardedBySuccessCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
-        IsGuardedByCheck(memberAccess, semanticModel, "IsSuccess", true) ||
-        IsGuardedByCheck(memberAccess, semanticModel, "IsFailure", false) ||
-        IsGuardedByEarlyReturn(memberAccess, semanticModel, "IsFailure", "IsSuccess") ||
-        IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
-        IsInsideNegatedTryBlock(memberAccess, semanticModel, "TryGetError") ||
-        IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.ResultValue);
-
-    private static bool IsGuardedByFailureCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
-        IsGuardedByCheck(memberAccess, semanticModel, "IsFailure", true) ||
-        IsGuardedByCheck(memberAccess, semanticModel, "IsSuccess", false) ||
-        IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetError") ||
-        IsInsideNegatedTryBlock(memberAccess, semanticModel, "TryGetValue") ||
-        IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.ResultError);
 
     private static bool IsGuardedByHasValueCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
         IsGuardedByCheck(memberAccess, semanticModel, "HasValue", true) ||
@@ -106,7 +55,7 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         IsGuardedByShortCircuitAnd(memberAccess, semanticModel) ||
         IsGuardedByPriorAssignment(memberAccess, semanticModel) ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
-        IsInsideTrackSafeLambda(memberAccess, semanticModel, GuardedAccessKind.MaybeValue);
+        IsInsideTrackSafeLambda(memberAccess, semanticModel);
 
     private static bool IsGuardedByCheck(
         MemberAccessExpressionSyntax memberAccess,
@@ -114,15 +63,11 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         string checkPropertyName,
         bool expectedValue)
     {
-        // Walk up to find enclosing if statement or conditional expression
         var current = memberAccess.Parent;
         while (current != null)
         {
-            // Check for if statement
             if (current is IfStatementSyntax ifStatement)
             {
-                // Check for negated condition first: !result.Property
-                // In then branch, property is false; in else branch, property is true
                 if (ifStatement.Condition is PrefixUnaryExpressionSyntax { Operand: MemberAccessExpressionSyntax negatedMemberAccess } prefixUnary &&
                     prefixUnary.IsKind(SyntaxKind.LogicalNotExpression) &&
                     negatedMemberAccess.Name.Identifier.Text == checkPropertyName &&
@@ -134,8 +79,6 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                         return true;
                 }
 
-                // Check for simple property condition: result.Property
-                // In then branch, property is true; in else branch, property is false
                 if (ifStatement.Condition is MemberAccessExpressionSyntax conditionMemberAccess &&
                     conditionMemberAccess.Name.Identifier.Text == checkPropertyName &&
                     AreSameVariable(conditionMemberAccess.Expression, memberAccess.Expression, semanticModel))
@@ -146,7 +89,6 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                         return true;
                 }
 
-                // Check for equality comparison: result.Property == true/false
                 if (IsEqualityCheckingProperty(ifStatement.Condition, memberAccess.Expression, checkPropertyName, expectedValue, semanticModel, out var matchesThenBranch))
                 {
                     if (matchesThenBranch && IsInThenBranch(memberAccess, ifStatement))
@@ -156,10 +98,8 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                 }
             }
 
-            // Check for ternary conditional expression: condition ? whenTrue : whenFalse
             if (current is ConditionalExpressionSyntax conditionalExpression)
             {
-                // Check for negated condition: !result.Property ? ... : ...
                 if (conditionalExpression.Condition is PrefixUnaryExpressionSyntax { Operand: MemberAccessExpressionSyntax negatedTernaryMemberAccess } ternaryPrefixUnary &&
                     ternaryPrefixUnary.IsKind(SyntaxKind.LogicalNotExpression) &&
                     negatedTernaryMemberAccess.Name.Identifier.Text == checkPropertyName &&
@@ -171,7 +111,6 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                         return true;
                 }
 
-                // Check for simple property condition: result.Property ? ... : ...
                 if (conditionalExpression.Condition is MemberAccessExpressionSyntax ternaryConditionMemberAccess &&
                     ternaryConditionMemberAccess.Name.Identifier.Text == checkPropertyName &&
                     AreSameVariable(ternaryConditionMemberAccess.Expression, memberAccess.Expression, semanticModel))
@@ -182,7 +121,6 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                         return true;
                 }
 
-                // Check for equality comparison: result.Property == true/false ? ... : ...
                 if (IsEqualityCheckingProperty(conditionalExpression.Condition, memberAccess.Expression, checkPropertyName, expectedValue, semanticModel, out var ternaryMatchesTrueBranch))
                 {
                     if (ternaryMatchesTrueBranch && IsInWhenTrueBranch(memberAccess, conditionalExpression))
@@ -192,11 +130,9 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                 }
             }
 
-            // Check for conditional access ?.Value pattern (which is safe)
+            // Conditional access ?.Value pattern is safe.
             if (current is ConditionalAccessExpressionSyntax)
-            {
                 return true;
-            }
 
             current = current.Parent;
         }
@@ -224,7 +160,6 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         var left = binaryExpression.Left;
         var right = binaryExpression.Right;
 
-        // Check left is property, right is literal: result.IsSuccess == true
         if (left is MemberAccessExpressionSyntax leftMemberAccess &&
             leftMemberAccess.Name.Identifier.Text == propertyName &&
             right is LiteralExpressionSyntax literal &&
@@ -232,14 +167,12 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         {
             var literalValue = literal.IsKind(SyntaxKind.TrueLiteralExpression);
             var isEquals = binaryExpression.IsKind(SyntaxKind.EqualsExpression);
-            // In then branch: property equals literalValue if ==, or !literalValue if !=
             var propertyValueInThenBranch = isEquals ? literalValue : !literalValue;
 
             matchesThenBranch = propertyValueInThenBranch == expectedValue;
             return true;
         }
 
-        // Check right is property, left is literal: true == result.IsSuccess
         if (right is MemberAccessExpressionSyntax rightMemberAccess &&
             rightMemberAccess.Name.Identifier.Text == propertyName &&
             left is LiteralExpressionSyntax literalLeft &&
@@ -281,14 +214,11 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
 
     private static bool IsInsideTryGetValueBlock(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel, string tryMethodName)
     {
-        // Look for pattern: if (result.TryGetValue(out var value)) { ... }
-        // and negated:       if (!result.TryGetValue(out var value)) { ... }
         var current = memberAccess.Parent;
         while (current != null)
         {
             if (current is IfStatementSyntax ifStatement)
             {
-                // Direct: if (result.TryGetValue(out var value)) — then branch is success
                 if (ifStatement.Condition is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax methodAccess } &&
                     methodAccess.Name.Identifier.Text == tryMethodName &&
                     AreSameVariable(methodAccess.Expression, memberAccess.Expression, semanticModel))
@@ -296,7 +226,6 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                     return IsInThenBranch(memberAccess, ifStatement);
                 }
 
-                // Negated: if (!result.TryGetValue(out var value)) — then branch is failure, else branch is success
                 if (ifStatement.Condition is PrefixUnaryExpressionSyntax { Operand: InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax negatedMethodAccess } } prefixUnary &&
                     prefixUnary.IsKind(SyntaxKind.LogicalNotExpression) &&
                     negatedMethodAccess.Name.Identifier.Text == tryMethodName &&
@@ -312,33 +241,9 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool IsInsideNegatedTryBlock(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel, string tryMethodName)
-    {
-        // Look for negated pattern: if (!result.Try*(...)) { ... }.
-        // This covers both !TryGetValue(...) guarding .Error access and !TryGetError(...) guarding .Value access.
-        // In the negated form, the then branch represents the opposite outcome of the Try* method name.
-        var current = memberAccess.Parent;
-        while (current != null)
-        {
-            if (current is IfStatementSyntax ifStatement &&
-                ifStatement.Condition is PrefixUnaryExpressionSyntax { Operand: InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax methodAccess } } prefixUnary &&
-                prefixUnary.IsKind(SyntaxKind.LogicalNotExpression) &&
-                methodAccess.Name.Identifier.Text == tryMethodName &&
-                AreSameVariable(methodAccess.Expression, memberAccess.Expression, semanticModel))
-            {
-                return IsInThenBranch(memberAccess, ifStatement);
-            }
-
-            current = current.Parent;
-        }
-
-        return false;
-    }
-
     private static bool IsInsideTrackSafeLambda(
         MemberAccessExpressionSyntax memberAccess,
-        SemanticModel semanticModel,
-        GuardedAccessKind accessKind)
+        SemanticModel semanticModel)
     {
         if (memberAccess.FirstAncestorOrSelf<LambdaExpressionSyntax>() is not { Parent: ArgumentSyntax argument } ||
             argument.Parent?.Parent is not InvocationExpressionSyntax invocation ||
@@ -354,7 +259,7 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         if (parameter == null)
             return false;
 
-        return IsSafeLambdaParameter(methodSymbol.Name, parameter.Name, accessKind);
+        return IsSafeLambdaParameter(methodSymbol.Name, parameter.Name);
     }
 
     private static IParameterSymbol? GetArgumentParameter(IMethodSymbol methodSymbol, ArgumentSyntax argument)
@@ -371,128 +276,22 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             : null;
     }
 
-    private static bool IsSafeLambdaParameter(string methodName, string parameterName, GuardedAccessKind accessKind) =>
+    /// <summary>
+    /// Lambda parameters whose body is only invoked on the present-value branch of a
+    /// <c>Maybe&lt;T&gt;</c> chain. Inside such bodies, accessing <c>.Value</c> on the
+    /// receiver is safe because the API itself has already discriminated.
+    /// </summary>
+    private static bool IsSafeLambdaParameter(string methodName, string parameterName) =>
         methodName switch
         {
-            "Bind" or "BindAsync" or "Map" or "MapAsync" or "Tap" or "TapAsync" or "Ensure" or "EnsureAsync" =>
-                accessKind is GuardedAccessKind.ResultValue or GuardedAccessKind.MaybeValue,
-
-            "TapOnFailure" or "TapOnFailureAsync" or "DebugOnFailure" or "DebugOnFailureAsync" or
-            "MapOnFailure" or "MapOnFailureAsync" or "RecoverOnFailure" or "RecoverOnFailureAsync" =>
-                accessKind == GuardedAccessKind.ResultError,
-
-            "Match" or "MatchAsync" or "Switch" or "SwitchAsync" =>
-                accessKind switch
-                {
-                    GuardedAccessKind.ResultValue or GuardedAccessKind.MaybeValue => parameterName is "onSuccess" or "onSome",
-                    GuardedAccessKind.ResultError => parameterName == "onFailure",
-                    _ => false,
-                },
-
-            "MatchError" or "MatchErrorAsync" or "SwitchError" or "SwitchErrorAsync" =>
-                accessKind switch
-                {
-                    GuardedAccessKind.ResultValue or GuardedAccessKind.MaybeValue => parameterName == "onSuccess",
-                    GuardedAccessKind.ResultError => parameterName != "onSuccess",
-                    _ => false,
-                },
-
+            "Bind" or "BindAsync" or "Map" or "MapAsync" or "Tap" or "TapAsync" or "Ensure" or "EnsureAsync" => true,
+            "Match" or "MatchAsync" or "Switch" or "SwitchAsync" => parameterName is "onSome",
             _ => false,
         };
-
-    /// <summary>
-    /// Recognizes: if (result.IsFailure) return ...; or if (!result.IsSuccess) return ...;
-    /// Any .Value access after the early-return in the same block is safe.
-    /// </summary>
-    private static bool IsGuardedByEarlyReturn(
-        MemberAccessExpressionSyntax memberAccess,
-        SemanticModel semanticModel,
-        string failureProperty,
-        string successProperty)
-    {
-        // Only safe for side-effect-free receivers (identifiers, member access chains on stable symbols).
-        // Any invocation in the receiver chain (GetResult().Value, GetWrapper().Result.Value)
-        // means two evaluations may return different instances, so early-return doesn't guarantee safety.
-        if (memberAccess.Expression.DescendantNodesAndSelf().Any(n => n is InvocationExpressionSyntax))
-            return false;
-
-        // Find the containing block
-        var containingStatement = memberAccess.FirstAncestorOrSelf<StatementSyntax>();
-        if (containingStatement?.Parent is not BlockSyntax block)
-            return false;
-
-        var memberAccessIndex = block.Statements.IndexOf(containingStatement);
-        if (memberAccessIndex < 0)
-            return false;
-
-        // Look at preceding statements for early-return guards
-        for (var i = 0; i < memberAccessIndex; i++)
-        {
-            if (block.Statements[i] is not IfStatementSyntax ifStatement)
-                continue;
-
-            // Must have a return/throw in the then branch (early exit)
-            if (!ContainsReturnOrThrow(ifStatement.Statement))
-                continue;
-
-            // Check: if (result.IsFailure) return ...;
-            var isGuard = false;
-            if (ifStatement.Condition is MemberAccessExpressionSyntax conditionMember &&
-                conditionMember.Name.Identifier.Text == failureProperty &&
-                AreSameVariable(conditionMember.Expression, memberAccess.Expression, semanticModel))
-                isGuard = true;
-
-            // Check: if (!result.IsSuccess) return ...;
-            if (!isGuard &&
-                ifStatement.Condition is PrefixUnaryExpressionSyntax { Operand: MemberAccessExpressionSyntax negatedMember } prefix &&
-                prefix.IsKind(SyntaxKind.LogicalNotExpression) &&
-                negatedMember.Name.Identifier.Text == successProperty &&
-                AreSameVariable(negatedMember.Expression, memberAccess.Expression, semanticModel))
-                isGuard = true;
-
-            // Guard is only valid if the variable is not reassigned between guard and usage
-            if (isGuard && !HasReassignmentBetween(block, i + 1, memberAccessIndex, memberAccess.Expression, semanticModel))
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool ContainsReturnOrThrow(StatementSyntax statement) =>
-        statement switch
-        {
-            ReturnStatementSyntax => true,
-            ThrowStatementSyntax => true,
-            BlockSyntax block => block.Statements.Any(s => s is ReturnStatementSyntax or ThrowStatementSyntax),
-            _ => false,
-        };
-
-    /// <summary>
-    /// Checks if the target variable is reassigned between two statement indices in a block.
-    /// </summary>
-    private static bool HasReassignmentBetween(
-        BlockSyntax block,
-        int startExclusive,
-        int endExclusive,
-        ExpressionSyntax targetExpression,
-        SemanticModel semanticModel)
-    {
-        for (var j = startExclusive; j < endExclusive; j++)
-        {
-            if (block.Statements[j] is ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax assignment } &&
-                assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) &&
-                AreSameVariable(assignment.Left, targetExpression, semanticModel))
-                return true;
-        }
-
-        return false;
-    }
 
     /// <summary>
     /// Recognizes: x = Maybe&lt;T&gt;.From(...); followed by x.Value in the same block.
     /// Only suppresses when T is a non-nullable value type (where From() can never return None).
-    /// Verifies the method is actually Trellis.Maybe&lt;T&gt;.From or Trellis.Maybe.From.
-    /// Scans backwards from the access to find the most recent assignment to the variable.
     /// </summary>
     private static bool IsGuardedByPriorAssignment(
         MemberAccessExpressionSyntax memberAccess,
@@ -506,7 +305,6 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         if (memberAccessIndex < 0)
             return false;
 
-        // Scan backwards to find the most recent assignment to this variable
         for (var i = memberAccessIndex - 1; i >= 0; i--)
         {
             if (block.Statements[i] is not ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax assignment })
@@ -518,22 +316,18 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             if (!AreSameVariable(assignment.Left, memberAccess.Expression, semanticModel))
                 continue;
 
-            // Found the most recent assignment — check if it's a safe Maybe.From()
             if (assignment.Right is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax methodAccess } ||
                 methodAccess.Name.Identifier.Text != "From")
-                return false; // Most recent assignment is not From() — not safe
+                return false;
 
             if (semanticModel.GetSymbolInfo(assignment.Right).Symbol is not IMethodSymbol methodSymbol)
                 return false;
 
-            // Verify the method belongs to Trellis.Maybe or Trellis.Maybe<T>
             var containingType = methodSymbol.ContainingType;
             if (containingType?.Name is not "Maybe" ||
                 containingType.ContainingNamespace?.ToDisplayString() is not "Trellis")
                 return false;
 
-            // Only safe when T is a non-nullable value type (From(DateTime) can't return None)
-            // For reference types, From(null) returns None, so .Value would throw
             var maybeType = semanticModel.GetTypeInfo(memberAccess.Expression).Type;
             if (maybeType is not INamedTypeSymbol { TypeArguments.Length: 1 } namedType)
                 return false;
@@ -541,6 +335,24 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             var innerType = namedType.TypeArguments[0];
             if (innerType.IsValueType && innerType.OriginalDefinition.SpecialType != SpecialType.System_Nullable_T
                 && !HasReassignmentBetween(block, i + 1, memberAccessIndex, memberAccess.Expression, semanticModel))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool HasReassignmentBetween(
+        BlockSyntax block,
+        int startExclusive,
+        int endExclusive,
+        ExpressionSyntax targetExpression,
+        SemanticModel semanticModel)
+    {
+        for (var j = startExclusive; j < endExclusive; j++)
+        {
+            if (block.Statements[j] is ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax assignment } &&
+                assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) &&
+                AreSameVariable(assignment.Left, targetExpression, semanticModel))
                 return true;
         }
 
@@ -561,15 +373,11 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             if (current is BinaryExpressionSyntax binaryExpression &&
                 binaryExpression.IsKind(SyntaxKind.LogicalAndExpression))
             {
-                // Check if .Value access is on the RIGHT side of &&
-                if (binaryExpression.Right.Contains(memberAccess))
-                {
-                    // Check if LEFT side is x.HasValue
-                    if (binaryExpression.Left is MemberAccessExpressionSyntax leftMember &&
-                        leftMember.Name.Identifier.Text == "HasValue" &&
-                        AreSameVariable(leftMember.Expression, memberAccess.Expression, semanticModel))
-                        return true;
-                }
+                if (binaryExpression.Right.Contains(memberAccess) &&
+                    binaryExpression.Left is MemberAccessExpressionSyntax leftMember &&
+                    leftMember.Name.Identifier.Text == "HasValue" &&
+                    AreSameVariable(leftMember.Expression, memberAccess.Expression, semanticModel))
+                    return true;
             }
 
             current = current.Parent;
@@ -577,5 +385,4 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
-
 }

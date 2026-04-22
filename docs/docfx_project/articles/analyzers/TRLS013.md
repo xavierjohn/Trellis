@@ -1,55 +1,23 @@
-# TRLS013 — Consider using GetValueOrDefault or Match
+# TRLS013 — *(removed in v2)*
 
-- **Severity:** Info
-- **Category:** Trellis
+This analyzer (`TernaryValueOrDefaultAnalyzer`) and its code fix (`UseFunctionalValueOrDefaultCodeFixProvider`) were deleted in V2.
 
-## What it detects
-Flags the pattern `result.IsSuccess ? result.Value : fallback` when the success check and the value access refer to the same stable result expression.
+## Why it was removed
 
-## Why it matters
-Trellis already provides `GetValueOrDefault(...)` and `Match(...)` for this exact scenario. They read better and avoid direct `Value` access.
+The pattern the rule targeted — `result.IsSuccess ? result.Value : fallback` — cannot compile in V2 because `Result<T>.Value` was removed (see [TRLS003](TRLS003.md)). There is no surface form left for the analyzer to flag.
 
-> [!WARNING]
-> The analyzer intentionally skips unstable receivers like repeated method calls so it does not change behavior.
+## Recommended replacement
 
-## Bad example
+Use `GetValueOrDefault` for value extraction, or `Match` when you also need to react to the failure:
+
 ```csharp
 using Trellis;
 
-static class Example
-{
-    public static int Bad(Result<int> result) =>
-        result.IsSuccess ? result.Value : 0;
-}
+static int Pick(Result<int> result, int fallback) =>
+    result.GetValueOrDefault(fallback);
+
+static string Render(Result<int> result) =>
+    result.Match(
+        onSuccess: v => v.ToString(),
+        onFailure: e => e.Detail);
 ```
-
-## Good example
-```csharp
-using Trellis;
-
-static class Example
-{
-    public static int Good(Result<int> result) =>
-        result.GetValueOrDefault(0);
-}
-```
-
-## Code fix available
-Yes — replaces the ternary with `GetValueOrDefault(...)` or `Match(...)`, depending on the fallback expression.
-
-## Configuration
-Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
-
-```ini
-dotnet_diagnostic.TRLS013.severity = none
-```
-
-```csharp
-#pragma warning disable TRLS013
-// Intentional: documented exception or test-only pattern.
-#pragma warning restore TRLS013
-```
-
-> [!TIP]
-> Use `GetValueOrDefault(...)` for simple fallback values and `Match(...)` when the failure branch needs more logic.
-

@@ -131,7 +131,7 @@ public class DefaultResultOrMaybeAnalyzerTests
                 public int Run()
                 {
                     Result<int> r = default;
-                    return r.IsSuccess ? r.Value : 0;
+                    return r.GetValueOrDefault(0);
                 }
             }
             """;

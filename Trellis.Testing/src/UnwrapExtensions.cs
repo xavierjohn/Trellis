@@ -3,7 +3,7 @@
 /// <summary>
 /// Provides <c>Unwrap()</c> extension methods for extracting values from <see cref="Result{T}"/>
 /// and <see cref="Maybe{T}"/> in test code. These methods throw a descriptive exception on failure/none
-/// rather than returning the raw <c>.Value</c>, which avoids TRLS003 warnings in test projects.
+/// rather than letting the test crash with an opaque error, keeping the test intent explicit.
 /// </summary>
 /// <remarks>
 /// <para>

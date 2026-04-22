@@ -1,55 +1,26 @@
-# TRLS007 — Use Create instead of TryCreate().Value
+# TRLS007 — *(removed in v2)*
 
-- **Severity:** Warning
-- **Category:** Trellis
+This analyzer (`TryCreateValueAccessAnalyzer`) and its code fix (`UseCreateInsteadOfTryCreateValueCodeFixProvider`) were deleted in V2.
 
-## What it detects
-Flags direct `.Value` access on a static `TryCreate(...)` call when the target type also exposes a static `Create(...)` method.
+## Why it was removed
 
-## Why it matters
-`TryCreate(...).Value` throws a generic `InvalidOperationException` if validation fails. `Create(...)` expresses that you expect success and preserves the validation detail in the exception message.
+The pattern `SomeValueObject.TryCreate(...).Value` cannot compile in V2: `TryCreate` returns `Result<TValueObject>` and `Result<T>.Value` no longer exists (see [TRLS003](TRLS003.md)). With the offending pattern unrepresentable, the analyzer has nothing to detect.
 
-> [!WARNING]
-> If you truly want non-throwing behavior, keep the `Result` from `TryCreate(...)` and handle it. Do not force it with `.Value`.
+## Recommended replacement
 
-## Bad example
-```csharp
-using Trellis.Primitives;
-
-static class Example
-{
-    public static EmailAddress Bad(string input) =>
-        EmailAddress.TryCreate(input).Value;
-}
-```
-
-## Good example
-```csharp
-using Trellis.Primitives;
-
-static class Example
-{
-    public static EmailAddress Good(string input) =>
-        EmailAddress.Create(input);
-}
-```
-
-## Code fix available
-Yes — replaces `TryCreate(...).Value` with `Create(...)` when the replacement binds correctly.
-
-## Configuration
-Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
-
-```ini
-dotnet_diagnostic.TRLS007.severity = none
-```
+If you have a known-good input and want a throwing constructor, call `Create(...)` directly:
 
 ```csharp
-#pragma warning disable TRLS007
-// Intentional: documented exception or test-only pattern.
-#pragma warning restore TRLS007
+using Trellis;
+
+var email = EmailAddress.Create("alice@example.com"); // throws InvalidOperationException with the validation detail on bad input
 ```
 
-> [!TIP]
-> Use `Create(...)` when invalid input is a programmer error. Use `TryCreate(...)` when invalid input is part of normal control flow.
+If the input might be invalid, handle the `Result` explicitly:
 
+```csharp
+if (!EmailAddress.TryCreate(rawInput).TryGetValue(out var email))
+    return Result.Fail<Order>(new Error.UnprocessableContent("email"));
+```
+
+Or compose with `Bind`/`Map` so the failure stays on the failure track.

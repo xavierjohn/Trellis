@@ -155,7 +155,7 @@ Analyzers (`Trellis.Analyzers`) and source generators use **separate ID prefixes
 
 | Prefix | Owner | Range | Example |
 |--------|-------|-------|---------|
-| `TRLS` | Trellis.Analyzers | `TRLS001`–`TRLS999` | `TRLS007` — Use `Create()` instead of `TryCreate().Value` |
+| `TRLS` | Trellis.Analyzers | `TRLS001`–`TRLS999` | `TRLS006` — Unsafe access to `Maybe.Value` |
 | `TRLSGEN` | Primitives source generator | `TRLSGEN001`–`TRLSGEN099` | `TRLSGEN002` — `MinimumLength` exceeds `MaximumLength` |
 | `TRLSGEN` | EF Core source generator | `TRLSGEN100`–`TRLSGEN199` | `TRLSGEN100` — `Maybe<T>` property should be partial |
 

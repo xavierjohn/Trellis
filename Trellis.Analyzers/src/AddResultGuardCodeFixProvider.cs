@@ -12,22 +12,18 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 /// <summary>
-/// Code fix provider that wraps unsafe Result.Value, Result.Error, or Maybe.Value access
-/// in appropriate guard statements (if checks).
+/// Code fix provider that wraps unsafe <c>Maybe&lt;T&gt;.Value</c> access in an
+/// <c>if (maybe.HasValue)</c> guard. The Result-side fixes for TRLS003/TRLS004 were
+/// removed in v2 (Result.Value no longer exists; Result.Error is nullable and handled by NRT).
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(AddResultGuardCodeFixProvider))]
 [Shared]
 public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
 {
-    private const string TitleValue = "Add 'if (result.IsSuccess)' guard";
-    private const string TitleError = "Add 'if (result.IsFailure)' guard";
     private const string TitleMaybe = "Add 'if (maybe.HasValue)' guard";
 
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        ImmutableArray.Create(
-            DiagnosticDescriptors.UnsafeResultValueAccess.Id,
-            DiagnosticDescriptors.UnsafeResultErrorAccess.Id,
-            DiagnosticDescriptors.UnsafeMaybeValueAccess.Id);
+        ImmutableArray.Create(DiagnosticDescriptors.UnsafeMaybeValueAccess.Id);
 
     public override FixAllProvider GetFixAllProvider() =>
         WellKnownFixAllProviders.BatchFixer;
@@ -48,17 +44,11 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
         if (memberAccess == null)
             return;
 
-        // Determine the guard type based on diagnostic ID
-        var (title, guardProperty) = diagnostic.Id switch
-        {
-            "TRLS003" => (TitleValue, "IsSuccess"),   // Result.Value
-            "TRLS004" => (TitleError, "IsFailure"),   // Result.Error
-            "TRLS006" => (TitleMaybe, "HasValue"),    // Maybe.Value
-            _ => ((string?)null, (string?)null)
-        };
-
-        if (title == null || guardProperty == null)
+        if (diagnostic.Id != "TRLS006")
             return;
+
+        var title = TitleMaybe;
+        var guardProperty = "HasValue";
 
         // Register the code fix
         context.RegisterCodeFix(
@@ -88,10 +78,9 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
         if (statement == null)
             return document;
 
-        // Get the expression being accessed (e.g., "result" from "result.Error")
+        // Get the expression being accessed (e.g., "maybe" from "maybe.Value")
         var resultExpression = memberAccess.Expression;
 
-        // Don't offer guard fix for TryCreate().Value pattern - that's handled by TRLS007
         if (resultExpression is InvocationExpressionSyntax)
             return document;
 

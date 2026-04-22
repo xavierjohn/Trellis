@@ -4,15 +4,15 @@
   href: TRLS001.md
 - name: TRLS002 - Use Bind instead of Map
   href: TRLS002.md
-- name: TRLS003 - Unsafe Result.Value access
+- name: TRLS003 - Unsafe Result.Value access *(removed in v2)*
   href: TRLS003.md
-- name: TRLS004 - Unsafe Result.Error access
+- name: TRLS004 - Unsafe Result.Error access *(removed in v2)*
   href: TRLS004.md
 - name: TRLS005 - Use MatchError
   href: TRLS005.md
 - name: TRLS006 - Unsafe Maybe.Value access
   href: TRLS006.md
-- name: TRLS007 - Use Create instead of TryCreate().Value
+- name: TRLS007 - Use Create instead of TryCreate().Value *(removed in v2)*
   href: TRLS007.md
 - name: TRLS008 - Result double-wrapped
   href: TRLS008.md
@@ -24,7 +24,7 @@
   href: TRLS011.md
 - name: TRLS012 - Use Result.Combine
   href: TRLS012.md
-- name: TRLS013 - Use GetValueOrDefault or Match
+- name: TRLS013 - Use GetValueOrDefault or Match *(removed in v2)*
   href: TRLS013.md
 - name: TRLS014 - Use async method variant
   href: TRLS014.md
@@ -34,7 +34,7 @@
   href: TRLS016.md
 - name: TRLS017 - Don't compare to null
   href: TRLS017.md
-- name: TRLS018 - Unsafe Value in LINQ
+- name: TRLS018 - Unsafe Maybe.Value in LINQ
   href: TRLS018.md
 - name: TRLS019 - Combine chain too long
   href: TRLS019.md
@@ -44,5 +44,7 @@
   href: TRLS021.md
 - name: TRLS022 - Wrong attribute namespace
   href: TRLS022.md
+- name: TRLS025 - Unsafe property pattern over Result.Value *(removed in v2)*
+  href: TRLS025.md
 - name: TRLS029 - Avoid default(Result/Maybe)
   href: TRLS029.md

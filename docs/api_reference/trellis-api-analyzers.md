@@ -10,28 +10,28 @@
 |----|----------|-------|-------------|
 | `TRLS001` | Warning | Result return value is not handled | Result<T> return values should be handled to ensure errors are not silently ignored. Use Bind, Map, Match, or assign to a variable. |
 | `TRLS002` | Info | Use Bind instead of Map when lambda returns Result | When the transformation function returns a Result<T>, use Bind (flatMap) instead of Map. Map will produce Result<Result<T>> which is likely not intended. |
-| `TRLS003` | Warning | Unsafe access to Result.Value | Result.Value throws an InvalidOperationException if the Result is in a failure state. Check IsSuccess first, use TryGetValue, or use pattern matching with Match. |
-| `TRLS004` | Warning | Unsafe access to Result.Error | Result.Error is `Error?` and **never throws** — it returns `null` on success. Pattern-match on the value (`if (result.Error is { } error)`) instead of asserting non-null with `!`. Or use TryGetError, Match, or an IsFailure guard. |
+| `TRLS003` | *(removed)* | *(removed in v2)* | The `UnsafeValueAccessAnalyzer` Result.Value branch was deleted because `Result<T>.Value` no longer exists in v2 (see ADR-002 §3.1). Use `TryGetValue`, `Match`, or deconstruction instead. |
+| `TRLS004` | *(removed)* | *(removed in v2)* | The `UnsafeValueAccessAnalyzer` Result.Error branch was deleted because `Error` is now `Error?` (nullable), so unsafe access is caught by NRT. Pattern-match on `result.Error is { } error`. |
 | `TRLS005` | *(removed)* | *(removed in v2)* | The `UseMatchErrorAnalyzer` was deleted because `Error` is now a closed ADT — `switch` over an `Error` reference is exhaustive at the language level (per `docs/adr/ADR-001-result-api-surface.md`). Replace `MatchError(...)` calls with a `switch` expression on `Error.X` cases. |
 | `TRLS006` | Warning | Unsafe access to Maybe.Value | Maybe.Value throws an InvalidOperationException if the Maybe has no value. Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult. |
-| `TRLS007` | Warning | Use Create instead of TryCreate().Value | Using TryCreate().Value is unclear and provides poor error messages when validation fails. Use Create() when you expect success - it throws InvalidOperationException with the validation error details included. TryCreate().Value throws the same exception type but with a generic message, losing the validation error information. Or properly handle the Result returned by TryCreate() to avoid exceptions entirely. |
+| `TRLS007` | *(removed)* | *(removed in v2)* | The `TryCreateValueAccessAnalyzer` was deleted because `TryCreate(...).Value` no longer compiles (see TRLS003). Call `Create(...)` directly or pattern-match on the `Result`. |
 | `TRLS008` | Warning | Result is double-wrapped | Result should not be wrapped inside another Result. This creates Result<Result<T>> which is almost always unintended. If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result. |
 | `TRLS009` | Warning | Incorrect async Result usage | Task<Result<T>> should be awaited, not blocked with .Result or .Wait(). Blocking can cause deadlocks and prevents proper async execution. Use await instead. |
 | `TRLS010` | Info | Use a specific Error case instead of constructing the abstract base | `Error` is an abstract closed ADT. Construct one of the nested cases — `new Error.NotFound(...)`, `new Error.UnprocessableContent(...)`, etc. The base record cannot be instantiated directly. |
 | `TRLS011` | Warning | Maybe is double-wrapped | Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. Consider converting to Result with ToResult() for better composability. |
 | `TRLS012` | Info | Consider using Result.Combine | When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result. |
-| `TRLS013` | Info | Consider using GetValueOrDefault or Match | The pattern 'result.IsSuccess ? result.Value : default' can be replaced with GetValueOrDefault() or Match() for more idiomatic and safer code. |
+| `TRLS013` | *(removed)* | *(removed in v2)* | The `TernaryValueOrDefaultAnalyzer` was deleted because the `result.IsSuccess ? result.Value : fallback` shape no longer compiles in v2. Use `GetValueOrDefault(...)` or `Match(...)`. |
 | `TRLS014` | Warning | Use async method variant for async lambda | When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited. |
 | `TRLS015` | Warning | Don't throw exceptions in Result chains | Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. Return Result.Fail<T>() to signal errors and keep the error on the failure track. |
 | `TRLS016` | Warning | Error message should not be empty | Error messages should provide context for debugging and user feedback. Empty error messages make it difficult to diagnose issues. |
 | `TRLS017` | Warning | Don't compare Result or Maybe to null | Result<T> and Maybe<T> are structs and cannot be null. Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe. |
-| `TRLS018` | Warning | Unsafe access to Value in LINQ expression | When using LINQ on collections of Result<T> or Maybe<T>, filter by IsSuccess/HasValue first, or use methods like Select with Match to safely extract values. |
+| `TRLS018` | Warning | Unsafe access to Maybe.Value in LINQ expression | When using LINQ on collections of Maybe<T>, filter by HasValue first, or use Select with Match to safely extract values. |
 | `TRLS019` | Error | Combine chain exceeds maximum supported tuple size | Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. Group related fields into intermediate value objects or sub-results, then combine those groups. |
 | `TRLS020` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns the non-generic `Result`) instead. |
 | `TRLS021` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
 | `TRLS022` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
 | `TRLS024` | Warning | Unsafe Result deconstruction | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
-| `TRLS025` | Warning | Unsafe property pattern over Result.Value | Property patterns such as `result is { Value: ... }` or `result switch { { Value: var v } => ... }` evaluate `Result<T>.Value`, which throws `InvalidOperationException` on failure results. Pattern-match on `IsSuccess`/`IsFailure` first, or use `Match` / explicit guard. |
+| `TRLS025` | *(removed)* | *(removed in v2)* | The `UnsafeResultValuePropertyPatternAnalyzer` was deleted because property patterns over `Result<T>.Value` no longer compile in v2. Discriminate on `IsSuccess`/`IsFailure` first, or use `Match` / `TryGetValue`. |
 | `TRLS029` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | Per ADR-002 §3.5.1, `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", "TRLS029")]` or `#pragma warning disable TRLS029` for sanctioned sentinel/test-helper sites. |
 
 ## Analyzer classes
@@ -53,19 +53,17 @@
 - Purpose: prevent `Result<Result<T>>`.
 - Code fix: `UseBindInsteadOfMapCodeFixProvider`.
 
-#### `UnsafeValueAccessAnalyzer` — `TRLS003`, `TRLS004`, `TRLS006`
-- `TRLS003`: flags `result.Value` when the analyzer cannot prove the access is guarded by success-state checks.
-- `TRLS004`: flags `result.Error` when the analyzer cannot prove the access is guarded by failure-state checks.
+#### `UnsafeValueAccessAnalyzer` — `TRLS006`
 - `TRLS006`: flags `maybe.Value` when the analyzer cannot prove the access is guarded by presence checks.
 - Recognized safe patterns include:
-  - `if` / ternary checks on `IsSuccess`, `IsFailure`, `HasValue`, `HasNoValue`
-  - `TryGetValue` / `TryGetError` branches, including negated forms
-  - early-return guards such as `if (result.IsFailure) return ...;`
-  - `maybe.HasValue && maybe.Value ...`
-  - safe lambda parameters inside Trellis track-aware APIs such as `Bind`, `Map`, `Tap`, `Ensure`, `Match`, `Switch`, and failure-track variants
-  - for `Maybe<T>`, prior assignment from `Maybe.From(...)` when `T` is a non-nullable value type and the variable is not reassigned
-- `TRLS003` intentionally skips direct `TryCreate(...).Value`; that is handled by `TRLS007`.
+  - `if` / ternary checks on `HasValue` / `HasNoValue`
+  - `TryGetValue` branches, including negated forms
+  - `maybe.HasValue && maybe.Value ...` short-circuit
+  - safe lambda parameters inside Trellis Maybe APIs such as `Bind`, `Map`, `Tap`, `Ensure`, `Match`
+  - prior assignment from `Maybe.From(...)` when `T` is a non-nullable value type and the variable is not reassigned
 - Code fix: `AddResultGuardCodeFixProvider`.
+
+> **TRLS003, TRLS004 (removed in v2):** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` (TRLS003) and `Result<T>.Error` (TRLS004). Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
 
 #### `UseMatchErrorAnalyzer` — `TRLS005` *(removed in v2)*
 
@@ -83,10 +81,9 @@ result.Match(
     });
 ```
 
-#### `TryCreateValueAccessAnalyzer` — `TRLS007`
-- Flags direct `.Value` access on a static `TryCreate(...)` call that returns `Result<T>` when the created type exposes a static `Create(...)` method.
-- Reports on the `.Value` identifier, not the whole expression.
-- Code fix: `UseCreateInsteadOfTryCreateValueCodeFixProvider`.
+#### `TryCreateValueAccessAnalyzer` — `TRLS007` *(removed in v2)*
+
+This analyzer was deleted in v2. The pattern `TryCreate(...).Value` no longer compiles because `Result<T>.Value` was removed (see TRLS003). Call `Create(...)` directly when the input is known-good, or handle the `Result` returned by `TryCreate(...)` explicitly via `TryGetValue` / `Match` / `Bind`.
 
 #### `ResultDoubleWrappingAnalyzer` — `TRLS008`
 - Flags declared or inferred `Result<Result<T>>` in:
@@ -116,11 +113,9 @@ result.Match(
 - Uses operation analysis, so it looks at semantic property access rather than raw text.
 - No code fix.
 
-#### `TernaryValueOrDefaultAnalyzer` — `TRLS013`
-- Flags the specific pattern `result.IsSuccess ? result.Value : fallback`.
-- Only reports when the `IsSuccess` receiver and `.Value` receiver resolve to the same stable expression.
-- Ignores repeated invocation receivers to avoid changing semantics.
-- Code fix: `UseFunctionalValueOrDefaultCodeFixProvider`.
+#### `TernaryValueOrDefaultAnalyzer` — `TRLS013` *(removed in v2)*
+
+This analyzer was deleted in v2. The `result.IsSuccess ? result.Value : fallback` shape no longer compiles because `Result<T>.Value` was removed. Use `result.GetValueOrDefault(fallback)` or `result.Match(onSuccess: v => v, onFailure: _ => fallback)`.
 
 #### `AsyncLambdaWithSyncMethodAnalyzer` — `TRLS014`
 - Flags synchronous Trellis methods called with async work:
@@ -171,10 +166,8 @@ result.Match(
   - `OrderByDescending`
   - `ThenBy`
   - `ThenByDescending`
-- Reports only when `.Value` is accessed on the lambda parameter itself.
-- Suppresses the diagnostic when an earlier `.Where(...)` in the same chain checks the required guard property:
-  - `IsSuccess` for `Result<T>`
-  - `HasValue` for `Maybe<T>`
+- Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed in v2 along with `Result<T>.Value`.
+- Suppresses the diagnostic when an earlier `.Where(maybe => maybe.HasValue)` in the same chain proves the access is safe.
 - No code fix.
 
 #### `CombineLimitAnalyzer` — `TRLS019`
@@ -225,11 +218,9 @@ result.Match(
 - Skips deconstructions where the value identifier is never read.
 - No code fix.
 
-#### `UnsafeResultValuePropertyPatternAnalyzer` — `TRLS025`
-- Flags `RecursivePatternSyntax` patterns of the form `{ Value: ... }` applied to a `Result<T>` instance.
-- Triggers on `is`-patterns, `switch` statements, and `switch` expressions.
-- Property patterns evaluate `Result<T>.Value`, which throws `InvalidOperationException` on failure results — `{ Value: ... }` against a failure result throws at runtime instead of safely matching. Use a discriminator (`IsSuccess`/`IsFailure`) before inspecting `Value`, or use `TryGetValue`/`Match`.
-- No code fix.
+#### `UnsafeResultValuePropertyPatternAnalyzer` — `TRLS025` *(removed in v2)*
+
+This analyzer was deleted in v2. The patterns `result is { Value: ... }` and `result switch { { Value: var v } => ... }` no longer compile because `Result<T>.Value` was removed. Discriminate on `IsSuccess`/`IsFailure` first, or use `Match` / `TryGetValue`.
 
 #### `DefaultResultOrMaybeAnalyzer` — `TRLS029`
 - Flags explicit `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` expressions at use sites.
@@ -249,10 +240,8 @@ result.Match(
 
 | Code fix provider | Fixes | Behavior |
 |---|---|---|
-| `AddResultGuardCodeFixProvider` | `TRLS003`, `TRLS004`, `TRLS006` | Wraps the current statement block in `if (result.IsSuccess)`, `if (result.IsFailure)`, or `if (maybe.HasValue)`. Tracks consecutive statements that keep using the guarded value. |
+| `AddResultGuardCodeFixProvider` | `TRLS006` | Wraps the current statement block in `if (maybe.HasValue)` and tracks consecutive statements that keep using the guarded value. |
 | `UseBindInsteadOfMapCodeFixProvider` | `TRLS002` | Replaces `Map` with `Bind` and `MapAsync` with `BindAsync`. |
-| `UseCreateInsteadOfTryCreateValueCodeFixProvider` | `TRLS007` | Replaces `TryCreate(...).Value` with `Create(...)` when Roslyn can bind the replacement. |
-| `UseFunctionalValueOrDefaultCodeFixProvider` | `TRLS013` | Replaces `result.IsSuccess ? result.Value : fallback` with `GetValueOrDefault(...)` or `Match(...)`. |
 | `UseAsyncMethodVariantCodeFixProvider` | `TRLS014` | Replaces sync method names with async variants: `MapAsync`, `BindAsync`, `TapAsync`, `EnsureAsync`, `TapOnFailureAsync`. |
 | `UseSaveChangesResultCodeFixProvider` | `TRLS020` | Replaces `SaveChangesAsync` / `SaveChanges` with `SaveChangesResultAsync` or `SaveChangesResultUnitAsync`, adds `await`/`async` for sync `SaveChanges`, and adds `using Trellis.EntityFrameworkCore;` when needed. |
 

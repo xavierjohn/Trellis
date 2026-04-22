@@ -1,60 +1,30 @@
-# TRLS003 — Unsafe access to Result.Value
+# TRLS003 — *(removed in v2)*
 
-- **Severity:** Warning
-- **Category:** Trellis
+This analyzer (`UnsafeValueAccessAnalyzer` for `Result<T>.Value`) was deleted in V2.
 
-## What it detects
-Flags `result.Value` when the analyzer cannot prove that the access is guarded by a success check or another safe Trellis pattern.
+## Why it was removed
 
-## Why it matters
-`Result.Value` throws when the result is a failure. Unchecked access turns a modeled failure into an exception.
+In V1, `Result<T>.Value` was a property that threw `InvalidOperationException` on a failure result, and TRLS003 flagged unguarded accesses. In V2 the property was removed entirely (see [ADR-002](../../../adr/ADR-002-v2-redesign-plan.md) §3.1 and the `ga-03` commit). `result.Value` no longer compiles, so the analyzer has nothing left to detect.
 
-> [!WARNING]
-> The analyzer understands many guard patterns, but it will still warn when the safety is unclear. When in doubt, prefer `IsSuccess`, `TryGetValue`, or `Match`.
+## Recommended replacement
 
-## Bad example
+Use `TryGetValue`, `Match`, or deconstruction to extract the success value safely:
+
 ```csharp
 using Trellis;
 
-static class Example
+static int Render(Result<int> result)
 {
-    public static int Bad(Result<int> result) =>
-        result.Value + 1;
+    if (result.TryGetValue(out var value))
+        return value;
+    return 0;
 }
+
+// or
+static int RenderViaMatch(Result<int> result) =>
+    result.Match(
+        onSuccess: value => value,
+        onFailure: _ => 0);
 ```
 
-## Good example
-```csharp
-using Trellis;
-
-static class Example
-{
-    public static int Good(Result<int> result)
-    {
-        if (result.IsSuccess)
-            return result.Value + 1;
-
-        return 0;
-    }
-}
-```
-
-## Code fix available
-Yes — wraps the current usage in an `if (result.IsSuccess)` guard.
-
-## Configuration
-Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
-
-```ini
-dotnet_diagnostic.TRLS003.severity = none
-```
-
-```csharp
-#pragma warning disable TRLS003
-// Intentional: documented exception or test-only pattern.
-#pragma warning restore TRLS003
-```
-
-> [!TIP]
-> `Match`, `TryGetValue`, and early-return guards usually read better than reaching for `Value` directly.
-
+The TRLS006 (`Maybe<T>.Value`) rule is unchanged — `Maybe<T>` still exposes `Value` and still requires a `HasValue` guard.
