@@ -167,7 +167,12 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         out bool isComposite)
     {
         isComposite = false;
-        if (type.IsAbstract || type.IsUnboundGenericType || type.IsGenericType)
+        if (type.IsAbstract || type.IsUnboundGenericType)
+            return;
+        // Skip open generics (type definitions or partially-constructed types with unresolved
+        // type parameters). Closed constructed generics like GenericRange<int> are allowed and
+        // match the reflection-based scanner's behavior (TrellisTypeScanner.IsCompositeValueObject).
+        if (type.IsGenericType && type.TypeArguments.Any(a => a is ITypeParameterSymbol))
             return;
         if (!IsAtLeastInternal(type))
             return;
@@ -206,6 +211,10 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
 
     private static ITypeSymbol Unwrap(ITypeSymbol type, INamedTypeSymbol? maybeSymbol)
     {
+        // Unwrap arrays (T[] -> T)
+        if (type is IArrayTypeSymbol array)
+            return Unwrap(array.ElementType, maybeSymbol);
+
         // Unwrap Nullable<T>
         if (type is INamedTypeSymbol nt && nt.IsGenericType
             && nt.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
@@ -224,7 +233,36 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
             return Unwrap(mt.TypeArguments[0], maybeSymbol);
         }
 
+        // Unwrap common single-type-arg collection navigations so that VOs reachable only
+        // through, e.g., List<Order>.Order are still discovered.
+        if (type is INamedTypeSymbol ct && ct.IsGenericType
+            && ct.TypeArguments.Length == 1
+            && IsCollectionLike(ct))
+        {
+            return Unwrap(ct.TypeArguments[0], maybeSymbol);
+        }
+
         return type;
+    }
+
+    private static bool IsCollectionLike(INamedTypeSymbol type)
+    {
+        var name = type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        return name switch
+        {
+            "global::System.Collections.Generic.IEnumerable<T>" => true,
+            "global::System.Collections.Generic.ICollection<T>" => true,
+            "global::System.Collections.Generic.IReadOnlyCollection<T>" => true,
+            "global::System.Collections.Generic.IList<T>" => true,
+            "global::System.Collections.Generic.IReadOnlyList<T>" => true,
+            "global::System.Collections.Generic.List<T>" => true,
+            "global::System.Collections.Generic.HashSet<T>" => true,
+            "global::System.Collections.Generic.ISet<T>" => true,
+            "global::System.Collections.Generic.IReadOnlySet<T>" => true,
+            "global::System.Collections.ObjectModel.Collection<T>" => true,
+            "global::System.Collections.ObjectModel.ReadOnlyCollection<T>" => true,
+            _ => false,
+        };
     }
 
     private static IEnumerable<IPropertySymbol> EnumerateInstanceProperties(INamedTypeSymbol type)

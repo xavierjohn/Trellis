@@ -103,8 +103,8 @@ public static class ModelConfigurationBuilderExtensions
 
         foreach (var (clrType, providerType) in scalars)
         {
-            ArgumentNullException.ThrowIfNull(clrType, nameof(scalars));
-            ArgumentNullException.ThrowIfNull(providerType, nameof(scalars));
+            ArgumentNullException.ThrowIfNull(clrType, nameof(clrType));
+            ArgumentNullException.ThrowIfNull(providerType, nameof(providerType));
             var converterType = typeof(TrellisScalarConverter<,>).MakeGenericType(clrType, providerType);
             configurationBuilder.Properties(clrType).HaveConversion(converterType);
         }

@@ -315,6 +315,61 @@ public class ApplyTrellisConventionsForGeneratorTests
         applyForCount.Should().Be(2);
     }
 
+    [Fact]
+    public void Closed_generic_composite_VO_is_emitted()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var src = Stubs + """
+
+            namespace MyApp
+            {
+                public class GenericRange<T> : Trellis.ValueObject { }
+                public class Reading { public GenericRange<int> Range { get; set; } }
+                public class MyDb : Microsoft.EntityFrameworkCore.DbContext
+                {
+                    public Microsoft.EntityFrameworkCore.DbSet<Reading> Readings { get; set; }
+                }
+            }
+            """;
+
+        var (sources, _, _) = RunGenerator(src, ct);
+
+        sources.Single().Should().Contain("typeof(global::MyApp.GenericRange<int>)");
+    }
+
+    [Fact]
+    public void Collection_navigation_unwraps_to_element_VOs()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var src = Stubs + """
+
+            namespace MyApp
+            {
+                public class CustomerId : Trellis.ScalarValueObject<CustomerId, System.Guid> { }
+                public class OrderId : Trellis.ScalarValueObject<OrderId, System.Guid> { }
+                public class Order { public OrderId Id { get; set; } }
+                public class Customer
+                {
+                    public CustomerId Id { get; set; }
+                    public System.Collections.Generic.List<Order> Orders { get; set; }
+                    public Order[] RecentOrders { get; set; }
+                }
+                public class MyDb : Microsoft.EntityFrameworkCore.DbContext
+                {
+                    public Microsoft.EntityFrameworkCore.DbSet<Customer> Customers { get; set; }
+                }
+            }
+            """;
+
+        var (sources, _, _) = RunGenerator(src, ct);
+
+        var generated = sources.Single();
+        generated.Should().Contain("AddTrellisScalarConverter<global::MyApp.CustomerId, global::System.Guid>");
+        generated.Should().Contain("AddTrellisScalarConverter<global::MyApp.OrderId, global::System.Guid>");
+    }
+
     private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics, List<string> HintNames) RunGenerator(
         string source, System.Threading.CancellationToken ct)
     {
