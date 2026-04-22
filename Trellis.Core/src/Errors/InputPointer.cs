@@ -28,10 +28,25 @@ public readonly record struct InputPointer(string Path)
     /// </summary>
     /// <param name="propertyName">A simple property name or full JSON Pointer.</param>
     /// <returns>An <see cref="InputPointer"/>.</returns>
-    public static InputPointer ForProperty(string propertyName) =>
-        string.IsNullOrEmpty(propertyName)
-            ? Root
-            : new(propertyName.StartsWith('/') ? propertyName : "/" + propertyName);
+    /// <remarks>
+    /// When the input is a simple property name (does not start with <c>'/'</c>), the special
+    /// characters defined by RFC 6901 §3 are escaped: <c>'~'</c> becomes <c>"~0"</c> and
+    /// <c>'/'</c> becomes <c>"~1"</c>. The order is significant — <c>'~'</c> is escaped first
+    /// so that an already-introduced <c>"~1"</c> from a slash escape is not re-escaped as
+    /// <c>"~01"</c>. Inputs that already start with <c>'/'</c> are assumed to be a fully-formed
+    /// JSON Pointer (e.g. produced by <c>JsonPointerNormalizer</c>) and are passed through unchanged.
+    /// </remarks>
+    public static InputPointer ForProperty(string propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName))
+            return Root;
+        if (propertyName.StartsWith('/'))
+            return new(propertyName);
+
+        var escaped = propertyName.Replace("~", "~0", StringComparison.Ordinal)
+                                  .Replace("/", "~1", StringComparison.Ordinal);
+        return new("/" + escaped);
+    }
 
     /// <inheritdoc />
     public override string ToString() => Path;
