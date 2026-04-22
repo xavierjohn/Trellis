@@ -183,6 +183,11 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(assemblies);
         if (assemblies.Length == 0)
             throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
+        for (var i = 0; i < assemblies.Length; i++)
+        {
+            if (assemblies[i] is null)
+                throw new ArgumentException($"Assembly at index [{i}] is null.", nameof(assemblies));
+        }
 
         var authorizeResourceDef = typeof(IAuthorizeResource<>);
         var loaderDef = typeof(IResourceLoader<,>);
