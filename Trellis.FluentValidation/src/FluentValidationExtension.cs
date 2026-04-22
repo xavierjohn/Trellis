@@ -195,9 +195,10 @@ public static class FluentValidationResultExtensions
         var violations = validationResult.Errors
             .Select(e =>
             {
-                var propertyName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
+                var rawName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
+                var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
                 var reasonCode = string.IsNullOrWhiteSpace(e.ErrorCode) ? "validation.error" : e.ErrorCode;
-                return new FieldViolation(InputPointer.ForProperty(propertyName), reasonCode) { Detail = e.ErrorMessage };
+                return new FieldViolation(new InputPointer(pointerPath), reasonCode) { Detail = e.ErrorMessage };
             })
             .ToArray();
 

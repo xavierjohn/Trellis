@@ -4,32 +4,34 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using global::FluentValidation;
-using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Trellis.Mediator;
 
 /// <summary>
-/// Extension methods for registering Trellis FluentValidation discovery into the Mediator pipeline.
+/// Extension methods for plugging FluentValidation into the Trellis Mediator validation stage.
 /// </summary>
 public static class FluentValidationServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="FluentValidationBehavior{TMessage, TResponse}"/> as an open-generic
-    /// <see cref="IPipelineBehavior{TMessage, TResponse}"/> so that any <see cref="IValidator{T}"/>
-    /// registered in the DI container will run automatically before its message reaches the handler.
+    /// Registers <see cref="FluentValidationMessageValidatorAdapter{TMessage}"/> as the
+    /// open-generic <see cref="IMessageValidator{TMessage}"/> implementation. Every
+    /// <see cref="IValidator{T}"/> registered for the message in DI will then run inside the
+    /// existing <see cref="ValidationBehavior{TMessage, TResponse}"/> and contribute its
+    /// failures to the aggregated <see cref="Error.UnprocessableContent"/> response.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
     /// <para>
-    /// Validators are NOT scanned by this overload — register them explicitly
-    /// (e.g., <c>services.AddScoped&lt;IValidator&lt;CreateOrderCommand&gt;, CreateOrderCommandValidator&gt;()</c>)
-    /// or use the assembly-scanning overload
-    /// <see cref="AddTrellisFluentValidation(IServiceCollection, Assembly[])"/>.
+    /// This overload is AOT-friendly: it relies on .NET's open-generic DI registration to
+    /// construct closed adapter types at runtime, with no reflection over assemblies. Validators
+    /// must be registered explicitly (e.g.,
+    /// <c>services.AddScoped&lt;IValidator&lt;CreateOrderCommand&gt;, CreateOrderCommandValidator&gt;()</c>).
     /// </para>
     /// <para>
-    /// Call this <b>after</b> <c>AddTrellisBehaviors()</c> so FluentValidation discovery runs after
-    /// the compile-time <c>IValidate</c> behavior, and <b>before</b> <c>AddTrellisUnitOfWork()</c>
-    /// so commits stay innermost.
+    /// FluentValidation does not introduce an additional pipeline behavior; it extends the
+    /// existing <see cref="ValidationBehavior{TMessage, TResponse}"/> via the
+    /// <see cref="IMessageValidator{TMessage}"/> abstraction.
     /// </para>
     /// </remarks>
     /// <example>
@@ -43,22 +45,22 @@ public static class FluentValidationServiceCollectionExtensions
     public static IServiceCollection AddTrellisFluentValidation(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(FluentValidationBehavior<,>));
+        services.AddScoped(typeof(IMessageValidator<>), typeof(FluentValidationMessageValidatorAdapter<>));
         return services;
     }
 
     /// <summary>
-    /// Registers <see cref="FluentValidationBehavior{TMessage, TResponse}"/> and scans the supplied
-    /// assemblies for concrete <see cref="IValidator{T}"/> implementations, registering each one
-    /// as a scoped service so the behavior can discover and execute it.
+    /// Registers the FluentValidation adapter and scans the supplied assemblies for concrete
+    /// <see cref="IValidator{T}"/> implementations, registering each one as a scoped service.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="assemblies">The assemblies to scan for validator implementations.</param>
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
-    /// Uses reflection over <see cref="Assembly.GetTypes"/>, so this overload is not AOT/trimming
-    /// compatible. For AOT scenarios, use the parameterless overload and register validators
-    /// explicitly.
+    /// Uses reflection over <see cref="Assembly.GetTypes"/> and constructs closed
+    /// <see cref="IValidator{T}"/> service types at runtime, so this overload is not AOT or
+    /// trimming compatible. For AOT scenarios, call the parameterless overload and register
+    /// validators explicitly.
     /// </remarks>
     /// <example>
     /// <code>
@@ -110,3 +112,4 @@ public static class FluentValidationServiceCollectionExtensions
         }
     }
 }
+

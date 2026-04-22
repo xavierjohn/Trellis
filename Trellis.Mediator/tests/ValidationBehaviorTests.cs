@@ -13,7 +13,7 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_ValidMessage_CallsNextAndReturnsHandlerResult()
     {
-        var behavior = new ValidationBehavior<TestCommand, Result<string>>();
+        var behavior = new ValidationBehavior<TestCommand, Result<string>>([]);
         var command = new TestCommand("Alice");
         var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
             Result.Ok("Hello, Alice!"));
@@ -32,7 +32,7 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_InvalidMessage_DoesNotCallNextAndReturnsFailure()
     {
-        var behavior = new ValidationBehavior<TestCommand, Result<string>>();
+        var behavior = new ValidationBehavior<TestCommand, Result<string>>([]);
         var command = new TestCommand("   ");
         var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
             Result.Ok("should not reach"));
@@ -48,7 +48,7 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_NullName_ReturnsValidationFailure()
     {
-        var behavior = new ValidationBehavior<TestCommand, Result<string>>();
+        var behavior = new ValidationBehavior<TestCommand, Result<string>>([]);
         var command = new TestCommand(null!);
         var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
             Result.Ok("should not reach"));
@@ -66,7 +66,7 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_ValidQuery_CallsNextAndReturnsHandlerResult()
     {
-        var behavior = new ValidationBehavior<TestQuery, Result<string>>();
+        var behavior = new ValidationBehavior<TestQuery, Result<string>>([]);
         var query = new TestQuery(42);
         var (next, tracker) = NextDelegate.TrackingAsync<TestQuery, Result<string>>(
             Result.Ok("Result-42"));
@@ -81,7 +81,7 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_InvalidQuery_ReturnsValidationFailure()
     {
-        var behavior = new ValidationBehavior<TestQuery, Result<string>>();
+        var behavior = new ValidationBehavior<TestQuery, Result<string>>([]);
         var query = new TestQuery(-1);
         var (next, tracker) = NextDelegate.TrackingAsync<TestQuery, Result<string>>(
             Result.Ok("should not reach"));
@@ -92,6 +92,141 @@ public class ValidationBehaviorTests
         var validation = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
         validation.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Id"));
         tracker.WasInvoked.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region IMessageValidator integration — external validators
+
+    [Fact]
+    public async Task Handle_external_validator_failure_short_circuits_with_aggregated_error()
+    {
+        var external = new StubMessageValidator<TestCommandNoValidation>(
+            Result.Fail(UpcWith("Name", "external rule")));
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("nope"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("anything"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse();
+        var error = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        error.Fields.Items.Should().ContainSingle()
+            .Which.Detail.Should().Be("external rule");
+    }
+
+    [Fact]
+    public async Task Handle_external_validator_success_calls_next()
+    {
+        var external = new StubMessageValidator<TestCommandNoValidation>(Result.Ok());
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("ok"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeTrue();
+        result.Unwrap().Should().Be("ok");
+    }
+
+    [Fact]
+    public async Task Handle_no_validate_and_no_external_validators_passes_through()
+    {
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("ok"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeTrue();
+        result.Unwrap().Should().Be("ok");
+    }
+
+    [Fact]
+    public async Task Handle_aggregates_IValidate_failure_with_external_validator_failure()
+    {
+        var external = new StubMessageValidator<TestCommand>(
+            Result.Fail(UpcWith("Email", "email invalid")));
+        var behavior = new ValidationBehavior<TestCommand, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
+            Result.Ok("nope"));
+
+        var result = await behavior.Handle(new TestCommand("   "), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse();
+        var error = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        error.Fields.Items.Should().HaveCount(2);
+        error.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Name"));
+        error.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Email"));
+    }
+
+    [Fact]
+    public async Task Handle_aggregates_failures_across_multiple_external_validators()
+    {
+        var first = new StubMessageValidator<TestCommandNoValidation>(
+            Result.Fail(UpcWith("A", "rule a")));
+        var second = new StubMessageValidator<TestCommandNoValidation>(
+            Result.Fail(UpcWith("B", "rule b")));
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([first, second]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("nope"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse();
+        var error = result.UnwrapError().Should().BeOfType<Error.UnprocessableContent>().Which;
+        error.Fields.Items.Should().HaveCount(2);
+        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/A");
+        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/B");
+    }
+
+    [Fact]
+    public async Task Handle_external_validator_returning_non_unprocessable_error_short_circuits_immediately()
+    {
+        var first = new StubMessageValidator<TestCommandNoValidation>(
+            Result.Fail(new Error.Conflict(null, "conflict.detected") { Detail = "concurrency" }));
+        var secondInvoked = false;
+        var second = new StubMessageValidator<TestCommandNoValidation>(
+            Result.Fail(UpcWith("X", "should not run")),
+            onInvoked: () => secondInvoked = true);
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([first, second]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(
+            Result.Ok("nope"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse();
+        secondInvoked.Should().BeFalse("non-UPC failure must short-circuit before subsequent validators");
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+    }
+
+    [Fact]
+    public async Task Handle_external_validator_returning_non_unprocessable_does_not_aggregate_with_IValidate_failure()
+    {
+        var external = new StubMessageValidator<TestCommand>(
+            Result.Fail(new Error.Forbidden("forbidden") { Detail = "no access" }));
+        var behavior = new ValidationBehavior<TestCommand, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
+            Result.Ok("nope"));
+
+        var result = await behavior.Handle(new TestCommand("   "), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse();
+        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+    }
+
+    private static Error.UnprocessableContent UpcWith(string field, string detail)
+        => new(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = detail }));
+
+    private sealed class StubMessageValidator<TMessage>(IResult result, Action? onInvoked = null)
+        : IMessageValidator<TMessage>
+        where TMessage : global::Mediator.IMessage
+    {
+        public ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)
+        {
+            onInvoked?.Invoke();
+            return new ValueTask<IResult>(result);
+        }
     }
 
     #endregion

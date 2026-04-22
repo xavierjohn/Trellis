@@ -23,14 +23,26 @@ public static class ServiceCollectionExtensions
     ///   <item><description><see cref="LoggingBehavior{TMessage, TResponse}"/> — structured logging with duration and outcome.</description></item>
     ///   <item><description><see cref="AuthorizationBehavior{TMessage, TResponse}"/> — checks static permissions declared by <see cref="IAuthorize"/>.</description></item>
     ///   <item><description><see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> — checks resource-bound authorization for <see cref="IAuthorizeResource{TResource}"/> commands. Inserted by <see cref="AddResourceAuthorization{TMessage, TResource, TResponse}"/> or <see cref="AddResourceAuthorization(IServiceCollection, Assembly[])"/> immediately before the validation behavior so the loaded resource is checked once per request.</description></item>
-    ///   <item><description><see cref="ValidationBehavior{TMessage, TResponse}"/> — short-circuits the pipeline when the compile-time <c>IValidate</c> contract reports a failure.</description></item>
-    ///   <item><description><c>FluentValidationBehavior&lt;TMessage, TResponse&gt;</c> (in the optional <c>Trellis.FluentValidation</c> package) — runs every <c>IValidator&lt;TMessage&gt;</c> registered in DI. Opt in via <c>AddTrellisFluentValidation()</c>.</description></item>
-    ///   <item><description><c>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</c> (in the optional <c>Trellis.EntityFrameworkCore</c> package) — runs the handler then calls <c>IUnitOfWork.CommitAsync</c> on success. Opt in via <c>AddTrellisUnitOfWork&lt;TContext&gt;()</c> after all other behavior registrations so it lands innermost (closest to the handler).</description></item>
+    ///   <item><description><see cref="ValidationBehavior{TMessage, TResponse}"/> — unified
+    ///   validation stage. Runs <see cref="IValidate.Validate"/> when the message implements it
+    ///   AND every <see cref="IMessageValidator{TMessage}"/> registered in DI for the message,
+    ///   aggregating <see cref="Error.UnprocessableContent"/> failures into a single response.
+    ///   External validation sources (e.g., the optional <c>Trellis.FluentValidation</c> package
+    ///   contributes <c>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</c> via
+    ///   <c>AddTrellisFluentValidation()</c>) plug in here without an extra pipeline behavior.</description></item>
+    ///   <item><description><c>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</c>
+    ///   (in the optional <c>Trellis.EntityFrameworkCore</c> package) — runs the handler then
+    ///   calls <c>IUnitOfWork.CommitAsync</c> on success. Opt in via
+    ///   <c>AddTrellisUnitOfWork&lt;TContext&gt;()</c> after all other behavior registrations
+    ///   so it lands innermost (closest to the handler).</description></item>
     /// </list>
     /// <para>
-    /// This array contains only the four always-on open-generic behaviors plus the IValidate
-    /// behavior — five entries — because the resource-authorization, FluentValidation, and
+    /// This array contains the always-on five behaviors. The resource-authorization and
     /// transactional behaviors are opt-in and supplied by separate registration helpers.
+    /// FluentValidation (and any other external validation source) participates inside
+    /// the existing <see cref="ValidationBehavior{TMessage, TResponse}"/> via the
+    /// <see cref="IMessageValidator{TMessage}"/> abstraction, so it does not occupy its own
+    /// pipeline slot.
     /// </para>
     /// </summary>
     /// <example>
