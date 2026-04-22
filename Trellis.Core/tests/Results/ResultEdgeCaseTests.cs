@@ -68,6 +68,43 @@ public class ResultEdgeCaseTests
         error.Should().Be(expectedError);
     }
 
+    [Fact]
+    public void TryGetValue_WithErrorOut_OnSuccess_ShouldReturnTrue_ValueSet_ErrorNull()
+    {
+        var result = Result.Ok(42);
+
+        bool success = result.TryGetValue(out var value, out var error);
+
+        success.Should().BeTrue();
+        value.Should().Be(42);
+        error.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryGetValue_WithErrorOut_OnFailure_ShouldReturnFalse_ErrorSet_ValueDefault()
+    {
+        var expected = new Error.NotFound(new ResourceRef("X", null)) { Detail = "gone" };
+        var result = Result.Fail<int>(expected);
+
+        bool success = result.TryGetValue(out var value, out var error);
+
+        success.Should().BeFalse();
+        value.Should().Be(default(int));
+        error.Should().Be(expected);
+    }
+
+    [Fact]
+    public void TryGetValue_WithErrorOut_OnSuccessWithNull_ShouldReturnTrueWithNullValue()
+    {
+        var result = Result.Ok(default(string));
+
+        bool success = result.TryGetValue(out var value, out var error);
+
+        success.Should().BeTrue();
+        value.Should().BeNull();
+        error.Should().BeNull();
+    }
+
     #endregion
 
     #region Deconstruction Edge Cases

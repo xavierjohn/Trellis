@@ -262,8 +262,8 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(response);
 
         var result = await response.ConfigureAwait(false);
-        if (!result.TryGetValue(out var message))
-            return Result.Fail<T>(result.Error!);
+        if (!result.TryGetValue(out var message, out var error))
+            return Result.Fail<T>(error);
 
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
@@ -354,8 +354,8 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(response);
 
         var result = await response.ConfigureAwait(false);
-        if (!result.TryGetValue(out var message))
-            return Result.Fail<Maybe<T>>(result.Error!);
+        if (!result.TryGetValue(out var message, out var error))
+            return Result.Fail<Maybe<T>>(error);
 
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 

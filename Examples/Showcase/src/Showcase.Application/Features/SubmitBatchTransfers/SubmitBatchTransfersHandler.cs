@@ -52,8 +52,8 @@ public sealed class SubmitBatchTransfersHandler
         }
 
         var totalResult = Money.TryCreate(sum, currency);
-        if (!totalResult.TryGetValue(out var total))
-            return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(totalResult.Error!));
+        if (!totalResult.TryGetValue(out var total, out var totalError))
+            return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(totalError));
 
         return ValueTask.FromResult(Result.Ok(
             new BatchTransferReceipt(command.Metadata.Reference, command.Lines.Count, total)));

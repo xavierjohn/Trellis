@@ -227,9 +227,9 @@ public static class HttpResponseExtensions
         configure?.Invoke(builder);
         var opts = builder.Build();
 
-        if (!result.TryGetValue(out var page))
+        if (!result.TryGetValue(out var page, out var pageError))
         {
-            return new TrellisErrorOnlyResult(result.Error!, new HttpResponseOptions<object>
+            return new TrellisErrorOnlyResult(pageError, new HttpResponseOptions<object>
             {
                 ErrorMapper = opts.ErrorMapper,
                 ErrorOverrides = opts.ErrorOverrides,

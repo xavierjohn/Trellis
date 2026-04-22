@@ -109,9 +109,9 @@ public interface IScalarValue<TSelf, TPrimitive>
     static virtual TSelf Create(TPrimitive value)
     {
         var result = TSelf.TryCreate(value);
-        if (!result.TryGetValue(out var created))
+        if (!result.TryGetValue(out var created, out var error))
         {
-            throw new InvalidOperationException($"Failed to create {typeof(TSelf).Name}: {result.Error!.GetDisplayMessage()}");
+            throw new InvalidOperationException($"Failed to create {typeof(TSelf).Name}: {error.GetDisplayMessage()}");
         }
 
         return created;

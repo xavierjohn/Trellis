@@ -36,10 +36,10 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
     public Task ExecuteAsync(HttpContext httpContext)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
-        if (!_result.TryGetValue(out var outcome))
+        if (!_result.TryGetValue(out var outcome, out var outcomeError))
         {
-            var sc = TrellisHttpResult<TDomain, TBody>.ResolveErrorStatusCode(httpContext, _result.Error!, _options);
-            return ResponseFailureWriter.WriteAsync(httpContext, _result.Error!, sc);
+            var sc = TrellisHttpResult<TDomain, TBody>.ResolveErrorStatusCode(httpContext, outcomeError, _options);
+            return ResponseFailureWriter.WriteAsync(httpContext, outcomeError, sc);
         }
 
         var response = httpContext.Response;

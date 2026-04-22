@@ -186,6 +186,36 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     }
 
     /// <summary>
+    /// Attempts to get the success value and the error in a single call, eliminating the need
+    /// for <c>result.Error!</c> null-suppression after a failed <see cref="TryGetValue(out TValue)"/>.
+    /// </summary>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the success value; otherwise, the default value.</param>
+    /// <param name="error">When this method returns <see langword="false"/>, contains the error; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the result is successful; otherwise <see langword="false"/>.</returns>
+    /// <example>
+    /// <code>
+    /// if (!result.TryGetValue(out var v, out var err))
+    ///     return Result.Fail&lt;T&gt;(err); // err is non-null here (flow-analysis verified)
+    /// // use v on success
+    /// </code>
+    /// </example>
+    public bool TryGetValue(
+        [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out TValue value,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(false)] out Error? error)
+    {
+        if (IsSuccess)
+        {
+            value = _value!;
+            error = null;
+            return true;
+        }
+
+        value = default!;
+        error = EffectiveError();
+        return false;
+    }
+
+    /// <summary>
     /// Deconstructs the result into its components for pattern matching.
     /// </summary>
     /// <param name="isSuccess">True if the result is successful; otherwise false.</param>
