@@ -1,16 +1,16 @@
-# TRLS004 — Unsafe access to Result.Error
+﻿# TRLS004 — Result is double-wrapped
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags `result.Error` when the analyzer cannot prove that the access is guarded by a failure check or another safe Trellis pattern.
+Flags declared or inferred `Result<Result<T>>`, and also flags `Result.Ok(existingResult)` or `Result.Fail(existingResult)` when the value is already a `Result<T>`.
 
 ## Why it matters
-`Result.Error` throws when the result is a success. Unchecked access swaps a clean result flow for an exception.
+Double-wrapped results are awkward to handle and usually mean the pipeline used `Map` where `Bind` was intended.
 
 > [!WARNING]
-> This often appears in logging and HTTP mapping code. Make the failure path explicit before reading `Error`.
+> A nested `Result` is almost never the domain model you actually want. It usually signals a flattened pipeline that never got flattened.
 
 ## Bad example
 ```csharp
@@ -18,8 +18,8 @@ using Trellis;
 
 static class Example
 {
-    public static string Bad(Result<int> result) =>
-        result.Error.Detail;
+    public static Result<Result<int>> Bad() =>
+        Result.Ok(Result.Ok(42));
 }
 ```
 
@@ -29,18 +29,13 @@ using Trellis;
 
 static class Example
 {
-    public static string Good(Result<int> result)
-    {
-        if (result.IsFailure)
-            return result.Error.Detail;
-
-        return "No error";
-    }
+    public static Result<int> Good() =>
+        Result.Ok(42);
 }
 ```
 
 ## Code fix available
-Yes — wraps the current usage in an `if (result.IsFailure)` guard.
+No.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -56,5 +51,5 @@ dotnet_diagnostic.TRLS004.severity = none
 ```
 
 > [!TIP]
-> When you need to translate both branches, `Match` (with a `switch` expression on the closed `Error` ADT) usually keep the code cleaner than a manual `Error` read.
+> If the inner expression already returns `Result<T>`, switch to `Bind` or return the inner result directly.
 

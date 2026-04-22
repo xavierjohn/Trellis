@@ -1,4 +1,4 @@
-name: Build
+﻿name: Build
 
 on:
   workflow_dispatch:
@@ -67,6 +67,16 @@ jobs:
         files: ./**/*.cobertura.xml
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
+
+    - name: AOT publish gate (Showcase.MinimalApi)
+      # Proves Trellis.Core + Trellis.Asp + Trellis.FluentValidation + Trellis.Mediator
+      # publish cleanly under NativeAOT. Any new IL2026/IL3050/etc. warning fails the build.
+      # EF Core integration is intentionally excluded (see Trellis.EntityFrameworkCore README).
+      run: |
+        dotnet publish Examples/Showcase/src/Showcase.MinimalApi/Showcase.MinimalApi.csproj \
+          -c Release -r linux-x64 \
+          /p:PublishAot=true \
+          /p:TreatWarningsAsErrors=true
 
     - name: Update doc tools
       run: dotnet tool update -g docfx

@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results.Extensions;
+﻿namespace Trellis.Core.Tests.Results.Extensions;
 
 using Trellis.Testing;
 
@@ -47,7 +47,7 @@ public class TapTupleTests : TestBase
         // Assert
         _actionExecuted.Should().BeTrue();
         actual.Should().BeSuccess();
-        actual.Value.Should().Be((42, "hello"));
+        actual.Unwrap().Should().Be((42, "hello"));
     }
 
     [Fact]
@@ -91,8 +91,8 @@ public class TapTupleTests : TestBase
 
         // Assert
         actual.Should().BeSuccess();
-        actual.Value.Should().Be((42, "hello"));
-        actual.Value.Should().Be(originalResult.Value);
+        actual.Unwrap().Should().Be((42, "hello"));
+        actual.Unwrap().Should().Be(originalResult.Unwrap());
     }
 
     [Fact]
@@ -313,7 +313,7 @@ public class TapTupleTests : TestBase
         // Assert
         _actionExecuted.Should().BeTrue();
         actual.Should().BeSuccess();
-        actual.Value.Should().Be((1, "two", true));
+        actual.Unwrap().Should().Be((1, "two", true));
     }
 
     [Fact]
@@ -501,7 +501,7 @@ public class TapTupleTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be("JOHN DOE");
+        result.Unwrap().Should().Be("JOHN DOE");
         executionOrder.Should().HaveCount(3);
         executionOrder[0].Should().Be("Tap: John Doe");
         executionOrder[1].Should().Be("Bind: John Doe");

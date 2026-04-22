@@ -3,13 +3,13 @@
 using Xunit;
 
 /// <summary>
-/// Tests for HasIndexMaybePropertyAnalyzer (TRLS021).
+/// Tests for HasIndexMaybePropertyAnalyzer (TRLS016).
 /// Verifies that HasIndex lambda expressions referencing Maybe&lt;T&gt; properties produce a warning.
 /// </summary>
 public class HasIndexMaybePropertyAnalyzerTests
 {
     /// <summary>
-    /// Stub source for EF Core builder types and Trellis.EntityFrameworkCore types used in TRLS021 analyzer tests.
+    /// Stub source for EF Core builder types and Trellis.EntityFrameworkCore types used in TRLS016 analyzer tests.
     /// </summary>
     private const string EfCoreBuilderStubSource = """
         namespace Microsoft.EntityFrameworkCore.Metadata.Builders

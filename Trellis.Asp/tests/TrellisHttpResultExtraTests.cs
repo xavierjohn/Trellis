@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System.IO;
 using System.Net.Http.Headers;
@@ -16,17 +16,8 @@ using Trellis.Asp;
 /// location resolution, and per-call error-mapping overrides. Every test drives the public
 /// extension and asserts on what a caller observes (status code, headers, body bytes).
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public sealed class TrellisHttpResultExtraTests : IDisposable
+public sealed class TrellisHttpResultExtraTests
 {
-    public TrellisHttpResultExtraTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private sealed record Todo(int Id, string Title, string ETag, DateTimeOffset Modified);
 
     private sealed record TodoBody(int Id, string Title)

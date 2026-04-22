@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.MinimalApi.Endpoints;
+﻿namespace Trellis.Showcase.MinimalApi.Endpoints;
 
 using Trellis;
 using Trellis.Asp;
@@ -31,7 +31,11 @@ public static class AccountEndpoints
                     .ToHttpResponse(
                         nextUrlBuilder: (c, applied) =>
                             links.GetUriByName(http, "Showcase_GetAccounts",
-                                values: new { limit = applied, cursor = c.Token })
+                                values: new Microsoft.AspNetCore.Routing.RouteValueDictionary
+                                {
+                                    ["limit"] = applied,
+                                    ["cursor"] = c.Token,
+                                })
                             ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
                         body: AccountResponse.From);
             })

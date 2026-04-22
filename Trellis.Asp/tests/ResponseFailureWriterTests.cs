@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System.Collections.Immutable;
 using System.IO;
@@ -13,17 +13,8 @@ using Trellis.Asp;
 /// Content-Range), validation problem vs problem path, status redaction for 5xx, and the
 /// extensions builder (faultId, rules).
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public sealed class ResponseFailureWriterTests : IDisposable
+public sealed class ResponseFailureWriterTests
 {
-    public ResponseFailureWriterTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private static DefaultHttpContext NewContext()
     {
         var services = new ServiceCollection();

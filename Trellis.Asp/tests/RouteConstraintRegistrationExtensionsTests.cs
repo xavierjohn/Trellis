@@ -33,17 +33,17 @@ public class RouteConstraintRegistrationExtensionsTests
         public static ProductId Parse(string s, IFormatProvider? provider)
         {
             var r = TryCreate(s);
-            if (r.IsSuccess)
-                return r.Value;
+            if (r.TryGetValue(out var pid))
+                return pid;
             throw new FormatException("Invalid ProductId.");
         }
 
         public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out ProductId result)
         {
             var r = TryCreate(s);
-            if (r.IsSuccess)
+            if (r.TryGetValue(out var pid))
             {
-                result = r.Value;
+                result = pid;
                 return true;
             }
 

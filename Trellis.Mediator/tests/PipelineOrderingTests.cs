@@ -1,4 +1,4 @@
-namespace Trellis.Mediator.Tests;
+﻿namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -94,10 +94,11 @@ public class PipelineOrderingTests
     }
 
     [Fact]
-    public void AddTrellisBehaviors_called_twice_registers_each_behavior_twice()
+    public void AddTrellisBehaviors_is_idempotent_when_called_twice()
     {
-        // Documents current behavior: AddTrellisBehaviors does not deduplicate.
-        // Callers should invoke it exactly once.
+        // ga-10: AddTrellisBehaviors must be safe to call from a plug-in extension method
+        // (e.g. AddTrellisFluentValidation, AddTrellisAsp) that calls it as a precondition,
+        // even if the consumer has already wired the behaviors up themselves.
         var services = new ServiceCollection();
 
         services.AddTrellisBehaviors();
@@ -107,6 +108,52 @@ public class PipelineOrderingTests
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
             .ToList();
 
-        behaviors.Should().HaveCount(10);
+        behaviors.Should().HaveCount(5);
+        behaviors.Select(d => d.ImplementationType).Should().BeEquivalentTo(
+            ServiceCollectionExtensions.PipelineBehaviors,
+            o => o.WithStrictOrdering());
+    }
+
+    [Fact]
+    public void AddTrellisBehaviors_registers_safe_by_default_TelemetryOptions()
+    {
+        // ga-12: Telemetry redaction options are registered as a singleton with
+        // IncludeErrorDetail = false so behaviors don't leak Error.Detail into logs/traces.
+        var services = new ServiceCollection();
+
+        services.AddTrellisBehaviors();
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetService<TrellisMediatorTelemetryOptions>();
+
+        options.Should().NotBeNull();
+        options!.IncludeErrorDetail.Should().BeFalse(
+            "Detail can carry user input or PII and is opt-in for telemetry surfaces");
+    }
+
+    [Fact]
+    public void AddTrellisBehaviors_with_configure_applies_TelemetryOptions()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellisBehaviors(o => o.IncludeErrorDetail = true);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<TrellisMediatorTelemetryOptions>();
+        options.IncludeErrorDetail.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddTrellisBehaviors_with_configure_overrides_prior_default_registration()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellisBehaviors();
+        services.AddTrellisBehaviors(o => o.IncludeErrorDetail = true);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<TrellisMediatorTelemetryOptions>();
+        options.IncludeErrorDetail.Should().BeTrue(
+            "an explicit configure call must win over an earlier default-only registration");
     }
 }

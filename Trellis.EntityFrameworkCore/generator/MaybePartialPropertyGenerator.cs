@@ -47,12 +47,22 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
     /// Diagnostic reported when a non-partial property of type <c>Maybe&lt;T&gt;</c> is found.
     /// </summary>
     private static readonly DiagnosticDescriptor s_shouldBePartial = new(
-        id: "TRLSGEN100",
+        id: Ids.MaybePropertyShouldBePartial,
         title: "Maybe<T> property should be partial",
         messageFormat: "Property '{0}' of type Maybe<{1}> should be declared 'partial' so the source generator can emit the backing field and implementation",
-        category: "Trellis.EntityFrameworkCore.Generator",
+        category: "Trellis",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// Canonical IDs for diagnostics emitted by this generator. See
+    /// <c>Trellis.TrellisDiagnosticIds</c> in <c>Trellis.Analyzers</c> for the
+    /// consumer-facing equivalents.
+    /// </summary>
+    private static class Ids
+    {
+        public const string MaybePropertyShouldBePartial = "TRLS035";
+    }
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -99,7 +109,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Fast syntax filter: is this a non-partial auto-property with a generic type that
-    /// could be Maybe&lt;T&gt;? Used for the TRLSGEN100 diagnostic.
+    /// could be Maybe&lt;T&gt;? Used for the TRLS035 diagnostic.
     /// </summary>
     private static bool IsNonPartialMaybeProperty(SyntaxNode node)
     {
@@ -215,7 +225,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Extract info for the TRLSGEN100 diagnostic on non-partial Maybe properties.
+    /// Extract info for the TRLS035 diagnostic on non-partial Maybe properties.
     /// </summary>
     private static (Location Location, string PropertyName, string InnerTypeName)? GetDiagnosticInfo(
         GeneratorSyntaxContext ctx, CancellationToken ct)

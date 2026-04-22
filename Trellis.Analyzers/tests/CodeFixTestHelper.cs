@@ -1,4 +1,4 @@
-namespace Trellis.Analyzers.Tests;
+﻿namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -86,9 +86,7 @@ public static class CodeFixTestHelper
     /// Stub source code for Trellis types used in code fix tests.
     /// </summary>
     private const string TrellisStubSource = """
-        #pragma warning disable TRLS003 // Unsafe Result.Value access
-        #pragma warning disable TRLS004 // Unsafe Result.Error access
-        #pragma warning disable TRLS006 // Unsafe Maybe.Value access
+        #pragma warning disable TRLS003 // Unsafe Maybe.Value access
         namespace Trellis
         {
             using System;
@@ -103,7 +101,7 @@ public static class CodeFixTestHelper
                 TPrimitive Value { get; }
             }
 
-            // Result<T> stub
+            // Result<T> stub (v2 surface — no Value property; Error is nullable)
             public readonly struct Result<T>
             {
                 private readonly bool _isSuccess;
@@ -118,18 +116,25 @@ public static class CodeFixTestHelper
                 }
 
                 public bool IsSuccess => _isSuccess;
+                [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
                 public bool IsFailure => !_isSuccess;
-                public T Value => _isSuccess ? _value : throw new InvalidOperationException("Result is in failure state");
-                public Error Error => !_isSuccess ? _error : throw new InvalidOperationException("Result is in success state");
+                public Error? Error => _isSuccess ? null : _error;
 
-                public static implicit operator Result<T>(T value) => new Result<T>(true, value, default);
-                public static implicit operator Result<T>(Error error) => new Result<T>(false, default, error);
+                public static implicit operator Result<T>(T value) => new Result<T>(true, value, default!);
+                public static implicit operator Result<T>(Error error) => new Result<T>(false, default!, error);
 
                 public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<Error, TResult> onFailure) =>
                     _isSuccess ? onSuccess(_value) : onFailure(_error);
 
-                public T GetValueOrDefault() => _isSuccess ? _value : default;
+                public T GetValueOrDefault() => _isSuccess ? _value : default!;
                 public T GetValueOrDefault(T defaultValue) => _isSuccess ? _value : defaultValue;
+
+                [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(false, nameof(Error))]
+                public bool TryGetValue([System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out T value)
+                {
+                    value = _value;
+                    return _isSuccess;
+                }
             }
 
             // Error stub
@@ -155,35 +160,35 @@ public static class CodeFixTestHelper
                 public static Result<T> Fail<T>(Error error) => error;
             }
 
-            // Result extensions stub (safe - no unsafe access)
+            // Result extensions stub (safe — uses v2 surface only)
             public static class ResultExtensions
             {
                 public static Result<TResult> Map<T, TResult>(this Result<T> result, Func<T, TResult> func)
                 {
-                    if (!result.IsSuccess)
+                    if (!result.TryGetValue(out var v))
                         return Result.Fail<TResult>(default!);
-                    return Result.Ok(func(result.Value));
+                    return Result.Ok(func(v));
                 }
 
                 public static Result<TResult> Bind<T, TResult>(this Result<T> result, Func<T, Result<TResult>> func)
                 {
-                    if (!result.IsSuccess)
+                    if (!result.TryGetValue(out var v))
                         return Result.Fail<TResult>(default!);
-                    return func(result.Value);
+                    return func(v);
                 }
 
                 public static Task<Result<TResult>> MapAsync<T, TResult>(this Result<T> result, Func<T, Task<TResult>> func)
                 {
-                    if (!result.IsSuccess)
+                    if (!result.TryGetValue(out var v))
                         return Task.FromResult(Result.Fail<TResult>(default!));
-                    return func(result.Value).ContinueWith(t => Result.Ok(t.Result));
+                    return func(v).ContinueWith(t => Result.Ok(t.Result));
                 }
 
                 public static Task<Result<TResult>> BindAsync<T, TResult>(this Result<T> result, Func<T, Task<Result<TResult>>> func)
                 {
-                    if (!result.IsSuccess)
+                    if (!result.TryGetValue(out var v))
                         return Task.FromResult(Result.Fail<TResult>(default!));
-                    return func(result.Value);
+                    return func(v);
                 }
             }
 
@@ -224,11 +229,9 @@ public static class CodeFixTestHelper
                 public static EmailAddress Create(string value)
                 {
                     var result = TryCreate(value);
-                    if (result.IsFailure)
-                        throw new InvalidOperationException($"Failed to create EmailAddress: {result.Error.Detail}");
-                    if (result.IsSuccess)
-                        return result.Value;
-                    throw new InvalidOperationException("Unexpected result state");
+                    if (!result.TryGetValue(out var email))
+                        throw new InvalidOperationException($"Failed to create EmailAddress: {result.Error?.Detail}");
+                    return email;
                 }
             }
 
@@ -254,7 +257,5 @@ public static class CodeFixTestHelper
             }
         }
         #pragma warning restore TRLS003
-        #pragma warning restore TRLS004
-        #pragma warning restore TRLS006
         """;
 }

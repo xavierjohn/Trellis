@@ -1,4 +1,4 @@
-# Trellis.Core API Reference
+﻿# Trellis.Core API Reference
 
 **Package:** `Trellis.Core`  
 **Namespace:** `Trellis`  
@@ -117,7 +117,7 @@ Static factory and helper surface for `Result<TValue>` and the non-generic `Resu
 > **Default-state invariant (ADR-002 §3.5.1).** `default(Result)` represents a **failure** carrying the
 > shared `new Error.Unexpected("default_initialized")` sentinel — *not* success. This makes uninitialized
 > state a typed failure rather than a silent success that would hide a programming error. Always
-> construct via `Result.Ok()` or `Result.Fail(error)`. Analyzer **`TRLS029`** flags explicit
+> construct via `Result.Ok()` or `Result.Fail(error)`. Analyzer **`TRLS019`** flags explicit
 > `default(Result)` at call sites.
 
 #### Properties
@@ -156,7 +156,7 @@ Represents either a successful `TValue` or a failure `Error`.
 > All failure-facing APIs (`Error`, `TryGetError`, `Deconstruct`, `Equals`, `GetHashCode`, `ToString`,
 > `AsUnit`) route through this sentinel so that `default(Result<T>)` is observationally equivalent to
 > `Result.Fail<T>(new Error.Unexpected("default_initialized"))`. Always construct via `Result.Ok(value)`
-> or `Result.Fail<T>(error)`. Analyzer **`TRLS029`** flags explicit `default(Result<T>)` at call sites.
+> or `Result.Fail<T>(error)`. Analyzer **`TRLS019`** flags explicit `default(Result<T>)` at call sites.
 
 #### Properties
 
@@ -271,7 +271,7 @@ Optional value container for domain optionality.
 
 > **Default-state invariant.** `default(Maybe<T>)` equals `Maybe<T>.None` (the type already uses an
 > `_isValueSet` discriminator). Although correct, prefer the explicit `Maybe<T>.None` for readability.
-> Analyzer **`TRLS029`** flags explicit `default(Maybe<T>)` at call sites and recommends `Maybe<T>.None`
+> Analyzer **`TRLS019`** flags explicit `default(Maybe<T>)` at call sites and recommends `Maybe<T>.None`
 > instead.
 
 #### Properties

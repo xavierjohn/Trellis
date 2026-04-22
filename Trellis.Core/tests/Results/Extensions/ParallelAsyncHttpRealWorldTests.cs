@@ -1,8 +1,9 @@
-namespace Trellis.Core.Tests.Results.Extensions;
+﻿namespace Trellis.Core.Tests.Results.Extensions;
+
+using Trellis.Testing;
 
 using System.Diagnostics;
 using System.Net;
-using Trellis.Testing;
 
 /// <summary>
 /// Real-world example demonstrating ParallelAsync with HTTP calls.
@@ -52,10 +53,10 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.User.UserId.Should().Be("user-123");
-        result.Value.Inventory.Available.Should().BeTrue();
-        result.Value.Payment.IsValid.Should().BeTrue();
-        result.Value.Shipping.Rate.Should().BeGreaterThan(0);
+        result.Unwrap().User.UserId.Should().Be("user-123");
+        result.Unwrap().Inventory.Available.Should().BeTrue();
+        result.Unwrap().Payment.IsValid.Should().BeTrue();
+        result.Unwrap().Shipping.Rate.Should().BeGreaterThan(0);
     }
 
     #endregion
@@ -366,11 +367,11 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Assert - all stages completed successfully
         result.Should().BeSuccess();
-        result.Value.User.UserId.Should().Be("user-123");
-        result.Value.Inventory.Available.Should().BeTrue();
-        result.Value.Payment.IsValid.Should().BeTrue();
-        result.Value.FraudCheck.IsSafe.Should().BeTrue();
-        result.Value.Shipping.Rate.Should().BeGreaterThan(0);
+        result.Unwrap().User.UserId.Should().Be("user-123");
+        result.Unwrap().Inventory.Available.Should().BeTrue();
+        result.Unwrap().Payment.IsValid.Should().BeTrue();
+        result.Unwrap().FraudCheck.IsSafe.Should().BeTrue();
+        result.Unwrap().Shipping.Rate.Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -488,8 +489,8 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         // Assert - all 3 stages completed
         result.Should().BeSuccess();
-        result.Value.User.UserId.Should().Be("user-123");
-        result.Value.Reservation.IsReserved.Should().BeTrue();
+        result.Unwrap().User.UserId.Should().Be("user-123");
+        result.Unwrap().Reservation.IsReserved.Should().BeTrue();
     }
 
     [Fact]

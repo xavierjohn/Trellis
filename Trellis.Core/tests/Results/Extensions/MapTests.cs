@@ -1,4 +1,6 @@
-namespace Trellis.Core.Tests.Results.Extensions.Map;
+﻿namespace Trellis.Core.Tests.Results.Extensions.Map;
+
+using Trellis.Testing;
 
 using System.Globalization;
 using Xunit;
@@ -27,7 +29,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("5");
+        result.Unwrap().Should().Be("5");
     }
 
     [Fact]
@@ -57,7 +59,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("5");
+        result.Unwrap().Should().Be("5");
     }
 
     [Fact]
@@ -85,7 +87,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("5");
+        result.Unwrap().Should().Be("5");
     }
 
     [Fact]
@@ -124,7 +126,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("5");
+        result.Unwrap().Should().Be("5");
     }
 
     [Fact]
@@ -154,7 +156,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("5");
+        result.Unwrap().Should().Be("5");
     }
 
     [Fact]
@@ -182,7 +184,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("5");
+        result.Unwrap().Should().Be("5");
     }
 
     [Fact]
@@ -210,7 +212,7 @@ public class MapTests : TestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("5");
+        result.Unwrap().Should().Be("5");
     }
 
     [Fact]

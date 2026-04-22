@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Async Ensure extensions where only the RIGHT (predicates) are async (ValueTask), input is sync.
@@ -44,13 +44,13 @@ public static partial class EnsureExtensionsAsync
         ArgumentNullException.ThrowIfNull(predicate);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureExtensions.Ensure));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (!await predicate(result.Value).ConfigureAwait(false))
+        if (!await predicate(value).ConfigureAwait(false))
             return Result.Fail<TValue>(error);
 
         result.LogActivityStatus();
@@ -71,14 +71,14 @@ public static partial class EnsureExtensionsAsync
         ArgumentNullException.ThrowIfNull(errorPredicate);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureExtensions.Ensure));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (!await predicate(result.Value).ConfigureAwait(false))
-            return Result.Fail<TValue>(errorPredicate(result.Value));
+        if (!await predicate(value).ConfigureAwait(false))
+            return Result.Fail<TValue>(errorPredicate(value));
 
         result.LogActivityStatus();
         return result;
@@ -98,14 +98,14 @@ public static partial class EnsureExtensionsAsync
         ArgumentNullException.ThrowIfNull(errorPredicate);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureExtensions.Ensure));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (!await predicate(result.Value).ConfigureAwait(false))
-            return Result.Fail<TValue>(await errorPredicate(result.Value).ConfigureAwait(false));
+        if (!await predicate(value).ConfigureAwait(false))
+            return Result.Fail<TValue>(await errorPredicate(value).ConfigureAwait(false));
 
         result.LogActivityStatus();
         return result;
@@ -150,13 +150,13 @@ public static partial class EnsureExtensionsAsync
         ArgumentNullException.ThrowIfNull(predicate);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureExtensions.Ensure));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var predicateResult = await predicate(result.Value).ConfigureAwait(false);
+        var predicateResult = await predicate(value).ConfigureAwait(false);
 
         if (predicateResult.IsFailure)
             return Result.Fail<TValue>(predicateResult.Error);

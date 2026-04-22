@@ -1,11 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
    <ItemGroup>
      <PackageReference Include="OpenTelemetry" />
      <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
      <PackageReference Include="FluentValidation" />
    </ItemGroup>
    <ItemGroup>
-      <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
       <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
       <ProjectReference Include="..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
       <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />

@@ -1,9 +1,9 @@
-namespace Trellis.Analyzers.Tests;
+﻿namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
 /// <summary>
-/// Tests for AsyncLambdaWithSyncMethodAnalyzer (TRLS014).
+/// Tests for AsyncLambdaWithSyncMethodAnalyzer (TRLS009).
 /// Verifies that async lambdas with sync methods are detected.
 /// </summary>
 public class AsyncLambdaWithSyncMethodAnalyzerTests

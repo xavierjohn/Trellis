@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 
 /// <summary>
-/// Tests for <see cref="CombineLimitAnalyzer"/> (TRLS019).
+/// Tests for <see cref="CombineLimitAnalyzer"/> (TRLS014).
 /// Verifies that Combine chains exceeding 9 elements produce a diagnostic.
 /// </summary>
 public class CombineLimitAnalyzerTests

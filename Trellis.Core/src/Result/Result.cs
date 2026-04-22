@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 /// Per ADR-002 §3.5.1, <c>default(Result)</c> represents a <em>failure</em> carrying a sentinel
 /// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success. Always construct via
-/// <see cref="Ok()"/> or <see cref="Fail(Error)"/>; analyzer <c>TRLS029</c> flags explicit
+/// <see cref="Ok()"/> or <see cref="Fail(Error)"/>; analyzer <c>TRLS019</c> flags explicit
 /// <c>default(Result)</c> at call sites.
 /// </para>
 /// <para>

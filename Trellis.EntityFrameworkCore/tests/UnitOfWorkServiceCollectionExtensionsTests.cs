@@ -8,6 +8,25 @@ using static RepositoryBaseTests;
 public class UnitOfWorkServiceCollectionExtensionsTests
 {
     [Fact]
+    public void AddTrellisUnitOfWork_is_idempotent_when_called_twice()
+    {
+        // ga-10: AddTrellisUnitOfWork is safe to call from a plug-in extension method
+        // (or composed twice in test setup) without producing duplicate IUnitOfWork
+        // registrations or duplicate TransactionalCommandBehavior pipeline entries.
+        var services = new ServiceCollection();
+        services.AddDbContext<RepoTestDbContext>(o => o.UseSqlite("DataSource=:memory:"));
+
+        services.AddTrellisUnitOfWork<RepoTestDbContext>();
+        services.AddTrellisUnitOfWork<RepoTestDbContext>();
+
+        services.Where(d => d.ServiceType == typeof(IUnitOfWork)).Should().ContainSingle();
+        services.Where(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>)
+            && d.ImplementationType == typeof(TransactionalCommandBehavior<,>))
+            .Should().ContainSingle();
+    }
+
+    [Fact]
     public void AddTrellisUnitOfWork_registers_IUnitOfWork_and_behavior()
     {
         // Arrange

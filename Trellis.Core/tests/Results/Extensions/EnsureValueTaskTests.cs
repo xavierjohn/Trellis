@@ -1,4 +1,6 @@
-namespace Trellis.Core.Tests.Results.Extensions;
+﻿namespace Trellis.Core.Tests.Results.Extensions;
+
+using Trellis.Testing;
 
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -93,7 +95,7 @@ public class EnsureValueTaskTests
         var actual = await source.EnsureAsync(() => true, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "should not fail" });
 
         actual.IsSuccess.Should().BeTrue();
-        actual.Value.Should().Be("test");
+        actual.Unwrap().Should().Be("test");
     }
 
     [Fact]
@@ -132,7 +134,7 @@ public class EnsureValueTaskTests
         var actual = await source.EnsureAsync(x => x.Length == 4, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "wrong length" });
 
         actual.IsSuccess.Should().BeTrue();
-        actual.Value.Should().Be("test");
+        actual.Unwrap().Should().Be("test");
     }
 
     [Fact]
@@ -173,7 +175,7 @@ public class EnsureValueTaskTests
             x => new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = $"expected 4 but got {x.Length}" });
 
         actual.IsSuccess.Should().BeTrue();
-        actual.Value.Should().Be("test");
+        actual.Unwrap().Should().Be("test");
     }
 
     [Fact]
@@ -247,7 +249,7 @@ public class EnsureValueTaskTests
             });
 
         actual.IsSuccess.Should().BeTrue();
-        actual.Value.Should().Be("test");
+        actual.Unwrap().Should().Be("test");
         errorPredicateCalled.Should().BeFalse("error predicate should not be called when predicate passes");
     }
 
@@ -307,7 +309,7 @@ public class EnsureValueTaskTests
         var actual = await source.EnsureAsync(() => Result.Ok<string>("ignored"));
 
         actual.IsSuccess.Should().BeTrue();
-        actual.Value.Should().Be("test");
+        actual.Unwrap().Should().Be("test");
     }
 
     [Fact]
@@ -346,7 +348,7 @@ public class EnsureValueTaskTests
         var actual = await source.EnsureAsync(x => Result.Ok<string>("ignored"));
 
         actual.IsSuccess.Should().BeTrue();
-        actual.Value.Should().Be("test");
+        actual.Unwrap().Should().Be("test");
     }
 
     [Fact]

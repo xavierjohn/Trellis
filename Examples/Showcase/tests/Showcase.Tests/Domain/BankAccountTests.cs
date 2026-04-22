@@ -1,6 +1,7 @@
-namespace Trellis.Showcase.Tests.Domain;
+﻿namespace Trellis.Showcase.Tests.Domain;
 
 using Microsoft.Extensions.Time.Testing;
+using Trellis.Testing;
 using Trellis;
 using Trellis.Primitives;
 using Trellis.Showcase.Domain.Aggregates;
@@ -22,7 +23,7 @@ public class BankAccountTests
             Money.Create(overdraft, "USD"),
             timeProvider);
         result.IsSuccess.Should().BeTrue();
-        return result.Value;
+        return result.Unwrap();
     }
 
     [Fact]
@@ -37,7 +38,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<Error.UnprocessableContent>();
-        var fields = ((Error.UnprocessableContent)result.Error).Fields;
+        var fields = ((Error.UnprocessableContent)result.Error!).Fields;
         fields.Length.Should().Be(1);
     }
 

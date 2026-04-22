@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using FluentValidation;
 using Mediator;
 using Scalar.AspNetCore;
@@ -12,6 +12,8 @@ using Trellis.Showcase.Application.Features.SubmitBatchTransfers;
 using Trellis.Showcase.Application.Persistence;
 using Trellis.Showcase.Application.Services;
 using Trellis.Showcase.Application.Workflows;
+using Trellis.Showcase.Domain.Aggregates;
+using Trellis.Showcase.Domain.Entities;
 using Trellis.Showcase.Domain.ValueObjects;
 using Trellis.Showcase.MinimalApi.Endpoints;
 
@@ -20,7 +22,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScalarValueValidationForMinimalApi();
 builder.Services.AddTrellisRouteConstraint<AccountId>();
 builder.Services.ConfigureHttpJsonOptions(o =>
-    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+{
+    // Use the generic JsonStringEnumConverter<TEnum> for AOT-compatibility.
+    // The non-generic JsonStringEnumConverter relies on runtime reflection
+    // and trips IL3050 under PublishAot.
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter<AccountType>());
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter<AccountStatus>());
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter<TransactionType>());
+});
 builder.Services.AddOpenApi();
 
 builder.Services.AddSingleton(TimeProvider.System);

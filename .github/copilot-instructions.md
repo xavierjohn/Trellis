@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for Trellis
+﻿# GitHub Copilot Instructions for Trellis
 
 ## Project Overview
 
@@ -36,7 +36,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 | Mediator pipeline behaviors | `docs/api_reference/trellis-api-mediator.md` |
 | State machine integration | `docs/api_reference/trellis-api-statemachine.md` |
 | Testing helpers | `docs/api_reference/trellis-api-testing-reference.md` |
-| Analyzer rules (TRLS001-TRLS022) | `docs/api_reference/trellis-api-analyzers.md` |
+| Analyzer rules (TRLS001-TRLS019) | `docs/api_reference/trellis-api-analyzers.md` |
 
 These files document the exact method signatures, overloads, and usage patterns. Do not assume APIs based on naming conventions — read the reference first.
 
@@ -151,15 +151,17 @@ Working rule: do not force structured value objects like `Money` through the sca
 
 ## Diagnostic ID Conventions
 
-Analyzers (`Trellis.Analyzers`) and source generators use **separate ID prefixes** to avoid collisions:
+Analyzers (`Trellis.Analyzers`) and the bundled source generators emit diagnostics under a **single unified `TRLS` prefix** as of v2. Use the `Trellis.TrellisDiagnosticIds` constants (in `Trellis.Analyzers`) to reference IDs from `[SuppressMessage]` attributes and rule sets.
 
-| Prefix | Owner | Range | Example |
-|--------|-------|-------|---------|
-| `TRLS` | Trellis.Analyzers | `TRLS001`–`TRLS999` | `TRLS007` — Use `Create()` instead of `TryCreate().Value` |
-| `TRLSGEN` | Primitives source generator | `TRLSGEN001`–`TRLSGEN099` | `TRLSGEN002` — `MinimumLength` exceeds `MaximumLength` |
-| `TRLSGEN` | EF Core source generator | `TRLSGEN100`–`TRLSGEN199` | `TRLSGEN100` — `Maybe<T>` property should be partial |
+| Range | Owner | Example |
+|-------|-------|---------|
+| `TRLS001`–`TRLS019` | `Trellis.Analyzers` | `TRLS003` — Unsafe access to `Maybe.Value` |
+| `TRLS031`–`TRLS034` | `Trellis.Core.Generator` (Primitives) | `TRLS032` — `MinimumLength` exceeds `MaximumLength` |
+| `TRLS035`–`TRLS038` | `Trellis.EntityFrameworkCore.Generator` | `TRLS035` — `Maybe<T>` property should be `partial` |
 
-**Do NOT** reuse a `TRLS` ID in a source generator or vice versa. Do NOT overlap generator ranges.
+The legacy `TRLSGEN###` prefix (used in v1) was retired in v2: `TRLSGEN001`–`TRLSGEN004` mapped to `TRLS031`–`TRLS034`, `TRLSGEN100`–`TRLSGEN103` mapped to `TRLS035`–`TRLS038`. In v3-alpha, analyzer IDs were renumbered to be contiguous — former `TRLS006/008/009/010/011/012/014/015/016/017/018/019/020/021/022/024/029` are now `TRLS003`–`TRLS019`. Removed analyzer slots (the former `TRLS003/004/005/007/013/025`) no longer have documentation tombstones.
+
+**Do NOT** introduce a parallel ID prefix in new analyzers or generators. Allocate the next free `TRLS###` slot and add it to `TrellisDiagnosticIds`.
 
 ## Code Style
 

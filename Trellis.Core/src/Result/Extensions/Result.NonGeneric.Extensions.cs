@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 // =============================================================================
 // Pipeline verb extensions for the non-generic Result.
 //
-// This file mirrors the seven pipeline verbs (Map, Bind, Tap, TapError, Ensure,
+// This file mirrors the seven pipeline verbs (Map, Bind, Tap, TapOnFailure, Ensure,
 // Match, Recover) plus a small set of cross-shape helpers, but for the
 // non-generic Result that replaces Result<Unit>. It is deliberately a single
 // file rather than the per-verb / per-async-shape split that Result<T> uses,
@@ -157,13 +157,13 @@ public static class ResultBindExtensions
     {
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Bind));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return Result.Fail(result.Error);
         }
 
-        var output = func(result.Value);
+        var output = func(value);
         output.LogActivityStatus();
         return output;
     }
@@ -320,13 +320,13 @@ public static class ResultBindExtensionsAsync
     {
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return Result.Fail(result.Error);
         }
 
-        var output = await func(result.Value).ConfigureAwait(false);
+        var output = await func(value).ConfigureAwait(false);
         output.LogActivityStatus();
         return output;
     }
@@ -352,13 +352,13 @@ public static class ResultBindExtensionsAsync
     {
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return Result.Fail(result.Error);
         }
 
-        var output = await func(result.Value).ConfigureAwait(false);
+        var output = await func(value).ConfigureAwait(false);
         output.LogActivityStatus();
         return output;
     }
@@ -450,77 +450,77 @@ public static class ResultTapExtensionsAsync
 
 #endregion
 
-#region TapError (failure-side side effect)
+#region TapOnFailure (failure-side side effect)
 
-/// <summary>TapError for the non-generic <see cref="Result"/>.</summary>
+/// <summary>TapOnFailure for the non-generic <see cref="Result"/>.</summary>
 [DebuggerStepThrough]
-public static class ResultTapErrorExtensions
+public static class ResultTapOnFailureExtensions
 {
     /// <summary>Invokes <paramref name="action"/> with the error if the result is a failure; returns the result unchanged.</summary>
-    public static Result TapError(this Result result, Action<Error> action)
+    public static Result TapOnFailure(this Result result, Action<Error> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        using var activity = RopTrace.ActivitySource.StartActivity(nameof(TapError));
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(TapOnFailure));
         if (result.IsFailure) action(result.Error);
         result.LogActivityStatus();
         return result;
     }
 }
 
-/// <summary>Async TapError for the non-generic <see cref="Result"/>.</summary>
+/// <summary>Async TapOnFailure for the non-generic <see cref="Result"/>.</summary>
 [DebuggerStepThrough]
-public static class ResultTapErrorExtensionsAsync
+public static class ResultTapOnFailureExtensionsAsync
 {
     /// <summary>Awaits <paramref name="resultTask"/> and invokes <paramref name="action"/> on failure.</summary>
-    public static async Task<Result> TapErrorAsync(this Task<Result> resultTask, Action<Error> action)
+    public static async Task<Result> TapOnFailureAsync(this Task<Result> resultTask, Action<Error> action)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(action);
-        return (await resultTask.ConfigureAwait(false)).TapError(action);
+        return (await resultTask.ConfigureAwait(false)).TapOnFailure(action);
     }
 
     /// <summary>Invokes async <paramref name="func"/> with the error on failure; returns the result unchanged.</summary>
-    public static async Task<Result> TapErrorAsync(this Result result, Func<Error, Task> func)
+    public static async Task<Result> TapOnFailureAsync(this Result result, Func<Error, Task> func)
     {
         ArgumentNullException.ThrowIfNull(func);
-        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapErrorExtensions.TapError));
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapOnFailureExtensions.TapOnFailure));
         if (result.IsFailure) await func(result.Error).ConfigureAwait(false);
         result.LogActivityStatus();
         return result;
     }
 
     /// <summary>Awaits <paramref name="resultTask"/> and invokes async <paramref name="func"/> on failure.</summary>
-    public static async Task<Result> TapErrorAsync(this Task<Result> resultTask, Func<Error, Task> func)
+    public static async Task<Result> TapOnFailureAsync(this Task<Result> resultTask, Func<Error, Task> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);
         var result = await resultTask.ConfigureAwait(false);
-        return await result.TapErrorAsync(func).ConfigureAwait(false);
+        return await result.TapOnFailureAsync(func).ConfigureAwait(false);
     }
 
     /// <summary>Awaits <paramref name="resultTask"/> and invokes <paramref name="action"/> on failure.</summary>
-    public static async ValueTask<Result> TapErrorAsync(this ValueTask<Result> resultTask, Action<Error> action)
+    public static async ValueTask<Result> TapOnFailureAsync(this ValueTask<Result> resultTask, Action<Error> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        return (await resultTask.ConfigureAwait(false)).TapError(action);
+        return (await resultTask.ConfigureAwait(false)).TapOnFailure(action);
     }
 
     /// <summary>Invokes async <paramref name="func"/> with the error on failure (ValueTask); returns the result unchanged.</summary>
-    public static async ValueTask<Result> TapErrorAsync(this Result result, Func<Error, ValueTask> func)
+    public static async ValueTask<Result> TapOnFailureAsync(this Result result, Func<Error, ValueTask> func)
     {
         ArgumentNullException.ThrowIfNull(func);
-        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapErrorExtensions.TapError));
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultTapOnFailureExtensions.TapOnFailure));
         if (result.IsFailure) await func(result.Error).ConfigureAwait(false);
         result.LogActivityStatus();
         return result;
     }
 
     /// <summary>Awaits <paramref name="resultTask"/> and invokes async <paramref name="func"/> on failure (ValueTask).</summary>
-    public static async ValueTask<Result> TapErrorAsync(this ValueTask<Result> resultTask, Func<Error, ValueTask> func)
+    public static async ValueTask<Result> TapOnFailureAsync(this ValueTask<Result> resultTask, Func<Error, ValueTask> func)
     {
         ArgumentNullException.ThrowIfNull(func);
         var result = await resultTask.ConfigureAwait(false);
-        return await result.TapErrorAsync(func).ConfigureAwait(false);
+        return await result.TapOnFailureAsync(func).ConfigureAwait(false);
     }
 }
 

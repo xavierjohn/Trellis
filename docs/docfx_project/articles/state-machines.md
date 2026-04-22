@@ -1,4 +1,4 @@
-# State Machines
+﻿# State Machines
 
 State machines matter when the order of operations is part of the business rule.
 
@@ -105,19 +105,23 @@ stateDiagram-v2
 
 ### On success
 
+- it pre-checks the trigger with `CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards)
 - it fires the trigger once
 - it returns `Result<TState>` containing the new state
 
 ### On failure
 
-- it converts only **recognized** Stateless invalid-transition `InvalidOperationException` cases into a failed result
-- the failure is a `Error.Conflict`
+- if `CanFire(trigger)` returns false, it returns `Error.Conflict` with code `state.machine.invalid.transition` and a Trellis-owned `Detail` string — no Stateless exception is involved
+- the failure shape is therefore independent of the Stateless library version and its exception message text
 
 ### What it does **not** do
 
-- it does **not** make Stateless thread-safe
-- it does **not** convert arbitrary exceptions from your own entry, exit, guard, accessor, mutator, or configuration code
-- it does **not** preflight with `CanFire()` and then fire again; it fires once and converts only the known invalid-transition failure shape
+- it does **not** make Stateless thread-safe — Stateless is single-threaded by contract; callers must externally synchronize concurrent calls
+- it does **not** swallow arbitrary exceptions from your own entry, exit, guard, accessor, mutator, or configuration code — those propagate to the caller
+- it does **not** depend on the textual content of any Stateless exception, so library upgrades that reword internal messages will not break it
+
+> [!NOTE]
+> Because `FireResult` evaluates the guard once via `CanFire` and again via `Fire`, transition guards must be **idempotent and side-effect-free** — which is already a Stateless requirement. The guard is evaluated at most twice per `FireResult` call.
 
 > [!WARNING]
 > `FireResult<TState, TTrigger>` has `where TState : notnull` and `where TTrigger : notnull` constraints. `LazyStateMachine<TState, TTrigger>` has the same constraints.

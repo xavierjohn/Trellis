@@ -1,11 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>EF Core integration for Trellis. Convention-based value converter registration for Trellis primitives, Result-returning SaveChanges wrappers, Maybe/Result query extensions, and provider-agnostic database exception classification.</Description>
     <PackageTags>trellis;efcore;entity-framework-core;value-converters;railway-oriented;result;maybe;ddd;domain-driven-design</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>efcore</TrellisApiRefName>
-    <!-- EF Core is inherently reflection-based; AOT/Trim not applicable -->
+    <!--
+      EF Core relies on runtime reflection (model building, change tracking, query translation,
+      proxies). Microsoft documents NativeAOT support for EF Core as "highly experimental, not
+      suited for production use" — see https://learn.microsoft.com/ef/core/performance/nativeaot-and-precompiled-queries.
+      Trellis.EntityFrameworkCore therefore explicitly opts out of the AOT/trim story. Consumers
+      who need AOT should use Trellis.Core + a non-EF persistence layer (see Showcase.MinimalApi).
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
     <EnableAotAnalyzer>false</EnableAotAnalyzer>
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>
@@ -32,11 +40,12 @@
   <ItemGroup>
     <ProjectReference Include="..\generator\Trellis.EntityFrameworkCore.Generator.csproj"
                       OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="false"
+                      Properties="PublishAot=false" />
   </ItemGroup>
 
   <Target Name="_GetEfCoreGeneratorTargetPath" Returns="@(_EfCoreGeneratorTargetPath)">
-    <MSBuild Projects="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" Targets="GetTargetPath">
+    <MSBuild Projects="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" Targets="GetTargetPath" Properties="PublishAot=false">
       <Output TaskParameter="TargetOutputs" ItemName="_EfCoreGeneratorTargetPath" />
     </MSBuild>
   </Target>

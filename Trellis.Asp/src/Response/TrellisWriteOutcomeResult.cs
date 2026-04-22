@@ -1,4 +1,4 @@
-namespace Trellis.Asp;
+﻿namespace Trellis.Asp;
 
 using System;
 using System.Threading.Tasks;
@@ -36,13 +36,12 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
     public Task ExecuteAsync(HttpContext httpContext)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
-        if (_result.IsFailure)
+        if (!_result.TryGetValue(out var outcome, out var outcomeError))
         {
-            var sc = TrellisHttpResult<TDomain, TBody>.ResolveErrorStatusCode(_result.Error!, _options);
-            return ResponseFailureWriter.WriteAsync(httpContext, _result.Error!, sc);
+            var sc = TrellisHttpResult<TDomain, TBody>.ResolveErrorStatusCode(httpContext, outcomeError, _options);
+            return ResponseFailureWriter.WriteAsync(httpContext, outcomeError, sc);
         }
 
-        var outcome = _result.Value;
         var response = httpContext.Response;
 
         // Always emit Vary: Prefer when honoring Prefer (invariant per ADR-002 section 6).

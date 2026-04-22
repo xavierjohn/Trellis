@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 
 /// <summary>
-/// Tests for <see cref="DefaultResultOrMaybeAnalyzer"/> (TRLS029) — flags explicit
+/// Tests for <see cref="DefaultResultOrMaybeAnalyzer"/> (TRLS019) — flags explicit
 /// <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and <c>default(Maybe&lt;T&gt;)</c>
 /// per ADR-002 §3.5.1.
 /// </summary>
@@ -131,7 +131,7 @@ public class DefaultResultOrMaybeAnalyzerTests
                 public int Run()
                 {
                     Result<int> r = default;
-                    return r.IsSuccess ? r.Value : 0;
+                    return r.GetValueOrDefault(0);
                 }
             }
             """;
@@ -215,7 +215,7 @@ public class DefaultResultOrMaybeAnalyzerTests
 
             public class TestClass
             {
-                [SuppressMessage("Trellis", "TRLS029", Justification = "Sentinel for testing.")]
+                [SuppressMessage("Trellis", "TRLS019", Justification = "Sentinel for testing.")]
                 public Result<int> Run()
                 {
                     return default;
@@ -235,9 +235,9 @@ public class DefaultResultOrMaybeAnalyzerTests
             {
                 public Result<int> Run()
                 {
-            #pragma warning disable TRLS029
+            #pragma warning disable TRLS019
                     return default;
-            #pragma warning restore TRLS029
+            #pragma warning restore TRLS019
                 }
             }
             """;

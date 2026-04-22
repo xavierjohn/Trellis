@@ -17,7 +17,7 @@ public static class GetValueOrDefaultExtensions
     /// <param name="defaultValue">The value to return if the result is a failure.</param>
     /// <returns>The success value, or <paramref name="defaultValue"/> on failure.</returns>
     public static TValue GetValueOrDefault<TValue>(this Result<TValue> result, TValue defaultValue) =>
-        result.IsSuccess ? result.Value : defaultValue;
+        result.TryGetValue(out var value) ? value : defaultValue;
 
     /// <summary>
     /// Returns the success value, or evaluates the factory to produce a default if the result is a failure.
@@ -32,7 +32,7 @@ public static class GetValueOrDefaultExtensions
     public static TValue GetValueOrDefault<TValue>(this Result<TValue> result, Func<TValue> defaultFactory)
     {
         ArgumentNullException.ThrowIfNull(defaultFactory);
-        return result.IsSuccess ? result.Value : defaultFactory();
+        return result.TryGetValue(out var value) ? value : defaultFactory();
     }
 
     /// <summary>
@@ -48,6 +48,6 @@ public static class GetValueOrDefaultExtensions
     public static TValue GetValueOrDefault<TValue>(this Result<TValue> result, Func<Error, TValue> defaultFactory)
     {
         ArgumentNullException.ThrowIfNull(defaultFactory);
-        return result.IsSuccess ? result.Value : defaultFactory(result.Error);
+        return result.TryGetValue(out var value) ? value : defaultFactory(result.Error);
     }
 }

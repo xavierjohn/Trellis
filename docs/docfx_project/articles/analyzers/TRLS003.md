@@ -1,16 +1,16 @@
-# TRLS003 — Unsafe access to Result.Value
+﻿# TRLS003 — Unsafe access to Maybe.Value
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags `result.Value` when the analyzer cannot prove that the access is guarded by a success check or another safe Trellis pattern.
+Flags `maybe.Value` when the analyzer cannot prove the `Maybe<T>` definitely contains a value.
 
 ## Why it matters
-`Result.Value` throws when the result is a failure. Unchecked access turns a modeled failure into an exception.
+`Maybe.Value` throws when the instance is empty. That turns optional data into an exception path.
 
 > [!WARNING]
-> The analyzer understands many guard patterns, but it will still warn when the safety is unclear. When in doubt, prefer `IsSuccess`, `TryGetValue`, or `Match`.
+> This commonly shows up in DTO mapping, logging, and formatting code where an empty `Maybe<T>` is easy to overlook.
 
 ## Bad example
 ```csharp
@@ -18,8 +18,8 @@ using Trellis;
 
 static class Example
 {
-    public static int Bad(Result<int> result) =>
-        result.Value + 1;
+    public static string Bad(Maybe<string> nickname) =>
+        nickname.Value.ToUpperInvariant();
 }
 ```
 
@@ -29,18 +29,13 @@ using Trellis;
 
 static class Example
 {
-    public static int Good(Result<int> result)
-    {
-        if (result.IsSuccess)
-            return result.Value + 1;
-
-        return 0;
-    }
+    public static string Good(Maybe<string> nickname) =>
+        nickname.GetValueOrDefault("unknown").ToUpperInvariant();
 }
 ```
 
 ## Code fix available
-Yes — wraps the current usage in an `if (result.IsSuccess)` guard.
+Yes — wraps the current usage in an `if (maybe.HasValue)` guard.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -56,5 +51,5 @@ dotnet_diagnostic.TRLS003.severity = none
 ```
 
 > [!TIP]
-> `Match`, `TryGetValue`, and early-return guards usually read better than reaching for `Value` directly.
+> Prefer `GetValueOrDefault`, `TryGetValue`, or a `HasValue` guard when you only need a fallback or a conditional branch.
 

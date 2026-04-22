@@ -26,7 +26,7 @@ An LLM (or human) building enterprise software with Trellis should hold this in 
 Domain values are constructed via `<Type>.TryCreate(...)`            → Result<T>
 Errors are a finite, well-known set; map to HTTP via Trellis.Asp     → Error (closed-by-convention, analyzer-enforced)
 Pipelines: 7 core verbs + BindZip + LINQ query syntax + Try (boundary) + Traverse (collections)
-            → Map / Bind / Tap / TapError / Ensure / Match / Recover  (+ BindZip; + Select/SelectMany/Where)
+            → Map / Bind / Tap / TapOnFailure / Ensure / Match / Recover  (+ BindZip; + Select/SelectMany/Where)
 Multi-field validation builds a single ValidationError               → Validate.Field(...).And(...).Build(...)
 Cross-Maybe invariants                                                → MaybeInvariant.AllOrNone / Requires / ExactlyOne ...
 Async is one rule: returns Task<Result<T>>, awaited normally         → no Left/Right/Both variants visible
@@ -106,7 +106,7 @@ The dependency tree is **`Trellis.Asp`-optional**. A worker service should never
 
 ### 0.6.2 Canonical patterns for non-ASP code
 
-The seven pipeline verbs (`Map`, `Bind`, `Tap`, `TapError`, `Ensure`, `Match`, `Recover`) plus `BindZip`, the LINQ query-syntax surface (`Select`/`SelectMany`/`Where`), `Try`, `TryAsync`, `Traverse`, `Validate.Field(...).Build(...)`, and `MaybeInvariant` are 100% applicable in non-ASP code. They are pure functional combinators with no host dependency. Same for `Result.Combine<T1..T9>`, `Result.ParallelAsync<T1..T9>`, error catalog factories, scalar/composite VO base classes, and `Maybe<T>`.
+The seven pipeline verbs (`Map`, `Bind`, `Tap`, `TapOnFailure`, `Ensure`, `Match`, `Recover`) plus `BindZip`, the LINQ query-syntax surface (`Select`/`SelectMany`/`Where`), `Try`, `TryAsync`, `Traverse`, `Validate.Field(...).Build(...)`, and `MaybeInvariant` are 100% applicable in non-ASP code. They are pure functional combinators with no host dependency. Same for `Result.Combine<T1..T9>`, `Result.ParallelAsync<T1..T9>`, error catalog factories, scalar/composite VO base classes, and `Maybe<T>`.
 
 **Console app — top-of-`Main` pattern (the non-ASP equivalent of `ToHttpResponse`):**
 
@@ -159,13 +159,13 @@ public class ImportWorker(IMediator mediator, ILogger<ImportWorker> log) : Backg
 
             // Log + continue, don't crash the loop.
             result.Tap(_ => log.LogInformation("Processed {Id}", msg.Id))
-                  .TapError(error => log.LogError("Failed {Id}: {Code} {Detail}", msg.Id, error.Code, error.Detail));
+                  .TapOnFailure(error => log.LogError("Failed {Id}: {Code} {Detail}", msg.Id, error.Code, error.Detail));
         }
     }
 }
 ```
 
-The `TapError(Action<Error>)` verb (§3.2) is the canonical "log on failure, continue the pipeline" verb — same in worker as in HTTP code. The success-side analog is `Tap(Action<T>)`. Keeping the two paths under distinct names (rather than overloading `Tap` on the parameter type) makes the call site read as what it does — `result.TapError(log)` is unambiguously the failure path, no squinting at the lambda parameter type required.
+The `TapOnFailure(Action<Error>)` verb (§3.2) is the canonical "log on failure, continue the pipeline" verb — same in worker as in HTTP code. The success-side analog is `Tap(Action<T>)`. Keeping the two paths under distinct names (rather than overloading `Tap` on the parameter type) makes the call site read as what it does — `result.TapOnFailure(log)` is unambiguously the failure path, no squinting at the lambda parameter type required.
 
 ### 0.6.3 The error catalog in non-HTTP contexts
 
@@ -188,7 +188,7 @@ The `ToHttpResponse` verb lives only in `Trellis.Asp`. Other transports follow t
 | ASP.NET Core HTTP | `result.ToHttpResponse(opts)` | `Trellis.Asp` | In v2 plan, §6 |
 | CLI exit code | `Trellis.ConsoleHost.ExitCode.For(error)` | `Trellis.Core` (just a switch — no host dependency) | Add in Phase 1b |
 | gRPC status | `result.ToGrpcStatus()` | `Trellis.Grpc` (future, post-2.0) | Not in current scope |
-| Worker logging | `result.Tap(success).TapError(failure)` (no special verb) | `Trellis.Core` | Already covered by §3.2 verbs |
+| Worker logging | `result.Tap(success).TapOnFailure(failure)` (no special verb) | `Trellis.Core` | Already covered by §3.2 verbs |
 
 **Future-package note:** `Trellis.Grpc` is not in the v2 redesign scope and is not counted in the 12 packages. It is mentioned only to show the redesign is open to additional transport adapters following the same shape as `Trellis.Asp`.
 
@@ -370,7 +370,7 @@ These are the rules every package must obey. When a current API violates one, it
 If two methods do the same thing under different names (`SuccessIf` ≈ `Ensure`; `Recover` ≈ `RecoverOnFailure`; `Check` ≈ `Tap` returning `Result`), the LLM has to gamble. We pick one and delete the rest.
 
 ### B. **Async methods carry the `Async` suffix — BCL convention wins.**
-**Decision (2026-04-20):** every async-returning extension is named `…Async` (`MapAsync`, `BindAsync`, `TapAsync`, `TapErrorAsync`, `EnsureAsync`, `MatchAsync`, `RecoverAsync`). This follows the BCL guideline for `Task`/`ValueTask`-returning methods and matches every async API the user already reads (`Task.WhenAllAsync`, `HttpClient.SendAsync`, `DbContext.SaveChangesAsync`). The earlier "async invisible" framing has been **rescinded** because it created two avoidable problems: (1) overload ambiguity between sync `Map` and `Task<Result<T>>.Map`, and (2) no visible signal at the call site that an `await` is required. The §3.3 overload matrix is updated accordingly: `Map` is one overload (sync × sync), `MapAsync` covers the five async permutations.
+**Decision (2026-04-20):** every async-returning extension is named `…Async` (`MapAsync`, `BindAsync`, `TapAsync`, `TapOnFailureAsync`, `EnsureAsync`, `MatchAsync`, `RecoverAsync`). This follows the BCL guideline for `Task`/`ValueTask`-returning methods and matches every async API the user already reads (`Task.WhenAllAsync`, `HttpClient.SendAsync`, `DbContext.SaveChangesAsync`). The earlier "async invisible" framing has been **rescinded** because it created two avoidable problems: (1) overload ambiguity between sync `Map` and `Task<Result<T>>.Map`, and (2) no visible signal at the call site that an `await` is required. The §3.3 overload matrix is updated accordingly: `Map` is one overload (sync × sync), `MapAsync` covers the five async permutations.
 
 ### C. **No tuple-arity ceilings in user-facing validation APIs.**
 A builder pattern (`Validate.Field(a).And(b).And(c)…`) replaces fixed-arity `Combine` for **validation aggregation** (no ceiling). For heterogeneous value combination (different value types, first-failure-wins semantics), `Result.Combine<T1..T9>` stays — it's already T4-generated, costs nothing, and is genuinely cleaner than chained `Bind`s. `TRLS019` (max 9 hard-error) stays for `Combine` with a clearer message: "Group into a record or use `Validate.Field(...).Build()` if these are validation results."
@@ -484,6 +484,12 @@ public readonly struct Result<T>
     public bool IsSuccess { get; }
     public bool IsFailure => !IsSuccess;
 
+    // Non-throwing nullable accessor — retained because it powers clean pattern-match idioms
+    // (`if (r.Error is { } e)`, `r.Error switch { Error.NotFound => ..., ... }`) that have no
+    // safety downside (it never throws). Removing it for symmetry with the throwing `Value`
+    // would have been a usability regression with no safety win.
+    public Error? Error { get; }
+
     public bool TryGetValue([MaybeNullWhen(false)] out T value);
     public bool TryGetError([MaybeNullWhen(false)] out Error error);
 
@@ -493,9 +499,12 @@ public readonly struct Result<T>
 ```
 
 **Removed from the type itself:**
-- `Value` and `Error` properties (they throw → primary cause of `TRLS003`/`TRLS004`).
+- `Value` property — it threw `InvalidOperationException` on failure and was the primary cause of `TRLS003`. Removed in v2 (ga-03). Use `TryGetValue`, `Match`, or `Deconstruct`.
 - All implicit conversions from `T` and from `Error`. They look magical and AI gets the direction wrong.
 - `IFailureFactory<TSelf>` static interface — **retained**. It is necessary for pipeline behaviors to construct typed failure responses without reflection while wrapping `martinothamar/Mediator`. The v1 plan's removal was conditioned on owning the dispatcher (deferred to optional Phase 7); under the wrapper model, the constraint stays. See §5.1 line 612 and the §16 score-table caveat.
+
+**Retained (revised from earlier ADR drafts):**
+- `Error` property is **kept**. It is nullable and never throws, so the original "they throw → primary cause of TRLS004" rationale only applies to `Value`. Removing `Error` would force `if (r.TryGetError(out var e))` everywhere a clean `if (r.Error is { } e) ...` pattern-match works today, breaking switch expressions (`r.Error switch { ... }`) and LINQ projections (`xs.Select(r => r.Error?.Code)`). The `TRLS004` analyzer continues to flag genuine misuse of `Error` (e.g., dereferencing without a null check or guard).
 
 **Construction is one path:**
 ```csharp
@@ -524,7 +533,7 @@ Pipeline-verb shapes for the non-generic case:
 - `Result Bind(Func<Result> next)` — sequence another unit-returning step.
 - `Result<U> Bind<U>(Func<Result<U>> next)` — sequence a value-returning step from a unit `Result`.
 - `Result Tap(Action onSuccess)` — side-effect on success; no value to pass to the lambda.
-- `Result TapError(Action<Error> onFailure)` — symmetric with `Result<T>`.
+- `Result TapOnFailure(Action<Error> onFailure)` — symmetric with `Result<T>`.
 - `Result Ensure(Func<bool> predicate, Error error)` — guard with no value to inspect.
 - `U Match<U>(Func<U> onSuccess, Func<Error, U> onFailure)` — branch projection without a value parameter on the success arm.
 - `Result Recover(Func<Error, Result> next)` — recover from failure into another unit `Result`.
@@ -541,7 +550,7 @@ Implicit conversion `Result<T> → Result` is **not** provided (consistent with 
 | `Map` | 1 (`T → U`) | 1 (`Result → Result<U>`) | 2 |
 | `Bind` | 1 (`T → Result<U>`) | 3 (`Result → Result`, `Result → Result<U>`, `Result<T> → Result`) | 4 |
 | `Tap` | 1 (`Action<T>`) | 1 (`Action`) | 2 |
-| `TapError` | 1 (`Action<Error>`) | 1 (`Action<Error>` on `Result`) | 2 |
+| `TapOnFailure` | 1 (`Action<Error>`) | 1 (`Action<Error>` on `Result`) | 2 |
 | `Ensure` | 1 (`Func<T,bool>`) | 1 (`Func<bool>`) | 2 |
 | `Match` | 1 | 1 | 2 |
 | `Recover` | 1 | 1 | 2 |
@@ -586,7 +595,7 @@ The pipeline surface is seven verbs plus three retained companion forms (`BindZi
 | `Map` | `Result<U> Map<U>(Func<T, U>)` | `Map` |
 | `Bind` | `Result<U> Bind<U>(Func<T, Result<U>>)` | `Bind` |
 | `Tap` | `Result<T> Tap(Action<T>)` — runs only on success | `Tap`, `Check` (when used for success-side side effects) |
-| `TapError` | `Result<T> TapError(Action<Error>)` — runs only on failure | `TapOnFailure`, `Check` (when used for failure-side side effects) |
+| `TapOnFailure` | `Result<T> TapOnFailure(Action<Error>)` — runs only on failure | `TapError` (FP tradition), `Check` (when used for failure-side side effects) |
 | `Ensure` | `Result<T> Ensure(Func<T, bool>, Error)` | `Ensure`, `Check` (validation), `SuccessIf`, `FailureIf`, `EnsureAll` (via Validate builder) |
 | `Match` | `U Match<U>(Func<T, U>, Func<Error, U>)` | `Match`, `MatchError`, `Switch`, `SwitchError` |
 | `Recover` | `Result<T> Recover(Func<Error, Result<T>>)` | `Recover`, `RecoverOnFailure`, `MapOnFailure` (via `.Recover(e => Fail(map(e)))`) |
@@ -600,9 +609,9 @@ The pipeline surface is seven verbs plus three retained companion forms (`BindZi
 
 **`Where` policy — error is generic by construction.** C# query syntax `where p` cannot supply a domain-meaningful `Error` because the language pins the lambda shape to `Func<T, bool>`. `Where` therefore returns a generic `Error.Unexpected("Result filtered out by predicate.")` failure when the predicate is false. This is documented as a deliberate trade-off (LINQ syntax convenience vs domain-meaningful errors), and a new analyzer **`TRLS030`** flags `Where` calls in production code with the message: "`Where` produces a generic `Unexpected` error. Use `.Ensure(predicate, domainError)` for production code; `Where` is intended for ad-hoc query syntax and tests." The analyzer is **info-severity by default** and can be promoted to warning per consumer policy. `Where` is retained because removing it breaks the LINQ query-syntax surface (no `where` clause) — the analyzer is the right tool for "available but discouraged".
 
-**No `Tap`/`TapError` ambiguity by construction.** The two verbs have distinct names, so `result.Tap(x => ...)` is always success-side and `result.TapError(e => ...)` is always failure-side — no overload-resolution gamble at the call site, and `Result<Error>` (rare in practice) is unambiguous too. This is a deliberate *split* of what would otherwise be a single overloaded `Tap`: the AI-ergonomics cost of "one name does two things based on lambda parameter type" outweighs the verb-count saving. The naming follows the same logic that drives `Result.Ok`/`Fail` (§3.1): one verb, one effect, no inference required.
+**No `Tap`/`TapOnFailure` ambiguity by construction.** The two verbs have distinct names, so `result.Tap(x => ...)` is always success-side and `result.TapOnFailure(e => ...)` is always failure-side — no overload-resolution gamble at the call site, and `Result<Error>` (rare in practice) is unambiguous too. This is a deliberate *split* of what would otherwise be a single overloaded `Tap`: the AI-ergonomics cost of "one name does two things based on lambda parameter type" outweighs the verb-count saving. The naming follows the same logic that drives `Result.Ok`/`Fail` (§3.1): one verb, one effect, no inference required.
 
-**Why not `OnSuccess`/`OnFailure` / `BindAlso` / `Peek` etc.?** A pure English-readability lens would prefer event-style names (`OnSuccess`, `OnFailure`) and self-documenting compounds (`BindAlso` for `BindZip`). We deliberately keep the FP-tradition names because **CSharpFunctionalExtensions migrants are an explicit audience for v2** (§0 — Trellis is a fork of CFE). `Tap`/`TapError`/`Bind`/`BindZip`/`Map`/`Ensure`/`Match`/`Recover` are the names CFE users already read fluently, the names every existing CFE code sample on the internet uses, and the names the FluentResults / F# / Rust ecosystems converge on. Renaming for English-readability would force every migrating user (and every AI model trained on CFE-flavored corpora) through a translation layer for no functional gain. The readability cost is real but accepted: we pay it once via documentation (the public API docs explicitly gloss `Tap` as "side-effect on the success value", `TapError` as "side-effect on the error", `BindZip` as "bind and preserve the prior value into a tuple") rather than paying it forever via name churn.
+**Why not `OnSuccess`/`OnFailure` / `BindAlso` / `Peek` etc.?** A pure English-readability lens would prefer event-style names (`OnSuccess`, `OnFailure`) and self-documenting compounds (`BindAlso` for `BindZip`). We deliberately keep the FP-tradition names because **CSharpFunctionalExtensions migrants are an explicit audience for v2** (§0 — Trellis is a fork of CFE). `Tap`/`Bind`/`BindZip`/`Map`/`Ensure`/`Match`/`Recover` are the names CFE users already read fluently, the names every existing CFE code sample on the internet uses, and the names the FluentResults / F# / Rust ecosystems converge on. The one deliberate departure is `TapOnFailure` (rather than the FP-tradition `TapError`): the `OnFailure` suffix names the *condition* under which the side-effect runs, mirroring `IsFailure`/`IsSuccess` and the analyzer terminology used throughout this document, and removes any doubt at the call site about which side of the rail the lambda fires on. Renaming the rest for English-readability would force every migrating user (and every AI model trained on CFE-flavored corpora) through a translation layer for no functional gain. The readability cost is real but accepted: we pay it once via documentation (the public API docs explicitly gloss `Tap` as "side-effect on the success value", `TapOnFailure` as "side-effect on the error", `BindZip` as "bind and preserve the prior value into a tuple") rather than paying it forever via name churn.
 
 **Recover signature:** the proposal keeps only `Recover(Func<Error, Result<T>>)`. The current code's simpler `Recover(Func<Error, T>)` (re-rail to success) is dropped; equivalent is `result.Recover(e => Result.Ok(map(e)))`. Documented in the migration notes.
 
@@ -641,7 +650,7 @@ public static Task<Result<U>> MapAsync<T,U>(this Task<Result<T>> r, Func<T, Task
 public static ValueTask<Result<U>> MapAsync<T,U>(this ValueTask<Result<T>> r, Func<T, ValueTask<U>> f);
 ```
 
-That is **1 sync + 5 async = 6 overloads per verb** (`Map`/`MapAsync`, `Bind`/`BindAsync`, `Tap`/`TapAsync`, `TapError`/`TapErrorAsync`, `Ensure`/`EnsureAsync`, `Recover`/`RecoverAsync`) and a slightly different shape for `Match`/`MatchAsync` (2 result-typed funcs). Total async-handling overloads ≈ **30 minimum, likely 40–50 in practice** once any deferred-error-factory variants of `EnsureAsync` (`Func<Error>` overloads) are included. The exact count is fixed in Phase 1a; the upper bound is expected to be ≤ 60 overloads across all seven verbs combined. **Trade-offs we accept:**
+That is **1 sync + 5 async = 6 overloads per verb** (`Map`/`MapAsync`, `Bind`/`BindAsync`, `Tap`/`TapAsync`, `TapOnFailure`/`TapOnFailureAsync`, `Ensure`/`EnsureAsync`, `Recover`/`RecoverAsync`) and a slightly different shape for `Match`/`MatchAsync` (2 result-typed funcs). Total async-handling overloads ≈ **30 minimum, likely 40–50 in practice** once any deferred-error-factory variants of `EnsureAsync` (`Func<Error>` overloads) are included. The exact count is fixed in Phase 1a; the upper bound is expected to be ≤ 60 overloads across all seven verbs combined. **Trade-offs we accept:**
 - Mixing `Task` and `ValueTask` on the same call (e.g., `ValueTask<Result<T>>` source + `Task<U>` function) requires an explicit conversion. This is a deliberate constraint — the alternative (cross-product = 12+ overloads per verb) creates resolution ambiguity.
 - The library does not implicitly lift `Task<T>` (without `Result`) into a Result chain; users use `.MapAsync(_ => fooAsync())` or call `TryAsync` for exception-bearing async work.
 
@@ -1046,10 +1055,10 @@ All compile-time tools ship as a single analyzer package. Diagnostic IDs are ren
 
 **Analyzer messages are codefix-ready.** Every diagnostic with a fixable cause is phrased as `<problem>. Did you mean: '<corrected snippet>'?` (e.g., `TRLS024`: "`Result<T>` returned by `GetTodoAsync` is unused. Did you mean: `var result = await GetTodoAsync(...); if (result.IsFailure) return result;`?"). This optimizes the diagnostic stream that AI assistants ingest — the model gets the fix in the message, not just a problem statement. Where a Roslyn `CodeFixProvider` is feasible, ship one; the message form applies regardless.
 
-**Renumbering is a real consumer-facing break.** Today the `TRLSGEN` namespace contains at least 8 in-use IDs: `TRLSGEN001`–`TRLSGEN004` (Primitives generator) and `TRLSGEN100`–`TRLSGEN103` (EFCore generator). Phase 5a's renumbering must:
+**Renumbering is a real consumer-facing break.** In v1 the `TRLSGEN` namespace contained 8 in-use IDs: `TRLSGEN001`–`TRLSGEN004` (Primitives generator) and `TRLSGEN100`–`TRLSGEN103` (EFCore generator). Phase 5a unified them into the analyzer `TRLS###` range (now done in commit `ga-06`):
 
-1. Pick new IDs in the unified range. Reserved ID assignments at v2.0.0: `TRLS001`–`TRLS027` (existing analyzers), `TRLS028` (AOT/reflection ban — §12.6, added in Phase 5a), `TRLS029` (`default(Result)` / `default(Maybe)` invariants — §3.5.1, added in Phase 1a), `TRLS030` (`Where`-uses-generic-error — §3.2, added in Phase 1b). The `TRLSGEN###` renumbering therefore targets `TRLS031`+ (suggested mapping: `TRLSGEN001`→`TRLS031`, `TRLSGEN002`→`TRLS032`, … `TRLSGEN103`→`TRLS038`; final mapping fixed in the Phase 5a PR).
-2. Document the old→new ID mapping in the `trellis-api-analyzers.md` "Breaking changes from v1" section. **No codemod, no suppression-alias retention, no separate `MIGRATION_v2.md`** — the template is being rewritten on v2 and there are no external consumers whose `.editorconfig` / `#pragma warning disable` / `[SuppressMessage]` need to keep working. Clean cut at v2.0.0.
+1. Reserved ID assignments at v2.0.0: `TRLS001`–`TRLS029` (analyzers, with `TRLS003`/`TRLS004`/`TRLS005`/`TRLS007`/`TRLS013`/`TRLS025` retired as documentation tombstones — see ga-05), `TRLS031`–`TRLS038` (renumbered generator IDs). Final mapping: `TRLSGEN001`→`TRLS031`, `TRLSGEN002`→`TRLS032`, `TRLSGEN003`→`TRLS033`, `TRLSGEN004`→`TRLS034`, `TRLSGEN100`→`TRLS035`, `TRLSGEN101`→`TRLS036`, `TRLSGEN102`→`TRLS037`, `TRLSGEN103`→`TRLS038`. A new public `Trellis.TrellisDiagnosticIds` constants class (in `Trellis.Analyzers`) is the canonical reference; consumers should use `[SuppressMessage("Trellis", TrellisDiagnosticIds.X)]` rather than magic strings.
+2. The old→new mapping is documented in `trellis-api-analyzers.md` and `trellis-api-efcore.md`. **No codemod, no suppression-alias retention, no separate `MIGRATION_v2.md`** — the template is being rewritten on v2 and there are no external consumers whose `.editorconfig` / `#pragma warning disable` / `[SuppressMessage]` need to keep working. Clean cut at v2.0.0.
 
 New analyzers the redesign enables:
 - `TRLS023`: `Create(value)` is called outside a constructor / static initializer / test (signals likely missed `TryCreate`).
@@ -1280,7 +1289,7 @@ Every framework `.nupkg` produced by Phases 1a–5a satisfies the following befo
 
 | Dimension | Current | Proposed | Δ | Honest note |
 |---|---|---|---|---|
-| **AI-correctness (first-try generation)** | 6 | 8 | +2 | Biggest single win. 7 primary verbs (+ `BindZip` + LINQ query syntax retained for value-preserving and query-style composition); no `Value`/`Error` properties (TRLS003/004 gone); closed-by-convention catalog; `Tap`/`TapError` split avoids overload-resolution gambling at the call site. Still capped by analyzer-not-compiler enforcement and async overload combinatorics. |
+| **AI-correctness (first-try generation)** | 6 | 8 | +2 | Biggest single win. 7 primary verbs (+ `BindZip` + LINQ query syntax retained for value-preserving and query-style composition); no `Value`/`Error` properties (TRLS003/004 gone); closed-by-convention catalog; `Tap`/`TapOnFailure` split avoids overload-resolution gambling at the call site. Still capped by analyzer-not-compiler enforcement and async overload combinatorics. |
 | **Surface discoverability** | 5 | 8 | +3 | Aliases removed; flat namespaces; per-package API references mirror package map 1:1. |
 | **Layering clarity (Clean Arch)** | 7 | 8 | +1 | Already strong (template proves it). New: explicit layer-reference rules canonized in `copilot-instructions.md`. |
 | **Type safety** | 7 | 8 | +1 | Removing `.Value`/`.Error` is real. `TryGetValue` out-pattern is safer. Catalog still closed-by-convention, not compiler-exhaustive — honest cap. |
@@ -1301,7 +1310,7 @@ Every framework `.nupkg` produced by Phases 1a–5a satisfies the following befo
 | Design | Score | One-line characterization |
 |---|---|---|
 | **Current Trellis** | **6.0 / 10** | Solid, layered, well-documented framework. Real strengths in DDD primitives, EF integration, tracing, and per-package docs shipped in NuGet. Drag from accumulated alias surface, hidden `.Value`/`.Error` pitfalls, async file-naming noise, contradictory HTTP-type placement, and a 25-verb pipeline an LLM can't keep in working memory. **Production-grade but AI-noisy.** |
-| **Proposed Trellis (paper)** | **7.5 / 10** | Materially better AI ergonomics across the board. Single biggest wins: the 7-verb primary pipeline (with `Tap`/`TapError` split for unambiguous read-at-call-site semantics), `BindZip` retained for value-preserving chains, LINQ query syntax retained for monadic composition, removed `.Value`/`.Error`, closed-by-convention error catalog, single `ToHttpResponse` verb. Honest caps: (a) "closed by analyzer ≠ closed by compiler", (b) async overload combinatorics still real internally (the BindZip 2..9-arity T4 family and LINQ surface together add ~30 overloads to the count in §3.3), (c) **paper score** — until shipped through Phases 1a–5a and validated against the v2-canary + the Phase 6 template rewrite, the +1.5 delta is theoretical, (d) migration cost across 8 phases is real engineering, (e) Mediator wrapper retention caps some AOT/dispatch wins (deliberately deferred to optional Phase 7). |
+| **Proposed Trellis (paper)** | **7.5 / 10** | Materially better AI ergonomics across the board. Single biggest wins: the 7-verb primary pipeline (with `Tap`/`TapOnFailure` split for unambiguous read-at-call-site semantics), `BindZip` retained for value-preserving chains, LINQ query syntax retained for monadic composition, removed `.Value`/`.Error`, closed-by-convention error catalog, single `ToHttpResponse` verb. Honest caps: (a) "closed by analyzer ≠ closed by compiler", (b) async overload combinatorics still real internally (the BindZip 2..9-arity T4 family and LINQ surface together add ~30 overloads to the count in §3.3), (c) **paper score** — until shipped through Phases 1a–5a and validated against the v2-canary + the Phase 6 template rewrite, the +1.5 delta is theoretical, (d) migration cost across 8 phases is real engineering, (e) Mediator wrapper retention caps some AOT/dispatch wins (deliberately deferred to optional Phase 7). |
 
 ### Honest delta interpretation
 

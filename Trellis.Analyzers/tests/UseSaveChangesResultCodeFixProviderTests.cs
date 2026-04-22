@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 
 /// <summary>
-/// Tests for UseSaveChangesResultCodeFixProvider (TRLS020).
+/// Tests for UseSaveChangesResultCodeFixProvider (TRLS015).
 /// Verifies that SaveChangesAsync/SaveChanges is correctly replaced with SaveChangesResultUnitAsync.
 /// </summary>
 public class UseSaveChangesResultCodeFixProviderTests
@@ -608,8 +608,6 @@ public class UseSaveChangesResultCodeFixProviderTests
     /// Unit is already defined in EfCoreTestStubs.Source.
     /// </summary>
     private const string TrellisResultStubSource = """
-        #pragma warning disable TRLS003
-        #pragma warning disable TRLS004
         namespace Trellis
         {
             public readonly struct Result<T>

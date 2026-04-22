@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System.IO;
 using System.Linq;
@@ -21,17 +21,8 @@ using Trellis.Asp;
 /// and the <see cref="IEndpointMetadataProvider"/> contract that supplies
 /// <c>ProducesResponseTypeMetadata</c> to the endpoint builder.
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public sealed class TrellisHttpResultMetadataTests : IDisposable
+public sealed class TrellisHttpResultMetadataTests
 {
-    public TrellisHttpResultMetadataTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private sealed record Thing(int Id, string Name);
 
     private sealed record ThingBody(int Id);
@@ -127,7 +118,7 @@ public sealed class TrellisHttpResultMetadataTests : IDisposable
 
         var statuses = builder.Metadata.OfType<IProducesResponseTypeMetadata>()
             .Select(m => m.StatusCode).ToHashSet();
-        statuses.Should().Contain([200, 400, 404, 500]);
+        statuses.Should().Contain([200, 201, 206, 304, 400, 404, 412, 500]);
     }
 
     [Fact]

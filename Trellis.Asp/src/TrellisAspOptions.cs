@@ -1,6 +1,5 @@
-namespace Trellis.Asp;
+﻿namespace Trellis.Asp;
 
-using System.Threading;
 using Microsoft.AspNetCore.Http;
 using Trellis;
 
@@ -52,14 +51,21 @@ using Trellis;
 /// </example>
 public sealed class TrellisAspOptions
 {
-    private static readonly TrellisAspOptions _defaultOptions = new();
-    private static TrellisAspOptions? _current;
-
-    internal static TrellisAspOptions Default => Volatile.Read(ref _current) ?? _defaultOptions;
-
-    internal static void SetCurrent(TrellisAspOptions options) => Volatile.Write(ref _current, options);
-
-    internal static void ResetCurrent() => Volatile.Write(ref _current, null);
+    /// <summary>
+    /// Zero-configuration default mappings used when the runtime cannot resolve
+    /// <see cref="TrellisAspOptions"/> from the request's <see cref="IServiceProvider"/>
+    /// (e.g. the host did not call <c>AddTrellisAsp</c>, or a result is executed outside an
+    /// ASP.NET request). Production code paths obtain the configured instance from DI;
+    /// this fallback exists strictly to keep <c>IResult.ExecuteAsync</c> total.
+    /// </summary>
+    /// <remarks>
+    /// Internal to prevent consumers from accidentally calling
+    /// <see cref="MapError{TError}"/> on this shared instance, which would mutate
+    /// global state and reintroduce the cross-host / cross-test leakage that the
+    /// DI-resolved options model exists to eliminate. Hosts that want a different
+    /// default must call <c>AddTrellisAsp(options =&gt; ...)</c>.
+    /// </remarks>
+    internal static TrellisAspOptions SystemDefault { get; } = new();
 
     private readonly Dictionary<Type, int> _errorMappings = new()
     {

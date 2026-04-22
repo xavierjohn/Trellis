@@ -6,14 +6,16 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <RootNamespace>Trellis.Showcase.MinimalApi</RootNamespace>
+    <!--
+      AOT publish is enabled and gated in CI (see .github/workflows/build.yml).
+      `dotnet publish -c Release -r <rid> /p:PublishAot=true` must produce zero IL warnings.
+      The Showcase intentionally exercises Trellis.Asp + Trellis.FluentValidation + Trellis.Mediator
+      under AOT to prove the framework's AOT story end-to-end. EF Core is not exercised here
+      because Microsoft.EntityFrameworkCore is documented as not AOT-ready (see Trellis.EntityFrameworkCore README).
+    -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
-
-  <!--
-    AOT publish is currently OFF. Two known blockers must land first (see BACKLOG.md):
-      1. Trellis.Asp.ScalarValueValidationMiddleware uses exception-text parsing that won't survive trimming.
-      2. The composite-VO JsonConverter (Money) is hand-written; the generator must emit it.
-    Once both ship, flip <PublishAot>true</PublishAot> here and re-verify with `dotnet publish -p:PublishAot=true`.
-  -->
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

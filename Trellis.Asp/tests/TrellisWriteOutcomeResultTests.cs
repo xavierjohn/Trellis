@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System.IO;
 using System.Threading.Tasks;
@@ -12,17 +12,8 @@ using Trellis.Asp;
 /// <see cref="WriteOutcome{T}"/> variant, with and without builder metadata, body projection,
 /// and Prefer header semantics.
 /// </summary>
-[Collection("TrellisAspOptionsState")]
-public sealed class TrellisWriteOutcomeResultTests : IDisposable
+public sealed class TrellisWriteOutcomeResultTests
 {
-    public TrellisWriteOutcomeResultTests() => TrellisAspOptions.ResetCurrent();
-
-    public void Dispose()
-    {
-        TrellisAspOptions.ResetCurrent();
-        GC.SuppressFinalize(this);
-    }
-
     private sealed record Item(int Id, string Name, string ETag, DateTimeOffset Modified);
 
     private sealed record ItemBody(int Id);

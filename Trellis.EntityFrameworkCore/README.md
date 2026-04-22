@@ -1,8 +1,17 @@
-# Trellis.EntityFrameworkCore
+﻿# Trellis.EntityFrameworkCore
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.EntityFrameworkCore.svg)](https://www.nuget.org/packages/Trellis.EntityFrameworkCore)
 
 EF Core conventions and helpers for Trellis value objects, `Maybe<T>`, and Result-based persistence.
+
+> **AOT / Trim compatibility:** This package opts **out** of NativeAOT and trimming.
+> EF Core relies on runtime reflection (model building, change tracking, query translation,
+> proxies). Microsoft documents NativeAOT support for EF Core as
+> [_"highly experimental, not suited for production use"_](https://learn.microsoft.com/ef/core/performance/nativeaot-and-precompiled-queries).
+> If your application targets `PublishAot=true`, do not reference this package. The rest
+> of the Trellis framework (`Trellis.Core`, `Trellis.Asp`, `Trellis.FluentValidation`,
+> `Trellis.Mediator`, `Trellis.Primitives`, `Trellis.StateMachine`, `Trellis.Authorization`)
+> is fully AOT-compatible and is exercised end-to-end under AOT in `Examples/Showcase/src/Showcase.MinimalApi`.
 
 ## Installation
 ```bash

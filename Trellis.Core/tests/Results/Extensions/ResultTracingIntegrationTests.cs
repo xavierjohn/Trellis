@@ -1,8 +1,9 @@
-namespace Trellis.Core.Tests.Results.Extensions;
+﻿namespace Trellis.Core.Tests.Results.Extensions;
+
+using Trellis.Testing;
 
 using System.Diagnostics;
 using Trellis.Core.Tests.Helpers;
-using Trellis.Testing;
 
 /// <summary>
 /// Integration tests for Activity tracing across complex ROP pipelines.
@@ -104,7 +105,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(110);
+        result.Unwrap().Should().Be(110);
 
         // Verify activity counts
         var ensureActivities = activityTest.AssertActivityCaptured("Ensure", 2);
@@ -164,7 +165,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(50);
+        result.Unwrap().Should().Be(50);
 
         // First RecoverOnFailure should execute and succeed
         var recoverActivities = activityTest.AssertActivityCaptured("RecoverOnFailure", 1);
@@ -217,7 +218,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("GUEST_USER");
+        result.Unwrap().Should().Be("GUEST_USER");
 
         // Verify recovery was triggered
         activityTest.AssertActivityCaptured("Bind", 2);
@@ -244,7 +245,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(84);
+        result.Unwrap().Should().Be(84);
 
         // Verify activities were captured across async boundaries
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Ok);
@@ -272,7 +273,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(25);
+        result.Unwrap().Should().Be(25);
 
         // Verify all operations were traced
         activityTest.AssertActivityCaptured("Ensure", 2);
@@ -336,7 +337,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(150);
+        result.Unwrap().Should().Be(150);
 
         // Get all activities
         var activities = activityTest.CapturedActivities;
@@ -372,7 +373,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(100);
+        result.Unwrap().Should().Be(100);
 
         // Get all activities
         var activities = activityTest.CapturedActivities;
@@ -419,7 +420,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(100);
+        result.Unwrap().Should().Be(100);
 
         // Get all activities
         var activities = activityTest.CapturedActivities;

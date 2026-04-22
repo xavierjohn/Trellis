@@ -53,8 +53,8 @@ public static partial class TapExtensions
         ArgumentNullException.ThrowIfNull(action);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess)
-            action(result.Value);
+        if (result.TryGetValue(out var value))
+            action(value);
 
         result.LogActivityStatus();
         return result;
@@ -172,8 +172,8 @@ public static partial class TapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(TapExtensions.Tap));
-        if (result.IsSuccess)
-            await func(result.Value).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            await func(value).ConfigureAwait(false);
 
         result.LogActivityStatus();
         return result;
@@ -212,8 +212,8 @@ public static partial class TapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(TapExtensions.Tap));
-        if (result.IsSuccess)
-            await func(result.Value).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            await func(value).ConfigureAwait(false);
 
         result.LogActivityStatus();
         return result;

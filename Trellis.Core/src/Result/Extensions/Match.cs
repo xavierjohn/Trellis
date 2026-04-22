@@ -24,8 +24,8 @@ public static class MatchExtensions
         ArgumentNullException.ThrowIfNull(onFailure);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess)
-            return InvokeAndTrace(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok);
+        if (result.TryGetValue(out var value))
+            return InvokeAndTrace(activity, () => onSuccess(value), ActivityStatusCode.Ok);
 
         return InvokeAndTrace(activity, () => onFailure(result.Error), ActivityStatusCode.Error);
     }
@@ -43,8 +43,8 @@ public static class MatchExtensions
         ArgumentNullException.ThrowIfNull(onFailure);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess)
-            InvokeAndTrace(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok);
+        if (result.TryGetValue(out var value))
+            InvokeAndTrace(activity, () => onSuccess(value), ActivityStatusCode.Ok);
         else
             InvokeAndTrace(activity, () => onFailure(result.Error), ActivityStatusCode.Error);
     }
@@ -120,8 +120,8 @@ public static class MatchExtensionsAsync
         ArgumentNullException.ThrowIfNull(onFailure);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess)
-            return await InvokeAndTraceAsync(activity, () => onSuccess(result.Value, cancellationToken), ActivityStatusCode.Ok).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            return await InvokeAndTraceAsync(activity, () => onSuccess(value, cancellationToken), ActivityStatusCode.Ok).ConfigureAwait(false);
 
         return await InvokeAndTraceAsync(activity, () => onFailure(result.Error, cancellationToken), ActivityStatusCode.Error).ConfigureAwait(false);
     }
@@ -141,8 +141,8 @@ public static class MatchExtensionsAsync
         ArgumentNullException.ThrowIfNull(onFailure);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess)
-            return await InvokeAndTraceAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            return await InvokeAndTraceAsync(activity, () => onSuccess(value), ActivityStatusCode.Ok).ConfigureAwait(false);
 
         return await InvokeAndTraceAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }
@@ -203,8 +203,8 @@ public static class MatchExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
-        if (result.IsSuccess)
-            await InvokeAndTraceAsync(activity, () => onSuccess(result.Value, cancellationToken), ActivityStatusCode.Ok).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            await InvokeAndTraceAsync(activity, () => onSuccess(value, cancellationToken), ActivityStatusCode.Ok).ConfigureAwait(false);
         else
             await InvokeAndTraceAsync(activity, () => onFailure(result.Error, cancellationToken), ActivityStatusCode.Error).ConfigureAwait(false);
     }
@@ -225,8 +225,8 @@ public static class MatchExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
-        if (result.IsSuccess)
-            await InvokeAndTraceAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            await InvokeAndTraceAsync(activity, () => onSuccess(value), ActivityStatusCode.Ok).ConfigureAwait(false);
         else
             await InvokeAndTraceAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }
@@ -254,8 +254,8 @@ public static class MatchExtensionsAsync
         ArgumentNullException.ThrowIfNull(onFailure);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess)
-            return await InvokeAndTraceValueTaskAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            return await InvokeAndTraceValueTaskAsync(activity, () => onSuccess(value), ActivityStatusCode.Ok).ConfigureAwait(false);
 
         return await InvokeAndTraceValueTaskAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }
@@ -282,8 +282,8 @@ public static class MatchExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
-        if (result.IsSuccess)
-            await InvokeAndTraceValueTaskAsync(activity, () => onSuccess(result.Value), ActivityStatusCode.Ok).ConfigureAwait(false);
+        if (result.TryGetValue(out var value))
+            await InvokeAndTraceValueTaskAsync(activity, () => onSuccess(value), ActivityStatusCode.Ok).ConfigureAwait(false);
         else
             await InvokeAndTraceValueTaskAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }

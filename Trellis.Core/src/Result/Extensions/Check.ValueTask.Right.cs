@@ -21,13 +21,13 @@ public static partial class CheckExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckExtensions.Check));
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = await func(result.Value).ConfigureAwait(false);
+        var checkResult = await func(value).ConfigureAwait(false);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -53,13 +53,13 @@ public static partial class CheckExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckExtensions.Check));
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = await func(result.Value).ConfigureAwait(false);
+        var checkResult = await func(value).ConfigureAwait(false);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);

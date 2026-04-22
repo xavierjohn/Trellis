@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 
 /// <summary>
-/// Tests for ComparingToNullAnalyzer (TRLS017).
+/// Tests for ComparingToNullAnalyzer (TRLS012).
 /// Verifies that comparing Result or Maybe to null is detected.
 /// Note: These tests also expect CS0019 compiler error since Result/Maybe are structs.
 /// </summary>

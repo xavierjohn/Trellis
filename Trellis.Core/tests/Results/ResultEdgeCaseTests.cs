@@ -1,4 +1,6 @@
-namespace Trellis.Core.Tests;
+﻿namespace Trellis.Core.Tests;
+
+using Trellis.Testing;
 
 using Xunit;
 
@@ -66,6 +68,43 @@ public class ResultEdgeCaseTests
         error.Should().Be(expectedError);
     }
 
+    [Fact]
+    public void TryGetValue_WithErrorOut_OnSuccess_ShouldReturnTrue_ValueSet_ErrorNull()
+    {
+        var result = Result.Ok(42);
+
+        bool success = result.TryGetValue(out var value, out var error);
+
+        success.Should().BeTrue();
+        value.Should().Be(42);
+        error.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryGetValue_WithErrorOut_OnFailure_ShouldReturnFalse_ErrorSet_ValueDefault()
+    {
+        var expected = new Error.NotFound(new ResourceRef("X", null)) { Detail = "gone" };
+        var result = Result.Fail<int>(expected);
+
+        bool success = result.TryGetValue(out var value, out var error);
+
+        success.Should().BeFalse();
+        value.Should().Be(default(int));
+        error.Should().Be(expected);
+    }
+
+    [Fact]
+    public void TryGetValue_WithErrorOut_OnSuccessWithNull_ShouldReturnTrueWithNullValue()
+    {
+        var result = Result.Ok(default(string));
+
+        bool success = result.TryGetValue(out var value, out var error);
+
+        success.Should().BeTrue();
+        value.Should().BeNull();
+        error.Should().BeNull();
+    }
+
     #endregion
 
     #region Deconstruction Edge Cases
@@ -110,7 +149,7 @@ public class ResultEdgeCaseTests
         // Act
         string message = result switch
         {
-            { IsSuccess: true } => $"Success: {result.Value}",
+            { IsSuccess: true } => $"Success: {result.Unwrap()}",
             { IsFailure: true } => $"Failure: {result.Error!.Code}",
             _ => "Unknown"
         };
@@ -141,7 +180,7 @@ public class ResultEdgeCaseTests
     {
         // Arrange
         var result1 = Result.Ok(default(string));
-        var result2 = Result.Ok("value");
+        var result2 = Result.Ok<string?>("value");
 
         // Act & Assert
         result1.Should().NotBe(result2);
@@ -286,7 +325,7 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeNull();
+        result.Unwrap().Should().BeNull();
     }
 
     [Fact]
@@ -308,17 +347,17 @@ public class ResultEdgeCaseTests
     #region Exception Handling Edge Cases
 
     [Fact]
-    public void Value_OnFailure_ShouldThrowInvalidOperationException()
+    public void Unwrap_OnFailure_ShouldThrowUnwrapFailedException()
     {
         // Arrange
         var result = Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
 
         // Act
-        Action act = () => { var _ = result.Value; };
+        Action act = () => { var _ = result.Unwrap(); };
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*failed result*");
+        act.Should().Throw<UnwrapFailedException>()
+            .WithMessage("*failed Result*");
     }
 
     [Fact]
@@ -521,7 +560,7 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(default(DateTime));
+        result.Unwrap().Should().Be(default(DateTime));
     }
 
     [Fact]
@@ -532,7 +571,7 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().NotBeNull();
+        result.Unwrap().Should().NotBeNull();
     }
 
     [Fact]
@@ -543,7 +582,7 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeNull();
+        result.Unwrap().Should().BeNull();
     }
 
     #endregion
@@ -589,7 +628,7 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(42);
+        result.Unwrap().Should().Be(42);
     }
 
     [Fact]
@@ -603,7 +642,7 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeNull();
+        result.Unwrap().Should().BeNull();
     }
 
     #endregion

@@ -1,41 +1,50 @@
-# TRLS013 — Consider using GetValueOrDefault or Match
+﻿# TRLS013 — Unsafe access to Maybe.Value in LINQ expression
 
-- **Severity:** Info
+- **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags the pattern `result.IsSuccess ? result.Value : fallback` when the success check and the value access refer to the same stable result expression.
+Flags `.Value` access on a `Maybe<T>` LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier `Where(...)` guard proves the value is safe.
+
+The Result-side equivalent was removed in V2 along with `Result<T>.Value` (see ADR-002 §3.1). This rule now applies only to `Maybe<T>`.
 
 ## Why it matters
-Trellis already provides `GetValueOrDefault(...)` and `Match(...)` for this exact scenario. They read better and avoid direct `Value` access.
+Collection pipelines make it easy to forget that some items may be `Maybe<T>.None`. One unsafe `.Value` access can throw for the whole query.
 
 > [!WARNING]
-> The analyzer intentionally skips unstable receivers like repeated method calls so it does not change behavior.
+> The analyzer understands guard chains like `.Where(x => x.HasValue)`. Without that filter, `.Value` is treated as unsafe.
 
 ## Bad example
 ```csharp
+using System.Collections.Generic;
+using System.Linq;
 using Trellis;
 
 static class Example
 {
-    public static int Bad(Result<int> result) =>
-        result.IsSuccess ? result.Value : 0;
+    public static List<int> Bad(IEnumerable<Maybe<int>> values) =>
+        values.Select(maybe => maybe.Value).ToList();
 }
 ```
 
 ## Good example
 ```csharp
+using System.Collections.Generic;
+using System.Linq;
 using Trellis;
 
 static class Example
 {
-    public static int Good(Result<int> result) =>
-        result.GetValueOrDefault(0);
+    public static List<int> Good(IEnumerable<Maybe<int>> values) =>
+        values
+            .Where(maybe => maybe.HasValue)
+            .Select(maybe => maybe.Value)
+            .ToList();
 }
 ```
 
 ## Code fix available
-Yes — replaces the ternary with `GetValueOrDefault(...)` or `Match(...)`, depending on the fallback expression.
+No.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -51,5 +60,4 @@ dotnet_diagnostic.TRLS013.severity = none
 ```
 
 > [!TIP]
-> Use `GetValueOrDefault(...)` for simple fallback values and `Match(...)` when the failure branch needs more logic.
-
+> Filter first, then project. If you need both present and absent paths, use `Match` inside the projection instead of `.Value`.

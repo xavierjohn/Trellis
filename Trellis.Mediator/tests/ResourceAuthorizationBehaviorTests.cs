@@ -1,4 +1,4 @@
-using Trellis.Testing;
+﻿using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -144,6 +144,32 @@ public class ResourceAuthorizationBehaviorTests
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Detail.Should().Contain("Order 'xyz' was not found.");
+    }
+
+    #endregion
+
+    #region Actor checked before resource load
+
+    [Fact]
+    public async Task Handle_NullActor_ThrowsBeforeResourceLoaderIsCalled()
+    {
+        // ga-11: the resource loader must not run when the caller is unauthenticated.
+        // Loader I/O is expensive (DB) and can leak existence by timing — gate on actor first.
+        var loader = new FakeResourceLoader<ResourceOwnerCommand>(new TestResource("res-1", "owner-1"));
+        var services = new ServiceCollection();
+        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ => loader);
+        var sp = services.BuildServiceProvider();
+
+        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            new NullActorProvider(), sp);
+
+        var command = new ResourceOwnerCommand("res-1");
+        var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(Result.Ok("Done"));
+
+        await FluentActions.Invoking(() => behavior.Handle(command, next, CancellationToken.None).AsTask())
+            .Should().ThrowAsync<InvalidOperationException>();
+
+        loader.WasCalled.Should().BeFalse();
     }
 
     #endregion
@@ -316,6 +342,7 @@ public class ResourceAuthorizationBehaviorTests
         private readonly Error _notFoundError;
 
         public CancellationToken LastCancellationToken { get; private set; }
+        public bool WasCalled { get; private set; }
 
         public FakeResourceLoader(TestResource? resource, Error? notFoundError = null)
         {
@@ -325,6 +352,7 @@ public class ResourceAuthorizationBehaviorTests
 
         public Task<Result<TestResource>> LoadAsync(TMessage message, CancellationToken cancellationToken)
         {
+            WasCalled = true;
             LastCancellationToken = cancellationToken;
             return _resource is not null
                 ? Task.FromResult(Result.Ok(_resource))

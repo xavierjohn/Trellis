@@ -1,7 +1,8 @@
-namespace Trellis.Core.Tests.Results.Extensions.Traverse;
+﻿namespace Trellis.Core.Tests.Results.Extensions.Traverse;
+
+using Trellis.Testing;
 
 using System.Globalization;
-using Trellis.Testing;
 
 public class TraverseTests : TestBase
 {
@@ -18,7 +19,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().BeEmpty();
+        result.Unwrap().Should().BeEmpty();
     }
 
     [Fact]
@@ -32,7 +33,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Equal(2, 4, 6, 8, 10);
+        result.Unwrap().Should().Equal(2, 4, 6, 8, 10);
     }
 
     [Fact]
@@ -97,8 +98,8 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().HaveCount(3);
-        result.Value[0].Name.Should().Be("apple");
+        result.Unwrap().Should().HaveCount(3);
+        result.Unwrap()[0].Name.Should().Be("apple");
     }
 
     [Fact]
@@ -133,7 +134,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().BeEmpty();
+        result.Unwrap().Should().BeEmpty();
     }
 
     [Fact]
@@ -147,7 +148,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Equal(2, 4, 6, 8, 10);
+        result.Unwrap().Should().Equal(2, 4, 6, 8, 10);
     }
 
     [Fact]
@@ -241,7 +242,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Equal(2, 4, 6, 8, 10);
+        result.Unwrap().Should().Equal(2, 4, 6, 8, 10);
     }
 
     [Fact]
@@ -275,7 +276,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Equal(2, 4, 6);
+        result.Unwrap().Should().Equal(2, 4, 6);
     }
 
     #endregion
@@ -296,7 +297,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().AllSatisfy(e => e.Should().Contain("@"));
+        result.Unwrap().Should().AllSatisfy(e => e.Should().Contain("@"));
     }
 
     [Fact]
@@ -328,7 +329,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Equal("User1", "User2", "User3");
+        result.Unwrap().Should().Equal("User1", "User2", "User3");
     }
 
     [Fact]
@@ -361,8 +362,8 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().HaveCount(100);
-        result.Value.Should().Equal(Enumerable.Range(1, 100).Select(x => x * 2));
+        result.Unwrap().Should().HaveCount(100);
+        result.Unwrap().Should().Equal(Enumerable.Range(1, 100).Select(x => x * 2));
     }
 
     [Fact]
@@ -379,8 +380,8 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().HaveCount(3);
-        result.Value.Should().AllSatisfy(n => n.Value.Should().NotBeNullOrEmpty());
+        result.Unwrap().Should().HaveCount(3);
+        result.Unwrap().Should().AllSatisfy(n => n.Value.Should().NotBeNullOrEmpty());
     }
 
     #endregion
@@ -398,7 +399,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().ContainSingle()
+        result.Unwrap().Should().ContainSingle()
             .Which.Should().Be(84);
     }
 
@@ -437,7 +438,7 @@ public class TraverseTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Equal(50, 30, 80, 10, 90, 20);
+        result.Unwrap().Should().Equal(50, 30, 80, 10, 90, 20);
     }
 
     #endregion

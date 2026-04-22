@@ -1,4 +1,4 @@
-# Trellis.Analyzers
+﻿# Trellis.Analyzers
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Analyzers.svg)](https://www.nuget.org/packages/Trellis.Analyzers)
 
@@ -21,7 +21,7 @@ var result = Parse("abc")
 ```
 
 ## Key Features
-- Flags unsafe `Result.Value`, `Result.Error`, and `Maybe.Value` access.
+- Flags unsafe `Maybe.Value` access (TRLS003).
 - Catches async misuse, double-wrapped results, and common ROP anti-patterns.
 - Includes fixes for Trellis-specific issues such as `SaveChangesAsync` vs. `SaveChangesResultAsync`.
 

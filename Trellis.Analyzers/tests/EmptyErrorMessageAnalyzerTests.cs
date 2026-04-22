@@ -3,7 +3,7 @@
 using Xunit;
 
 /// <summary>
-/// Tests for EmptyErrorMessageAnalyzer (TRLS016).
+/// Tests for EmptyErrorMessageAnalyzer (TRLS011).
 /// Verifies that empty or missing error messages are detected.
 /// </summary>
 public class EmptyErrorMessageAnalyzerTests

@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System.Diagnostics;
 
@@ -29,7 +29,8 @@ public static class MapIfExtensions
             return result;
         }
 
-        var mapped = Result.Ok(func(result.Value));
+        result.TryGetValue(out var value);
+        var mapped = Result.Ok(func(value!));
         mapped.LogActivityStatus();
         return mapped;
     }
@@ -50,13 +51,20 @@ public static class MapIfExtensions
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure || !predicate(result.Value))
+        if (result.IsFailure)
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var mapped = Result.Ok(func(result.Value));
+        result.TryGetValue(out var value);
+        if (!predicate(value!))
+        {
+            result.LogActivityStatus();
+            return result;
+        }
+
+        var mapped = Result.Ok(func(value!));
         mapped.LogActivityStatus();
         return mapped;
     }

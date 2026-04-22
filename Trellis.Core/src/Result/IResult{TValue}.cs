@@ -14,5 +14,5 @@ public interface IResult<TValue> : IResult
     /// </summary>
     /// <param name="value">When this method returns true, contains the success value; otherwise, the default value.</param>
     /// <returns>True if the result is successful; otherwise false.</returns>
-    bool TryGetValue(out TValue value);
+    bool TryGetValue([System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out TValue value);
 }

@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results;
+﻿namespace Trellis.Core.Tests.Results;
 
 using Trellis.Testing;
 
@@ -149,12 +149,13 @@ public class DefaultStateInvariantTests
     }
 
     [Fact]
-    public void Default_ResultT_Value_throws()
+    public void Result_T_does_not_expose_throwing_Value_property()
     {
-        Result<int> r = default;
-
-        var act = () => _ = r.Value;
-        act.Should().Throw<InvalidOperationException>();
+        // ADR-002 §3.1 + ga-03 API freeze: Result<T>.Value (which threw on failure) is removed.
+        // Use TryGetValue, Match, or Deconstruct to extract the success value safely.
+        // Error stays (it never throws — see ga-03 commit message for rationale).
+        var prop = typeof(Result<int>).GetProperty("Value", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        prop.Should().BeNull("Result<T>.Value was removed in v2 to eliminate TRLS003 (unsafe Value access). Use TryGetValue / Match / Deconstruct instead.");
     }
 
     [Fact]

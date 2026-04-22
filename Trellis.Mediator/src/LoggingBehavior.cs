@@ -16,13 +16,23 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
     where TResponse : IResult
 {
     private readonly ILogger<LoggingBehavior<TMessage, TResponse>> _logger;
+    private readonly TrellisMediatorTelemetryOptions _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LoggingBehavior{TMessage, TResponse}"/> class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
-    public LoggingBehavior(ILogger<LoggingBehavior<TMessage, TResponse>> logger)
-        => _logger = logger;
+    /// <param name="options">
+    /// Telemetry redaction options resolved from DI. When <c>null</c> (i.e. not registered)
+    /// the safe-by-default options are used and <see cref="Error.Detail"/> is redacted.
+    /// </param>
+    public LoggingBehavior(
+        ILogger<LoggingBehavior<TMessage, TResponse>> logger,
+        TrellisMediatorTelemetryOptions? options = null)
+    {
+        _logger = logger;
+        _options = options ?? new TrellisMediatorTelemetryOptions();
+    }
 
     /// <inheritdoc />
     public async ValueTask<TResponse> Handle(
@@ -40,9 +50,18 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
         var elapsed = Stopwatch.GetElapsedTime(stopwatch);
 
         if (response.TryGetError(out var error))
-            LogHandledWithFailure(_logger, messageName, elapsed.TotalMilliseconds, error.GetDisplayMessage());
+        {
+            // Always log the stable Code; only include Detail when explicitly opted in,
+            // because Detail can contain user input / PII (ga-12).
+            var summary = _options.IncludeErrorDetail
+                ? error.GetDisplayMessage()
+                : error.Code;
+            LogHandledWithFailure(_logger, messageName, elapsed.TotalMilliseconds, summary);
+        }
         else
+        {
             LogHandled(_logger, messageName, elapsed.TotalMilliseconds);
+        }
 
         return response;
     }
@@ -53,6 +72,6 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
     [LoggerMessage(Level = LogLevel.Information, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms")]
     private static partial void LogHandled(ILogger logger, string messageName, double elapsedMs);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorDetail}")]
-    private static partial void LogHandledWithFailure(ILogger logger, string messageName, double elapsedMs, string errorDetail);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}")]
+    private static partial void LogHandledWithFailure(ILogger logger, string messageName, double elapsedMs, string errorSummary);
 }

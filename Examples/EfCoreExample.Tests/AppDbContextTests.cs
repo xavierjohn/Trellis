@@ -1,4 +1,6 @@
-namespace EfCoreExample.Tests;
+﻿namespace EfCoreExample.Tests;
+
+using Trellis.Testing;
 
 using EfCoreExample.Data;
 using EfCoreExample.Entities;
@@ -30,7 +32,7 @@ public class AppDbContextTests
         await using var db = NewContext();
         await db.Database.EnsureCreatedAsync(Ct);
 
-        var created = Customer.TryCreate("Ada Lovelace", "ada@example.com").Value;
+        var created = Customer.TryCreate("Ada Lovelace", "ada@example.com").Unwrap();
         db.Customers.Add(created);
         await db.SaveChangesAsync(Ct);
 
@@ -50,8 +52,8 @@ public class AppDbContextTests
         await using var db = NewContext();
         await db.Database.EnsureCreatedAsync(Ct);
 
-        var customer = Customer.TryCreate("Grace Hopper", "grace@example.com").Value;
-        var product = Product.TryCreate("Compiler", 1000m, 10).Value;
+        var customer = Customer.TryCreate("Grace Hopper", "grace@example.com").Unwrap();
+        var product = Product.TryCreate("Compiler", 1000m, 10).Unwrap();
         db.Customers.Add(customer);
         db.Products.Add(product);
         await db.SaveChangesAsync(Ct);
@@ -59,7 +61,7 @@ public class AppDbContextTests
         var order = Order.TryCreate(customer.Id)
             .Bind(o => o.AddLine(product, 2))
             .Bind(o => o.Confirm())
-            .Value;
+            .Unwrap();
         db.Orders.Add(order);
         await db.SaveChangesAsync(Ct);
 
@@ -84,8 +86,8 @@ public class AppDbContextTests
         await using var db = NewContext();
         await db.Database.EnsureCreatedAsync(Ct);
 
-        var customer = Customer.TryCreate("Alan Turing", "alan@example.com").Value;
-        var product = Product.TryCreate("Bombe", 50m, 5).Value;
+        var customer = Customer.TryCreate("Alan Turing", "alan@example.com").Unwrap();
+        var product = Product.TryCreate("Bombe", 50m, 5).Unwrap();
         db.Customers.AddRange(customer);
         db.Products.Add(product);
         await db.SaveChangesAsync(Ct);
@@ -94,7 +96,7 @@ public class AppDbContextTests
             .Bind(o => o.AddLine(product, 1))
             .Bind(o => o.Confirm())
             .Bind(o => o.Ship())
-            .Value;
+            .Unwrap();
         db.Orders.Add(order);
         await db.SaveChangesAsync(Ct);
 

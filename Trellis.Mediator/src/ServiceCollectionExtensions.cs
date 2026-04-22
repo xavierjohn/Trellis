@@ -74,15 +74,64 @@ public static class ServiceCollectionExtensions
     /// <see cref="IPipelineBehavior{TMessage, TResponse}"/> implementations.
     /// Use this when NOT using <c>MediatorOptions.PipelineBehaviors</c> (non-AOT scenario).
     /// </summary>
+    /// <remarks>
+    /// Idempotent: calling this method more than once registers each behavior exactly once,
+    /// so plug-in extension methods (e.g. <c>AddTrellisFluentValidation</c>, <c>AddTrellisAsp</c>)
+    /// that defensively call it as a precondition will not produce duplicate pipeline entries
+    /// when the consumer also calls it explicitly.
+    /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)
     {
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        // Safe-by-default telemetry options (Detail redacted). Registered as TryAddSingleton so
+        // a prior call to AddTrellisBehaviors(configure) wins — idempotency is preserved.
+        services.TryAddSingleton<TrellisMediatorTelemetryOptions>();
+
+        // TryAddEnumerable deduplicates by (ServiceType, ImplementationType), preserving the
+        // canonical insertion order documented on PipelineBehaviors.
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers Trellis pipeline behaviors and configures
+    /// <see cref="TrellisMediatorTelemetryOptions"/> for logging/tracing redaction. Equivalent
+    /// to calling <see cref="AddTrellisBehaviors(IServiceCollection)"/> followed by mutating
+    /// the resolved singleton via <paramref name="configure"/>.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">
+    /// Callback invoked with the singleton telemetry options instance. Use this to opt in to
+    /// including <see cref="Error.Detail"/> in log messages and activity descriptions.
+    /// </param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddTrellisBehaviors(
+        this IServiceCollection services,
+        Action<TrellisMediatorTelemetryOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var instance = new TrellisMediatorTelemetryOptions();
+        configure(instance);
+
+        // Replace any prior TryAddSingleton<TrellisMediatorTelemetryOptions>() registration
+        // with the configured instance so this call wins regardless of ordering.
+        for (int i = services.Count - 1; i >= 0; i--)
+        {
+            if (services[i].ServiceType == typeof(TrellisMediatorTelemetryOptions))
+            {
+                services.RemoveAt(i);
+            }
+        }
+
+        services.AddSingleton(instance);
+        AddTrellisBehaviors(services);
 
         return services;
     }

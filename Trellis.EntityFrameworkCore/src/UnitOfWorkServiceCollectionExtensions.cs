@@ -3,6 +3,7 @@
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 /// <summary>
 /// Extension methods for registering <see cref="IUnitOfWork"/> and the
@@ -34,7 +35,7 @@ public static class UnitOfWorkServiceCollectionExtensions
     public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services)
         where TContext : DbContext
     {
-        services.AddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
+        services.TryAddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
         InsertTransactionalBehavior(services);
         return services;
     }
@@ -51,7 +52,7 @@ public static class UnitOfWorkServiceCollectionExtensions
     public static IServiceCollection AddTrellisUnitOfWorkWithoutBehavior<TContext>(this IServiceCollection services)
         where TContext : DbContext
     {
-        services.AddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
+        services.TryAddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
         return services;
     }
 
@@ -59,10 +60,20 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// Inserts <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> after the last
     /// <see cref="IPipelineBehavior{TMessage,TResponse}"/> registration to ensure it runs
     /// innermost (closest to the handler). If no behaviors are registered yet, appends at the end.
-    /// Detects both open-generic and closed-generic behavior registrations.
+    /// Detects both open-generic and closed-generic behavior registrations. Idempotent: a
+    /// second call is a no-op when the behavior is already registered.
     /// </summary>
     private static void InsertTransactionalBehavior(IServiceCollection services)
     {
+        for (var i = 0; i < services.Count; i++)
+        {
+            if (services[i].ServiceType == typeof(IPipelineBehavior<,>)
+                && services[i].ImplementationType == typeof(TransactionalCommandBehavior<,>))
+            {
+                return;
+            }
+        }
+
         var descriptor = ServiceDescriptor.Scoped(
             typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
 

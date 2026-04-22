@@ -1,9 +1,10 @@
-namespace Trellis.Asp;
+﻿namespace Trellis.Asp;
 
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 
 /// <summary>
@@ -226,17 +227,16 @@ public static class HttpResponseExtensions
         configure?.Invoke(builder);
         var opts = builder.Build();
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var page, out var pageError))
         {
-            var sc = TrellisHttpResult<Page<T>, Page<T>>.ResolveErrorStatusCode(result.Error!, opts);
-            return new TrellisErrorOnlyResult(result.Error!, new HttpResponseOptions<object>
+            return new TrellisErrorOnlyResult(pageError, new HttpResponseOptions<object>
             {
                 ErrorMapper = opts.ErrorMapper,
                 ErrorOverrides = opts.ErrorOverrides,
             });
         }
 
-        var (envelope, linkHeader) = PagedResponseBuilder.Build(result.Value, nextUrlBuilder, body);
+        var (envelope, linkHeader) = PagedResponseBuilder.Build(page, nextUrlBuilder, body);
         var ok = Results.Ok(envelope);
         return linkHeader is null ? ok : new PagedHttpResult(ok, linkHeader);
     }
@@ -274,11 +274,11 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
 
     public Task ExecuteAsync(HttpContext httpContext)
     {
-        var statusCode = ResolveStatusCode(_error);
+        var statusCode = ResolveStatusCode(httpContext, _error);
         return ResponseFailureWriter.WriteAsync(httpContext, _error, statusCode);
     }
 
-    private int ResolveStatusCode(Error error)
+    private int ResolveStatusCode(HttpContext httpContext, Error error)
     {
         if (_options.ErrorMapper is not null)
             return _options.ErrorMapper(error);
@@ -295,7 +295,8 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
             }
         }
 
-        return TrellisAspOptions.Default.GetStatusCode(error);
+        var ambient = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+        return ambient.GetStatusCode(error);
     }
 }
 

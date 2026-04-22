@@ -1,4 +1,4 @@
-# Mediator Pipeline
+﻿# Mediator Pipeline
 
 **Level:** Intermediate 📘 | **Time:** 20-25 min | **Prerequisites:** [Basics](basics.md), [ASP.NET Core Authorization](integration-asp-authorization.md)
 
@@ -58,8 +58,8 @@ That registration adds these behaviors, in this order:
 | Behavior | Runs for | What it does |
 | --- | --- | --- |
 | `ExceptionBehavior` | all messages | Converts unhandled exceptions into `new Error.InternalServerError("fault-id") { Detail = ... }` failures |
-| `TracingBehavior` | all messages | Creates an OpenTelemetry activity |
-| `LoggingBehavior` | all messages | Logs execution and failures |
+| `TracingBehavior` | all messages | Creates an OpenTelemetry activity. Tags failures with stable `error.code` / `error.type`; redacts `Error.Detail` by default (see [Redacting `Error.Detail`](#redacting-errordetail-in-logs-and-traces)) |
+| `LoggingBehavior` | all messages | Logs execution and failures. Emits `Error.Code` for failed responses; redacts `Error.Detail` by default (see [Redacting `Error.Detail`](#redacting-errordetail-in-logs-and-traces)) |
 | `AuthorizationBehavior` | messages implementing `IAuthorize` | Enforces required permissions |
 | `ValidationBehavior` | **all messages** | Runs `IValidate.Validate()` (when implemented) AND every registered `IMessageValidator<TMessage>` (e.g., the FluentValidation adapter); aggregates `Error.UnprocessableContent` failures from every source into one response |
 
@@ -86,7 +86,7 @@ When this command goes through the pipeline:
 
 1. `AuthorizationBehavior` asks `IActorProvider` for the current actor
 2. it calls `actor.HasAllPermissions(RequiredPermissions)`
-3. if the actor is missing any permission, the pipeline returns `new Error.Forbidden("policy.id") { Detail = "Insufficient permissions." }`
+3. if the actor is missing any permission, the pipeline returns `new Error.Forbidden("authorization.insufficient.permissions") { Detail = "Insufficient permissions." }`
 
 ## Resource-based authorization
 
@@ -299,6 +299,30 @@ If you forget `AddResourceAuthorization(...)`, the resource authorization behavi
 - `Trellis.Mediator`
 
 That is the source to add to your OpenTelemetry configuration when you want mediator spans.
+
+### Redacting `Error.Detail` in logs and traces
+
+Both `LoggingBehavior` and `TracingBehavior` emit the **stable** error identity for failed responses:
+
+- `LoggingBehavior` includes `error.Code` in the Warning-level "Handled" message
+- `TracingBehavior` tags the activity with `error.code` and `error.type` and sets `ActivityStatusCode.Error`
+
+The free-text `Error.Detail` string is **redacted by default** — it is frequently composed from user input or domain payloads (an order id, an email address, a free-text validation message) and must not flow into log aggregators or distributed traces without explicit opt-in.
+
+To opt in (e.g. in development, or in environments where you have verified no PII can flow through any `Error.Detail`):
+
+```csharp
+builder.Services.AddTrellisBehaviors(opts => opts.IncludeErrorDetail = true);
+```
+
+Or mutate the singleton directly after registration:
+
+```csharp
+builder.Services.AddTrellisBehaviors();
+builder.Services.AddSingleton(new TrellisMediatorTelemetryOptions { IncludeErrorDetail = true });
+```
+
+The `error.code` tag and the `Error.Code` value are operator-defined identifiers and are always emitted regardless of this setting.
 
 ## Next steps
 

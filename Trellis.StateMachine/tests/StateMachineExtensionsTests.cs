@@ -137,6 +137,44 @@ public class StateMachineExtensionsTests
         err!.Should().BeOfType<Error.Conflict>();
     }
 
+    [Fact]
+    public void FireResult_CustomOnUnhandledTriggerThatSuppresses_ReturnsSuccessWithCurrentState()
+    {
+        // ga-18 regression: a custom OnUnhandledTrigger callback may intentionally
+        // suppress invalid-trigger exceptions (e.g. log + ignore). FireResult must
+        // honor that policy by invoking Fire even on the !CanFire path — the user's
+        // handler runs, no exception escapes, and we surface the (unchanged) state
+        // as success rather than synthesizing an Error.Conflict the user opted out of.
+        var unhandledCalls = 0;
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.OnUnhandledTrigger((_, _) => unhandledCalls++); // swallow, do not throw
+
+        var result = machine.FireResult(Trigger.Pause);
+
+        result.IsSuccess.Should().BeTrue();
+        result.TryGetValue(out var v).Should().BeTrue();
+        v.Should().Be(State.Idle);
+        unhandledCalls.Should().Be(1, "the user's OnUnhandledTrigger callback must run");
+        machine.State.Should().Be(State.Idle);
+    }
+
+    [Fact]
+    public void FireResult_CustomOnUnhandledTriggerThatThrowsTypedException_PropagatesException()
+    {
+        // ga-18 regression: when a custom OnUnhandledTrigger callback throws a non-
+        // InvalidOperationException, FireResult must propagate it untouched (we only
+        // translate InvalidOperationException since that is what Stateless's default
+        // handler throws, and CanFire == false guarantees we are on the unhandled path).
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.OnUnhandledTrigger((_, _) => throw new NotSupportedException("custom"));
+
+        var exception = Assert.Throws<NotSupportedException>(() => machine.FireResult(Trigger.Pause));
+
+        exception.Message.Should().Be("custom");
+    }
+
     #endregion
 
     #region Guarded transitions
@@ -219,9 +257,13 @@ public class StateMachineExtensionsTests
     }
 
     [Fact]
-    public void FireResult_GuardedTransition_EvaluatesGuardOnlyOnce()
+    public void FireResult_GuardedTransition_EvaluatesGuardAtMostTwice()
     {
-        // Arrange
+        // ga-16: FireResult now pre-checks with CanFire (which evaluates the guard) before
+        // invoking Fire (which evaluates it again). Stateless guards are documented as
+        // requiring idempotence and side-effect freedom, so this is the accepted cost of
+        // not depending on Stateless exception message text. The contract is "at most twice
+        // per FireResult call".
         var guardCallCount = 0;
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle)
@@ -238,7 +280,8 @@ public class StateMachineExtensionsTests
         result.IsSuccess.Should().BeTrue();
         result.TryGetValue(out var v).Should().BeTrue();
         v.Should().Be(State.Running);
-        guardCallCount.Should().Be(1, "FireResult should not evaluate transition guards more than once");
+        guardCallCount.Should().BeLessThanOrEqualTo(2,
+            "FireResult evaluates the guard once via CanFire and once via Fire — Stateless guards must be idempotent");
     }
 
     [Fact]
@@ -258,9 +301,13 @@ public class StateMachineExtensionsTests
     }
 
     [Fact]
-    public void FireResult_EntryActionThrowsMatchingInvalidTransitionMessage_StillPropagatesException()
+    public void FireResult_DoesNotDependOnStatelessExceptionMessageText()
     {
-        // Arrange
+        // ga-16: previously FireResult parsed Stateless's English exception messages to
+        // detect invalid transitions, which broke when user entry actions happened to throw
+        // exceptions with the same text. The current implementation pre-checks with CanFire
+        // and never inspects exception messages — so user-thrown exceptions whose text matches
+        // the historical Stateless format still propagate untouched.
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
         machine.Configure(State.Running)

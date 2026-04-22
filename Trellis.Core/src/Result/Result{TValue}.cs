@@ -18,7 +18,7 @@ using System.Diagnostics;
 /// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success that would hide a programming error.
 /// Always construct via <see cref="Result.Ok{T}(T)"/> or <see cref="Result.Fail{T}(Error)"/>; analyzer
-/// <c>TRLS029</c> flags explicit <c>default(Result&lt;T&gt;)</c> at call sites.
+/// <c>TRLS019</c> flags explicit <c>default(Result&lt;T&gt;)</c> at call sites.
 /// </para>
 /// </remarks>
 /// <example>
@@ -114,21 +114,13 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     private Error EffectiveError() => _error ?? ResultDefaults.Sentinel;
 
     // ------------- Public accessors -------------
-
-    /// <summary>
-    /// Gets the success value when this result is a success.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the result is a failure. <typeparamref name="TValue"/> may be a value type
-    /// (e.g. <see cref="int"/>, <see cref="System.Guid"/>) where <see langword="default"/> is
-    /// indistinguishable from a real value, so reading <see cref="Value"/> on failure raises
-    /// rather than silently returning a misleading default. Check <see cref="Error"/> or
-    /// <see cref="IsFailure"/> first.
-    /// </exception>
-    public TValue Value =>
-        IsSuccess
-            ? _value!
-            : throw new InvalidOperationException("Cannot access Value on a failed result. Check IsFailure or Error first.");
+    //
+    // Note: in v1 there was a `public TValue Value { get; }` property that threw
+    // InvalidOperationException on failure — the primary cause of TRLS003. It was
+    // removed in v2 (ADR-002 §3.1 + ga-03). Use TryGetValue, Match, or Deconstruct
+    // to extract the success value safely. The non-throwing nullable `Error` property
+    // is intentionally retained because it powers clean pattern-match idioms
+    // (`if (r.Error is { } e) ...`, `r.Error switch { Error.NotFound => ..., ... }`).
 
     /// <summary>
     /// Gets the error when this result is a failure, or <see langword="null"/> when it is a success.
@@ -162,7 +154,8 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <remarks>
     /// Equivalent to <c>!IsFailure</c>; provided as a TryParse-style convenience that binds the value in a single call.
     /// </remarks>
-    public bool TryGetValue(out TValue value)
+    [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(false, nameof(Error))]
+    public bool TryGetValue([System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out TValue value)
     {
         if (IsSuccess)
         {
@@ -190,6 +183,36 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
 
         error = EffectiveError();
         return true;
+    }
+
+    /// <summary>
+    /// Attempts to get the success value and the error in a single call, eliminating the need
+    /// for <c>result.Error!</c> null-suppression after a failed <see cref="TryGetValue(out TValue)"/>.
+    /// </summary>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the success value; otherwise, the default value.</param>
+    /// <param name="error">When this method returns <see langword="false"/>, contains the error; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if the result is successful; otherwise <see langword="false"/>.</returns>
+    /// <example>
+    /// <code>
+    /// if (!result.TryGetValue(out var v, out var err))
+    ///     return Result.Fail&lt;T&gt;(err); // err is non-null here (flow-analysis verified)
+    /// // use v on success
+    /// </code>
+    /// </example>
+    public bool TryGetValue(
+        [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out TValue value,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(false)] out Error? error)
+    {
+        if (IsSuccess)
+        {
+            value = _value!;
+            error = null;
+            return true;
+        }
+
+        value = default!;
+        error = EffectiveError();
+        return false;
     }
 
     /// <summary>

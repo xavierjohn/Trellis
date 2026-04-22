@@ -1,4 +1,4 @@
-# Trellis API Reference
+﻿# Trellis API Reference
 
 Trellis is a .NET framework that **guides AI to develop structured, maintainable enterprise software**. It combines Railway-Oriented Programming and Domain-Driven Design into building blocks where the compiler enforces correctness — errors must be handled, objects cannot be constructed in invalid states, and business logic reads like the specification it was generated from.
 
@@ -111,7 +111,7 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 | Package | What it does |
 |---------|-------------|
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | 19+ Roslyn analyzers that catch common mistakes at build time |
-| [Trellis.Core.Generator](https://www.nuget.org/packages/Trellis.Core.Generator) | Source generation for `RequiredString` and related primitives |
+| _Trellis.Core.Generator_ | Source generation for `RequiredString` and related primitives — **bundled inside `Trellis.Core` (no separate package)** |
 
 
 > See all analyzer rules: [Analyzer Rules](~/articles/analyzers/toc.yml)

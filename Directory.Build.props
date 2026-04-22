@@ -57,6 +57,15 @@
     
     <!-- Detect breaking changes in library APIs -->
     <EnablePackageValidation>true</EnablePackageValidation>
+
+    <!-- Release hygiene (ga-07) -->
+    <!-- DotNet.ReproducibleBuilds bundles Microsoft.SourceLink.GitHub and sets
+         Deterministic, ContinuousIntegrationBuild (under CI), EmbedUntrackedSources.
+         The properties below cover what it does NOT enable by default. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(IsTestProject)' == 'false' ">

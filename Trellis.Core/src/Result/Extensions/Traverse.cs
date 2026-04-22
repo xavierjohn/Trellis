@@ -50,13 +50,13 @@ public static class TraverseExtensions
         foreach (var item in source)
         {
             var result = selector(item);
-            if (result.IsFailure)
+            if (!result.TryGetValue(out var value))
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
                 return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
-            results.Add(result.Value);
+            results.Add(value);
         }
 
         return Result.Ok<IReadOnlyList<TOut>>(results);
@@ -85,13 +85,13 @@ public static class TraverseExtensions
         foreach (var item in source)
         {
             var result = await selector(item).ConfigureAwait(false);
-            if (result.IsFailure)
+            if (!result.TryGetValue(out var value))
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
                 return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
-            results.Add(result.Value);
+            results.Add(value);
         }
 
         return Result.Ok<IReadOnlyList<TOut>>(results);
@@ -123,13 +123,13 @@ public static class TraverseExtensions
         {
             cancellationToken.ThrowIfCancellationRequested();
             var result = await selector(item, cancellationToken).ConfigureAwait(false);
-            if (result.IsFailure)
+            if (!result.TryGetValue(out var value))
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
                 return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
-            results.Add(result.Value);
+            results.Add(value);
         }
 
         return Result.Ok<IReadOnlyList<TOut>>(results);
@@ -158,13 +158,13 @@ public static class TraverseExtensions
         foreach (var item in source)
         {
             var result = await selector(item).ConfigureAwait(false);
-            if (result.IsFailure)
+            if (!result.TryGetValue(out var value))
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
                 return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
-            results.Add(result.Value);
+            results.Add(value);
         }
 
         return Result.Ok<IReadOnlyList<TOut>>(results);
@@ -196,13 +196,13 @@ public static class TraverseExtensions
         {
             cancellationToken.ThrowIfCancellationRequested();
             var result = await selector(item, cancellationToken).ConfigureAwait(false);
-            if (result.IsFailure)
+            if (!result.TryGetValue(out var value))
             {
                 activity?.SetStatus(ActivityStatusCode.Error);
                 return Result.Fail<IReadOnlyList<TOut>>(result.Error);
             }
 
-            results.Add(result.Value);
+            results.Add(value);
         }
 
         return Result.Ok<IReadOnlyList<TOut>>(results);

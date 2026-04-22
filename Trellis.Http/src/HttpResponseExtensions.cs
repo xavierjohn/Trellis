@@ -1,4 +1,4 @@
-namespace Trellis.Http;
+﻿namespace Trellis.Http;
 
 using System;
 using System.Net;
@@ -262,12 +262,11 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(response);
 
         var result = await response.ConfigureAwait(false);
-        if (result.IsFailure)
-            return Result.Fail<T>(result.Error!);
+        if (!result.TryGetValue(out var message, out var error))
+            return Result.Fail<T>(error);
 
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
-        var message = result.Value;
         try
         {
             ct.ThrowIfCancellationRequested();
@@ -355,12 +354,11 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(response);
 
         var result = await response.ConfigureAwait(false);
-        if (result.IsFailure)
-            return Result.Fail<Maybe<T>>(result.Error!);
+        if (!result.TryGetValue(out var message, out var error))
+            return Result.Fail<Maybe<T>>(error);
 
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
-        var message = result.Value;
         try
         {
             ct.ThrowIfCancellationRequested();

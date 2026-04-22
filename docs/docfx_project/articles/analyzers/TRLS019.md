@@ -1,100 +1,84 @@
-# TRLS019 — Combine chain exceeds maximum supported tuple size
+﻿# TRLS019 — Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)`
 
-- **Severity:** Error
+- **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags the outermost `Combine(...)` or `CombineAsync(...)` chain when it grows past Trellis's supported tuple width of nine elements.
+
+Flags explicit `default` expressions whose type is `Trellis.Result`, `Trellis.Result<T>`, or `Trellis.Maybe<T>`. Detection is operation-based (`IDefaultValueOperation`), so all surface forms are covered:
+
+- `default(Result)`, `default(Result<int>)`, `default(Maybe<string>)` (typeof-style)
+- Target-typed `default` (e.g. `return default;` in a method returning `Result<T>`)
+- Null-suppressed `default!`
 
 ## Why it matters
-Downstream Trellis tuple-based APIs also stop at nine elements. Large combine chains are a sign that related inputs should be grouped first.
 
-> [!WARNING]
-> This is the one rule where the bad example usually also causes a compile error: the tenth `Combine` has no matching overload. The analyzer gives you a clearer explanation of what to refactor.
+Per [ADR-002 §3.5.1](../../../adr/ADR-002-v2-redesign-plan.md), `default(Result)` and `default(Result<T>)` are typed **failures** carrying the shared `new Error.Unexpected("default_initialized")` sentinel. They are observationally equivalent to `Result.Fail(sentinel)` / `Result.Fail<T>(sentinel)`. The explicit `default` literal at a call site obscures intent — readers see `default` and assume "the zero value of this type", but the runtime semantics are *failure*.
 
-## Bad example
+`default(Maybe<T>)` happens to equal `Maybe<T>.None` (the type uses an `_isValueSet` discriminator that defaults to `false`). The runtime behavior is correct, but writing `default(Maybe<T>)` instead of `Maybe<T>.None` is poor style: the explicit `None` factory communicates intent.
+
+> [!IMPORTANT]
+> Never use `default(Result<T>)` to "convert" a failure short-circuit. The result is a typed failure with a sentinel, not a placeholder. Use `Result.Fail<T>(error)` with a meaningful `Error` case so downstream consumers can pattern-match on the actual problem.
+
+## Bad examples
+
 ```csharp
-using Trellis;
-
-static class Example
+// Misleading: looks like a "no-op" but actually returns Result.Fail(sentinel)
+public Result<User> Lookup(Guid id)
 {
-    public static void Bad(
-        Result<int> r1,
-        Result<int> r2,
-        Result<int> r3,
-        Result<int> r4,
-        Result<int> r5,
-        Result<int> r6,
-        Result<int> r7,
-        Result<int> r8,
-        Result<int> r9,
-        Result<int> r10)
-    {
-        var combined = r1
-            .Combine(r2)
-            .Combine(r3)
-            .Combine(r4)
-            .Combine(r5)
-            .Combine(r6)
-            .Combine(r7)
-            .Combine(r8)
-            .Combine(r9)
-            .Combine(r10);
-    }
+    if (id == Guid.Empty)
+        return default;                       // TRLS019
+    return _repo.Get(id);
 }
+
+// Same problem in a typeof form
+public Result Save() => default(Result);      // TRLS019
+
+// Style violation on Maybe
+public Maybe<int> First() => default(Maybe<int>);   // TRLS019
 ```
 
-## Good example
+## Good examples
+
 ```csharp
-using Trellis;
-
-static class Example
+public Result<User> Lookup(Guid id)
 {
-    public static void Good(
-        Result<int> r1,
-        Result<int> r2,
-        Result<int> r3,
-        Result<int> r4,
-        Result<int> r5,
-        Result<int> r6,
-        Result<int> r7,
-        Result<int> r8,
-        Result<int> r9,
-        Result<int> r10)
-    {
-        var customerGroup = r1
-            .Combine(r2)
-            .Combine(r3)
-            .Combine(r4)
-            .Combine(r5);
-
-        var orderGroup = r6
-            .Combine(r7)
-            .Combine(r8)
-            .Combine(r9)
-            .Combine(r10);
-
-        var combined = customerGroup.Combine(orderGroup);
-    }
+    if (id == Guid.Empty)
+        return Result.Fail<User>(new Error.BadRequest("id-empty") { Detail = "id is required" });
+    return _repo.Get(id);
 }
+
+public Result Save() => Result.Ok();
+
+public Maybe<int> First() => Maybe<int>.None;
 ```
 
 ## Code fix available
-No.
+
+No. The right replacement depends on intent — success vs. failure for `Result`, value vs. `None` for `Maybe`. The analyzer cannot guess which one is correct.
 
 ## Configuration
-Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
+
+Standard Roslyn configuration applies.
 
 ```ini
 dotnet_diagnostic.TRLS019.severity = none
 ```
 
+For sanctioned sentinel/test-helper sites — for example, an analyzer test stub that intentionally returns `default` for shape-only methods — use a targeted suppression rather than disabling the rule globally:
+
 ```csharp
-#pragma warning disable TRLS019
-// Intentional: documented exception or test-only pattern.
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Trellis", "TRLS019",
+    Justification = "Shape-only test stub; returned value is never observed.")]
+public static Result<T> StubFail<T>() => default;
+```
+
+```csharp
+#pragma warning disable TRLS019 // Sentinel for default-state regression test.
+Result<int> r = default;
 #pragma warning restore TRLS019
 ```
 
 > [!TIP]
-> Create intermediate value objects or grouped validation results, then combine those smaller units.
-
+> If you are migrating from v1 where `default(Result<T>)` was a silent success, search for `return default;` in `Result`-returning methods first. Most should become `Result.Ok(...)` (intentional success) or `Result.Fail<T>(...)` (intentional failure with a meaningful `Error` case).

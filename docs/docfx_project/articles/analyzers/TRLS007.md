@@ -1,41 +1,41 @@
-# TRLS007 — Use Create instead of TryCreate().Value
+﻿# TRLS007 — Maybe is double-wrapped
 
 - **Severity:** Warning
 - **Category:** Trellis
 
 ## What it detects
-Flags direct `.Value` access on a static `TryCreate(...)` call when the target type also exposes a static `Create(...)` method.
+Flags declared `Maybe<Maybe<T>>` in variables, properties, method return types, and parameters.
 
 ## Why it matters
-`TryCreate(...).Value` throws a generic `InvalidOperationException` if validation fails. `Create(...)` expresses that you expect success and preserves the validation detail in the exception message.
+Double optionality is usually a modeling smell. Consumers now have to unwrap presence twice before they can use the value.
 
 > [!WARNING]
-> If you truly want non-throwing behavior, keep the `Result` from `TryCreate(...)` and handle it. Do not force it with `.Value`.
+> Nested `Maybe` often appears after using `Map` with a transformation that already returns `Maybe<T>`.
 
 ## Bad example
 ```csharp
-using Trellis.Primitives;
+using Trellis;
 
 static class Example
 {
-    public static EmailAddress Bad(string input) =>
-        EmailAddress.TryCreate(input).Value;
+    public static Maybe<Maybe<int>> Bad() =>
+        Maybe.From(Maybe.From(42));
 }
 ```
 
 ## Good example
 ```csharp
-using Trellis.Primitives;
+using Trellis;
 
 static class Example
 {
-    public static EmailAddress Good(string input) =>
-        EmailAddress.Create(input);
+    public static Maybe<int> Good() =>
+        Maybe.From(42);
 }
 ```
 
 ## Code fix available
-Yes — replaces `TryCreate(...).Value` with `Create(...)` when the replacement binds correctly.
+No.
 
 ## Configuration
 Use standard Roslyn configuration if you need to suppress this rule in a specific scope.
@@ -51,5 +51,5 @@ dotnet_diagnostic.TRLS007.severity = none
 ```
 
 > [!TIP]
-> Use `Create(...)` when invalid input is a programmer error. Use `TryCreate(...)` when invalid input is part of normal control flow.
+> If the inner computation can fail with details, consider `Result<T>` instead. Otherwise return a single `Maybe<T>`.
 

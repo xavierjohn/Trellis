@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System.Diagnostics;
 
@@ -28,10 +28,10 @@ public static partial class MapExtensions
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
             return Result.Fail<TOut>(result.Error);
 
-        return Result.Ok<TOut>(func(result.Value));
+        return Result.Ok<TOut>(func(value));
     }
 }
 
@@ -54,12 +54,12 @@ public static partial class MapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapExtensions.Map));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
             return Result.Fail<TOut>(result.Error);
 
-        TOut value = await func(result.Value).ConfigureAwait(false);
+        TOut outValue = await func(value).ConfigureAwait(false);
 
-        return Result.Ok<TOut>(value);
+        return Result.Ok<TOut>(outValue);
     }
 
     /// <summary>
@@ -111,12 +111,12 @@ public static partial class MapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapExtensions.Map));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
             return Result.Fail<TOut>(result.Error);
 
-        TOut value = await func(result.Value).ConfigureAwait(false);
+        TOut outValue = await func(value).ConfigureAwait(false);
 
-        return Result.Ok<TOut>(value);
+        return Result.Ok<TOut>(outValue);
     }
 
     /// <summary>

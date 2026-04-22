@@ -1,4 +1,4 @@
-namespace Trellis.Asp;
+﻿namespace Trellis.Asp;
 
 using System;
 using System.Threading.Tasks;
@@ -44,15 +44,13 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
     /// <summary>Hint for OpenAPI: the body value (null on the failure path).</summary>
     public object? Value =>
-        _result.IsSuccess && _bodyProjector is not null
-            ? _bodyProjector(_result.Value)
-            : _result.IsSuccess
-                ? _result.Value
-                : null;
+        _result.TryGetValue(out var v)
+            ? (_bodyProjector is not null ? (object?)_bodyProjector(v) : v)
+            : null;
 
     TBody? IValueHttpResult<TBody>.Value =>
-        _result.IsSuccess && _bodyProjector is not null
-            ? _bodyProjector(_result.Value)
+        _result.TryGetValue(out var v) && _bodyProjector is not null
+            ? _bodyProjector(v)
             : default;
 
     public string? ContentType => "application/json";
@@ -63,15 +61,15 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
         return _result.IsSuccess
             ? ExecuteSuccessAsync(httpContext)
-            : ResponseFailureWriter.WriteAsync(httpContext, _result.Error!, ResolveErrorStatusCode(_result.Error!, _options));
+            : ResponseFailureWriter.WriteAsync(httpContext, _result.Error!, ResolveErrorStatusCode(httpContext, _result.Error!, _options));
     }
 
     private Task ExecuteSuccessAsync(HttpContext httpContext)
     {
-        var domain = _result.Value;
+        _result.TryGetValue(out var domain);
         var response = httpContext.Response;
 
-        ApplyMetadata(response, domain);
+        ApplyMetadata(response, domain!);
 
         if (_options.HonorPrefer)
             AppendVaryUnique(response, "Prefer");
@@ -81,7 +79,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             var method = httpContext.Request.Method;
             if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
             {
-                var metadata = BuildMetadataForEvaluation(domain);
+                var metadata = BuildMetadataForEvaluation(domain!);
                 if (metadata is not null)
                 {
                     var decision = ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata, out var failedKind);
@@ -93,43 +91,43 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
                         var pf = new Error.PreconditionFailed(new ResourceRef(typeof(TDomain).Name, null), failedKind ?? PreconditionKind.IfMatch)
                         { Detail = "A conditional request header evaluated to false." };
 
-                        return ResponseFailureWriter.WriteAsync(httpContext, pf, ResolveErrorStatusCode(pf, _options));
+                        return ResponseFailureWriter.WriteAsync(httpContext, pf, ResolveErrorStatusCode(httpContext, pf, _options));
                     }
                 }
             }
         }
 
-        var rangeOutcome = TryEvaluateRange(domain);
+        var rangeOutcome = TryEvaluateRange(domain!);
         if (rangeOutcome is not null)
         {
             var (from, to, total, error) = rangeOutcome.Value;
             if (error is not null)
-                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(error, _options));
+                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, _options));
 
-            var bodyValue = _bodyProjector is not null ? (object?)_bodyProjector(domain) : domain;
+            var bodyValue = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
             return new PartialContentHttpResult(from, to, total, Results.Ok(bodyValue)).ExecuteAsync(httpContext);
         }
 
         if (_options.LocationKind != LocationKind.None)
         {
-            var location = ResolveLocation(httpContext, domain);
+            var location = ResolveLocation(httpContext, domain!);
             if (location is null)
             {
                 var error = new Error.InternalServerError(Guid.NewGuid().ToString("N"))
                 { Detail = "Could not generate Location URI for created resource." };
 
-                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(error, _options));
+                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, _options));
             }
 
-            var body = _bodyProjector is not null ? (object?)_bodyProjector(domain) : domain;
+            var body = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
             return Results.Created(location, body).ExecuteAsync(httpContext);
         }
 
-        var payload = _bodyProjector is not null ? (object?)_bodyProjector(domain) : domain;
+        var payload = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
         return Results.Ok(payload).ExecuteAsync(httpContext);
     }
 
-    internal static int ResolveErrorStatusCode(Error error, HttpResponseOptions<TDomain> options)
+    internal static int ResolveErrorStatusCode(HttpContext httpContext, Error error, HttpResponseOptions<TDomain> options)
     {
         if (options.ErrorMapper is not null)
             return options.ErrorMapper(error);
@@ -146,7 +144,8 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             }
         }
 
-        return TrellisAspOptions.Default.GetStatusCode(error);
+        var ambient = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+        return ambient.GetStatusCode(error);
     }
 
     private RepresentationMetadata? BuildMetadataForEvaluation(TDomain domain)
@@ -252,6 +251,10 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         return null;
     }
 
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "ResolveLocation routes to ResolveActionLocation only when the consumer opted into LocationKind.Action via CreatedAtAction. CreatedAtAction itself is annotated [RequiresUnreferencedCode] so the requirement is surfaced at the public API boundary; consumers who don't use it pay no AOT cost.")]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "ResolveLocation routes to ResolveActionLocation only when the consumer opted into LocationKind.Action via CreatedAtAction. CreatedAtAction itself is annotated [RequiresDynamicCode] so the requirement is surfaced at the public API boundary; consumers who don't use it pay no AOT cost.")]
     private string? ResolveLocation(HttpContext httpContext, TDomain domain)
     {
         switch (_options.LocationKind)
@@ -271,29 +274,61 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             }
 
             case LocationKind.Action:
-            {
-                var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
-                var rv = _options.RouteValuesSelector!(domain);
-                return lg.GetUriByAction(httpContext, _options.ActionName!, _options.ControllerName, rv)
-                    ?? lg.GetPathByAction(httpContext, _options.ActionName!, _options.ControllerName, rv);
-            }
+                return ResolveActionLocation(httpContext, domain);
 
             default:
                 return null;
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("LocationKind.Action calls into MVC's ControllerLinkGeneratorExtensions which is not trim-safe. Use CreatedAtRoute (named routes) instead for AOT/trim scenarios.")]
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("LocationKind.Action calls into MVC's ControllerLinkGeneratorExtensions which is not AOT-safe. Use CreatedAtRoute (named routes) instead for AOT scenarios.")]
+    private string? ResolveActionLocation(HttpContext httpContext, TDomain domain)
+    {
+        // RuntimeFeature.IsDynamicCodeSupported is a trimmer-substituted constant: under PublishAot
+        // the trimmer rewrites it to `false` and removes the entire body of this branch, eliminating
+        // the reachability of MVC's trim-unsafe ControllerLinkGeneratorExtensions.CreateAddress.
+        if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+        {
+            throw new NotSupportedException(
+                "LocationKind.Action is not supported in AOT/trimmed builds because " +
+                "MVC's ControllerLinkGeneratorExtensions is not trim-safe. " +
+                "Use CreatedAtRoute with a named route instead.");
+        }
+
+        var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
+        var rv = _options.RouteValuesSelector!(domain);
+        return lg.GetUriByAction(httpContext, _options.ActionName!, _options.ControllerName, rv)
+            ?? lg.GetPathByAction(httpContext, _options.ActionName!, _options.ControllerName, rv);
+    }
+
     /// <summary>
     /// Provides OpenAPI/ApiExplorer metadata. Declares the success status code, body type, and
-    /// common error envelope responses. Consumers can layer their own
-    /// <c>[ProducesResponseType]</c>/<c>Produces&lt;T&gt;</c> on top.
+    /// the full set of error envelope responses the result writer can emit. Consumers can layer
+    /// their own <c>[ProducesResponseType]</c>/<c>Produces&lt;T&gt;</c> on top.
     /// </summary>
+    /// <remarks>
+    /// Because this contract is invoked statically by the endpoint pipeline (it has no access to
+    /// the per-instance <see cref="HttpResponseOptions{TDomain}"/>), we declare the union of
+    /// statuses any configuration of this result type may produce:
+    /// <list type="bullet">
+    ///   <item><description>200 OK — default success path with body.</description></item>
+    ///   <item><description>201 Created — when a Location is configured (Created/CreatedAtRoute/CreatedAtAction).</description></item>
+    ///   <item><description>206 Partial Content — when a Range selector is configured and the request asked for a sub-range.</description></item>
+    ///   <item><description>304 Not Modified — when conditional-request evaluation matches an If-None-Match / If-Modified-Since precondition.</description></item>
+    ///   <item><description>400, 404, 412, 500 — error envelopes (problem+json) for the most common failure mappings.</description></item>
+    /// </list>
+    /// </remarks>
     public static void PopulateMetadata(System.Reflection.MethodInfo method, EndpointBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status200OK, typeof(TBody), ["application/json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status201Created, typeof(TBody), ["application/json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status206PartialContent, typeof(TBody), ["application/json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status304NotModified, typeof(void)));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status400BadRequest, typeof(ProblemDetails), ["application/problem+json"]));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status404NotFound, typeof(ProblemDetails), ["application/problem+json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status412PreconditionFailed, typeof(ProblemDetails), ["application/problem+json"]));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status500InternalServerError, typeof(ProblemDetails), ["application/problem+json"]));
     }
 }

@@ -1,16 +1,16 @@
-# TRLS008 — Result is double-wrapped
+﻿# TRLS008 — Consider using Result.Combine
 
-- **Severity:** Warning
+- **Severity:** Info
 - **Category:** Trellis
 
 ## What it detects
-Flags declared or inferred `Result<Result<T>>`, and also flags `Result.Ok(existingResult)` or `Result.Fail(existingResult)` when the value is already a `Result<T>`.
+Flags conditional logic that manually combines two or more `Result` state checks, such as `&&` chains over `.IsSuccess` or `||` chains over `.IsFailure`.
 
 ## Why it matters
-Double-wrapped results are awkward to handle and usually mean the pipeline used `Map` where `Bind` was intended.
+`Result.Combine` expresses intent more clearly and scales better than repeated manual branching.
 
 > [!WARNING]
-> A nested `Result` is almost never the domain model you actually want. It usually signals a flattened pipeline that never got flattened.
+> Manual combination logic tends to duplicate error-selection code and becomes noisy as soon as you add a third or fourth result.
 
 ## Bad example
 ```csharp
@@ -18,8 +18,15 @@ using Trellis;
 
 static class Example
 {
-    public static Result<Result<int>> Bad() =>
-        Result.Ok(Result.Ok(42));
+    public static Result<int> Bad(Result<int> first, Result<int> second)
+    {
+        if (first.IsSuccess && second.IsSuccess)
+            return Result.Ok(first.Value + second.Value);
+
+        return first.IsFailure
+            ? Result.Fail<int>(first.Error)
+            : Result.Fail<int>(second.Error);
+    }
 }
 ```
 
@@ -29,8 +36,10 @@ using Trellis;
 
 static class Example
 {
-    public static Result<int> Good() =>
-        Result.Ok(42);
+    public static Result<int> Good(Result<int> first, Result<int> second) =>
+        first
+            .Combine(second)
+            .Map((left, right) => left + right);
 }
 ```
 
@@ -51,5 +60,5 @@ dotnet_diagnostic.TRLS008.severity = none
 ```
 
 > [!TIP]
-> If the inner expression already returns `Result<T>`, switch to `Bind` or return the inner result directly.
+> Use `Result.Combine(...)` or `.Combine(...)` chaining, then continue with `Map`, `Bind`, or `Match`.
 

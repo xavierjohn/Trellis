@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results.Extensions.Map;
+﻿namespace Trellis.Core.Tests.Results.Extensions.Map;
 
 using Trellis.Testing;
 
@@ -98,8 +98,8 @@ public class MapTsTests : TestBase
 
         // Assert
         actual.Should().BeSuccess();
-        actual.Value.Name.Should().Be("John");
-        actual.Value.Age.Should().Be(42);
+        actual.Unwrap().Name.Should().Be("John");
+        actual.Unwrap().Age.Should().Be(42);
     }
 
     [Fact]
@@ -471,7 +471,7 @@ public class MapTsTests : TestBase
 
         // Assert
         actual.Should().BeSuccess();
-        actual.Value.Should().BeNull();
+        actual.Unwrap().Should().BeNull();
     }
 
     [Fact]
@@ -515,8 +515,8 @@ public class MapTsTests : TestBase
 
         // Assert
         actual.Should().BeSuccess();
-        actual.Value.Name.Should().Be("AB");
-        actual.Value.Value.Should().Be(3);
+        actual.Unwrap().Name.Should().Be("AB");
+        actual.Unwrap().Value.Should().Be(3);
     }
 
     #endregion
@@ -537,8 +537,8 @@ public class MapTsTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Name.Should().Be("John Doe");
-        result.Value.Email.Should().Be("john@example.com");
+        result.Unwrap().Name.Should().Be("John Doe");
+        result.Unwrap().Email.Should().Be("john@example.com");
     }
 
     [Fact]
@@ -557,8 +557,8 @@ public class MapTsTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Name.Should().Be("John Doe");
-        result.Value.Age.Should().Be(30);
+        result.Unwrap().Name.Should().Be("John Doe");
+        result.Unwrap().Age.Should().Be(30);
     }
 
     [Fact]
@@ -571,7 +571,7 @@ public class MapTsTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Email.Should().Be("user@example.com");
+        result.Unwrap().Email.Should().Be("user@example.com");
     }
 
     #endregion

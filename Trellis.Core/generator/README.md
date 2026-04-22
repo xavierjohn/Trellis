@@ -1,12 +1,20 @@
-# Trellis.Core.Generator
+﻿# Trellis.Core.Generator (bundled inside Trellis.Core)
 
-[![NuGet Package](https://img.shields.io/nuget/v/Trellis.Core.Generator.svg)](https://www.nuget.org/packages/Trellis.Core.Generator)
+> [!IMPORTANT]
+> Since Phase 2 of the v3 redesign, **`Trellis.Core.Generator` is no longer published as a standalone NuGet package**. It is bundled inside `Trellis.Core.nupkg` under `analyzers/dotnet/cs/` and is attached automatically when you reference `Trellis.Core` (or any package depending on it, e.g. `Trellis.Primitives`).
+>
+> Remove any `<PackageReference Include="Trellis.Core.Generator" />` from your projects — the package no longer exists on nuget.org.
 
 Source generation for custom scalar value objects built on `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, and related Trellis primitives.
 
 ## Installation
+
+No separate install. Adding `Trellis.Core` (or `Trellis.Primitives`) attaches the generator automatically.
+
 ```bash
-dotnet add package Trellis.Core.Generator
+dotnet add package Trellis.Core
+# or
+dotnet add package Trellis.Primitives
 ```
 
 ## Quick Example

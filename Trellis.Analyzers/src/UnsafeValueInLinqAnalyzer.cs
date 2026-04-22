@@ -8,8 +8,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
-/// Analyzer that detects accessing .Value on Result/Maybe inside LINQ expressions
-/// without first filtering by IsSuccess/HasValue.
+/// Analyzer that detects accessing <c>.Value</c> on <c>Maybe&lt;T&gt;</c> inside LINQ
+/// projections without first filtering by <c>HasValue</c>. The Result-side equivalent
+/// was removed in v2 along with <c>Result&lt;T&gt;.Value</c> (see ADR-002 §3.1).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
@@ -76,24 +77,14 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         if (type == null)
             return;
 
-        string? typeName = null;
-        string? checkProperty = null;
-
-        if (type.IsResultType())
-        {
-            typeName = "Result.Value";
-            checkProperty = "IsSuccess";
-        }
-        else if (type.IsMaybeType())
-        {
-            typeName = "Maybe.Value";
-            checkProperty = "HasValue";
-        }
-
-        if (typeName == null || checkProperty == null)
+        // Only Maybe<T>.Value remains a runtime hazard in v2.
+        if (!type.IsMaybeType())
             return;
 
-        // Check if there's a Where clause before this that filters by IsSuccess/HasValue
+        const string typeName = "Maybe.Value";
+        const string checkProperty = "HasValue";
+
+        // Check if there's a Where clause before this that filters by HasValue
         if (HasPriorFilterClause(invocation, checkProperty))
             return;
 

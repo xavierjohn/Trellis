@@ -73,7 +73,7 @@ public static class AnalyzerTestHelper
     /// Stub source code for Trellis types used in analyzer tests.
     /// </summary>
     private const string TrellisStubSource = """
-        #pragma warning disable TRLS029 // stub returns intentional defaults — not subject to TRLS029
+        #pragma warning disable TRLS019 // stub returns intentional defaults — not subject to TRLS019
         namespace Trellis
         {
             using System;
@@ -103,45 +103,39 @@ public static class AnalyzerTestHelper
                 TPrimitive Value { get; }
             }
 
-            // Result<T> stub
+            // Result<T> stub (v2 surface — no Value property; Error is nullable)
             public readonly struct Result<T>
             {
                 public bool IsSuccess { get; }
+                [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
                 public bool IsFailure => !IsSuccess;
-                public T Value => IsSuccess ? default! : throw new InvalidOperationException();
-                public Error Error => IsFailure ? default! : throw new InvalidOperationException();
+                public Error? Error => IsFailure ? new ValidationError("stub") : null;
 
                 private Result(T value) { IsSuccess = true; }
                 private Result(Error error) { IsSuccess = false; }
-                
+
                 public static implicit operator Result<T>(T value) => new Result<T>(value);
                 public static implicit operator Result<T>(Error error) => new Result<T>(error);
-                
-                // MatchError stub
-                public void MatchError(
-                    Action<T> onSuccess,
-                    Action<ValidationError> onValidation,
-                    Action<NotFoundError> onNotFound,
-                    Action<Error> onOther) { }
 
-                public bool TryGetValue(out T value)
+                [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(false, nameof(Error))]
+                public bool TryGetValue([System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out T value)
                 {
                     value = default!;
                     return IsSuccess;
                 }
 
-                public T GetValueOrDefault(T defaultValue) => IsSuccess ? Value : defaultValue;
+                public T GetValueOrDefault(T defaultValue) => defaultValue;
 
-                public bool TryGetError(out Error error)
+                public bool TryGetError([System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out Error error)
                 {
-                    error = default!;
+                    error = null!;
                     return IsFailure;
                 }
 
                 public void Deconstruct(out bool isSuccess, out T? value, out Error? error)
                 {
                     isSuccess = IsSuccess;
-                    value = IsSuccess ? Value : default;
+                    value = default;
                     error = IsFailure ? Error : null;
                 }
             }
@@ -170,8 +164,9 @@ public static class AnalyzerTestHelper
             public readonly struct Result
             {
                 public bool IsSuccess { get; }
+                [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
                 public bool IsFailure => !IsSuccess;
-                public Error Error => IsFailure ? default! : throw new InvalidOperationException();
+                public Error? Error => IsFailure ? new ValidationError("stub") : null;
 
                 public static Result Ok() => default;
                 public static Result Fail(Error error) => default;

@@ -23,8 +23,8 @@ public static class ToMaybeExtensions
 
         result.LogActivityStatus();
 
-        if (result.IsSuccess)
-            return Maybe.From(result.Value);
+        if (result.TryGetValue(out var value))
+            return Maybe.From(value);
 
         return Maybe<TValue>.None;
     }

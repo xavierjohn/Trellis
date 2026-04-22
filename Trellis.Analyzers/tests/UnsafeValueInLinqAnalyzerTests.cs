@@ -1,38 +1,13 @@
-namespace Trellis.Analyzers.Tests;
+﻿namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
 /// <summary>
-/// Tests for UnsafeValueInLinqAnalyzer (TRLS018).
-/// Verifies that .Value access in LINQ without prior filter is detected.
+/// Tests for <see cref="UnsafeValueInLinqAnalyzer"/> (TRLS013 — Maybe.Value in LINQ).
+/// The Result-side path was removed in v2 along with <c>Result&lt;T&gt;.Value</c>.
 /// </summary>
 public class UnsafeValueInLinqAnalyzerTests
 {
-    [Fact]
-    public async Task Select_ResultValue_WithoutWhere_ReportsDiagnostic()
-    {
-        const string source = """
-            using System.Linq;
-            using System.Collections.Generic;
-
-            public class TestClass
-            {
-                public void TestMethod(List<Result<int>> results)
-                {
-                    var values = results.Select(r => r.Value);
-                }
-            }
-            """;
-
-        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
-            source,
-            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeValueInLinq)
-                .WithArguments("Result.Value", "IsSuccess")
-                .WithLocation(14, 44));
-
-        await test.RunAsync();
-    }
-
     [Fact]
     public async Task Select_MaybeValue_WithoutWhere_ReportsDiagnostic()
     {
@@ -55,26 +30,6 @@ public class UnsafeValueInLinqAnalyzerTests
                 .WithArguments("Maybe.Value", "HasValue")
                 .WithLocation(14, 43));
 
-        await test.RunAsync();
-    }
-
-    [Fact]
-    public async Task Select_ResultValue_WithWhereIsSuccess_NoDiagnostic()
-    {
-        const string source = """
-            using System.Linq;
-            using System.Collections.Generic;
-
-            public class TestClass
-            {
-                public void TestMethod(List<Result<int>> results)
-                {
-                    var values = results.Where(r => r.IsSuccess).Select(r => r.Value);
-                }
-            }
-            """;
-
-        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueInLinqAnalyzer>(source);
         await test.RunAsync();
     }
 
@@ -124,7 +79,7 @@ public class UnsafeValueInLinqAnalyzerTests
     }
 
     [Fact]
-    public async Task Select_NestedResultValue_WithoutWhere_ReportsDiagnostic()
+    public async Task Select_NestedMaybeValue_WithoutWhere_ReportsDiagnostic()
     {
         const string source = """
             using System.Linq;
@@ -140,21 +95,21 @@ public class UnsafeValueInLinqAnalyzerTests
 
             public class Customer
             {
-                public Result<string> Address { get; set; }
+                public Maybe<string> Address { get; set; }
             }
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeValueInLinq)
-                .WithArguments("Result.Value", "IsSuccess")
+                .WithArguments("Maybe.Value", "HasValue")
                 .WithLocation(14, 57));
 
         await test.RunAsync();
     }
 
     [Fact]
-    public async Task Select_ResultValueOnInvocation_WithoutWhere_ReportsDiagnostic()
+    public async Task Select_MaybeValueOnInvocation_WithoutWhere_ReportsDiagnostic()
     {
         const string source = """
             using System.Linq;
@@ -164,18 +119,18 @@ public class UnsafeValueInLinqAnalyzerTests
             {
                 public void TestMethod(List<string> values)
                 {
-                    var lengths = values.Select(v => GetResult(v).Value);
+                    var lengths = values.Select(v => GetMaybe(v).Value);
                 }
 
-                private Result<int> GetResult(string value) => Result.Ok(value.Length);
+                private Maybe<int> GetMaybe(string value) => Maybe<int>.None;
             }
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeValueInLinq)
-                .WithArguments("Result.Value", "IsSuccess")
-                .WithLocation(14, 55));
+                .WithArguments("Maybe.Value", "HasValue")
+                .WithLocation(14, 54));
 
         await test.RunAsync();
     }
