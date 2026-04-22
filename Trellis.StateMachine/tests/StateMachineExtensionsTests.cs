@@ -219,9 +219,13 @@ public class StateMachineExtensionsTests
     }
 
     [Fact]
-    public void FireResult_GuardedTransition_EvaluatesGuardOnlyOnce()
+    public void FireResult_GuardedTransition_EvaluatesGuardAtMostTwice()
     {
-        // Arrange
+        // ga-16: FireResult now pre-checks with CanFire (which evaluates the guard) before
+        // invoking Fire (which evaluates it again). Stateless guards are documented as
+        // requiring idempotence and side-effect freedom, so this is the accepted cost of
+        // not depending on Stateless exception message text. The contract is "at most twice
+        // per FireResult call".
         var guardCallCount = 0;
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle)
@@ -238,7 +242,8 @@ public class StateMachineExtensionsTests
         result.IsSuccess.Should().BeTrue();
         result.TryGetValue(out var v).Should().BeTrue();
         v.Should().Be(State.Running);
-        guardCallCount.Should().Be(1, "FireResult should not evaluate transition guards more than once");
+        guardCallCount.Should().BeLessThanOrEqualTo(2,
+            "FireResult evaluates the guard once via CanFire and once via Fire — Stateless guards must be idempotent");
     }
 
     [Fact]
@@ -258,9 +263,13 @@ public class StateMachineExtensionsTests
     }
 
     [Fact]
-    public void FireResult_EntryActionThrowsMatchingInvalidTransitionMessage_StillPropagatesException()
+    public void FireResult_DoesNotDependOnStatelessExceptionMessageText()
     {
-        // Arrange
+        // ga-16: previously FireResult parsed Stateless's English exception messages to
+        // detect invalid transitions, which broke when user entry actions happened to throw
+        // exceptions with the same text. The current implementation pre-checks with CanFire
+        // and never inspects exception messages — so user-thrown exceptions whose text matches
+        // the historical Stateless format still propagate untouched.
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
         machine.Configure(State.Running)
