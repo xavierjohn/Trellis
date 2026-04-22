@@ -26,7 +26,12 @@ public class ApplyTrellisConventionsForGeneratorTests
         namespace Trellis
         {
             public abstract class ValueObject { }
-            public abstract class ScalarValueObject<TSelf, T> : ValueObject { }
+            public interface IScalarValue<TSelf, TPrimitive>
+                where TSelf : IScalarValue<TSelf, TPrimitive>
+                where TPrimitive : System.IComparable { }
+            public abstract class ScalarValueObject<TSelf, T> : ValueObject, IScalarValue<TSelf, T>
+                where TSelf : ScalarValueObject<TSelf, T>, IScalarValue<TSelf, T>
+                where T : System.IComparable { }
             public abstract class RequiredEnum<TSelf> : ValueObject where TSelf : RequiredEnum<TSelf> { }
             public readonly struct Maybe<T> { }
         }
@@ -163,7 +168,7 @@ public class ApplyTrellisConventionsForGeneratorTests
 
         var (sources, _, _) = RunGenerator(src, ct);
 
-        sources.Single().Should().Contain("AddTrellisScalarConverter<global::MyApp.Phone, string>");
+        sources.Single().Should().Contain("AddTrellisScalarConverter<global::MyApp.Phone, global::System.String>");
     }
 
     [Fact]
@@ -335,7 +340,7 @@ public class ApplyTrellisConventionsForGeneratorTests
 
         var (sources, _, _) = RunGenerator(src, ct);
 
-        sources.Single().Should().Contain("typeof(global::MyApp.GenericRange<int>)");
+        sources.Single().Should().Contain("typeof(global::MyApp.GenericRange<global::System.Int32>)");
     }
 
     [Fact]
@@ -368,6 +373,31 @@ public class ApplyTrellisConventionsForGeneratorTests
         var generated = sources.Single();
         generated.Should().Contain("AddTrellisScalarConverter<global::MyApp.CustomerId, global::System.Guid>");
         generated.Should().Contain("AddTrellisScalarConverter<global::MyApp.OrderId, global::System.Guid>");
+    }
+
+    [Fact]
+    public void Interface_only_scalar_VO_is_detected_via_IScalarValue()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        // VO implements IScalarValue<,> but does NOT derive from ScalarValueObject<,>.
+        // Mirrors TrellisTypeScanner.FindValueObject which checks the interface, not just the base class.
+        var src = Stubs + """
+
+            namespace MyApp
+            {
+                public class Iso8601Date : Trellis.ValueObject, Trellis.IScalarValue<Iso8601Date, System.Guid> { }
+                public class Event { public Iso8601Date When { get; set; } }
+                public class MyDb : Microsoft.EntityFrameworkCore.DbContext
+                {
+                    public Microsoft.EntityFrameworkCore.DbSet<Event> Events { get; set; }
+                }
+            }
+            """;
+
+        var (sources, _, _) = RunGenerator(src, ct);
+
+        sources.Single().Should().Contain("AddTrellisScalarConverter<global::MyApp.Iso8601Date, global::System.Guid>");
     }
 
     private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics, List<string> HintNames) RunGenerator(

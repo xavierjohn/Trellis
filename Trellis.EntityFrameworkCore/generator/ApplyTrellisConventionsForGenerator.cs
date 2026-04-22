@@ -18,8 +18,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 /// For every concrete <c>DbContext</c>-derived type in the consuming compilation, the
 /// generator walks the <c>DbSet&lt;T&gt;</c> properties, recursively discovers reachable
 /// Trellis value object types (scalars and composites) on entity properties, and emits
-/// explicit registrations that delegate to the public
-/// <c>ModelConfigurationBuilderExtensions.ApplyTrellisConventionsCore</c> bridge.
+/// explicit registrations that call <c>AddTrellisScalarConverter&lt;,&gt;</c> and
+/// <c>AddTrellisCoreConventions(...)</c> directly for the discovered types.
 /// </para>
 /// <para>
 /// The runtime API uses reflection-based assembly scanning; the generated path is a
@@ -34,9 +34,20 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
     private const string DbContextMetadataName = "Microsoft.EntityFrameworkCore.DbContext";
     private const string DbSetMetadataName = "Microsoft.EntityFrameworkCore.DbSet`1";
     private const string ScalarValueObjectMetadataName = "Trellis.ScalarValueObject`2";
+    private const string ScalarValueInterfaceMetadataName = "Trellis.IScalarValue`2";
     private const string RequiredEnumMetadataName = "Trellis.RequiredEnum`1";
     private const string ValueObjectMetadataName = "Trellis.ValueObject";
     private const string MaybeMetadataName = "Trellis.Maybe`1";
+
+    // Custom display format: like FullyQualifiedFormat but without UseSpecialTypes, so that
+    // the generator never emits keyword aliases (e.g. "string" / "int") and instead always
+    // emits "global::System.String" / "global::System.Int32". Keeps emitted code stable and
+    // consistent with hardcoded values like the RequiredEnum string provider.
+    private static readonly SymbolDisplayFormat s_fqnFormat = new(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -78,6 +89,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
             return null;
 
         var scalarBase = compilation.GetTypeByMetadataName(ScalarValueObjectMetadataName);
+        var scalarInterface = compilation.GetTypeByMetadataName(ScalarValueInterfaceMetadataName);
         var requiredEnumBase = compilation.GetTypeByMetadataName(RequiredEnumMetadataName);
         var valueObjectBase = compilation.GetTypeByMetadataName(ValueObjectMetadataName);
         var maybeSymbol = compilation.GetTypeByMetadataName(MaybeMetadataName);
@@ -107,7 +119,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
 
         foreach (var root in entityRoots)
         {
-            WalkType(root, scalarBase, requiredEnumBase, valueObjectBase, maybeSymbol,
+            WalkType(root, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, maybeSymbol,
                 visited, classified, scalarBuilder, compositeBuilder);
         }
 
@@ -124,6 +136,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
     private static void WalkType(
         INamedTypeSymbol type,
         INamedTypeSymbol? scalarBase,
+        INamedTypeSymbol? scalarInterface,
         INamedTypeSymbol? requiredEnumBase,
         INamedTypeSymbol valueObjectBase,
         INamedTypeSymbol? maybeSymbol,
@@ -136,8 +149,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
             return;
 
         // Classify this type itself (relevant for property types reached through recursion).
-        TryClassify(type, scalarBase, requiredEnumBase, valueObjectBase, classified, scalars, composites,
-            out var isComposite);
+        TryClassify(type, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, classified, scalars, composites);
 
         // Walk properties of this type (and inherited) to find more reachable VO types.
         foreach (var prop in EnumerateInstanceProperties(type))
@@ -149,24 +161,21 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
                 continue;
             if (!IsAtLeastInternal(named))
                 continue;
-            WalkType(named, scalarBase, requiredEnumBase, valueObjectBase, maybeSymbol,
+            WalkType(named, scalarBase, scalarInterface, requiredEnumBase, valueObjectBase, maybeSymbol,
                 visited, classified, scalars, composites);
         }
-
-        _ = isComposite;
     }
 
     private static void TryClassify(
         INamedTypeSymbol type,
         INamedTypeSymbol? scalarBase,
+        INamedTypeSymbol? scalarInterface,
         INamedTypeSymbol? requiredEnumBase,
         INamedTypeSymbol valueObjectBase,
         HashSet<string> classified,
         ImmutableArray<ScalarRegistration>.Builder scalars,
-        ImmutableArray<string>.Builder composites,
-        out bool isComposite)
+        ImmutableArray<string>.Builder composites)
     {
-        isComposite = false;
         if (type.IsAbstract || type.IsUnboundGenericType)
             return;
         // Skip open generics (type definitions or partially-constructed types with unresolved
@@ -181,9 +190,17 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         if (!classified.Add(fqn))
             return;
 
-        // Walk base chain to find ScalarValueObject<TSelf, TProvider> or RequiredEnum<TSelf>.
+        // Walk base chain to find RequiredEnum<TSelf> (always string-backed) or
+        // ScalarValueObject<TSelf, TProvider> (typed provider).
         for (var b = type.BaseType; b is not null; b = b.BaseType)
         {
+            if (requiredEnumBase is not null
+                && SymbolEqualityComparer.Default.Equals(b.OriginalDefinition, requiredEnumBase))
+            {
+                scalars.Add(new ScalarRegistration(fqn, "global::System.String"));
+                return;
+            }
+
             if (scalarBase is not null
                 && SymbolEqualityComparer.Default.Equals(b.OriginalDefinition, scalarBase)
                 && b.TypeArguments.Length == 2
@@ -192,21 +209,29 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
                 scalars.Add(new ScalarRegistration(fqn, ToFullyQualifiedName(providerType)));
                 return;
             }
+        }
 
-            if (requiredEnumBase is not null
-                && SymbolEqualityComparer.Default.Equals(b.OriginalDefinition, requiredEnumBase))
+        // Match TrellisTypeScanner.FindValueObject by also recognizing interface-only scalars
+        // that implement IScalarValue<TSelf, TPrimitive> without deriving from ScalarValueObject<,>.
+        if (scalarInterface is not null)
+        {
+            foreach (var iface in type.AllInterfaces)
             {
-                scalars.Add(new ScalarRegistration(fqn, "global::System.String"));
-                return;
+                if (!iface.IsGenericType
+                    || iface.TypeArguments.Length != 2
+                    || !SymbolEqualityComparer.Default.Equals(iface.OriginalDefinition, scalarInterface))
+                    continue;
+                if (iface.TypeArguments[1] is INamedTypeSymbol ifaceProvider)
+                {
+                    scalars.Add(new ScalarRegistration(fqn, ToFullyQualifiedName(ifaceProvider)));
+                    return;
+                }
             }
         }
 
         // Composite VO: extends ValueObject (transitively) and was not classified as scalar above.
         if (InheritsFrom(type, valueObjectBase))
-        {
             composites.Add(fqn);
-            isComposite = true;
-        }
     }
 
     private static ITypeSymbol Unwrap(ITypeSymbol type, INamedTypeSymbol? maybeSymbol)
@@ -326,7 +351,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
     }
 
     private static string ToFullyQualifiedName(ITypeSymbol type) =>
-        type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        type.ToDisplayString(s_fqnFormat);
 
     private static void Execute(SourceProductionContext spc, ImmutableArray<DbContextConventionsInfo?> all)
     {

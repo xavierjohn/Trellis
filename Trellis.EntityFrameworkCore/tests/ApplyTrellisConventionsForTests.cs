@@ -69,6 +69,7 @@ public class ApplyTrellisConventionsForTests : IDisposable
         _context.ChangeTracker.Clear();
 
         var loaded = await _context.Customers.FindAsync([customer.Id], ct);
+        loaded.Should().NotBeNull();
         loaded!.Email.Value.Should().Be("bob@example.com");
     }
 
@@ -98,6 +99,7 @@ public class ApplyTrellisConventionsForTests : IDisposable
         _context.ChangeTracker.Clear();
 
         var loaded = await _context.Orders.FindAsync([order.Id], ct);
+        loaded.Should().NotBeNull();
         loaded!.Status.Should().Be(TestOrderStatus.Confirmed);
         loaded.Status.Value.Should().Be("Confirmed");
     }
@@ -120,6 +122,7 @@ public class ApplyTrellisConventionsForTests : IDisposable
         _context.ChangeTracker.Clear();
 
         var loaded = await _context.Customers.FindAsync([customer.Id], ct);
+        loaded.Should().NotBeNull();
         loaded!.Phone.HasValue.Should().BeTrue();
         loaded.Phone.Value.Value.Should().Be("+14155550100");
     }
