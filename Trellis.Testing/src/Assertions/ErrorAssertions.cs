@@ -12,7 +12,7 @@ public static class ErrorAssertionsExtensions
     /// <summary>
     /// Returns an assertions object for fluent assertions on Error.
     /// </summary>
-    public static ErrorAssertions Should(this Error error) => new ErrorAssertions(error);
+    public static ErrorAssertions Should(this Error? error) => new ErrorAssertions(error!);
 }
 
 /// <summary>
@@ -23,8 +23,8 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
     /// <summary>
     /// Initializes a new instance of the <see cref="ErrorAssertions"/> class.
     /// </summary>
-    public ErrorAssertions(Error error)
-        : base(error)
+    public ErrorAssertions(Error? error)
+        : base(error!)
     {
     }
 

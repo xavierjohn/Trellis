@@ -93,8 +93,8 @@ public static partial class TapExtensions
         ArgumentNullException.ThrowIfNull(action);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsSuccess) {
-            var (<# WriteArgs(i); #>) = result.Value;
+        if (result.TryGetValue(out var tupleValue)) {
+            var (<# WriteArgs(i); #>) = tupleValue;
             action(<# WriteArgs(i); #>);
         }
 
@@ -176,8 +176,8 @@ public static partial class TapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(TapExtensions.Tap));
-        if (result.IsSuccess) {
-            var (<# WriteArgs(i); #>) = result.Value;
+        if (result.TryGetValue(out var tupleValue)) {
+            var (<# WriteArgs(i); #>) = tupleValue;
             await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         }
 
@@ -242,8 +242,8 @@ public static partial class TapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(TapExtensions.Tap));
-        if (result.IsSuccess) {
-            var (<# WriteArgs(i); #>) = result.Value;
+        if (result.TryGetValue(out var tupleValue)) {
+            var (<# WriteArgs(i); #>) = tupleValue;
             await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         }
 

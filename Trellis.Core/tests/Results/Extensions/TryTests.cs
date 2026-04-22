@@ -4,6 +4,8 @@ using Xunit;
 
 namespace Trellis.Core.Tests.Results.Extensions;
 
+using Trellis.Testing;
+
 public class TryTests
 {
     [Fact]
@@ -21,7 +23,7 @@ public class TryTests
         var r = Result.Try(() => 123);
 
         r.IsSuccess.Should().BeTrue();
-        r.Value.Should().Be(123);
+        r.Unwrap().Should().Be(123);
     }
 
     [Fact]
@@ -48,7 +50,7 @@ public class TryTests
         });
 
         r.IsSuccess.Should().BeTrue();
-        r.Value.Should().Be(7);
+        r.Unwrap().Should().Be(7);
     }
 
     [Fact]

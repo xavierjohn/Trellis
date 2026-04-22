@@ -1,7 +1,8 @@
 namespace Trellis.Core.Tests.Results.Extensions.WhenTests;
 
-using System.Threading.Tasks;
 using Trellis.Testing;
+
+using System.Threading.Tasks;
 
 public class WhenTests : TestBase
 {
@@ -730,7 +731,7 @@ public class WhenTests : TestBase
 
         // Assert
         actual.Should().BeSuccess();
-        actual.Value.Amount.Should().Be(90);
+        actual.Unwrap().Amount.Should().Be(90);
     }
 
     [Fact]

@@ -58,9 +58,9 @@ public static class ResultDebugExtensions
         {
             activity.SetTag("debug.result.status", result.IsSuccess ? "Success" : "Failure");
 
-            if (result.IsSuccess)
+            if (result.TryGetValue(out var v))
             {
-                activity.SetTag("debug.result.value", result.Value?.ToString() ?? "<null>");
+                activity.SetTag("debug.result.value", v?.ToString() ?? "<null>");
                 activity.SetStatus(ActivityStatusCode.Ok);
             }
             else
@@ -103,10 +103,10 @@ public static class ResultDebugExtensions
         {
             activity.SetTag("debug.result.status", result.IsSuccess ? "Success" : "Failure");
 
-            if (result.IsSuccess)
+            if (result.TryGetValue(out var v))
             {
                 activity.SetTag("debug.result.type", typeof(TValue).Name);
-                activity.SetTag("debug.result.value", result.Value?.ToString() ?? "<null>");
+                activity.SetTag("debug.result.value", v?.ToString() ?? "<null>");
                 activity.SetStatus(ActivityStatusCode.Ok);
             }
             else
@@ -170,9 +170,9 @@ public static class ResultDebugExtensions
         {
             activity.SetTag("debug.result.status", result.IsSuccess ? "Success" : "Failure");
 
-            if (result.IsSuccess)
+            if (result.TryGetValue(out var v))
             {
-                activity.SetTag("debug.result.value", result.Value?.ToString() ?? "<null>");
+                activity.SetTag("debug.result.value", v?.ToString() ?? "<null>");
                 activity.SetStatus(ActivityStatusCode.Ok);
             }
             else
@@ -238,7 +238,7 @@ public static class ResultDebugExtensions
         ArgumentNullException.ThrowIfNull(action);
 
 #if DEBUG
-        if (ResultDebugSettings.EnableDebugTracing && result.IsSuccess)
+        if (ResultDebugSettings.EnableDebugTracing && result.TryGetValue(out var v))
         {
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnSuccess", ActivityKind.Internal);
             if (activity != null)
@@ -246,7 +246,7 @@ public static class ResultDebugExtensions
                 activity.SetStatus(ActivityStatusCode.Ok);
             }
 
-            action(result.Value);
+            action(v);
         }
 #endif
 
@@ -395,7 +395,7 @@ public static class ResultDebugExtensionsAsync
 
         var result = await resultTask.ConfigureAwait(false);
 #if DEBUG
-        if (ResultDebugSettings.EnableDebugTracing && result.IsSuccess)
+        if (ResultDebugSettings.EnableDebugTracing && result.TryGetValue(out var v))
         {
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnSuccess", ActivityKind.Internal);
             if (activity != null)
@@ -403,7 +403,7 @@ public static class ResultDebugExtensionsAsync
                 activity.SetStatus(ActivityStatusCode.Ok);
             }
 
-            await action(result.Value).ConfigureAwait(false);
+            await action(v).ConfigureAwait(false);
         }
 #endif
 

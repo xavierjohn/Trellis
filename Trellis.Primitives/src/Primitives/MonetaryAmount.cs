@@ -181,10 +181,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         foreach (var value in values)
         {
             var addResult = total.Add(value);
-            if (addResult.IsFailure)
+            if (!addResult.TryGetValue(out var next))
                 return addResult;
 
-            addResult.TryGetValue(out total);
+            total = next;
         }
 
         return Result.Ok(total);

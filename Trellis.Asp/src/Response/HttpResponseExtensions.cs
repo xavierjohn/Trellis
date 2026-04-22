@@ -226,7 +226,7 @@ public static class HttpResponseExtensions
         configure?.Invoke(builder);
         var opts = builder.Build();
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var page))
         {
             var sc = TrellisHttpResult<Page<T>, Page<T>>.ResolveErrorStatusCode(result.Error!, opts);
             return new TrellisErrorOnlyResult(result.Error!, new HttpResponseOptions<object>
@@ -236,7 +236,7 @@ public static class HttpResponseExtensions
             });
         }
 
-        var (envelope, linkHeader) = PagedResponseBuilder.Build(result.Value, nextUrlBuilder, body);
+        var (envelope, linkHeader) = PagedResponseBuilder.Build(page, nextUrlBuilder, body);
         var ok = Results.Ok(envelope);
         return linkHeader is null ? ok : new PagedHttpResult(ok, linkHeader);
     }

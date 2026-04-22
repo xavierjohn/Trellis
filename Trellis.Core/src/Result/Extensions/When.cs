@@ -45,15 +45,15 @@ public static class WhenExtensions
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(When));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (predicate(result.Value))
+        if (predicate(value))
         {
-            var operationResult = operation(result.Value);
+            var operationResult = operation(value);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -78,7 +78,7 @@ public static class WhenExtensions
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(When));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
@@ -86,7 +86,7 @@ public static class WhenExtensions
 
         if (condition)
         {
-            var operationResult = operation(result.Value);
+            var operationResult = operation(value);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -112,15 +112,15 @@ public static class WhenExtensions
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Unless));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (!predicate(result.Value))
+        if (!predicate(value))
         {
-            var operationResult = operation(result.Value);
+            var operationResult = operation(value);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -145,7 +145,7 @@ public static class WhenExtensions
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Unless));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
@@ -153,7 +153,7 @@ public static class WhenExtensions
 
         if (!condition)
         {
-            var operationResult = operation(result.Value);
+            var operationResult = operation(value);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -189,15 +189,15 @@ public static class WhenExtensionsAsync
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (predicate(result.Value))
+        if (predicate(value))
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -222,7 +222,7 @@ public static class WhenExtensionsAsync
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
@@ -230,7 +230,7 @@ public static class WhenExtensionsAsync
 
         if (condition)
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -297,15 +297,15 @@ public static class WhenExtensionsAsync
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (!predicate(result.Value))
+        if (!predicate(value))
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -330,7 +330,7 @@ public static class WhenExtensionsAsync
         ArgumentNullException.ThrowIfNull(operation);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
@@ -338,7 +338,7 @@ public static class WhenExtensionsAsync
 
         if (!condition)
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -408,15 +408,15 @@ public static class WhenExtensionsAsync
 
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (predicate(result.Value))
+        if (predicate(value))
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -442,7 +442,7 @@ public static class WhenExtensionsAsync
 
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.When));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
@@ -450,7 +450,7 @@ public static class WhenExtensionsAsync
 
         if (condition)
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -477,15 +477,15 @@ public static class WhenExtensionsAsync
 
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (!predicate(result.Value))
+        if (!predicate(value))
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }
@@ -511,7 +511,7 @@ public static class WhenExtensionsAsync
 
         Result<T> result = await resultTask.ConfigureAwait(false);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(WhenExtensions.Unless));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
@@ -519,7 +519,7 @@ public static class WhenExtensionsAsync
 
         if (!condition)
         {
-            var operationResult = await operation(result.Value).ConfigureAwait(false);
+            var operationResult = await operation(value).ConfigureAwait(false);
             operationResult.LogActivityStatus();
             return operationResult;
         }

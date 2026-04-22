@@ -18,7 +18,8 @@ public static partial class CombineExtensions
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<T1>(error);
-        return Result.Ok(t1.Value);
+        t1.TryGetValue(out var value);
+        return Result.Ok(value!);
     }
 
     /// <summary>
@@ -49,7 +50,9 @@ public static partial class CombineExtensions
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<(T1, T2)>(error);
-        return Result.Ok<(T1, T2)>((t1.Value, t2.Value));
+        t1.TryGetValue(out var v1);
+        t2.TryGetValue(out var v2);
+        return Result.Ok<(T1, T2)>((v1!, v2!));
     }
 }
 
@@ -72,7 +75,9 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<(T1, T2)>(error);
-        return Result.Ok((t1.Value, t2.Value));
+        t1.TryGetValue(out var v1);
+        t2.TryGetValue(out var v2);
+        return Result.Ok((v1!, v2!));
     }
 
     /// <summary>
@@ -86,7 +91,9 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<(T1, T2)>(error);
-        return Result.Ok((t1.Value, t2.Value));
+        t1.TryGetValue(out var v1);
+        t2.TryGetValue(out var v2);
+        return Result.Ok((v1!, v2!));
     }
 
     /// <summary>
@@ -101,7 +108,9 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<(T1, T2)>(error);
-        return Result.Ok((t1.Value, t2.Value));
+        t1.TryGetValue(out var v1);
+        t2.TryGetValue(out var v2);
+        return Result.Ok((v1!, v2!));
     }
 
     /// <summary>
@@ -115,7 +124,8 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<T1>(error);
-        return Result.Ok(t1.Value);
+        t1.TryGetValue(out var value);
+        return Result.Ok(value!);
     }
 
     #endregion
@@ -133,7 +143,9 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<(T1, T2)>(error);
-        return Result.Ok((t1.Value, t2.Value));
+        t1.TryGetValue(out var v1);
+        t2.TryGetValue(out var v2);
+        return Result.Ok((v1!, v2!));
     }
 
     /// <summary>
@@ -147,7 +159,9 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<(T1, T2)>(error);
-        return Result.Ok((t1.Value, t2.Value));
+        t1.TryGetValue(out var v1);
+        t2.TryGetValue(out var v2);
+        return Result.Ok((v1!, v2!));
     }
 
     /// <summary>
@@ -162,7 +176,9 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<(T1, T2)>(error);
-        return Result.Ok((t1.Value, t2.Value));
+        t1.TryGetValue(out var v1);
+        t2.TryGetValue(out var v2);
+        return Result.Ok((v1!, v2!));
     }
 
     /// <summary>
@@ -176,7 +192,8 @@ public static partial class CombineExtensionsAsync
         if (t1.IsFailure) error = error.Combine(t1.Error);
         if (t2.IsFailure) error = error.Combine(t2.Error);
         if (error is not null) return Result.Fail<T1>(error);
-        return Result.Ok(t1.Value);
+        t1.TryGetValue(out var value);
+        return Result.Ok(value!);
     }
 
     #endregion

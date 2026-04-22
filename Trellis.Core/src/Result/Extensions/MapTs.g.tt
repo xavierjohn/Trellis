@@ -67,10 +67,10 @@ public static partial class MapExtensions
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var tupleValue))
             return Result.Fail<TResult>(result.Error);
 
-        var (<# WriteArgs(i); #>) = result.Value;
+        var (<# WriteArgs(i); #>) = tupleValue;
         return Result.Ok(func(<# WriteArgs(i); #>));
     }
 
@@ -119,10 +119,10 @@ public static partial class MapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var tupleValue))
             return Result.Fail<TResult>(result.Error);
 
-        var (<# WriteArgs(i); #>) = result.Value;
+        var (<# WriteArgs(i); #>) = tupleValue;
         var value = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         return Result.Ok(value);
     }
@@ -137,10 +137,10 @@ public static partial class MapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var tupleValue))
             return Result.Fail<TResult>(result.Error);
 
-        var (<# WriteArgs(i); #>) = result.Value;
+        var (<# WriteArgs(i); #>) = tupleValue;
         var value = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         return Result.Ok(value);
     }
@@ -192,10 +192,10 @@ public static partial class MapExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var tupleValue))
             return Result.Fail<TResult>(result.Error);
 
-        var (<# WriteArgs(i); #>) = result.Value;
+        var (<# WriteArgs(i); #>) = tupleValue;
         var value = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         return Result.Ok(value);
     }
@@ -211,10 +211,10 @@ public static partial class MapExtensionsAsync
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var result = await resultTask.ConfigureAwait(false);
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var tupleValue))
             return Result.Fail<TResult>(result.Error);
 
-        var (<# WriteArgs(i); #>) = result.Value;
+        var (<# WriteArgs(i); #>) = tupleValue;
         var value = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
         return Result.Ok(value);
     }

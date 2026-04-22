@@ -1,5 +1,7 @@
 namespace Trellis.Core.Tests.Maybes;
 
+using Trellis.Testing;
+
 using Trellis;
 
 /// <summary>
@@ -21,7 +23,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeFalse();
+        result.Unwrap().HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -35,7 +37,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeFalse();
+        result.Unwrap().HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -49,7 +51,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeFalse();
+        result.Unwrap().HasValue.Should().BeFalse();
     }
 
     #endregion
@@ -67,8 +69,8 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeTrue();
-        result.Value.Value.Should().Be("HELLO");
+        result.Unwrap().HasValue.Should().BeTrue();
+        result.Unwrap().Unwrap().Should().Be("HELLO");
     }
 
     [Fact]
@@ -82,8 +84,8 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeTrue();
-        result.Value.Value.Value.Should().Be(42);
+        result.Unwrap().HasValue.Should().BeTrue();
+        result.Unwrap().Unwrap().Value.Should().Be(42);
     }
 
     [Fact]
@@ -98,8 +100,8 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeTrue();
-        result.Value.Value.Should().Be(guid.ToString());
+        result.Unwrap().HasValue.Should().BeTrue();
+        result.Unwrap().Unwrap().Should().Be(guid.ToString());
     }
 
     #endregion
@@ -157,8 +159,8 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeTrue();
-        result.Value.Value.Should().Be("test@example.com");
+        result.Unwrap().HasValue.Should().BeTrue();
+        result.Unwrap().Unwrap().Should().Be("test@example.com");
     }
 
     [Fact]
@@ -175,7 +177,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeFalse();
+        result.Unwrap().HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -212,10 +214,10 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        var (first, middle) = result.Value;
+        var (first, middle) = result.Unwrap();
         first.Should().Be("John");
         middle.HasValue.Should().BeTrue();
-        middle.Value.Should().Be("XAVIER");
+        middle.Unwrap().Should().Be("XAVIER");
     }
 
     [Fact]
@@ -231,7 +233,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        var (first, middle) = result.Value;
+        var (first, middle) = result.Unwrap();
         first.Should().Be("John");
         middle.HasValue.Should().BeFalse();
     }
@@ -274,8 +276,8 @@ public class MaybeOptionalTests
         // Assert
         functionInvoked.Should().BeTrue("empty string is not null, so function should be invoked");
         result.IsSuccess.Should().BeTrue();
-        result.Value.HasValue.Should().BeTrue();
-        result.Value.Value.Should().Be("");
+        result.Unwrap().HasValue.Should().BeTrue();
+        result.Unwrap().Unwrap().Should().Be("");
     }
 
     [Fact]
@@ -314,7 +316,7 @@ public class MaybeOptionalTests
         // Assert
         functionInvoked.Should().BeTrue("zero is not null, so function should be invoked");
         result.IsSuccess.Should().BeTrue();
-        result.Value.Value.Value.Should().Be(0);
+        result.Unwrap().Unwrap().Value.Should().Be(0);
     }
 
     #endregion

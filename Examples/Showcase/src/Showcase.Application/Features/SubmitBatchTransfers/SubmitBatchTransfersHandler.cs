@@ -52,10 +52,10 @@ public sealed class SubmitBatchTransfersHandler
         }
 
         var totalResult = Money.TryCreate(sum, currency);
-        if (totalResult.TryGetError(out var err))
-            return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(err));
+        if (!totalResult.TryGetValue(out var total))
+            return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(totalResult.Error!));
 
         return ValueTask.FromResult(Result.Ok(
-            new BatchTransferReceipt(command.Metadata.Reference, command.Lines.Count, totalResult.Value)));
+            new BatchTransferReceipt(command.Metadata.Reference, command.Lines.Count, total)));
     }
 }

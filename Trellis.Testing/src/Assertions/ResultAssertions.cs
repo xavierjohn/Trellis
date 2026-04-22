@@ -53,7 +53,7 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
                 error);
 
         Subject.TryGetValue(out var value);
-        return new AndWhichConstraint<ResultAssertions<TValue>, TValue>(this, value);
+        return new AndWhichConstraint<ResultAssertions<TValue>, TValue>(this, value!);
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
         Subject.TryGetValue(out var actualValue);
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(predicate(actualValue))
+            .ForCondition(predicate(actualValue!))
             .FailWith("Expected {context:result} value to match predicate{reason}, but it did not. Value: {0}",
                 actualValue);
 
@@ -254,6 +254,38 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
 
         Subject.TryGetError(out var error);
         error!.Detail!.Should().Contain(substring, because, becauseArgs);
+
+        return new AndConstraint<ResultAssertions<TValue>>(this);
+    }
+
+    /// <summary>
+    /// Asserts that the result is equal to the expected result (using <see cref="Result{TValue}.Equals(Result{TValue})"/>).
+    /// </summary>
+    public AndConstraint<ResultAssertions<TValue>> Be(
+        Result<TValue> expected,
+        string because = "",
+        params object[] becauseArgs)
+    {
+        Execute.Assertion
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(Subject.Equals(expected))
+            .FailWith("Expected {context:result} to be {0}{reason}, but found {1}.", expected, Subject);
+
+        return new AndConstraint<ResultAssertions<TValue>>(this);
+    }
+
+    /// <summary>
+    /// Asserts that the result is not equal to the unexpected result.
+    /// </summary>
+    public AndConstraint<ResultAssertions<TValue>> NotBe(
+        Result<TValue> unexpected,
+        string because = "",
+        params object[] becauseArgs)
+    {
+        Execute.Assertion
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(!Subject.Equals(unexpected))
+            .FailWith("Expected {context:result} not to be {0}{reason}.", unexpected);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }

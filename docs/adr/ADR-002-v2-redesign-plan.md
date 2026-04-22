@@ -484,6 +484,12 @@ public readonly struct Result<T>
     public bool IsSuccess { get; }
     public bool IsFailure => !IsSuccess;
 
+    // Non-throwing nullable accessor — retained because it powers clean pattern-match idioms
+    // (`if (r.Error is { } e)`, `r.Error switch { Error.NotFound => ..., ... }`) that have no
+    // safety downside (it never throws). Removing it for symmetry with the throwing `Value`
+    // would have been a usability regression with no safety win.
+    public Error? Error { get; }
+
     public bool TryGetValue([MaybeNullWhen(false)] out T value);
     public bool TryGetError([MaybeNullWhen(false)] out Error error);
 
@@ -493,9 +499,12 @@ public readonly struct Result<T>
 ```
 
 **Removed from the type itself:**
-- `Value` and `Error` properties (they throw → primary cause of `TRLS003`/`TRLS004`).
+- `Value` property — it threw `InvalidOperationException` on failure and was the primary cause of `TRLS003`. Removed in v2 (ga-03). Use `TryGetValue`, `Match`, or `Deconstruct`.
 - All implicit conversions from `T` and from `Error`. They look magical and AI gets the direction wrong.
 - `IFailureFactory<TSelf>` static interface — **retained**. It is necessary for pipeline behaviors to construct typed failure responses without reflection while wrapping `martinothamar/Mediator`. The v1 plan's removal was conditioned on owning the dispatcher (deferred to optional Phase 7); under the wrapper model, the constraint stays. See §5.1 line 612 and the §16 score-table caveat.
+
+**Retained (revised from earlier ADR drafts):**
+- `Error` property is **kept**. It is nullable and never throws, so the original "they throw → primary cause of TRLS004" rationale only applies to `Value`. Removing `Error` would force `if (r.TryGetError(out var e))` everywhere a clean `if (r.Error is { } e) ...` pattern-match works today, breaking switch expressions (`r.Error switch { ... }`) and LINQ projections (`xs.Select(r => r.Error?.Code)`). The `TRLS004` analyzer continues to flag genuine misuse of `Error` (e.g., dereferencing without a null check or guard).
 
 **Construction is one path:**
 ```csharp

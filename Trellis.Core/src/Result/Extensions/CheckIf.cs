@@ -32,13 +32,13 @@ public static class CheckIfExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure || !condition)
+        if (!result.TryGetValue(out var value) || !condition)
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = func(result.Value);
+        var checkResult = func(value);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -65,13 +65,13 @@ public static class CheckIfExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure || !condition)
+        if (!result.TryGetValue(out var value) || !condition)
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = func(result.Value);
+        var checkResult = func(value);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -100,13 +100,13 @@ public static class CheckIfExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure || !predicate(result.Value))
+        if (!result.TryGetValue(out var value) || !predicate(value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = func(result.Value);
+        var checkResult = func(value);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -134,13 +134,13 @@ public static class CheckIfExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure || !predicate(result.Value))
+        if (!result.TryGetValue(out var value) || !predicate(value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = func(result.Value);
+        var checkResult = func(value);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);

@@ -114,21 +114,13 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     private Error EffectiveError() => _error ?? ResultDefaults.Sentinel;
 
     // ------------- Public accessors -------------
-
-    /// <summary>
-    /// Gets the success value when this result is a success.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the result is a failure. <typeparamref name="TValue"/> may be a value type
-    /// (e.g. <see cref="int"/>, <see cref="System.Guid"/>) where <see langword="default"/> is
-    /// indistinguishable from a real value, so reading <see cref="Value"/> on failure raises
-    /// rather than silently returning a misleading default. Check <see cref="Error"/> or
-    /// <see cref="IsFailure"/> first.
-    /// </exception>
-    public TValue Value =>
-        IsSuccess
-            ? _value!
-            : throw new InvalidOperationException("Cannot access Value on a failed result. Check IsFailure or Error first.");
+    //
+    // Note: in v1 there was a `public TValue Value { get; }` property that threw
+    // InvalidOperationException on failure — the primary cause of TRLS003. It was
+    // removed in v2 (ADR-002 §3.1 + ga-03). Use TryGetValue, Match, or Deconstruct
+    // to extract the success value safely. The non-throwing nullable `Error` property
+    // is intentionally retained because it powers clean pattern-match idioms
+    // (`if (r.Error is { } e) ...`, `r.Error switch { Error.NotFound => ..., ... }`).
 
     /// <summary>
     /// Gets the error when this result is a failure, or <see langword="null"/> when it is a success.
@@ -162,7 +154,8 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <remarks>
     /// Equivalent to <c>!IsFailure</c>; provided as a TryParse-style convenience that binds the value in a single call.
     /// </remarks>
-    public bool TryGetValue(out TValue value)
+    [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(false, nameof(Error))]
+    public bool TryGetValue([System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out TValue value)
     {
         if (IsSuccess)
         {

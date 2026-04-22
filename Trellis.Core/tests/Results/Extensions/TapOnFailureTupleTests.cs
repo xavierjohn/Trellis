@@ -62,7 +62,7 @@ public class TapOnFailureTupleTests : TestBase
         // Assert
         _actionExecuted.Should().BeFalse();
         actual.Should().BeSuccess();
-        actual.Value.Should().Be((42, "hello"));
+        actual.Unwrap().Should().Be((42, "hello"));
     }
 
     [Fact]

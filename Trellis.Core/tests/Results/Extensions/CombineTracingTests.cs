@@ -1,8 +1,9 @@
 namespace Trellis.Core.Tests.Results.Extensions;
 
+using Trellis.Testing;
+
 using System.Diagnostics;
 using Trellis.Core.Tests.Helpers;
-using Trellis.Testing;
 
 /// <summary>
 /// Tests for Activity tracing in Combine operations (both base and tuple-based from T4 templates).
@@ -201,7 +202,7 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be(("First", "Second"));
+        result.Unwrap().Should().Be(("First", "Second"));
 
         // Should have 2 Combine activities, both with Ok status
         var activities = activityTest.AssertActivityCaptured("Combine", 2);

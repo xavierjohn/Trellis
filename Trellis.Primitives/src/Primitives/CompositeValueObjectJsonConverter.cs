@@ -77,10 +77,10 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
         }
 
         var result = Metadata.Invoke(values);
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
             throw new TrellisJsonValidationException(result.Error!.GetDisplayMessage());
 
-        return result.Value;
+        return value;
     }
 
     /// <inheritdoc />

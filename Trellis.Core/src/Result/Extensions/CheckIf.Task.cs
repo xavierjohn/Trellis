@@ -26,13 +26,13 @@ public static partial class CheckIfExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
         Result<T> result = await resultTask.ConfigureAwait(false);
 
-        if (result.IsFailure || !condition)
+        if (!result.TryGetValue(out var value) || !condition)
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = await func(result.Value).ConfigureAwait(false);
+        var checkResult = await func(value).ConfigureAwait(false);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -53,13 +53,13 @@ public static partial class CheckIfExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
         Result<T> result = await resultTask.ConfigureAwait(false);
 
-        if (result.IsFailure || !condition)
+        if (!result.TryGetValue(out var value) || !condition)
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = await func(result.Value).ConfigureAwait(false);
+        var checkResult = await func(value).ConfigureAwait(false);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -90,13 +90,13 @@ public static partial class CheckIfExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
         Result<T> result = await resultTask.ConfigureAwait(false);
 
-        if (result.IsFailure || !predicate(result.Value))
+        if (!result.TryGetValue(out var value) || !predicate(value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = await func(result.Value).ConfigureAwait(false);
+        var checkResult = await func(value).ConfigureAwait(false);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -118,13 +118,13 @@ public static partial class CheckIfExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CheckIfExtensions.CheckIf));
         Result<T> result = await resultTask.ConfigureAwait(false);
 
-        if (result.IsFailure || !predicate(result.Value))
+        if (!result.TryGetValue(out var value) || !predicate(value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = await func(result.Value).ConfigureAwait(false);
+        var checkResult = await func(value).ConfigureAwait(false);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);

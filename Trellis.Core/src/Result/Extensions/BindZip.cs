@@ -25,22 +25,22 @@ public static partial class BindZipExtensions
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             var failure = Result.Fail<(T1, T2)>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var nextResult = func(result.Value);
-        if (nextResult.IsFailure)
+        var nextResult = func(value);
+        if (!nextResult.TryGetValue(out var inner))
         {
             var failure = Result.Fail<(T1, T2)>(nextResult.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Ok((result.Value, nextResult.Value));
+        var success = Result.Ok((value, inner));
         success.LogActivityStatus();
         return success;
     }

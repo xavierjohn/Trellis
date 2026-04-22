@@ -1,5 +1,7 @@
 namespace Trellis.Core.Tests.Results.Extensions;
 
+using Trellis.Testing;
+
 using System.Diagnostics;
 using Trellis.Core.Tests.Helpers;
 
@@ -168,7 +170,7 @@ public class DebugTests : TestBase
             .Tap(s => s.Should().Be("Hello World"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Hello World");
+        result.Unwrap().Should().Be("Hello World");
     }
 
     #region Async Tests
@@ -358,7 +360,7 @@ public class DebugTests : TestBase
             .TapAsync(s => s.Should().Be("Hello World"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("Hello World");
+        result.Unwrap().Should().Be("Hello World");
     }
 
     #endregion

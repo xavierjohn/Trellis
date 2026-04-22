@@ -44,15 +44,13 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
     /// <summary>Hint for OpenAPI: the body value (null on the failure path).</summary>
     public object? Value =>
-        _result.IsSuccess && _bodyProjector is not null
-            ? _bodyProjector(_result.Value)
-            : _result.IsSuccess
-                ? _result.Value
-                : null;
+        _result.TryGetValue(out var v)
+            ? (_bodyProjector is not null ? (object?)_bodyProjector(v) : v)
+            : null;
 
     TBody? IValueHttpResult<TBody>.Value =>
-        _result.IsSuccess && _bodyProjector is not null
-            ? _bodyProjector(_result.Value)
+        _result.TryGetValue(out var v) && _bodyProjector is not null
+            ? _bodyProjector(v)
             : default;
 
     public string? ContentType => "application/json";
@@ -68,10 +66,10 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
     private Task ExecuteSuccessAsync(HttpContext httpContext)
     {
-        var domain = _result.Value;
+        _result.TryGetValue(out var domain);
         var response = httpContext.Response;
 
-        ApplyMetadata(response, domain);
+        ApplyMetadata(response, domain!);
 
         if (_options.HonorPrefer)
             AppendVaryUnique(response, "Prefer");
@@ -81,7 +79,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             var method = httpContext.Request.Method;
             if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
             {
-                var metadata = BuildMetadataForEvaluation(domain);
+                var metadata = BuildMetadataForEvaluation(domain!);
                 if (metadata is not null)
                 {
                     var decision = ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata, out var failedKind);
@@ -99,20 +97,20 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             }
         }
 
-        var rangeOutcome = TryEvaluateRange(domain);
+        var rangeOutcome = TryEvaluateRange(domain!);
         if (rangeOutcome is not null)
         {
             var (from, to, total, error) = rangeOutcome.Value;
             if (error is not null)
                 return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(error, _options));
 
-            var bodyValue = _bodyProjector is not null ? (object?)_bodyProjector(domain) : domain;
+            var bodyValue = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
             return new PartialContentHttpResult(from, to, total, Results.Ok(bodyValue)).ExecuteAsync(httpContext);
         }
 
         if (_options.LocationKind != LocationKind.None)
         {
-            var location = ResolveLocation(httpContext, domain);
+            var location = ResolveLocation(httpContext, domain!);
             if (location is null)
             {
                 var error = new Error.InternalServerError(Guid.NewGuid().ToString("N"))
@@ -121,11 +119,11 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
                 return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(error, _options));
             }
 
-            var body = _bodyProjector is not null ? (object?)_bodyProjector(domain) : domain;
+            var body = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
             return Results.Created(location, body).ExecuteAsync(httpContext);
         }
 
-        var payload = _bodyProjector is not null ? (object?)_bodyProjector(domain) : domain;
+        var payload = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
         return Results.Ok(payload).ExecuteAsync(httpContext);
     }
 

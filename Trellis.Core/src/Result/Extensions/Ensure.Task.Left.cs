@@ -75,19 +75,19 @@ public static partial class EnsureExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureExtensions.Ensure));
         Result<TValue> result = await resultTask.ConfigureAwait(false);
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        if (predicate(result.Value))
+        if (predicate(value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        return Result.Fail<TValue>(await errorPredicate(result.Value).ConfigureAwait(false));
+        return Result.Fail<TValue>(await errorPredicate(value).ConfigureAwait(false));
     }
 
     /// <summary>

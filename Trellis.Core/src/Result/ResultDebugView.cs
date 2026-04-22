@@ -28,7 +28,7 @@ internal sealed class ResultDebugView<TValue>
 
         public SuccessView(Result<TValue> result) => _result = result;
 
-        public TValue Value => _result.Value;
+        public TValue? Value => _result.TryGetValue(out var v) ? v : default;
     }
 
     [DebuggerDisplay("Error = {Error}")]

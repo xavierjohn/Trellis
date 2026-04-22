@@ -262,12 +262,11 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(response);
 
         var result = await response.ConfigureAwait(false);
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var message))
             return Result.Fail<T>(result.Error!);
 
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
-        var message = result.Value;
         try
         {
             ct.ThrowIfCancellationRequested();
@@ -355,12 +354,11 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(response);
 
         var result = await response.ConfigureAwait(false);
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var message))
             return Result.Fail<Maybe<T>>(result.Error!);
 
         ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
-        var message = result.Value;
         try
         {
             ct.ThrowIfCancellationRequested();

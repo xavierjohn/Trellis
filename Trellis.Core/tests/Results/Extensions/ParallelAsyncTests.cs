@@ -1,7 +1,8 @@
 namespace Trellis.Core.Tests.Results.Extensions;
 
-using System.Diagnostics;
 using Trellis.Testing;
+
+using System.Diagnostics;
 
 /// <summary>
 /// Functional tests for ParallelAsync operations.
@@ -34,7 +35,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2));
+        result.Unwrap().Should().Be((1, 2));
     }
 
     [Fact]
@@ -63,7 +64,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be(("text", 42));
+        result.Unwrap().Should().Be(("text", 42));
     }
 
     [Fact]
@@ -138,7 +139,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3));
+        result.Unwrap().Should().Be((1, 2, 3));
     }
 
     [Fact]
@@ -262,10 +263,10 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be(("text", 42, true));
-        result.Value.Item1.Should().Be("text");
-        result.Value.Item2.Should().Be(42);
-        result.Value.Item3.Should().BeTrue();
+        result.Unwrap().Should().Be(("text", 42, true));
+        result.Unwrap().Item1.Should().Be("text");
+        result.Unwrap().Item2.Should().Be(42);
+        result.Unwrap().Item3.Should().BeTrue();
     }
 
     [Fact]
@@ -282,7 +283,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be(60);
+        result.Unwrap().Should().Be(60);
     }
 
     [Fact]
@@ -299,7 +300,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be("1-2-3");
+        result.Unwrap().Should().Be("1-2-3");
     }
 
     [Fact]
@@ -344,7 +345,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3, 4));
+        result.Unwrap().Should().Be((1, 2, 3, 4));
     }
 
     [Fact]
@@ -377,7 +378,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3, 4, 5));
+        result.Unwrap().Should().Be((1, 2, 3, 4, 5));
     }
 
     [Fact]
@@ -395,7 +396,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3, 4, 5, 6));
+        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6));
     }
 
     [Fact]
@@ -414,7 +415,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3, 4, 5, 6, 7));
+        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6, 7));
     }
 
     [Fact]
@@ -434,7 +435,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3, 4, 5, 6, 7, 8));
+        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6, 7, 8));
     }
 
     [Fact]
@@ -455,7 +456,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Should().Be((1, 2, 3, 4, 5, 6, 7, 8, 9));
+        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6, 7, 8, 9));
     }
 
     [Fact]
@@ -505,9 +506,9 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Value.Profile.Should().Be("John Doe");
-        result.Value.OrderCount.Should().Be(2);
-        result.Value.Theme.Should().Be("Dark Mode");
+        result.Unwrap().Profile.Should().Be("John Doe");
+        result.Unwrap().OrderCount.Should().Be(2);
+        result.Unwrap().Theme.Should().Be("Dark Mode");
     }
 
     [Fact]

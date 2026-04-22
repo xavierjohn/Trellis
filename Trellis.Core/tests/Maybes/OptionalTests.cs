@@ -1,5 +1,7 @@
 namespace Trellis.Core.Tests.Maybes;
 
+using Trellis.Testing;
+
 using Trellis;
 
 public class OptionalTests
@@ -15,8 +17,8 @@ public class OptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeOfType<Maybe<ZipCode>>();
-        result.Value.Value.Zip.Should().Be(zipCode);
+        result.Unwrap().Should().BeOfType<Maybe<ZipCode>>();
+        result.Unwrap().Value.Zip.Should().Be(zipCode);
     }
 
     [Fact]
@@ -30,8 +32,8 @@ public class OptionalTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeOfType<Maybe<ZipCode>>();
-        result.Value.HasNoValue.Should().BeTrue();
+        result.Unwrap().Should().BeOfType<Maybe<ZipCode>>();
+        result.Unwrap().HasNoValue.Should().BeTrue();
     }
 
     [Fact]

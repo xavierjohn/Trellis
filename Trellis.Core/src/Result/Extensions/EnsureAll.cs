@@ -36,6 +36,7 @@ public static class EnsureAllExtensions
             return result;
         }
 
+        result.TryGetValue(out var value);
         Error? accumulated = null;
         for (var i = 0; i < checks.Length; i++)
         {
@@ -47,7 +48,7 @@ public static class EnsureAllExtensions
             if (error is null)
                 throw new ArgumentNullException(nameof(checks), $"checks[{i}].error is null.");
 
-            if (!predicate(result.Value))
+            if (!predicate(value!))
                 accumulated = accumulated.Combine(error);
         }
 

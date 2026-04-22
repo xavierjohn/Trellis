@@ -157,13 +157,13 @@ public static class ResultBindExtensions
     {
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Bind));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return Result.Fail(result.Error);
         }
 
-        var output = func(result.Value);
+        var output = func(value);
         output.LogActivityStatus();
         return output;
     }
@@ -320,13 +320,13 @@ public static class ResultBindExtensionsAsync
     {
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return Result.Fail(result.Error);
         }
 
-        var output = await func(result.Value).ConfigureAwait(false);
+        var output = await func(value).ConfigureAwait(false);
         output.LogActivityStatus();
         return output;
     }
@@ -352,13 +352,13 @@ public static class ResultBindExtensionsAsync
     {
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(ResultBindExtensions.Bind));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return Result.Fail(result.Error);
         }
 
-        var output = await func(result.Value).ConfigureAwait(false);
+        var output = await func(value).ConfigureAwait(false);
         output.LogActivityStatus();
         return output;
     }

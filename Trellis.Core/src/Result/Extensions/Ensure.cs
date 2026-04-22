@@ -48,7 +48,7 @@ public static class EnsureExtensions
         ArgumentNullException.ThrowIfNull(predicate);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
-        if (result.IsSuccess && !predicate(result.Value))
+        if (result.TryGetValue(out var value) && !predicate(value))
             return Result.Fail<TValue>(error);
 
         result.LogActivityStatus();
@@ -70,8 +70,8 @@ public static class EnsureExtensions
         ArgumentNullException.ThrowIfNull(errorPredicate);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
-        if (result.IsSuccess && !predicate(result.Value))
-            return Result.Fail<TValue>(errorPredicate(result.Value));
+        if (result.TryGetValue(out var value) && !predicate(value))
+            return Result.Fail<TValue>(errorPredicate(value));
 
         result.LogActivityStatus();
         return result;
@@ -117,13 +117,13 @@ public static class EnsureExtensions
         ArgumentNullException.ThrowIfNull(predicate);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var predicateResult = predicate(result.Value);
+        var predicateResult = predicate(value);
 
         if (predicateResult.IsFailure)
             return Result.Fail<TValue>(predicateResult.Error);
@@ -156,20 +156,20 @@ public static class EnsureExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return Result.Fail<T>(result.Error);
         }
 
-        if (result.Value is null)
+        if (value is null)
         {
             var failure = Result.Fail<T>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Ok(result.Value);
+        var success = Result.Ok(value);
         success.LogActivityStatus();
         return success;
     }
@@ -187,21 +187,21 @@ public static class EnsureExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             var failure = Result.Fail<T>(result.Error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        if (!result.Value.HasValue)
+        if (!value.HasValue)
         {
             var failure = Result.Fail<T>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
-        var success = Result.Ok(result.Value.Value);
+        var success = Result.Ok(value.Value);
         success.LogActivityStatus();
         return success;
     }

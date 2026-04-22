@@ -31,13 +31,13 @@ public static class CheckExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = func(result.Value);
+        var checkResult = func(value);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);
@@ -63,13 +63,13 @@ public static class CheckExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (result.IsFailure)
+        if (!result.TryGetValue(out var value))
         {
             result.LogActivityStatus();
             return result;
         }
 
-        var checkResult = func(result.Value);
+        var checkResult = func(value);
         if (checkResult.IsFailure)
         {
             var failure = Result.Fail<T>(checkResult.Error);

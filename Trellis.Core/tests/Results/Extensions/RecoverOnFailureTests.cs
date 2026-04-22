@@ -1,5 +1,7 @@
 namespace Trellis.Core.Tests.Results.Extensions;
 
+using Trellis.Testing;
+
 public class RecoverOnFailureTests
 {
     bool _recoveryFunctionCalled;
@@ -40,7 +42,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     /// <summary>
@@ -56,7 +58,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -92,7 +94,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     #endregion
@@ -106,7 +108,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -117,7 +119,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -143,7 +145,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
     #endregion
 
@@ -156,7 +158,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -167,7 +169,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -193,7 +195,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     #endregion
@@ -207,7 +209,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -218,7 +220,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -244,7 +246,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
     #endregion
 
@@ -262,7 +264,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     /// <summary>
@@ -278,7 +280,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -310,7 +312,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -330,7 +332,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -360,7 +362,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -371,7 +373,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -397,7 +399,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -421,7 +423,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -432,7 +434,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -458,7 +460,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -483,7 +485,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -494,7 +496,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -520,7 +522,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -544,7 +546,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -555,7 +557,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -570,7 +572,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
     #endregion
 
@@ -583,7 +585,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -594,7 +596,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -609,7 +611,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
     #endregion
 
@@ -622,7 +624,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -633,7 +635,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -659,7 +661,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
     #endregion
 
@@ -672,7 +674,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeFalse();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Success");
+        output.Unwrap().Should().Be("Success");
     }
 
     [Fact]
@@ -683,7 +685,7 @@ public class RecoverOnFailureTests
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();
-        output.Value.Should().Be("Recovered Success");
+        output.Unwrap().Should().Be("Recovered Success");
     }
 
     [Fact]
