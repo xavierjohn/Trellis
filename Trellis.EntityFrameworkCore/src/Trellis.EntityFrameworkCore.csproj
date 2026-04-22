@@ -5,7 +5,15 @@
     <PackageTags>trellis;efcore;entity-framework-core;value-converters;railway-oriented;result;maybe;ddd;domain-driven-design</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>efcore</TrellisApiRefName>
-    <!-- EF Core is inherently reflection-based; AOT/Trim not applicable -->
+    <!--
+      EF Core relies on runtime reflection (model building, change tracking, query translation,
+      proxies). Microsoft documents NativeAOT support for EF Core as "highly experimental, not
+      suited for production use" — see https://learn.microsoft.com/ef/core/performance/nativeaot-and-precompiled-queries.
+      Trellis.EntityFrameworkCore therefore explicitly opts out of the AOT/trim story. Consumers
+      who need AOT should use Trellis.Core + a non-EF persistence layer (see Showcase.MinimalApi).
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
     <EnableAotAnalyzer>false</EnableAotAnalyzer>
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>

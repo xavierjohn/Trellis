@@ -1,7 +1,5 @@
 ﻿namespace Trellis.Primitives;
 
-#pragma warning disable IL2026, IL2070, IL2075, IL2090, IL3050 // Composite VO converter uses reflection by design; AOT users should hand-write a converter.
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -254,6 +252,8 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
 
         public required Func<object?[], Result<T>> Invoke { get; init; }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2070",
+            Justification = "Composite VO converter discovers properties on T via reflection by design. The class XML doc directs AOT consumers to hand-write a converter and register it with [JsonConverter]; the source-generator extension for composite VOs is tracked as a follow-up.")]
         public static CompositeMetadata Build(Type type)
         {
             var properties = type
@@ -293,6 +293,8 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
             };
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2070",
+            Justification = "Composite VO converter discovers IScalarValue<,> implementation by reflection. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
         private static Type GetPrimitiveType(Type propertyType)
         {
             foreach (var iface in propertyType.GetInterfaces())
@@ -304,6 +306,8 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
             return propertyType;
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2075",
+            Justification = "Composite VO converter inspects the property's 'Value' member by reflection. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
         private static Func<T, object?> BuildPrimitiveGetter(PropertyInfo propInfo, Type primitiveType)
         {
             var instance = Expression.Parameter(typeof(T), "v");
@@ -332,6 +336,10 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
                     Expression.Constant(null, typeof(object)),
                     Expression.Convert(Expression.Property(body, valueProp), typeof(object)));
 
+        [UnconditionalSuppressMessage("AOT", "IL3050",
+            Justification = "Result<T> is constructed via MakeGenericType to match the TryCreate factory's return type. T is the converter's owning type and is reachable through JsonConverter<T>. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070",
+            Justification = "TryCreate factory is discovered on T via reflection. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
         private static Func<object?[], Result<T>> BuildInvoker(Type type, List<PropertyMetadata> props)
         {
             var resultType = typeof(Result<>).MakeGenericType(type);

@@ -252,6 +252,10 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         return null;
     }
 
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "ResolveLocation routes to ResolveActionLocation only when the consumer opted into LocationKind.Action via CreatedAtAction. CreatedAtAction itself is annotated [RequiresUnreferencedCode] so the requirement is surfaced at the public API boundary; consumers who don't use it pay no AOT cost.")]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "ResolveLocation routes to ResolveActionLocation only when the consumer opted into LocationKind.Action via CreatedAtAction. CreatedAtAction itself is annotated [RequiresDynamicCode] so the requirement is surfaced at the public API boundary; consumers who don't use it pay no AOT cost.")]
     private string? ResolveLocation(HttpContext httpContext, TDomain domain)
     {
         switch (_options.LocationKind)
@@ -271,16 +275,32 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             }
 
             case LocationKind.Action:
-            {
-                var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
-                var rv = _options.RouteValuesSelector!(domain);
-                return lg.GetUriByAction(httpContext, _options.ActionName!, _options.ControllerName, rv)
-                    ?? lg.GetPathByAction(httpContext, _options.ActionName!, _options.ControllerName, rv);
-            }
+                return ResolveActionLocation(httpContext, domain);
 
             default:
                 return null;
         }
+    }
+
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("LocationKind.Action calls into MVC's ControllerLinkGeneratorExtensions which is not trim-safe. Use CreatedAtRoute (named routes) instead for AOT/trim scenarios.")]
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("LocationKind.Action calls into MVC's ControllerLinkGeneratorExtensions which is not AOT-safe. Use CreatedAtRoute (named routes) instead for AOT scenarios.")]
+    private string? ResolveActionLocation(HttpContext httpContext, TDomain domain)
+    {
+        // RuntimeFeature.IsDynamicCodeSupported is a trimmer-substituted constant: under PublishAot
+        // the trimmer rewrites it to `false` and removes the entire body of this branch, eliminating
+        // the reachability of MVC's trim-unsafe ControllerLinkGeneratorExtensions.CreateAddress.
+        if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+        {
+            throw new NotSupportedException(
+                "LocationKind.Action is not supported in AOT/trimmed builds because " +
+                "MVC's ControllerLinkGeneratorExtensions is not trim-safe. " +
+                "Use CreatedAtRoute with a named route instead.");
+        }
+
+        var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
+        var rv = _options.RouteValuesSelector!(domain);
+        return lg.GetUriByAction(httpContext, _options.ActionName!, _options.ControllerName, rv)
+            ?? lg.GetPathByAction(httpContext, _options.ActionName!, _options.ControllerName, rv);
     }
 
     /// <summary>

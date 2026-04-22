@@ -137,6 +137,12 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     /// <param name="actionName">The action method name.</param>
     /// <param name="routeValues">A function that returns a <see cref="Microsoft.AspNetCore.Routing.RouteValueDictionary"/> for the new resource. Pass a <see cref="Microsoft.AspNetCore.Routing.RouteValueDictionary"/> rather than an anonymous type to remain AOT-compatible.</param>
     /// <param name="controllerName">Optional controller name (defaults to the current controller).</param>
+    /// <remarks>
+    /// This method is not trim-safe / AOT-safe because MVC's <c>ControllerLinkGeneratorExtensions</c>
+    /// is not annotated. Use <see cref="CreatedAtRoute"/> with a named route instead for AOT scenarios.
+    /// </remarks>
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("CreatedAtAction relies on MVC's ControllerLinkGeneratorExtensions which is not trim-safe. Use CreatedAtRoute with a named route for AOT/trim scenarios.")]
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("CreatedAtAction relies on MVC's ControllerLinkGeneratorExtensions which is not AOT-safe. Use CreatedAtRoute with a named route for AOT scenarios.")]
     public HttpResponseOptionsBuilder<TDomain> CreatedAtAction(string actionName, Func<TDomain, Microsoft.AspNetCore.Routing.RouteValueDictionary> routeValues, string? controllerName = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actionName);

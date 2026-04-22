@@ -118,12 +118,17 @@ public static class ServiceCollectionExtensions
     /// This method configures a type info modifier that assigns converters per-property,
     /// ensuring that validation error field names match the C# property names.
     /// </remarks>
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "DefaultJsonTypeInfoResolver is only used as a fallback when the caller has not supplied a TypeInfoResolver. AOT consumers must supply a JsonSerializerContext-backed resolver before calling AddScalarValueValidation*; this is documented on the public extension methods.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "DefaultJsonTypeInfoResolver is only used as a fallback when the caller has not supplied a TypeInfoResolver. AOT consumers must supply a JsonSerializerContext-backed resolver before calling AddScalarValueValidation*; this is documented on the public extension methods.")]
     private static void ConfigureJsonOptions(JsonSerializerOptions options)
     {
-        // Use TypeInfoResolver modifier to assign converters per-property with property name
-#pragma warning disable IL2026, IL3050 // DefaultJsonTypeInfoResolver requires dynamic code - this is fallback path
+        // Use TypeInfoResolver modifier to assign converters per-property with property name.
+        // When the caller hasn't configured a resolver (typical for non-AOT apps), fall back
+        // to DefaultJsonTypeInfoResolver. AOT consumers should configure a source-generated
+        // JsonSerializerContext resolver before calling AddScalarValueValidation*.
         var existingResolver = options.TypeInfoResolver ?? new DefaultJsonTypeInfoResolver();
-#pragma warning restore IL2026, IL3050
         options.TypeInfoResolver = existingResolver.WithAddedModifier(ModifyTypeInfo);
 
         // Add factories for direct serialization scenarios
@@ -253,13 +258,15 @@ public static class ServiceCollectionExtensions
                 primitiveType);
     }
 
-#pragma warning disable IL2055, IL3050 // MakeGenericType and Activator require dynamic code
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "MakeGenericType is required to wrap a per-property converter. The wrapper type PropertyNameAwareConverter<T> is constructed for property types that are reachable through the JsonTypeInfo.Properties metadata, so the runtime instantiation is bounded by reachable JSON-serialized types. AOT consumers should source-generate their JsonSerializerContext to keep these types reachable.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2055",
+        Justification = "PropertyNameAwareConverter<T> is constructed only for property types that JSON serialization metadata already preserves; the metadata system keeps T reachable.")]
     private static JsonConverter? CreatePropertyNameAwareConverter(JsonConverter innerConverter, string propertyName, Type type)
     {
         var wrapperType = typeof(PropertyNameAwareConverter<>).MakeGenericType(type);
         return Activator.CreateInstance(wrapperType, innerConverter, propertyName) as JsonConverter;
     }
-#pragma warning restore IL2055, IL3050
 
     /// <summary>
     /// Adds automatic value object validation for both MVC Controllers and Minimal APIs.
