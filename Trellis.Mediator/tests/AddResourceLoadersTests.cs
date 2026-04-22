@@ -204,6 +204,21 @@ public class AddResourceAuthorizationScanTests
     #region Discovers IAuthorizeResource<T> command and registers behavior
 
     [Fact]
+    public void AddResourceAuthorization_with_null_assembly_element_throws_with_index()
+    {
+        // Mirrors the guard already present in AddTrellisFluentValidation: a null entry in
+        // the params Assembly[] must surface as ArgumentException pointing at the offending
+        // index, NOT a NullReferenceException from Assembly.GetTypes() inside GetLoadableTypes.
+        var services = new ServiceCollection();
+
+        var act = () => services.AddResourceAuthorization(typeof(ScanTestCommand).Assembly, null!);
+
+        act.Should().Throw<ArgumentException>()
+            .Where(ex => ex.ParamName == "assemblies")
+            .And.Message.Should().Contain("[1]");
+    }
+
+    [Fact]
     public void AddResourceAuthorization_Assembly_RegistersBehaviorForCommand()
     {
         var services = new ServiceCollection();

@@ -42,10 +42,10 @@ public static class EnsureAllExtensions
             var (predicate, error) = checks[i];
 
             if (predicate is null)
-                throw new ArgumentNullException($"checks[{i}].predicate");
+                throw new ArgumentNullException(nameof(checks), $"checks[{i}].predicate is null.");
 
             if (error is null)
-                throw new ArgumentNullException($"checks[{i}].error");
+                throw new ArgumentNullException(nameof(checks), $"checks[{i}].error is null.");
 
             if (!predicate(result.Value))
                 accumulated = accumulated.Combine(error);
