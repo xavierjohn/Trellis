@@ -53,7 +53,7 @@ public static class ServiceCollectionExtensions
     /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
     /// <example>
     /// <code>
-    /// var fakeTime = new FakeTimeProvider(DateTimeOffset.UtcNow);
+    /// var fakeTime = new FakeTimeProvider(WebApplicationFactoryTimeExtensions.DefaultTestStartInstant);
     /// services.ReplaceSingleton&lt;TimeProvider&gt;(fakeTime);
     /// </code>
     /// </example>

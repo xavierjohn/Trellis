@@ -17,6 +17,16 @@ using Microsoft.Identity.Client;
 /// Tokens are cached per <see cref="MsalTestTokenProvider"/> instance. Create one
 /// instance per test class or fixture to avoid redundant token acquisitions.
 /// </para>
+/// <para>
+/// <b>Determinism warning.</b> This helper performs real network calls to Microsoft
+/// Entra ID, depends on the wall clock for token expiration, and exercises a live
+/// authority — it is intentionally non-deterministic and should only be used in E2E
+/// suites gated behind a category/trait (e.g. <c>[Trait("Category", "E2E")]</c>) so
+/// it does not run in fast/inner-loop test cycles. For hermetic, deterministic
+/// authorization tests, prefer <c>WebApplicationFactoryExtensions.CreateClientWithActor</c>
+/// which injects an <c>X-Test-Actor</c> header consumed by the in-process test
+/// authentication scheme — no network, no clock.
+/// </para>
 /// </remarks>
 /// <example>
 /// <code>
