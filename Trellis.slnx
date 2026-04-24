@@ -33,6 +33,7 @@
     <File Path="docs/docfx_project/articles/toc.yml" />
   </Folder>
   <Folder Name="/Examples/">
+    <Project Path="Examples/CookbookSnippets/CookbookSnippets.csproj" />
     <Project Path="Examples/EfCoreExample/EfCoreExample.csproj" />
     <Project Path="Examples/EfCoreExample.Tests/EfCoreExample.Tests.csproj" />
     <Project Path="Examples/ConditionalRequestExample/ConditionalRequestExample.csproj" />
