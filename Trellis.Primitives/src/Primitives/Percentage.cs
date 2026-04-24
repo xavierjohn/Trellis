@@ -98,7 +98,7 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         var field = fieldName.NormalizeFieldName("percentage");
 
         if (value is < 0m or > 100m)
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage must be between 0 and 100." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Percentage must be between 0 and 100."));
 
         return Result.Ok(new Percentage(value));
     }
@@ -118,10 +118,10 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         var field = fieldName.NormalizeFieldName("percentage");
 
         if (value is null)
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage is required." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Percentage is required."));
 
         if (value.Value is < 0m or > 100m)
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage must be between 0 and 100." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Percentage must be between 0 and 100."));
 
         return Result.Ok(new Percentage(value.Value));
     }
@@ -139,12 +139,12 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         var field = fieldName.NormalizeFieldName("percentage");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage is required." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Percentage is required."));
 
         var trimmed = value.TrimEnd('%', ' ');
 
         if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage must be a valid decimal." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Percentage must be a valid decimal."));
 
         return TryCreate(parsed, fieldName);
     }
@@ -163,12 +163,12 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         var field = fieldName.NormalizeFieldName("percentage");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage is required." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Percentage is required."));
 
         var trimmed = value.TrimEnd('%', ' ');
 
         if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage must be a valid decimal." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Percentage must be a valid decimal."));
 
         return TryCreate(parsed, fieldName);
     }
@@ -188,7 +188,7 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         var field = fieldName.NormalizeFieldName("fraction");
 
         if (fraction is < 0m or > 1m)
-            return Result.Fail<Percentage>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Fraction must be between 0 and 1." })));
+            return Result.Fail<Percentage>(Error.UnprocessableContent.ForField(field, "validation.error", "Fraction must be between 0 and 1."));
 
         return TryCreate(fraction * 100m, fieldName);
     }

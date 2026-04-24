@@ -440,7 +440,7 @@ Eighteen nested `sealed record` cases under `Error`. Each case constructor is `i
 | `Error.ContentTooLarge` | `(long? MaxBytes = null)` | 413 | |
 | `Error.UnsupportedMediaType` | `(EquatableArray<string> Supported)` | 415 | |
 | `Error.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | 416 | Drives `Content-Range` synthesis. |
-| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | The single domain-validation case — replaces v1's `ValidationError`. Carries both per-field violations and cross-field rule violations. |
+| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | The single domain-validation case — replaces v1's `ValidationError`. Carries both per-field violations and cross-field rule violations. **Single-violation factories** (preferred over manual construction): `Error.UnprocessableContent.ForField(string propertyName, string reasonCode, string? detail = null)` (escapes `propertyName` via `InputPointer.ForProperty`), `ForField(InputPointer field, string reasonCode, string? detail = null)` (use for nested/array pointers or `InputPointer.Root`), and `ForRule(string reasonCode, string? detail = null)` (single rule, empty fields). Use `Validate` builder when aggregating multiple violations. |
 | `Error.PreconditionRequired` | `(PreconditionKind Condition)` | 428 | Missing concurrency token on PUT. |
 | `Error.TooManyRequests` | `(RetryAfterValue? RetryAfter = null)` | 429 | |
 | `Error.InternalServerError` | `(string FaultId)` | 500 | `Code` returns `FaultId`. **Never holds a live `Exception`**; the `FaultId` indexes into the logging/telemetry layer. |
@@ -945,8 +945,8 @@ Predicate-based validation. `Ensure` short-circuits on the first failed predicat
 ```csharp
 Result<Quote> Validate(Quote q) =>
     Result.Ok(q).EnsureAll(
-        (x => x.Total > 0,            new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("total"), "must_be_positive")))),
-        (x => x.Currency.Length == 3, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("currency"), "iso4217")))));
+        (x => x.Total > 0,            Error.UnprocessableContent.ForField("total", "must_be_positive")),
+        (x => x.Currency.Length == 3, Error.UnprocessableContent.ForField("currency", "iso4217")));
 
 Result<string> NotBlank(string? raw) =>
     raw.EnsureNotNullOrWhiteSpace(new Error.BadRequest("blank", InputPointer.Root));
@@ -1216,9 +1216,7 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe.From("user@example.com");
 
 Result<string> emailResult = maybeEmail.ToResult(
-    new Error.UnprocessableContent(EquatableArray.Create(
-        new FieldViolation(InputPointer.ForProperty("email"), "required")
-        { Detail = "Email is required" })));
+    Error.UnprocessableContent.ForField("email", "required", "Email is required"));
 ```
 
 ### Reading errors without throwing
@@ -1906,13 +1904,13 @@ public sealed class OrderId : ScalarValueObject<OrderId, Guid>, IScalarValue<Ord
 
     public static Result<OrderId> TryCreate(Guid value, string? fieldName = null) =>
         value == Guid.Empty
-            ? Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "required") { Detail = "Order ID is required." })))
+            ? Result.Fail<OrderId>(Error.UnprocessableContent.ForField(fieldName ?? "orderId", "required", "Order ID is required."))
             : Result.Ok(new OrderId(value));
 
     public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
         Guid.TryParse(value, out var guid)
             ? TryCreate(guid, fieldName)
-            : Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "must_be_guid") { Detail = "Order ID must be a GUID." })));
+            : Result.Fail<OrderId>(Error.UnprocessableContent.ForField(fieldName ?? "orderId", "must_be_guid", "Order ID must be a GUID."));
 }
 
 public sealed record OrderPlaced(OrderId OrderId, DateTime OccurredAt) : IDomainEvent;

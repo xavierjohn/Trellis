@@ -752,8 +752,7 @@ public sealed partial class Customer : Aggregate<CustomerId>
 
     public static Result<Customer> Create(CustomerId id, string name, ShippingAddress shipping) =>
         string.IsNullOrWhiteSpace(name)
-            ? Result.Fail<Customer>(new Error.UnprocessableContent(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty("name"), "required") { Detail = "Name is required." })))
+            ? Result.Fail<Customer>(Error.UnprocessableContent.ForField("name", "required", "Name is required."))
             : Result.Ok(new Customer(id, name, shipping));
 }
 
@@ -963,7 +962,9 @@ services.AddControllers();
 - **Construct errors via the closed ADT.** `new Error.NotFound(new ResourceRef("Order", id))` — never `new Error("not_found", "...")` (which won't compile against the abstract base; analyzer `TRLS006` catches inferred attempts).
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
 - **Aggregate per-item Results with `Traverse` / `Sequence`.** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure (matching ADR-002 §3.6 — there is no `AggregateError`). For per-field validation aggregation, use the `Validate` builder which returns a single `ValidationError` carrying every field violation.
+- **Use `Error.UnprocessableContent.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.UnprocessableContent.ForField("email", "invalid_format", "must contain @")` over `new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "invalid_format") { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>` or use the `Validate` builder.
 - **`InputPointer.Root` for whole-body violations.** Use `InputPointer.ForProperty(name)` for field-level violations and `InputPointer.Root` when the rule is object-level.
+- **Only the `Trellis` namespace is auto-imported.** The template's implicit usings include `Trellis` (which exposes `Result`, `Result<T>`, `Error`, `Maybe<T>`, `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredDateTime<T>`, etc.). Every other Trellis namespace requires an explicit `using` per file — e.g. `using Trellis.Primitives;` for `Money` / `EmailAddress` / `PhoneNumber` / `MonetaryAmount` / `CurrencyCode` / `CountryCode` / etc., `using Trellis.StateMachine;` for `StateMachine<TState, TTrigger>`, `using Trellis.Authorization;` for permission types. This is intentional: implicit usings cannot be added at the template level without breaking services that don't reference the package.
 
 ---
 

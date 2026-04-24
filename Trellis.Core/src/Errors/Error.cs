@@ -296,6 +296,45 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "unprocessable-content";
+
+        /// <summary>
+        /// Convenience factory that produces an <see cref="UnprocessableContent"/> carrying a
+        /// single <see cref="FieldViolation"/> built from a property name. The property name is
+        /// converted to a JSON Pointer via <see cref="InputPointer.ForProperty(string)"/>; pass
+        /// an empty or <see langword="null"/> string to target the document root.
+        /// </summary>
+        /// <param name="propertyName">Simple property name or full JSON Pointer.</param>
+        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
+        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <returns>A 422 error wrapping the single field violation.</returns>
+        public static UnprocessableContent ForField(string propertyName, string reasonCode, string? detail = null) =>
+            ForField(InputPointer.ForProperty(propertyName), reasonCode, detail);
+
+        /// <summary>
+        /// Convenience factory that produces an <see cref="UnprocessableContent"/> carrying a
+        /// single <see cref="FieldViolation"/> at the supplied <see cref="InputPointer"/>. Use this
+        /// overload when the pointer was already computed (e.g. nested or array-element pointers,
+        /// or <see cref="InputPointer.Root"/> for object-level violations).
+        /// </summary>
+        /// <param name="field">JSON Pointer locating the offending field.</param>
+        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
+        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <returns>A 422 error wrapping the single field violation.</returns>
+        public static UnprocessableContent ForField(InputPointer field, string reasonCode, string? detail = null) =>
+            new(EquatableArray.Create(new FieldViolation(field, reasonCode, Detail: detail)));
+
+        /// <summary>
+        /// Convenience factory that produces an <see cref="UnprocessableContent"/> carrying a
+        /// single <see cref="RuleViolation"/> — the global / multi-field counterpart to
+        /// <see cref="ForField(string, string, string?)"/>. Use for invariants that are not bound
+        /// to a single field (e.g. <c>"order_must_have_items"</c>, <c>"passwords_must_match"</c>).
+        /// </summary>
+        /// <param name="reasonCode">Stable machine-readable code identifying the rule.</param>
+        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <returns>A 422 error wrapping the single rule violation.</returns>
+        public static UnprocessableContent ForRule(string reasonCode, string? detail = null) =>
+            new(EquatableArray<FieldViolation>.Empty,
+                EquatableArray.Create(new RuleViolation(reasonCode, Detail: detail)));
     }
 
     /// <summary>HTTP 428 — the resource requires a precondition that the request did not include.</summary>
