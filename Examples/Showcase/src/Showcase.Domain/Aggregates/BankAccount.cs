@@ -9,20 +9,6 @@ using Trellis.Showcase.Domain.Lifecycle;
 using Trellis.Showcase.Domain.ValueObjects;
 using Trellis.StateMachine;
 
-public enum AccountStatus
-{
-    Active,
-    Frozen,
-    Closed,
-}
-
-public enum AccountType
-{
-    Checking,
-    Savings,
-    MoneyMarket,
-}
-
 /// <summary>
 /// Bank account aggregate. Lifecycle transitions are modeled as a state machine; all money
 /// operations and state changes return <see cref="Result{T}"/> with strongly-typed
@@ -185,7 +171,7 @@ public class BankAccount : Aggregate<AccountId>
 
     public Result<BankAccount> PayInterest(Money interestAmount, decimal annualRate)
     {
-        if (AccountType != AccountType.Savings)
+        if (!AccountType.EarnsInterest)
             return Result.Fail<BankAccount>(
                 new Error.Conflict(null, "interest.savings.only") { Detail = "Interest is only paid on savings accounts." });
 

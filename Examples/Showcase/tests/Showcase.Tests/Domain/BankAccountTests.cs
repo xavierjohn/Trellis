@@ -12,12 +12,12 @@ public class BankAccountTests
 {
     private static readonly DateTime FixedNow = new(2026, 4, 19, 12, 0, 0, DateTimeKind.Utc);
 
-    private static BankAccount NewActiveAccount(decimal initialDeposit = 100m, decimal dailyLimit = 500m, decimal overdraft = 0m, AccountType type = AccountType.Checking)
+    private static BankAccount NewActiveAccount(decimal initialDeposit = 100m, decimal dailyLimit = 500m, decimal overdraft = 0m, AccountType? type = null)
     {
         var timeProvider = new FakeTimeProvider(FixedNow);
         var result = BankAccount.TryCreate(
             CustomerId.NewUniqueV4(),
-            type,
+            type ?? AccountType.Checking,
             Money.Create(initialDeposit, "USD"),
             Money.Create(dailyLimit, "USD"),
             Money.Create(overdraft, "USD"),

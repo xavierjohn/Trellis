@@ -4,15 +4,6 @@ using Trellis;
 using Trellis.Primitives;
 using Trellis.Showcase.Domain.ValueObjects;
 
-public enum TransactionType
-{
-    Deposit,
-    Withdrawal,
-    Transfer,
-    Fee,
-    Interest,
-}
-
 /// <summary>
 /// Represents a single transaction on an account.
 /// </summary>

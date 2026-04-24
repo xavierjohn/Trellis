@@ -1,5 +1,7 @@
 namespace Trellis.Showcase.Domain.Lifecycle;
 
+using Trellis;
+
 /// <summary>
 /// Triggers that drive a <see cref="Aggregates.BankAccount"/> through its lifecycle states
 /// (<see cref="Aggregates.AccountStatus.Active"/>, <see cref="Aggregates.AccountStatus.Frozen"/>,
@@ -10,9 +12,9 @@ namespace Trellis.Showcase.Domain.Lifecycle;
 /// guarded by the current <see cref="Aggregates.AccountStatus"/>. Only true lifecycle transitions
 /// flow through the state machine, by deliberate design.
 /// </remarks>
-public enum AccountTrigger
+public partial class AccountTrigger : RequiredEnum<AccountTrigger>
 {
-    Freeze,
-    Unfreeze,
-    Close,
+    public static readonly AccountTrigger Freeze = new();
+    public static readonly AccountTrigger Unfreeze = new();
+    public static readonly AccountTrigger Close = new();
 }
