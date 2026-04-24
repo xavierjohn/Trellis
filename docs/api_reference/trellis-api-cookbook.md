@@ -962,6 +962,7 @@ services.AddControllers();
 - **Do not mix sync chain methods with async lambdas.** `result.Map(async v => …)` triggers `TRLS009`; use `MapAsync`. The fix provider can apply this rewrite automatically.
 - **Construct errors via the closed ADT.** `new Error.NotFound(new ResourceRef("Order", id))` — never `new Error("not_found", "...")` (which won't compile against the abstract base; analyzer `TRLS006` catches inferred attempts).
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
+- **Aggregate per-item Results with `Traverse` / `Sequence`.** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure (matching ADR-002 §3.6 — there is no `AggregateError`). For per-field validation aggregation, use the `Validate` builder which returns a single `ValidationError` carrying every field violation.
 - **`InputPointer.Root` for whole-body violations.** Use `InputPointer.ForProperty(name)` for field-level violations and `InputPointer.Root` when the rule is object-level.
 
 ---

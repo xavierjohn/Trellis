@@ -443,6 +443,126 @@ public class TraverseTests : TestBase
 
     #endregion
 
+    #region Sequence
+
+    [Fact]
+    public void Sequence_EmptyCollection_ReturnsEmptySuccess()
+    {
+        var results = Array.Empty<Result<int>>();
+
+        var result = results.Sequence();
+
+        result.Should().BeSuccess();
+        result.Unwrap().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Sequence_AllSucceed_ReturnsAllValuesInOrder()
+    {
+        var results = new[] { Result.Ok(1), Result.Ok(2), Result.Ok(3) };
+
+        var result = results.Sequence();
+
+        result.Should().BeSuccess();
+        result.Unwrap().Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public void Sequence_FirstFails_ReturnsFirstFailure()
+    {
+        var results = new[] { Result.Fail<int>(Error1), Result.Ok(2), Result.Fail<int>(Error2) };
+
+        var result = results.Sequence();
+
+        result.Should().BeFailure().Which.Should().HaveCode(Error1.Code);
+    }
+
+    [Fact]
+    public void Sequence_MiddleFails_StopsAtFirstFailure()
+    {
+        var enumerated = new List<int>();
+        IEnumerable<Result<int>> Gen()
+        {
+            foreach (var x in new[] { 1, 2, 3, 4, 5 })
+            {
+                enumerated.Add(x);
+                yield return x == 3 ? Result.Fail<int>(Error1) : Result.Ok(x);
+            }
+        }
+
+        var result = Gen().Sequence();
+
+        result.Should().BeFailure().Which.Should().HaveCode(Error1.Code);
+        enumerated.Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public void Sequence_NullSource_ThrowsArgumentNullException()
+    {
+        IEnumerable<Result<int>>? source = null;
+
+        var act = () => source!.Sequence();
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Sequence_Composes_With_Select_For_PerItem_Compute()
+    {
+        // Mirrors Sonnet smoke-lab #3 use case: per-line-item subtotals as Result<T>,
+        // then aggregate. Sequence lifts IEnumerable<Result<T>> to Result<IReadOnlyList<T>>.
+        var quantities = new[] { 2, 5, 0, 3 };
+
+        Result<int> Subtotal(int q) =>
+            q > 0 ? Result.Ok(q * 10) : Result.Fail<int>(Error1);
+
+        var result = quantities.Select(Subtotal).Sequence();
+
+        result.Should().BeFailure().Which.Should().HaveCode(Error1.Code);
+    }
+
+    [Fact]
+    public void Sequence_Unit_EmptyCollection_ReturnsSuccess()
+    {
+        var results = Array.Empty<Result>();
+
+        var result = results.Sequence();
+
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public void Sequence_Unit_AllSucceed_ReturnsSuccess()
+    {
+        var results = new[] { Result.Ok(), Result.Ok(), Result.Ok() };
+
+        var result = results.Sequence();
+
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public void Sequence_Unit_FirstFails_ReturnsFirstFailure()
+    {
+        var results = new[] { Result.Ok(), Result.Fail(Error1), Result.Fail(Error2) };
+
+        var result = results.Sequence();
+
+        result.Should().BeFailure().Which.Should().HaveCode(Error1.Code);
+    }
+
+    [Fact]
+    public void Sequence_Unit_NullSource_ThrowsArgumentNullException()
+    {
+        IEnumerable<Result>? source = null;
+
+        var act = () => source!.Sequence();
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
+
     // Helper classes
     private class Fruit
     {

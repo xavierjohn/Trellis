@@ -1046,10 +1046,16 @@ Folds a sequence of inputs through a `Result`-producing selector into a single `
 | `public static Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<IReadOnlyList<TOut>>>` | Cancellation-token overload. |
 | `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, ValueTask<Result<TOut>>> selector)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | ValueTask variant. |
 | `public static Task<Result> TraverseAsync<TIn>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result>> selector, CancellationToken cancellationToken = default)` | `Task<Result>` | Non-generic async traversal for fire-each pipelines. |
+| `public static Result<IReadOnlyList<T>> Sequence<T>(this IEnumerable<Result<T>> source)` | `Result<IReadOnlyList<T>>` | Identity-selector form of `Traverse`. Lifts an `IEnumerable<Result<T>>` to `Result<IReadOnlyList<T>>`; short-circuits on the first failure. |
+| `public static Result Sequence(this IEnumerable<Result> source)` | `Result` | Unit-shaped sequence; short-circuits on the first failure. |
 
 ```csharp
 Task<Result<IReadOnlyList<Order>>> orders =
     ids.TraverseAsync((id, ct) => repo.LoadAsync(id, ct), cancellationToken);
+
+// Sequence: when you already have IEnumerable<Result<T>> from a Select.
+Result<IReadOnlyList<Money>> subtotals =
+    lineItems.Select(item => item.ComputeSubtotal()).Sequence();
 ```
 
 #### When / WhenAll — `WhenExtensions`, `WhenExtensionsAsync`, `WhenAllExtensionsAsync`
