@@ -542,14 +542,30 @@ using Trellis.EntityFrameworkCore;
 [OwnedEntity]
 public partial class Address : ValueObject
 {
-    public string Street { get; private set; }
-    public string City { get; private set; }
+    public string Street { get; private set; } = null!;
+    public string City   { get; private set; } = null!;
 
-    public Address(string street, string city)
+    private Address(string street, string city)
     {
         Street = street;
-        City = city;
+        City   = city;
     }
+
+    public static Result<Address> TryCreate(string street, string city, string? fieldName = null)
+    {
+        var violations = new List<FieldViolation>(2);
+        var prefix = string.IsNullOrWhiteSpace(fieldName) ? null : fieldName;
+        if (string.IsNullOrWhiteSpace(street))
+            violations.Add(new FieldViolation(Pointer(prefix, "street"), "required") { Detail = "Street is required." });
+        if (string.IsNullOrWhiteSpace(city))
+            violations.Add(new FieldViolation(Pointer(prefix, "city"), "required") { Detail = "City is required." });
+        return violations.Count > 0
+            ? Result.Fail<Address>(new Error.UnprocessableContent(EquatableArray.Create(violations.ToArray())))
+            : Result.Ok(new Address(street.Trim(), city.Trim()));
+    }
+
+    private static InputPointer Pointer(string? owner, string leaf) =>
+        owner is null ? InputPointer.ForProperty(leaf) : new InputPointer($"/{owner}/{leaf}");
 
     protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
