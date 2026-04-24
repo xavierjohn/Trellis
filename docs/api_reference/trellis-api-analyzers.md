@@ -145,6 +145,7 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
   - `maybe.HasValue && maybe.Value ...` short-circuit
   - safe lambda parameters inside Trellis Maybe APIs such as `Bind`, `Map`, `Tap`, `Ensure`, `Match`
   - prior assignment from `Maybe.From(...)` when `T` is a non-nullable value type and the variable is not reassigned
+- **Inside `Expression<Func<...>>` lambdas (EF Core, Specifications, FluentValidation):** the rule is *not* relaxed. Use the `HasValue && Value` short-circuit idiom — e.g. `e => e.SubmittedAt.HasValue && e.SubmittedAt.Value < cutoff`. EF Core needs the `HasValue` predicate to translate to `IS NOT NULL`, and the short-circuit form keeps the analyzer satisfied without `#pragma` suppressions.
 - Code fix: `AddResultGuardCodeFixProvider`.
 
 > **TRLS003, TRLS004 (removed in v2):** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` (TRLS003) and `Result<T>.Error` (TRLS004). Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
