@@ -4,6 +4,8 @@
 **Namespace:** `Trellis.Mediator`
 **Purpose:** Provides Trellis result-aware Mediator pipeline behaviors plus DI helpers for validation, authorization, tracing, logging, and optional resource authorization.
 
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+
 ## Types
 
 ### AuthorizationBehavior<TMessage, TResponse>
@@ -144,7 +146,7 @@ No public constructors.
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `PipelineBehaviors` | `IReadOnlyList<Type>` | Ordered pipeline behavior types: `ExceptionBehavior<,>`, `TracingBehavior<,>`, `LoggingBehavior<,>`, `AuthorizationBehavior<,>`, `ValidationBehavior<,>`. Resource authorization is not part of this list. |
+| `PipelineBehaviors` | `IReadOnlyList<Type>` | Ordered pipeline behavior types (outermost → innermost): `ExceptionBehavior<,>`, `TracingBehavior<,>`, `LoggingBehavior<,>`, `AuthorizationBehavior<,>`, `ValidationBehavior<,>`. Resource authorization and the EFCore `TransactionalCommandBehavior` are opt-in and not part of this list. |
 
 **Methods**
 
@@ -203,18 +205,36 @@ Operator-tunable redaction settings consumed by `LoggingBehavior` and `TracingBe
 | --- | --- | --- |
 | `IncludeErrorDetail` | `bool` | When `true`, the logging and tracing behaviors include `Error.Detail` in their emitted message and activity status description. Defaults to `false` (Detail is redacted; only the stable `Error.Code` and type name are emitted). |
 
+### IMessageValidator<TMessage>
+**Declaration**
+
+```csharp
+public interface IMessageValidator<in TMessage>
+    where TMessage : global::Mediator.IMessage
+```
+
+Extensibility hook for the unified validation stage. Implementations are resolved from DI as `IEnumerable<IMessageValidator<TMessage>>` by `ValidationBehavior<TMessage, TResponse>`; every registered validator runs before the handler. External packages (e.g., `Trellis.FluentValidation`) plug additional validation sources into the pipeline through this interface without taking a dependency on a specific validation library or message-side interface from `Trellis.Mediator`.
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)` | `ValueTask<IResult>` | Returns `Result.Ok()` on success, or `Result.Fail(new Error.UnprocessableContent(...))` with field/rule violations on failure. `Error.UnprocessableContent` failures from every validator (and `IValidate.Validate()` if implemented) are aggregated into a single response failure by `ValidationBehavior`. Returning a non-`Error.UnprocessableContent` failure (e.g., `Error.Conflict`, `Error.Forbidden`) is allowed but short-circuits the stage immediately and is propagated as-is. |
+
 ### ValidationBehavior<TMessage, TResponse>
 **Declaration**
 
 ```csharp
-public sealed class ValidationBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, TResponse> where TMessage : IValidate, global::Mediator.IMessage where TResponse : IResult, IFailureFactory<TResponse>
+public sealed class ValidationBehavior<TMessage, TResponse>(IEnumerable<IMessageValidator<TMessage>> validators) : IPipelineBehavior<TMessage, TResponse> where TMessage : global::Mediator.IMessage where TResponse : IResult, IFailureFactory<TResponse>
 ```
+
+Unified validation stage. Runs `IValidate.Validate()` (when the message implements `IValidate`) and every `IMessageValidator<TMessage>` registered in DI for the message, then aggregates `Error.UnprocessableContent` failures into a single response. The behavior is registered for **all** messages — when the message does not implement `IValidate` and no validators are registered it is a no-op pass-through.
 
 **Constructors**
 
 | Signature | Description |
 | --- | --- |
-| `public ValidationBehavior<TMessage, TResponse>()` | Implicit parameterless constructor. |
+| `public ValidationBehavior(IEnumerable<IMessageValidator<TMessage>> validators)` | Receives every `IMessageValidator<TMessage>` registered in DI. The collection is iterated once per request. |
 
 **Properties**
 
@@ -226,7 +246,7 @@ public sealed class ValidationBehavior<TMessage, TResponse> : IPipelineBehavior<
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Calls `message.Validate()`. When validation fails, returns `TResponse.CreateFailure(validationResult.Error)` using whatever error object `Validate()` returned; it is not limited to `Error.UnprocessableContent`. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Aggregation rules: (1) Multiple `Error.UnprocessableContent` failures from `IValidate` and validators are merged into a single `Error.UnprocessableContent` whose `Fields` and `Rules` collect every reported violation. (2) An `Error.UnprocessableContent` with empty `Fields` AND empty `Rules` still short-circuits the handler — original failure semantics are preserved. (3) A non-`Error.UnprocessableContent` failure returned by any source short-circuits the stage immediately and is propagated as-is. |
 
 ## Extension methods
 
@@ -248,7 +268,22 @@ public static IServiceCollection AddSharedResourceLoader<TMessage, TResource, TI
 
 ```csharp
 public interface IValidate
+public interface IMessageValidator<in TMessage> where TMessage : global::Mediator.IMessage
 ```
+
+## Behavioral notes
+
+### Canonical pipeline order
+
+The Trellis pipeline executes outermost → innermost in this order. The first five are registered by `AddTrellisBehaviors()`; the last two are opt-in.
+
+1. **`ExceptionBehavior<,>`** — catches unhandled exceptions (except `OperationCanceledException`), logs them, and converts them to a typed `TResponse.CreateFailure(new Error.InternalServerError(...))`. Sits outermost so every other layer is wrapped.
+2. **`TracingBehavior<,>`** — opens an OpenTelemetry `Activity` per message under the `"Trellis.Mediator"` activity source. On failure tags `error.code` / `error.type` and sets `ActivityStatusCode.Error`. `Error.Detail` is redacted from `StatusDescription` unless `TrellisMediatorTelemetryOptions.IncludeErrorDetail` is `true`.
+3. **`LoggingBehavior<,>`** — structured logging with start/end and elapsed-ms entries; emits the stable `Error.Code` on failure. Inherits the same correlation context propagated by the surrounding `Activity`. `Error.Detail` is redacted unless `IncludeErrorDetail` is `true`.
+4. **`AuthorizationBehavior<,>`** — runs for `IAuthorize` messages; resolves the actor and rejects with `Error.Forbidden("authorization.insufficient.permissions")` when `RequiredPermissions` are not satisfied. No I/O.
+5. **`ResourceAuthorizationBehavior<,,>`** *(opt-in via `AddResourceAuthorization(...)`)* — runs for `IAuthorizeResource<TResource>` messages. Inserted **immediately before `ValidationBehavior<,>`** so a 403 short-circuits before a 422 is computed. Resolves the actor first (fail-fast, no I/O when null), then loads the resource via `IResourceLoader<TMessage, TResource>` and calls `message.Authorize(actor, resource)`.
+6. **`ValidationBehavior<,>`** — unified validation stage. Runs `IValidate.Validate()` if implemented, then every `IMessageValidator<TMessage>` resolved from DI; aggregates all `Error.UnprocessableContent` failures into a single response. External validation sources (e.g., the `Trellis.FluentValidation` adapter) participate here without occupying their own pipeline slot.
+7. **`TransactionalCommandBehavior<,>`** *(opt-in, lives in `Trellis.EntityFrameworkCore`, not registered by `AddTrellisBehaviors()`)* — wraps the handler for `ICommand<TResponse>` messages and calls `IUnitOfWork.CommitAsync` on success. Register via `AddTrellisUnitOfWork<TContext>()` from the EFCore package **after** `AddTrellisBehaviors()` so it lands innermost (closest to the handler) and commit failures remain visible to outer logging/tracing. Queries are skipped.
 
 ## Code examples
 

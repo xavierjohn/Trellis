@@ -4,6 +4,8 @@
 - **Namespace:** `Trellis.Analyzers`
 - **Purpose:** Roslyn analyzers and code fixes that enforce correct Trellis `Result<T>`, `Maybe<T>`, EF Core, and value-object usage.
 
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+
 ## Diagnostics
 
 | ID | Severity | Title | Description |
@@ -13,7 +15,7 @@
 | `TRLS003` | Warning | Unsafe access to Maybe.Value | Maybe.Value throws an InvalidOperationException if the Maybe has no value. Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult. |
 | `TRLS004` | Warning | Result is double-wrapped | Result should not be wrapped inside another Result. This creates Result<Result<T>> which is almost always unintended. If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result. |
 | `TRLS005` | Warning | Incorrect async Result usage | Task<Result<T>> should be awaited, not blocked with .Result or .Wait(). Blocking can cause deadlocks and prevents proper async execution. Use await instead. |
-| `TRLS006` | Info | Use a specific Error case instead of constructing the abstract base | `Error` is an abstract closed ADT. Construct one of the nested cases — `new Error.NotFound(...)`, `new Error.UnprocessableContent(...)`, etc. The base record cannot be instantiated directly. |
+| `TRLS006` | Info | Use specific error type instead of base Error class | `Error` is an abstract closed ADT. Construct one of the nested cases — `new Error.NotFound(...)`, `new Error.UnprocessableContent(...)`, etc. The base record cannot be instantiated directly. |
 | `TRLS007` | Warning | Maybe is double-wrapped | Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. Consider converting to Result with ToResult() for better composability. |
 | `TRLS008` | Info | Consider using Result.Combine | When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result. |
 | `TRLS009` | Warning | Use async method variant for async lambda | When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited. |
@@ -25,7 +27,7 @@
 | `TRLS015` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns the non-generic `Result`) instead. |
 | `TRLS016` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
 | `TRLS017` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
-| `TRLS018` | Warning | Unsafe Result deconstruction | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
+| `TRLS018` | Warning | Result<T> deconstruction reads value without success gate | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
 | `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | Per ADR-002 §3.5.1, `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
 | `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
 | `TRLS032` | Error | `MinimumLength` exceeds `MaximumLength` | Emitted by the Primitives source generator when a `[StringLength]` attribute has `MinimumLength > MaximumLength`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN002`)* |
@@ -47,6 +49,74 @@ public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
 Generator IDs (`TRLS031`–`TRLS038`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
+
+### Constant → diagnostic ID → emitter
+
+Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID it carries, and the analyzer (or generator) that emits it. Use the constant name in `[SuppressMessage]` and the diagnostic ID in `#pragma warning disable`.
+
+| C# constant | Diagnostic ID | Emitted by |
+| --- | --- | --- |
+| `ResultNotHandled` | `TRLS001` | `ResultNotHandledAnalyzer` |
+| `UseBindInsteadOfMap` | `TRLS002` | `UseBindInsteadOfMapAnalyzer` |
+| `UnsafeMaybeValueAccess` | `TRLS003` | `UnsafeValueAccessAnalyzer` |
+| `ResultDoubleWrapping` | `TRLS004` | `ResultDoubleWrappingAnalyzer` |
+| `AsyncResultMisuse` | `TRLS005` | `AsyncResultMisuseAnalyzer` |
+| `UseSpecificErrorType` | `TRLS006` | `ErrorBaseClassAnalyzer` |
+| `MaybeDoubleWrapping` | `TRLS007` | `MaybeDoubleWrappingAnalyzer` |
+| `UseResultCombine` | `TRLS008` | `UseResultCombineAnalyzer` |
+| `UseAsyncMethodVariant` | `TRLS009` | `AsyncLambdaWithSyncMethodAnalyzer` |
+| `ThrowInResultChain` | `TRLS010` | `ThrowInResultChainAnalyzer` |
+| `EmptyErrorMessage` | `TRLS011` | `EmptyErrorMessageAnalyzer` |
+| `ComparingToNull` | `TRLS012` | `ComparingToNullAnalyzer` |
+| `UnsafeMaybeValueInLinq` | `TRLS013` | `UnsafeValueInLinqAnalyzer` |
+| `CombineChainTooLong` | `TRLS014` | `CombineLimitAnalyzer` |
+| `UseSaveChangesResult` | `TRLS015` | `UseSaveChangesResultAnalyzer` |
+| `HasIndexMaybeProperty` | `TRLS016` | `HasIndexMaybePropertyAnalyzer` |
+| `WrongAttributeNamespace` | `TRLS017` | `WrongAttributeNamespaceAnalyzer` |
+| `UnsafeResultDeconstruction` | `TRLS018` | `UnsafeResultDeconstructionAnalyzer` |
+| `DefaultResultOrMaybe` | `TRLS019` | `DefaultResultOrMaybeAnalyzer` |
+| `UnsupportedRequiredBaseType` | `TRLS031` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `InvalidStringLengthRange` | `TRLS032` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `InvalidRangeMinExceedsMax` | `TRLS033` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `DecimalRangeExceedsDecimalRange` | `TRLS034` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `MaybePropertyShouldBePartial` | `TRLS035` | `MaybePartialPropertyGenerator` (Trellis.EntityFrameworkCore.Generator) |
+| `OwnedEntityShouldBePartial` | `TRLS036` | `OwnedEntityGenerator` (Trellis.EntityFrameworkCore.Generator) |
+| `OwnedEntityAlreadyHasParameterlessCtor` | `TRLS037` | `OwnedEntityGenerator` (Trellis.EntityFrameworkCore.Generator) |
+| `OwnedEntityMustInheritValueObject` | `TRLS038` | `OwnedEntityGenerator` (Trellis.EntityFrameworkCore.Generator) |
+
+## Descriptors — `DiagnosticDescriptors`
+
+The public static class `Trellis.Analyzers.DiagnosticDescriptors` exposes one `public static readonly DiagnosticDescriptor` field per analyzer-emitted diagnostic. Analyzer implementations register these via `SupportedDiagnostics`; consumers normally don't reference them directly, but the field names are stable API and can be used in tests or in custom Roslyn tooling that re-exports the rules.
+
+| Field | Backing ID | Default severity | Category |
+| --- | --- | --- | --- |
+| `ResultNotHandled` | `TRLS001` | Warning | Trellis.Result |
+| `UseBindInsteadOfMap` | `TRLS002` | Info | Trellis.Result |
+| `UnsafeMaybeValueAccess` | `TRLS003` | Warning | Trellis.Maybe |
+| `ResultDoubleWrapping` | `TRLS004` | Warning | Trellis.Result |
+| `AsyncResultMisuse` | `TRLS005` | Warning | Trellis.Result |
+| `UseSpecificErrorType` | `TRLS006` | Info | Trellis.Error |
+| `MaybeDoubleWrapping` | `TRLS007` | Warning | Trellis.Maybe |
+| `UseResultCombine` | `TRLS008` | Info | Trellis.Result |
+| `UseAsyncMethodVariant` | `TRLS009` | Warning | Trellis.Result |
+| `ThrowInResultChain` | `TRLS010` | Warning | Trellis.Result |
+| `EmptyErrorMessage` | `TRLS011` | Warning | Trellis.Error |
+| `ComparingToNull` | `TRLS012` | Warning | Trellis.Result |
+| `UnsafeValueInLinq` | `TRLS013` | Warning | Trellis.Maybe |
+| `CombineChainTooLong` | `TRLS014` | Error | Trellis.Result |
+| `UseSaveChangesResult` | `TRLS015` | Warning | Trellis.EntityFrameworkCore |
+| `HasIndexMaybeProperty` | `TRLS016` | Warning | Trellis.EntityFrameworkCore |
+| `WrongAttributeNamespace` | `TRLS017` | Warning | Trellis.Primitives |
+| `UnsafeResultDeconstruction` | `TRLS018` | Warning | Trellis.Result |
+| `DefaultResultOrMaybe` | `TRLS019` | Warning | Trellis.Result |
+
+> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS038`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
+
+```csharp
+// Re-exporting an analyzer rule in a custom analyzer:
+public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
+    ImmutableArray.Create(Trellis.Analyzers.DiagnosticDescriptors.ResultNotHandled);
+```
 
 ## Analyzer classes
 

@@ -1,12 +1,18 @@
 # Trellis API Primitives
 
-**Package:** `Trellis.Primitives` | **Namespaces:** `Trellis.Primitives` | **Purpose:** the 13 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`) plus VO-runtime infrastructure (`ParsableJsonConverter<T>`, `CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTrace`).
+**Package:** `Trellis.Primitives`  
+**Namespaces:** `Trellis`, `Trellis.Primitives`  
+**Purpose:** the 13 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`) plus VO-runtime infrastructure (`ParsableJsonConverter<T>`, `CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTrace`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
 
-The base classes that these concrete primitives derive from (`RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredLong<TSelf>`, `RequiredBool<TSelf>`, `RequiredDateTime<TSelf>`, `RequiredEnum<TSelf>`), the validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), `StringExtensions`, and the `RequiredEnumJsonConverter<TRequiredEnum>` JSON converter all ship in `Trellis.Core` (since Phase 2). See [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes). The generator that emits the `TryCreate`/`Create`/`Parse` partial bodies (`Trellis.Core.Generator`) is bundled inside `Trellis.Core.nupkg` under `analyzers/dotnet/cs/`.
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+
+> **Slimmed-down package (Phase 2).** PR #403 moved the `Required*<TSelf>` base classes (`RequiredString`, `RequiredEnum`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredGuid`, `RequiredBool`, `RequiredDateTime`), the validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), `StringExtensions` (`NormalizeFieldName`, `ToCamelCase`, `ParseScalarValue`, `TryParseScalarValue`), and the `RequiredEnumJsonConverter<TRequiredEnum>` from `Trellis.Primitives` into `Trellis.Core`. The base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`) and base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`) also live in `Trellis.Core`. `Trellis.Primitives` now ships only the concrete VOs that build on those bases plus the JSON/tracing infrastructure listed below. See [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for everything that moved.
+>
+> The incremental generator that emits the `TryCreate`/`Create`/`Parse`/`TryParse`/`JsonConverter` partial bodies for `Required*<TSelf>` derivations (`Trellis.Core.Generator`) is bundled inside `Trellis.Core.nupkg` under `analyzers/dotnet/cs/`. `Trellis.Primitives` no longer references its own generator package — installing `Trellis.Core` (or transitively, `Trellis.Primitives` which depends on it) attaches the analyzer automatically.
 
 ## Types
 
-> Base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`), base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`), validation attributes (`RangeAttribute`, `StringLengthAttribute`, `EnumValueAttribute`), `StringExtensions`, and the `Required*<TSelf>` base classes are all documented in [trellis-api-core.md](trellis-api-core.md). They live in `Trellis.Core` and are used by every concrete VO listed below.
+> Base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`), base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`), validation attributes (`RangeAttribute`, `StringLengthAttribute`, `EnumValueAttribute`), `StringExtensions`, the `Required*<TSelf>` base classes, and `RequiredEnumJsonConverter<TRequiredEnum>` are all documented in [trellis-api-core.md](trellis-api-core.md). They live in `Trellis.Core` and are used by every concrete VO listed below. The inherited `static TSelf Create(TPrimitive value)` factory documented on `ScalarValueObject<TSelf, T>` is **not** repeated on each concrete VO below.
 
 ### `PrimitiveValueObjectTrace`
 
@@ -68,7 +74,6 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
 | `public static Result<Age> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)` | `Result<Age>` | Culture-aware string parsing. |
 | `public static Age Parse(string? s, IFormatProvider? provider)` | `Age` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Age result)` | `bool` | Safe parse helper. |
-| `public static Age Create(int value)` | `Age` | Inherited throwing scalar factory. |
 
 ### `CountryCode`
 
@@ -85,7 +90,6 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
 | `public static Result<CountryCode> TryCreate(string? value, string? fieldName = null)` | `Result<CountryCode>` | Requires exactly two letters. |
 | `public static CountryCode Parse(string? s, IFormatProvider? provider)` | `CountryCode` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out CountryCode result)` | `bool` | Safe parse helper. |
-| `public static CountryCode Create(string value)` | `CountryCode` | Inherited throwing scalar factory. |
 
 ### `CurrencyCode`
 
@@ -102,7 +106,6 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
 | `public static Result<CurrencyCode> TryCreate(string? value, string? fieldName = null)` | `Result<CurrencyCode>` | Requires exactly three letters. |
 | `public static CurrencyCode Parse(string? s, IFormatProvider? provider)` | `CurrencyCode` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out CurrencyCode result)` | `bool` | Safe parse helper. |
-| `public static CurrencyCode Create(string value)` | `CurrencyCode` | Inherited throwing scalar factory. |
 
 ### `EmailAddress`
 
@@ -119,7 +122,6 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
 | `public static Result<EmailAddress> TryCreate(string? value, string? fieldName = null)` | `Result<EmailAddress>` | Regex-based email validation. |
 | `public static EmailAddress Parse(string? s, IFormatProvider? provider)` | `EmailAddress` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out EmailAddress result)` | `bool` | Safe parse helper. |
-| `public static EmailAddress Create(string value)` | `EmailAddress` | Inherited throwing scalar factory. |
 
 ### `Hostname`
 
@@ -136,7 +138,6 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
 | `public static Result<Hostname> TryCreate(string? value, string? fieldName = null)` | `Result<Hostname>` | RFC 1123 hostname validation. |
 | `public static Hostname Parse(string? s, IFormatProvider? provider)` | `Hostname` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Hostname result)` | `bool` | Safe parse helper. |
-| `public static Hostname Create(string value)` | `Hostname` | Inherited throwing scalar factory. |
 
 ### `IpAddress`
 
@@ -154,7 +155,6 @@ public class IpAddress : ScalarValueObject<IpAddress, string>, IScalarValue<IpAd
 | `public IPAddress ToIPAddress()` | `IPAddress` | Returns cached parsed address. |
 | `public static IpAddress Parse(string? s, IFormatProvider? provider)` | `IpAddress` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out IpAddress result)` | `bool` | Safe parse helper. |
-| `public static IpAddress Create(string value)` | `IpAddress` | Inherited throwing scalar factory. |
 
 ### `LanguageCode`
 
@@ -171,7 +171,6 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
 | `public static Result<LanguageCode> TryCreate(string? value, string? fieldName = null)` | `Result<LanguageCode>` | Requires exactly two letters. |
 | `public static LanguageCode Parse(string? s, IFormatProvider? provider)` | `LanguageCode` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out LanguageCode result)` | `bool` | Safe parse helper. |
-| `public static LanguageCode Create(string value)` | `LanguageCode` | Inherited throwing scalar factory. |
 
 ### `MonetaryAmount`
 
@@ -199,7 +198,6 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 | `public static explicit operator MonetaryAmount(decimal value)` | `MonetaryAmount` | Explicit cast using `Create(decimal)`. |
 | `public override string ToString()` | `string` | Invariant decimal string. |
 | `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Returns `Zero` for empty collections. |
-| `public static MonetaryAmount Create(decimal value)` | `MonetaryAmount` | Inherited throwing scalar factory. |
 
 ### `CompositeValueObjectJsonConverter<T>`
 
@@ -279,7 +277,6 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Percentage result)` | `bool` | Safe parse helper. |
 | `public static explicit operator Percentage(decimal value)` | `Percentage` | Explicit cast using `Create(decimal)`. |
 | `public override string ToString()` | `string` | Appends `%` to `Value`. |
-| `public static Percentage Create(decimal value)` | `Percentage` | Inherited throwing scalar factory. |
 
 ### `PhoneNumber`
 
@@ -297,7 +294,6 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
 | `public static PhoneNumber Parse(string? s, IFormatProvider? provider)` | `PhoneNumber` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out PhoneNumber result)` | `bool` | Safe parse helper. |
 | `public string GetCountryCode()` | `string` | Extracts the E.164 country calling code. |
-| `public static PhoneNumber Create(string value)` | `PhoneNumber` | Inherited throwing scalar factory. |
 
 ### `Slug`
 
@@ -314,7 +310,6 @@ public partial class Slug : ScalarValueObject<Slug, string>, IScalarValue<Slug, 
 | `public static Result<Slug> TryCreate(string? value, string? fieldName = null)` | `Result<Slug>` | Validates lowercase letters, digits, and single hyphen separators. |
 | `public static Slug Parse(string? s, IFormatProvider? provider)` | `Slug` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Slug result)` | `bool` | Safe parse helper. |
-| `public static Slug Create(string value)` | `Slug` | Inherited throwing scalar factory. |
 
 ### `Url`
 
@@ -338,7 +333,6 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
 | `public Uri ToUri()` | `Uri` | Returns cached `Uri`. |
 | `public static Url Parse(string? s, IFormatProvider? provider)` | `Url` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Url result)` | `bool` | Safe parse helper. |
-| `public static Url Create(string value)` | `Url` | Inherited throwing scalar factory. |
 
 ## Base class hierarchy
 
@@ -383,13 +377,13 @@ public static class Example
         var country = CountryCode.Create("US");
         var phone = PhoneNumber.Create("+14155551234");
 
-        var percentage = Percentage.FromFraction(0.15m).Value;
+        var percentage = Percentage.FromFraction(0.15m).TryGetValue(out var p) ? p : Percentage.Zero;
         var amount = MonetaryAmount.Create(12.34m);
         var taxAmount = percentage.Of(amount);
 
         var total = Money.Create(12.34m, "USD");
         var shipping = Money.Create(2.00m, "USD");
-        var grandTotal = total.Add(shipping).Value;
+        var grandTotal = total.Add(shipping).TryGetValue(out var gt) ? gt : total;
 
         _ = (email, country, phone, taxAmount, grandTotal);
     }

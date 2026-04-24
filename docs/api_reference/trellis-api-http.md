@@ -4,6 +4,8 @@
 **Namespace:** `Trellis.Http`
 **Purpose:** Bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>` pipelines and deserialize JSON payloads into `Result<T>` / `Result<Maybe<T>>`.
 
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+
 > **v2 surface (ADR-002 §7).** This package was reduced from 60+ overloads to a single static class with seven canonical methods. See the *Breaking changes from v1* section at the end of this file.
 
 ## Type

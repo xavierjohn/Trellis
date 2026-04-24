@@ -4,9 +4,55 @@
 
 - **Package:** `Trellis.FluentValidation`
 - **Namespace:** `Trellis.FluentValidation`
-- **Purpose:** Converts FluentValidation results into Trellis `Result<T>` failures backed by `Error.UnprocessableContent` (one `FieldViolation` per FluentValidation failure, with the FluentValidation message in `Detail`).
+- **Purpose:** Two integration paths for FluentValidation in Trellis:
+  1. **Mediator integration** — `AddTrellisFluentValidation()` plugs FluentValidation validators into the existing `ValidationBehavior<TMessage,TResponse>` via the open-generic `IMessageValidator<TMessage>` adapter. No additional pipeline behavior is added.
+  2. **Standalone helpers** — `FluentValidationResultExtensions` converts a `ValidationResult` (or runs an `IValidator<T>` synchronously/asynchronously) into a `Result<T>` failure backed by `Error.UnprocessableContent`.
+
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
 ## Types
+
+### `FluentValidationServiceCollectionExtensions`
+
+**Declaration**
+
+```csharp
+public static class FluentValidationServiceCollectionExtensions
+```
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IServiceCollection AddTrellisFluentValidation(this IServiceCollection services)` | `IServiceCollection` | Registers `FluentValidationMessageValidatorAdapter<TMessage>` as the open-generic `IMessageValidator<TMessage>` implementation. Every `IValidator<T>` registered for the message in DI then runs inside the existing `ValidationBehavior<TMessage,TResponse>` and contributes its failures to an aggregated `Error.UnprocessableContent`. **AOT/trim-safe**; uses open-generic DI registration with no reflection. Idempotent — repeated calls do not duplicate the adapter. Throws `ArgumentNullException` when `services` is `null`. Validators must be registered explicitly (e.g., `services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderCommandValidator>()`). |
+| `public static IServiceCollection AddTrellisFluentValidation(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Calls the parameterless overload, then scans the supplied assemblies for concrete `IValidator<T>` implementations and registers each as a scoped service. **Not AOT or trim-compatible** — annotated `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`. Skips abstract/interface/open-generic types. Deduplicates so repeated calls (or overlapping assemblies) do not register the same validator twice. Throws `ArgumentNullException` for null `services`/`assemblies`, and `ArgumentException` when `assemblies` is empty or contains a `null` element. Tolerates `ReflectionTypeLoadException` by using only loadable types. |
+
+### `FluentValidationMessageValidatorAdapter<TMessage>`
+
+**Declaration**
+
+```csharp
+public sealed class FluentValidationMessageValidatorAdapter<TMessage>(
+    IEnumerable<IValidator<TMessage>> validators)
+    : IMessageValidator<TMessage>
+    where TMessage : Mediator.IMessage
+```
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)` | `ValueTask<IResult>` | Runs every injected `IValidator<TMessage>` against `message`. Returns `Result.Ok()` when all validators pass (or none are registered — the empty injected sequence allocates no violations). Otherwise aggregates every `ValidationFailure` into a single `Error.UnprocessableContent(EquatableArray<FieldViolation>)`. Each FluentValidation failure becomes a `FieldViolation(new InputPointer(pointerPath), reasonCode) { Detail = failure.ErrorMessage }`. `pointerPath` is derived by `JsonPointerNormalizer.ToJsonPointer` from the FV property name; `reasonCode` defaults to `"validation.error"` when `failure.ErrorCode` is null/whitespace. Root-level failures (whitespace `PropertyName`) use `typeof(TMessage).Name`. |
+
+**Pointer normalization (RFC 6901)**
+
+FluentValidation property names are converted to JSON Pointers so they round-trip through `InputPointer`:
+
+| FluentValidation `PropertyName` | Resulting `InputPointer.RawValue` |
+| --- | --- |
+| `Email` | `/Email` |
+| `Address.PostCode` | `/Address/PostCode` |
+| `Items[0].Sku` | `/Items/0/Sku` |
 
 ### `FluentValidationResultExtensions`
 
@@ -60,7 +106,19 @@ public static async Task<Result<T>> ValidateToResultAsync<T>(
 
 ## Behavioral notes
 
-- The extension methods are stateless; they do not keep shared mutable state or add synchronization.
+### Mediator integration (`AddTrellisFluentValidation` + adapter)
+
+- FluentValidation does **not** add an additional pipeline behavior. It plugs into the existing `ValidationBehavior<TMessage,TResponse>` via the open-generic `IMessageValidator<TMessage>` extension point.
+- The adapter is registered scoped, matching the typical scoped lifetime of FluentValidation validators.
+- When no `IValidator<TMessage>` is registered for a message type, `IEnumerable<IValidator<TMessage>>` is empty, the adapter returns `Result.Ok()`, and no allocations are performed.
+- All validators are awaited sequentially; failures from every validator are aggregated into a single `Error.UnprocessableContent` rather than short-circuiting on the first failure.
+- The adapter forwards the ambient `CancellationToken` to `validator.ValidateAsync`.
+- `AddTrellisFluentValidation()` is **idempotent** — calling it multiple times (directly, or via the scanning overload) only registers the open-generic adapter once.
+- The assembly-scan overload deduplicates `(serviceType, implementationType)` pairs against existing registrations, so calling it twice with overlapping assemblies will not register a validator more than once.
+
+### Standalone helpers (`FluentValidationResultExtensions`)
+
+- The extension methods are stateless;they do not keep shared mutable state or add synchronization.
 - Shared validator instances are only as concurrency-safe as the underlying `IValidator<T>` implementation; these helpers do not change that.
 - `ToResult<T>` only null-checks `validationResult`; it does not independently reject a `null` `value`.
 - Validation failures are converted into `Error.UnprocessableContent` whose `Fields` collection is built from one `FieldViolation` per FluentValidation failure (no grouping; multiple failures on the same property emit multiple violations).
@@ -71,6 +129,31 @@ public static async Task<Result<T>> ValidateToResultAsync<T>(
 - Exceptions from FluentValidation itself are not caught, except for the explicit `ArgumentNullException.ThrowIfNull(...)` guards on `validationResult` and `validator`.
 
 ## Code examples
+
+### Wire FluentValidation into the Mediator pipeline (AOT-safe)
+
+```csharp
+using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+
+services.AddTrellisBehaviors();
+services.AddTrellisFluentValidation();
+
+// Register validators explicitly so the call site is AOT/trim-friendly.
+services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderCommandValidator>();
+services.AddScoped<IValidator<UpdateOrderCommand>, UpdateOrderCommandValidator>();
+```
+
+### Wire FluentValidation with assembly scanning (not AOT-compatible)
+
+```csharp
+using Trellis.FluentValidation;
+
+services.AddTrellisBehaviors();
+services.AddTrellisFluentValidation(typeof(CreateOrderCommandValidator).Assembly);
+```
 
 ### Convert an existing `ValidationResult`
 
