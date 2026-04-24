@@ -86,27 +86,10 @@ public static class ServiceCollectionExtensions
     /// </example>
     public static IMvcBuilder AddScalarValueValidation(this IMvcBuilder builder)
     {
-        builder.Services.Configure<MvcJsonOptions>(options =>
-            ConfigureJsonOptions(options.JsonSerializerOptions));
-
-        builder.Services.Configure<MvcOptions>(options =>
-            options.Filters.Add<ScalarValueValidationFilter>());
-
-        builder.AddMvcOptions(options =>
-        {
-            options.ModelBinderProviders.Insert(0, new ScalarValueModelBinderProvider());
-
-            // Prevent MVC's ValidationVisitor from recursing into Maybe<T> properties.
-            // Without this, accessing Maybe<T>.Value via reflection throws when HasNoValue.
-            options.ModelMetadataDetailsProviders.Add(
-                new MaybeSuppressChildValidationMetadataProvider());
-        });
-
-        // Configure [ApiController] to not automatically return 400 for invalid ModelState
-        // This allows our ScalarValueValidationFilter to handle validation errors properly
-        builder.Services.Configure<ApiBehaviorOptions>(options =>
-            options.SuppressModelStateInvalidFilter = true);
-
+        // Delegate to the IServiceCollection overload so that callers chaining
+        // AddControllers().AddScalarValueValidation() get the same idempotent registration
+        // path as callers using the simpler AddTrellisAsp() entry point.
+        builder.Services.AddScalarValueValidation();
         return builder;
     }
 
@@ -328,6 +311,31 @@ public static class ServiceCollectionExtensions
         // Configure Minimal API JSON options
         services.ConfigureHttpJsonOptions(options =>
             ConfigureJsonOptions(options.SerializerOptions));
+
+        // Configure MVC-specific binding/validation pipeline for controllers.
+        // These Configure<MvcOptions>/Configure<ApiBehaviorOptions> registrations are no-ops
+        // when AddControllers() is never called, but ensure a controller-using host that calls
+        // only AddTrellisAsp() (without chaining .AddScalarValueValidation() on AddControllers())
+        // still gets MaybeSuppressChildValidationMetadataProvider, the scalar model binder, the
+        // scalar validation filter, and SuppressModelStateInvalidFilter — matching what Recipe 14
+        // and the public docs promise.
+        //
+        // The inner callbacks are idempotent so repeated registration (e.g. AddTrellisAsp() plus
+        // AddControllers().AddScalarValueValidation()) does not duplicate filters/providers.
+        services.Configure<MvcOptions>(options =>
+        {
+            if (!options.ModelBinderProviders.Any(p => p is ScalarValueModelBinderProvider))
+                options.ModelBinderProviders.Insert(0, new ScalarValueModelBinderProvider());
+
+            if (!options.ModelMetadataDetailsProviders.Any(p => p is MaybeSuppressChildValidationMetadataProvider))
+                options.ModelMetadataDetailsProviders.Add(new MaybeSuppressChildValidationMetadataProvider());
+
+            if (!options.Filters.OfType<TypeFilterAttribute>()
+                    .Any(t => t.ImplementationType == typeof(ScalarValueValidationFilter)))
+                options.Filters.Add<ScalarValueValidationFilter>();
+        });
+        services.Configure<ApiBehaviorOptions>(options =>
+            options.SuppressModelStateInvalidFilter = true);
 
         return services;
     }
