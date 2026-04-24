@@ -13,4 +13,14 @@
           Pack="true" PackagePath="buildTransitive\$(PackageId).targets" />
   </ItemGroup>
 
+  <!--
+    Cross-cutting cookbook ships once, in Trellis.Core (Core is referenced by
+    every Trellis service so this guarantees the cookbook always lands in .github/).
+    Opt in per package by setting <TrellisShipsCookbook>true</TrellisShipsCookbook>.
+  -->
+  <ItemGroup Condition="'$(TrellisShipsCookbook)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)docs\api_reference\trellis-api-cookbook.md"
+          Pack="true" PackagePath="trellis\" />
+  </ItemGroup>
+
 </Project>
