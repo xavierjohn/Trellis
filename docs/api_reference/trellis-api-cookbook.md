@@ -809,6 +809,104 @@ public partial class ShippingAddress { /* … */ }
 
 ---
 
+## Recipe 14 — Optional fields in request DTOs: `Maybe<TScalar>` vs nullable transport
+
+**Problem.** A request body has an optional field — say `phoneNumber` on `CreateCustomerRequest`. The domain models it as `Maybe<PhoneNumber>` (the canonical Trellis pattern). What does the DTO declare it as?
+
+The answer depends on whether the inner type is a **scalar** (single-primitive) value object or a **composite** owned value object. Trellis ships a JSON converter + model binder for the scalar case but not the composite case.
+
+| Inner type | Pattern | Why |
+|---|---|---|
+| `Maybe<TScalar>` where `TScalar : IScalarValue<TScalar, TPrimitive>` (e.g., `Maybe<EmailAddress>`, `Maybe<PhoneNumber>`) | **Use `Maybe<T>` directly on the DTO.** | `AddTrellisAsp()` registers `MaybeScalarValueJsonConverterFactory` (JSON), `MaybeModelBinder<T,P>` (route/query/header), and `MaybeSuppressChildValidationMetadataProvider` (stops `ValidationVisitor` from touching `.Value` when `None`). `null`/missing → `None`; valid → `Maybe.From(validated)`; invalid → ProblemDetails with the same field path the domain emits. |
+| `Maybe<TComposite>` where `TComposite : ValueObject` with multiple fields (e.g., `Maybe<ShippingAddress>`) | **Use a nullable transport (`TComposite?`) and adapt at the controller seam.** | No `MaybeCompositeValueObjectJsonConverterFactory` ships today — System.Text.Json would default-construct the inner type, bypassing `TryCreate`. Wrap with `Maybe.From(...)` inside the controller. |
+
+### Pattern A — scalar `Maybe<T>` directly on the DTO
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+
+public sealed partial class EmailAddress : RequiredString<EmailAddress>;
+public sealed partial class PhoneNumber  : RequiredString<PhoneNumber>;
+
+public sealed record CreateCustomerRequest(
+    EmailAddress         Email,           // required
+    Maybe<PhoneNumber>   PhoneNumber);    // optional — null/missing JSON → Maybe.None
+
+[ApiController]
+[Route("customers")]
+public sealed class CustomersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask<ActionResult<CustomerResponse>> Create(
+        [FromBody] CreateCustomerRequest request, CancellationToken ct) =>
+        sender.Send(new CreateCustomerCommand(request.Email, request.PhoneNumber), ct)
+              .ToHttpResponseAsync(CustomerResponse.From, /* … */)
+              .AsActionResultAsync<CustomerResponse>();
+}
+```
+
+`AddTrellisAsp()` is the only wiring required:
+
+```csharp
+services.AddTrellisAsp();      // MaybeScalarValueJsonConverterFactory + MaybeModelBinder + ValidationVisitor patch
+services.AddControllers();
+```
+
+Send `{"email":"a@b.com","phoneNumber":null}` (or omit `phoneNumber` entirely) → handler receives `Maybe<PhoneNumber>.None`. Send `{"email":"a@b.com","phoneNumber":"not a phone"}` → 422 with field path `/phoneNumber` and the validation message produced by `PhoneNumber.Create`.
+
+### Pattern B — composite owned VO, nullable transport + controller-seam adapter
+
+```csharp
+public sealed record CreateCustomerRequest(
+    EmailAddress       Email,
+    ShippingAddress?   ShippingAddress);   // nullable transport — NOT Maybe<ShippingAddress>
+
+public sealed class CustomersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask<ActionResult<CustomerResponse>> Create(
+        [FromBody] CreateCustomerRequest request, CancellationToken ct)
+    {
+        var shipping = request.ShippingAddress is null
+            ? Maybe<ShippingAddress>.None
+            : Maybe.From(request.ShippingAddress);
+
+        return sender.Send(new CreateCustomerCommand(request.Email, shipping), ct)
+                     .ToHttpResponseAsync(CustomerResponse.From, /* … */)
+                     .AsActionResultAsync<CustomerResponse>();
+    }
+}
+```
+
+The composite VO must still carry `[JsonConverter(typeof(CompositeValueObjectJsonConverter<ShippingAddress>))]` (see Recipe 13) so its inner fields round-trip through `TryCreate`. The seam adapter only handles the optionality.
+
+**Why not just declare `Maybe<ShippingAddress>` on the DTO?** `MaybeScalarValueJsonConverterFactory.CanConvert` checks for `IScalarValue<,>` on the inner type. Composite VOs do not implement `IScalarValue`, so the factory returns false, and `Maybe<ShippingAddress>` falls back to default System.Text.Json serialization — which produces a default-constructed `ShippingAddress` (`{}`) wrapped in `Maybe.From`, silently bypassing `TryCreate`. That's a correctness bug, not just an ergonomics one.
+
+### Anti-pattern → fix
+
+```csharp
+// WRONG — composite Maybe<T> on DTO. Compiles, deserializes to Maybe.From(default(ShippingAddress)),
+// silently skips TryCreate. Discovered only when the persisted entity has empty strings.
+public sealed record CreateCustomerRequest(EmailAddress Email, Maybe<ShippingAddress> ShippingAddress);
+
+// FIX — nullable transport + controller-seam adapter (Pattern B above).
+public sealed record CreateCustomerRequest(EmailAddress Email, ShippingAddress? ShippingAddress);
+
+// WRONG — bypassing AddTrellisAsp() (e.g., raw services.AddControllers().AddJsonOptions(...) in isolation)
+// drops the Maybe converters AND the SuppressChildValidationMetadataProvider, so MVC's ValidationVisitor
+// will throw InvalidOperationException("Maybe has no value.") the moment a None reaches model validation.
+services.AddControllers();   // missing AddTrellisAsp()
+
+// FIX — call AddTrellisAsp() before AddControllers(); it is idempotent and configures both pipelines.
+services.AddTrellisAsp();
+services.AddControllers();
+```
+
+> A `MaybeCompositeValueObjectJsonConverterFactory` to make Pattern B unnecessary is tracked in `BACKLOG.md` under *Open — Framework Features*.
+
+---
+
 ## Cross-cutting tips
 
 - **Run analyzers in CI.** `Trellis.Analyzers` ships in the framework and runs as part of every `dotnet build`. Treat warnings as errors for `TRLS00x` once your codebase is clean.
