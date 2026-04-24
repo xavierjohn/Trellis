@@ -407,6 +407,25 @@ public static class ModelDiagnostics
 // WRONG — HasIndex against the CLR Maybe<T> property silently fails
 modelBuilder.Entity<Customer>().HasIndex(c => c.Email);   // TRLS016
 
+// WRONG — explicit Property() configuration on a Maybe<T> CLR property.
+// MaybeConvention generates a private backing field (e.g., _email) and maps THAT.
+// Calling builder.Property(c => c.Email) tries to map Maybe<EmailAddress> as a column,
+// which is not a supported store type — fails at model validation with
+// "The property 'Customer.Email' could not be mapped because the database provider
+//  does not support the type 'Maybe<EmailAddress>'."
+internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
+{
+    public void Configure(EntityTypeBuilder<Customer> builder)
+    {
+        builder.Property(c => c.Email).IsRequired();          // ❌ — runtime error
+        builder.Property(c => c.Email).HasMaxLength(254);     // ❌ — runtime error
+    }
+}
+
+// FIX — say nothing about Maybe<T> in IEntityTypeConfiguration. The convention owns it.
+// If you need column metadata (max length, column name, etc.), configure the *backing field*
+// via the diagnostic name from MaybePropertyMapping, or use HasTrellisIndex for indexes.
+
 // FIX 1 — strongly-typed Trellis index helper
 modelBuilder.Entity<Customer>().HasTrellisIndex(c => new { c.Status, c.Email });
 
@@ -777,9 +796,39 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 | Required `ShippingAddress` (non-nullable) | Table-split: 5 columns on the `Customers` table — `ShippingAddress_Street`, `ShippingAddress_City`, `ShippingAddress_State`, `ShippingAddress_PostalCode`, `ShippingAddress_Country` (all `NOT NULL`). |
 | Optional `Maybe<ShippingAddress>` | Because the inner properties are non-nullable, `CompositeValueObjectConvention` switches to a **separate table** named `{Owner}_{Property}` (e.g., `Customer_BillingAddress`) with a `1:0..1` FK back to `Customers`. See the storage rules in [trellis-api-efcore.md](trellis-api-efcore.md) for the full decision matrix. |
 
+**JSON wire shape.**
+
+The `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` attribute on the value object controls the wire format. There is no auto-discovery — the attribute is required for the converter to engage on request bodies and response payloads.
+
+| C# property | JSON request/response shape |
+|---|---|
+| `ShippingAddress ShippingAddress { get; private set; }` (required composite VO) | `"shippingAddress": { "street": "1 Main St", "city": "Redmond", "state": "WA", "postalCode": "98052", "country": "US" }` — every field present; missing inner field → `Error.UnprocessableContent` with field path `/shippingAddress/<field>`. |
+| `partial Maybe<ShippingAddress> BillingAddress { get; set; }` (optional composite VO on a domain model — **not** used directly on a request DTO; see Recipe 14) | Domain model only. On the wire, request DTOs use a **nullable transport** (`ShippingAddress?`) and the controller adapts via `Maybe.From(...)`. Response DTOs project to `ShippingAddress?` for the same reason. |
+| `Money Total { get; private set; }` (required composite VO with scalar inner properties — `decimal Amount`, `Currency Currency`) | `"total": { "amount": 49.99, "currency": "USD" }` — the property casing comes from System.Text.Json's `PropertyNamingPolicy.CamelCase` (set by `AddTrellisAsp()`). Inner scalar VOs (e.g., `Currency : RequiredString<Currency>`) serialize as their underlying primitive (`"USD"`, not `{"value":"USD"}`). |
+| Scalar VO (`OrderId : RequiredGuid<OrderId>`, `EmailAddress : RequiredString<EmailAddress>`) | Always serializes as the underlying primitive (`"550e8400-..."`, `"a@b.com"`). Never wrapped in `{ "value": ... }`. This is automatic via the source-generated `IScalarValue<T,P>` JSON converter. |
+
 **Anti-pattern → fix.**
 
 ```csharp
+// WRONG — explicit Property() on a composite owned VO. The convention has already
+// registered an OwnsOne relationship; calling builder.Property() tries to map the
+// composite as a single column, which fails at model validation with
+// "The property 'Order.Total' could not be mapped because the database provider
+//  does not support the type 'Money'."
+internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.Property(o => o.Total).IsRequired();           // ❌ — runtime error
+        builder.Property(o => o.ShippingAddress).IsRequired(); // ❌ — runtime error
+    }
+}
+
+// FIX — say nothing about composite owned VOs in IEntityTypeConfiguration. The convention
+// auto-registers them as OwnsOne. To override (rename column, add an index on an inner
+// property, force table-splitting), use OwnsOne explicitly — it is additive, not duplicative,
+// because the convention checks IsOwned() before re-registering.
+
 // WRONG — manual OwnsOne after ApplyTrellisConventions duplicates the convention's work
 // and silently overrides any annotations the convention set.
 builder.OwnsOne(c => c.ShippingAddress, owned => { /* … */ });
