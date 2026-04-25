@@ -32,11 +32,11 @@
     <ProjectReference Include="..\generator\Trellis.AspSourceGenerator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false"
-                      Properties="PublishAot=false" />
+                      />
   </ItemGroup>
 
   <Target Name="_GetAspGeneratorTargetPath" Returns="@(_AspGeneratorTargetPath)">
-    <MSBuild Projects="..\generator\Trellis.AspSourceGenerator.csproj" Targets="GetTargetPath" Properties="PublishAot=false">
+    <MSBuild Projects="..\generator\Trellis.AspSourceGenerator.csproj" Targets="GetTargetPath">
       <Output TaskParameter="TargetOutputs" ItemName="_AspGeneratorTargetPath" />
     </MSBuild>
   </Target>

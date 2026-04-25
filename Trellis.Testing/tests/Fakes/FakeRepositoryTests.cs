@@ -157,6 +157,172 @@ public class FakeRepositoryTests
 
     #endregion
 
+    #region Add (staging) Tests — mirrors RepositoryBase.Add for handler/UoW ergonomics
+
+    [Fact]
+    public void Add_Should_Store_Aggregate()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        var aggregate = TestAggregate.Create("1", "Test");
+
+        repository.Add(aggregate);
+
+        repository.Count.Should().Be(1);
+        repository.Exists("1").Should().BeTrue();
+    }
+
+    [Fact]
+    public void Add_Should_Capture_Domain_Events()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        var aggregate = TestAggregate.Create("1", "Test");
+
+        repository.Add(aggregate);
+
+        repository.PublishedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TestEvent>()
+            .Which.AggregateId.Should().Be("1");
+    }
+
+    [Fact]
+    public void Add_Should_AcceptChanges_OnAggregate()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        var aggregate = TestAggregate.Create("1", "Test");
+
+        repository.Add(aggregate);
+
+        // After Add, the aggregate's uncommitted events should be cleared (committed to fake's event log).
+        aggregate.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Add_Should_Update_Existing_Aggregate()
+    {
+        // Add behaves like SaveAsync for the existing-key case: latest write wins.
+        var repository = new FakeRepository<TestAggregate, string>();
+        var first = TestAggregate.Create("1", "First");
+        repository.Add(first);
+
+        var updated = TestAggregate.Create("1", "Updated");
+        repository.Add(updated);
+
+        repository.Count.Should().Be(1);
+        repository.Get("1")!.Name.Should().Be("Updated");
+    }
+
+    [Fact]
+    public void Add_Should_ThrowInvalidOperationException_When_UniqueConstraint_Violated()
+    {
+        // Sonnet 4.6 lab feedback: setup-time violations should fail loud at the Add call site,
+        // not be deferred to a later Result. Tests use Add for setup ("put this in the store");
+        // failure means the test setup itself is wrong.
+        var repository = new FakeRepository<TestAggregate, string>()
+            .WithUniqueConstraint(a => a.Email);
+
+        repository.Add(TestAggregate.Create("1", "Alice", "alice@test.com"));
+
+        var act = () => repository.Add(TestAggregate.Create("2", "Bob", "alice@test.com"));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*unique constraint*");
+    }
+
+    [Fact]
+    public void Add_Should_AllowSameId_Update_With_UniqueConstraint()
+    {
+        var repository = new FakeRepository<TestAggregate, string>()
+            .WithUniqueConstraint(a => a.Email);
+        var aggregate = TestAggregate.Create("1", "Alice", "alice@test.com");
+        repository.Add(aggregate);
+
+        // Same ID, same email — update path, no conflict.
+        var act = () => repository.Add(aggregate);
+
+        act.Should().NotThrow();
+        repository.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public void Add_Should_Throw_ArgumentNullException_For_Null()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+
+        var act = () => repository.Add(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
+
+    #region Remove (staging) Tests — mirrors RepositoryBase.Remove
+
+    [Fact]
+    public void Remove_Should_Delete_Aggregate_When_Exists()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        var aggregate = TestAggregate.Create("1", "Test");
+        repository.Add(aggregate);
+
+        repository.Remove(aggregate);
+
+        repository.Count.Should().Be(0);
+        repository.Exists("1").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Remove_Should_Be_NoOp_When_Not_Tracked()
+    {
+        // Mirrors RepositoryBase.Remove(DbSet.Remove) which marks for delete without verifying existence.
+        // The fake should not throw when the aggregate isn't in the store — handlers shouldn't have
+        // to defensively Find before Remove for the void Remove(T) path.
+        var repository = new FakeRepository<TestAggregate, string>();
+        var aggregate = TestAggregate.Create("1", "Test");
+
+        var act = () => repository.Remove(aggregate);
+
+        act.Should().NotThrow();
+        repository.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void Remove_Should_Throw_ArgumentNullException_For_Null()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+
+        var act = () => repository.Remove(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
+
+    #region RemoveByIdAsync Tests — mirrors RepositoryBase.RemoveByIdAsync naming
+
+    [Fact]
+    public async Task RemoveByIdAsync_Should_Remove_Aggregate_When_Exists()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        repository.Add(TestAggregate.Create("1", "Test"));
+
+        var result = await repository.RemoveByIdAsync("1", TestContext.Current.CancellationToken);
+
+        result.Should().BeSuccess();
+        repository.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RemoveByIdAsync_Should_Return_NotFound_When_Not_Exists()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+
+        var result = await repository.RemoveByIdAsync("nonexistent", TestContext.Current.CancellationToken);
+
+        result.Should().BeFailureOfType<Error.NotFound>();
+    }
+
+    #endregion
+
     #region DeleteAsync Tests
 
     [Fact]

@@ -239,26 +239,52 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddScalarValueValidation_DoesNotAddModelBindingOrFilters()
+    public void AddScalarValueValidation_OnIServiceCollection_AlsoAddsMvcModelBindingAndFilters()
     {
-        // Arrange
+        // The IServiceCollection overload must register MVC-side bindings/filters too,
+        // because AddTrellisAsp() calls it as the one-call setup for controller hosts.
+        // Without this, MVC's ValidationVisitor reflectively touches Maybe<T>.Value on a
+        // None instance and throws "Maybe has no value" → HTTP 500.
+        // See AddTrellisAspMvcIntegrationTests for the end-to-end coverage.
         var services = new ServiceCollection();
         services.AddControllers();
         services.AddScalarValueValidation();
 
-        // Act
         var serviceProvider = services.BuildServiceProvider();
-        var mvcOptions = serviceProvider.GetRequiredService<IOptions<MvcOptions>>();
+        var mvcOptions = serviceProvider.GetRequiredService<IOptions<MvcOptions>>().Value;
 
-        // Assert
-        // Unified method doesn't add MVC-specific features
-        var hasProvider = mvcOptions.Value.ModelBinderProviders
-            .Any(p => p.GetType() == typeof(ScalarValueModelBinderProvider));
-        hasProvider.Should().BeFalse();
+        mvcOptions.ModelBinderProviders.FirstOrDefault()
+            .Should().BeOfType<ScalarValueModelBinderProvider>();
 
-        var hasFilter = mvcOptions.Value.Filters.Any(f =>
-            f is TypeFilterAttribute tfa && tfa.ImplementationType == typeof(ScalarValueValidationFilter));
-        hasFilter.Should().BeFalse();
+        mvcOptions.Filters.Any(f =>
+            f is TypeFilterAttribute tfa && tfa.ImplementationType == typeof(ScalarValueValidationFilter))
+            .Should().BeTrue();
+
+        mvcOptions.ModelMetadataDetailsProviders
+            .Any(p => p is Trellis.Asp.Validation.MaybeSuppressChildValidationMetadataProvider)
+            .Should().BeTrue();
+
+        serviceProvider.GetRequiredService<IOptions<ApiBehaviorOptions>>().Value
+            .SuppressModelStateInvalidFilter.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddScalarValueValidation_IsIdempotent_NoDuplicateFiltersOrProviders()
+    {
+        // The template registers AddTrellisAsp() AND AddControllers().AddScalarValueValidation();
+        // both call paths must remain idempotent so MvcOptions doesn't accumulate duplicates.
+        var services = new ServiceCollection();
+        services.AddTrellisAsp();
+        services.AddControllers().AddScalarValueValidation();
+
+        var sp = services.BuildServiceProvider();
+        var mvcOptions = sp.GetRequiredService<IOptions<MvcOptions>>().Value;
+
+        mvcOptions.ModelBinderProviders.OfType<ScalarValueModelBinderProvider>().Count().Should().Be(1);
+        mvcOptions.ModelMetadataDetailsProviders
+            .OfType<Trellis.Asp.Validation.MaybeSuppressChildValidationMetadataProvider>().Count().Should().Be(1);
+        mvcOptions.Filters.OfType<TypeFilterAttribute>()
+            .Count(t => t.ImplementationType == typeof(ScalarValueValidationFilter)).Should().Be(1);
     }
 
     #endregion

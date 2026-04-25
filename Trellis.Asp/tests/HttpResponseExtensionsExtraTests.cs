@@ -48,7 +48,7 @@ public sealed class HttpResponseExtensionsExtraTests
 
     [Fact]
     public void Error_ToHttpResponse_throws_on_null_error()
-        => FluentActions.Invoking(() => HttpResponseExtensions.ToHttpResponse((Error)null!))
+        => FluentActions.Invoking(() => Trellis.Asp.HttpResponseExtensions.ToHttpResponse((Error)null!))
             .Should().Throw<ArgumentNullException>();
 
     [Fact]

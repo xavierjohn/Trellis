@@ -221,7 +221,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
             }
         }
 
-        return Result.Fail<EmailAddress>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName.NormalizeFieldName("email")), "validation.error") { Detail = "Email address is not valid." })));
+        return Result.Fail<EmailAddress>(Error.UnprocessableContent.ForField(fieldName.NormalizeFieldName("email"), "validation.error", "Email address is not valid."));
     }
 
     /// <summary>

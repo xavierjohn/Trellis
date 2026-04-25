@@ -41,7 +41,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (value < 0)
-            return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Amount cannot be negative." })));
+            return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField(field, "validation.error", "Amount cannot be negative."));
 
         var rounded = Math.Round(value, DefaultDecimalPlaces, MidpointRounding.AwayFromZero);
         return Result.Ok(new MonetaryAmount(rounded));
@@ -57,7 +57,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (value is null)
-            return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Amount is required." })));
+            return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField(field, "validation.error", "Amount is required."));
 
         return TryCreate(value.Value, fieldName);
     }
@@ -74,10 +74,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Amount is required." })));
+            return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField(field, "validation.error", "Amount is required."));
 
         if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Amount must be a valid decimal." })));
+            return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField(field, "validation.error", "Amount must be a valid decimal."));
 
         return TryCreate(parsed, fieldName);
     }
@@ -95,10 +95,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         var field = fieldName.NormalizeFieldName("amount");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Amount is required." })));
+            return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField(field, "validation.error", "Amount is required."));
 
         if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Amount must be a valid decimal." })));
+            return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField(field, "validation.error", "Amount must be a valid decimal."));
 
         return TryCreate(parsed, fieldName);
     }
@@ -107,14 +107,14 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     public Result<MonetaryAmount> Add(MonetaryAmount other)
     {
         try { return TryCreate(Value + other.Value); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("amount"), "validation.error") { Detail = "Addition would overflow." }))); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField("amount", "validation.error", "Addition would overflow.")); }
     }
 
     /// <summary>Subtracts a monetary amount. Fails if result would be negative.</summary>
     public Result<MonetaryAmount> Subtract(MonetaryAmount other)
     {
         try { return TryCreate(Value - other.Value); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("amount"), "validation.error") { Detail = "Subtraction would overflow." }))); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField("amount", "validation.error", "Subtraction would overflow.")); }
     }
 
     /// <summary>Multiplies by a non-negative integer quantity.</summary>
@@ -122,10 +122,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     {
         if (quantity < 0)
             return Result.Fail<MonetaryAmount>(
-                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(quantity)), "validation.error") { Detail = "Quantity cannot be negative." })));
+                Error.UnprocessableContent.ForField(nameof(quantity), "validation.error", "Quantity cannot be negative."));
 
         try { return TryCreate(Value * quantity); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("amount"), "validation.error") { Detail = "Multiplication would overflow." }))); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField("amount", "validation.error", "Multiplication would overflow.")); }
     }
 
     /// <summary>Multiplies by a non-negative decimal multiplier.</summary>
@@ -133,10 +133,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     {
         if (multiplier < 0)
             return Result.Fail<MonetaryAmount>(
-                new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(multiplier)), "validation.error") { Detail = "Multiplier cannot be negative." })));
+                Error.UnprocessableContent.ForField(nameof(multiplier), "validation.error", "Multiplier cannot be negative."));
 
         try { return TryCreate(Value * multiplier); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("amount"), "validation.error") { Detail = "Multiplication would overflow." }))); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField("amount", "validation.error", "Multiplication would overflow.")); }
     }
 
     /// <inheritdoc/>

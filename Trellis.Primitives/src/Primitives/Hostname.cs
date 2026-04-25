@@ -21,10 +21,10 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Hostname) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("hostname");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Hostname>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Hostname is required." })));
+            return Result.Fail<Hostname>(Error.UnprocessableContent.ForField(field, "validation.error", "Hostname is required."));
         var trimmed = value.Trim();
         if (!HostnameRegex().IsMatch(trimmed))
-            return Result.Fail<Hostname>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Hostname must be RFC 1123 compliant." })));
+            return Result.Fail<Hostname>(Error.UnprocessableContent.ForField(field, "validation.error", "Hostname must be RFC 1123 compliant."));
         return Result.Ok(new Hostname(trimmed));
     }
 

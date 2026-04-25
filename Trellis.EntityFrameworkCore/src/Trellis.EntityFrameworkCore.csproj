@@ -41,11 +41,11 @@
     <ProjectReference Include="..\generator\Trellis.EntityFrameworkCore.Generator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false"
-                      Properties="PublishAot=false" />
+                      />
   </ItemGroup>
 
   <Target Name="_GetEfCoreGeneratorTargetPath" Returns="@(_EfCoreGeneratorTargetPath)">
-    <MSBuild Projects="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" Targets="GetTargetPath" Properties="PublishAot=false">
+    <MSBuild Projects="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" Targets="GetTargetPath">
       <Output TaskParameter="TargetOutputs" ItemName="_EfCoreGeneratorTargetPath" />
     </MSBuild>
   </Target>

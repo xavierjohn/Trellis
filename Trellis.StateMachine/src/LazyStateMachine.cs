@@ -97,7 +97,7 @@ public sealed class LazyStateMachine<TState, TTrigger>
     /// <param name="trigger">The trigger to fire.</param>
     /// <returns>
     /// A <see cref="Result{TState}"/> containing the new state if the transition is valid,
-    /// or an <see cref="Error.Conflict"/> if the trigger cannot be fired from the current state.
+    /// or an <see cref="Error.UnprocessableContent"/> with reason code <c>state.machine.invalid.transition</c> if the trigger cannot be fired from the current state.
     /// </returns>
     /// <remarks>
     /// Delegates to <see cref="StateMachineExtensions.FireResult{TState, TTrigger}"/>.

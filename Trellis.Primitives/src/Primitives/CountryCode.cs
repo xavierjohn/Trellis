@@ -34,10 +34,10 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(CountryCode) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("countryCode");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<CountryCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Country code is required." })));
+            return Result.Fail<CountryCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Country code is required."));
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsLetter))
-            return Result.Fail<CountryCode>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Country code must be an ISO 3166-1 alpha-2 code." })));
+            return Result.Fail<CountryCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Country code must be an ISO 3166-1 alpha-2 code."));
         return Result.Ok(new CountryCode(code.ToUpperInvariant()));
     }
 

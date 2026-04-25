@@ -79,7 +79,8 @@ public static class ModelConfigurationBuilderExtensions
     /// <para>
     /// Registers a <see cref="TrellisScalarConverter{TSelf, T}"/> for each scalar entry, then adds the
     /// fixed Trellis conventions (<c>MaybeConvention</c>, <c>CompositeValueObjectConvention</c>,
-    /// <c>MoneyConvention</c>, <c>AggregateETagConvention</c>, <c>AggregateTransientPropertyConvention</c>).
+    /// <c>MoneyConvention</c>, <c>AggregateETagConvention</c>, <c>AggregateTransientPropertyConvention</c>,
+    /// <c>ValueObjectMappingGuardConvention</c>).
     /// </para>
     /// </remarks>
     /// <param name="configurationBuilder">The model configuration builder.</param>
@@ -137,7 +138,7 @@ public static class ModelConfigurationBuilderExtensions
     /// <summary>
     /// Adds the fixed Trellis EF Core conventions: <c>MaybeConvention</c>,
     /// <c>CompositeValueObjectConvention</c>, <c>MoneyConvention</c>, <c>AggregateETagConvention</c>,
-    /// and <c>AggregateTransientPropertyConvention</c>.
+    /// <c>AggregateTransientPropertyConvention</c>, and <c>ValueObjectMappingGuardConvention</c>.
     /// </summary>
     /// <remarks>
     /// AOT/trim-friendly: no calls to <see cref="Type.MakeGenericType(Type[])"/>. The
@@ -160,6 +161,7 @@ public static class ModelConfigurationBuilderExtensions
         configurationBuilder.Conventions.Add(static _ => new MoneyConvention());
         configurationBuilder.Conventions.Add(static _ => new AggregateETagConvention());
         configurationBuilder.Conventions.Add(static _ => new AggregateTransientPropertyConvention());
+        configurationBuilder.Conventions.Add(static _ => new ValueObjectMappingGuardConvention());
 
         return configurationBuilder;
     }

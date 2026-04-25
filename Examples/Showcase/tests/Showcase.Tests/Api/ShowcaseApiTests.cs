@@ -81,7 +81,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task Unfreeze_active_account_returns_409_conflict_from_state_machine()
+    public async Task Unfreeze_active_account_returns_422_unprocessable_from_state_machine()
     {
         var client = _factory.CreateClient();
         var response = await client.PostAsync(
@@ -89,7 +89,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
             content: null,
             Ct);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     [Fact]

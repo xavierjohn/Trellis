@@ -235,4 +235,85 @@ public static class TraverseExtensions
 
         return Result.Ok();
     }
+
+    /// <summary>
+    /// Sequences a collection of <see cref="Result{T}"/> into a single Result containing
+    /// all values in source order. Short-circuits on the first failure.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>Sequence</c> is the identity-selector form of <see cref="Traverse{TIn,TOut}"/>:
+    /// <c>source.Sequence()</c> ≡ <c>source.Traverse(x =&gt; x)</c>. Use it when you already
+    /// have an <see cref="IEnumerable{T}"/> of Results — typically the output of a
+    /// <c>Select</c> over a function that returns <see cref="Result{T}"/>.
+    /// </para>
+    /// <para>
+    /// Failure semantics are first-failure-wins (matching <see cref="Traverse{TIn,TOut}"/>
+    /// and the v2 design — see ADR-002 §3.6). For per-field validation aggregation,
+    /// use the <c>Validate</c> builder which accumulates into a single <c>ValidationError</c>.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Aggregate per-item Result&lt;Money&gt; subtotals, then sum the values.
+    /// var subtotalsResult = lineItems
+    ///     .Select(item =&gt; item.ComputeSubtotal())   // IEnumerable&lt;Result&lt;Money&gt;&gt;
+    ///     .Sequence();                                // Result&lt;IReadOnlyList&lt;Money&gt;&gt;
+    ///
+    /// var totalResult = subtotalsResult.Bind(Money.Sum);
+    /// </code>
+    /// </example>
+    /// <typeparam name="T">Type of value carried by each result.</typeparam>
+    /// <param name="source">Source collection of results.</param>
+    /// <returns>Success carrying all values in order if every item succeeds; otherwise the first failure.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    public static Result<IReadOnlyList<T>> Sequence<T>(this IEnumerable<Result<T>> source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        using var activity = RopTrace.ActivitySource.StartActivity();
+        var values = source is ICollection<Result<T>> coll ? new List<T>(coll.Count) : new List<T>();
+
+        foreach (var result in source)
+        {
+            if (!result.TryGetValue(out var value))
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                return Result.Fail<IReadOnlyList<T>>(result.Error);
+            }
+
+            values.Add(value);
+        }
+
+        return Result.Ok<IReadOnlyList<T>>(values);
+    }
+
+    /// <summary>
+    /// Sequences a collection of unit-shaped <see cref="Result"/> values into a single
+    /// <see cref="Result"/>. Short-circuits on the first failure.
+    /// </summary>
+    /// <remarks>
+    /// First-failure-wins semantics, matching <see cref="Traverse{TIn,TOut}"/> and ADR-002 §3.6.
+    /// For per-field validation aggregation, use the <c>Validate</c> builder.
+    /// </remarks>
+    /// <param name="source">Source collection of results.</param>
+    /// <returns>Success if every item succeeds; otherwise the first failure.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    public static Result Sequence(this IEnumerable<Result> source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        using var activity = RopTrace.ActivitySource.StartActivity();
+
+        foreach (var result in source)
+        {
+            if (result.IsFailure)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                return Result.Fail(result.Error);
+            }
+        }
+
+        return Result.Ok();
+    }
 }

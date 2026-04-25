@@ -114,8 +114,8 @@ Content-Type: application/json
 ### Unfreeze account
 POST {{host}}/api/accounts/{{aliceChecking}}/unfreeze
 
-### Unfreeze an Active account (409 from Error.Conflict — invalid state transition)
-# @expect status: 409
+### Unfreeze an Active account (422 from Error.UnprocessableContent — invalid state transition)
+# @expect status: 422
 POST {{host}}/api/accounts/{{bobChecking}}/unfreeze
 
 ### Close account — fails (409 from Error.Conflict) because balance is non-zero.

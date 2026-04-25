@@ -112,8 +112,8 @@ public class LazyStateMachineTests
 
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.Conflict>();
-        err!.Code.Should().Be("state.machine.invalid.transition");
+        var unproc = err!.Should().BeOfType<Error.UnprocessableContent>().Subject;
+        unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class LazyStateMachineTests
 
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.Conflict>();
+        err!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     #endregion
@@ -262,7 +262,7 @@ public class LazyStateMachineTests
 
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.Conflict>();
+        err!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     #endregion

@@ -111,7 +111,7 @@ stateDiagram-v2
 
 ### On failure
 
-- if `CanFire(trigger)` returns false, it returns `Error.Conflict` with code `state.machine.invalid.transition` and a Trellis-owned `Detail` string — no Stateless exception is involved
+- if `CanFire(trigger)` returns false, it returns `Error.UnprocessableContent` (HTTP 422) carrying a single `RuleViolation` with reason code `state.machine.invalid.transition` and a Trellis-owned `Detail` string — no Stateless exception is involved. Invalid transitions are semantic rule violations, not concurrent-modification conflicts.
 - the failure shape is therefore independent of the Stateless library version and its exception message text
 
 ### What it does **not** do

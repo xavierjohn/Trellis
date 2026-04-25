@@ -8,8 +8,8 @@
 	  <ProjectReference Include="..\src\Trellis.EntityFrameworkCore.csproj" />
 	  <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
 	  <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
-	  <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
-	  <ProjectReference Include="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
+	  <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	  <ProjectReference Include="..\generator\Trellis.EntityFrameworkCore.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -4,7 +4,7 @@
 **Namespace:** `Trellis`  
 **Purpose:** Provides Trellis result, maybe, scalar-value, and HTTP-oriented error primitives for railway-oriented application flows.
 
-See also: [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-primitives.md](trellis-api-primitives.md).
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package, [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-primitives.md](trellis-api-primitives.md).
 
 ---
 
@@ -28,7 +28,7 @@ Running list of v2 breaking changes in `Trellis.Core`. See `docs/adr/ADR-001-res
 | `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.UnprocessableContent uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
 | `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.UnprocessableContent.Fields` and `.Rules`. |
 | `Error.Instance` field | `error.Instance` (string-shaped HTTP vocabulary) | *(removed)* | The ASP wire layer synthesizes `ProblemDetails.Instance` from the request URL plus any `ResourceRef` carried by the typed payload. |
-| Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). `result.Value` remains `public T` and throws on failure (required because `T` may be a struct whose `default` is indistinguishable from a real value). | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Read values with `result.Match(...)` / `result.TryGetValue(out var v)`; only call `.Value` after an `IsSuccess` guard. |
+| Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). The throwing `result.Value` getter was **removed** entirely (ADR-002 §3.1, ga-03) — it was the primary cause of `TRLS003`. | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Extract success values with `result.TryGetValue(out var v)`, `result.TryGetValue(out var v, out var err)`, `result.Match(...)`, or `var (ok, v, err) = result;` (Deconstruct). |
 | `WriteOutcome<T>` package + namespace | `Trellis.Asp.WriteOutcome<T>` (in `Trellis.Asp`) | `Trellis.WriteOutcome<T>` (in `Trellis.Core`) | Replace `using Trellis.Asp;` with `using Trellis;` for any file that names `WriteOutcome<T>` directly. The type, its case records, and member shapes are unchanged; only the assembly and namespace move. ASP-specific extensions (`ToActionResult`, `ToHttpResult`, `ToUpdatedActionResult*`) still live in `Trellis.Asp`. |
 | Package id | `Trellis.Results` | `Trellis.Core` | Replace `<PackageReference Include="Trellis.Results" ... />` with `<PackageReference Include="Trellis.Core" ... />`. The CLR namespace stays `Trellis` — no `using` changes are needed. The legacy `Trellis.Results` package is unlisted at v2.0.0 with a redirect notice; there is no metapackage shim. |
 | OpenTelemetry `ActivitySource` name | `"Trellis.Results"` | `"Trellis.Core"` | Update OTel subscriptions: `builder.AddSource("Trellis.Results")` → `builder.AddSource("Trellis.Core")`. The `RopTrace.ActivitySourceName` constant exposes the name programmatically. |
@@ -72,17 +72,17 @@ None.
 
 ### `public interface IResult<TValue> : IResult`
 
-Typed success/failure contract.
+Typed success/failure contract. Note: there is **no** `Value` property — the v1 `Value` getter was removed in v2 (it threw on failure and was the leading source of `TRLS003`). Use `TryGetValue` to extract the success payload.
 
 #### Properties
 
-| Name | Type | Notes |
-| --- | --- | --- |
-| `Value` | `TValue` | Throws when the result is a failure |
+None (inherits `IsSuccess`, `IsFailure`, `Error` from `IResult`).
 
 #### Methods
 
-None.
+| Signature | Notes |
+| --- | --- |
+| `bool TryGetValue([MaybeNullWhen(false)] out TValue value)` | Non-throwing success extractor. Returns `true` and binds `value` on success; returns `false` and leaves `value` at `default` on failure. |
 
 #### Factory Methods
 
@@ -120,11 +120,30 @@ Static factory and helper surface for `Result<TValue>` and the non-generic `Resu
 > construct via `Result.Ok()` or `Result.Fail(error)`. Analyzer **`TRLS019`** flags explicit
 > `default(Result)` at call sites.
 
+`Result` is `public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFactory<Result>`. It serves dual duty: as a void-style success/failure value **and** as the static factory host for `Result<TValue>`.
+
 #### Properties
 
-None.
+| Name | Type | Notes |
+| --- | --- | --- |
+| `IsSuccess` | `bool` | Success flag. `[MemberNotNullWhen(false, nameof(Error))]`. |
+| `IsFailure` | `bool` | Failure flag. `[MemberNotNullWhen(true, nameof(Error))]`. `default(Result).IsFailure` is `true`. |
+| `Error` | `Error?` | `null` on success; never throws. For `default(Result)`, returns the shared `Error.Unexpected("default_initialized")` sentinel. |
 
-#### Methods
+#### Instance methods
+
+| Signature | Notes |
+| --- | --- |
+| `public bool TryGetError([NotNullWhen(true)] out Error? error)` | Non-throwing failure extractor. On `default(Result)` returns `true` with the sentinel. |
+| `public void Deconstruct(out bool isSuccess, out Error? error)` | Pattern-matching support: `var (ok, err) = result;`. |
+| `public bool Equals(Result other)` | Value equality (`IEquatable<Result>`). |
+| `public override bool Equals(object? obj)` | Object equality. |
+| `public override int GetHashCode()` | Hash code matching `Equals`. |
+| `public static bool operator ==(Result left, Result right)` | Equality operator. |
+| `public static bool operator !=(Result left, Result right)` | Inequality operator. |
+| `public override string ToString()` | `"Success"` or `"Failure({Code}: {Detail})"`. |
+
+#### Static factory methods
 
 | Signature | Notes |
 | --- | --- |
@@ -132,18 +151,23 @@ None.
 | `public static Result Ok()` | Success without payload (non-generic `Result`) |
 | `public static Result<TValue> Fail<TValue>(Error error)` | Failure factory |
 | `public static Result Fail(Error error)` | Failure without payload (non-generic `Result`) |
+| `public static Result CreateFailure(Error error)` | Implements `IFailureFactory<Result>` for generic pipeline code; equivalent to `Fail(error)`. |
 | `public static Result Ensure(bool flag, Error error)` | Converts a boolean to non-generic `Result` |
 | `public static Result Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
 | `public static Task<Result> EnsureAsync(Func<Task<bool>> predicate, Error error)` | Async predicate version |
 | `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures |
 | `public static Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)` | Async exception capture |
+| `public static Result Try(Action work, Func<Exception, Error>? map = null)` | Void-shape exception capture |
+| `public static Task<Result> TryAsync(Func<Task> work, Func<Exception, Error>? map = null)` | Async void-shape exception capture |
 | `public static Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2)` | Combines two results |
 | `public static Result<(T1, ..., T9)> Combine<...>(...)` | Additional generated arities up to 9 |
 | `public static (Task<Result<T1>>, ..., Task<Result<T9>>) ParallelAsync<...>(...)` | Starts async result-producing operations in parallel, arities 2-9 |
 
+The default exception mapper produces `new Error.InternalServerError(FaultId: Guid.NewGuid().ToString("N")) { Detail = ex.Message }`. `OperationCanceledException` is always rethrown rather than mapped.
+
 #### Factory Methods
 
-`Ok`, `Fail`, `Ensure`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed in v2 (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`.
+`Ok`, `Fail`, `CreateFailure`, `Ensure`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed in v2 (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`.
 
 ---
 
@@ -158,28 +182,30 @@ Represents either a successful `TValue` or a failure `Error`.
 > `Result.Fail<T>(new Error.Unexpected("default_initialized"))`. Always construct via `Result.Ok(value)`
 > or `Result.Fail<T>(error)`. Analyzer **`TRLS019`** flags explicit `default(Result<T>)` at call sites.
 
+> **No `Value` property.** The v1 throwing `public TValue Value` getter was removed in v2 (ADR-002 §3.1). Use `TryGetValue`, `Match`, or `Deconstruct` to extract success values.
+
 #### Properties
 
 | Name | Type | Notes |
 | --- | --- | --- |
-| `Value` | `TValue` | Throws `InvalidOperationException` when `IsFailure` is `true`. Required because `TValue` may be a struct whose `default` is indistinguishable from a real value; use `IsSuccess`/`TryGetValue`/`Match` to gate access. |
-| `Error` | `Error?` | `null` on success; never throws. Pattern-match on the value (e.g. `if (result.Error is { } error)`) for imperative branches. |
-| `IsSuccess` | `bool` | Success flag |
-| `IsFailure` | `bool` | Failure flag |
+| `Error` | `Error?` | `null` on success; never throws. Pattern-match on the value (e.g. `if (result.Error is { } error)`) for imperative branches. For `default(Result<T>)`, returns the shared `Error.Unexpected("default_initialized")` sentinel. |
+| `IsSuccess` | `bool` | Success flag. `[MemberNotNullWhen(false, nameof(Error))]`. |
+| `IsFailure` | `bool` | Failure flag. `[MemberNotNullWhen(true, nameof(Error))]`. `default(Result<T>).IsFailure` is `true`. |
 
 #### Methods
 
 | Signature | Notes |
 | --- | --- |
-| `public static Result<TValue> CreateFailure(Error error)` | Implements `IFailureFactory<Result<TValue>>` |
-| `public bool TryGetValue(out TValue value)` | Non-throwing success extractor |
-| `public bool TryGetError(out Error? error)` | Non-throwing failure extractor; on `default(Result<T>)` returns `true` with the `Error.Unexpected` sentinel |
-| `public void Deconstruct(out bool isSuccess, out TValue? value, out Error? error)` | Deconstruction support |
+| `public static Result<TValue> CreateFailure(Error error)` | Implements `IFailureFactory<Result<TValue>>`; lets generic pipeline behaviors construct failures polymorphically. Equivalent to `Result.Fail<TValue>(error)`. |
+| `public bool TryGetValue([MaybeNullWhen(false)] out TValue value)` | Non-throwing success extractor. `[MemberNotNullWhen(false, nameof(Error))]`. |
+| `public bool TryGetValue([MaybeNullWhen(false)] out TValue value, [NotNullWhen(false)] out Error? error)` | Combined extractor — binds both `value` (on success) and `error` (on failure) in one call, eliminating the need for `result.Error!` after a failed single-out `TryGetValue`. |
+| `public bool TryGetError([NotNullWhen(true)] out Error? error)` | Non-throwing failure extractor; on `default(Result<T>)` returns `true` with the `Error.Unexpected` sentinel. |
+| `public void Deconstruct(out bool isSuccess, out TValue? value, out Error? error)` | Deconstruction support: `var (ok, value, error) = result;`. |
 | `public Result AsUnit()` | Discards the success value, returning a non-generic `Result`. On a default-initialized failure, returns an explicit `Result.Fail(sentinel)` (never another `default`). |
-| `public bool Equals(Result<TValue> other)` | Value equality |
-| `public override bool Equals(object? obj)` | Object equality |
-| `public override int GetHashCode()` | Hash code |
-| `public override string ToString()` | Debug-friendly string |
+| `public bool Equals(Result<TValue> other)` | Value equality. Equal if both are success with `EqualityComparer<TValue>.Default.Equals` over the values, or both are failure with equal `Error`. Default-initialized failures route through the shared sentinel. |
+| `public override bool Equals(object? obj)` | Object equality. |
+| `public override int GetHashCode()` | Hash code matching `Equals`. |
+| `public override string ToString()` | `"Success({value})"` or `"Failure({Code}: {Detail})"`. |
 
 #### Operators
 
@@ -414,27 +440,27 @@ Eighteen nested `sealed record` cases under `Error`. Each case constructor is `i
 | `Error.ContentTooLarge` | `(long? MaxBytes = null)` | 413 | |
 | `Error.UnsupportedMediaType` | `(EquatableArray<string> Supported)` | 415 | |
 | `Error.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | 416 | Drives `Content-Range` synthesis. |
-| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | The single domain-validation case — replaces v1's `ValidationError`. Carries both per-field violations and cross-field rule violations. |
+| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | The single domain-validation case — replaces v1's `ValidationError`. Carries both per-field violations and cross-field rule violations. **Single-violation factories** (preferred over manual construction): `Error.UnprocessableContent.ForField(string propertyName, string reasonCode, string? detail = null)` (escapes `propertyName` via `InputPointer.ForProperty`), `ForField(InputPointer field, string reasonCode, string? detail = null)` (use for nested/array pointers or `InputPointer.Root`), and `ForRule(string reasonCode, string? detail = null)` (single rule, empty fields). Use `Validate` builder when aggregating multiple violations. |
 | `Error.PreconditionRequired` | `(PreconditionKind Condition)` | 428 | Missing concurrency token on PUT. |
 | `Error.TooManyRequests` | `(RetryAfterValue? RetryAfter = null)` | 429 | |
 | `Error.InternalServerError` | `(string FaultId)` | 500 | `Code` returns `FaultId`. **Never holds a live `Exception`**; the `FaultId` indexes into the logging/telemetry layer. |
 | `Error.Unexpected` | `(string ReasonCode)` | 500 | "Shouldn't happen" condition: default-initialized `Result`/`Result<T>` (per §3.5.1), exhausted match arms, internal invariant violations. `Code` returns `ReasonCode` (e.g. `"default_initialized"`). Distinct from `InternalServerError`: no opaque per-incident `FaultId`, and the ASP boundary does **not** attach a `faultId` extension. |
 | `Error.NotImplemented` | `(string Feature)` | 501 | `Code` returns `Feature`. |
 | `Error.ServiceUnavailable` | `(RetryAfterValue? RetryAfter = null)` | 503 | |
-| `Error.Aggregate` | `(EquatableArray<Error> Errors)` | 207 / `extensions.errors` | Composition node. **Disallows `Cause`** (pure composition). Auto-flattens nested `Aggregate` instances at construction. |
+| `Error.Aggregate` | `(EquatableArray<Error> Errors)` <br> `(IEnumerable<Error> errors)` <br> `(params Error[] errors)` | 207 / `extensions.errors` | Composition node. **Disallows `Cause`** (pure composition). Auto-flattens nested `Aggregate` instances at construction. Three constructor overloads accept either an `EquatableArray<Error>`, any `IEnumerable<Error>`, or a `params` array; all three throw `ArgumentException` if no errors are supplied. `InputPointer.ForProperty` is used to escape `~` and `/` per RFC 6901. |
 
 #### Supporting types
 
 | Type | Shape | Purpose |
 | --- | --- | --- |
 | `ResourceRef` | `readonly record struct (string Type, string? Id = null)` | Aggregate identity (e.g. `new ResourceRef("Order", "42")`). |
-| `InputPointer` | `readonly record struct (string Path)` | RFC 6901 JSON Pointer (e.g. `/email`). Construct via `InputPointer.ForProperty("email")`. |
-| `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null) { string? Detail }` | Single per-field violation inside `UnprocessableContent.Fields`. |
-| `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null) { string? Detail }` | Multi-field invariant or object-level rule inside `UnprocessableContent.Rules`. |
-| `AuthChallenge` | `sealed record (string Scheme, ImmutableDictionary<string,string>? Params = null)` | Carried by `Unauthorized` to round-trip `WWW-Authenticate`. |
+| `InputPointer` | `readonly record struct (string Path)` | RFC 6901 JSON Pointer (e.g. `/email`). Construct via `InputPointer.ForProperty("email")`, append with `Append(...)`, or use the document-root sentinel `InputPointer.Root` (path `""`). `InputPointer.Root` is the canonical pointer for whole-body / object-level violations. |
+| `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Single per-field violation inside `UnprocessableContent.Fields`. `Detail` is the 4th positional parameter; supplies the boundary renderer's user-facing message when non-null. `Equals`/`GetHashCode` compare `Args` by content. |
+| `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `UnprocessableContent.Rules`. `Detail` is the 4th positional parameter. `Equals`/`GetHashCode` compare `Args` by content. |
+| `AuthChallenge` | `sealed record (string Scheme, ImmutableDictionary<string,string>? Params = null)` | Carried by `Unauthorized` to round-trip `WWW-Authenticate`. `Equals`/`GetHashCode` compare `Params` by content; parameter order is not significant. |
 | `RetryAfterValue` | sealed class, see below | `Retry-After` as delay seconds or absolute date. |
 | `PreconditionKind` | `enum { IfMatch, IfNoneMatch, IfUnmodifiedSince, IfModifiedSince }` | Typed precondition vocabulary. |
-| `EquatableArray<T>` | `readonly record struct (ImmutableArray<T> Items)` | Wraps `ImmutableArray<T>` so records get sequence equality (built-in records compare arrays by reference). Construct with `EquatableArray.Create(...)` or `EquatableArray<T>.Empty`. |
+| `EquatableArray<T>` | `readonly struct (ImmutableArray<T> Items)` | Wraps `ImmutableArray<T>` so records get sequence equality (built-in records compare arrays by reference). See dedicated section below. Construct with `EquatableArray.Create(...)`, `EquatableArray.From(items)`, `EquatableArray<T>.Empty`, or implicitly from an `ImmutableArray<T>`. |
 
 ---
 
@@ -634,13 +660,74 @@ None.
 
 ### `public static class ResultsTraceProviderBuilderExtensions`
 
-OpenTelemetry helper for Trellis result instrumentation.
+OpenTelemetry helper for Trellis result instrumentation. Lives in `Trellis.Core\src\ResultsTraceProviderBuilderExtensions.cs` and takes a hard dependency on the `OpenTelemetry.Trace` package — `Trellis.Core` references the OpenTelemetry SDK so consumers do not need a separate package reference to opt in.
 
 #### Methods
 
 | Signature | Notes |
 | --- | --- |
-| `public static TracerProviderBuilder AddResultsInstrumentation(this TracerProviderBuilder builder)` | Registers result tracing |
+| `public static TracerProviderBuilder AddResultsInstrumentation(this TracerProviderBuilder builder)` | Registers the Trellis ROP `ActivitySource` (named `"Trellis.Core"`, exposed as `RopTrace.ActivitySourceName`) with the supplied OpenTelemetry tracer-provider builder. Returns the same builder for chaining. |
+
+---
+
+### `public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>`
+
+Wraps `ImmutableArray<T>` so records and other value-equal types get sequence equality. Built-in `record` equality compares arrays by reference; this wrapper restores element-wise comparison. A default-initialized `EquatableArray<T>` represents an empty sequence — two `default` values compare equal, and `Items` always returns `ImmutableArray<T>.Empty` instead of an uninitialized array.
+
+> **LINQ / FluentAssertions / `IEnumerable<T>` consumers.** `EquatableArray<T>` exposes a duck-typed `GetEnumerator()` (allocation-free `foreach`) but **does not implement `IEnumerable<T>`** — this is intentional, to keep the value-type sequence-equality wrapper allocation-free. Methods that bind on `IEnumerable<T>` (`Select`, `Where`, `Any`, `ToList`, FluentAssertions' `Should().ContainSingle()` / `Should().HaveCount(...)` / `Should().BeEquivalentTo(...)`, `string.Join`, etc.) won't see the contents directly. **Project through `.Items` first** (which returns the wrapped `ImmutableArray<T>`, an `IEnumerable<T>`):
+>
+> ```csharp
+> // ❌ Doesn't compile: 'EquatableArray<RuleViolation>' does not contain a definition for 'Where'
+> unproc.Rules.Where(r => r.ReasonCode == "...");
+>
+> // ❌ FluentAssertions: 'object does not contain a definition for ContainSingle'
+> unproc.Rules.Should().ContainSingle();
+>
+> // ✅ Use .Items
+> unproc.Rules.Items.Where(r => r.ReasonCode == "...");
+> unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("...");
+> ```
+
+#### Properties
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `Items` | `ImmutableArray<T>` | The wrapped array. Returns `ImmutableArray<T>.Empty` for default-initialized values rather than the uninitialized default. |
+| `Length` | `int` | Number of items. |
+| `IsEmpty` | `bool` | True when the wrapped array is empty. |
+| `this[int index]` | `T` | Indexer over the wrapped array. |
+| `Empty` | `EquatableArray<T>` | Static empty instance, mirrors `ImmutableArray<T>.Empty`. |
+
+#### Methods
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public EquatableArray(ImmutableArray<T> items)` | — | Wraps an existing immutable array. |
+| `public static EquatableArray<T> Create(params T[] items)` | `EquatableArray<T>` | Builds from a `params` array. |
+| `public static EquatableArray<T> From(IEnumerable<T> items)` | `EquatableArray<T>` | Builds from any enumerable. |
+| `public ImmutableArray<T>.Enumerator GetEnumerator()` | `ImmutableArray<T>.Enumerator` | Allocation-free `foreach` support. |
+| `public bool Equals(EquatableArray<T> other)` | `bool` | Sequence equality using `EqualityComparer<T>.Default`. |
+| `public override bool Equals(object? obj)` | `bool` | Object equality. |
+| `public override int GetHashCode()` | `int` | Combines hashes of all items via `HashCode`. |
+
+#### Operators
+
+| Signature | Notes |
+| --- | --- |
+| `public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right)` | Equality |
+| `public static bool operator !=(EquatableArray<T> left, EquatableArray<T> right)` | Inequality |
+| `public static implicit operator EquatableArray<T>(ImmutableArray<T> items)` | Implicit conversion from `ImmutableArray<T>` |
+
+---
+
+### `public static class EquatableArray`
+
+Non-generic factory companion that allows type inference at the call site.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static EquatableArray<T> Create<T>(params T[] items)` | `EquatableArray<T>` | Inferred-`T` factory; equivalent to `EquatableArray<T>.Create(items)`. |
+| `public static EquatableArray<T> From<T>(IEnumerable<T> items)` | `EquatableArray<T>` | Inferred-`T` factory; equivalent to `EquatableArray<T>.From(items)`. |
 
 ---
 
@@ -665,6 +752,10 @@ OpenTelemetry helper for Trellis result instrumentation.
 | `public static ValueTask<Result<TValue>> ToResultAsync<TValue>(this ValueTask<Maybe<TValue>> maybeTask, Error error) where TValue : notnull` |
 | `public static Task<Result<TValue>> ToResultAsync<TValue>(this Task<Maybe<TValue>> maybeTask, Func<Error> ferror) where TValue : notnull` |
 | `public static ValueTask<Result<TValue>> ToResultAsync<TValue>(this ValueTask<Maybe<TValue>> maybeTask, Func<Error> ferror) where TValue : notnull` |
+| `public static Task<TResult> MatchAsync<TValue, TResult>(this Task<Maybe<TValue>> maybeTask, Func<TValue, TResult> some, Func<TResult> none) where TValue : notnull` |
+| `public static ValueTask<TResult> MatchAsync<TValue, TResult>(this ValueTask<Maybe<TValue>> maybeTask, Func<TValue, TResult> some, Func<TResult> none) where TValue : notnull` |
+| `public static Task<TResult> MatchAsync<TValue, TResult>(this Task<Maybe<TValue>> maybeTask, Func<TValue, Task<TResult>> some, Func<Task<TResult>> none) where TValue : notnull` |
+| `public static ValueTask<TResult> MatchAsync<TValue, TResult>(this ValueTask<Maybe<TValue>> maybeTask, Func<TValue, ValueTask<TResult>> some, Func<ValueTask<TResult>> none) where TValue : notnull` |
 
 ### `MaybeChooseExtensions`
 
@@ -731,6 +822,366 @@ For tuple-enabled families, generated overloads cover the declared arity ranges 
 
 ---
 
+### Extension class catalog (full signatures)
+
+The reference signatures below cover every `Result*Extensions(Async)` static class shipped by `Trellis.Core`. Each subsection lists the static class name(s), a methods table, and one representative usage example. All members live in the `Trellis` namespace.
+
+#### Bind family — `BindExtensions`, `BindExtensionsAsync`, `ResultBindExtensions`, `ResultBindExtensionsAsync`, `BindZipExtensions`, `BindZipExtensionsAsync`
+
+Sequential composition of result-producing functions. `Bind` is the monadic flatMap; `BindZip` keeps the upstream value in scope by zipping it into the next stage.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<TResult> Bind<TValue, TResult>(this Result<TValue> result, Func<TValue, Result<TResult>> func)` | `Result<TResult>` | Generic-to-generic flatMap. Short-circuits on failure. |
+| `public static Task<Result<TResult>> BindAsync<TValue, TResult>(this Task<Result<TValue>> resultTask, Func<TValue, Task<Result<TResult>>> func)` | `Task<Result<TResult>>` | All combinations of `Result`/`Task<Result>`/`ValueTask<Result>` × sync-/async-lambda are exposed (12 overloads on `BindExtensionsAsync`). |
+| `public static Result Bind(this Result result, Func<Result> func)` | `Result` | Non-generic → non-generic on `ResultBindExtensions`. |
+| `public static Result<TOut> Bind<TOut>(this Result result, Func<Result<TOut>> func)` | `Result<TOut>` | Non-generic → generic widen on `ResultBindExtensions`. |
+| `public static Result Bind<TIn>(this Result<TIn> result, Func<TIn, Result> func)` | `Result` | Generic → non-generic narrow on `ResultBindExtensions`. |
+| `public static Task<Result> BindAsync(this Task<Result> resultTask, Func<Task<Result>> func)` | `Task<Result>` | `ResultBindExtensionsAsync` covers every cross-shape async combination for non-generic `Result` (sync/Task/ValueTask × generic/non-generic, ~18 overloads total). |
+| `public static Result<(T1, T2)> BindZip<T1, T2>(this Result<T1> result, Func<T1, Result<T2>> func)` | `Result<(T1, T2)>` | Zips upstream value with the bind result so downstream stages see both. Tuple arities 2–9 are generated. |
+| `public static Task<Result<(T1, T2)>> BindZipAsync<T1, T2>(this Task<Result<T1>> resultTask, Func<T1, Task<Result<T2>>> func)` | `Task<Result<(T1, T2)>>` | Async BindZip; generated for every Result/Task/ValueTask combination. |
+
+```csharp
+Result<Order> Place(OrderId id) =>
+    LoadCustomer(id)
+        .BindZip(c => LoadCart(c.Id))    // Result<(Customer, Cart)>
+        .Bind(t => Charge(t.Item1, t.Item2));
+```
+
+#### Map family — `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions`, `ResultMapExtensions`, `ResultMapExtensionsAsync`
+
+Pure transformation of the success value (or failure error). Use `Map` when the lambda returns a plain value; switch to `Bind` when it returns a `Result`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<TOut> Map<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> func)` | `Result<TOut>` | Synchronous map on `Result<T>`. |
+| `public static Task<Result<TOut>> MapAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> func)` | `Task<Result<TOut>>` | `MapExtensionsAsync` exposes all Task/ValueTask × sync-/async-lambda combinations (6 overloads). |
+| `public static Result<TOut> Map<TOut>(this Result result, Func<TOut> func)` | `Result<TOut>` | Widens a non-generic success into `Result<TOut>` (`ResultMapExtensions`). |
+| `public static Task<Result<TOut>> MapAsync<TOut>(this Task<Result> resultTask, Func<TOut> func)` | `Task<Result<TOut>>` | Async non-generic widening on `ResultMapExtensionsAsync` (6 overloads covering sync/Task/ValueTask × sync-/async-lambda). |
+| `public static Result<T> MapOnFailure<T>(this Result<T> result, Func<Error, Error> map)` | `Result<T>` | Replaces the failure `Error`. |
+| `public static Task<Result<T>> MapOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Error>> mapAsync)` | `Task<Result<T>>` | `MapOnFailureExtensions` exposes all sync/Task/ValueTask combinations of `MapOnFailure`/`MapOnFailureAsync`. |
+
+```csharp
+Task<Result<OrderDto>> Pipeline(OrderId id) =>
+    LoadOrderAsync(id)
+        .MapAsync(o => OrderDto.From(o))
+        .MapOnFailureAsync(e => e is Error.NotFound ? new Error.Gone(new ResourceRef("Order", id.Value.ToString())) : e);
+```
+
+#### Tap and TapOnFailure families — `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync`, `ResultTapExtensions`, `ResultTapExtensionsAsync`, `ResultTapOnFailureExtensions`, `ResultTapOnFailureExtensionsAsync`
+
+Side effects without altering the result. `Tap` runs on success; `TapOnFailure` runs on failure. The `Result*` variants are the non-generic `Result` companions.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<TValue> Tap<TValue>(this Result<TValue> result, Action<TValue> action)` | `Result<TValue>` | Sync side effect on success. |
+| `public static Task<Result<TValue>> TapAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task> func)` | `Task<Result<TValue>>` | `TapExtensionsAsync` covers all sync/Task/ValueTask × value-/no-value-lambda combinations (12 overloads). |
+| `public static Result<TValue> TapOnFailure<TValue>(this Result<TValue> result, Action<Error> action)` | `Result<TValue>` | Sync side effect on failure. |
+| `public static Task<Result<TValue>> TapOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<Error, Task> func)` | `Task<Result<TValue>>` | `TapOnFailureExtensionsAsync` covers all sync/Task/ValueTask × error-/no-arg-lambda combinations (12 overloads). |
+| `public static Result Tap(this Result result, Action action)` | `Result` | Non-generic on `ResultTapExtensions`. |
+| `public static Task<Result> TapAsync(this Task<Result> resultTask, Func<Task> func)` | `Task<Result>` | Non-generic async tap on `ResultTapExtensionsAsync` (6 overloads). |
+| `public static Result TapOnFailure(this Result result, Action<Error> action)` | `Result` | Non-generic on `ResultTapOnFailureExtensions`. |
+| `public static Task<Result> TapOnFailureAsync(this Task<Result> resultTask, Func<Error, Task> func)` | `Task<Result>` | Non-generic async on `ResultTapOnFailureExtensionsAsync` (6 overloads). |
+
+```csharp
+Task<Result<Order>> Save(Order o) =>
+    repo.SaveAsync(o)
+        .TapAsync(saved => logger.LogInformationAsync($"saved {saved.Id}"))
+        .TapOnFailureAsync(err => logger.LogWarningAsync($"failed: {err.Code}"));
+```
+
+#### Match family — `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync`, `ResultMatchExtensions`, `ResultMatchExtensionsAsync`
+
+Terminal branching: produce a value (`Match`) or run side effects (`Switch`).
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TOut Match<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)` | `TOut` | Sync match on `Result<T>`. |
+| `public static void Switch<TIn>(this Result<TIn> result, Action<TIn> onSuccess, Action<Error> onFailure)` | `void` | Sync side-effect terminal. |
+| `public static Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)` | `Task<TOut>` | `MatchExtensionsAsync` covers all sync/Task/ValueTask × sync-/async-/cancellation-lambda combinations (~10 overloads). |
+| `public static Task SwitchAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Task> onSuccess, Func<Error, Task> onFailure)` | `Task` | `SwitchAsync` overloads cover Task and ValueTask, with optional `CancellationToken` variants. |
+| `public static TOut Match<TOut>(this Result result, Func<TOut> onSuccess, Func<Error, TOut> onFailure)` | `TOut` | Non-generic match on `ResultMatchExtensions`. |
+| `public static void Match(this Result result, Action onSuccess, Action<Error> onFailure)` | `void` | Non-generic side-effect terminal on `ResultMatchExtensions`. |
+| `public static Task<TOut> MatchAsync<TOut>(this Task<Result> resultTask, Func<TOut> onSuccess, Func<Error, TOut> onFailure)` | `Task<TOut>` | Non-generic async match on `ResultMatchExtensionsAsync` (6 overloads). |
+| `public static Task<TOut> MatchAsync<T1, T2, TOut>(this Result<(T1, T2)> result, Func<T1, T2, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)` | `Task<TOut>` | `MatchTupleExtensions` (sync) and `MatchTupleExtensionsAsync` (async) generate `MatchAsync` / `SwitchAsync` for tuple arities 2–9. |
+
+```csharp
+IActionResult Render(Result<Order> r) =>
+    r.Match(
+        order => Ok(OrderDto.From(order)),
+        err   => err switch
+        {
+            Error.NotFound nf            => NotFound(nf.Resource.Id),
+            Error.UnprocessableContent u => UnprocessableEntity(u.Fields),
+            _                            => Problem(err.GetDisplayMessage()),
+        });
+```
+
+#### Recover family — `RecoverExtensions`, `RecoverExtensionsAsync`, `RecoverOnFailureExtensions`, `RecoverOnFailureExtensionsAsync`, `ResultRecoverExtensions`, `ResultRecoverExtensionsAsync`
+
+Convert failures back into successes (`Recover`) or chain a fallback result-producing operation (`RecoverOnFailure`). The `Result*` variants act on non-generic `Result`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<TValue> Recover<TValue>(this Result<TValue> result, Func<Error, TValue> fallbackFunc)` | `Result<TValue>` | Three sync overloads on `RecoverExtensions`: constant fallback, `Func<TValue>`, `Func<Error, TValue>`. |
+| `public static Task<Result<TValue>> RecoverAsync<TValue>(this Task<Result<TValue>> resultTask, Func<Error, Task<TValue>> fallbackFunc)` | `Task<Result<TValue>>` | `RecoverExtensionsAsync` covers all Task/ValueTask × sync-/async-lambda combinations. |
+| `public static Result<T> RecoverOnFailure<T>(this Result<T> result, Func<Error, Result<T>> func)` | `Result<T>` | Four sync overloads on `RecoverOnFailureExtensions`: with/without `Error` argument, with/without predicate gate. |
+| `public static Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Result<T>>> funcAsync)` | `Task<Result<T>>` | `RecoverOnFailureExtensionsAsync` exposes ~20 overloads for Task/ValueTask × predicate-gated/ungated × value-/error-lambda. Includes a non-generic `RecoverOnFailureAsync(Task<Result>, Func<Error, bool>, Func<Task<Result>>)` overload. |
+| `public static Result Recover(this Result result, Func<Error, Result> recovery)` | `Result` | Non-generic recovery on `ResultRecoverExtensions`. |
+| `public static Task<Result> RecoverAsync(this Task<Result> resultTask, Func<Error, Task<Result>> recovery)` | `Task<Result>` | Non-generic async recovery on `ResultRecoverExtensionsAsync` (6 overloads). |
+
+```csharp
+Task<Result<Settings>> Load(UserId id) =>
+    settingsRepo.LoadAsync(id)
+        .RecoverOnFailureAsync(
+            e => e is Error.NotFound,
+            err => Task.FromResult(Result.Ok(Settings.Defaults)));
+```
+
+#### Ensure family — `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync`, `ResultEnsureExtensions`, `ResultEnsureExtensionsAsync`
+
+Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure into a single `Error.Aggregate` for applicative-style validation.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Error error)` | `Result<TValue>` | Sync ensure with predicate + `Error`. Five sync overloads (with/without value arg, factory error, embedded result). |
+| `public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Func<TValue, Error> errorPredicate)` | `Result<TValue>` | Sync ensure with lazy error factory. |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)` | `Result<string>` | Lifts a possibly-blank string to `Result<string>`. |
+| `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : class` | `Result<T>` | Reference-type `EnsureNotNull` overload that strips the nullable annotation. |
+| `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : struct` | `Result<T>` | Value-type `EnsureNotNull` overload that unwraps the nullable. |
+| `public static Task<Result<TValue>> EnsureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task<bool>> predicate, Error error)` | `Task<Result<TValue>>` | `EnsureExtensionsAsync` covers all Task/ValueTask × constant-/factory-/embedded-result combinations (10 overloads). |
+| `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Result<TValue>` | Applicative validation: runs every check and folds failures via `error.Combine(...)` into one `Error.Aggregate`. |
+| `public static Task<Result<TValue>> EnsureAllAsync<TValue>(this Task<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Task<Result<TValue>>` | Task overload of `EnsureAllAsync`. |
+| `public static ValueTask<Result<TValue>> EnsureAllAsync<TValue>(this ValueTask<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `ValueTask<Result<TValue>>` | ValueTask overload of `EnsureAllAsync`. |
+| `public static Result Ensure(this Result result, Func<bool> predicate, Error error)` | `Result` | Non-generic `Ensure` on `ResultEnsureExtensions`. |
+| `public static Task<Result> EnsureAsync(this Task<Result> resultTask, Func<Task<bool>> predicate, Error error)` | `Task<Result>` | Non-generic async ensure on `ResultEnsureExtensionsAsync` (6 overloads). |
+
+```csharp
+Result<Quote> Validate(Quote q) =>
+    Result.Ok(q).EnsureAll(
+        (x => x.Total > 0,            Error.UnprocessableContent.ForField("total", "must_be_positive")),
+        (x => x.Currency.Length == 3, Error.UnprocessableContent.ForField("currency", "iso4217")));
+
+Result<string> NotBlank(string? raw) =>
+    raw.EnsureNotNullOrWhiteSpace(new Error.BadRequest("blank", InputPointer.Root));
+```
+
+#### Check / CheckIf families — `CheckExtensions`, `CheckExtensionsAsync`, `CheckIfExtensions`, `CheckIfExtensionsAsync`
+
+Run a side-effect validator that returns its own `Result`/`Result<TK>` while preserving the upstream success value. `CheckIf` adds a conditional gate.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<T> Check<T, TK>(this Result<T> result, Func<T, Result<TK>> func)` | `Result<T>` | Validator returning `Result<TK>`; original value is preserved on success. |
+| `public static Result<T> Check<T>(this Result<T> result, Func<T, Result> func)` | `Result<T>` | Validator returning non-generic `Result`. |
+| `public static Task<Result<T>> CheckAsync<T>(this Task<Result<T>> resultTask, Func<T, Task<Result>> func)` | `Task<Result<T>>` | `CheckExtensionsAsync` covers all Task/ValueTask × generic-/non-generic-validator combinations. |
+| `public static Result<T> CheckIf<T>(this Result<T> result, bool condition, Func<T, Result> func)` | `Result<T>` | Boolean-gated check; runs only when `condition` is true. |
+| `public static Result<T> CheckIf<T, TK>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<TK>> func)` | `Result<T>` | Predicate-gated check. |
+| `public static Task<Result<T>> CheckIfAsync<T>(this Task<Result<T>> resultTask, bool condition, Func<T, Task<Result>> func)` | `Task<Result<T>>` | `CheckIfExtensionsAsync` covers all Task/ValueTask × bool-/predicate-gated × generic-/non-generic-validator combinations. |
+
+```csharp
+Result<Quote> q = Result.Ok(quote)
+    .Check(QuoteValidators.AllItemsInStock)
+    .CheckIf(quote.IsExpedited, QuoteValidators.HonorsCutoff);
+```
+
+#### Combine family — `CombineExtensions`, `CombineExtensionsAsync`, `CombineErrorExtensions`
+
+Aggregates results into tuples (success-track) or merges errors via `Error.Aggregate` (failure-track). Tuple arities 2–9 are generated.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result Combine(this Result r1, Result r2)` | `Result` | Non-generic merge. |
+| `public static Result<(T1, T2)> Combine<T1, T2>(this Result<T1> t1, Result<T2> t2)` | `Result<(T1, T2)>` | Tuple combine; failures fold via `Error.Aggregate`. |
+| `public static Result<T1> Combine<T1>(this Result<T1> t1, Result t2)` | `Result<T1>` | Mixed shape: keeps generic value, aggregates errors. |
+| `public static Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Task<Result<T2>> tt2)` | `Task<Result<(T1, T2)>>` | `CombineExtensionsAsync` covers every Task/ValueTask × Task/ValueTask × Result/non-generic combination. |
+| `public static Error Combine(this Error? left, Error right)` | `Error` | On `CombineErrorExtensions`: combines two errors into an `Error.Aggregate`, flattening nested aggregates and treating `null` left as right. |
+
+```csharp
+return Result.Combine(streetCity, contact)
+    .Map(_ => new Address(cmd.Street, cmd.City));
+```
+
+#### Discard family — `DiscardExtensions`, `DiscardTaskExtensions`, `DiscardValueTaskExtensions`
+
+Drop the success value to convert `Result<T>` to non-generic `Result` (for fire-and-forget pipelines).
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static void Discard<T>(this Result<T> result)` | `void` | Documents intent that the success value is intentionally ignored. |
+| `public static Task DiscardAsync<T>(this Task<Result<T>> resultTask)` | `Task` | Awaits and discards; on `DiscardTaskExtensions`. |
+| `public static ValueTask DiscardAsync<T>(this ValueTask<Result<T>> resultTask)` | `ValueTask` | ValueTask variant on `DiscardValueTaskExtensions`. |
+
+```csharp
+await SendEmailAsync(msg).DiscardAsync(); // intentionally fire-and-forget the value
+```
+
+#### AsUnit family — `ResultAsUnitExtensionsAsync`
+
+Async wrappers around `Result<T>.AsUnit()` that strip the value while preserving success/failure state.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Task<Result> AsUnitAsync<T>(this Task<Result<T>> resultTask)` | `Task<Result>` | Awaits and projects to non-generic `Result`. |
+| `public static ValueTask<Result> AsUnitAsync<T>(this ValueTask<Result<T>> resultTask)` | `ValueTask<Result>` | ValueTask variant. |
+
+```csharp
+Task<Result> done = pipeline.RunAsync(input).AsUnitAsync();
+```
+
+#### Debug family — `ResultDebugExtensions`, `ResultDebugExtensionsAsync`
+
+Non-allocating diagnostic taps gated by `ResultDebugSettings`. They never alter the result; they only emit through `Debug.WriteLine` / configured sinks.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<TValue> Debug<TValue>(this Result<TValue> result, string message = "")` | `Result<TValue>` | Logs success or failure with the optional message. |
+| `public static Result<TValue> DebugDetailed<TValue>(this Result<TValue> result, string message = "")` | `Result<TValue>` | Includes the success value and full error in the log. |
+| `public static Result<TValue> DebugWithStack<TValue>(this Result<TValue> result, string message = "", bool includeStackTrace = true)` | `Result<TValue>` | Adds the current stack trace. |
+| `public static Result<TValue> DebugOnSuccess<TValue>(this Result<TValue> result, Action<TValue> action)` | `Result<TValue>` | Custom sink invoked only on success. |
+| `public static Result<TValue> DebugOnFailure<TValue>(this Result<TValue> result, Action<Error> action)` | `Result<TValue>` | Custom sink invoked only on failure. |
+| `public static Task<Result<TValue>> DebugAsync<TValue>(this Task<Result<TValue>> resultTask, string message = "")` | `Task<Result<TValue>>` | `ResultDebugExtensionsAsync` mirrors every sync overload (`DebugDetailedAsync`, `DebugWithStackAsync`, `DebugOnSuccessAsync`, `DebugOnFailureAsync`) for `Task<Result<T>>` — including `Func<T, Task>` / `Func<Error, Task>` async sinks. |
+
+```csharp
+return await LoadAsync(id)
+    .DebugAsync("after-load")
+    .BindAsync(ChargeAsync)
+    .DebugDetailedAsync("after-charge");
+```
+
+#### Traverse — `TraverseExtensions`
+
+Folds a sequence of inputs through a `Result`-producing selector into a single `Result<IReadOnlyList<TOut>>`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<IReadOnlyList<TOut>> Traverse<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Result<TOut>> selector)` | `Result<IReadOnlyList<TOut>>` | Sync traversal; short-circuits on the first failure. |
+| `public static Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Task<Result<TOut>>> selector)` | `Task<Result<IReadOnlyList<TOut>>>` | Async traversal; sequential evaluation. |
+| `public static Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<IReadOnlyList<TOut>>>` | Cancellation-token overload. |
+| `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, ValueTask<Result<TOut>>> selector)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | ValueTask variant. |
+| `public static Task<Result> TraverseAsync<TIn>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result>> selector, CancellationToken cancellationToken = default)` | `Task<Result>` | Non-generic async traversal for fire-each pipelines. |
+| `public static Result<IReadOnlyList<T>> Sequence<T>(this IEnumerable<Result<T>> source)` | `Result<IReadOnlyList<T>>` | Identity-selector form of `Traverse`. Lifts an `IEnumerable<Result<T>>` to `Result<IReadOnlyList<T>>`; short-circuits on the first failure. |
+| `public static Result Sequence(this IEnumerable<Result> source)` | `Result` | Unit-shaped sequence; short-circuits on the first failure. |
+
+```csharp
+Task<Result<IReadOnlyList<Order>>> orders =
+    ids.TraverseAsync((id, ct) => repo.LoadAsync(id, ct), cancellationToken);
+
+// Sequence: when you already have IEnumerable<Result<T>> from a Select.
+Result<IReadOnlyList<Money>> subtotals =
+    lineItems.Select(item => item.ComputeSubtotal()).Sequence();
+```
+
+#### When / WhenAll — `WhenExtensions`, `WhenExtensionsAsync`, `WhenAllExtensionsAsync`
+
+Conditional execution and async fan-in.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<T> When<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<T>> operation)` | `Result<T>` | Runs `operation` only when the predicate holds. |
+| `public static Result<T> Unless<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<T>> operation)` | `Result<T>` | Inverse of `When`. |
+| `public static Task<Result<T>> WhenAsync<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Task<Result<T>>> operation)` | `Task<Result<T>>` | `WhenExtensionsAsync` covers Task/ValueTask × predicate-/no-predicate × Result/Task-Result combinations for both `WhenAsync` and `UnlessAsync`. |
+| `public static Task<Result<T>> UnlessAsync<T>(this Task<Result<T>> resultTask, Func<T, Task<Result<T>>> operation)` | `Task<Result<T>>` | Async inverse-`When`. |
+| `public static Task<Result<(T1, T2)>> WhenAllAsync<T1, T2>(this (Task<Result<T1>> t1, Task<Result<T2>> t2) tasks)` | `Task<Result<(T1, T2)>>` | `WhenAllExtensionsAsync` runs tasks concurrently via `Task.WhenAll` and folds the results. Tuple arities 2–9 are generated. |
+
+```csharp
+Task<Result<(Profile, Preferences)>> bundle =
+    (LoadProfileAsync(id), LoadPreferencesAsync(id)).WhenAllAsync();
+```
+
+#### ToMaybe — `ToMaybeExtensions`, `ToMaybeExtensionsAsync`
+
+Project a `Result<T>` to a `Maybe<T>` (failure → `None`).
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Maybe<TValue> ToMaybe<TValue>(this Result<TValue> result) where TValue : notnull` | `Maybe<TValue>` | Sync projection. |
+| `public static Task<Maybe<TValue>> ToMaybeAsync<TValue>(this Task<Result<TValue>> resultTask) where TValue : notnull` | `Task<Maybe<TValue>>` | Awaits and projects. |
+| `public static ValueTask<Maybe<TValue>> ToMaybeAsync<TValue>(this ValueTask<Result<TValue>> resultTask) where TValue : notnull` | `ValueTask<Maybe<TValue>>` | ValueTask variant. |
+
+```csharp
+Maybe<Order> maybe = await repo.TryLoadAsync(id).ToMaybeAsync();
+```
+
+---
+
+## Pagination
+
+Cursor-based pagination primitives. `Cursor` is opaque to clients; servers choose the encoding. `Page<T>` couples items with adjacent cursors and observable server-side limit clamping.
+
+### `public readonly record struct Cursor`
+
+```csharp
+public readonly record struct Cursor
+{
+    public Cursor(string token);
+    public string Token { get; }
+}
+```
+
+| Member | Description |
+| --- | --- |
+| `Cursor(string token)` | Constructs a cursor; throws `ArgumentException` if `token` is null or empty. |
+| `Token` | The opaque continuation token. Server-defined encoding; clients must echo it back unchanged. |
+
+Absence of a cursor is represented by `null` (`Cursor?`). There is no "empty cursor" — a constructed `Cursor` always carries a non-empty token.
+
+### `public readonly record struct Page<T>`
+
+```csharp
+public readonly record struct Page<T>
+{
+    public Page(
+        IReadOnlyList<T> Items,
+        Cursor? Next,
+        Cursor? Previous,
+        int RequestedLimit,
+        int AppliedLimit);
+
+    public IReadOnlyList<T> Items { get; }
+    public Cursor?          Next { get; }
+    public Cursor?          Previous { get; }
+    public int              RequestedLimit { get; }
+    public int              AppliedLimit { get; }
+    public int              DeliveredCount { get; }
+    public bool             WasCapped { get; }
+}
+```
+
+| Member | Description |
+| --- | --- |
+| `Page(IReadOnlyList<T>, Cursor?, Cursor?, int, int)` | Validated constructor. Throws `ArgumentNullException` on null `Items`, `ArgumentOutOfRangeException` on a non-positive limit or `AppliedLimit > RequestedLimit`. |
+| `Items` | The items returned for this page. Never null when constructed via the public ctor. |
+| `Next` | Cursor for the next page, or `null` on the last page. |
+| `Previous` | Cursor for the previous page, or `null` on the first page (or when the source doesn't support reverse). |
+| `RequestedLimit` | The limit the client requested. |
+| `AppliedLimit` | The limit the server actually applied (after server-side cap). |
+| `DeliveredCount` | `Items.Count`, defensive against `default(Page<T>)` (returns 0 when `Items` is null). |
+| `WasCapped` | `true` when `AppliedLimit < RequestedLimit`. |
+
+### `public static class Page`
+
+Non-generic factory companion (mirrors the `Result` / `Result<T>` split — keeps the generic surface minimal per CA1000).
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Page<T> Empty<T>(int requestedLimit, int appliedLimit)` | `Page<T>` | An empty page (no items, no cursors) for the supplied limits. |
+
+**Wire shape.** `Trellis.Asp` projects `Page<T>` to `200 OK` with a JSON body envelope and a co-emitted `Link` header (RFC 8288). See `HttpResponseExtensions.ToHttpResponse` for the `Result<Page<T>>` overload. Trellis intentionally does **not** use `206 Partial Content` for collection pagination — RFC 9110 §14 was designed for byte-range transfer and lacks proxy/CDN support for collection ranges.
+
+```csharp
+public Task<Result<Page<Order>>> List(string? cursorToken, int limit, CancellationToken ct) =>
+    repo.ListAsync(cursorToken is null ? null : new Cursor(cursorToken), limit, ct)
+        .MapAsync(rows => new Page<Order>(
+            Items: rows.Items,
+            Next: rows.HasMore ? new Cursor(rows.NextToken!) : null,
+            Previous: rows.PrevToken is null ? null : new Cursor(rows.PrevToken),
+            RequestedLimit: limit,
+            AppliedLimit: Math.Min(limit, MaxLimit)));
+```
+
+---
+
 ## Error Cases (closed ADT)
 
 | Case | Constructor | Default `Code` | HTTP Status |
@@ -779,9 +1230,7 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe.From("user@example.com");
 
 Result<string> emailResult = maybeEmail.ToResult(
-    new Error.UnprocessableContent(EquatableArray.Create(
-        new FieldViolation(InputPointer.ForProperty("email"), "required")
-        { Detail = "Email is required" })));
+    Error.UnprocessableContent.ForField("email", "required", "Email is required"));
 ```
 
 ### Reading errors without throwing
@@ -792,7 +1241,7 @@ using Trellis;
 Result<Order> result = await mediator.SendAsync(new PlaceOrder(...));
 
 // Pattern-matching: result.Error is null on success, never throws
-if (result.Error is { } error)
+if (!result.TryGetValue(out var order, out var error))
 {
     return error switch
     {
@@ -803,7 +1252,7 @@ if (result.Error is { } error)
     };
 }
 
-return Ok(result.Value);
+return Ok(order);
 ```
 
 ### Multi-field validation
@@ -1422,7 +1871,7 @@ public static class Example
     {
         var orderId = OrderId.NewUniqueV7();
         var name = CustomerName.Create("Ada");
-        var lines = LineCount.TryCreate("42", CultureInfo.InvariantCulture).Value;
+        var lines = LineCount.TryCreate("42", CultureInfo.InvariantCulture).TryGetValue(out var v) ? v : null!;
         var submittedAt = SubmittedAt.Parse("2026-01-15T12:00:00Z", CultureInfo.InvariantCulture);
         var state = OrderState.Create("submitted");
 
@@ -1469,13 +1918,13 @@ public sealed class OrderId : ScalarValueObject<OrderId, Guid>, IScalarValue<Ord
 
     public static Result<OrderId> TryCreate(Guid value, string? fieldName = null) =>
         value == Guid.Empty
-            ? Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "required") { Detail = "Order ID is required." })))
+            ? Result.Fail<OrderId>(Error.UnprocessableContent.ForField(fieldName ?? "orderId", "required", "Order ID is required."))
             : Result.Ok(new OrderId(value));
 
     public static Result<OrderId> TryCreate(string? value, string? fieldName = null) =>
         Guid.TryParse(value, out var guid)
             ? TryCreate(guid, fieldName)
-            : Result.Fail<OrderId>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "orderId"), "must_be_guid") { Detail = "Order ID must be a GUID." })));
+            : Result.Fail<OrderId>(Error.UnprocessableContent.ForField(fieldName ?? "orderId", "must_be_guid", "Order ID must be a GUID."));
 }
 
 public sealed record OrderPlaced(OrderId OrderId, DateTime OccurredAt) : IDomainEvent;
@@ -1495,7 +1944,10 @@ public sealed class Order : Aggregate<OrderId>
 }
 
 Result<Order> orderResult = Order.Create("starter-order");
-var guarded = orderResult.OptionalETag(new[] { EntityTagValue.Strong(orderResult.Value.ETag) });
+if (orderResult.TryGetValue(out var order))
+{
+    var guarded = Result.Ok(order).OptionalETag(new[] { EntityTagValue.Strong(order.ETag) });
+}
 ```
 
 ### Specification composition
