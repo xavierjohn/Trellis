@@ -674,6 +674,20 @@ OpenTelemetry helper for Trellis result instrumentation. Lives in `Trellis.Core\
 
 Wraps `ImmutableArray<T>` so records and other value-equal types get sequence equality. Built-in `record` equality compares arrays by reference; this wrapper restores element-wise comparison. A default-initialized `EquatableArray<T>` represents an empty sequence — two `default` values compare equal, and `Items` always returns `ImmutableArray<T>.Empty` instead of an uninitialized array.
 
+> **LINQ / FluentAssertions / `IEnumerable<T>` consumers.** `EquatableArray<T>` exposes a duck-typed `GetEnumerator()` (allocation-free `foreach`) but **does not implement `IEnumerable<T>`** — this is intentional, to keep the value-type sequence-equality wrapper allocation-free. Methods that bind on `IEnumerable<T>` (`Select`, `Where`, `Any`, `ToList`, FluentAssertions' `Should().ContainSingle()` / `Should().HaveCount(...)` / `Should().BeEquivalentTo(...)`, `string.Join`, etc.) won't see the contents directly. **Project through `.Items` first** (which returns the wrapped `ImmutableArray<T>`, an `IEnumerable<T>`):
+>
+> ```csharp
+> // ❌ Doesn't compile: 'EquatableArray<RuleViolation>' does not contain a definition for 'Where'
+> unproc.Rules.Where(r => r.ReasonCode == "...");
+>
+> // ❌ FluentAssertions: 'object does not contain a definition for ContainSingle'
+> unproc.Rules.Should().ContainSingle();
+>
+> // ✅ Use .Items
+> unproc.Rules.Items.Where(r => r.ReasonCode == "...");
+> unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("...");
+> ```
+
 #### Properties
 
 | Name | Type | Notes |
