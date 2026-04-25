@@ -900,6 +900,48 @@ public partial class ShippingAddress : ValueObject { public ShippingAddress() { 
 public partial class ShippingAddress { /* … */ }
 ```
 
+### Owned collections with a private backing field
+
+When an aggregate exposes a collection navigation as an `IReadOnlyList<T>` (or `IReadOnlyCollection<T>`) facade over a private `List<T>` field, **ignore the facade and map via the backing field name**. EF Core cannot instantiate an interface type for a navigation, so it has to bind directly to the concrete `List<T>` field.
+
+```csharp
+public sealed partial class Order : Aggregate<OrderId>
+{
+    private readonly List<LineItem> _lineItems = [];
+    public IReadOnlyList<LineItem> LineItems => _lineItems;       // public facade — interface, EF can't materialize
+    // ...
+}
+
+internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.HasKey(o => o.Id);
+
+        // The public facade is IReadOnlyList<T> — EF cannot instantiate an interface.
+        // Ignore the facade and map directly against the private backing field by name.
+        builder.Ignore(o => o.LineItems);
+        builder.OwnsMany<LineItem>("_lineItems", li =>
+        {
+            li.ToTable("LineItems");
+            li.HasKey(x => x.Id);
+            // Inner [OwnedEntity] composites (e.g., LineItem.UnitPrice : Money)
+            // are still picked up by CompositeValueObjectConvention — no extra OwnsOne needed here.
+        });
+    }
+}
+```
+
+The string `"_lineItems"` is unfortunately part of the public mapping contract: rename the private field and the EF model silently stops working. Two mitigations and what they buy you:
+
+| Mitigation | Compile-time safety | Cost |
+|---|---|---|
+| Raw string `"_lineItems"` | None — typo or rename breaks at runtime model-validation. | Zero. The pattern shown above. |
+| `private const string LineItemsField = "_lineItems";` on `Order`, then `builder.OwnsMany<LineItem>(Order.LineItemsField, …)` | Refactoring tools follow the constant. Still no compile check that the field actually exists. | Leaks the field name through `internal`/`public` constant on the aggregate — adds public surface for a persistence concern. |
+| `builder.OwnsMany(o => o.LineItems, …)` directly against the facade | n/a | Does not work: EF reports it cannot determine the relationship from `IReadOnlyList<LineItem>`. |
+
+**Why no `[OwnedEntity]`-style convention for collections (yet).** `[OwnedEntity]` + `CompositeValueObjectConvention` discovers composite owned *value objects* by attribute. An equivalent collection convention would need to walk every aggregate, find `IReadOnlyList<T>` / `IReadOnlyCollection<T>` properties whose `T` is an entity, locate a matching `_camelCase` backing field, and register the `OwnsMany` against it. This is on the roadmap (tracked as the analogue of `MaybeConvention` for collections); for now the cookbook pattern above is the supported approach.
+
 ---
 
 ## Recipe 14 — Optional fields in request DTOs: `Maybe<TScalar>` vs nullable transport
