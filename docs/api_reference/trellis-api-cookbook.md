@@ -198,9 +198,13 @@ public sealed class ListOrdersHandler(AppDbContext db)
         var requested = q.Limit;
         var applied   = Math.Clamp(requested, 1, MaxLimit);
 
+        Guid afterId = Guid.Empty;
+        if (q.Cursor is not null && !Guid.TryParseExact(q.Cursor, "N", out afterId))
+            return Error.UnprocessableContent.ForField("cursor", "cursor.malformed", "Cursor is not a valid opaque token.");
+
         var query = db.Orders.AsNoTracking().OrderBy(o => o.Id);
         if (q.Cursor is not null)
-            query = query.Where(o => o.Id.Value > Guid.Parse(q.Cursor));
+            query = query.Where(o => o.Id.Value > afterId);
 
         var rows = await query.Take(applied + 1).ToListAsync(ct);
         var hasNext = rows.Count > applied;
@@ -219,6 +223,8 @@ public sealed class ListOrdersHandler(AppDbContext db)
 ```
 
 **What it shows.** `Page<T>` is a `readonly record struct`; instances always carry positive limits and a non-null `Items`. `WasCapped` becomes `true` automatically when the server clamped the limit. Use `Page.Empty<T>(req, app)` for the empty case rather than `default(Page<T>)`.
+
+> **Cursor parsing must be ROP, not throwing.** `Guid.Parse(q.Cursor)` would throw on malformed input and escape the handler as a 500. Use `Guid.TryParseExact(..., "N", out var)` and return `Error.UnprocessableContent.ForField("cursor", ...)` so a bad cursor surfaces as a clean 422, not a stack trace. Apply the same shape (TryParse → `Result` failure) for any opaque-token format you adopt.
 
 ---
 
@@ -1241,7 +1247,7 @@ public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, Date
 public Result<Order> Submit(TimeProvider clock)
 {
     return this.ToResult()
-        .Ensure(_ => Status == OrderStatus.Draft, Error.Validation("Already submitted"))
+        .Ensure(_ => Status == OrderStatus.Draft, Error.UnprocessableContent.ForRule("order.already-submitted", "Already submitted"))
         .Tap(_ =>
         {
             Status = OrderStatus.Submitted;
@@ -1262,7 +1268,7 @@ public Result<Order> Submit(TimeProvider clock)
     Status = OrderStatus.Submitted;
     SubmittedAt = occurredAt;
     DomainEvents.Add(new OrderSubmitted(Id, Total, occurredAt));
-    return this;
+    return Result.Ok(this);
 }
 ```
 

@@ -51,7 +51,7 @@ public class AccountsController : ControllerBase
         _workflow.OpenAccountAsync(request.CustomerId, request.AccountType, request.InitialDeposit, request.DailyWithdrawalLimit, request.OverdraftLimit, cancellationToken)
             .ToHttpResponseAsync(
                 AccountResponse.From,
-                opts => opts.CreatedAtAction(nameof(Get), a => new Microsoft.AspNetCore.Routing.RouteValueDictionary { ["id"] = a.Id }))
+                opts => opts.CreatedAtRoute("Showcase_GetAccount", a => new Microsoft.AspNetCore.Routing.RouteValueDictionary { ["id"] = a.Id.Value }))
             .AsActionResultAsync<AccountResponse>();
 
     [HttpPost("{id:AccountId}/deposit")]
