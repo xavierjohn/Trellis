@@ -57,6 +57,7 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
     private static async Task<JsonDocument> ReadBodyAsync(HttpResponseMessage r)
     {
         var bytes = await r.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        // Caller is responsible for disposing the returned JsonDocument (e.g. `using var body = ...`).
         return JsonDocument.Parse(bytes);
     }
 
@@ -69,7 +70,7 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
         var resp = await client.GetAsync("/diag/422-fields", TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be((HttpStatusCode)422);
-        var body = await ReadBodyAsync(resp);
+        using var body = await ReadBodyAsync(resp);
         var raw = body.RootElement.GetRawText();
 
         body.RootElement.GetProperty("code").GetString().Should().Be("unprocessable-content");
@@ -86,7 +87,8 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
 
         var resp = await client.GetAsync("/diag/422-rules", TestContext.Current.CancellationToken);
 
-        var body = await ReadBodyAsync(resp);
+        resp.StatusCode.Should().Be((HttpStatusCode)422);
+        using var body = await ReadBodyAsync(resp);
         var raw = body.RootElement.GetRawText();
 
         body.RootElement.TryGetProperty("rules", out var rules)
@@ -102,7 +104,8 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
 
         var resp = await client.GetAsync("/diag/404", TestContext.Current.CancellationToken);
 
-        var body = await ReadBodyAsync(resp);
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        using var body = await ReadBodyAsync(resp);
         body.RootElement.GetProperty("code").GetString().Should().Be("not-found");
         body.RootElement.GetProperty("kind").GetString().Should().Be("not-found");
     }
@@ -116,7 +119,7 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
         var resp = await client.GetAsync("/diag/422-fields", TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be((HttpStatusCode)422);
-        var body = await ReadBodyAsync(resp);
+        using var body = await ReadBodyAsync(resp);
         var raw = body.RootElement.GetRawText();
 
         body.RootElement.TryGetProperty("errors", out var errors)
