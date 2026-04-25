@@ -1083,6 +1083,81 @@ These compose with `EF.Property<T?>` directly. They're a fine choice for one-off
 
 ---
 
+## Recipe 16 — Unit of work in handlers: `Add` staging vs immediate `SaveAsync`
+
+**Problem.** A command handler creates a new aggregate. Where does the `SaveChanges` call go? The first time you read a Trellis handler that ends with `repo.Add(order); return Result.Ok(order.Id);` the question is unavoidable: *who actually saves it?*
+
+```csharp
+public sealed class CreateOrderHandler(IOrderRepository repo)
+    : ICommandHandler<CreateOrderCommand, Result<OrderId>>
+{
+    public ValueTask<Result<OrderId>> Handle(CreateOrderCommand cmd, CancellationToken ct) =>
+        new(Order.Create(cmd.Total)
+            .Tap(repo.Add)                  // stages — no save here
+            .Map(o => o.Id));               // handler returns immediately
+}
+```
+
+> `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your ACL composition root, automatically calls `SaveChangesAsync` after every successful handler — no explicit save call is needed in the handler.
+
+**What it shows.** Handlers in Trellis follow a strict separation: the handler shapes domain state and the pipeline owns the commit boundary. `IRepository.Add` returns `void` precisely to signal "staged, not yet persisted" — the `void` return makes it impossible to write the (wrong) `await repo.Add(...).Should().BeSuccess()`. The mediator pipeline for command handlers is, innermost first: `TransactionalCommandBehavior` → `ValidationBehavior` → `LoggingBehavior` → handler. When the handler returns a successful `Result<T>`, the transactional behavior calls `SaveChangesAsync` and only then surfaces the result; on failure or exception, nothing is committed.
+
+| Method | Signature | Saves immediately? | When to use |
+|---|---|---|---|
+| `IRepository.Add(T)` (and `Remove(T)`, `RemoveByIdAsync(TId)`) | `void` / `Task<Result>` for not-found | **No** — staged for the UoW | Handlers and any production-shaped repository contract |
+| `FakeRepository.Add(T)` | `void` | n/a (in-memory; visible immediately) | **Test setup** — "put this in the store so the handler can find it" |
+| `FakeRepository.SaveAsync(T)` | `Task<Result>` | n/a (in-memory; visible immediately) | Tests that explicitly assert on the `Result` shape, e.g., conflict-result handling |
+
+**Anti-pattern → fix.**
+
+```csharp
+// ❌ Wrong — explicit SaveChangesAsync in the handler. Bypasses TransactionalCommandBehavior,
+//   so cross-aggregate behaviors that depend on a single commit boundary (outbox writes,
+//   ETag bumps, audit logs) end up in inconsistent states. Also: you've now committed even
+//   if a later behavior in the pipeline fails post-handler.
+public ValueTask<Result<OrderId>> Handle(CreateOrderCommand cmd, CancellationToken ct) =>
+    Order.Create(cmd.Total)
+        .Tap(repo.Add)
+        .TapAsync(_ => dbContext.SaveChangesAsync(ct));   // ❌ — duplicates UoW, racy
+
+// ❌ Wrong — calling SaveAsync from a production handler. SaveAsync is a FakeRepository
+//   convenience for tests. EF repositories don't expose it (and shouldn't).
+.TapAsync(o => repo.SaveAsync(o, ct))   // ❌ — IRepository<Order>.SaveAsync doesn't exist
+
+// ✅ Correct — stage with Add, let TransactionalCommandBehavior commit on success.
+.Tap(repo.Add)
+```
+
+**Test setup pattern.** When unit-testing a handler with `FakeRepository`, prefer `Add` for setup and reserve `SaveAsync` for tests that specifically assert on the Result of the save (conflict handling, etc.). The void surface keeps the test intent visually honest: setup should not have a return value to assert on.
+
+```csharp
+// ✅ Setup: void Add — no .GetAwaiter().GetResult(), no Result assertion in setup.
+var customers = new FakeRepository<Customer, CustomerId>();
+customers.Add(Customer.Create(/* ... */));   // matches the handler's surface exactly
+
+// ✅ Conflict-result test: SaveAsync returns the Error.Conflict so the test can assert.
+var customers = new FakeRepository<Customer, CustomerId>().WithUniqueConstraint(c => c.Email);
+customers.Add(Customer.Create("alice@x.com"));
+var result = await customers.SaveAsync(Customer.Create("alice@x.com"));   // intentional conflict
+result.UnwrapError().Should().BeOfType<Error.Conflict>();
+```
+
+> `FakeRepository.Add` enforces unique constraints **eagerly** by throwing `InvalidOperationException` — setup-time violations are almost always test bugs and should fail loud at the offending call site, not at a deferred Result assertion further down. Use `SaveAsync` when you specifically want to test handler behavior on conflict (where the `Error.Conflict` Result is the system-under-test, not a setup mistake).
+
+**DI prerequisites checklist.**
+
+```csharp
+services
+    .AddTrellisBehaviors()                              // validation/logging/tracing
+    .AddTrellisFluentValidation(typeof(MyValidator).Assembly)
+    .AddTrellisUnitOfWork<AppDbContext>()               // ⬅ registers TransactionalCommandBehavior
+    .AddScoped<IOrderRepository, EfOrderRepository>();
+```
+
+Without `AddTrellisUnitOfWork<TContext>()`, `repo.Add(order)` stages the entity but **nothing ever calls `SaveChangesAsync`** — handler tests against EF (or against a real database) silently insert nothing. This is the production analogue of the fake/real divergence trap from [Recipe 15](#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap): the tests pass against `FakeRepository` (which has no UoW boundary, so `Add` is immediately visible), and production silently commits nothing. Always wire `AddTrellisUnitOfWork` in the ACL composition root, not inside each handler.
+
+---
+
 ## Cross-cutting tips
 
 - **Run analyzers in CI.** `Trellis.Analyzers` ships in the framework and runs as part of every `dotnet build`. Treat warnings as errors for `TRLS00x` once your codebase is clean.

@@ -342,6 +342,15 @@ public class FakeRepository<TAggregate, TId>
 
     public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default);
     public Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default);
+
+    // Setup surface — mirrors RepositoryBase<TAggregate, TId>. Use these in handlers and
+    // in test setup so the same IRepository contract works in both the EF and fake paths.
+    public void Add(TAggregate aggregate);
+    public void Remove(TAggregate aggregate);
+    public Task<Result> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default);
+
+    // Result-shape surface — only on the fake. Reserve for tests that explicitly assert
+    // on Result-of-save shape (e.g., conflict-result handling). NOT part of RepositoryBase.
     public Task<Result> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
     public Task<Result> DeleteAsync(TId id, CancellationToken cancellationToken = default);
 
@@ -406,13 +415,21 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
 
 ### FakeRepository
 
-- `SaveAsync` and `DeleteAsync` return `Task<Result>`.
-- `WithUniqueConstraint(Func<TAggregate, object?> propertySelector)` — fluent constraint registration
+- **Setup surface** (mirrors `RepositoryBase<TAggregate, TId>` in `Trellis.EntityFrameworkCore`) — use these from handlers and test setup so the same `IRepository` contract works in both worlds:
+  - `void Add(TAggregate)` — stages an insert; in the fake, immediately visible. Throws `InvalidOperationException` on unique-constraint violation (setup mistakes should fail loud at the call site).
+  - `void Remove(TAggregate)` — stages a delete; no-op if the aggregate is not in the store.
+  - `Task<Result> RemoveByIdAsync(TId)` — looks up by ID and removes; returns `Error.NotFound` if missing.
+- **Result-shape surface** (only on the fake — `RepositoryBase` does not expose these) — use only when the test specifically asserts on the `Result` of the persistence call:
+  - `Task<Result> SaveAsync(TAggregate)` — returns `Error.Conflict` on unique-constraint violation. Use to test conflict-handling code paths.
+  - `Task<Result> DeleteAsync(TId)` — returns `Error.NotFound` on missing. Use to test not-found handling. (`RemoveByIdAsync` is the staging-API-named alias.)
+- `WithUniqueConstraint(Func<TAggregate, object?> propertySelector)` — fluent constraint registration; checked eagerly by `Add` (throws) and at-call by `SaveAsync` (returns `Result`).
 - `Clear()`, `Exists(TId id)`, `Get(TId id)`, `GetAll()`, `Count` — direct inspection helpers
-- `GetByIdAsync` / `DeleteAsync` return `Error.NotFound` details in the format:
+- `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` return `Error.NotFound` details in the format:
   - `"{AggregateTypeName} with ID {id} not found"`
 - Unique-constraint conflicts return:
   - `"A {AggregateTypeName} with the same value already exists."`
+
+> See cookbook **Recipe 16 — Unit of work in handlers** for guidance on which surface to use from where, and the pitfall of accidentally calling `SaveAsync` from a production-shaped repository contract.
 
 ## Compilable examples
 
