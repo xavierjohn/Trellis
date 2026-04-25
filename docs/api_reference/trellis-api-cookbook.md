@@ -399,7 +399,7 @@ public static class ModelDiagnostics
 
 **What it shows.** `Maybe<T>` properties are routed through `MaybeConvention`, which generates a backing field (`_email` for `Email`) that EF Core maps to a nullable column. The CLR property remains `Maybe<EmailAddress>` everywhere in the domain. `MaybePropertyMapping` is the diagnostic record that exposes both names — useful for `HasIndex` on the storage member.
 
-> For **composite** value objects (multi-field `[OwnedEntity]` types like `ShippingAddress`) — and for `Maybe<T>` where `T` is composite — see [Recipe 13](#recipe-13--ef-core-composite-owned-value-object-ownedentity--ownsone-not-needed). `Recipe 8` covers scalar `Maybe<T>` only.
+> For **composite** value objects (multi-field `[OwnedEntity]` types like `ShippingAddress`) — and for `Maybe<T>` where `T` is composite — see [Recipe 13](#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership). `Recipe 8` covers scalar `Maybe<T>` only.
 
 **Anti-pattern → fix (TRLS016).**
 
@@ -731,7 +731,7 @@ public static class CompositionRoot
 
 ---
 
-## Recipe 13 — EF Core: composite owned value object (`[OwnedEntity]` + `OwnsOne` not needed)
+## Recipe 13 — Composite value object end-to-end (Domain + API JSON binding + EF Core ownership)
 
 **Problem.** Persist a multi-field value object (`ShippingAddress` with street/city/state/postalCode/country) as part of a `Customer` aggregate. Every field is required, the VO must validate at construction, and the JSON wire format must reuse the same validation as the domain TryCreate.
 

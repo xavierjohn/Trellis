@@ -17,6 +17,17 @@ using Trellis;
 /// public static <c>TryCreate</c> factory.</typeparam>
 /// <remarks>
 /// <para>
+/// <b>Apply via</b> <c>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;TSelf&gt;))]</c> on the
+/// value object class itself. The attribute is required: without it, ASP.NET Core model binding falls
+/// back to default construction and <b>silently bypasses <c>TryCreate</c></b> — inner-field validation
+/// never runs and an invalid payload propagates into the domain layer.
+/// </para>
+/// <para>
+/// For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO
+/// (<c>ShippingAddress</c>-style), see <b>Cookbook Recipe 13 — Composite value object end-to-end</b>
+/// in <c>docs/api_reference/trellis-api-cookbook.md</c>.
+/// </para>
+/// <para>
 /// Discovery convention: each public read-only instance property declared on <typeparamref name="T"/>
 /// becomes a JSON field (camelCase of the property name). The property's "primitive type" is the
 /// underlying primitive of an <see cref="IScalarValue{TSelf, TPrimitive}"/> property, or the property's
