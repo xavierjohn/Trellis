@@ -21,7 +21,9 @@ Phase status as of last update:
 
 ## Before Writing Code That Uses Trellis APIs
 
-Always read the relevant API reference files in `docs/api_reference/` **before** writing or generating code that uses Trellis types:
+Always read the relevant cookbook recipe and API reference files in `docs/api_reference/` **before** writing or generating code that uses Trellis types.
+
+Start with the task lookup table at the top of `docs/api_reference/trellis-api-cookbook.md`. If the current work matches a row (aggregate, handler, pagination, endpoint, DTO-to-VO mapping, resource authorization, EF `Maybe<T>`, optional fields, state machine, tests, domain events, analyzer warnings, or composition root), read the listed recipe before writing code. Then read the package reference files below for exact signatures.
 
 | When using... | Read first |
 |--------------|------------|

@@ -113,6 +113,8 @@ public interface IOrderRepository
 
 **What it shows.** `RequiredGuid<TSelf>` and `RequiredString<TSelf>` deliver a complete strongly-typed primitive (parsing, equality, JSON, EF) once you mark the partial class. `[StringLength]` and `[Range]` come from the **`Trellis` namespace** and are placed on the **class declaration** — using `System.ComponentModel.DataAnnotations` versions silently compiles but is ignored by the Trellis source generator (`TRLS017`).
 
+`Aggregate<TId>` already supplies inherited infrastructure members: `Id`, protected `DomainEvents`, persistence-managed `ETag`, and `IsChanged` based on pending domain events. Do not redeclare those members on every aggregate; use the inherited surface and add only domain-specific state.
+
 **Anti-pattern → fix (TRLS017).**
 
 ```csharp
