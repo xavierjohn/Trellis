@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Asynchronous <c>MatchAsync</c> extension methods for <see cref="Task{TResult}"/> and
@@ -29,6 +29,7 @@ public static partial class MaybeExtensionsAsync
         Func<TResult> none)
         where TValue : notnull
     {
+        ArgumentNullException.ThrowIfNull(maybeTask);
         ArgumentNullException.ThrowIfNull(some);
         ArgumentNullException.ThrowIfNull(none);
 
@@ -79,6 +80,7 @@ public static partial class MaybeExtensionsAsync
         Func<Task<TResult>> none)
         where TValue : notnull
     {
+        ArgumentNullException.ThrowIfNull(maybeTask);
         ArgumentNullException.ThrowIfNull(some);
         ArgumentNullException.ThrowIfNull(none);
 

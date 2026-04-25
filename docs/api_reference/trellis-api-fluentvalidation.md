@@ -118,7 +118,7 @@ public static async Task<Result<T>> ValidateToResultAsync<T>(
 
 ### Standalone helpers (`FluentValidationResultExtensions`)
 
-- The extension methods are stateless;they do not keep shared mutable state or add synchronization.
+- The extension methods are stateless; they do not keep shared mutable state or add synchronization.
 - Shared validator instances are only as concurrency-safe as the underlying `IValidator<T>` implementation; these helpers do not change that.
 - `ToResult<T>` only null-checks `validationResult`; it does not independently reject a `null` `value`.
 - Validation failures are converted into `Error.UnprocessableContent` whose `Fields` collection is built from one `FieldViolation` per FluentValidation failure (no grouping; multiple failures on the same property emit multiple violations).

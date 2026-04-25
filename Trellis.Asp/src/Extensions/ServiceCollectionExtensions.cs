@@ -271,9 +271,14 @@ public static class ServiceCollectionExtensions
     /// prefer the specific methods for clarity.
     /// </para>
     /// <para>
-    /// <strong>Note:</strong> This method does NOT configure MVC-specific features like model binding
-    /// or the validation filter. If you're using MVC controllers with the <c>[ApiController]</c> attribute,
-    /// use <c>AddControllers().AddScalarValueValidation()</c> instead for full functionality.
+    /// <strong>Note:</strong> In addition to JSON options, this method also configures the
+    /// MVC binding/validation pipeline (<see cref="ScalarValueModelBinderProvider"/>,
+    /// <see cref="MaybeSuppressChildValidationMetadataProvider"/>,
+    /// <see cref="ScalarValueValidationFilter"/>, and <c>SuppressModelStateInvalidFilter</c>),
+    /// so MVC controller hosts that call only <c>AddTrellisAsp()</c> (which invokes this method)
+    /// still get the full scalar-value-object validation experience without having to chain
+    /// <c>AddControllers().AddScalarValueValidation()</c>. The MVC registrations are no-ops
+    /// when controllers are not added, and are idempotent so combining both calls is safe.
     /// </para>
     /// </remarks>
     /// <example>

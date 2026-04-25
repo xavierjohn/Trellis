@@ -25,7 +25,13 @@ public sealed class ListOrdersHandler(AppDbContext db)
 
         var query = db.Orders.AsNoTracking().OrderBy(o => o.Id);
         if (q.Cursor is not null)
-            query = query.Where(o => o.Id.Value > System.Guid.Parse(q.Cursor)).OrderBy(o => o.Id);
+        {
+            if (!System.Guid.TryParseExact(q.Cursor, "N", out var cursorId))
+                return Result.Fail<Page<OrderListItem>>(
+                    Error.UnprocessableContent.ForField(nameof(q.Cursor), "Cursor is not a valid pagination token."));
+
+            query = query.Where(o => o.Id.Value > cursorId).OrderBy(o => o.Id);
+        }
 
         var rows = await query.Take(applied + 1).ToListAsync(ct);
         var hasNext = rows.Count > applied;
