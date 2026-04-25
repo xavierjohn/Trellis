@@ -4,7 +4,7 @@
    </PropertyGroup>
    <ItemGroup>
       <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
-      <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" />
+      <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" Properties="PublishAot=false" />
       <ProjectReference Include="..\src\Trellis.Primitives.csproj" />
    </ItemGroup>
    <ItemGroup>
