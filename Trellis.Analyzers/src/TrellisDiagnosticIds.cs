@@ -14,7 +14,7 @@
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS019</c> range are emitted by the
+/// IDs in the <c>TRLS001</c>–<c>TRLS020</c> range are emitted by the
 /// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS038</c>
 /// range are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c> and <c>Trellis.EntityFrameworkCore.Generator</c>).
@@ -84,6 +84,9 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS019 — Avoid <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and <c>default(Maybe&lt;T&gt;)</c>.</summary>
     public const string DefaultResultOrMaybe = "TRLS019";
+
+    /// <summary>TRLS020 — Composite value object DTO property is missing <c>CompositeValueObjectJsonConverter&lt;T&gt;</c>.</summary>
+    public const string CompositeValueObjectDtoMissingJsonConverter = "TRLS020";
 
     // ---- Generator IDs (Trellis.Core.Generator / Trellis.EntityFrameworkCore.Generator) ----
     // Renumbered from TRLSGEN### to TRLS### in v2 (see ADR-002 §3.5). Mapping:

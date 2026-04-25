@@ -1203,7 +1203,7 @@ Three perennial debates closed off so the template (Phase 6) and framework (Phas
 | Packages | 17 | **12** (11 runtime + 1 tooling) — `Trellis.AspTemplate` continues to ship from its own repo |
 | ASP entry points for happy-path response | `ToActionResult` / `ToHttpResult` / `ToCreatedHttpResult` / `ToUpdatedHttpResult` / `WriteOutcome.ToHttpResult` / `PartialContentHttpResult` × sync/async | **1** (`ToHttpResponse` with options) |
 | HTTP-client status helpers | ~16 method names × 4 input shapes (~60 overloads) | **5 named methods**, single `statusMap` parameter on the generic one |
-| Combine arity ceiling | 9 (hard error TRLS019) | **`Validate` builder: no ceiling** for validation aggregation; **`Combine<T1..T9>`: T1..T9 retained** for heterogeneous combination (first-failure-wins); TRLS019 stays at T10 with clearer message |
+| Combine arity ceiling | 9 (hard error TRLS014) | **`Validate` builder: no ceiling** for validation aggregation; **`Combine<T1..T9>`: T1..T9 retained** for heterogeneous combination (first-failure-wins); TRLS014 stays at T10 with clearer message |
 | VO base classes the AI must distinguish | scalar / symbolic / composite / optionality wrapper | **2** (`Scalar`, `Composite`) — symbolic is `Scalar<T,Enum>`; optionality is `Maybe<T>` |
 | Tracing / OTel surface | rich, dispersed | **same surface**, documented as canonical (no loss) |
 | Resource authorization | `IAuthorize` + `IAuthorizeResource<T>` + `IIdentifyResource<,>` + `IResourceLoader<,>` | **same model** + attribute sugar for the simple case (no loss) |

@@ -286,4 +286,19 @@ public static class DiagnosticDescriptors
                      "Suppress with [SuppressMessage(\"Trellis\", \"TRLS019\")] or '#pragma warning disable TRLS019' " +
                      "for sanctioned sentinel/test-helper sites.",
         helpLinkUri: HelpLinkBase + "TRLS019");
+
+    /// <summary>
+    /// TRLS020: Composite value object DTO property is missing CompositeValueObjectJsonConverter.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CompositeValueObjectDtoMissingJsonConverter = new(
+        id: TrellisDiagnosticIds.CompositeValueObjectDtoMissingJsonConverter,
+        title: "Composite value object DTO property is missing JSON converter",
+        messageFormat: "Composite value object '{0}' is exposed by DTO property '{1}' without CompositeValueObjectJsonConverter<T>. Model binding may bypass TryCreate validation.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Composite value objects exposed through request/response DTOs must carry " +
+                     "[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]. Without it, System.Text.Json can " +
+                     "fall back to default construction and bypass TryCreate validation.",
+        helpLinkUri: HelpLinkBase + "TRLS020");
 }

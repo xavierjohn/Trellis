@@ -23,6 +23,7 @@ var result = Parse("abc")
 ## Key Features
 - Flags unsafe `Maybe.Value` access (TRLS003).
 - Catches async misuse, double-wrapped results, and common ROP anti-patterns.
+- Flags composite value objects exposed through request/response DTOs without `CompositeValueObjectJsonConverter<T>` (TRLS020).
 - Includes fixes for Trellis-specific issues such as `SaveChangesAsync` vs. `SaveChangesResultAsync`.
 
 ## Documentation
