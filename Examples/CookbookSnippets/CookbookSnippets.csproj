@@ -27,17 +27,17 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj"
-                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
     <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
     <ProjectReference Include="..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
     <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
     <ProjectReference Include="..\..\Trellis.Asp\generator\Trellis.AspSourceGenerator.csproj"
-                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\generator\Trellis.EntityFrameworkCore.Generator.csproj"
-                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" Properties="PublishAot=false" />
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Trellis.StateMachine\src\Trellis.StateMachine.csproj" />
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
   </ItemGroup>
