@@ -212,6 +212,73 @@ public class MaybeExpressionRewriterTests : IDisposable
             .Which.Id.Should().Be(withPhone.Id);
     }
 
+    [Fact]
+    public async Task Specification_OverdueOrderPattern_FiltersInDatabase()
+    {
+        // Arrange — mirrors the lab's OverdueOrderSpecification scenario:
+        //   Status == Confirmed && SubmittedAt.HasValue && SubmittedAt.Value < threshold
+        // The MaybeQueryInterceptor must rewrite the Maybe<T> property accesses to
+        // EF.Property<DateTime?>(o, "_submittedAt") so the predicate translates to SQL
+        // and the time-filter is actually applied at the database (not silently dropped).
+        var ct = TestContext.Current.CancellationToken;
+        var customer = CreateCustomer("Alice");
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync(ct);
+
+        var oldSubmitted = CreateOrder(customer.Id, TestOrderStatus.Confirmed);
+        oldSubmitted.SubmittedAt = Maybe.From(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var recentSubmitted = CreateOrder(customer.Id, TestOrderStatus.Confirmed);
+        recentSubmitted.SubmittedAt = Maybe.From(new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var draftWithOldDate = CreateOrder(customer.Id, TestOrderStatus.Draft);
+        draftWithOldDate.SubmittedAt = Maybe.From(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var confirmedWithoutDate = CreateOrder(customer.Id, TestOrderStatus.Confirmed);
+        // SubmittedAt left as Maybe<DateTime>.None
+
+        _context.Orders.AddRange(oldSubmitted, recentSubmitted, draftWithOldDate, confirmedWithoutDate);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var threshold = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        var spec = new OverdueOrderTestSpecification(threshold);
+
+        // Act
+        var overdue = await _context.Orders
+            .Where(spec.ToExpression())
+            .ToListAsync(ct);
+
+        // Assert — only oldSubmitted matches all three predicates
+        overdue.Should().ContainSingle()
+            .Which.Id.Should().Be(oldSubmitted.Id);
+    }
+
+    [Fact]
+    public void Specification_OverdueOrderPattern_CompiledLambdaShortCircuits_NoneSafe()
+    {
+        // The same Specification used against an in-memory list (e.g., FakeRepository)
+        // must NOT throw when SubmittedAt is None — C# AndAlso short-circuits the
+        // .Value access. This pins parity with the EF path so users can trust the same
+        // Specification in both production and fake-repository tests.
+        var threshold = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        var predicate = new OverdueOrderTestSpecification(threshold).ToExpression().Compile();
+
+        var noneOrder = new TestOrder
+        {
+            Id = TestOrderId.NewUniqueV7(),
+            CustomerId = TestCustomerId.NewUniqueV7(),
+            Amount = 1m,
+            Status = TestOrderStatus.Confirmed,
+            // SubmittedAt left as Maybe<DateTime>.None — would throw if .Value evaluated eagerly
+        };
+
+        var act = () => predicate(noneOrder);
+
+        act.Should().NotThrow();
+        predicate(noneOrder).Should().BeFalse();
+    }
+
     #endregion
 
     #region Equality with Maybe<T>.None
@@ -295,6 +362,22 @@ public class MaybeExpressionRewriterTests : IDisposable
     {
         public override System.Linq.Expressions.Expression<Func<TestCustomer, bool>> ToExpression() =>
             customer => customer.Phone.HasValue;
+    }
+
+    /// <summary>
+    /// Test specification mirroring the lab's <c>OverdueOrderSpecification</c> exactly:
+    /// orders in a given status whose <c>partial Maybe&lt;DateTime&gt; SubmittedAt</c>
+    /// is older than a threshold. Documents the canonical
+    /// <c>HasValue &amp;&amp; Value &lt; threshold</c> pattern that works in both EF (via
+    /// <see cref="MaybeQueryInterceptor"/>) and in-memory (via C# short-circuiting on the
+    /// compiled lambda — important for fake-repository parity).
+    /// </summary>
+    private sealed class OverdueOrderTestSpecification(DateTime threshold) : Specification<TestOrder>
+    {
+        public override System.Linq.Expressions.Expression<Func<TestOrder, bool>> ToExpression() =>
+            o => o.Status == TestOrderStatus.Confirmed
+                 && o.SubmittedAt.HasValue
+                 && o.SubmittedAt.Value < threshold;
     }
 
     /// <summary>

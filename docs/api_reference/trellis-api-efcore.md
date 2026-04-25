@@ -403,7 +403,7 @@ public sealed class MaybeQueryInterceptor : IQueryExpressionInterceptor
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. |
+| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. Supported patterns inside `Where`/`Select`/`Specification.ToExpression()`: `o.X.HasValue`, `o.X.HasNoValue`, `o.X.Value`, `o.X.GetValueOrDefault(d)`, `o.X == Maybe<T>.None`. See cookbook [Recipe 15](trellis-api-cookbook.md#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap) for the Specification walkthrough. |
 
 ### `ScalarValueQueryInterceptor`
 
