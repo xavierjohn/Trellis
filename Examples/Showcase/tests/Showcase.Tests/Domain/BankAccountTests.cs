@@ -98,8 +98,8 @@ public class BankAccountTests
         var result = account.Unfreeze();
 
         result.IsFailure.Should().BeTrue();
-        var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
-        conflict.ReasonCode.Should().Be("state.machine.invalid.transition");
+        var unproc = result.Error.Should().BeOfType<Error.UnprocessableContent>().Subject;
+        unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -150,8 +150,8 @@ public class BankAccountTests
         var result = account.Freeze("audit");
 
         result.IsFailure.Should().BeTrue();
-        var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
-        conflict.ReasonCode.Should().Be("state.machine.invalid.transition");
+        var unproc = result.Error.Should().BeOfType<Error.UnprocessableContent>().Subject;
+        unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
         account.UncommittedEvents().Should().BeEmpty();
     }
 
@@ -165,7 +165,7 @@ public class BankAccountTests
         var result = account.Unfreeze();
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.Conflict>();
+        result.Error.Should().BeOfType<Error.UnprocessableContent>();
         account.UncommittedEvents().Should().BeEmpty();
     }
 
@@ -179,7 +179,7 @@ public class BankAccountTests
         var result = account.Close();
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.Conflict>();
+        result.Error.Should().BeOfType<Error.UnprocessableContent>();
         account.UncommittedEvents().Should().BeEmpty();
     }
 

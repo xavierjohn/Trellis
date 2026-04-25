@@ -12,9 +12,9 @@ using Trellis;
 /// <para>
 /// These extensions pre-check the trigger with <see cref="StateMachine{TState, TTrigger}.CanFire(TTrigger)"/>
 /// (which honors <c>PermitIf</c>/<c>IgnoreIf</c> guards) and translate disallowed transitions
-/// into an <see cref="Error.Conflict"/> (HTTP 409) — the requested transition conflicts with
-/// the machine's current state. Exceptions thrown by user-supplied entry/exit/transition
-/// actions are not swallowed.
+/// into an <see cref="Error.UnprocessableContent"/> (HTTP 422) — the requested action is a
+/// semantic rule violation against the aggregate's current state, not a concurrent-modification
+/// conflict. Exceptions thrown by user-supplied entry/exit/transition actions are not swallowed.
 /// </para>
 /// <para>
 /// These extensions do not change the concurrency model of <see cref="StateMachine{TState, TTrigger}"/>.
@@ -45,7 +45,8 @@ public static class StateMachineExtensions
     /// <param name="trigger">The trigger to fire.</param>
     /// <returns>
     /// A <see cref="Result{TState}"/> containing the new state if the transition is valid,
-    /// or an <see cref="Error.Conflict"/> with code <c>state.machine.invalid.transition</c>
+    /// or an <see cref="Error.UnprocessableContent"/> carrying a single
+    /// <see cref="RuleViolation"/> with reason code <c>state.machine.invalid.transition</c>
     /// if the trigger cannot be fired from the current state (including when blocked by a guard).
     /// </returns>
     /// <remarks>
@@ -55,6 +56,14 @@ public static class StateMachineExtensions
     /// <see cref="StateMachine{TState, TTrigger}.Fire(TTrigger)"/> when the transition is permitted.
     /// This avoids any dependency on Stateless's exception message format and is therefore
     /// resilient to library upgrades.
+    /// </para>
+    /// <para>
+    /// <b>HTTP semantics.</b> An invalid state-machine transition is a semantic rule violation
+    /// (the aggregate cannot honor the requested action from its current state), not a
+    /// concurrent-modification conflict — retry will not succeed. The returned error is therefore
+    /// <see cref="Error.UnprocessableContent"/> (HTTP 422), not <see cref="Error.Conflict"/>
+    /// (HTTP 409). Callers can still distinguish state-machine rejections from other 422s by
+    /// matching on the <see cref="RuleViolation.ReasonCode"/> value <c>state.machine.invalid.transition</c>.
     /// </para>
     /// <para>
     /// Exceptions thrown by user entry, exit, or transition actions are not swallowed —
@@ -78,7 +87,7 @@ public static class StateMachineExtensions
     ///
     /// // Invalid transition — Idle has no Trigger.Start defined here.
     /// Result&lt;State&gt; invalid = machine.FireResult(Trigger.Pause);
-    /// // invalid.IsFailure == true; invalid.Error is Error.Conflict.
+    /// // invalid.IsFailure == true; invalid.Error is Error.UnprocessableContent.
     /// </code>
     /// </example>
     public static Result<TState> FireResult<TState, TTrigger>(
@@ -99,18 +108,20 @@ public static class StateMachineExtensions
         // unhandled-trigger handler is in effect it throws InvalidOperationException —
         // because we already know CanFire returned false, any InvalidOperationException
         // from this Fire call is by definition the unhandled-trigger path, so we translate
-        // it to Error.Conflict without inspecting its message text. Other exception types
-        // (custom user handlers throwing typed exceptions) propagate untouched.
+        // it to Error.UnprocessableContent (HTTP 422) — invalid state-machine transitions
+        // are semantic rule violations, not concurrent-modification conflicts. Other
+        // exception types (custom user handlers throwing typed exceptions) propagate untouched.
         try
         {
             stateMachine.Fire(trigger);
         }
         catch (InvalidOperationException)
         {
-            return Result.Fail<TState>(new Error.Conflict(
-                Resource: null,
-                ReasonCode: "state.machine.invalid.transition")
-            { Detail = $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'." });
+            var detail = $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.";
+            return Result.Fail<TState>(
+                Error.UnprocessableContent.ForRule(
+                    reasonCode: "state.machine.invalid.transition",
+                    detail: detail) with { Detail = detail });
         }
 
         // Custom OnUnhandledTrigger swallowed the trigger — surface the (unchanged) state as success.

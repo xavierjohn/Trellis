@@ -514,8 +514,10 @@ public sealed class DocumentService
                .Permit(DocumentTrigger.Approve, DocumentState.Approved)
                .Permit(DocumentTrigger.Reject,  DocumentState.Draft);
 
-        // FireResult pre-checks CanFire and converts invalid transitions to
-        // Error.Conflict("state.machine.invalid.transition").
+        // FireResult pre-checks CanFire and converts invalid transitions to an
+        // Error.UnprocessableContent (HTTP 422) carrying a single RuleViolation with
+        // ReasonCode "state.machine.invalid.transition" — invalid transitions are
+        // semantic rule violations, not concurrent-modification conflicts.
         Result<DocumentState> result = machine.FireResult(DocumentTrigger.Submit);
         return result.Tap(newState => doc.State = newState);
     }
@@ -523,6 +525,14 @@ public sealed class DocumentService
 ```
 
 **What it shows.** `StateMachineExtensions.FireResult(...)` honors `PermitIf`/`IgnoreIf` guards via `CanFire(...)` rather than parsing exception messages, so it survives Stateless library upgrades. For aggregates whose state lives in a backing field (e.g., loaded from EF), use `LazyStateMachine<TState, TTrigger>` to defer machine creation until the first `FireResult` call.
+
+> **HTTP semantics.** Invalid state-machine transitions surface as `Error.UnprocessableContent` (HTTP 422), not `Error.Conflict` (HTTP 409). The reasoning: `Error.Conflict` semantically means "your request is valid but collides with concurrent state — retry may succeed"; a state-machine rejection ("you asked for `Submit` on a `Cancelled` order") is not retriable and is not about concurrent modification — it's a semantic rule violation. Callers that need to distinguish state-machine rejections from other 422s can match on the `RuleViolation.ReasonCode` value `state.machine.invalid.transition`.
+
+```csharp
+// Asserting on a state-machine rejection in tests:
+var unproc = result.Error.Should().BeOfType<Error.UnprocessableContent>().Subject;
+unproc.Rules.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
+```
 
 ---
 

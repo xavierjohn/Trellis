@@ -88,7 +88,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.Conflict>();
+        err!.Should().BeOfType<Error.UnprocessableContent>();
         err!.Detail.Should().Contain("Pause");
         err!.Detail.Should().Contain("Idle");
     }
@@ -119,7 +119,9 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Code.Should().Be("state.machine.invalid.transition");
+        err!.Code.Should().Be("unprocessable-content");
+        var unproc = err!.Should().BeOfType<Error.UnprocessableContent>().Subject;
+        unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -134,7 +136,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.Conflict>();
+        err!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     [Fact]
@@ -144,7 +146,7 @@ public class StateMachineExtensionsTests
         // suppress invalid-trigger exceptions (e.g. log + ignore). FireResult must
         // honor that policy by invoking Fire even on the !CanFire path — the user's
         // handler runs, no exception escapes, and we surface the (unchanged) state
-        // as success rather than synthesizing an Error.Conflict the user opted out of.
+        // as success rather than synthesizing an Error.UnprocessableContent the user opted out of.
         var unhandledCalls = 0;
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
@@ -212,7 +214,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.Conflict>();
+        err!.Should().BeOfType<Error.UnprocessableContent>();
         err!.Detail.Should().Contain("Start");
         err!.Detail.Should().Contain("Idle");
     }
@@ -354,7 +356,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.Conflict>();
+        err!.Should().BeOfType<Error.UnprocessableContent>();
     }
 
     #endregion
