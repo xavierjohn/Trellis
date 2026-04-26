@@ -190,12 +190,14 @@ public class ScalarValueJsonConverterGeneratorTests
 
     /// <summary>
     /// Generated converters must never call reflection-based <c>JsonSerializer.Deserialize</c>
-    /// or <c>JsonSerializer.Serialize</c> overloads for unsupported primitives — those are
-    /// annotated <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and produce
-    /// IL2026/IL3050 under <c>PublishAot=true</c>. See issue #413.
+    /// or <c>JsonSerializer.Serialize</c> overloads — those are annotated
+    /// <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and produce
+    /// IL2026/IL3050 under <c>PublishAot=true</c>. Mixed fixture (one supported +
+    /// one unsupported primitive) verifies the unsupported type is skipped while the
+    /// supported type still generates an AOT-safe converter. See issue #413.
     /// </summary>
     [Fact]
-    public void Unsupported_Primitive_Does_Not_Emit_Reflection_Based_JsonSerializer_Calls()
+    public void Unsupported_Primitive_Is_Skipped_And_No_Reflection_Based_JsonSerializer_Calls_Are_Emitted()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -203,6 +205,10 @@ public class ScalarValueJsonConverterGeneratorTests
             using Trellis;
 
             namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
 
             public sealed class Duration : ScalarValueObject<Duration, System.TimeSpan>,
                 IScalarValue<Duration, System.TimeSpan>
@@ -219,15 +225,16 @@ public class ScalarValueJsonConverterGeneratorTests
             """;
 
         var generatedSources = RunGenerator(source, cancellationToken);
+        var combined = string.Concat(generatedSources);
 
-        var converterSource = generatedSources.FirstOrDefault(s => s.Contains("DurationJsonConverter"));
-        if (converterSource is not null)
-        {
-            converterSource.Should().NotContain("JsonSerializer.Deserialize",
-                "AOT-incompatible reflection-based deserialization must not be emitted (issue #413)");
-            converterSource.Should().NotContain("JsonSerializer.Serialize(writer",
-                "AOT-incompatible reflection-based serialization must not be emitted (issue #413)");
-        }
+        combined.Should().Contain("OrderIdJsonConverter",
+            "supported primitives must still generate a converter alongside unsupported ones");
+        combined.Should().NotContain("DurationJsonConverter",
+            "value objects with unsupported primitives must be skipped entirely (issue #413) — no converter at all");
+        combined.Should().NotContain("JsonSerializer.Deserialize",
+            "AOT-incompatible reflection-based deserialization must never be emitted (issue #413)");
+        combined.Should().NotContain("JsonSerializer.Serialize(writer",
+            "AOT-incompatible reflection-based serialization must never be emitted (issue #413)");
     }
 
     /// <summary>
