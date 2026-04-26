@@ -78,15 +78,8 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
         string fieldName,
         out TPrimitive? primitiveValue)
     {
-        if (typeof(TPrimitive).IsEnum && reader.TokenType == JsonTokenType.String)
-        {
-            var rawValue = reader.GetString();
-            if (TryParseEnumValue(rawValue, out primitiveValue))
-                return true;
-
-            ValidationErrorsContext.AddError(fieldName, $"'{rawValue}' is not a valid {typeof(TPrimitive).Name}.");
-            return false;
-        }
+        if (typeof(TPrimitive).IsEnum)
+            return TryReadEnumValue(ref reader, fieldName, out primitiveValue);
 
         if (!PrimitiveJsonReader.TryRead(ref reader, fieldName, out primitiveValue))
             return false;
@@ -99,6 +92,66 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
         }
 
         return true;
+    }
+
+    private static bool TryReadEnumValue(
+        ref Utf8JsonReader reader,
+        string fieldName,
+        out TPrimitive? primitiveValue)
+    {
+        primitiveValue = default;
+
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var rawValue = reader.GetString();
+            if (TryParseEnumValue(rawValue, out primitiveValue))
+                return true;
+
+            ValidationErrorsContext.AddError(fieldName, $"'{rawValue}' is not a valid {typeof(TPrimitive).Name}.");
+            return false;
+        }
+
+        if (reader.TokenType == JsonTokenType.Number)
+        {
+            try
+            {
+                var enumValue = ReadNumericEnumValue(ref reader);
+                if (!IsValidEnumValue(enumValue))
+                {
+                    ValidationErrorsContext.AddError(fieldName, $"'{enumValue}' is not a valid {typeof(TPrimitive).Name}.");
+                    return false;
+                }
+
+                primitiveValue = (TPrimitive)enumValue;
+                return true;
+            }
+            catch (Exception ex) when (ex is FormatException or InvalidOperationException)
+            {
+                ValidationErrorsContext.AddError(fieldName, $"JSON number is not a valid {typeof(TPrimitive).Name}.");
+                return false;
+            }
+        }
+
+        ValidationErrorsContext.AddError(fieldName, $"JSON token '{reader.TokenType}' is not a valid {typeof(TPrimitive).Name}.");
+        return false;
+    }
+
+    private static object ReadNumericEnumValue(ref Utf8JsonReader reader)
+    {
+        var underlyingType = Enum.GetUnderlyingType(typeof(TPrimitive));
+        var rawValue = Type.GetTypeCode(underlyingType) switch
+        {
+            TypeCode.Byte => (object)reader.GetByte(),
+            TypeCode.SByte => reader.GetSByte(),
+            TypeCode.Int16 => reader.GetInt16(),
+            TypeCode.UInt16 => reader.GetUInt16(),
+            TypeCode.Int32 => reader.GetInt32(),
+            TypeCode.UInt32 => reader.GetUInt32(),
+            TypeCode.Int64 => reader.GetInt64(),
+            _ => reader.GetUInt64(),
+        };
+
+        return Enum.ToObject(typeof(TPrimitive), rawValue);
     }
 
     private static bool TryParseEnumValue(string? rawValue, out TPrimitive? primitiveValue)

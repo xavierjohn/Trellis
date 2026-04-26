@@ -576,6 +576,27 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         roundTripped!.Value.Should().Be(date);
     }
 
+    [Fact]
+    public void Read_InvalidDateOnly_CollectsInvalidValueError()
+    {
+        var converter = new ValidatingJsonConverter<DateOnlyVO, DateOnly>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"not-a-date\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(DateOnlyVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/dateOnlyVO"
+                    && v.Detail == "'dateOnlyVO' is not a valid DateOnly.");
+        }
+    }
+
     #endregion
 
     #region TimeOnly Tests
@@ -605,6 +626,27 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         roundTripped!.Value.Should().Be(time);
     }
 
+    [Fact]
+    public void Read_InvalidTimeOnly_CollectsInvalidValueError()
+    {
+        var converter = new ValidatingJsonConverter<TimeOnlyVO, TimeOnly>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"not-a-time\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(TimeOnlyVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/timeOnlyVO"
+                    && v.Detail == "'timeOnlyVO' is not a valid TimeOnly.");
+        }
+    }
+
     #endregion
 
     #region TimeSpan Tests
@@ -629,6 +671,27 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<TimeSpanVO, TimeSpan>());
 
         roundTripped!.Value.Should().Be(value);
+    }
+
+    [Fact]
+    public void Read_InvalidTimeSpan_CollectsInvalidValueError()
+    {
+        var converter = new ValidatingJsonConverter<TimeSpanVO, TimeSpan>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"not-a-duration\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(TimeSpanVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/timeSpanVO"
+                    && v.Detail == "'timeSpanVO' is not a valid TimeSpan.");
+        }
     }
 
     #endregion

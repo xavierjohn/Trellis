@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Validation;
+﻿namespace Trellis.Asp.Validation;
 
 using System.Globalization;
 using System.Text.Json;
@@ -112,15 +112,15 @@ internal static class PrimitiveJsonReader
         }
         else if (primitiveType == typeof(DateOnly))
         {
-            boxed = TryReadDateOnly(ref reader, out var date) ? date : null;
+            boxed = ReadDateOnly(ref reader);
         }
         else if (primitiveType == typeof(TimeOnly))
         {
-            boxed = TryReadTimeOnly(ref reader, out var time) ? time : null;
+            boxed = ReadTimeOnly(ref reader);
         }
         else if (primitiveType == typeof(TimeSpan))
         {
-            boxed = TryReadTimeSpan(ref reader, out var duration) ? duration : null;
+            boxed = ReadTimeSpan(ref reader);
         }
         else
         {
@@ -132,21 +132,27 @@ internal static class PrimitiveJsonReader
         return boxed is not null || primitiveType == typeof(string);
     }
 
-    private static bool TryReadDateOnly(ref Utf8JsonReader reader, out DateOnly date)
+    private static DateOnly ReadDateOnly(ref Utf8JsonReader reader)
     {
         var raw = reader.GetString();
-        return DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+        return DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            ? date
+            : throw new FormatException();
     }
 
-    private static bool TryReadTimeOnly(ref Utf8JsonReader reader, out TimeOnly time)
+    private static TimeOnly ReadTimeOnly(ref Utf8JsonReader reader)
     {
         var raw = reader.GetString();
-        return TimeOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out time);
+        return TimeOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)
+            ? time
+            : throw new FormatException();
     }
 
-    private static bool TryReadTimeSpan(ref Utf8JsonReader reader, out TimeSpan duration)
+    private static TimeSpan ReadTimeSpan(ref Utf8JsonReader reader)
     {
         var raw = reader.GetString();
-        return TimeSpan.TryParse(raw, CultureInfo.InvariantCulture, out duration);
+        return TimeSpan.TryParse(raw, CultureInfo.InvariantCulture, out var duration)
+            ? duration
+            : throw new FormatException();
     }
 }

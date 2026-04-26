@@ -269,6 +269,29 @@ public class ValidatingJsonConverterEdgeCasesTests
     }
 
     [Fact]
+    public void Read_EnumNumericValue_BindsSuccessfully()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "2";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Value.Should().Be(ProcessingMode.Safe);
+            ValidationErrorsContext.HasErrors.Should().BeFalse();
+        }
+    }
+
+    [Fact]
     public void Read_NonValidationError_CollectsAsSimpleError()
     {
         // Arrange - Create a value object that returns non-Error.UnprocessableContent
