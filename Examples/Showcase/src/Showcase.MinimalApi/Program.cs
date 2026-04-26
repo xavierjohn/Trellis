@@ -18,7 +18,10 @@ using Trellis.Showcase.MinimalApi.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.TypeInfoResolverChain.Insert(0, ShowcaseJsonSerializerContext.Default));
+{
+    options.SerializerOptions.RespectRequiredConstructorParameters = true;
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, ShowcaseJsonSerializerContext.Default);
+});
 builder.Services.AddScalarValueValidationForMinimalApi();
 builder.Services.AddTrellisRouteConstraint<AccountId>();
 // AccountType, AccountStatus, and TransactionType are RequiredEnum<TSelf> value objects;

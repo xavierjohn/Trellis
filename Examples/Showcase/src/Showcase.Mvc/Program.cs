@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
@@ -14,13 +14,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddControllers()
     .AddScalarValueValidation()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.RespectRequiredConstructorParameters = true;
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // Trellis' ToHttpResponse() returns IResult, which executes via HttpContext and
 // reads ConfigureHttpJsonOptions (not MVC's AddJsonOptions). Configure both so
 // MVC formatters and IResult-based responses serialize enums identically.
 builder.Services.ConfigureHttpJsonOptions(o =>
-    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+{
+    o.SerializerOptions.RespectRequiredConstructorParameters = true;
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 builder.Services.AddTrellisRouteConstraint<AccountId>();
 

@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Tests.Api;
+﻿namespace Trellis.Showcase.Tests.Api;
 
 using System.Net;
 using System.Net.Http.Json;
@@ -115,6 +115,20 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Open_account_with_missing_body_properties_returns_400_not_500()
+    {
+        var client = _factory.CreateClient();
+        using var content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(
+            new Uri("/api/accounts", UriKind.Relative),
+            content,
+            Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private sealed record PageEnvelope(

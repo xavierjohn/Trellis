@@ -9,7 +9,7 @@ using Trellis.Showcase.Application.Features.SubmitBatchTransfers;
 using Trellis.Showcase.Application.Models;
 using Trellis.Showcase.MinimalApi.Endpoints;
 
-[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web, RespectRequiredConstructorParameters = true)]
 [JsonSerializable(typeof(OpenAccountRequest))]
 [JsonSerializable(typeof(DepositRequest))]
 [JsonSerializable(typeof(WithdrawRequest))]
