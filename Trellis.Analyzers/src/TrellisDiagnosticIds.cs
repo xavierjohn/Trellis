@@ -121,4 +121,7 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS038 — <c>[OwnedEntity]</c> type must inherit from <c>ValueObject</c>.</summary>
     public const string OwnedEntityMustInheritValueObject = "TRLS038";
+
+    /// <summary>TRLS039 — Scalar value object wraps a primitive that is not supported by the AOT-safe JSON converter generator.</summary>
+    public const string UnsupportedScalarValuePrimitiveForAotJson = "TRLS039";
 }
