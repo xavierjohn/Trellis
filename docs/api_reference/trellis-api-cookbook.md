@@ -11,6 +11,7 @@
   - [trellis-api-asp.md](trellis-api-asp.md) — `ToHttpResponse`, `HttpResponseOptionsBuilder<T>`, `AddTrellisAsp`, `AsActionResult`
   - [trellis-api-http.md](trellis-api-http.md) — `RangeOutcome`, range parser
   - [trellis-api-authorization.md](trellis-api-authorization.md) — `IActorProvider`, `IAuthorize`, `IAuthorizeResource<>`
+  - [trellis-api-servicedefaults.md](trellis-api-servicedefaults.md) — `AddTrellis`, `TrellisServiceBuilder`
   - [trellis-api-statemachine.md](trellis-api-statemachine.md) — `FireResult`, `LazyStateMachine<,>`
   - [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — `Should().Be(...)`, `UnwrapError()`
   - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`–`TRLS020`, `TrellisDiagnosticIds`
@@ -50,7 +51,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Write handler/domain tests | [Recipe 10](#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) |
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
-| Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-extension-methods-across-all-packages) |
+| Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 
 ---
 
@@ -699,48 +700,36 @@ return Maybe<Email>.None;
 
 ---
 
-## Recipe 12 — DI wiring playbook: `AddTrellis*` extension methods across all packages
+## Recipe 12 — DI wiring playbook: `AddTrellis` composition builder
 
-**Problem.** Compose every `AddTrellis*` registration in the correct order so behaviors stack properly.
+**Problem.** Compose Trellis service modules in the correct order so behaviors stack properly without forcing simple apps to install every package.
+
+**Preferred: tiered builder.** Use `Trellis.ServiceDefaults` from the API/composition root. The builder records intent first, then applies modules in the canonical order. `UseEntityFrameworkUnitOfWork<TContext>()`, when selected, is always applied last so `TransactionalCommandBehavior<,>` lands innermost.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Trellis;
-using Trellis.Asp;
-using Trellis.Asp.Authorization;
-using Trellis.Asp.Routing;
-using Trellis.EntityFrameworkCore;
+using Trellis.ServiceDefaults;
 
 public static class CompositionRoot
 {
     public static IServiceCollection AddApp(this IServiceCollection services, string connectionString)
     {
-        // 1. Mediator pipeline (outermost behaviors first).
-        services.AddTrellisBehaviors();
-
-        // 2. FluentValidation plug-in. Idempotent; safe to call after AddTrellisBehaviors.
-        services.AddTrellisFluentValidation(typeof(PlaceOrderValidator).Assembly);
-
-        // 3. ASP layer: Problem Details mapping + scalar-value validation pipeline.
-        services.AddTrellisAsp();
-
-        // 4. ASP authorization actor providers.
-        services.AddClaimsActorProvider();
-        services.AddResourceAuthorization(typeof(UpdateOrderCommand).Assembly);
-
-        // 5. EF Core context with Trellis interceptors + conventions.
+        // App-owned: provider, connection string, migrations, pooling, and Mediator registration.
         services.AddDbContext<AppDbContext>(opts => opts
             .UseSqlServer(connectionString)
             .AddTrellisInterceptors());
 
-        // 6. EF unit of work LAST so TransactionalCommandBehavior lands innermost.
-        services.AddTrellisUnitOfWork<AppDbContext>();
+        services.AddMediator(options => options.Assemblies = [typeof(PlaceOrderCommand).Assembly]);
 
-        // 7. Optional: route constraints for value-object IDs (reflection-based).
-        services.AddTrellisRouteConstraints(typeof(OrderId).Assembly);
+        services.AddTrellis(options => options
+            .UseAsp()
+            .UseMediator()
+            .UseFluentValidation(typeof(PlaceOrderValidator).Assembly)
+            .UseClaimsActorProvider()
+            .UseResourceAuthorization(typeof(UpdateOrderCommand).Assembly)
+            .UseEntityFrameworkUnitOfWork<AppDbContext>());
 
-        // 8. Application services.
         services.AddScoped<IOrderRepository, EfOrderRepository>();
 
         return services;
@@ -748,17 +737,18 @@ public static class CompositionRoot
 }
 ```
 
-**Composition order, summarized.**
+**Builder modules, summarized.**
 
-| Step | Call | Why this position |
+| Module | What it applies | Notes |
 | ---- | ---- | ----------------- |
-| 1 | `AddTrellisBehaviors()` | Registers tracing → telemetry → validation → exception → logging behaviors. Must come before any extension that piggybacks on the open-generic behavior list. |
-| 2 | `AddTrellisFluentValidation(...)` | Plugs `IValidator<T>` into the existing `ValidationBehavior<,>`. Idempotent; safe in any order after step 1. |
-| 3 | `AddTrellisAsp()` | Registers `TrellisAspOptions` (error → status mapping) and chains `AddScalarValueValidation()` for JSON pipeline integration. Add early so MVC/Minimal API JSON conventions are wired before endpoint registration. |
-| 4 | `AddClaimsActorProvider()` + `AddResourceAuthorization(...)` | `IActorProvider` + permission/resource-based behavior (not in `AddTrellisBehaviors()`). |
-| 5 | `AddDbContext(... .AddTrellisInterceptors())` | Wires `MaybeQueryInterceptor`, `ScalarValueQueryInterceptor`, ETag and timestamp interceptors. |
-| 6 | `AddTrellisUnitOfWork<TContext>()` | **Must be last** behavior registration so `TransactionalCommandBehavior<,>` lands innermost (closest to the handler) and commit failures stay visible to outer logging/tracing behaviors. |
-| 7 | `AddTrellisRouteConstraints(...)` / `AddTrellisRouteConstraint<T>(...)` | Optional; the reflection-based overload is **not** AOT-safe — the typed overload is. |
+| `UseAsp()` | `AddTrellisAsp()` | Error → status mapping plus scalar-value JSON/model-binding validation. |
+| `UseMediator()` | `AddTrellisBehaviors()` | Registers the canonical Result-aware pipeline behaviors. |
+| `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
+| `UseClaimsActorProvider()` / `UseEntraActorProvider()` / `UseDevelopmentActorProvider()` | One ASP actor provider | The builder rejects multiple actor providers. |
+| `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
+| `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()` and is always applied last. |
+
+**Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
 
 ---
 

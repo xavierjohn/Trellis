@@ -107,6 +107,10 @@
     <Project Path="Trellis.Core/src/Trellis.Core.csproj" />
     <Project Path="Trellis.Core/tests/Trellis.Core.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.ServiceDefaults/">
+    <Project Path="Trellis.ServiceDefaults/src/Trellis.ServiceDefaults.csproj" />
+    <Project Path="Trellis.ServiceDefaults/tests/Trellis.ServiceDefaults.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.StateMachine/">
     <Project Path="Trellis.StateMachine/src/Trellis.StateMachine.csproj" />
     <Project Path="Trellis.StateMachine/tests/Trellis.StateMachine.Tests.csproj" />

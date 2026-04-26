@@ -100,6 +100,7 @@ Each integration package gets its own namespace because it pulls in a third-part
 | `Trellis.Asp.Authorization` | API layer only | ASP.NET actor providers (Claims, Entra, Development) |
 | `Trellis.Asp` | API layer only | Result-to-HTTP response mapping |
 | `Trellis.Http` | ACL layer only | HttpClient → Result extensions |
+| `Trellis.ServiceDefaults` | API/Composition root only | Opinionated Trellis service wiring builder |
 | `Trellis.StateMachine` | Domain layer (when needed) | Stateless state machine integration |
 | `Trellis.FluentValidation` | Domain layer (when needed) | FluentValidation integration |
 | `Trellis.Testing` | Test projects only | FluentAssertions extensions for Result/Maybe |

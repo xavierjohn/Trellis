@@ -38,7 +38,7 @@ using Trellis.Primitives;
 
 return EmailAddress.TryCreate(request.Email)
     .Map(email => new User(email))
-    .ToHttpResult();
+    .ToHttpResponse();
 ```
 
 ## What You Get
@@ -85,6 +85,7 @@ var result = Result.Ok("ada@example.com")
 | [Trellis.Mediator](https://www.nuget.org/packages/Trellis.Mediator) | Result-aware pipeline behaviors for [Mediator](https://github.com/martinothamar/Mediator) |
 | [Trellis.FluentValidation](https://www.nuget.org/packages/Trellis.FluentValidation) | FluentValidation output converted into Trellis results |
 | [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, and safe save helpers (bundles the `Maybe<T>` / owned value-object source generator) |
+| [Trellis.ServiceDefaults](https://www.nuget.org/packages/Trellis.ServiceDefaults) | Opinionated composition builder for wiring Trellis web-service modules in the canonical order |
 | [Trellis.StateMachine](https://www.nuget.org/packages/Trellis.StateMachine) | Stateless transitions that return `Result<TState>` |
 | [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions for `Result<T>` and `Maybe<T>` |
 
