@@ -2,6 +2,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Trellis.Asp.ModelBinding;
 
 /// <summary>
@@ -61,9 +62,9 @@ internal static class ScalarValueTypeHelper
     /// <param name="valueObjectType">The value object type (first type argument).</param>
     /// <param name="primitiveType">The primitive type (second type argument).</param>
     /// <returns>An instance of the constructed generic type, or null if creation fails.</returns>
-    [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "MakeGenericType is used with known converter/binder types")]
-    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Types are preserved by ASP.NET Core serialization infrastructure")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Not compatible with Native AOT")]
+    [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "Reflection-enabled fallback only. Native AOT returns null before MakeGenericType; callers then rely on source-generated converters/binders.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Reflection-enabled fallback only. Types come from ASP.NET Core metadata or explicit model-binding inputs.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Guarded by RuntimeFeature.IsDynamicCodeSupported; Native AOT returns null before constructing a closed generic type.")]
     public static TResult? CreateGenericInstance<TResult>(
         Type genericTypeDefinition,
         Type valueObjectType,
@@ -73,6 +74,9 @@ internal static class ScalarValueTypeHelper
         ArgumentNullException.ThrowIfNull(genericTypeDefinition);
         ArgumentNullException.ThrowIfNull(valueObjectType);
         ArgumentNullException.ThrowIfNull(primitiveType);
+
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+            return null;
 
         try
         {

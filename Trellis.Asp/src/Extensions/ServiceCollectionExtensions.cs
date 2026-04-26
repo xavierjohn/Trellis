@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -168,7 +169,9 @@ public static class ServiceCollectionExtensions
             if (innerScalarConverter is null)
                 continue;
 
-            // Wrap it with property name awareness
+            // Wrap it with property name awareness. In Native AOT this returns null because
+            // runtime closed-generic converter construction is disabled; source-generated
+            // converters are expected to own scalar JSON conversion there.
             var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
             if (wrappedScalarConverter is not null)
                 property.CustomConverter = wrappedScalarConverter;
@@ -247,11 +250,14 @@ public static class ServiceCollectionExtensions
     }
 
     [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification = "MakeGenericType is required to wrap a per-property converter. The wrapper type PropertyNameAwareConverter<T> is constructed for property types that are reachable through the JsonTypeInfo.Properties metadata, so the runtime instantiation is bounded by reachable JSON-serialized types. AOT consumers should source-generate their JsonSerializerContext to keep these types reachable.")]
+        Justification = "Guarded by RuntimeFeature.IsDynamicCodeSupported; Native AOT returns null before constructing a closed generic wrapper.")]
     [UnconditionalSuppressMessage("Trimming", "IL2055",
-        Justification = "PropertyNameAwareConverter<T> is constructed only for property types that JSON serialization metadata already preserves; the metadata system keeps T reachable.")]
+        Justification = "Reflection-enabled fallback only. PropertyNameAwareConverter<T> is constructed only for property types already present in JSON serialization metadata.")]
     private static JsonConverter? CreatePropertyNameAwareConverter(JsonConverter innerConverter, string propertyName, Type type)
     {
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+            return null;
+
         var wrapperType = typeof(PropertyNameAwareConverter<>).MakeGenericType(type);
         return Activator.CreateInstance(wrapperType, innerConverter, propertyName) as JsonConverter;
     }

@@ -294,7 +294,7 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     /// </summary>
     // Single-parameter overloads match what EF Core's ScalarValueExpressionRewriter
     // targets on string — the rewriter maps Name.StartsWith(x) to ((string)Name).StartsWith(x).
-    // Using StringComparison.Ordinal would produce a two-parameter call that EF Core cannot translate.
+    // Adding StringComparison.Ordinal would produce a two-parameter call that EF Core cannot translate.
 #pragma warning disable CA1310 // Specify StringComparison for correctness
     public bool StartsWith(string value) => Value.StartsWith(value);
 

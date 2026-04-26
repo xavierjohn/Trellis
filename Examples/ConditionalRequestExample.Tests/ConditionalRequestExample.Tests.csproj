@@ -1,8 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <NoWarn>$(NoWarn)</NoWarn>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\ConditionalRequestExample\ConditionalRequestExample.csproj" />
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />

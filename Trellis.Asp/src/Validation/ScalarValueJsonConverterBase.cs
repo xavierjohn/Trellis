@@ -1,6 +1,5 @@
 ﻿namespace Trellis.Asp.Validation;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -39,8 +38,6 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     protected abstract TResult OnValidationFailure();
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JSON deserialization of primitive types is compatible with AOT")]
     public override TResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
@@ -50,7 +47,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
         }
 
         var fieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
-        if (!TryReadPrimitiveValue(ref reader, options, fieldName, out var primitiveValue))
+        if (!TryReadPrimitiveValue(ref reader, fieldName, out var primitiveValue))
             return OnValidationFailure();
 
         if (primitiveValue is null)
@@ -76,11 +73,8 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             });
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JSON deserialization of primitive types is compatible with AOT")]
     private static bool TryReadPrimitiveValue(
         ref Utf8JsonReader reader,
-        JsonSerializerOptions options,
         string fieldName,
         out TPrimitive? primitiveValue)
     {
@@ -94,16 +88,8 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             return false;
         }
 
-        try
-        {
-            primitiveValue = JsonSerializer.Deserialize<TPrimitive>(ref reader, options);
-        }
-        catch (JsonException)
-        {
-            primitiveValue = default;
-            ValidationErrorsContext.AddError(fieldName, $"{typeof(TValue).Name} is invalid.");
+        if (!PrimitiveJsonReader.TryRead(ref reader, fieldName, out primitiveValue))
             return false;
-        }
 
         if (typeof(TPrimitive).IsEnum && primitiveValue is not null && !IsValidEnumValue(primitiveValue))
         {

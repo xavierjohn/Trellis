@@ -94,7 +94,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         return new BadRequestObjectResult(problemDetails);
     }
 
-    [UnconditionalSuppressMessage("AOT", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
+    [UnconditionalSuppressMessage("Trimming", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]
     private static void ValidateScalarValueParameters(ActionExecutingContext context)
     {

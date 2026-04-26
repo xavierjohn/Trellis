@@ -2,7 +2,6 @@
 
 namespace Trellis.Asp.Validation;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -50,8 +49,6 @@ public sealed class ValidatingJsonConverter<TValue, TPrimitive> : ScalarValueJso
     protected override TValue? OnValidationFailure() => null;
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JSON serialization of primitive types is compatible with AOT")]
     public override void Write(Utf8JsonWriter writer, TValue? value, JsonSerializerOptions options)
     {
         if (value is null)

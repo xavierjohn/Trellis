@@ -29,9 +29,9 @@ public sealed class PlaceOrderValidator : AbstractValidator<PlaceOrderCommand>
 public sealed class PlaceOrderHandler(IOrderRepository repo)
     : ICommandHandler<PlaceOrderCommand, Result<OrderId>>
 {
-    public ValueTask<Result<OrderId>> Handle(PlaceOrderCommand cmd, CancellationToken ct) =>
-        new(OrderId.TryCreate(cmd.OrderId)
-            .BindZip(id => CurrencyCode.TryCreate(cmd.Currency).Map(c => new Money(cmd.Amount, c)))
+    public ValueTask<Result<OrderId>> Handle(PlaceOrderCommand command, CancellationToken cancellationToken) =>
+        new(OrderId.TryCreate(command.OrderId)
+            .BindZip(id => CurrencyCode.TryCreate(command.Currency).Map(c => new Money(command.Amount, c)))
             .Bind(t => Order.Create(t.Item1, t.Item2))
             .Tap(repo.Add)
             .Map(o => o.Id));

@@ -198,6 +198,37 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
+    public readonly record struct CustomPrimitive(string Value) : IComparable
+    {
+        public static bool operator <(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) < 0;
+
+        public static bool operator <=(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) <= 0;
+
+        public static bool operator >(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) > 0;
+
+        public static bool operator >=(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) >= 0;
+
+        public int CompareTo(object? obj) =>
+            obj is CustomPrimitive other
+                ? string.Compare(Value, other.Value, StringComparison.Ordinal)
+                : 1;
+
+        public override string ToString() => Value;
+    }
+
+    public class CustomPrimitiveVO : ScalarValueObject<CustomPrimitiveVO, CustomPrimitive>, IScalarValue<CustomPrimitiveVO, CustomPrimitive>
+    {
+        private CustomPrimitiveVO(CustomPrimitive value) : base(value) { }
+        public static Result<CustomPrimitiveVO> TryCreate(CustomPrimitive value, string? fieldName = null) =>
+            Result.Ok(new CustomPrimitiveVO(value));
+        public static Result<CustomPrimitiveVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
+    }
+
     #endregion
 
     #region String Tests
@@ -742,6 +773,32 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ULongVO, ulong>());
 
         roundTripped!.Value.Should().Be(18446744073709551615ul);
+    }
+
+    #endregion
+
+    #region Unsupported Primitive Tests
+
+    [Fact]
+    public void Read_UnsupportedPrimitive_CollectsValidationError()
+    {
+        var converter = new ValidatingJsonConverter<CustomPrimitiveVO, CustomPrimitive>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"abc\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(CustomPrimitiveVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.HasErrors.Should().BeTrue();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/customPrimitiveVO"
+                    && v.Detail == "Primitive type 'CustomPrimitive' is not supported by the Trellis validation JSON converter. Provide a custom JsonConverter.");
+        }
     }
 
     #endregion

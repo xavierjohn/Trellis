@@ -97,9 +97,9 @@ public sealed class ScalarValueValidationMiddleware
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
 
-    [UnconditionalSuppressMessage("AOT", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
+    [UnconditionalSuppressMessage("Trimming", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]
-    [UnconditionalSuppressMessage("AOT", "IL2073:Return type does not satisfy 'DynamicallyAccessedMembersAttribute' requirements.",
+    [UnconditionalSuppressMessage("Trimming", "IL2073:Return type does not satisfy 'DynamicallyAccessedMembersAttribute' requirements.",
         Justification = "The returned type comes from ParameterInfo.ParameterType which preserves type metadata at runtime.")]
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.Interfaces)]
     private static Type? GetScalarValueParameterType(IParameterBindingMetadata parameterMetadata)
