@@ -52,6 +52,8 @@
       so consumers can see what changed between analyzer versions.
    -->
   <ItemGroup>
+    <None Remove="AnalyzerReleases.Shipped.md" />
+    <None Remove="AnalyzerReleases.Unshipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
