@@ -4,7 +4,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -41,12 +40,16 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
             // Per-compilation state:
             //   wired  — set to 1 when a Trellis-conventions call is confirmed via semantic model
             //   pending — candidate diagnostics collected before the wiring tree is analyzed
-            var wired = new StrongBox<int>(0);
+            var wired = new int[1]; // wired[0]: 0 = not confirmed, 1 = confirmed
             var pending = new ConcurrentBag<Diagnostic>();
 
             // Semantic-model pass: resolve each candidate invocation and set wired flag.
             compilationContext.RegisterSemanticModelAction(semanticModelContext =>
             {
+                // Short-circuit if another tree already confirmed the wiring.
+                if (Volatile.Read(ref wired[0]) == 1)
+                    return;
+
                 var root = semanticModelContext.SemanticModel.SyntaxTree
                     .GetRoot(semanticModelContext.CancellationToken);
 
@@ -64,7 +67,7 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
                     if (containingType is not null &&
                         TrellisConventionContainingTypes.Contains(containingType))
                     {
-                        Interlocked.Exchange(ref wired.Value, 1);
+                        Interlocked.Exchange(ref wired[0], 1);
                         return;
                     }
                 }
@@ -76,10 +79,10 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
                 nodeContext => CollectCandidates(nodeContext, pending),
                 SyntaxKind.InvocationExpression);
 
-            // Drain pending diagnostics only when all trees have been walked and wired == 1.
+            // Drain pending diagnostics only when all trees have been walked and wired[0] == 1.
             compilationContext.RegisterCompilationEndAction(endContext =>
             {
-                if (Volatile.Read(ref wired.Value) == 0)
+                if (Volatile.Read(ref wired[0]) == 0)
                     return;
 
                 foreach (var diagnostic in pending)

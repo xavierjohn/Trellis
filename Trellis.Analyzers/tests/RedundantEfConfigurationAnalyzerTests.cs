@@ -473,4 +473,67 @@ public class RedundantEfConfigurationAnalyzerTests
 
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task TrellisAndUserDefinedApplyTrellisConventions_TrellisCallEnablesAnalyzer()
+    {
+        // When both the Trellis-owned extension and a user-defined method with the same name
+        // exist in scope, and the TRELLIS-owned overload is called, TRLS021 must fire.
+        // This confirms the symbol-resolution correctly distinguishes between the two.
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            using Trellis.EntityFrameworkCore;
+            using MyCompany.Data;
+
+            public class Order
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class OrderConfig
+            {
+                public void Configure(EntityTypeBuilder<Order> builder)
+                {
+                    builder.Ignore(e => e.PhoneNumber);
+                }
+            }
+
+            public class AppDbContext
+            {
+                protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                    // Calls the TRELLIS-owned overload (takes assemblies); user method takes none.
+                    configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
+                }
+            }
+            """;
+
+        // User-defined extension has a different signature (no args) to avoid CS0121 ambiguity.
+        // The call above is unambiguously resolved to the Trellis-owned overload.
+        const string userConventionsStub = """
+            namespace MyCompany.Data
+            {
+                using Microsoft.EntityFrameworkCore;
+
+                public static class MyConventions
+                {
+                    public static ModelConfigurationBuilder ApplyTrellisConventions(
+                        this ModelConfigurationBuilder configurationBuilder)
+                        => configurationBuilder;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
+                .WithLocation(22, 17)
+                .WithArguments("Ignore", "Order.PhoneNumber"));
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+        test.TestState.Sources.Add(("UserConventionsStub.cs", userConventionsStub));
+
+        await test.RunAsync();
+    }
 }
