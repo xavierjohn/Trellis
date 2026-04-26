@@ -97,11 +97,14 @@ jobs:
           shift 3
           echo "==================== ${LABEL} ===================="
 
+          local APP_PID=""
           ASPNETCORE_URLS="http://127.0.0.1:${PORT}" ASPNETCORE_ENVIRONMENT=Production "$@" > "$LOG" 2>&1 &
-          local APP_PID=$!
+          APP_PID=$!
           cleanup_smoke() {
-            kill "${APP_PID}" 2>/dev/null || true
-            wait "${APP_PID}" 2>/dev/null || true
+            if [ -n "${APP_PID:-}" ]; then
+              kill "${APP_PID}" 2>/dev/null || true
+              wait "${APP_PID}" 2>/dev/null || true
+            fi
             echo "--- ${LABEL} log ---"
             cat "${LOG}" || true
           }
@@ -115,7 +118,7 @@ jobs:
               echo "  up after ${i} attempt(s)"
               break
             fi
-            if ! kill -0 ${APP_PID} 2>/dev/null; then
+            if ! kill -0 "${APP_PID}" 2>/dev/null; then
               echo "${LABEL} host exited before becoming ready"
               return 1
             fi
@@ -132,11 +135,12 @@ jobs:
           fi
           echo "  200 OK; body head: $(head -c 200 ${LABEL}-happy.json)"
 
-          echo "--- Failure path: POST /api/accounts/ with empty body -> 4xx ProblemDetails ---"
+          echo "--- Failure path: POST /api/accounts/{id}/deposit with zero amount -> 4xx ProblemDetails ---"
           local FAIL_STATUS
           FAIL_STATUS=$(curl -s -o "${LABEL}-fail.json" -w '%{http_code}' \
             -H 'content-type: application/json' \
-            -X POST --data '{}' "http://127.0.0.1:${PORT}/api/accounts/")
+            -X POST --data '{"amount":{"amount":0,"currency":"USD"}}' \
+            "http://127.0.0.1:${PORT}/api/accounts/aaaaaaa1-0000-0000-0000-000000000000/deposit")
           case "$FAIL_STATUS" in
             400|422) ;;
             *)
@@ -155,8 +159,9 @@ jobs:
           fi
           echo "  ${FAIL_STATUS} OK; body head: $(head -c 300 ${LABEL}-fail.json)"
 
-          kill ${APP_PID} 2>/dev/null || true
-          wait ${APP_PID} 2>/dev/null || true
+          kill "${APP_PID}" 2>/dev/null || true
+          wait "${APP_PID}" 2>/dev/null || true
+          APP_PID=""
           trap - RETURN EXIT
           echo "=== ${LABEL} smoke test passed ==="
         }
