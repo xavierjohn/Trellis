@@ -114,9 +114,14 @@ public static class ServiceCollectionExtensions
         var existingResolver = options.TypeInfoResolver ?? new DefaultJsonTypeInfoResolver();
         options.TypeInfoResolver = existingResolver.WithAddedModifier(ModifyTypeInfo);
 
-        // Add factories for direct serialization scenarios
-        options.Converters.Add(new ValidatingJsonConverterFactory());
-        options.Converters.Add(new MaybeScalarValueJsonConverterFactory());
+        // Add factories for direct serialization scenarios in reflection-enabled apps.
+        // Native AOT source-generated contexts cannot expand reflection-created converter factories;
+        // AOT consumers should make scalar roots reachable through their JsonSerializerContext.
+        if (JsonSerializer.IsReflectionEnabledByDefault)
+        {
+            options.Converters.Add(new ValidatingJsonConverterFactory());
+            options.Converters.Add(new MaybeScalarValueJsonConverterFactory());
+        }
     }
 
     /// <summary>

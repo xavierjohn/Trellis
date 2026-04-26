@@ -83,15 +83,16 @@ internal static class ResponseFailureWriter
         if (rules.Items.Length > 0)
         {
             ext["rules"] = rules.Items
-                .Select(rv => (object)new
-                {
-                    code = rv.ReasonCode,
-                    detail = rv.Detail,
-                    fields = rv.Fields.Items.Select(p => p.Path).ToArray(),
-                })
+                .Select(rv => new RuleViolationProblemDetail(
+                    rv.ReasonCode,
+                    rv.Detail,
+                    rv.Fields.Items.Select(p => p.Path).ToArray()))
                 .ToArray();
         }
 
         return ext;
     }
 }
+
+/// <summary>JSON shape used for rule violations in ProblemDetails extensions.</summary>
+public sealed record RuleViolationProblemDetail(string Code, string? Detail, string[] Fields);

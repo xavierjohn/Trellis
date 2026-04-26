@@ -99,7 +99,10 @@ public static class RouteConstraintRegistrationExtensions
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Caller registers a known constraint type at compile time.")]
-    private static void ConfigureSingle(RouteOptions options, string name, Type constraintType)
+    private static void ConfigureSingle(
+        RouteOptions options,
+        string name,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type constraintType)
     {
         // Match the assembly-scanning variant: preserve any existing entry under the same name.
         if (!options.ConstraintMap.ContainsKey(name))
