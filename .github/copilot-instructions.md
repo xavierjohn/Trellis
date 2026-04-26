@@ -21,7 +21,9 @@ Phase status as of last update:
 
 ## Before Writing Code That Uses Trellis APIs
 
-Always read the relevant API reference files in `docs/api_reference/` **before** writing or generating code that uses Trellis types:
+Always read the relevant cookbook recipe and API reference files in `docs/api_reference/` **before** writing or generating code that uses Trellis types.
+
+Start with the task lookup table at the top of `docs/api_reference/trellis-api-cookbook.md`. If the current work matches a row (aggregate, handler, pagination, endpoint, DTO-to-VO mapping, resource authorization, EF `Maybe<T>`, optional fields, state machine, tests, domain events, analyzer warnings, or composition root), read the listed recipe before writing code. Then read the package reference files below for exact signatures.
 
 | When using... | Read first |
 |--------------|------------|
@@ -36,7 +38,7 @@ Always read the relevant API reference files in `docs/api_reference/` **before**
 | Mediator pipeline behaviors | `docs/api_reference/trellis-api-mediator.md` |
 | State machine integration | `docs/api_reference/trellis-api-statemachine.md` |
 | Testing helpers | `docs/api_reference/trellis-api-testing-reference.md` |
-| Analyzer rules (TRLS001-TRLS019) | `docs/api_reference/trellis-api-analyzers.md` |
+| Analyzer rules (TRLS001-TRLS021) | `docs/api_reference/trellis-api-analyzers.md` |
 
 These files document the exact method signatures, overloads, and usage patterns. Do not assume APIs based on naming conventions — read the reference first.
 
@@ -98,6 +100,7 @@ Each integration package gets its own namespace because it pulls in a third-part
 | `Trellis.Asp.Authorization` | API layer only | ASP.NET actor providers (Claims, Entra, Development) |
 | `Trellis.Asp` | API layer only | Result-to-HTTP response mapping |
 | `Trellis.Http` | ACL layer only | HttpClient → Result extensions |
+| `Trellis.ServiceDefaults` | API/Composition root only | Opinionated Trellis service wiring builder |
 | `Trellis.StateMachine` | Domain layer (when needed) | Stateless state machine integration |
 | `Trellis.FluentValidation` | Domain layer (when needed) | FluentValidation integration |
 | `Trellis.Testing` | Test projects only | FluentAssertions extensions for Result/Maybe |
@@ -155,7 +158,7 @@ Analyzers (`Trellis.Analyzers`) and the bundled source generators emit diagnosti
 
 | Range | Owner | Example |
 |-------|-------|---------|
-| `TRLS001`–`TRLS019` | `Trellis.Analyzers` | `TRLS003` — Unsafe access to `Maybe.Value` |
+| `TRLS001`–`TRLS021` | `Trellis.Analyzers` | `TRLS003` — Unsafe access to `Maybe.Value` |
 | `TRLS031`–`TRLS034` | `Trellis.Core.Generator` (Primitives) | `TRLS032` — `MinimumLength` exceeds `MaximumLength` |
 | `TRLS035`–`TRLS038` | `Trellis.EntityFrameworkCore.Generator` | `TRLS035` — `Maybe<T>` property should be `partial` |
 

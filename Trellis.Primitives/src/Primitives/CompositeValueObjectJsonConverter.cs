@@ -41,11 +41,13 @@ using Trellis;
 /// message on failure.
 /// </para>
 /// <para>
-/// This converter uses reflection at first use (results are cached). It is not Native AOT compatible.
-/// For AOT scenarios, hand-write a converter and register it with <see cref="JsonConverterAttribute"/>.
+/// This converter uses reflection at first use (results are cached). Native AOT apps must root the
+/// closed converter type through <see cref="JsonConverterAttribute"/> or a source-generated context.
 /// </para>
 /// </remarks>
-public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
+public sealed class CompositeValueObjectJsonConverter<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.PublicProperties)]
+    T> : JsonConverter<T>
     where T : ValueObject
 {
     private static readonly CompositeMetadata Metadata = CompositeMetadata.Build(typeof(T));
@@ -189,7 +191,9 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
 
         if (primitiveType == typeof(string))
         {
-            writer.WriteString(jsonName, (string)raw);
+            writer.WriteString(jsonName, raw is string text
+                ? text
+                : Convert.ToString(raw, System.Globalization.CultureInfo.InvariantCulture));
         }
         else if (primitiveType == typeof(decimal))
         {
@@ -263,18 +267,21 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
 
         public required Func<object?[], Result<T>> Invoke { get; init; }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2070",
-            Justification = "Composite VO converter discovers properties on T via reflection by design. The class XML doc directs AOT consumers to hand-write a converter and register it with [JsonConverter]; the source-generator extension for composite VOs is tracked as a follow-up.")]
-        public static CompositeMetadata Build(Type type)
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "Composite VO public properties are preserved by the converter generic parameter annotation; property type interface annotations are not expressible through PropertyInfo.")]
+        public static CompositeMetadata Build(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.PublicProperties)]
+            Type type)
         {
-            var properties = type
+            var discoveredProperties = type
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Where(p =>
                     p.GetMethod is not null &&
                     p.GetIndexParameters().Length == 0 &&
                     (p.SetMethod is null || !p.SetMethod.IsPublic))
-                .OrderBy(p => p.MetadataToken)
                 .ToList();
+
+            var properties = OrderProperties(type, discoveredProperties);
 
             var props = new List<PropertyMetadata>(properties.Count);
             foreach (var p in properties)
@@ -304,9 +311,11 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
             };
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2070",
-            Justification = "Composite VO converter discovers IScalarValue<,> implementation by reflection. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
-        private static Type GetPrimitiveType(Type propertyType)
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "Property types are discovered from a rooted composite value object. Scalar value object interfaces are preserved by their generated converter/model-binding surface.")]
+        private static Type GetPrimitiveType(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            Type propertyType)
         {
             foreach (var iface in propertyType.GetInterfaces())
             {
@@ -317,8 +326,64 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
             return propertyType;
         }
 
+        private static List<PropertyInfo> OrderProperties(Type type, List<PropertyInfo> properties)
+        {
+            var withTokens = new List<(PropertyInfo Property, int Token)>(properties.Count);
+            foreach (var property in properties)
+            {
+                if (!TryGetMetadataToken(property, out var token))
+                    return OrderPropertiesWithoutMetadataTokens(type, properties);
+
+                withTokens.Add((property, token));
+            }
+
+            return withTokens
+                .OrderBy(p => p.Token)
+                .Select(p => p.Property)
+                .ToList();
+        }
+
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "Property types are discovered from a rooted composite value object. The fallback only inspects interfaces to reject unsafe duplicate primitive shapes before any value conversion occurs.")]
+        private static List<PropertyInfo> OrderPropertiesWithoutMetadataTokens(Type type, List<PropertyInfo> properties)
+        {
+            var duplicatePrimitiveTypes = properties
+                .GroupBy(p => GetPrimitiveType(p.PropertyType))
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+
+            if (duplicatePrimitiveTypes.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    $"CompositeValueObjectJsonConverter<{type.Name}> cannot determine a safe property order because metadata tokens are unavailable " +
+                    $"and multiple properties share the same primitive type(s): {string.Join(", ", duplicatePrimitiveTypes)}. " +
+                    "Use a hand-written converter for this composite value object.");
+            }
+
+            return properties
+                .OrderBy(p => GetPrimitiveType(p.PropertyType).Name, StringComparer.Ordinal)
+                .ThenBy(p => p.Name, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        private static bool TryGetMetadataToken(MemberInfo member, out int metadataToken)
+        {
+            try
+            {
+                metadataToken = member.MetadataToken;
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                metadataToken = 0;
+                return false;
+            }
+        }
+
         [UnconditionalSuppressMessage("Trimming", "IL2075",
-            Justification = "Composite VO converter inspects the property's 'Value' member by reflection. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
+            Justification = "Property types are discovered from a rooted composite value object. Scalar value object Value members are part of the public Trellis scalar contract.")]
         private static Func<T, object?> BuildPrimitiveGetter(PropertyInfo propInfo, Type primitiveType)
         {
             var instance = Expression.Parameter(typeof(T), "v");
@@ -349,9 +414,10 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
 
         [UnconditionalSuppressMessage("AOT", "IL3050",
             Justification = "Result<T> is constructed via MakeGenericType to match the TryCreate factory's return type. T is the converter's owning type and is reachable through JsonConverter<T>. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2070",
-            Justification = "TryCreate factory is discovered on T via reflection. The class XML doc directs AOT consumers to hand-write a converter; the source-generator extension is tracked as a follow-up.")]
-        private static Func<object?[], Result<T>> BuildInvoker(Type type, List<PropertyMetadata> props)
+        private static Func<object?[], Result<T>> BuildInvoker(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)]
+            Type type,
+            List<PropertyMetadata> props)
         {
             var resultType = typeof(Result<>).MakeGenericType(type);
             var primitiveTypes = props.Select(p => p.PrimitiveType).ToArray();

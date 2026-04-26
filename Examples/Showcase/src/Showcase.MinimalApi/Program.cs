@@ -12,10 +12,16 @@ using Trellis.Showcase.Application.Persistence;
 using Trellis.Showcase.Application.Services;
 using Trellis.Showcase.Application.Workflows;
 using Trellis.Showcase.Domain.ValueObjects;
+using Trellis.Showcase.MinimalApi;
 using Trellis.Showcase.MinimalApi.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.RespectRequiredConstructorParameters = true;
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, ShowcaseJsonSerializerContext.Default);
+});
 builder.Services.AddScalarValueValidationForMinimalApi();
 builder.Services.AddTrellisRouteConstraint<AccountId>();
 // AccountType, AccountStatus, and TransactionType are RequiredEnum<TSelf> value objects;

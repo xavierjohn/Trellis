@@ -118,6 +118,16 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 
 Default mappings (closed-ADT): `Error.BadRequest=400`, `Error.Unauthorized=401`, `Error.Forbidden=403`, `Error.NotFound=404`, `Error.MethodNotAllowed=405`, `Error.NotAcceptable=406`, `Error.Conflict=409`, `Error.Gone=410`, `Error.PreconditionFailed=412`, `Error.ContentTooLarge=413`, `Error.UnsupportedMediaType=415`, `Error.RangeNotSatisfiable=416`, `Error.UnprocessableContent=422`, `Error.PreconditionRequired=428`, `Error.TooManyRequests=429`, `Error.InternalServerError=500`, `Error.Unexpected=500`, `Error.NotImplemented=501`, `Error.ServiceUnavailable=503`.
 
+### `RuleViolationProblemDetail`
+
+**Declaration**
+
+```csharp
+public sealed record RuleViolationProblemDetail(string Code, string? Detail, string[] Fields);
+```
+
+AOT-friendly JSON payload used inside Problem Details `extensions["rules"]` for `Error.UnprocessableContent` rule violations. Application code should treat this as response shape metadata, not as a domain model.
+
 ### `AggregateRepresentationValidator<T>`
 
 **Declaration**
@@ -652,13 +662,13 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
 **Declaration**
 
 ```csharp
-public sealed partial class ScalarValueValidationMiddleware
+public sealed class ScalarValueValidationMiddleware
 ```
 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public ScalarValueValidationMiddleware(RequestDelegate next)` | — | Wraps each request in `ValidationErrorsContext.BeginScope()`. |
-| `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope, invokes the next middleware, and converts scalar-value `BadHttpRequestException` binding failures into validation problem responses. |
+| `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope, invokes the next middleware, and converts scalar-value `BadHttpRequestException` binding failures into validation problem responses using endpoint parameter metadata plus route/query raw values. |
 
 ### `ValidationErrorsContext`
 
@@ -689,6 +699,7 @@ public static class ValidationErrorsContext
 - **`CreatedAtAction` is not AOT-safe.** It depends on MVC's `ControllerLinkGeneratorExtensions`. The builder method, the writer's `ResolveActionLocation` private, and the `LocationKind.Action` branch are annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]`. Use `CreatedAtRoute` with a named route for trim/AOT scenarios; `ResolveActionLocation` throws `NotSupportedException` when `RuntimeFeature.IsDynamicCodeSupported` is `false`.
 - **Pagination.** The `Result<Page<T>>` overload always emits the `PagedResponse<TBody>` envelope; the RFC 8288 `Link` header is added only when `Page.Next` and/or `Page.Previous` cursors are present. Failure on the page result short-circuits through the standard error pipeline.
 - **Validation collection scope.** `ScalarValueValidationMiddleware` opens a `ValidationErrorsContext` scope per request. Both `ValidatingJsonConverter<,>` and `MaybeScalarValueJsonConverter<,>` collect errors into this scope; `ScalarValueValidationFilter` (MVC) and `ScalarValueValidationEndpointFilter` (Minimal API) short-circuit with a validation problem when the scope is non-empty at action/handler entry.
+- **Minimal API scalar binding failures are metadata-driven.** When ASP.NET Core throws a 400 while binding route/query parameters, `ScalarValueValidationMiddleware` no longer parses `BadHttpRequestException.Message` to discover a field name or invalid value. It inspects `IParameterBindingMetadata`, reads the matching route/query raw value, and re-runs Trellis scalar validation for `IScalarValue<,>` / `Maybe<TScalar>` parameters. Non-scalar endpoint binding failures are rethrown to ASP.NET Core.
 - **`AddTrellisAsp` is the one-call setup.** It registers `TrellisAspOptions` and chains `AddScalarValueValidation()`, configuring both the MVC and Minimal API JSON pipelines for scalar-value/`Maybe<T>` deserialization. You still need `UseScalarValueValidation()` middleware in the request pipeline and `WithScalarValueValidation()` on each Minimal API endpoint that should short-circuit on validation errors.
 - **Composite value objects in request/response DTOs.** `AddTrellisAsp`/`AddScalarValueValidation` only wires the **scalar** VO converters. Composite VOs (multi-field `[OwnedEntity]` types like `ShippingAddress`, `Money`) bind through `CompositeValueObjectJsonConverter<T>` (in `Trellis.Primitives`), which is **opt-in per type** via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object class itself. Without that attribute, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer. See [Cookbook Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership) for the full Domain + API JSON + EF pattern.
 

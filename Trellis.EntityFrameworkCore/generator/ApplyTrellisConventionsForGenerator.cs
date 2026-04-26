@@ -23,7 +23,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 /// </para>
 /// <para>
 /// The runtime API uses reflection-based assembly scanning; the generated path is a
-/// drop-in replacement for AOT/trim scenarios where reflection over arbitrary
+    /// drop-in replacement for scenarios where reflection over arbitrary
 /// assemblies is undesirable. See ADR-002 §8.1.
 /// </para>
 /// </remarks>
@@ -365,7 +365,7 @@ public sealed class ApplyTrellisConventionsForGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.AppendLine("    /// <summary>");
         sb.AppendLine("    /// Registers Trellis value object converters and conventions for the specified");
-        sb.AppendLine("    /// <typeparamref name=\"TContext\"/>. Reflection-free, AOT-clean alternative to");
+        sb.AppendLine("    /// <typeparamref name=\"TContext\"/>. Reflection-free alternative to");
         sb.AppendLine("    /// <see cref=\"ModelConfigurationBuilderExtensions.ApplyTrellisConventions(ModelConfigurationBuilder, System.Reflection.Assembly[])\"/>.");
         sb.AppendLine("    /// </summary>");
         sb.AppendLine("    /// <typeparam name=\"TContext\">A concrete <see cref=\"DbContext\"/>-derived type defined in the current compilation.</typeparam>");

@@ -38,19 +38,40 @@ public static class ModelConfigurationBuilderExtensions
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static ModelConfigurationBuilder ApplyTrellisConventions(this ModelConfigurationBuilder configurationBuilder, params Assembly[] assemblies)` | `ModelConfigurationBuilder` | Scans the supplied assemblies plus `Trellis.Primitives`, registers scalar converters, collects composite value objects from those assemblies only, and adds internal conventions for `Maybe<T>`, composite value objects, `Money`, aggregate ETags, and transient aggregate properties. |
-| `public static ModelConfigurationBuilder ApplyTrellisConventionsCore(this ModelConfigurationBuilder configurationBuilder, IEnumerable<(Type ClrType, Type ProviderType)> scalars, IEnumerable<Type> composites)` | `ModelConfigurationBuilder` | Low-level helper used by the reflection-based `ApplyTrellisConventions` overload. Registers the supplied scalar converters via `Type.MakeGenericType` (not AOT/trim-friendly), then delegates to `AddTrellisCoreConventions`. |
-| `public static ModelConfigurationBuilder AddTrellisScalarConverter<TClr, TProvider>(this ModelConfigurationBuilder configurationBuilder) where TClr : class where TProvider : notnull` | `ModelConfigurationBuilder` | AOT/trim-friendly strongly-typed helper that registers `TrellisScalarConverter<TClr, TProvider>` for `TClr` properties. Emitted by the source generator; no `MakeGenericType` at runtime. |
-| `public static ModelConfigurationBuilder AddTrellisCoreConventions(this ModelConfigurationBuilder configurationBuilder, IEnumerable<Type> composites)` | `ModelConfigurationBuilder` | Adds the fixed Trellis conventions (`MaybeConvention`, `CompositeValueObjectConvention`, `MoneyConvention`, `AggregateETagConvention`, `AggregateTransientPropertyConvention`, `ValueObjectMappingGuardConvention`). AOT/trim-friendly: `composites` is an array of pre-closed `Type` tokens; no runtime reflection. |
+| `public static ModelConfigurationBuilder ApplyTrellisConventionsCore(this ModelConfigurationBuilder configurationBuilder, IEnumerable<(Type ClrType, Type ProviderType)> scalars, IEnumerable<Type> composites)` | `ModelConfigurationBuilder` | Low-level helper used by the reflection-based `ApplyTrellisConventions` overload. Registers the supplied scalar converters via `Type.MakeGenericType`, then delegates to `AddTrellisCoreConventions`. |
+| `public static ModelConfigurationBuilder AddTrellisScalarConverter<TClr, TProvider>(this ModelConfigurationBuilder configurationBuilder) where TClr : class where TProvider : notnull` | `ModelConfigurationBuilder` | Reflection-free strongly typed helper that registers `TrellisScalarConverter<TClr, TProvider>` for `TClr` properties. Emitted by the source generator; no `MakeGenericType` at runtime. |
+| `public static ModelConfigurationBuilder AddTrellisCoreConventions(this ModelConfigurationBuilder configurationBuilder, IEnumerable<Type> composites)` | `ModelConfigurationBuilder` | Adds the fixed Trellis conventions (`MaybeConvention`, `CompositeValueObjectConvention`, `MoneyConvention`, `AggregateETagConvention`, `AggregateTransientPropertyConvention`, `ValueObjectMappingGuardConvention`). `composites` is an array of pre-closed `Type` tokens supplied by the caller. |
 
-### `GeneratedTrellisConventions` (source-generator note)
+### `GeneratedTrellisConventions` (source-generated)
 
-The Trellis EF Core package itself does **not** ship a `GeneratedTrellisConventions` class or an `ApplyTrellisConventionsFor<TContext>` extension. The package source contains only:
+Installing `Trellis.EntityFrameworkCore` also attaches the bundled `Trellis.EntityFrameworkCore.Generator.dll` analyzer. In the consuming project, that generator emits:
 
-- `ApplyTrellisConventions(this ModelConfigurationBuilder, params Assembly[])` — reflection-based assembly scanner (above).
-- `ApplyTrellisConventionsCore(this ModelConfigurationBuilder, IEnumerable<(Type ClrType, Type ProviderType)>, IEnumerable<Type>)` — low-level helper used by `ApplyTrellisConventions` and intended as the integration target for a future source-generated entry point.
-- `AddTrellisScalarConverter<TClr, TProvider>` and `AddTrellisCoreConventions(IEnumerable<Type>)` — AOT/trim-friendly building blocks the planned generator will call.
+```csharp
+namespace Trellis.EntityFrameworkCore;
 
-Today, consumers should call `ApplyTrellisConventions(typeof(SomeRootType).Assembly)` from `ConfigureConventions`. A source-generated `ApplyTrellisConventionsFor<TContext>` extension (emitted into the consuming project) is referenced in XML doc comments inside `ModelConfigurationBuilderExtensions.cs` as a planned successor for AOT/trimming scenarios but is not currently emitted by the shipped generator assembly.
+public static class GeneratedTrellisConventions
+{
+    public static ModelConfigurationBuilder ApplyTrellisConventionsFor<TContext>(
+        this ModelConfigurationBuilder configurationBuilder)
+        where TContext : DbContext;
+}
+```
+
+Use it from `ConfigureConventions` when you want compile-time discovery instead of runtime assembly scanning:
+
+```csharp
+protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+    configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
+```
+
+The generator walks every concrete `DbContext` in the current compilation, follows public `DbSet<T>` roots, recursively discovers reachable Trellis value objects through entity properties, unwraps `Maybe<T>`, nullable types, arrays, and common collection navigations, and emits explicit calls to `AddTrellisScalarConverter<TClr, TProvider>` plus `AddTrellisCoreConventions(...)`.
+
+Scope limits:
+
+- `TContext` must be a concrete, accessible `DbContext` defined in the current compilation.
+- The reachability walk starts at that context's accessible `DbSet<T>` properties.
+- Calling `ApplyTrellisConventionsFor<TContext>()` for a skipped context throws `InvalidOperationException`.
+- This removes Trellis' assembly scan and `MakeGenericType` path, but the EF Core package itself still opts out of NativeAOT/trimming support.
 
 ### `DbContextExtensions`
 
@@ -504,7 +525,7 @@ public static string ToMaybeMappingDebugString(this DbContext dbContext)
 - `CompositeValueObjectConvention` is internal. It only registers composite value objects discovered in the assemblies passed to `ApplyTrellisConventions` (plus built-in Trellis primitives scanning for scalar value objects). For `Maybe<T>` composite owned types, it uses nullable owned columns only when table-splitting is valid; it switches to a separate table named `{OwnerTypeName}_{PropertyName}` when nested owned navigations exist **or** when the owned type contains non-nullable value-type properties.
 - `MoneyConvention` is internal. It registers `Money` as an owned type, names the amount column `{PropertyName}`, names the currency column `{PropertyName}Currency`, sets `decimal(18,3)` precision/scale for `Amount`, and handles optional `Maybe<Money>` columns through the annotation written by `MaybeConvention`.
 - `ValueObjectMappingGuardConvention` is internal. Runs after `MaybeConvention` and `MoneyConvention` during model finalization and throws an actionable `InvalidOperationException` when an entity still has a scalar property whose CLR type is `Money` or `Maybe<T>` — the typical cause is an explicit `builder.Property(x => x.SomeMoneyOrMaybe)` call in `OnModelCreating` that bypasses the auto-mapping conventions. Replaces EF Core's cryptic "*property could not be mapped because the database provider does not support this type*" error with a message that names the offending entity + property and points to the correct pattern (do nothing for `Money`; declare `partial Maybe<T>` for Maybe).
-- `MaybePartialPropertyGenerator` and `OwnedEntityGenerator` are compiler-time helpers shipped in the `Trellis.EntityFrameworkCore.Generator.dll` assembly, which is bundled inside `Trellis.EntityFrameworkCore.nupkg` at `analyzers/dotnet/cs/` since Phase 2 of the v2 redesign — there is no separate `Trellis.EntityFrameworkCore.Generator` NuGet package. `TRLS035` is reported only for non-partial auto-properties of type `Maybe<T>` whose containing type is partial. `TRLS036`, `TRLS037`, and `TRLS038` come from `[OwnedEntity]` validation and generation. (These IDs were `TRLSGEN100`–`TRLSGEN103` in v1; the unified `TRLS###` namespace is canonical from v2 onward — see `TrellisDiagnosticIds`.)
+- `MaybePartialPropertyGenerator`, `OwnedEntityGenerator`, and `ApplyTrellisConventionsForGenerator` are compiler-time helpers shipped in the `Trellis.EntityFrameworkCore.Generator.dll` assembly, which is bundled inside `Trellis.EntityFrameworkCore.nupkg` at `analyzers/dotnet/cs/` since Phase 2 of the v2 redesign — there is no separate `Trellis.EntityFrameworkCore.Generator` NuGet package. `TRLS035` is reported only for non-partial auto-properties of type `Maybe<T>` whose containing type is partial. `TRLS036`, `TRLS037`, and `TRLS038` come from `[OwnedEntity]` validation and generation. (These IDs were `TRLSGEN100`–`TRLSGEN103` in v1; the unified `TRLS###` namespace is canonical from v2 onward — see `TrellisDiagnosticIds`.)
 
 ## Behavioral notes
 
@@ -514,8 +535,9 @@ public static string ToMaybeMappingDebugString(this DbContext dbContext)
 
 - `Maybe<T>` partial-property bodies with private `_camelCase` backing fields that EF Core can map through reflection-free conventions.
 - `[OwnedEntity]` validation/generation diagnostics (`TRLS035`–`TRLS038`).
+- `GeneratedTrellisConventions.ApplyTrellisConventionsFor<TContext>()`, which calls `AddTrellisScalarConverter<TClr, TProvider>` and `AddTrellisCoreConventions(...)` for value-object types reachable from the current compilation's accessible `DbSet<T>` roots.
 
-A generated `ApplyTrellisConventionsFor<TContext>` extension that would call `AddTrellisScalarConverter<TClr, TProvider>` and `AddTrellisCoreConventions(...)` directly (eliminating runtime `MakeGenericType`) is **planned** and is referenced in the package’s XML doc comments, but is not currently emitted. Today's recommended entry point remains the reflection-based `ModelConfigurationBuilder.ApplyTrellisConventions(typeof(SomeRootType).Assembly)`. AOT/trimming consumers can call `AddTrellisScalarConverter<TClr, TProvider>` and `AddTrellisCoreConventions` by hand to avoid `MakeGenericType`.
+`ApplyTrellisConventionsFor<TContext>()` is the reflection-free convention path. `ApplyTrellisConventions(typeof(SomeRootType).Assembly)` remains the broadest runtime scan and is still the right fallback when the context is private, generic, abstract, or otherwise skipped by source generation. The generated path removes Trellis' assembly scan and `MakeGenericType` converter construction; it does not make EF Core itself NativeAOT-supported.
 
 ### `Maybe<T>` storage, owned types, and migrations
 

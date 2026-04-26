@@ -1,7 +1,8 @@
-using Trellis.Testing;
+﻿using Trellis.Testing;
 
 namespace Trellis.Primitives.Tests;
 
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trellis;
@@ -69,6 +70,20 @@ public class CompositeValueObjectJsonConverterTests
         rt.Should().NotBeNull();
         rt!.Amount.Should().Be(99.99m);
         rt.Currency.Value.Should().Be("USD");
+    }
+
+    [Fact]
+    public void Roundtrip_same_typed_properties_preserves_declaration_order()
+    {
+        var address = SameTypedPropertiesVo.Create("123 Main St", "Springfield");
+
+        var json = JsonSerializer.Serialize(address);
+
+        json.Should().Be("{\"street\":\"123 Main St\",\"city\":\"Springfield\"}");
+        var rt = JsonSerializer.Deserialize<SameTypedPropertiesVo>("{\"street\":\"1 High St\",\"city\":\"London\"}");
+        rt.Should().NotBeNull();
+        rt!.Street.Should().Be("1 High St");
+        rt.City.Should().Be("London");
     }
 
     #endregion
@@ -238,6 +253,26 @@ public class CompositeValueObjectJsonConverterTests
             .WithMessage("*found multiple ambiguous 'TryCreate' overloads*");
     }
 
+    [Fact]
+    public void Metadata_token_fallback_rejects_same_typed_properties()
+    {
+        var metadataType = typeof(CompositeValueObjectJsonConverter<>)
+            .GetNestedType("CompositeMetadata", BindingFlags.NonPublic);
+        metadataType = metadataType!.MakeGenericType(typeof(SameTypedPropertiesVo));
+        var fallbackMethod = metadataType?.GetMethod(
+            "OrderPropertiesWithoutMetadataTokens",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        var properties = typeof(SameTypedPropertiesVo)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .ToList();
+
+        Action act = () => fallbackMethod!.Invoke(null, [typeof(SameTypedPropertiesVo), properties]);
+
+        act.Should().Throw<TargetInvocationException>()
+            .WithInnerException<InvalidOperationException>()
+            .WithMessage("*cannot determine a safe property order*String*");
+    }
+
     #endregion
 
     // --- Test fixtures ---
@@ -262,6 +297,23 @@ public class CompositeValueObjectJsonConverterTests
 
         public static Result<IntStringVo> TryCreate(int number, string label, string? fieldName = null) =>
             Result.Ok(new IntStringVo(number, label));
+    }
+
+    [JsonConverter(typeof(CompositeValueObjectJsonConverter<SameTypedPropertiesVo>))]
+    public class SameTypedPropertiesVo : TestVo
+    {
+        public string Street { get; private set; } = string.Empty;
+
+        public string City { get; private set; } = string.Empty;
+
+        private SameTypedPropertiesVo() { }
+
+        private SameTypedPropertiesVo(string street, string city) { Street = street; City = city; }
+
+        public static SameTypedPropertiesVo Create(string street, string city) => new(street, city);
+
+        public static Result<SameTypedPropertiesVo> TryCreate(string street, string city, string? fieldName = null) =>
+            Result.Ok(new SameTypedPropertiesVo(street, city));
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<AllPrimitivesVo>))]

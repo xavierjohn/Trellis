@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <Description>Opinionated service composition defaults for Trellis web services. Provides a tiered builder that wires ASP integration, Mediator behaviors, FluentValidation, resource authorization, actor providers, and EF Core Unit of Work in canonical order.</Description>
+    <PackageTags>trellis;service-defaults;composition;aspnetcore;cqrs;mediator;entity-framework-core;fluentvalidation</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>servicedefaults</TrellisApiRefName>
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
+    <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
+    <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
+  </ItemGroup>
+</Project>

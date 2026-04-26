@@ -114,7 +114,11 @@ internal static class ScalarValueTypeHelper
             null);
 
         if (stringTryCreateMethod is not null)
-            return InvokeTryCreate(stringTryCreateMethod, [rawValue, parameterName], parameterName);
+        {
+            var stringErrors = InvokeTryCreate(stringTryCreateMethod, [rawValue, parameterName], parameterName);
+            if (stringErrors is not null || GetPrimitiveType(scalarValueType) == typeof(string))
+                return stringErrors;
+        }
 
         var primitiveType = GetPrimitiveType(scalarValueType);
         if (primitiveType is null)
@@ -217,9 +221,16 @@ internal static class ScalarValueTypeHelper
         if (conversionResult is null)
             return null;
 
-        var tryGetValue = conversionResult.GetType().GetMethod(
-            "TryGetValue",
-            BindingFlags.Public | BindingFlags.Instance);
+        var tryGetValue = conversionResult.GetType()
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(method =>
+            {
+                if (method.Name != "TryGetValue")
+                    return false;
+
+                var parameters = method.GetParameters();
+                return parameters.Length == 1 && parameters[0].ParameterType.IsByRef;
+            });
 
         if (tryGetValue is null)
             return null;

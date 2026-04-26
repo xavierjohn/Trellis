@@ -464,14 +464,16 @@ public class ScalarValueTypeHelperTests
     public void GetValidationErrors_TypeWithoutStringTryCreate_ParseablePrimitive_ReturnsValidationErrors()
     {
         // Arrange - InterfaceOnlyValidated has TryCreate(string, string) that throws NotImplementedException,
-        // so GetValidationErrors will return null (exception is caught and swallowed).
+        // so GetValidationErrors falls through to TryCreate(int, string).
         var type = typeof(InterfaceOnlyValidated);
 
         // Act
         var errors = ScalarValueTypeHelper.GetValidationErrors(type, "0", "param");
 
-        // Assert - returns null because the string TryCreate throws NotImplementedException
-        errors.Should().BeNull();
+        // Assert
+        errors.Should().NotBeNull();
+        errors!.Should().ContainKey("param");
+        errors["param"].Should().Contain("Must be positive.");
     }
 
     [Fact]

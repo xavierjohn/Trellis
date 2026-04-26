@@ -29,6 +29,8 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | `TRLS017` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
 | `TRLS018` | Warning | Result<T> deconstruction reads value without success gate | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
 | `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | Per ADR-002 §3.5.1, `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
+| `TRLS020` | Warning | Composite value object DTO property is missing JSON converter | Composite `[OwnedEntity]` value objects exposed through request/response DTO surfaces must carry `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` so JSON binding round-trips through `TryCreate`. |
+| `TRLS021` | Warning | EF configuration duplicates Trellis conventions | Flags `HasConversion`, `OwnsOne`, and `Ignore` calls on `Maybe<T>` or `[OwnedEntity]` properties when `ApplyTrellisConventions(...)` / `ApplyTrellisConventionsFor<TContext>()` is wired. Remove the manual mapping and let Trellis conventions own the property. |
 | `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
 | `TRLS032` | Error | `MinimumLength` exceeds `MaximumLength` | Emitted by the Primitives source generator when a `[StringLength]` attribute has `MinimumLength > MaximumLength`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN002`)* |
 | `TRLS033` | Error | `Range` minimum exceeds maximum | Emitted by the Primitives source generator when a `[Range]` attribute on `int`/`long`/`decimal` has `Min > Max`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN003`)* |
@@ -75,6 +77,8 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `WrongAttributeNamespace` | `TRLS017` | `WrongAttributeNamespaceAnalyzer` |
 | `UnsafeResultDeconstruction` | `TRLS018` | `UnsafeResultDeconstructionAnalyzer` |
 | `DefaultResultOrMaybe` | `TRLS019` | `DefaultResultOrMaybeAnalyzer` |
+| `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | `CompositeValueObjectDtoConverterAnalyzer` |
+| `RedundantEfConfiguration` | `TRLS021` | `RedundantEfConfigurationAnalyzer` |
 | `UnsupportedRequiredBaseType` | `TRLS031` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `InvalidStringLengthRange` | `TRLS032` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `InvalidRangeMinExceedsMax` | `TRLS033` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
@@ -109,6 +113,8 @@ The public static class `Trellis.Analyzers.DiagnosticDescriptors` exposes one `p
 | `WrongAttributeNamespace` | `TRLS017` | Warning | Trellis.Primitives |
 | `UnsafeResultDeconstruction` | `TRLS018` | Warning | Trellis.Result |
 | `DefaultResultOrMaybe` | `TRLS019` | Warning | Trellis.Result |
+| `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | Warning | Trellis.Asp |
+| `RedundantEfConfiguration` | `TRLS021` | Warning | Trellis.EntityFrameworkCore |
 
 > **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS038`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
 
@@ -316,6 +322,23 @@ This analyzer was deleted in v2. The `result.IsSuccess ? result.Value : fallback
   - `Maybe<T>` → `Maybe<T>.None` or `Maybe.From(value)`
 - For sanctioned sentinel/test-helper sites, suppress with `[SuppressMessage("Trellis", "TRLS019", Justification = "...")]` on the enclosing member or `#pragma warning disable TRLS019` around the offending span.
 - No code fix (the appropriate replacement depends on intent — success vs. failure for `Result`, value vs. None for `Maybe`).
+
+#### `CompositeValueObjectDtoConverterAnalyzer` — `TRLS020`
+- Flags ASP.NET controller request/response DTOs, Minimal API handler request DTOs, and Mediator `IRequest<T>`/`ICommand<T>`/`IQuery<T>` message DTOs with properties whose type is an `[OwnedEntity]` Trellis `ValueObject` missing `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]`.
+- This catches the silent JSON-binding failure where System.Text.Json can default-construct the composite value object and bypass `TryCreate` validation.
+- Does not flag domain model properties that are not exposed through DTO surfaces.
+- Does not flag composite value-object types that carry the matching `CompositeValueObjectJsonConverter<T>` attribute.
+- No code fix.
+
+#### `RedundantEfConfigurationAnalyzer` — `TRLS021`
+- Activates only when the compilation references `Trellis.EntityFrameworkCore.MaybeConvention`.
+- Reports only when the source also wires Trellis conventions via `ApplyTrellisConventions(...)` or generated `ApplyTrellisConventionsFor<TContext>()`.
+- Flags manual EF configuration for convention-owned properties:
+  - `builder.Property(e => e.MaybeProperty).HasConversion(...)`
+  - `builder.OwnsOne(e => e.OwnedEntityValueObject)`
+  - `builder.Ignore(e => e.MaybeOrOwnedEntityProperty)`
+- Targets `Maybe<T>` and types annotated with `Trellis.EntityFrameworkCore.OwnedEntityAttribute`.
+- No code fix.
 
 ## Code fix providers
 

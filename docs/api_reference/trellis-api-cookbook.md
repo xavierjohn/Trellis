@@ -11,9 +11,10 @@
   - [trellis-api-asp.md](trellis-api-asp.md) — `ToHttpResponse`, `HttpResponseOptionsBuilder<T>`, `AddTrellisAsp`, `AsActionResult`
   - [trellis-api-http.md](trellis-api-http.md) — `RangeOutcome`, range parser
   - [trellis-api-authorization.md](trellis-api-authorization.md) — `IActorProvider`, `IAuthorize`, `IAuthorizeResource<>`
+  - [trellis-api-servicedefaults.md](trellis-api-servicedefaults.md) — `AddTrellis`, `TrellisServiceBuilder`
   - [trellis-api-statemachine.md](trellis-api-statemachine.md) — `FireResult`, `LazyStateMachine<,>`
   - [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — `Should().Be(...)`, `UnwrapError()`
-  - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`–`TRLS019`, `TrellisDiagnosticIds`
+  - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`–`TRLS021`, `TrellisDiagnosticIds`
 
 ## How to read these recipes
 
@@ -31,6 +32,26 @@ Conventions used throughout:
 - `Result.Ok` / `Result.Fail` are *the* construction APIs. `default(Result<T>)` is a typed failure; do not rely on it as success.
 - Every async pipeline uses `*Async` extensions; mixing sync chain methods with `Task<Result<T>>` triggers `TRLS009`.
 - Examples reference an `OrderId : RequiredGuid<OrderId>` value object and an `Order` aggregate. Substitute your own types without changing the structure.
+
+## Task -> recipe lookup
+
+Use this table before writing code. If a task matches a row, read that recipe first.
+
+| Task | Start here |
+|---|---|
+| Create or load an aggregate with value objects | [Recipe 1](#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) |
+| Write a command handler that validates and persists | [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), then [Recipe 16](#recipe-16--unit-of-work-in-handlers-add-staging-vs-immediate-saveasync) |
+| Add a paginated list query | [Recipe 3](#recipe-3--query-handler-returning-paget-paginated-list-with-cursor) |
+| Add Minimal API or MVC endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult) |
+| Map primitive DTO fields to value objects | [Recipe 18](#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
+| Add resource authorization | [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) |
+| Map `Maybe<T>` or composite value objects with EF Core | [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects), [Recipe 13](#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership), [Recipe 15](#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap) |
+| Add optional request/response fields | [Recipe 14](#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport) |
+| Add a state transition | [Recipe 9](#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
+| Write handler/domain tests | [Recipe 10](#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) |
+| Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
+| Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
+| Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 
 ---
 
@@ -92,6 +113,8 @@ public interface IOrderRepository
 ```
 
 **What it shows.** `RequiredGuid<TSelf>` and `RequiredString<TSelf>` deliver a complete strongly-typed primitive (parsing, equality, JSON, EF) once you mark the partial class. `[StringLength]` and `[Range]` come from the **`Trellis` namespace** and are placed on the **class declaration** — using `System.ComponentModel.DataAnnotations` versions silently compiles but is ignored by the Trellis source generator (`TRLS017`).
+
+`Aggregate<TId>` already supplies inherited infrastructure members: `Id`, protected `DomainEvents`, persistence-managed `ETag`, and `IsChanged` based on pending domain events. Do not redeclare those members on every aggregate; use the inherited surface and add only domain-specific state.
 
 **Anti-pattern → fix (TRLS017).**
 
@@ -200,7 +223,8 @@ public sealed class ListOrdersHandler(AppDbContext db)
 
         Guid afterId = Guid.Empty;
         if (q.Cursor is not null && !Guid.TryParseExact(q.Cursor, "N", out afterId))
-            return Error.UnprocessableContent.ForField("cursor", "cursor.malformed", "Cursor is not a valid opaque token.");
+            return Result.Fail<Page<OrderListItem>>(
+                Error.UnprocessableContent.ForField("cursor", "cursor.malformed", "Cursor is not a valid opaque token."));
 
         var query = db.Orders.AsNoTracking().OrderBy(o => o.Id);
         if (q.Cursor is not null)
@@ -224,7 +248,7 @@ public sealed class ListOrdersHandler(AppDbContext db)
 
 **What it shows.** `Page<T>` is a `readonly record struct`; instances always carry positive limits and a non-null `Items`. `WasCapped` becomes `true` automatically when the server clamped the limit. Use `Page.Empty<T>(req, app)` for the empty case rather than `default(Page<T>)`.
 
-> **Cursor parsing must be ROP, not throwing.** `Guid.Parse(q.Cursor)` would throw on malformed input and escape the handler as a 500. Use `Guid.TryParseExact(..., "N", out var)` and return `Error.UnprocessableContent.ForField("cursor", ...)` so a bad cursor surfaces as a clean 422, not a stack trace. Apply the same shape (TryParse → `Result` failure) for any opaque-token format you adopt.
+> **Cursor parsing must be ROP, not throwing.** `Guid.Parse(q.Cursor)` would throw on malformed input and escape the handler as a 500. Use `Guid.TryParseExact(..., "N", out var)` and return `Result.Fail<T>(Error.UnprocessableContent.ForField("cursor", ...))` so a bad cursor surfaces as a clean 422, not a stack trace. Apply the same shape (TryParse -> `Result` failure) for any opaque-token format you adopt.
 
 ---
 
@@ -532,6 +556,8 @@ public sealed class DocumentService
 
 **What it shows.** `StateMachineExtensions.FireResult(...)` honors `PermitIf`/`IgnoreIf` guards via `CanFire(...)` rather than parsing exception messages, so it survives Stateless library upgrades. For aggregates whose state lives in a backing field (e.g., loaded from EF), use `LazyStateMachine<TState, TTrigger>` to defer machine creation until the first `FireResult` call.
 
+**Side-effect placement.** Keep Stateless configuration declarative: states, triggers, permitted transitions, and pure/idempotent guards. Put business mutation, domain events, outbox writes, and other side effects after `FireResult` succeeds, usually in `.Tap(...)` as shown above. `FireResult` intentionally invokes `Fire(...)` even when `CanFire(...)` is false so any configured `OnUnhandledTrigger` callback can run. A custom unhandled-trigger callback may swallow the trigger, in which case `FireResult` returns success with the unchanged state. If side effects live in `OnEntry`, `OnExit`, transition callbacks, or `OnUnhandledTrigger`, they can run outside the visible ROP success/failure path and make handler behavior diverge from tests.
+
 > **HTTP semantics.** Invalid state-machine transitions surface as `Error.UnprocessableContent` (HTTP 422), not `Error.Conflict` (HTTP 409). The reasoning: `Error.Conflict` semantically means "your request is valid but collides with concurrent state — retry may succeed"; a state-machine rejection ("you asked for `Submit` on a `Cancelled` order") is not retriable and is not about concurrent modification — it's a semantic rule violation. Callers that need to distinguish state-machine rejections from other 422s can match on the `RuleViolation.ReasonCode` value `state.machine.invalid.transition`.
 
 ```csharp
@@ -674,48 +700,36 @@ return Maybe<Email>.None;
 
 ---
 
-## Recipe 12 — DI wiring playbook: `AddTrellis*` extension methods across all packages
+## Recipe 12 — DI wiring playbook: `AddTrellis` composition builder
 
-**Problem.** Compose every `AddTrellis*` registration in the correct order so behaviors stack properly.
+**Problem.** Compose Trellis service modules in the correct order so behaviors stack properly without forcing simple apps to install every package.
+
+**Preferred: tiered builder.** Use `Trellis.ServiceDefaults` from the API/composition root. The builder records intent first, then applies modules in the canonical order. `UseEntityFrameworkUnitOfWork<TContext>()`, when selected, is always applied last so `TransactionalCommandBehavior<,>` lands innermost.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Trellis;
-using Trellis.Asp;
-using Trellis.Asp.Authorization;
-using Trellis.Asp.Routing;
-using Trellis.EntityFrameworkCore;
+using Trellis.ServiceDefaults;
 
 public static class CompositionRoot
 {
     public static IServiceCollection AddApp(this IServiceCollection services, string connectionString)
     {
-        // 1. Mediator pipeline (outermost behaviors first).
-        services.AddTrellisBehaviors();
-
-        // 2. FluentValidation plug-in. Idempotent; safe to call after AddTrellisBehaviors.
-        services.AddTrellisFluentValidation(typeof(PlaceOrderValidator).Assembly);
-
-        // 3. ASP layer: Problem Details mapping + scalar-value validation pipeline.
-        services.AddTrellisAsp();
-
-        // 4. ASP authorization actor providers.
-        services.AddClaimsActorProvider();
-        services.AddResourceAuthorization(typeof(UpdateOrderCommand).Assembly);
-
-        // 5. EF Core context with Trellis interceptors + conventions.
+        // App-owned: provider, connection string, migrations, pooling, and Mediator registration.
         services.AddDbContext<AppDbContext>(opts => opts
             .UseSqlServer(connectionString)
             .AddTrellisInterceptors());
 
-        // 6. EF unit of work LAST so TransactionalCommandBehavior lands innermost.
-        services.AddTrellisUnitOfWork<AppDbContext>();
+        services.AddMediator(options => options.Assemblies = [typeof(PlaceOrderCommand).Assembly]);
 
-        // 7. Optional: route constraints for value-object IDs (reflection-based).
-        services.AddTrellisRouteConstraints(typeof(OrderId).Assembly);
+        services.AddTrellis(options => options
+            .UseAsp()
+            .UseMediator()
+            .UseFluentValidation(typeof(PlaceOrderValidator).Assembly)
+            .UseClaimsActorProvider()
+            .UseResourceAuthorization(typeof(UpdateOrderCommand).Assembly)
+            .UseEntityFrameworkUnitOfWork<AppDbContext>());
 
-        // 8. Application services.
         services.AddScoped<IOrderRepository, EfOrderRepository>();
 
         return services;
@@ -723,17 +737,18 @@ public static class CompositionRoot
 }
 ```
 
-**Composition order, summarized.**
+**Builder modules, summarized.**
 
-| Step | Call | Why this position |
+| Module | What it applies | Notes |
 | ---- | ---- | ----------------- |
-| 1 | `AddTrellisBehaviors()` | Registers tracing → telemetry → validation → exception → logging behaviors. Must come before any extension that piggybacks on the open-generic behavior list. |
-| 2 | `AddTrellisFluentValidation(...)` | Plugs `IValidator<T>` into the existing `ValidationBehavior<,>`. Idempotent; safe in any order after step 1. |
-| 3 | `AddTrellisAsp()` | Registers `TrellisAspOptions` (error → status mapping) and chains `AddScalarValueValidation()` for JSON pipeline integration. Add early so MVC/Minimal API JSON conventions are wired before endpoint registration. |
-| 4 | `AddClaimsActorProvider()` + `AddResourceAuthorization(...)` | `IActorProvider` + permission/resource-based behavior (not in `AddTrellisBehaviors()`). |
-| 5 | `AddDbContext(... .AddTrellisInterceptors())` | Wires `MaybeQueryInterceptor`, `ScalarValueQueryInterceptor`, ETag and timestamp interceptors. |
-| 6 | `AddTrellisUnitOfWork<TContext>()` | **Must be last** behavior registration so `TransactionalCommandBehavior<,>` lands innermost (closest to the handler) and commit failures stay visible to outer logging/tracing behaviors. |
-| 7 | `AddTrellisRouteConstraints(...)` / `AddTrellisRouteConstraint<T>(...)` | Optional; the reflection-based overload is **not** AOT-safe — the typed overload is. |
+| `UseAsp()` | `AddTrellisAsp()` | Error → status mapping plus scalar-value JSON/model-binding validation. |
+| `UseMediator()` | `AddTrellisBehaviors()` | Registers the canonical Result-aware pipeline behaviors. |
+| `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
+| `UseClaimsActorProvider()` / `UseEntraActorProvider()` / `UseDevelopmentActorProvider()` | One ASP actor provider | The builder rejects multiple actor providers. |
+| `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
+| `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()` and is always applied last. |
+
+**Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
 
 ---
 
@@ -1275,6 +1290,75 @@ public Result<Order> Submit(TimeProvider clock)
 **Why a single timestamp.** Domain events flow into outbox tables, integration buses, audit projections, and event-sourced read models. Every consumer assumes `OccurredAt` is *the* occurrence time. Adding `SubmittedAt`/`ApprovedAt`/`ShippedAt` to individual events forces every consumer to know which field to project per event type — and the two fields can drift if the aggregate's setter and the event constructor are passed different `DateTime.UtcNow` calls.
 
 **See also.** The XML doc on `IDomainEvent.OccurredAt` (in `Trellis.Core`) calls this out explicitly. If your IDE shows the doc on hover, the rule is right there before you hit the compile error.
+
+---
+
+## Recipe 18 — DTO primitives to value-object command: no test-only `Unwrap()`
+
+**Problem.** Request DTOs often carry primitive transport fields (`string email`, `string customerName`), while commands and domain methods should receive Trellis value objects. Each `TryCreate` returns `Result<TVO>`. Do not use `Unwrap()` in production code — it is a `Trellis.Testing` helper for tests.
+
+```csharp
+using Mediator;
+using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+using Trellis.Primitives;
+
+public sealed record CreateCustomerRequest(string Email, string CustomerName);
+
+public sealed partial class CustomerId : RequiredGuid<CustomerId>;
+
+public sealed record CustomerResponse(CustomerId Id, string Email, string CustomerName);
+
+[StringLength(200, MinimumLength = 1)]
+public sealed partial class CustomerName : RequiredString<CustomerName>;
+
+public sealed record CreateCustomerCommand(EmailAddress Email, CustomerName CustomerName)
+    : ICommand<Result<CustomerResponse>>
+{
+    public static Result<CreateCustomerCommand> TryCreate(CreateCustomerRequest request) =>
+        Result.Combine(
+                EmailAddress.TryCreate(request.Email, nameof(request.Email)),
+                CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
+            .Map(values => new CreateCustomerCommand(values.Item1, values.Item2));
+}
+
+[ApiController]
+[Route("customers")]
+public sealed class CustomersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask<ActionResult<CustomerResponse>> Create(
+        [FromBody] CreateCustomerRequest request,
+        CancellationToken ct) =>
+        CreateCustomerCommand.TryCreate(request)
+            .BindAsync(command => sender.Send(command, ct))
+            .ToHttpResponseAsync()
+            .AsActionResultAsync<CustomerResponse>();
+}
+```
+
+**What it shows.**
+
+- Keep DTOs transport-shaped and commands/domain methods value-object-shaped.
+- Pass field names into `TryCreate` so failures point at the request field (`/Email`, `/CustomerName` after pointer normalization at the ASP boundary).
+- Use `Result.Combine(...)` to aggregate per-field `Error.UnprocessableContent` failures into one validation response.
+- Stay on the ROP track: invalid input short-circuits before `sender.Send(...)`; valid input creates the command and continues.
+
+**Anti-pattern -> fix.**
+
+```csharp
+// WRONG — Unwrap() is test-only and turns validation failures into thrown exceptions.
+var command = new CreateCustomerCommand(
+    EmailAddress.TryCreate(request.Email).Unwrap(),
+    CustomerName.TryCreate(request.CustomerName).Unwrap());
+
+// FIX — aggregate value-object creation results and bind into the command.
+var command = Result.Combine(
+        EmailAddress.TryCreate(request.Email, nameof(request.Email)),
+        CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
+    .Map(values => new CreateCustomerCommand(values.Item1, values.Item2));
+```
 
 ---
 

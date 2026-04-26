@@ -118,7 +118,7 @@ public static class ModelConfigurationBuilderExtensions
     /// <typeparamref name="TClr"/> properties that round-trip to <typeparamref name="TProvider"/>.
     /// </summary>
     /// <remarks>
-    /// AOT/trim-friendly: no calls to <see cref="Type.MakeGenericType(Type[])"/> or other
+    /// Reflection-free: no calls to <see cref="Type.MakeGenericType(Type[])"/> or other
     /// runtime reflection. Intended for source-generated convention registration.
     /// </remarks>
     /// <typeparam name="TClr">The Trellis scalar value object CLR type (e.g. <c>CustomerId</c>).</typeparam>
@@ -141,7 +141,7 @@ public static class ModelConfigurationBuilderExtensions
     /// <c>AggregateTransientPropertyConvention</c>, and <c>ValueObjectMappingGuardConvention</c>.
     /// </summary>
     /// <remarks>
-    /// AOT/trim-friendly: no calls to <see cref="Type.MakeGenericType(Type[])"/>. The
+    /// Reflection-free: no calls to <see cref="Type.MakeGenericType(Type[])"/>. The
     /// <paramref name="composites"/> argument carries already-closed <see cref="Type"/> tokens
     /// supplied by the caller (typically the source generator).
     /// </remarks>

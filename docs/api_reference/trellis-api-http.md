@@ -26,6 +26,8 @@ public static class HttpResponseExtensions
 | `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<T>>` | Already-failed input short-circuits with the upstream error. Otherwise reads the body and deserializes; non-success status, `204`, `205`, empty body, null payload, or `JsonException` (caught) all map to `Fail<InternalServerError>`. **Always disposes** the response after reading. |
 | `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Already-failed input short-circuits. Non-success status -> `Fail<InternalServerError>`. `204`, `205`, empty body, JSON `null` -> `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). **Always disposes** the response. |
 
+> **Business API default.** Do not call bare `ToResultAsync()` for domain-facing HTTP clients unless every status code is intentionally handled later. With `statusMap: null`, `404`, `409`, and other non-success statuses remain on the success track until a later terminal operation maps them. Prefer `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync`, or an explicit `statusMap` before calling `ReadJsonAsync`.
+
 ## Disposal contract
 
 The library owns the `HttpResponseMessage` lifecycle on terminal or transformative paths:

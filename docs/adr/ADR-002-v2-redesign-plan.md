@@ -373,7 +373,7 @@ If two methods do the same thing under different names (`SuccessIf` ≈ `Ensure`
 **Decision (2026-04-20):** every async-returning extension is named `…Async` (`MapAsync`, `BindAsync`, `TapAsync`, `TapOnFailureAsync`, `EnsureAsync`, `MatchAsync`, `RecoverAsync`). This follows the BCL guideline for `Task`/`ValueTask`-returning methods and matches every async API the user already reads (`Task.WhenAllAsync`, `HttpClient.SendAsync`, `DbContext.SaveChangesAsync`). The earlier "async invisible" framing has been **rescinded** because it created two avoidable problems: (1) overload ambiguity between sync `Map` and `Task<Result<T>>.Map`, and (2) no visible signal at the call site that an `await` is required. The §3.3 overload matrix is updated accordingly: `Map` is one overload (sync × sync), `MapAsync` covers the five async permutations.
 
 ### C. **No tuple-arity ceilings in user-facing validation APIs.**
-A builder pattern (`Validate.Field(a).And(b).And(c)…`) replaces fixed-arity `Combine` for **validation aggregation** (no ceiling). For heterogeneous value combination (different value types, first-failure-wins semantics), `Result.Combine<T1..T9>` stays — it's already T4-generated, costs nothing, and is genuinely cleaner than chained `Bind`s. `TRLS019` (max 9 hard-error) stays for `Combine` with a clearer message: "Group into a record or use `Validate.Field(...).Build()` if these are validation results."
+A builder pattern (`Validate.Field(a).And(b).And(c)…`) replaces fixed-arity `Combine` for **validation aggregation** (no ceiling). For heterogeneous value combination (different value types, first-failure-wins semantics), `Result.Combine<T1..T9>` stays — it's already T4-generated, costs nothing, and is genuinely cleaner than chained `Bind`s. `TRLS014` (max 9 hard-error) stays for `Combine` with a clearer message: "Group into a record or use `Validate.Field(...).Build()` if these are validation results."
 
 ### D. **Errors are a closed-by-convention catalog, not an open hierarchy.**
 We **do not** claim compiler exhaustiveness — C# does not provide it for record hierarchies. Instead:
@@ -396,7 +396,7 @@ The per-package `docs/api_reference/trellis-api-*.md` is the canonical surface; 
 ### I. **Diagnostics complement — not replace — boundary adapters.**
 We keep `Result.Try(Func<T>, Func<Exception, Error>?)` and `Result.TryAsync` as explicit boundary adapters for foreign code (EF, HttpClient, BCL parsing, third-party). Analyzers (`TRLS015`) catch unguarded `throw` *inside* a chain — but they cannot catch exceptions from foreign code, which is exactly what `Try` exists for. Removing `Try` would force the AI to reinvent it badly.
 
-### J. **AOT-clean by default. No reflection in hot paths.**
+### J. **AOT-clean where supported. No reflection in hot paths.**
 Source generators do the work. The redesign treats AOT as a target, not a bonus.
 
 ---
@@ -690,7 +690,7 @@ var result = Result.Combine(orderResult, customerResult, productResult)
 - Error position is deterministic (first argument's failure wins).
 - Subsequent results not evaluated for error aggregation; their value is observed only for parallel async via `Result.ParallelAsync`.
 - T1..T9 surface kept (T4-generated, zero cost).
-- `TRLS019` (T10 hard-error) **stays** with a clearer message steering users to record-grouping or `Validate`.
+- `TRLS014` (T10 hard-error) **stays** with a clearer message steering users to record-grouping or `Validate`.
 
 #### `Result.ParallelAsync<T1..T9>` — parallel async fan-in
 
@@ -983,7 +983,7 @@ The `HandleFailureAsync<TContext>(...)` overloads with their `(response, ctx, ct
 
 A **new** source generator emits `ApplyTrellisConventionsFor<TContext>()` that walks the `DbContext`'s `DbSet<>` properties at compile time and emits explicit converter registrations. Users can pick either:
 - `ApplyTrellisConventions(typeof(MyDbContext).Assembly)` — runtime scan (works today; ergonomic; reflection cost at startup only)
-- `ApplyTrellisConventionsFor<MyDbContext>()` — generated, reflection-free, AOT-clean
+- `ApplyTrellisConventionsFor<MyDbContext>()` — generated, reflection-free convention registration; EF Core itself remains outside Trellis' NativeAOT support promise
 
 The v1 promise of "no assembly scanning ever" is dropped — it's a 6-month project to do it well across all real EF scenarios. This dual-path is honest.
 
@@ -992,12 +992,12 @@ The v1 promise of "no assembly scanning ever" is dropped — it's a 6-month proj
 `RepositoryBase<TAggregate, TId>` keeps its current shape — it's good. Changes:
 - `SaveChangesResultAsync` and `SaveChangesResultUnitAsync` stay as `DbContext` extensions for non-pipeline scenarios.
 - `IUnitOfWork.CommitAsync()` is the canonical commit for pipeline scenarios.
-- `TRLS020` (warning today: prefer `SaveChangesResultAsync` over `SaveChangesAsync`) is **kept as warning**, not escalated to error. Some scenarios legitimately call `SaveChangesAsync`.
+- `TRLS015` (warning today: prefer `SaveChangesResultAsync` over `SaveChangesAsync`) is **kept as warning**, not escalated to error. Some scenarios legitimately call `SaveChangesAsync`.
 
 ### 8.3 Maybe properties + indexes
 
 `HasIndex(x => x.MaybeProp)` magic rewriting is **dropped** (per critique: low ROI, high fragility). Instead:
-- `TRLS021` (current warning) stays, telling users to use `HasTrellisIndex` or string-based `HasIndex`.
+- `TRLS016` (current warning) stays, telling users to use `HasTrellisIndex` or string-based `HasIndex`.
 - The `HasTrellisIndex` extension is the recommended path, documented prominently.
 
 ### 8.4 Diagnostics retained
@@ -1177,7 +1177,7 @@ Stated once for the whole framework so individual packages don't re-decide:
 v2 framework code is **AOT-friendly and trim-safe**. No runtime reflection in hot paths — Mediator pipeline behaviors, the `Result` pipeline, EFCore conventions, and analyzer/generator outputs all rely on source-generators or compile-time wiring. Specifically:
 
 - **No `Activator.CreateInstance`, no `Type.GetMethod(...).Invoke` in request paths.** If a future feature appears to need it, the answer is "ship a source-generator instead", which is also the rationale for the optional Phase 7 `Trellis.Mediator.Dispatcher`.
-- **Every framework package declares `<IsTrimmable>true</IsTrimmable>` and `<IsAotCompatible>true</IsAotCompatible>`.** CI fails if a package emits IL2026/IL2070/IL3050 trim/AOT warnings.
+- **Every non-EF runtime package declares `<IsTrimmable>true</IsTrimmable>` and `<IsAotCompatible>true</IsAotCompatible>`.** `Trellis.EntityFrameworkCore` explicitly opts out because EF Core NativeAOT support is still experimental. CI fails if an AOT-supported package emits IL2026/IL2070/IL3050 trim/AOT warnings.
 - **Ban on `dynamic`, `[Obsolete]`-after-v2.0, and unconstrained generic reflection in hot paths.** Tested via a custom analyzer in Phase 5a (`TRLS028`).
 
 This is an AI-correctness positive: the model has fewer "does this method exist at runtime?" mysteries to model. It is also a future-proofing positive: modern .NET hosting (Native AOT, single-file, container slimming) is fully supported without per-package retrofits.
@@ -1203,7 +1203,7 @@ Three perennial debates closed off so the template (Phase 6) and framework (Phas
 | Packages | 17 | **12** (11 runtime + 1 tooling) — `Trellis.AspTemplate` continues to ship from its own repo |
 | ASP entry points for happy-path response | `ToActionResult` / `ToHttpResult` / `ToCreatedHttpResult` / `ToUpdatedHttpResult` / `WriteOutcome.ToHttpResult` / `PartialContentHttpResult` × sync/async | **1** (`ToHttpResponse` with options) |
 | HTTP-client status helpers | ~16 method names × 4 input shapes (~60 overloads) | **5 named methods**, single `statusMap` parameter on the generic one |
-| Combine arity ceiling | 9 (hard error TRLS019) | **`Validate` builder: no ceiling** for validation aggregation; **`Combine<T1..T9>`: T1..T9 retained** for heterogeneous combination (first-failure-wins); TRLS019 stays at T10 with clearer message |
+| Combine arity ceiling | 9 (hard error TRLS014) | **`Validate` builder: no ceiling** for validation aggregation; **`Combine<T1..T9>`: T1..T9 retained** for heterogeneous combination (first-failure-wins); TRLS014 stays at T10 with clearer message |
 | VO base classes the AI must distinguish | scalar / symbolic / composite / optionality wrapper | **2** (`Scalar`, `Composite`) — symbolic is `Scalar<T,Enum>`; optionality is `Maybe<T>` |
 | Tracing / OTel surface | rich, dispersed | **same surface**, documented as canonical (no loss) |
 | Resource authorization | `IAuthorize` + `IAuthorizeResource<T>` + `IIdentifyResource<,>` + `IResourceLoader<,>` | **same model** + attribute sugar for the simple case (no loss) |
@@ -1220,7 +1220,7 @@ All six questions in v2 are now decided. The per-package implementation plans bu
 | 2 | Remove `Result<T>.Value` and `Result<T>.Error` properties entirely? | **Yes — remove entirely** | They are the single biggest source of `TRLS003`/`TRLS004` warnings. `TryGetValue` / `TryGetError` / `Deconstruct` / `Match` cover every legitimate use. AI generates safer code by default when the unsafe path doesn't exist. |
 | 3 | Move HTTP-protocol value types out of core? | **Split by observed usage in `TrellisAspTemplate`:** `RepresentationMetadata` moves to `Trellis.Asp` (constructed only in controllers). **`EntityTagValue` and `RetryAfterValue` stay in `Trellis.Core`** — the template's `UpdateTodoCommand.IfMatchETags : EntityTagValue[]?` and `OptionalETag(...)` handler call show `EntityTagValue` flowing through the Application layer; `RetryAfterValue` is a property of error records the ACL constructs. HTTP-specific *parsing* (`ETagHelper.ParseIfMatch`) and *header formatting* (`RetryAfterValue.ToHttpHeaderValue`) are extensions in `Trellis.Asp`. `IAggregate.ETag` stays as `string` in `Trellis.Core` (after the Phase 2 DDD merge). | The template is the canonical AI starting point — its layer usage is the design constraint. Conditional preconditions are an Application-layer concern (commands declare their own preconditions); response shape is an API concern. See §12.2 for the full layer rules. |
 | 4 | `Trellis.StateMachine` — wrap or abstract Stateless? | **Thin wrapper, rename only. No `IStateMachine<TState, TTrigger>` abstraction.** | Reimplementing state machines is a trap. Abstracting Stateless either becomes a giant reimplementation or a crippled abstraction users escape. Document the Stateless types in user code. |
-| 5 | Keep `Result.Combine` arity? | **Keep T1..T9 with first-failure-wins semantics. `Validate` builder for validation aggregation (no ceiling). `TRLS019` (T10 hard-error) stays with a clearer message.** | The two operations have **different semantics**: `Validate` accumulates field errors into a single `ValidationError` (validation-shaped failures only); `Combine` combines heterogeneous `Result<T1>..<T9>` with first-failure-wins (any error type). T1..T9 is already T4-generated, costs nothing, and `Combine(a,b,c,d).Bind((a,b,c,d) => ...)` is genuinely cleaner than chained `Bind`s. No `AggregateError` — there is no useful HTTP/UX mapping for "multiple unrelated errors at once". `Result.ParallelAsync` retained for parallel async with first-failure-wins (and OpenTelemetry on both branches). |
+| 5 | Keep `Result.Combine` arity? | **Keep T1..T9 with first-failure-wins semantics. `Validate` builder for validation aggregation (no ceiling). `TRLS014` (T10 hard-error) stays with a clearer message.** | The two operations have **different semantics**: `Validate` accumulates field errors into a single `ValidationError` (validation-shaped failures only); `Combine` combines heterogeneous `Result<T1>..<T9>` with first-failure-wins (any error type). T1..T9 is already T4-generated, costs nothing, and `Combine(a,b,c,d).Bind((a,b,c,d) => ...)` is genuinely cleaner than chained `Bind`s. No `AggregateError` — there is no useful HTTP/UX mapping for "multiple unrelated errors at once". `Result.ParallelAsync` retained for parallel async with first-failure-wins (and OpenTelemetry on both branches). |
 | 6 | `MaybeInvariant` location? | **Keep separate from `Validate` builder, in `Trellis.Core`** | Different semantics. `Validate` accumulates field errors per source field. `MaybeInvariant` enforces *cross-field* rules between optionals (`AllOrNone`, `Requires`, `MutuallyExclusive`, `ExactlyOne`, `AtLeastOne`). Folding them together would conflate two distinct concepts and harm AI clarity. |
 
 ### Decision implications for the redesign
@@ -1296,11 +1296,11 @@ Every framework `.nupkg` produced by Phases 1a–5a satisfies the following befo
 | **Error model** | 6 | 8 | +2 | Concrete-subtype factory returns; protocol-bearing payloads kept; aggregation via `Validate` not `AggregateError`. `RetryAfterValue`/`EntityTagValue` placement now justified by layer usage. |
 | **Async ergonomics** | 5 | 7 | +2 | Left/Right/Both file-naming noise gone from user surface; ~6 overloads per verb internal. Cap: `Task`↔`ValueTask` mixing still needs explicit conversion. |
 | **ASP integration** | 6 | 8 | +2 | One `ToHttpResponse` verb collapses today's 4 quartets. Protocol semantics (Vary, conditional, Prefer, Range, RetryAfter) preserved via opts. Cap: opts-builder discoverability is unproven. |
-| **EF integration** | 7 | 7 | 0 | Already solid. New: AOT-clean generated path is additive, not replacement. Honest: `RepositoryBase` shape unchanged; magic index rewriting *not* added. |
+| **EF integration** | 7 | 7 | 0 | Already solid. New: reflection-free generated convention path is additive, not replacement. Honest: `RepositoryBase` shape unchanged; magic index rewriting *not* added. |
 | **Tooling (analyzers + generators)** | 6 | 8 | +2 | Unified `TRLS001…099`; new `TRLS023/024/025/026/027`; analyzer + generator co-shipped. |
 | **Documentation** | 7 | 8 | +1 | Per-package `trellis-api-*.md` shipping in nupkg today (already good). New: template-anchored docs as canonical AI surface; reduces drift. |
 | **Testability** | 8 | 8 | 0 | Already strong. New helpers (`ShouldHaveFieldError`, `ShouldHaveRaised<T>`) are additive. |
-| **AOT readiness** | 6 | 7 | +1 | Source-gen-first culture; explicit AOT-clean EF path; Mediator wrapping caps gains. |
+| **AOT readiness** | 6 | 7 | +1 | Source-gen-first culture for AOT-supported packages; explicit EF opt-out; Mediator wrapping caps gains. |
 | **Internal consistency / "one way"** | 5 | 8 | +3 | The most-violated current axis (aliases everywhere). New: aliases banned by analyzer; `Result.Ok`/`Fail`/`Try` is the entire factory surface. |
 | **Combinator power** | 6 | 7 | +1 | `Validate` builder removes arity ceiling for validation; `Combine T1..T9` + `ParallelAsync` retained for heterogeneous combination. |
 | **Migration cost / risk** | n/a | n/a | — | The redesign is whole-package replacement across 8 phases (1a–7) — real cost. The v2-canary sample in Phase 5a (§15.1) mitigates "no consumer before GA" risk but does not eliminate it. Counted as a risk, not a score. |

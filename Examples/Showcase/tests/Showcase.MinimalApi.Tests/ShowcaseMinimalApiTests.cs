@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.MinimalApi.Tests;
+﻿namespace Trellis.Showcase.MinimalApi.Tests;
 
 using System.Net;
 using System.Net.Http.Json;
@@ -116,6 +116,20 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Open_account_with_missing_body_properties_returns_400_not_500()
+    {
+        var client = _factory.CreateClient();
+        using var content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(
+            new Uri("/api/accounts", UriKind.Relative),
+            content,
+            Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
