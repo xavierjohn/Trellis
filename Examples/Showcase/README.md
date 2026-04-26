@@ -34,8 +34,8 @@ the two hosting styles side-by-side over a single, identical contract.
 > - `AddTrellisUnitOfWork<TContext>()` + `TransactionalCommandBehavior` (no `DbContext` here).
 > - Resource authorization (`IAuthorizeResource<T>` + `IResourceLoader<,>`).
 > - Assembly-scanning `AddTrellisFluentValidation(typeof(...).Assembly)` overload.
-> - `<PublishAot>true</PublishAot>` end-to-end (blocked on EF Core AOT readiness and the
->   scalar-VO middleware rewrite).
+> - EF Core-backed `<PublishAot>true</PublishAot>` end-to-end (blocked on EF Core AOT readiness;
+>   the Minimal API host already publishes with AOT for non-EF Trellis.Asp/Mediator/FluentValidation paths).
 
 ## Project layout
 

@@ -343,7 +343,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code", "INVALID");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "OrderCode code" from "INVALID".""", 400));
@@ -367,7 +367,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code", "INVALID");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "Trellis.Asp.Tests.OrderCode code" from "INVALID".""", 400));
@@ -391,7 +391,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code", "INVALID");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "ScalarValueValidationMiddlewareTests+OrderCode code" from "INVALID".""", 400));
@@ -415,7 +415,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(MaybeScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code", "INVALID");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "Maybe<OrderCode> code" from "INVALID".""", 400));
@@ -439,7 +439,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(NonScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "id");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "id", "abc");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "Int32 id" from "abc".""", 400));
@@ -452,7 +452,7 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_BindingFailure_NoEndpoint_Rethrows()
+    public async Task InvokeAsync_BindingFailure_NoEndpoint_ReturnsGeneric400()
     {
         // Arrange - no endpoint set on context
         var context = CreateHttpContextWithServices();
@@ -461,21 +461,25 @@ public class ScalarValueValidationMiddlewareTests
             throw new BadHttpRequestException("""Failed to bind parameter "OrderCode code" from "INVALID".""", 400));
 
         // Act
-        var act = async () => await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context);
 
         // Assert
-        await act.Should().ThrowAsync<BadHttpRequestException>();
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadResponseBodyAsync(context);
+        var problem = JsonSerializer.Deserialize<JsonElement>(body);
+        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+            .Should().Be("The request was invalid.");
     }
 
     [Fact]
-    public async Task InvokeAsync_BindingFailure_MessageContainsSubstringButDoesNotMatchFormat_ReturnsGeneric400()
+    public async Task InvokeAsync_BindingFailure_DoesNotDependOnExceptionMessageFormat_ReturnsRichErrors()
     {
         // Arrange
         var paramInfo = typeof(ScalarValueValidationMiddlewareTests)
             .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code", "INVALID");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("Proxy error: Failed to bind parameter happened upstream before request processing.", 400));
@@ -487,8 +491,8 @@ public class ScalarValueValidationMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Be("The request was invalid.", "should not leak ex.Message to clients");
+        problem.GetProperty("errors").GetProperty("code")[0].GetString()
+            .Should().Contain("ORD-", "endpoint metadata and raw route values should drive validation");
     }
 
     [Fact]
@@ -637,7 +641,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(ScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "code");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "code", "BAD");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "OrderCode code" from "BAD".""", 400));
@@ -658,7 +662,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "val");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "val", "0");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "0".""", 400));
@@ -666,12 +670,12 @@ public class ScalarValueValidationMiddlewareTests
         // Act
         await middleware.InvokeAsync(context);
 
-        // Assert - falls back to generic error since string TryCreate throws NotImplementedException
+        // Assert - falls through from the unusable string overload to primitive TryCreate.
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("val")[0].GetString()
-            .Should().Be("'val' has an invalid value.");
+            .Should().Be("Must be positive.");
     }
 
     [Fact]
@@ -682,7 +686,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "val");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "val", "");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "".""", 400));
@@ -735,7 +739,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "val");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "val", "<script>alert('xss')</script>");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "<script>alert('xss')</script>".""", 400));
@@ -758,7 +762,7 @@ public class ScalarValueValidationMiddlewareTests
             .GetMethod(nameof(IntOnlyScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
             .GetParameters()[0];
 
-        var context = CreateContextWithEndpointMetadata(paramInfo, "val");
+        var context = CreateContextWithEndpointMetadata(paramInfo, "val", "bad");
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("""Failed to bind parameter "IntOnlyScalarValue val" from "bad".""", 400));
@@ -776,7 +780,10 @@ public class ScalarValueValidationMiddlewareTests
 
     #region Helper Methods
 
-    private static DefaultHttpContext CreateContextWithEndpointMetadata(ParameterInfo paramInfo, string paramName)
+    private static DefaultHttpContext CreateContextWithEndpointMetadata(
+        ParameterInfo paramInfo,
+        string paramName,
+        string? rawValue = null)
     {
         var mockMetadata = new Mock<IParameterBindingMetadata>();
         mockMetadata.Setup(m => m.Name).Returns(paramName);
@@ -788,6 +795,9 @@ public class ScalarValueValidationMiddlewareTests
             displayName: "TestEndpoint");
 
         var context = CreateHttpContextWithServices();
+        if (rawValue is not null)
+            context.Request.RouteValues[paramName] = rawValue;
+
         context.SetEndpoint(endpoint);
         return context;
     }

@@ -1,7 +1,6 @@
-﻿namespace Trellis.Asp;
+namespace Trellis.Asp;
 
 using System.Diagnostics.CodeAnalysis;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Trellis;
@@ -35,17 +34,9 @@ using Trellis.Asp.Validation;
 /// app.MapControllers();
 /// </code>
 /// </example>
-public sealed partial class ScalarValueValidationMiddleware
+public sealed class ScalarValueValidationMiddleware
 {
     private readonly RequestDelegate _next;
-
-    // Regex to parse: Failed to bind parameter "TypeName paramName" from "value".
-    // The type name may include namespaces or nested type separators (e.g., Namespace.Type or Outer+Inner).
-    [GeneratedRegex("""^Failed to bind parameter "(.+?)\s+([^"\s]+)" from "(.*)".$""")]
-    private static partial Regex ParameterBindingFailedRegex();
-
-    [GeneratedRegex("""^Failed to read parameter ".+" from the request body as JSON\.$""")]
-    private static partial Regex ParameterReadFailedRegex();
 
     /// <summary>
     /// Creates a new instance of <see cref="ScalarValueValidationMiddleware"/>.
@@ -68,29 +59,20 @@ public sealed partial class ScalarValueValidationMiddleware
             }
             catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status400BadRequest)
             {
-                // Use StatusCode as the primary check; regex is a secondary detail extractor.
-                if (TryParseBindingFailureMessage(ex.Message, out var parameterName, out var typeName, out var invalidValue))
-                {
-                    // Only handle binding failures for IScalarValue types
-                    var scalarValueType = GetScalarValueParameterType(context, parameterName);
-                    if (scalarValueType is not null)
-                    {
-                        // Call TryCreate to get the real validation error (e.g., with valid values list)
-                        var errors = ScalarValueTypeHelper.GetValidationErrors(scalarValueType, invalidValue, parameterName)
-                            ?? CreateFallbackErrors(parameterName, invalidValue);
-
-                        await WriteValidationProblemAsync(context, errors).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        // Re-throw for non-scalar value types (e.g., int, Guid, DateTime)
-                        throw;
-                    }
-                }
-                else if (IsParameterReadFailureMessage(ex.Message))
+                if (IsParameterReadFailureMessage(ex.Message))
                 {
                     // Handle JSON body deserialization failures (e.g., missing required properties)
                     await WriteJsonDeserializationErrorAsync(context, ex).ConfigureAwait(false);
+                }
+                else if (TryCreateScalarBindingErrors(context, out var errors))
+                {
+                    await WriteValidationProblemAsync(context, errors).ConfigureAwait(false);
+                }
+                else if (HasEndpointParameterMetadata(context))
+                {
+                    // Endpoint binding failed, but Trellis could not map it to a scalar-value parameter.
+                    // Let ASP.NET Core's normal BadHttpRequestException handling deal with non-Trellis parameters.
+                    throw;
                 }
                 else
                 {
@@ -115,27 +97,16 @@ public sealed partial class ScalarValueValidationMiddleware
     }
 
     private static bool IsParameterReadFailureMessage(string message) =>
-        ParameterReadFailedRegex().IsMatch(message);
+        message.StartsWith("Failed to read parameter ", StringComparison.Ordinal) &&
+        message.EndsWith(" from the request body as JSON.", StringComparison.Ordinal);
 
     [UnconditionalSuppressMessage("AOT", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]
     [UnconditionalSuppressMessage("AOT", "IL2073:Return type does not satisfy 'DynamicallyAccessedMembersAttribute' requirements.",
         Justification = "The returned type comes from ParameterInfo.ParameterType which preserves type metadata at runtime.")]
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.Interfaces)]
-    private static Type? GetScalarValueParameterType(HttpContext context, string parameterName)
+    private static Type? GetScalarValueParameterType(IParameterBindingMetadata parameterMetadata)
     {
-        var endpoint = context.GetEndpoint();
-        if (endpoint is null)
-            return null;
-
-        // Get the parameter binding metadata from the endpoint
-        var parameterMetadata = endpoint.Metadata
-            .OfType<IParameterBindingMetadata>()
-            .FirstOrDefault(p => p.Name.Equals(parameterName, StringComparison.OrdinalIgnoreCase));
-
-        if (parameterMetadata is null)
-            return null;
-
         // Check if the parameter type implements IScalarValue<,>
         var parameterType = parameterMetadata.ParameterInfo.ParameterType;
 
@@ -150,6 +121,54 @@ public sealed partial class ScalarValueValidationMiddleware
             ? maybeInnerType
             : null;
     }
+
+    private static bool TryCreateScalarBindingErrors(
+        HttpContext context,
+        out IDictionary<string, string[]> errors)
+    {
+        errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+        foreach (var parameterMetadata in GetEndpointParameterMetadata(context))
+        {
+            var parameterName = parameterMetadata.Name;
+            if (string.IsNullOrWhiteSpace(parameterName))
+                continue;
+
+            var scalarValueType = GetScalarValueParameterType(parameterMetadata);
+            if (scalarValueType is null)
+                continue;
+
+            var rawValue = GetRawParameterValue(context, parameterName);
+            if (rawValue is null)
+                continue;
+
+            var parameterErrors = ScalarValueTypeHelper.GetValidationErrors(scalarValueType, rawValue, parameterName);
+            if (parameterErrors is null)
+                continue;
+
+            foreach (var (fieldName, details) in parameterErrors)
+                errors[fieldName] = details;
+        }
+
+        return errors.Count > 0;
+    }
+
+    private static string? GetRawParameterValue(HttpContext context, string parameterName)
+    {
+        if (context.Request.RouteValues.TryGetValue(parameterName, out var routeValue))
+            return routeValue?.ToString();
+
+        if (context.Request.Query.TryGetValue(parameterName, out var queryValue))
+            return queryValue.ToString();
+
+        return null;
+    }
+
+    private static bool HasEndpointParameterMetadata(HttpContext context) =>
+        GetEndpointParameterMetadata(context).Any();
+
+    private static IEnumerable<IParameterBindingMetadata> GetEndpointParameterMetadata(HttpContext context) =>
+        context.GetEndpoint()?.Metadata.OfType<IParameterBindingMetadata>() ?? [];
 
     private static async Task WriteValidationProblemAsync(
         HttpContext context,
@@ -183,39 +202,4 @@ public sealed partial class ScalarValueValidationMiddleware
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
 
-    private static Dictionary<string, string[]> CreateFallbackErrors(
-        string parameterName,
-        string invalidValue)
-    {
-        var errorMessage = string.IsNullOrEmpty(invalidValue)
-            ? $"'{parameterName}' is required."
-            : $"'{parameterName}' has an invalid value.";
-
-        return new Dictionary<string, string[]>
-        {
-            [parameterName] = [errorMessage]
-        };
-    }
-
-    private static bool TryParseBindingFailureMessage(
-        string message,
-        out string parameterName,
-        out string typeName,
-        out string invalidValue)
-    {
-        // Try to parse: Failed to bind parameter "TypeName paramName" from "value".
-        var match = ParameterBindingFailedRegex().Match(message);
-        if (match.Success)
-        {
-            typeName = match.Groups[1].Value;
-            parameterName = match.Groups[2].Value;
-            invalidValue = match.Groups[3].Value;
-            return true;
-        }
-
-        parameterName = string.Empty;
-        typeName = string.Empty;
-        invalidValue = string.Empty;
-        return false;
-    }
 }

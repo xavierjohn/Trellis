@@ -212,7 +212,7 @@ The `Examples/` folder was rewritten end-to-end so every kept sample passes the 
 
 **SampleUserLibrary, SampleMinimalApi (`Examples/SampleWeb/*`):**
 - The standalone Minimal API sample and the shared `SampleUserLibrary` were folded into `Examples/Showcase/src/Showcase.MinimalApi`, which now hosts the same banking domain as `Showcase.Mvc` over identical DTOs. The shared-VO-library teaching is preserved by Showcase's `Showcase.Domain` / `Showcase.Application` split.
-- AOT publish for the Minimal API host is **deferred to a follow-up PR**. The current `ScalarValueValidationMiddleware` parses exception text to extract field names, which doesn't survive AOT trimming; the follow-up PR will replace the exception-text path with a typed contract.
+- `ScalarValueValidationMiddleware` no longer parses `BadHttpRequestException.Message` to extract field names or invalid values for Minimal API scalar route/query binding failures. It now uses endpoint parameter metadata plus route/query raw values and re-runs Trellis scalar validation for `IScalarValue<,>` / `Maybe<TScalar>` parameters.
 
 **ConditionalRequestExample:**
 - Route templates use `{id:ProductId}` (not `{id:guid}`). Handler signatures bind `ProductId id` directly (generator-emitted `IParsable`).
