@@ -161,6 +161,7 @@ Analyzers (`Trellis.Analyzers`) and the bundled source generators emit diagnosti
 | `TRLS001`–`TRLS021` | `Trellis.Analyzers` | `TRLS003` — Unsafe access to `Maybe.Value` |
 | `TRLS031`–`TRLS034` | `Trellis.Core.Generator` (Primitives) | `TRLS032` — `MinimumLength` exceeds `MaximumLength` |
 | `TRLS035`–`TRLS038` | `Trellis.EntityFrameworkCore.Generator` | `TRLS035` — `Maybe<T>` property should be `partial` |
+| `TRLS039` | `Trellis.AspSourceGenerator` (`ScalarValueJsonConverterGenerator`) | `TRLS039` — Unsupported scalar value primitive for AOT-safe JSON converter |
 
 The legacy `TRLSGEN###` prefix (used in v1) was retired in v2: `TRLSGEN001`–`TRLSGEN004` mapped to `TRLS031`–`TRLS034`, `TRLSGEN100`–`TRLSGEN103` mapped to `TRLS035`–`TRLS038`. In v3-alpha, analyzer IDs were renumbered to be contiguous — former `TRLS006/008/009/010/011/012/014/015/016/017/018/019/020/021/022/024/029` are now `TRLS003`–`TRLS019`. Removed analyzer slots (the former `TRLS003/004/005/007/013/025`) no longer have documentation tombstones.
 
