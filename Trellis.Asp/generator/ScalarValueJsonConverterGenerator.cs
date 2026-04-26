@@ -99,6 +99,19 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
     };
 
     /// <summary>
+    /// Diagnostic descriptor for TRLS039 — emitted once per value object wrapping an
+    /// unsupported primitive. Hoisted to a static field so the descriptor is allocated
+    /// only once per process rather than per reported diagnostic.
+    /// </summary>
+    private static readonly DiagnosticDescriptor UnsupportedScalarValuePrimitiveDescriptor = new(
+        id: Ids.UnsupportedScalarValuePrimitiveForAotJson,
+        title: "Unsupported scalar value primitive for AOT-safe JSON converter",
+        messageFormat: "Value object '{0}' wraps primitive '{1}', which is not supported by the AOT-safe Trellis JSON converter generator. Provide a custom JsonConverter<{0}> or use a supported primitive (string, int, long, short, byte, bool, float, double, decimal, Guid, DateTime, DateTimeOffset).",
+        category: "Trellis",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
     /// Initializes the incremental generator pipeline.
     /// </summary>
     /// <param name="context">The initialization context provided by the compiler.</param>
@@ -251,7 +264,8 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             classSymbol.Name,
             primitiveTypeName,
             fullTypeName,
-            CreateGeneratedTypeName(fullTypeName));
+            CreateGeneratedTypeName(fullTypeName),
+            classDeclaration.Identifier.GetLocation());
     }
 
     /// <summary>
@@ -396,14 +410,8 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             }
 
             context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.UnsupportedScalarValuePrimitiveForAotJson,
-                    title: "Unsupported scalar value primitive for AOT-safe JSON converter",
-                    messageFormat: "Value object '{0}' wraps primitive '{1}', which is not supported by the AOT-safe Trellis JSON converter generator. Provide a custom JsonConverter<{0}> or use a supported primitive (string, int, long, short, byte, bool, float, double, decimal, Guid, DateTime, DateTimeOffset).",
-                    category: "Trellis",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true),
-                location: null,
+                UnsupportedScalarValuePrimitiveDescriptor,
+                location: vo.Location,
                 vo.FullTypeName,
                 vo.PrimitiveType));
         }
