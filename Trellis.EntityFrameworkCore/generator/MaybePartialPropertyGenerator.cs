@@ -72,7 +72,8 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
             .CreateSyntaxProvider(
                 predicate: static (node, _) => IsPartialMaybeProperty(node),
                 transform: static (ctx, ct) => GetMaybePropertyInfo(ctx, ct))
-            .Where(static info => info is not null);
+            .Where(static info => info is not null)
+            .Select(static (info, _) => info!);
 
         // Find non-partial Maybe<T> properties for the analyzer diagnostic
         var nonPartialProperties = context.SyntaxProvider
@@ -150,28 +151,24 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Semantic analysis: extract metadata for a partial Maybe&lt;T&gt; property.
+    /// Returns <c>null</c> when the property is not actually a Trellis <c>Maybe&lt;T&gt;</c>;
+    /// the caller filters these out in the incremental pipeline.
     /// </summary>
-    private static MaybePropertyInfo GetMaybePropertyInfo(
+    private static MaybePropertyInfo? GetMaybePropertyInfo(
         GeneratorSyntaxContext ctx, CancellationToken ct)
     {
         var prop = (PropertyDeclarationSyntax)ctx.Node;
         var symbol = ctx.SemanticModel.GetDeclaredSymbol(prop, ct);
         if (symbol is null)
-#pragma warning disable CS8603 // Possible null reference return — pipeline filters nulls via .Where()
             return null;
-#pragma warning restore CS8603
 
         // Verify the type is actually Trellis.Maybe<T>
         if (symbol.Type is not INamedTypeSymbol { IsGenericType: true } namedType)
-#pragma warning disable CS8603
             return null;
-#pragma warning restore CS8603
 
         var originalDef = namedType.ConstructedFrom;
         if (originalDef.ContainingNamespace?.ToString() != "Trellis" || originalDef.Name != "Maybe")
-#pragma warning disable CS8603
             return null;
-#pragma warning restore CS8603
 
         var innerType = namedType.TypeArguments[0];
         var containingType = symbol.ContainingType;
@@ -231,9 +228,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
         GeneratorSyntaxContext ctx, CancellationToken ct)
     {
         var prop = (PropertyDeclarationSyntax)ctx.Node;
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type
-        var symbol = ctx.SemanticModel.GetDeclaredSymbol(prop, ct);
-#pragma warning restore CS8600
+        IPropertySymbol? symbol = ctx.SemanticModel.GetDeclaredSymbol(prop, ct);
         if (symbol is null)
             return null;
 

@@ -6,7 +6,6 @@
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>asp</TrellisApiRefName>
-    <NoWarn>$(NoWarn)</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Trellis.Asp.Tests" />
