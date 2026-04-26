@@ -58,6 +58,60 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
     private const string ScalarValueInterfaceName = "IScalarValue";
 
     /// <summary>
+    /// Canonical IDs for diagnostics emitted by this generator. See
+    /// <c>Trellis.TrellisDiagnosticIds</c> in <c>Trellis.Analyzers</c> for the
+    /// consumer-facing equivalents.
+    /// </summary>
+    private static class Ids
+    {
+        public const string UnsupportedScalarValuePrimitiveForAotJson = "TRLS039";
+    }
+
+    /// <summary>
+    /// Set of primitive type names for which the generator emits a fully AOT-safe converter
+    /// using direct <c>Utf8JsonReader</c>/<c>Utf8JsonWriter</c> APIs (no reflection).
+    /// </summary>
+    /// <remarks>
+    /// Must be kept in sync with the case branches in <see cref="GenerateReadPrimitive"/>
+    /// and <see cref="GenerateWritePrimitive"/>. When a value object wraps a primitive
+    /// outside this set the generator emits TRLS039 and skips converter generation rather
+    /// than falling back to <c>JsonSerializer.Deserialize</c>/<c>Serialize</c>, which are
+    /// annotated <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and would
+    /// produce IL2026/IL3050 under <c>PublishAot=true</c>.
+    /// </remarks>
+    private static readonly HashSet<string> SupportedPrimitives = new(StringComparer.Ordinal)
+    {
+        "string",
+        "int",
+        "long",
+        "bool",
+        "double",
+        "decimal",
+        "float",
+        "short",
+        "byte",
+        "Guid",
+        "System.Guid",
+        "DateTime",
+        "System.DateTime",
+        "DateTimeOffset",
+        "System.DateTimeOffset",
+    };
+
+    /// <summary>
+    /// Diagnostic descriptor for TRLS039 — emitted once per value object wrapping an
+    /// unsupported primitive. Hoisted to a static field so the descriptor is allocated
+    /// only once per process rather than per reported diagnostic.
+    /// </summary>
+    private static readonly DiagnosticDescriptor UnsupportedScalarValuePrimitiveDescriptor = new(
+        id: Ids.UnsupportedScalarValuePrimitiveForAotJson,
+        title: "Unsupported scalar value primitive for AOT-safe JSON converter",
+        messageFormat: "Value object '{0}' wraps primitive '{1}', which is not supported by the AOT-safe Trellis JSON converter generator. Provide a custom JsonConverter<{0}> or use a supported primitive (string, int, long, short, byte, bool, float, double, decimal, Guid, DateTime, DateTimeOffset).",
+        category: "Trellis",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
     /// Initializes the incremental generator pipeline.
     /// </summary>
     /// <param name="context">The initialization context provided by the compiler.</param>
@@ -210,7 +264,8 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             classSymbol.Name,
             primitiveTypeName,
             fullTypeName,
-            CreateGeneratedTypeName(fullTypeName));
+            CreateGeneratedTypeName(fullTypeName),
+            classDeclaration.Identifier.GetLocation());
     }
 
     /// <summary>
@@ -342,8 +397,30 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             .Select(g => g.First())
             .ToList();
 
+        // Filter out value objects whose wrapped primitive cannot be serialized AOT-safely.
+        // Emitting JsonSerializer.Deserialize/Serialize for unknown primitives would produce
+        // IL2026/IL3050 warnings under PublishAot=true (see issue #413).
+        var supportedValueObjects = new List<ScalarValueInfo>(distinctValueObjects.Count);
+        foreach (var vo in distinctValueObjects)
+        {
+            if (IsSupportedPrimitive(vo.PrimitiveType))
+            {
+                supportedValueObjects.Add(vo);
+                continue;
+            }
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                UnsupportedScalarValuePrimitiveDescriptor,
+                location: vo.Location,
+                vo.FullTypeName,
+                vo.PrimitiveType));
+        }
+
+        if (supportedValueObjects.Count == 0)
+            return;
+
         // Generate AOT-compatible JSON converters
-        GenerateJsonConverters(distinctValueObjects, context);
+        GenerateJsonConverters(supportedValueObjects, context);
 
         // Generate partial class extensions for each JsonSerializerContext with our attribute
         foreach (var contextClass in contextClasses)
@@ -351,10 +428,17 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             var semanticModel = compilation.GetSemanticModel(contextClass.SyntaxTree);
             if (semanticModel.GetDeclaredSymbol(contextClass) is INamedTypeSymbol contextSymbol)
             {
-                GenerateSerializerContextExtension(contextSymbol, distinctValueObjects, context);
+                GenerateSerializerContextExtension(contextSymbol, supportedValueObjects, context);
             }
         }
     }
+
+    /// <summary>
+    /// Returns <c>true</c> when the primitive type can be read/written using direct
+    /// <c>Utf8JsonReader</c>/<c>Utf8JsonWriter</c> APIs without reflection.
+    /// </summary>
+    private static bool IsSupportedPrimitive(string primitiveType) =>
+        SupportedPrimitives.Contains(primitiveType);
 
     /// <summary>
     /// Generates AOT-compatible JSON converters for all value object types.
@@ -485,9 +569,12 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
                 sb.AppendLine("        var primitiveValue = reader.GetDateTimeOffset();");
                 break;
             default:
-                // For unknown types, try to deserialize using the options
-                sb.AppendLine($"        var primitiveValue = JsonSerializer.Deserialize<{primitiveType}>(ref reader, options);");
-                break;
+                // Unsupported primitives are filtered out in Execute before reaching this
+                // method (see TRLS039). This branch must remain unreachable; the throw
+                // documents the contract and surfaces a clear runtime error if the filter
+                // is ever bypassed.
+                throw new InvalidOperationException(
+                    $"Unsupported primitive '{primitiveType}' reached GenerateReadPrimitive; should have been filtered upstream.");
         }
     }
 
@@ -524,8 +611,12 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
                 sb.AppendLine("        writer.WriteStringValue(value.Value);");
                 break;
             default:
-                sb.AppendLine($"        JsonSerializer.Serialize(writer, value.Value, options);");
-                break;
+                // Unsupported primitives are filtered out in Execute before reaching this
+                // method (see TRLS039). This branch must remain unreachable; the throw
+                // documents the contract and surfaces a clear runtime error if the filter
+                // is ever bypassed.
+                throw new InvalidOperationException(
+                    $"Unsupported primitive '{primitiveType}' reached GenerateWritePrimitive; should have been filtered upstream.");
         }
     }
 

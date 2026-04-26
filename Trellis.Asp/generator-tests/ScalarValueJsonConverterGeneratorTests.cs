@@ -147,6 +147,128 @@ public class ScalarValueJsonConverterGeneratorTests
     }
 
     /// <summary>
+    /// Scalar value objects wrapping a primitive that is not in the AOT-safe set
+    /// (string, int, long, short, byte, bool, float, double, decimal, Guid,
+    /// DateTime, DateTimeOffset) must trigger the TRLS039 diagnostic so users
+    /// know to provide a custom JsonConverter. See issue #413.
+    /// </summary>
+    [Fact]
+    public void Unsupported_Primitive_Emits_TRLS039_Diagnostic()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public sealed class Duration : ScalarValueObject<Duration, System.TimeSpan>,
+                IScalarValue<Duration, System.TimeSpan>
+            {
+                private Duration(System.TimeSpan value) : base(value) { }
+
+                public static Result<Duration> TryCreate(System.TimeSpan value, string? fieldName = null) =>
+                    new Duration(value);
+                public static Result<Duration> TryCreate(string? value, string? fieldName = null) =>
+                    System.TimeSpan.TryParse(value, out var v)
+                        ? new Duration(v)
+                        : Result.Fail<Duration>(Error.Validation("Invalid", fieldName));
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGeneratorWithDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().Contain(d => d.Id == "TRLS039",
+            "value objects wrapping unsupported primitives must trigger TRLS039 so users add a custom JsonConverter");
+
+        var trls039 = diagnostics.First(d => d.Id == "TRLS039");
+        trls039.Severity.Should().Be(DiagnosticSeverity.Warning,
+            "TRLS039 is advisory — users may legitimately ship a custom converter for unsupported primitives");
+        trls039.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Should().Contain("Duration").And.Contain("TimeSpan",
+            "the diagnostic message must name the offending value object and primitive");
+    }
+
+    /// <summary>
+    /// Generated converters must never call reflection-based <c>JsonSerializer.Deserialize</c>
+    /// or <c>JsonSerializer.Serialize</c> overloads — those are annotated
+    /// <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and produce
+    /// IL2026/IL3050 under <c>PublishAot=true</c>. Mixed fixture (one supported +
+    /// one unsupported primitive) verifies the unsupported type is skipped while the
+    /// supported type still generates an AOT-safe converter. See issue #413.
+    /// </summary>
+    [Fact]
+    public void Unsupported_Primitive_Is_Skipped_And_No_Reflection_Based_JsonSerializer_Calls_Are_Emitted()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+
+            public sealed class Duration : ScalarValueObject<Duration, System.TimeSpan>,
+                IScalarValue<Duration, System.TimeSpan>
+            {
+                private Duration(System.TimeSpan value) : base(value) { }
+
+                public static Result<Duration> TryCreate(System.TimeSpan value, string? fieldName = null) =>
+                    new Duration(value);
+                public static Result<Duration> TryCreate(string? value, string? fieldName = null) =>
+                    System.TimeSpan.TryParse(value, out var v)
+                        ? new Duration(v)
+                        : Result.Fail<Duration>(Error.Validation("Invalid", fieldName));
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+        var combined = string.Concat(generatedSources);
+
+        combined.Should().Contain("OrderIdJsonConverter",
+            "supported primitives must still generate a converter alongside unsupported ones");
+        combined.Should().NotContain("DurationJsonConverter",
+            "value objects with unsupported primitives must be skipped entirely (issue #413) — no converter at all");
+        combined.Should().NotContain("JsonSerializer.Deserialize",
+            "AOT-incompatible reflection-based deserialization must never be emitted (issue #413)");
+        combined.Should().NotContain("JsonSerializer.Serialize(writer",
+            "AOT-incompatible reflection-based serialization must never be emitted (issue #413)");
+    }
+
+    /// <summary>
+    /// Regression guard: supported primitives must still emit fully AOT-safe converters
+    /// using <c>Utf8JsonReader</c>/<c>Utf8JsonWriter</c> APIs and never fall back to
+    /// reflection-based <c>JsonSerializer</c> overloads.
+    /// </summary>
+    [Fact]
+    public void Supported_Primitive_Converter_Uses_Direct_Reader_Writer_Apis()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+
+        var converterSource = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
+        converterSource.Should().Contain("reader.GetGuid()",
+            "supported Guid primitives must use the direct Utf8JsonReader API");
+        converterSource.Should().NotContain("JsonSerializer.Deserialize",
+            "supported primitives must never fall back to reflection-based JsonSerializer (issue #413)");
+        converterSource.Should().NotContain("JsonSerializer.Serialize(writer",
+            "supported primitives must never fall back to reflection-based JsonSerializer (issue #413)");
+    }
+
+    /// <summary>
     /// Value objects with the same simple name in different namespaces must not collide in generated converter names.
     /// </summary>
     [Fact]

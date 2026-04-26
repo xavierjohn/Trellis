@@ -15,9 +15,10 @@
 /// </code>
 /// <para>
 /// IDs in the <c>TRLS001</c>–<c>TRLS021</c> range are emitted by the
-/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS038</c>
+/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS039</c>
 /// range are emitted by the bundled source generators
-/// (<c>Trellis.Core.Generator</c> and <c>Trellis.EntityFrameworkCore.Generator</c>).
+/// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
+/// and <c>Trellis.AspSourceGenerator</c>).
 /// Analyzer IDs were renumbered to be contiguous in v3-alpha; prior IDs
 /// (former <c>TRLS006/008/009/010/011/012/014/015/016/017/018/019/020/021/022/024/029</c>)
 /// are now <c>TRLS003</c>–<c>TRLS019</c>. Consumers suppressing by numeric ID should
@@ -121,4 +122,7 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS038 — <c>[OwnedEntity]</c> type must inherit from <c>ValueObject</c>.</summary>
     public const string OwnedEntityMustInheritValueObject = "TRLS038";
+
+    /// <summary>TRLS039 — Scalar value object wraps a primitive that is not supported by the AOT-safe JSON converter generator.</summary>
+    public const string UnsupportedScalarValuePrimitiveForAotJson = "TRLS039";
 }

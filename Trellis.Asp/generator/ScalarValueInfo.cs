@@ -51,6 +51,12 @@ internal class ScalarValueInfo
     public readonly string GeneratedTypeName;
 
     /// <summary>
+    /// Gets the source location of the class declaration's identifier, used when
+    /// reporting diagnostics so consumers can navigate to the offending type in the IDE.
+    /// </summary>
+    public readonly Microsoft.CodeAnalysis.Location? Location;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ScalarValueInfo"/> class.
     /// </summary>
     /// <param name="namespace">The namespace of the value object type.</param>
@@ -58,13 +64,15 @@ internal class ScalarValueInfo
     /// <param name="primitiveType">The primitive type that the value object wraps.</param>
     /// <param name="fullTypeName">The fully qualified type name, including containing types when nested.</param>
     /// <param name="generatedTypeName">A unique identifier-safe type name used for generated converter types.</param>
-    public ScalarValueInfo(string @namespace, string typeName, string primitiveType, string fullTypeName, string generatedTypeName)
+    /// <param name="location">The source location of the class declaration's identifier (optional).</param>
+    public ScalarValueInfo(string @namespace, string typeName, string primitiveType, string fullTypeName, string generatedTypeName, Microsoft.CodeAnalysis.Location? location = null)
     {
         Namespace = @namespace;
         TypeName = typeName;
         PrimitiveType = primitiveType;
         FullTypeName = fullTypeName;
         GeneratedTypeName = generatedTypeName;
+        Location = location;
     }
 
     /// <summary>

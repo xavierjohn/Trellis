@@ -1,7 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <NoWarn>$(NoWarn)</NoWarn>
-  </PropertyGroup>
   <ItemGroup>
     <Using Include="Trellis.Asp" />
     <Using Include="Trellis.Asp.Authorization" />
