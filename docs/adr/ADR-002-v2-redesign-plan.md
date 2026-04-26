@@ -992,12 +992,12 @@ The v1 promise of "no assembly scanning ever" is dropped — it's a 6-month proj
 `RepositoryBase<TAggregate, TId>` keeps its current shape — it's good. Changes:
 - `SaveChangesResultAsync` and `SaveChangesResultUnitAsync` stay as `DbContext` extensions for non-pipeline scenarios.
 - `IUnitOfWork.CommitAsync()` is the canonical commit for pipeline scenarios.
-- `TRLS020` (warning today: prefer `SaveChangesResultAsync` over `SaveChangesAsync`) is **kept as warning**, not escalated to error. Some scenarios legitimately call `SaveChangesAsync`.
+- `TRLS015` (warning today: prefer `SaveChangesResultAsync` over `SaveChangesAsync`) is **kept as warning**, not escalated to error. Some scenarios legitimately call `SaveChangesAsync`.
 
 ### 8.3 Maybe properties + indexes
 
 `HasIndex(x => x.MaybeProp)` magic rewriting is **dropped** (per critique: low ROI, high fragility). Instead:
-- `TRLS021` (current warning) stays, telling users to use `HasTrellisIndex` or string-based `HasIndex`.
+- `TRLS016` (current warning) stays, telling users to use `HasTrellisIndex` or string-based `HasIndex`.
 - The `HasTrellisIndex` extension is the recommended path, documented prominently.
 
 ### 8.4 Diagnostics retained

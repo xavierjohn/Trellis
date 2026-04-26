@@ -14,7 +14,7 @@
   - [trellis-api-servicedefaults.md](trellis-api-servicedefaults.md) — `AddTrellis`, `TrellisServiceBuilder`
   - [trellis-api-statemachine.md](trellis-api-statemachine.md) — `FireResult`, `LazyStateMachine<,>`
   - [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — `Should().Be(...)`, `UnwrapError()`
-  - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`–`TRLS020`, `TrellisDiagnosticIds`
+  - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`–`TRLS021`, `TrellisDiagnosticIds`
 
 ## How to read these recipes
 

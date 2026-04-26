@@ -38,7 +38,7 @@ Start with the task lookup table at the top of `docs/api_reference/trellis-api-c
 | Mediator pipeline behaviors | `docs/api_reference/trellis-api-mediator.md` |
 | State machine integration | `docs/api_reference/trellis-api-statemachine.md` |
 | Testing helpers | `docs/api_reference/trellis-api-testing-reference.md` |
-| Analyzer rules (TRLS001-TRLS020) | `docs/api_reference/trellis-api-analyzers.md` |
+| Analyzer rules (TRLS001-TRLS021) | `docs/api_reference/trellis-api-analyzers.md` |
 
 These files document the exact method signatures, overloads, and usage patterns. Do not assume APIs based on naming conventions — read the reference first.
 
@@ -158,7 +158,7 @@ Analyzers (`Trellis.Analyzers`) and the bundled source generators emit diagnosti
 
 | Range | Owner | Example |
 |-------|-------|---------|
-| `TRLS001`–`TRLS020` | `Trellis.Analyzers` | `TRLS003` — Unsafe access to `Maybe.Value` |
+| `TRLS001`–`TRLS021` | `Trellis.Analyzers` | `TRLS003` — Unsafe access to `Maybe.Value` |
 | `TRLS031`–`TRLS034` | `Trellis.Core.Generator` (Primitives) | `TRLS032` — `MinimumLength` exceeds `MaximumLength` |
 | `TRLS035`–`TRLS038` | `Trellis.EntityFrameworkCore.Generator` | `TRLS035` — `Maybe<T>` property should be `partial` |
 
