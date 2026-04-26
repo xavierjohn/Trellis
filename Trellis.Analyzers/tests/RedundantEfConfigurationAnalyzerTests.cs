@@ -1,4 +1,4 @@
-namespace Trellis.Analyzers.Tests;
+﻿namespace Trellis.Analyzers.Tests;
 
 using Xunit;
 
@@ -348,6 +348,128 @@ public class RedundantEfConfigurationAnalyzerTests
 
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<RedundantEfConfigurationAnalyzer>(source);
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task UserDefinedApplyTrellisConventions_DoesNotEnableAnalyzer()
+    {
+        // A user-defined extension method with the same name as the Trellis convention
+        // wiring methods must NOT enable TRLS021.  The analyzer must resolve the symbol
+        // and confirm it belongs to a Trellis-owned containing type before firing.
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            using Trellis.EntityFrameworkCore;
+            using MyCompany.Data;
+
+            public class Order
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class OrderConfig
+            {
+                public void Configure(EntityTypeBuilder<Order> builder)
+                {
+                    builder.Ignore(e => e.PhoneNumber);
+                }
+            }
+
+            public class AppDbContext
+            {
+                protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                    // Calls user-defined ApplyTrellisConventions — NOT the Trellis extension.
+                    configurationBuilder.ApplyTrellisConventions();
+                }
+            }
+            """;
+
+        // User-defined extension that lives in a different containing type.
+        const string userConventionsStub = """
+            namespace MyCompany.Data
+            {
+                using Microsoft.EntityFrameworkCore;
+
+                public static class MyConventions
+                {
+                    public static ModelConfigurationBuilder ApplyTrellisConventions(
+                        this ModelConfigurationBuilder configurationBuilder)
+                        => configurationBuilder;
+                }
+            }
+            """;
+
+        // The stub source here omits ModelConfigurationBuilderExtensions so the only
+        // ApplyTrellisConventions in scope is the user-defined one.
+        const string efStubWithoutTrellisExtension = """
+            namespace Microsoft.EntityFrameworkCore
+            {
+                public class ModelConfigurationBuilder
+                {
+                }
+            }
+
+            namespace Microsoft.EntityFrameworkCore.Metadata.Builders
+            {
+                using System;
+                using System.Linq.Expressions;
+
+                public class EntityTypeBuilder<TEntity> where TEntity : class
+                {
+                    public virtual PropertyBuilder<TProperty> Property<TProperty>(Expression<Func<TEntity, TProperty>> propertyExpression)
+                        => new PropertyBuilder<TProperty>();
+
+                    public virtual OwnedNavigationBuilder<TEntity, TRelatedEntity> OwnsOne<TRelatedEntity>(
+                        Expression<Func<TEntity, TRelatedEntity>> navigationExpression)
+                        where TRelatedEntity : class
+                        => new OwnedNavigationBuilder<TEntity, TRelatedEntity>();
+
+                    public virtual EntityTypeBuilder<TEntity> Ignore(Expression<Func<TEntity, object?>> propertyExpression)
+                        => this;
+
+                    public virtual EntityTypeBuilder<TEntity> Ignore(string propertyName)
+                        => this;
+                }
+
+                public class PropertyBuilder<TProperty>
+                {
+                    public virtual PropertyBuilder<TProperty> HasConversion<TProvider>()
+                        => this;
+
+                    public virtual PropertyBuilder<TProperty> HasMaxLength(int maxLength)
+                        => this;
+                }
+
+                public class OwnedNavigationBuilder<TEntity, TRelatedEntity>
+                    where TEntity : class
+                    where TRelatedEntity : class
+                {
+                }
+            }
+
+            namespace Trellis.EntityFrameworkCore
+            {
+                using System;
+                using Microsoft.EntityFrameworkCore;
+
+                public class MaybeConvention
+                {
+                }
+
+                [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
+                public sealed class OwnedEntityAttribute : Attribute
+                {
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<RedundantEfConfigurationAnalyzer>(source);
+        test.TestState.Sources.Add(("EfStubWithoutTrellisExtension.cs", efStubWithoutTrellisExtension));
+        test.TestState.Sources.Add(("UserConventionsStub.cs", userConventionsStub));
 
         await test.RunAsync();
     }
