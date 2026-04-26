@@ -86,6 +86,41 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Put_OptionalETag_WithPreferReturnMinimal_Returns204_AndEmitsPreferenceApplied()
+    {
+        using var client = _factory.CreateClient();
+        var (created, postResponse) = await CreateProductAsync(client, "/optional/products", "Widget-Opt-Minimal", 10m);
+        postResponse.Dispose();
+
+        using var putResponse = await PutPriceAsync(
+            client, $"/optional/products/{created.Id}", 77m, ifMatch: null, prefer: "return=minimal");
+
+        putResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        putResponse.Headers.GetValues("Preference-Applied").Should().ContainSingle().Which.Should().Be("return=minimal");
+        putResponse.Headers.Vary.Should().Contain("Prefer");
+        putResponse.Headers.ETag.Should().NotBeNull();
+        putResponse.Headers.ETag!.Tag.Should().NotBe($"\"{created.ETag}\"");
+    }
+
+    [Fact]
+    public async Task Put_OptionalETag_WithPreferReturnRepresentation_Returns200_AndEmitsPreferenceApplied()
+    {
+        using var client = _factory.CreateClient();
+        var (created, postResponse) = await CreateProductAsync(client, "/optional/products", "Widget-Opt-Rep", 10m);
+        postResponse.Dispose();
+
+        using var putResponse = await PutPriceAsync(
+            client, $"/optional/products/{created.Id}", 88m, ifMatch: null, prefer: "return=representation");
+
+        putResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        putResponse.Headers.GetValues("Preference-Applied").Should().ContainSingle().Which.Should().Be("return=representation");
+        putResponse.Headers.Vary.Should().Contain("Prefer");
+        var body = await putResponse.Content.ReadFromJsonAsync<ProductWire>(Ct);
+        body.Should().NotBeNull();
+        body!.Price.Should().Be(88m);
+    }
+
+    [Fact]
     public async Task Put_OptionalETag_WithStaleIfMatch_Returns412_PreconditionFailed()
     {
         using var client = _factory.CreateClient();
@@ -150,7 +185,7 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
         return (body!, response);
     }
 
-    private static async Task<HttpResponseMessage> PutPriceAsync(HttpClient client, string path, decimal price, string? ifMatch)
+    private static async Task<HttpResponseMessage> PutPriceAsync(HttpClient client, string path, decimal price, string? ifMatch, string? prefer = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, new Uri(path, UriKind.Relative))
         {
@@ -158,6 +193,8 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
         };
         if (ifMatch is not null)
             request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        if (prefer is not null)
+            request.Headers.TryAddWithoutValidation("Prefer", prefer);
 
         return await client.SendAsync(request, Ct);
     }

@@ -58,9 +58,10 @@ public static class OptionalETagRoutes
                 .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p => p.UpdatePrice(request.Price))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .MapAsync(p => (WriteOutcome<Product>)new WriteOutcome<Product>.Updated(p, RepresentationMetadata.WithStrongETag(p.ETag)))
                 .ToHttpResponseAsync(
                     ProductResponse.From,
-                    opts => opts.WithETag(p => p.ETag)))
+                    opts => opts.HonorPrefer()))
             .WithScalarValueValidation();
     }
 }
@@ -100,9 +101,10 @@ public static class RequiredETagRoutes
                 .RequireETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
                 .BindAsync(p => Task.FromResult(p.UpdatePrice(request.Price)))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
+                .MapAsync(p => (WriteOutcome<Product>)new WriteOutcome<Product>.Updated(p, RepresentationMetadata.WithStrongETag(p.ETag)))
                 .ToHttpResponseAsync(
                     ProductResponse.From,
-                    opts => opts.WithETag(p => p.ETag)))
+                    opts => opts.HonorPrefer()))
             .WithScalarValueValidation();
     }
 }
