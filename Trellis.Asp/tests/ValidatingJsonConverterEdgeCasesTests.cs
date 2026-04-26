@@ -62,6 +62,11 @@ public class ValidatingJsonConverterEdgeCasesTests
         Safe = 2,
     }
 
+    public enum LargeProcessingMode : ulong
+    {
+        Bulk = 18446744073709551615ul,
+    }
+
     public sealed class ProcessingModeVO : ScalarValueObject<ProcessingModeVO, ProcessingMode>, IScalarValue<ProcessingModeVO, ProcessingMode>
     {
         private ProcessingModeVO(ProcessingMode value) : base(value) { }
@@ -71,6 +76,16 @@ public class ValidatingJsonConverterEdgeCasesTests
                 ? Result.Fail<ProcessingModeVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "processingMode"), "validation.error") { Detail = "Processing mode is required." })))
                 : Result.Ok(new ProcessingModeVO(value));
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
+    }
+
+    public sealed class LargeProcessingModeVO : ScalarValueObject<LargeProcessingModeVO, LargeProcessingMode>, IScalarValue<LargeProcessingModeVO, LargeProcessingMode>
+    {
+        private LargeProcessingModeVO(LargeProcessingMode value) : base(value) { }
+
+        public static Result<LargeProcessingModeVO> TryCreate(LargeProcessingMode value, string? fieldName = null) =>
+            Result.Ok(new LargeProcessingModeVO(value));
+        public static Result<LargeProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
 
@@ -288,6 +303,137 @@ public class ValidatingJsonConverterEdgeCasesTests
             result.Should().NotBeNull();
             result!.Value.Should().Be(ProcessingMode.Safe);
             ValidationErrorsContext.HasErrors.Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public void Read_EnumNumericUlongValue_BindsSuccessfully()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<LargeProcessingModeVO, LargeProcessingMode>();
+        var json = "18446744073709551615";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(LargeProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Value.Should().Be(LargeProcessingMode.Bulk);
+            ValidationErrorsContext.HasErrors.Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public void Read_EnumInvalidString_CollectsValidationError()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "\"Slow\"";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/mode"
+                    && v.Detail == "'Slow' is not a valid ProcessingMode.");
+        }
+    }
+
+    [Fact]
+    public void Read_EnumUndefinedNumericValue_CollectsValidationError()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "10";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/mode"
+                    && v.Detail == "'10' is not a valid ProcessingMode.");
+        }
+    }
+
+    [Fact]
+    public void Read_EnumNumericOverflow_CollectsValidationError()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "999999999999999999999999";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/mode"
+                    && v.Detail == "JSON number is not a valid ProcessingMode.");
+        }
+    }
+
+    [Fact]
+    public void Read_EnumUnsupportedToken_CollectsValidationError()
+    {
+        // Arrange
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var json = "true";
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            // Act
+            var result = converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            // Assert
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/mode"
+                    && v.Detail == "JSON token 'True' is not a valid ProcessingMode.");
         }
     }
 

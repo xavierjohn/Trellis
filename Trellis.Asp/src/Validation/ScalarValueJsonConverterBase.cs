@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Asp.Validation;
 
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -84,13 +85,6 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
         if (!PrimitiveJsonReader.TryRead(ref reader, fieldName, out primitiveValue))
             return false;
 
-        if (typeof(TPrimitive).IsEnum && primitiveValue is not null && !IsValidEnumValue(primitiveValue))
-        {
-            ValidationErrorsContext.AddError(fieldName, $"'{primitiveValue}' is not a valid {typeof(TPrimitive).Name}.");
-            primitiveValue = default;
-            return false;
-        }
-
         return true;
     }
 
@@ -139,17 +133,9 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     private static object ReadNumericEnumValue(ref Utf8JsonReader reader)
     {
         var underlyingType = Enum.GetUnderlyingType(typeof(TPrimitive));
-        var rawValue = Type.GetTypeCode(underlyingType) switch
-        {
-            TypeCode.Byte => (object)reader.GetByte(),
-            TypeCode.SByte => reader.GetSByte(),
-            TypeCode.Int16 => reader.GetInt16(),
-            TypeCode.UInt16 => reader.GetUInt16(),
-            TypeCode.Int32 => reader.GetInt32(),
-            TypeCode.UInt32 => reader.GetUInt32(),
-            TypeCode.Int64 => reader.GetInt64(),
-            _ => reader.GetUInt64(),
-        };
+        var rawValue = underlyingType == typeof(ulong)
+            ? reader.GetUInt64()
+            : Convert.ChangeType(reader.GetInt64(), underlyingType, CultureInfo.InvariantCulture);
 
         return Enum.ToObject(typeof(TPrimitive), rawValue);
     }
