@@ -160,6 +160,41 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Put_RequiredETag_WithFreshIfMatchAndPreferReturnMinimal_Returns204_AndEmitsPreferenceApplied()
+    {
+        using var client = _factory.CreateClient();
+        var (created, postResponse) = await CreateProductAsync(client, "/required/products", "Gadget-Req-Minimal", 12m);
+        postResponse.Dispose();
+
+        using var putResponse = await PutPriceAsync(
+            client, $"/required/products/{created.Id}", 55m, ifMatch: $"\"{created.ETag}\"", prefer: "return=minimal");
+
+        putResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        putResponse.Headers.GetValues("Preference-Applied").Should().ContainSingle().Which.Should().Be("return=minimal");
+        putResponse.Headers.Vary.Should().Contain("Prefer");
+        putResponse.Headers.ETag.Should().NotBeNull();
+        putResponse.Headers.ETag!.Tag.Should().NotBe($"\"{created.ETag}\"");
+    }
+
+    [Fact]
+    public async Task Put_RequiredETag_WithFreshIfMatchAndPreferReturnRepresentation_Returns200_AndEmitsPreferenceApplied()
+    {
+        using var client = _factory.CreateClient();
+        var (created, postResponse) = await CreateProductAsync(client, "/required/products", "Gadget-Req-Rep", 12m);
+        postResponse.Dispose();
+
+        using var putResponse = await PutPriceAsync(
+            client, $"/required/products/{created.Id}", 66m, ifMatch: $"\"{created.ETag}\"", prefer: "return=representation");
+
+        putResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        putResponse.Headers.GetValues("Preference-Applied").Should().ContainSingle().Which.Should().Be("return=representation");
+        putResponse.Headers.Vary.Should().Contain("Prefer");
+        var body = await putResponse.Content.ReadFromJsonAsync<ProductWire>(Ct);
+        body.Should().NotBeNull();
+        body!.Price.Should().Be(66m);
+    }
+
+    [Fact]
     public async Task Get_WithIfNoneMatch_OnUnchangedResource_Returns304_NotModified()
     {
         using var client = _factory.CreateClient();
