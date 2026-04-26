@@ -153,7 +153,7 @@ public sealed class TrellisServiceBuilder
 
     private void SetActorProvider(ActorProviderKind kind, Action<IServiceCollection> registration)
     {
-        if (_actorProviderKind != ActorProviderKind.None && _actorProviderKind != kind)
+        if (_actorProviderKind != ActorProviderKind.None)
             throw new InvalidOperationException(
                 $"Only one actor provider can be selected. '{_actorProviderKind}' is already configured.");
 

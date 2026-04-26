@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Trellis;
@@ -59,7 +60,7 @@ public sealed class ScalarValueValidationMiddleware
             }
             catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status400BadRequest)
             {
-                if (IsParameterReadFailureMessage(ex.Message))
+                if (ex.InnerException is JsonException)
                 {
                     // Handle JSON body deserialization failures (e.g., missing required properties)
                     await WriteJsonDeserializationErrorAsync(context, ex).ConfigureAwait(false);
@@ -95,10 +96,6 @@ public sealed class ScalarValueValidationMiddleware
         var result = Results.ValidationProblem(errors);
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
-
-    private static bool IsParameterReadFailureMessage(string message) =>
-        message.StartsWith("Failed to read parameter ", StringComparison.Ordinal) &&
-        message.EndsWith(" from the request body as JSON.", StringComparison.Ordinal);
 
     [UnconditionalSuppressMessage("AOT", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]

@@ -201,8 +201,30 @@ public sealed class CompositeValueObjectDtoConverterAnalyzer : DiagnosticAnalyze
         return namespaceName == "Mediator" || namespaceName?.EndsWith(".Mediator", StringComparison.Ordinal) == true;
     }
 
-    private static bool IsEndpointMappingMethod(IMethodSymbol method) =>
-        method.Name is "MapPost" or "MapPut" or "MapPatch" or "MapDelete";
+    private static bool IsEndpointMappingMethod(IMethodSymbol method)
+    {
+        var endpointMethod = method.ReducedFrom ?? method;
+        if (method.Name is not ("MapPost" or "MapPut" or "MapPatch" or "MapDelete") &&
+            endpointMethod.Name is not ("MapPost" or "MapPut" or "MapPatch" or "MapDelete"))
+            return false;
+
+        return IsAspNetCoreEndpointMappingContainer(method.ContainingType) ||
+               IsAspNetCoreEndpointMappingContainer(endpointMethod.ContainingType) ||
+               IsAspNetCoreBuilderNamespace(method.ContainingNamespace) ||
+               IsAspNetCoreBuilderNamespace(endpointMethod.ContainingNamespace);
+    }
+
+    private static bool IsAspNetCoreEndpointMappingContainer(INamedTypeSymbol? containingType) =>
+        containingType is not null &&
+        containingType.Name is "EndpointRouteBuilderExtensions" or "RouteHandlerBuilderExtensions" &&
+        IsAspNetCoreBuilderNamespace(containingType.ContainingNamespace);
+
+    private static bool IsAspNetCoreBuilderNamespace(INamespaceSymbol? namespaceSymbol)
+    {
+        var namespaceName = namespaceSymbol?.ToDisplayString();
+        return namespaceName == "Microsoft.AspNetCore.Builder" ||
+               namespaceName?.EndsWith(".Microsoft.AspNetCore.Builder", StringComparison.Ordinal) == true;
+    }
 
     private static bool IsOwnedCompositeValueObject(INamedTypeSymbol type) =>
         HasAttribute(type, "OwnedEntityAttribute", "Trellis.EntityFrameworkCore") &&

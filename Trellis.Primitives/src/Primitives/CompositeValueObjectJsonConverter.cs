@@ -273,15 +273,15 @@ public sealed class CompositeValueObjectJsonConverter<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.PublicProperties)]
             Type type)
         {
-            var properties = type
+            var discoveredProperties = type
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Where(p =>
                     p.GetMethod is not null &&
                     p.GetIndexParameters().Length == 0 &&
                     (p.SetMethod is null || !p.SetMethod.IsPublic))
-                .OrderBy(TryGetMetadataToken)
-                .ThenBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
+
+            var properties = OrderProperties(type, discoveredProperties);
 
             var props = new List<PropertyMetadata>(properties.Count);
             foreach (var p in properties)
@@ -326,15 +326,59 @@ public sealed class CompositeValueObjectJsonConverter<
             return propertyType;
         }
 
-        private static int TryGetMetadataToken(MemberInfo member)
+        private static List<PropertyInfo> OrderProperties(Type type, List<PropertyInfo> properties)
+        {
+            var withTokens = new List<(PropertyInfo Property, int Token)>(properties.Count);
+            foreach (var property in properties)
+            {
+                if (!TryGetMetadataToken(property, out var token))
+                    return OrderPropertiesWithoutMetadataTokens(type, properties);
+
+                withTokens.Add((property, token));
+            }
+
+            return withTokens
+                .OrderBy(p => p.Token)
+                .Select(p => p.Property)
+                .ToList();
+        }
+
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "Property types are discovered from a rooted composite value object. The fallback only inspects interfaces to reject unsafe duplicate primitive shapes before any value conversion occurs.")]
+        private static List<PropertyInfo> OrderPropertiesWithoutMetadataTokens(Type type, List<PropertyInfo> properties)
+        {
+            var duplicatePrimitiveTypes = properties
+                .GroupBy(p => GetPrimitiveType(p.PropertyType))
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+
+            if (duplicatePrimitiveTypes.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    $"CompositeValueObjectJsonConverter<{type.Name}> cannot determine a safe property order because metadata tokens are unavailable " +
+                    $"and multiple properties share the same primitive type(s): {string.Join(", ", duplicatePrimitiveTypes)}. " +
+                    "Use a hand-written converter for this composite value object.");
+            }
+
+            return properties
+                .OrderBy(p => GetPrimitiveType(p.PropertyType).Name, StringComparer.Ordinal)
+                .ThenBy(p => p.Name, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        private static bool TryGetMetadataToken(MemberInfo member, out int metadataToken)
         {
             try
             {
-                return member.MetadataToken;
+                metadataToken = member.MetadataToken;
+                return true;
             }
             catch (InvalidOperationException)
             {
-                return int.MaxValue;
+                metadataToken = 0;
+                return false;
             }
         }
 

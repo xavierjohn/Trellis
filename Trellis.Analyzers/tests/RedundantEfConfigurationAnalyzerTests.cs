@@ -238,6 +238,53 @@ public class RedundantEfConfigurationAnalyzerTests
     }
 
     [Fact]
+    public async Task HasConversion_OnMaybeProperty_WithUnrelatedApplyTrellisConventionsName_NoDiagnostic()
+    {
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            using MyCompany.EntityFrameworkCore;
+
+            namespace MyCompany.EntityFrameworkCore
+            {
+                public static class ModelConfigurationBuilderExtensions
+                {
+                    public static ModelConfigurationBuilder ApplyTrellisConventions(
+                        this ModelConfigurationBuilder configurationBuilder)
+                        => configurationBuilder;
+                }
+            }
+
+            public class Order
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class OrderConfig
+            {
+                public void Configure(EntityTypeBuilder<Order> builder)
+                {
+                    builder.Property(e => e.PhoneNumber).HasConversion<string>();
+                }
+            }
+
+            public class AppDbContext
+            {
+                protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                    configurationBuilder.ApplyTrellisConventions();
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<RedundantEfConfigurationAnalyzer>(source);
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task ChainedHasConversion_OnMaybeProperty_WithTrellisConventions_ProducesWarning()
     {
         const string source = """

@@ -136,9 +136,11 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
 
             namespace Microsoft.AspNetCore.Builder
             {
+                public delegate void CreateCustomerRequestHandler(global::TestNamespace.CreateCustomerRequest request);
+
                 public static class EndpointRouteBuilderExtensions
                 {
-                    public static void MapPost<TDelegate>(this object builder, string pattern, TDelegate handler) { }
+                    public static void MapPost(this object builder, string pattern, CreateCustomerRequestHandler handler) { }
                 }
             }
 
@@ -167,7 +169,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(32, 60)
+                .WithLocation(34, 60)
                 .WithArguments("ShippingAddress", "CreateCustomerRequest.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -184,9 +186,11 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
 
             namespace Microsoft.AspNetCore.Builder
             {
+                public delegate void CreateCustomerRequestHandler(global::TestNamespace.CreateCustomerRequest request);
+
                 public static class EndpointRouteBuilderExtensions
                 {
-                    public static void MapPost<TDelegate>(this object builder, string pattern, TDelegate handler) { }
+                    public static void MapPost(this object builder, string pattern, CreateCustomerRequestHandler handler) { }
                 }
             }
 
@@ -217,7 +221,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(32, 60)
+                .WithLocation(34, 60)
                 .WithArguments("ShippingAddress", "CreateCustomerRequest.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -295,6 +299,50 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
             {
                 [HttpPost]
                 public void Create([FromBody] CreateCustomerRequest request) { }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(source);
+        test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task UnrelatedMapPostMethod_WithOwnedValueObjectRequest_NoDiagnostic()
+    {
+        const string source = """
+            using Trellis;
+            using Trellis.EntityFrameworkCore;
+            using MyCompany.Routing;
+
+            namespace MyCompany.Routing
+            {
+                public static class RouteBuilderExtensions
+                {
+                    public static void MapPost<TDelegate>(this object builder, string pattern, TDelegate handler) { }
+                }
+            }
+
+            [OwnedEntity]
+            public partial class ShippingAddress : ValueObject
+            {
+                public string Street { get; }
+                public string City { get; }
+
+                protected override System.Collections.Generic.IEnumerable<System.IComparable?> GetEqualityComponents()
+                {
+                    yield return Street;
+                    yield return City;
+                }
+            }
+
+            public sealed record CreateCustomerRequest(ShippingAddress ShippingAddress);
+
+            public static class CustomerEndpoints
+            {
+                public static void Map(object app) =>
+                    app.MapPost("/customers", (CreateCustomerRequest request) => { });
             }
             """;
 

@@ -16,14 +16,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
 {
-    // The two canonical types that own the ApplyTrellisConventions / ApplyTrellisConventionsFor
-    // extension methods.  Any call that resolves to a *different* containing type is user code
-    // and must NOT enable the analyzer.
-    private static readonly ImmutableHashSet<string> TrellisConventionContainingTypes =
-        ImmutableHashSet.Create(
-            "Trellis.EntityFrameworkCore.ModelConfigurationBuilderExtensions",
-            "Trellis.EntityFrameworkCore.GeneratedTrellisConventions");
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [DiagnosticDescriptors.RedundantEfConfiguration];
 
@@ -37,77 +29,32 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
             if (compilationContext.Compilation.GetTypeByMetadataName("Trellis.EntityFrameworkCore.MaybeConvention") is null)
                 return;
 
-            // Per-compilation state:
-            //   wired  — set to 1 when a Trellis-conventions call is confirmed via semantic model
-            //   pending — candidate diagnostics collected before the wiring tree is analyzed
-            var wired = new int[1]; // wired[0]: 0 = not confirmed, 1 = confirmed
-            var pending = new ConcurrentBag<Diagnostic>();
+            var conventionsAreWired = 0;
+            var pendingDiagnostics = new ConcurrentQueue<Diagnostic>();
 
-            // Semantic-model pass: resolve each candidate invocation and set wired flag.
-            compilationContext.RegisterSemanticModelAction(semanticModelContext =>
-            {
-                // Short-circuit if another tree already confirmed the wiring.
-                if (Volatile.Read(ref wired[0]) == 1)
-                    return;
-
-                var root = semanticModelContext.SemanticModel.SyntaxTree
-                    .GetRoot(semanticModelContext.CancellationToken);
-
-                foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
-                {
-                    if (!IsCandidateConventionsName(invocation))
-                        continue;
-
-                    if (semanticModelContext.SemanticModel
-                            .GetSymbolInfo(invocation, semanticModelContext.CancellationToken)
-                            .Symbol is not IMethodSymbol method)
-                        continue;
-
-                    var containingType = method.ContainingType?.ToDisplayString();
-                    if (containingType is not null &&
-                        TrellisConventionContainingTypes.Contains(containingType))
-                    {
-                        Interlocked.Exchange(ref wired[0], 1);
-                        return;
-                    }
-                }
-            });
-
-            // Syntax-node pass: collect candidate diagnostics (deferred — the wiring call
-            // may live in a tree that has not yet been semantically analyzed).
             compilationContext.RegisterSyntaxNodeAction(
-                nodeContext => CollectCandidates(nodeContext, pending),
+                context =>
+                {
+                    var invocation = (InvocationExpressionSyntax)context.Node;
+                    if (IsTrellisConventionsInvocation(context.SemanticModel, invocation))
+                        Interlocked.Exchange(ref conventionsAreWired, 1);
+
+                    AnalyzeInvocation(context, pendingDiagnostics.Enqueue);
+                },
                 SyntaxKind.InvocationExpression);
 
-            // Drain pending diagnostics only when all trees have been walked and wired[0] == 1.
-            compilationContext.RegisterCompilationEndAction(endContext =>
+            compilationContext.RegisterCompilationEndAction(context =>
             {
-                if (Volatile.Read(ref wired[0]) == 0)
+                if (Volatile.Read(ref conventionsAreWired) == 0)
                     return;
 
-                foreach (var diagnostic in pending)
-                    endContext.ReportDiagnostic(diagnostic);
+                while (pendingDiagnostics.TryDequeue(out var diagnostic))
+                    context.ReportDiagnostic(diagnostic);
             });
         });
     }
 
-    // Returns true when the invocation's method name looks like a Trellis-conventions call.
-    // Actual symbol resolution happens in RegisterSemanticModelAction.
-    private static bool IsCandidateConventionsName(InvocationExpressionSyntax invocation)
-    {
-        var methodName = invocation.Expression switch
-        {
-            MemberAccessExpressionSyntax { Name: IdentifierNameSyntax id } => id.Identifier.Text,
-            MemberAccessExpressionSyntax { Name: GenericNameSyntax gen } => gen.Identifier.Text,
-            IdentifierNameSyntax id => id.Identifier.Text,
-            GenericNameSyntax gen => gen.Identifier.Text,
-            _ => null
-        };
-
-        return methodName is "ApplyTrellisConventions" or "ApplyTrellisConventionsFor";
-    }
-
-    private static void CollectCandidates(SyntaxNodeAnalysisContext context, ConcurrentBag<Diagnostic> pending)
+    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context, Action<Diagnostic> reportDiagnostic)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
@@ -123,20 +70,20 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
         switch (methodName)
         {
             case "HasConversion":
-                CollectHasConversionCandidate(context, invocation, memberAccess, pending);
+                AnalyzeHasConversion(context, invocation, memberAccess, reportDiagnostic);
                 break;
             case "OwnsOne":
             case "Ignore":
-                CollectEntityTypeBuilderCandidate(context, invocation, memberAccess, methodName, pending);
+                AnalyzeEntityTypeBuilderConfiguration(context, invocation, memberAccess, methodName, reportDiagnostic);
                 break;
         }
     }
 
-    private static void CollectHasConversionCandidate(
+    private static void AnalyzeHasConversion(
         SyntaxNodeAnalysisContext context,
         InvocationExpressionSyntax invocation,
         MemberAccessExpressionSyntax memberAccess,
-        ConcurrentBag<Diagnostic> pending)
+        Action<Diagnostic> reportDiagnostic)
     {
         if (!IsPropertyBuilderMethod(context, invocation))
             return;
@@ -148,15 +95,15 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
         if (!TryGetConfiguredProperty(context, propertyInvocation, out var property))
             return;
 
-        EnqueueIfTrellisConventionProperty(memberAccess.Name.GetLocation(), "HasConversion", property, pending);
+        ReportIfTrellisConventionProperty(reportDiagnostic, memberAccess.Name.GetLocation(), "HasConversion", property);
     }
 
-    private static void CollectEntityTypeBuilderCandidate(
+    private static void AnalyzeEntityTypeBuilderConfiguration(
         SyntaxNodeAnalysisContext context,
         InvocationExpressionSyntax invocation,
         MemberAccessExpressionSyntax memberAccess,
         string methodName,
-        ConcurrentBag<Diagnostic> pending)
+        Action<Diagnostic> reportDiagnostic)
     {
         if (!IsEntityTypeBuilderMethod(context, invocation, methodName))
             return;
@@ -164,7 +111,7 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
         if (!TryGetConfiguredProperty(context, invocation, out var property))
             return;
 
-        EnqueueIfTrellisConventionProperty(memberAccess.Name.GetLocation(), methodName, property, pending);
+        ReportIfTrellisConventionProperty(reportDiagnostic, memberAccess.Name.GetLocation(), methodName, property);
     }
 
     private static bool TryGetConfiguredProperty(
@@ -199,16 +146,16 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static void EnqueueIfTrellisConventionProperty(
+    private static void ReportIfTrellisConventionProperty(
+        Action<Diagnostic> reportDiagnostic,
         Location location,
         string methodName,
-        IPropertySymbol property,
-        ConcurrentBag<Diagnostic> pending)
+        IPropertySymbol property)
     {
         if (!property.Type.IsMaybeType() && !HasOwnedEntityAttribute(property.Type))
             return;
 
-        pending.Add(Diagnostic.Create(
+        reportDiagnostic(Diagnostic.Create(
             DiagnosticDescriptors.RedundantEfConfiguration,
             location,
             methodName,
@@ -283,5 +230,25 @@ public sealed class RedundantEfConfigurationAnalyzer : DiagnosticAnalyzer
         }
 
         return false;
+    }
+
+    private static bool IsTrellisConventionsInvocation(SemanticModel semanticModel, InvocationExpressionSyntax invocation)
+    {
+        if (semanticModel.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method)
+            return false;
+
+        var originalMethod = method.ReducedFrom ?? method;
+        var containingType = originalMethod.ContainingType;
+        if (containingType?.ContainingNamespace?.ToDisplayString() != "Trellis.EntityFrameworkCore")
+            return false;
+
+        return originalMethod.Name switch
+        {
+            "ApplyTrellisConventions" =>
+                containingType.Name == "ModelConfigurationBuilderExtensions",
+            "ApplyTrellisConventionsFor" =>
+                containingType.Name is "ModelConfigurationBuilderExtensions" or "GeneratedTrellisConventions",
+            _ => false
+        };
     }
 }

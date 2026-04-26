@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.MinimalApi;
+﻿namespace Trellis.Showcase.MinimalApi;
 
 using System.Collections.Generic;
 using System.Text.Json;

@@ -99,8 +99,14 @@ jobs:
 
           ASPNETCORE_URLS="http://127.0.0.1:${PORT}" ASPNETCORE_ENVIRONMENT=Production "$@" > "$LOG" 2>&1 &
           local APP_PID=$!
-          # Ensure cleanup even on assertion failure.
-          trap "kill ${APP_PID} 2>/dev/null || true; echo '--- ${LABEL} log ---'; cat ${LOG} || true" RETURN
+          cleanup_smoke() {
+            kill "${APP_PID}" 2>/dev/null || true
+            wait "${APP_PID}" 2>/dev/null || true
+            echo "--- ${LABEL} log ---"
+            cat "${LOG}" || true
+          }
+          # Ensure cleanup even when set -e exits the script before the function returns.
+          trap cleanup_smoke RETURN EXIT
 
           echo "Waiting for ${LABEL} (pid ${APP_PID}) on port ${PORT}..."
           local i
@@ -151,7 +157,7 @@ jobs:
 
           kill ${APP_PID} 2>/dev/null || true
           wait ${APP_PID} 2>/dev/null || true
-          trap - RETURN
+          trap - RETURN EXIT
           echo "=== ${LABEL} smoke test passed ==="
         }
 

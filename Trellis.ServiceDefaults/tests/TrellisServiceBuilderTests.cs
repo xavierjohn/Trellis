@@ -86,6 +86,19 @@ public class TrellisServiceBuilderTests
     }
 
     [Fact]
+    public void SameActorProviderConfiguredTwice_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseClaimsActorProvider()
+            .UseClaimsActorProvider());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Only one actor provider*");
+    }
+
+    [Fact]
     public void UseClaimsActorProvider_RegistersActorProvider()
     {
         var services = new ServiceCollection();

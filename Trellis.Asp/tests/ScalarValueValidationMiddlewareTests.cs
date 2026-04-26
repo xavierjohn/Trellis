@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System;
 using System.IO;
@@ -516,7 +516,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("invalid JSON");
+            .Should().Be("The request body contains invalid JSON.");
     }
 
     [Fact]
@@ -590,7 +590,7 @@ public class ScalarValueValidationMiddlewareTests
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         problem.GetProperty("errors").GetProperty("$")[0].GetString()
-            .Should().Contain("invalid JSON");
+            .Should().Be("The request was invalid.");
     }
 
     [Fact]

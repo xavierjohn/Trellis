@@ -118,6 +118,16 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 
 Default mappings (closed-ADT): `Error.BadRequest=400`, `Error.Unauthorized=401`, `Error.Forbidden=403`, `Error.NotFound=404`, `Error.MethodNotAllowed=405`, `Error.NotAcceptable=406`, `Error.Conflict=409`, `Error.Gone=410`, `Error.PreconditionFailed=412`, `Error.ContentTooLarge=413`, `Error.UnsupportedMediaType=415`, `Error.RangeNotSatisfiable=416`, `Error.UnprocessableContent=422`, `Error.PreconditionRequired=428`, `Error.TooManyRequests=429`, `Error.InternalServerError=500`, `Error.Unexpected=500`, `Error.NotImplemented=501`, `Error.ServiceUnavailable=503`.
 
+### `RuleViolationProblemDetail`
+
+**Declaration**
+
+```csharp
+public sealed record RuleViolationProblemDetail(string Code, string? Detail, string[] Fields);
+```
+
+AOT-friendly JSON payload used inside Problem Details `extensions["rules"]` for `Error.UnprocessableContent` rule violations. Application code should treat this as response shape metadata, not as a domain model.
+
 ### `AggregateRepresentationValidator<T>`
 
 **Declaration**
