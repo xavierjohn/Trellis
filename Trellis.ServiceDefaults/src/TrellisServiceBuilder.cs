@@ -1,4 +1,4 @@
-namespace Trellis.ServiceDefaults;
+﻿namespace Trellis.ServiceDefaults;
 
 using System;
 using System.Collections.Generic;

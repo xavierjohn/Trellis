@@ -78,70 +78,103 @@ jobs:
           /p:PublishAot=true \
           /p:TreatWarningsAsErrors=true
 
-    - name: AOT runtime smoke test (Showcase.MinimalApi)
-      # Proves the AOT-published binary actually serves traffic. Catches runtime
-      # regressions that publish-time IL analysis cannot see — e.g., anonymous
+    - name: Showcase runtime smoke tests (AOT MinimalApi + JIT MVC)
+      # Proves both Showcase samples actually serve traffic. Catches runtime
+      # regressions that build/publish-time analysis cannot see — e.g., anonymous
       # types in ProblemDetails extensions, missing JsonSerializerContext entries,
-      # reflection inside [UnconditionalSuppressMessage] blocks. Exercises both a
-      # success path (JSON serialization) and a 4xx path (ResponseFailureWriter
-      # rules array) so a regression in either fails CI.
+      # reflection inside [UnconditionalSuppressMessage] blocks, MVC formatter
+      # misconfiguration. Exercises both a success path (JSON serialization) and
+      # a 4xx path (ResponseFailureWriter rules array) for each sample so a
+      # regression in either fails CI.
       shell: bash
       run: |
         set -euo pipefail
-        BIN=Examples/Showcase/src/Showcase.MinimalApi/bin/Release/net10.0/linux-x64/publish/Showcase.MinimalApi
-        test -x "$BIN" || { echo "AOT binary not found: $BIN"; ls -la "$(dirname "$BIN")" || true; exit 1; }
 
-        ASPNETCORE_URLS=http://127.0.0.1:5099 ASPNETCORE_ENVIRONMENT=Production "$BIN" > aot-smoke.log 2>&1 &
-        APP_PID=$!
-        trap 'kill $APP_PID 2>/dev/null || true; echo "--- app log ---"; cat aot-smoke.log || true' EXIT
+        # --- Reusable smoke probe: launch a sample, assert one happy + one failure path ---
+        # Args: <label> <port> <log-file> <launch-command...>
+        run_smoke() {
+          local LABEL=$1 PORT=$2 LOG=$3
+          shift 3
+          echo "==================== ${LABEL} ===================="
 
-        echo "Waiting for AOT host (pid $APP_PID) to accept connections..."
-        for i in $(seq 1 60); do
-          if curl -fsS -o /dev/null --max-time 1 http://127.0.0.1:5099/api/accounts/ 2>/dev/null; then
-            echo "  up after ${i} attempt(s)"
-            break
+          ASPNETCORE_URLS="http://127.0.0.1:${PORT}" ASPNETCORE_ENVIRONMENT=Production "$@" > "$LOG" 2>&1 &
+          local APP_PID=$!
+          # Ensure cleanup even on assertion failure.
+          trap "kill ${APP_PID} 2>/dev/null || true; echo '--- ${LABEL} log ---'; cat ${LOG} || true" RETURN
+
+          echo "Waiting for ${LABEL} (pid ${APP_PID}) on port ${PORT}..."
+          local i
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/api/accounts/" 2>/dev/null; then
+              echo "  up after ${i} attempt(s)"
+              break
+            fi
+            if ! kill -0 ${APP_PID} 2>/dev/null; then
+              echo "${LABEL} host exited before becoming ready"
+              return 1
+            fi
+            sleep 0.5
+          done
+
+          echo "--- Happy path: GET /api/accounts/ ---"
+          local HAPPY_STATUS
+          HAPPY_STATUS=$(curl -s -o "${LABEL}-happy.json" -w '%{http_code}' "http://127.0.0.1:${PORT}/api/accounts/")
+          if [ "$HAPPY_STATUS" != "200" ]; then
+            echo "Expected 200, got ${HAPPY_STATUS}"
+            cat "${LABEL}-happy.json" || true
+            return 1
           fi
-          if ! kill -0 $APP_PID 2>/dev/null; then
-            echo "AOT host exited before becoming ready"
-            exit 1
-          fi
-          sleep 0.5
-        done
+          echo "  200 OK; body head: $(head -c 200 ${LABEL}-happy.json)"
 
-        echo "=== Happy path: GET /api/accounts/ ==="
-        HAPPY_STATUS=$(curl -s -o happy.json -w '%{http_code}' http://127.0.0.1:5099/api/accounts/)
-        if [ "$HAPPY_STATUS" != "200" ]; then
-          echo "Expected 200, got $HAPPY_STATUS"
-          cat happy.json || true
+          echo "--- Failure path: POST /api/accounts/ with empty body -> 4xx ProblemDetails ---"
+          local FAIL_STATUS
+          FAIL_STATUS=$(curl -s -o "${LABEL}-fail.json" -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -X POST --data '{}' "http://127.0.0.1:${PORT}/api/accounts/")
+          case "$FAIL_STATUS" in
+            400|422) ;;
+            *)
+              echo "Expected 400 or 422, got ${FAIL_STATUS}"
+              cat "${LABEL}-fail.json" || true
+              return 1
+              ;;
+          esac
+          # Body must be non-empty JSON ProblemDetails. Catches missing
+          # JsonSerializerContext entries (would yield empty body) and
+          # ResponseFailureWriter regressions (anonymous-type rules array).
+          if ! grep -qE '"(title|detail|errors|rules|status)"' "${LABEL}-fail.json"; then
+            echo "${LABEL} failure response lacks ProblemDetails fields:"
+            cat "${LABEL}-fail.json"
+            return 1
+          fi
+          echo "  ${FAIL_STATUS} OK; body head: $(head -c 300 ${LABEL}-fail.json)"
+
+          kill ${APP_PID} 2>/dev/null || true
+          wait ${APP_PID} 2>/dev/null || true
+          trap - RETURN
+          echo "=== ${LABEL} smoke test passed ==="
+        }
+
+        # --- AOT MinimalApi: published native binary ---
+        AOT_BIN=Examples/Showcase/src/Showcase.MinimalApi/bin/Release/net10.0/linux-x64/publish/Showcase.MinimalApi
+        if [ ! -x "$AOT_BIN" ]; then
+          echo "AOT binary not found: $AOT_BIN"
+          ls -la "$(dirname "$AOT_BIN")" || true
           exit 1
         fi
-        echo "  200 OK; body head: $(head -c 200 happy.json)"
+        run_smoke "MinimalApi-AOT" 5099 minimalapi-aot.log "$AOT_BIN"
 
-        echo "=== Failure path: POST /api/accounts/ with empty body -> expect 4xx with ProblemDetails ==="
-        FAIL_STATUS=$(curl -s -o fail.json -w '%{http_code}' \
-          -H 'content-type: application/json' \
-          -X POST --data '{}' http://127.0.0.1:5099/api/accounts/)
-        case "$FAIL_STATUS" in
-          400|422) ;;
-          *)
-            echo "Expected 400 or 422, got $FAIL_STATUS"
-            cat fail.json || true
-            exit 1
-            ;;
-        esac
-        # Body must be non-empty JSON ProblemDetails. Catches missing JsonSerializerContext
-        # entries (would yield empty body) and ResponseFailureWriter regressions.
-        if ! grep -qE '"(title|detail|errors|rules|status)"' fail.json; then
-          echo "Failure response body lacks ProblemDetails fields:"
-          cat fail.json
+        # --- JIT MVC: managed binary from the existing Release build ---
+        # MVC is intentionally not AOT-published (controller binding + filter
+        # pipeline are not currently AOT-supported). The smoke test runs the
+        # JIT-compiled assembly to prove the sample actually serves traffic.
+        MVC_DLL=Examples/Showcase/src/Showcase.Mvc/bin/Release/net10.0/Showcase.Mvc.dll
+        if [ ! -f "$MVC_DLL" ]; then
+          echo "MVC assembly not found: $MVC_DLL"
+          ls -la "$(dirname "$MVC_DLL")" || true
           exit 1
         fi
-        echo "  $FAIL_STATUS OK; body head: $(head -c 300 fail.json)"
-
-        kill $APP_PID 2>/dev/null || true
-        wait $APP_PID 2>/dev/null || true
-        trap - EXIT
-        echo "=== AOT smoke test passed ==="
+        run_smoke "Mvc-JIT" 5100 mvc-jit.log dotnet "$MVC_DLL"
 
     - name: Update doc tools
       run: dotnet tool update -g docfx

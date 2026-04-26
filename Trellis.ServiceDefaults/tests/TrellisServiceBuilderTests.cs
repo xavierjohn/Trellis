@@ -1,4 +1,4 @@
-namespace Trellis.ServiceDefaults.Tests;
+﻿namespace Trellis.ServiceDefaults.Tests;
 
 using System.Linq;
 using global::Mediator;
