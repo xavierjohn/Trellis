@@ -1,4 +1,4 @@
-﻿# RequiredEnum
+# RequiredEnum
 
 Regular C# enums are fast and familiar, but they are weak at domain modeling:
 
@@ -228,4 +228,4 @@ If you just need an integer-backed constant, a regular enum is fine. If the valu
 
 - [Primitive Value Objects](primitives.md)
 - [Clean Architecture](clean-architecture.md)
-- [Trellis primitives API reference](../../api_reference/trellis-api-primitives.md)
+- [Trellis primitives API reference](../api_reference/trellis-api-primitives.md)

@@ -20,7 +20,8 @@
           ]
         }
       ],
-      "dest": "api"
+      "dest": "api",
+      "disableAnalyzers": true
     }
   ],
   "build": {
@@ -35,6 +36,8 @@
         "files": [
           "articles/**.md",
           "articles/**/toc.yml",
+          "api_reference/**.md",
+          "adr/**.md",
           "toc.yml",
           "*.md"
         ]

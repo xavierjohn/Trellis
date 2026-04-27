@@ -4,7 +4,7 @@
 **Namespace:** mixed  
 **Purpose:** Documents the supported cross-package usage patterns Trellis builds around results, scalar values, ASP.NET integration, EF Core, HTTP clients, and mediator pipelines.
 
-See also: [trellis-api-core.md](trellis-api-core.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-entityframeworkcore.md](trellis-api-entityframeworkcore.md).
+See also: [trellis-api-core.md](trellis-api-core.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-efcore.md](trellis-api-efcore.md).
 
 ---
 

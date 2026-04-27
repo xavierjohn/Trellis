@@ -1,4 +1,4 @@
-﻿# Primitive Value Objects
+# Primitive Value Objects
 
 Primitive obsession makes code look simple right up until `"USD"`, `"Pending"`, `"john@example.com"`, `42`, and `true` all start carrying business meaning the compiler cannot see.
 
@@ -317,5 +317,5 @@ public partial class CompanyEmailAddress : RequiredString<CompanyEmailAddress> {
 
 - [RequiredEnum](required-enum.md)
 - [Specifications](specifications.md)
-- [Trellis primitive taxonomy](../../api_reference/trellis-value-object-taxonomy.md)
-- [Trellis primitives API reference](../../api_reference/trellis-api-primitives.md)
+- [Trellis primitive taxonomy](../api_reference/trellis-value-object-taxonomy.md)
+- [Trellis primitives API reference](../api_reference/trellis-api-primitives.md)

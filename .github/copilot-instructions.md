@@ -1,4 +1,4 @@
-﻿# GitHub Copilot Instructions for Trellis
+# GitHub Copilot Instructions for Trellis
 
 ## Project Overview
 
@@ -8,9 +8,9 @@ Functional programming library for .NET 10 implementing Railway Oriented Program
 
 The framework is currently executing a multi-phase v2 redesign. The authoritative plan — package map, type moves, generator-bundling decisions, phasing, and explicit "do NOT merge these" rationale — is captured in:
 
-> **`docs/adr/ADR-002-v2-redesign-plan.md`**
+> **`docs/docfx_project/adr/ADR-002-v2-redesign-plan.md`**
 
-If you are touching package layout (csproj split/merge, `Trellis.slnx`, NuGet `PackageId`), generator packaging, the namespace/package map in this file, the package table in `README.md`, or the v1→v2 breaking-changes table in `docs/api_reference/trellis-api-core.md`, **read ADR-002 §2 (Proposed Package Map) and §15 (Phasing) first**. Anything in this repo that contradicts ADR-002 is the bug.
+If you are touching package layout (csproj split/merge, `Trellis.slnx`, NuGet `PackageId`), generator packaging, the namespace/package map in this file, the package table in `README.md`, or the v1→v2 breaking-changes table in `docs/docfx_project/api_reference/trellis-api-core.md`, **read ADR-002 §2 (Proposed Package Map) and §15 (Phasing) first**. Anything in this repo that contradicts ADR-002 is the bug.
 
 Phase status as of last update:
 - **Phase 1a — `Trellis.Results` → `Trellis.Core` rename:** shipped in PR #401.
@@ -21,24 +21,24 @@ Phase status as of last update:
 
 ## Before Writing Code That Uses Trellis APIs
 
-Always read the relevant cookbook recipe and API reference files in `docs/api_reference/` **before** writing or generating code that uses Trellis types.
+Always read the relevant cookbook recipe and API reference files in `docs/docfx_project/api_reference/` **before** writing or generating code that uses Trellis types.
 
-Start with the task lookup table at the top of `docs/api_reference/trellis-api-cookbook.md`. If the current work matches a row (aggregate, handler, pagination, endpoint, DTO-to-VO mapping, resource authorization, EF `Maybe<T>`, optional fields, state machine, tests, domain events, analyzer warnings, or composition root), read the listed recipe before writing code. Then read the package reference files below for exact signatures.
+Start with the task lookup table at the top of `docs/docfx_project/api_reference/trellis-api-cookbook.md`. If the current work matches a row (aggregate, handler, pagination, endpoint, DTO-to-VO mapping, resource authorization, EF `Maybe<T>`, optional fields, state machine, tests, domain events, analyzer warnings, or composition root), read the listed recipe before writing code. Then read the package reference files below for exact signatures.
 
 | When using... | Read first |
 |--------------|------------|
-| Result, Maybe, Bind, Map, Tap, Ensure, Combine, Check | `docs/api_reference/trellis-api-core.md` |
-| Aggregate, Entity, ValueObject, Specification | `docs/api_reference/trellis-api-core.md` |
-| RequiredString, RequiredGuid, Money, EmailAddress, etc. | `docs/api_reference/trellis-api-primitives.md` |
-| ToHttpResponse, ETag, Prefer, WriteOutcome | `docs/api_reference/trellis-api-asp.md` |
-| EF Core integration | `docs/api_reference/trellis-api-efcore.md` |
-| Actor, IActorProvider, IAuthorize | `docs/api_reference/trellis-api-authorization.md` |
-| FluentValidation integration | `docs/api_reference/trellis-api-fluentvalidation.md` |
-| HttpClient extensions | `docs/api_reference/trellis-api-http.md` |
-| Mediator pipeline behaviors | `docs/api_reference/trellis-api-mediator.md` |
-| State machine integration | `docs/api_reference/trellis-api-statemachine.md` |
-| Testing helpers | `docs/api_reference/trellis-api-testing-reference.md` |
-| Analyzer rules (TRLS001-TRLS021) | `docs/api_reference/trellis-api-analyzers.md` |
+| Result, Maybe, Bind, Map, Tap, Ensure, Combine, Check | `docs/docfx_project/api_reference/trellis-api-core.md` |
+| Aggregate, Entity, ValueObject, Specification | `docs/docfx_project/api_reference/trellis-api-core.md` |
+| RequiredString, RequiredGuid, Money, EmailAddress, etc. | `docs/docfx_project/api_reference/trellis-api-primitives.md` |
+| ToHttpResponse, ETag, Prefer, WriteOutcome | `docs/docfx_project/api_reference/trellis-api-asp.md` |
+| EF Core integration | `docs/docfx_project/api_reference/trellis-api-efcore.md` |
+| Actor, IActorProvider, IAuthorize | `docs/docfx_project/api_reference/trellis-api-authorization.md` |
+| FluentValidation integration | `docs/docfx_project/api_reference/trellis-api-fluentvalidation.md` |
+| HttpClient extensions | `docs/docfx_project/api_reference/trellis-api-http.md` |
+| Mediator pipeline behaviors | `docs/docfx_project/api_reference/trellis-api-mediator.md` |
+| State machine integration | `docs/docfx_project/api_reference/trellis-api-statemachine.md` |
+| Testing helpers | `docs/docfx_project/api_reference/trellis-api-testing-reference.md` |
+| Analyzer rules (TRLS001-TRLS021) | `docs/docfx_project/api_reference/trellis-api-analyzers.md` |
 
 These files document the exact method signatures, overloads, and usage patterns. Do not assume APIs based on naming conventions — read the reference first.
 
@@ -63,7 +63,7 @@ The single namespace for all structural types. These have zero dependencies beyo
 | Trellis.Core | `Result<T>`, `Maybe<T>`, `Error`, `Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, `RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredDecimal`, `RequiredEnum` base classes |
 | Trellis.Primitives | Concrete VOs (`EmailAddress`, `Money`, etc.) — see `Trellis.Primitives` namespace below |
 
-For complete API details, see `docs/api_reference/trellis-api-core.md`, `trellis-api-core.md`, `trellis-api-primitives.md`.
+For complete API details, see `docs/docfx_project/api_reference/trellis-api-core.md`, `trellis-api-core.md`, `trellis-api-primitives.md`.
 
 ### `Trellis.Primitives` — Opinionated Ready-to-Use Value Objects
 
@@ -107,7 +107,7 @@ Each integration package gets its own namespace because it pulls in a third-part
 | `Trellis.Mediator` | Application layer (CQRS only) | Mediator pipeline behaviors |
 | `Trellis.EntityFrameworkCore` | ACL layer only | EF Core integration |
 
-For the complete API surface of each namespace, read the corresponding `docs/api_reference/trellis-api-*.md` file.
+For the complete API surface of each namespace, read the corresponding `docs/docfx_project/api_reference/trellis-api-*.md` file.
 
 ### Namespace Placement Rule
 
@@ -124,9 +124,9 @@ If it pulls in a **third-party or framework dependency** → its own namespace m
 
 For value object creation patterns (`TryCreate`/`Create`), async ROP chain patterns (`BindAsync`, `MapAsync`, `TapAsync`, etc.), and all extension method signatures and overloads, read the API reference files:
 
-- `docs/api_reference/trellis-api-core.md` — Result/Maybe operations, async patterns, mixing sync and async in chains
-- `docs/api_reference/trellis-api-primitives.md` — Value object creation, `[StringLength]`, culture-aware parsing
-- `docs/api_reference/trellis-api-core.md` — Aggregate, Entity, Specification patterns
+- `docs/docfx_project/api_reference/trellis-api-core.md` — Result/Maybe operations, async patterns, mixing sync and async in chains
+- `docs/docfx_project/api_reference/trellis-api-primitives.md` — Value object creation, `[StringLength]`, culture-aware parsing
+- `docs/docfx_project/api_reference/trellis-api-core.md` — Aggregate, Entity, Specification patterns
 
 **Do not assume API signatures.** The API references document the exact overloads available (including sync-on-async variants).
 
@@ -192,13 +192,13 @@ When both `Task<T>` and `ValueTask<T>` overloads exist, use explicit constructor
 
 ## Railway Oriented Programming (ROP)
 
-For `Result<T>`, `Maybe<T>`, `Error`, and all ROP extension methods (`Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `Check`, `Match`, `RecoverOnFailure`, `ParallelAsync`, etc.), see `docs/api_reference/trellis-api-core.md`.
+For `Result<T>`, `Maybe<T>`, `Error`, and all ROP extension methods (`Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `Check`, `Match`, `RecoverOnFailure`, `ParallelAsync`, etc.), see `docs/docfx_project/api_reference/trellis-api-core.md`.
 
-For `Maybe<T>` usage in ASP.NET DTOs and EF Core, see `docs/api_reference/trellis-api-asp.md` and `docs/api_reference/trellis-api-efcore.md`.
+For `Maybe<T>` usage in ASP.NET DTOs and EF Core, see `docs/docfx_project/api_reference/trellis-api-asp.md` and `docs/docfx_project/api_reference/trellis-api-efcore.md`.
 
 ### Error API Discipline (V2 Closed ADT)
 
-`Error` is a **closed discriminated union**: each HTTP-aligned case (`NotFound`, `Conflict`, `UnprocessableContent`, `Forbidden`, `InternalServerError`, …) is a `sealed record` nested inside the `Error` base record. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit. See `docs/adr/ADR-001-result-api-surface.md` for design rationale.
+`Error` is a **closed discriminated union**: each HTTP-aligned case (`NotFound`, `Conflict`, `UnprocessableContent`, `Forbidden`, `InternalServerError`, …) is a `sealed record` nested inside the `Error` base record. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit. See `docs/docfx_project/adr/ADR-001-result-api-surface.md` for design rationale.
 
 **Construct errors with `new Error.X(...)`. There are no static factory helpers.**
 
@@ -235,7 +235,7 @@ Key facts:
 - `IUnitOfWork.CommitAsync()` is the single commit point. In the standard pipeline it's called automatically. Inject `IUnitOfWork` directly only for non-pipeline scenarios (background jobs, tests).
 - Register with `services.AddTrellisUnitOfWork<AppDbContext>()` in the ACL layer.
 
-For the full API surface, see `docs/api_reference/trellis-api-efcore.md`.
+For the full API surface, see `docs/docfx_project/api_reference/trellis-api-efcore.md`.
 
 ### Testing Philosophy
 
@@ -261,8 +261,8 @@ Before considering work complete, verify:
 1. **Build succeeds** — `dotnet build` with zero errors and zero warnings
 2. **All tests pass** — `dotnet test` with zero failures
 3. **Documentation updated:**
-   - `docs/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-core.md`, `trellis-api-core.md`, `trellis-api-primitives.md`, etc.)
-   - `docs/api_reference/trellis-api-testing-reference.md` — if test helpers were added or changed
+   - `docs/docfx_project/api_reference/trellis-api-*.md` — if any public API was added or changed (per-library files: `trellis-api-core.md`, `trellis-api-core.md`, `trellis-api-primitives.md`, etc.)
+   - `docs/docfx_project/api_reference/trellis-api-testing-reference.md` — if test helpers were added or changed
    - Package `README.md` — if the package's public surface changed
    - Docfx articles in `docs/docfx_project/articles/` — if relevant articles exist for the feature area
 4. **PR summary prepared** — when asked for a PR summary, output it in a copy-paste-ready format:
@@ -391,7 +391,7 @@ When adding or modifying a package, verify these documentation artifacts:
 | Article TOC | `docs/docfx_project/articles/toc.yml` | Add entry under the appropriate section (e.g., Integration Guides) |
 | `NUGET_README.md` | `Trellis.{Package}/NUGET_README.md` | Create or update — this is the NuGet.org package description |
 | `README.md` | `Trellis.{Package}/README.md` | Create or update — this is the GitHub-facing documentation |
-| `trellis-api-*.md` | `docs/api_reference/trellis-api-{library}.md` | Update the per-library AI API reference file (e.g., `trellis-api-core.md`, `trellis-api-efcore.md`) with any new or changed public types, methods, or extension methods — these documents are consumed by AI coding assistants |
+| `trellis-api-*.md` | `docs/docfx_project/api_reference/trellis-api-{library}.md` | Update the per-library AI API reference file (e.g., `trellis-api-core.md`, `trellis-api-efcore.md`) with any new or changed public types, methods, or extension methods — these documents are consumed by AI coding assistants |
 
 ```csharp
 /// <summary>

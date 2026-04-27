@@ -1,4 +1,4 @@
-﻿# Migrating from FunctionalDDD
+# Migrating from FunctionalDDD
 
 Migrating from `FunctionalDdd.*` to `Trellis.*` is mostly a **rename exercise**, not a redesign.
 
@@ -211,7 +211,7 @@ Beyond the rename, v2 also ships incremental package-level redesigns. Each is de
 
 ### Phase 4b &mdash; `Trellis.Http` slim
 
-`Trellis.Http` collapsed from 60+ overloads to a single seven-method static class. The full migration table lives in [`docs/api_reference/trellis-api-http.md`](../../api_reference/trellis-api-http.md#breaking-changes-from-v1); the headlines:
+`Trellis.Http` collapsed from 60+ overloads to a single seven-method static class. The full migration table lives in [`docs/api_reference/trellis-api-http.md`](../api_reference/trellis-api-http.md#breaking-changes-from-v1); the headlines:
 
 - **Renamed:** `ReadResultFromJsonAsync` &rarr; `ReadJsonAsync`, `ReadResultMaybeFromJsonAsync` &rarr; `ReadJsonMaybeAsync` (single canonical shape on `Task<Result<HttpResponseMessage>>`).
 - **Removed verbs:** `HandleForbidden*`, `HandleClientError*`, `HandleServerError*`, `EnsureSuccess` / `EnsureSuccessAsync`, `HandleFailureAsync<TContext>`. All are expressible via the new `ToResultAsync(statusMap)` (status-only map) or body-aware `ToResultAsync(mapper, ct)` overload.

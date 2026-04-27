@@ -29,19 +29,19 @@
   - name: Core Operations
     items:
     - name: Combine (Validate Multiple)
-      href: basics.md#combine---validate-multiple-inputs
+      href: basics.md#combine-validate-independent-inputs-together
     - name: Bind (Chain Operations)
-      href: basics.md#bind---chain-operations
+      href: basics.md#bind-call-the-next-result-producing-step
     - name: Map (Transform Values)
-      href: basics.md#map---transform-values
+      href: basics.md#map-transform-a-successful-value
     - name: Tap (Side Effects)
-      href: basics.md#tap---execute-side-effects
+      href: basics.md#tap-run-a-side-effect-without-changing-the-result
     - name: Ensure (Add Validation)
-      href: basics.md#ensure---add-validation
+      href: basics.md#ensure-add-a-business-rule
     - name: RecoverOnFailure (Error Recovery)
-      href: basics.md#recoveronfailure---recover-from-errors
+      href: basics.md#recoveronfailure-provide-a-fallback-path
     - name: Match (Unwrap Result)
-      href: basics.md#match---unwrap-the-result
+      href: basics.md#match-finish-the-pipeline
   - name: Error Handling
     href: error-handling.md
   - name: Advanced Features

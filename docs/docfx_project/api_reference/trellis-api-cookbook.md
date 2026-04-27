@@ -1382,5 +1382,5 @@ var command = Result.Combine(
 - [trellis-api-core.md](trellis-api-core.md#extension-class-catalog-full-signatures) — every `Result*Extensions(Async)` family with full signatures.
 - [trellis-api-core.md](trellis-api-core.md#pagination) — `Cursor`, `Page<T>`, `Page.Empty<T>`.
 - [trellis-api-asp.md](trellis-api-asp.md) — `HttpResponseOptionsBuilder<TDomain>` member-by-member.
-- [trellis-api-mediator.md](trellis-api-mediator.md#pipeline-order) — exact behavior ordering.
+- [trellis-api-mediator.md](trellis-api-mediator.md#canonical-pipeline-order) — exact behavior ordering.
 - [trellis-api-analyzers.md](trellis-api-analyzers.md#constants--trellisdiagnosticids) — every `TrellisDiagnosticIds` constant + emitting analyzer.
