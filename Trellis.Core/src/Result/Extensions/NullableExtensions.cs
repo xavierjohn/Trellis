@@ -18,12 +18,12 @@ using System.Diagnostics;
 /// 
 /// // Convert nullable reference type to Result
 /// User? maybeUser = FindUser(id);
-/// var userResult = maybeUser.ToResult(Error.NotFound("User not found", id));
+/// var userResult = maybeUser.ToResult(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found" });
 /// 
 /// // Chain with other Result operations
 /// var validatedResult = GetUser(id)
-///     .ToResult(Error.NotFound("User not found"))
-///     .Ensure(u => u.IsActive, Error.Domain("User is inactive"));
+///     .ToResult(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found" })
+///     .Ensure(u => u.IsActive, Error.UnprocessableContent.ForRule("inactive", "User is inactive"));
 /// </code>
 /// </example>
 [DebuggerStepThrough]

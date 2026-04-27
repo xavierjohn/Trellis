@@ -94,7 +94,7 @@ public static class ResultLinqExtensions
     ///              
     /// // Better: Use Ensure for custom error
     /// var betterResult = GetUser(id)
-    ///     .Ensure(u => u.IsActive, Error.Domain("User is not active"));
+    ///     .Ensure(u => u.IsActive, Error.UnprocessableContent.ForRule("inactive", "User is not active"));
     /// </code>
     /// </example>
     public static Result<TSource> Where<TSource>(this Result<TSource> source, Func<TSource, bool> predicate)
