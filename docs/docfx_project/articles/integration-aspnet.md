@@ -187,7 +187,7 @@ One of the biggest wins of `Trellis.Asp` is that you do not need a custom `switc
 | `Error.ServiceUnavailable` | `503 Service Unavailable` |
 
 > [!NOTE]
-> Trellis error codes follow the `.error` suffix convention, such as `validation.error`, `not.found.error`, and `conflict.error`.
+> Trellis error codes default to the error kind, such as `unprocessable-content` or `not-found`. Some payload-bearing cases expose a per-instance reason code instead.
 
 ## Problem Details output
 
@@ -200,8 +200,8 @@ Content-Type: application/problem+json
 {
   "title": "One or more validation errors occurred.",
   "status": 422,
-  "code": "validation.error",
-  "kind": "unprocessable_content",
+  "code": "unprocessable-content",
+  "kind": "unprocessable-content",
   "errors": {
     "email": ["Email is required"]
   }
