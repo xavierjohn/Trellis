@@ -25,11 +25,11 @@ using System.Threading.Tasks;
 /// <code>
 /// // Convert a generic error to a more specific one
 /// var result = GetUser(id)
-///     .MapOnFailure(err => Error.NotFound($"User {id} not found", id));
+///     .MapOnFailure(err => new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = $"User {id} not found" });
 /// 
 /// // Add context to an error
 /// var result = ValidateEmail(email)
-///     .MapOnFailure(err => Error.UnprocessableContent.ForField("email", "invalid", $"Email validation failed: {(err as Error.UnprocessableContent)?.Fields[0].Detail}"));
+///     .MapOnFailure(err => Error.UnprocessableContent.ForField("email", "invalid", $"Email validation failed: {err.Detail}"));
 /// 
 /// // Async with CancellationToken using closure capture
 /// var ct = cancellationToken;
