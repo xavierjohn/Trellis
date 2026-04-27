@@ -212,7 +212,7 @@ Each one carries intent, and the defaults map naturally to HTTP semantics.
 | Factory | Default code | Typical meaning |
 | --- | --- | --- |
 | `new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... }` | `validation.error` | Input or rule validation failed |
-| `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }` | `not.found.error` | The resource does not exist |
+| `new Error.NotFound(ResourceRef.For("Order", "42")) { Detail = ... }` | `not.found.error` | The resource does not exist |
 | `new Error.Conflict(null, "conflict") { Detail = ... }` | `conflict.error` | Current state prevents the operation |
 | `new Error.Forbidden("policy.id") { Detail = ... }` | `forbidden.error` | Caller is authenticated but not allowed |
 | `new Error.InternalServerError("fault-id") { Detail = ... }` | `unexpected.error` | Something unplanned failed |
@@ -220,7 +220,7 @@ Each one carries intent, and the defaults map naturally to HTTP semantics.
 ```csharp
 using Trellis;
 
-var message = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Order not found." } == new Error.NotFound(new ResourceRef("Resource")) { Detail = "Customer not found." }
+var message = new Error.NotFound(ResourceRef.For("Order", "42")) { Detail = "Order not found." } == new Error.NotFound(ResourceRef.For("Customer", "17")) { Detail = "Customer not found." }
     ? "Same programmatic error code"
     : "Different error code";
 ```

@@ -961,7 +961,7 @@ public class UsersController : ControllerBase
         UserId id)
     {
         var user = await _repository.GetByIdAsync(id)
-            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" });
+            .ToResultAsync(new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" });
         
         return user.ToActionResult(this);
     }

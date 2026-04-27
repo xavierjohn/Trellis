@@ -200,7 +200,7 @@ using Trellis;
 
 public sealed record PricingSnapshot(string Source);
 
-Result<PricingSnapshot> cacheResult = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Price not found in cache." };
+Result<PricingSnapshot> cacheResult = new Error.NotFound(ResourceRef.For("Price")) { Detail = "Price not found in cache." };
 Result<PricingSnapshot> databaseResult = Result.Ok(new PricingSnapshot("database"));
 
 Result<PricingSnapshot> finalResult = cacheResult.RecoverOnFailure(
@@ -239,7 +239,7 @@ static Task<Result> SendPromotionNotificationAsync(string email) =>
     Task.FromResult(Result.Ok(new Unit()));
 
 string message = await GetCustomerByIdAsync(1)
-    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Customer not found." })
+    .ToResultAsync(new Error.NotFound(ResourceRef.For("Customer", 1)) { Detail = "Customer not found." })
     .EnsureAsync(customer => customer.CanBePromoted, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Customer cannot be promoted." })
     .TapAsync(customer => customer.PromoteAsync())
     .BindAsync(customer => SendPromotionNotificationAsync(customer.Email))
@@ -260,7 +260,7 @@ The shape is the same as the synchronous version. That is one of the nicest part
 using Microsoft.AspNetCore.Http;
 using Trellis;
 
-Result<string> result = new Error.NotFound(new ResourceRef("Resource")) { Detail = "Order not found." };
+Result<string> result = new Error.NotFound(ResourceRef.For("Order")) { Detail = "Order not found." };
 
 IResult httpResult = result.Match(
     onSuccess: order => Results.Ok(order),

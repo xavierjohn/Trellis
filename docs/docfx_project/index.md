@@ -15,7 +15,7 @@ The big win is simple: **your happy path stays readable even when the real world
 - **Integrate with ASP.NET Core** using `ToHttpResponse()` and `AsActionResult<T>()` when you are ready to expose APIs
 
 > [!NOTE]
-> Trellis error codes default to the error kind. For example, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }` produces the code `not-found`.
+> Trellis error codes default to the error kind. For example, `new Error.NotFound(ResourceRef.For("Order", orderId)) { Detail = ... }` produces the code `not-found`.
 
 ---
 
@@ -147,7 +147,7 @@ If you want the full API surface, jump to the **[API reference](api/index.md)** 
 
 - `Unit` is `record struct Unit;` and has **no** `Unit.Value` property. Use `Result.Ok()` for a success-without-payload flow, or `new Unit()` / `default` when you need a `Unit` instance.
 - `Error.Equals(...)` compares **only the error code**, not the detail text.
-- `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and the other case constructors create specific error subtypes whose `Code` defaults to the hyphenated `Kind` unless that case exposes a payload-specific code.
+- `new Error.NotFound(ResourceRef.For("Order", orderId)) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and the other case constructors create specific error subtypes whose `Code` defaults to the hyphenated `Kind` unless that case exposes a payload-specific code.
 
 ---
 

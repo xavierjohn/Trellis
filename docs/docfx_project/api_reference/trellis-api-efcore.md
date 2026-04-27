@@ -164,7 +164,7 @@ public class OrderRepository(DbContext context) : RepositoryBase<Order, OrderId>
 // In a command handler (pipeline auto-commits on success):
 var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
 return maybe
-    .ToResult(new Error.NotFound(ResourceRef.For("Order")) { Detail = "Order not found." })
+    .ToResult(new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)) { Detail = "Order not found." })
     .Bind(order => order.Ship());
 // Tracked changes are committed automatically by TransactionalCommandBehavior.
 ```

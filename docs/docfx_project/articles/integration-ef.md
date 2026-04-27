@@ -110,7 +110,7 @@ public sealed class CustomerRepository(AppDbContext db)
     public Task<Result<Customer>> GetRequiredAsync(CustomerId id, CancellationToken ct) =>
         db.Customers.FirstOrDefaultResultAsync(
             x => x.Id == id,
-            new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Customer {id} was not found." },
+            new Error.NotFound(ResourceRef.For<Customer>(id)) { Detail = $"Customer {id} was not found." },
             ct);
 }
 ```
@@ -186,7 +186,7 @@ public async ValueTask<Result<Order>> Handle(ShipOrderCommand cmd, CancellationT
 {
     var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
     return maybe
-        .ToResult(new Error.NotFound(new ResourceRef("Resource")) { Detail = "Order not found." })
+        .ToResult(new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)) { Detail = "Order not found." })
         .Bind(order => order.Ship());
     // TransactionalCommandBehavior auto-commits the tracked changes on success.
 }
