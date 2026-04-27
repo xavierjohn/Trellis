@@ -826,7 +826,7 @@ For tuple-enabled families, generated overloads cover the declared arity ranges 
 
 The reference signatures below cover every `Result*Extensions(Async)` static class shipped by `Trellis.Core`. Each subsection lists the static class name(s), a methods table, and one representative usage example. All members live in the `Trellis` namespace.
 
-#### Task adapter family — `TaskAdapters`
+#### Task adapter family — `ResultTaskAdapterExtensions`
 
 Adapters for returning a synchronous `Result` from an async-shaped API without target-typed `new(...)` wrappers.
 

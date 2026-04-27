@@ -143,7 +143,8 @@ public static class HttpResponseExtensions
             return Result.Fail<Maybe<T>>(error);
         }
 
-        return await Task.FromResult(Result.Ok(message))
+        return await Result.Ok(message)
+            .AsTask()
             .ReadJsonMaybeAsync(jsonTypeInfo, ct)
             .ConfigureAwait(false);
     }

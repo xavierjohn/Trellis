@@ -8,8 +8,9 @@ using System.Globalization;
 /// <see cref="Error.Gone"/>, and <see cref="Error.PreconditionFailed"/>.
 /// </summary>
 /// <param name="Type">
-/// The resource type name (e.g. <c>"User"</c>, <c>"Order"</c>). Should be the domain
-/// concept, not a CLR type name. Required.
+/// The resource type name (e.g. <c>"User"</c>, <c>"Order"</c>). Use
+/// <see cref="For{TResource}(object?)"/> when the CLR type name is the desired resource name,
+/// or <see cref="For(string, object?)"/> when a custom domain name is needed. Required.
 /// </param>
 /// <param name="Id">
 /// Optional identifier of the specific resource instance. May be null when the error
