@@ -14,16 +14,16 @@ using System.Diagnostics;
 /// <code>
 /// // Convert nullable value type to Result
 /// int? maybeAge = GetAge();
-/// var result = maybeAge.ToResult(Error.Validation("Age is required"));
+/// var result = maybeAge.ToResult(Error.UnprocessableContent.ForField("age", "invalid", "Age is required"));
 /// 
 /// // Convert nullable reference type to Result
 /// User? maybeUser = FindUser(id);
-/// var userResult = maybeUser.ToResult(Error.NotFound("User not found", id));
+/// var userResult = maybeUser.ToResult(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found" });
 /// 
 /// // Chain with other Result operations
 /// var validatedResult = GetUser(id)
-///     .ToResult(Error.NotFound("User not found"))
-///     .Ensure(u => u.IsActive, Error.Domain("User is inactive"));
+///     .ToResult(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found" })
+///     .Ensure(u => u.IsActive, Error.UnprocessableContent.ForRule("inactive", "User is inactive"));
 /// </code>
 /// </example>
 [DebuggerStepThrough]

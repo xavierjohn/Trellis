@@ -39,7 +39,7 @@ public static class ResultDebugExtensions
     /// <code>
     /// var result = GetUser(id)
     ///     .Debug("After GetUser")
-    ///     .Ensure(u => u.IsActive, Error.Validation("Inactive"))
+    ///     .Ensure(u => u.IsActive, Error.UnprocessableContent.ForRule("inactive", "User is inactive"))
     ///     .Debug("After Ensure")
     ///     .Bind(ProcessUser)
     ///     .Debug("After ProcessUser");

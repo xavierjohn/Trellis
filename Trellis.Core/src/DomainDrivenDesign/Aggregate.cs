@@ -65,18 +65,18 @@ using System.Text.Json.Serialization;
 ///     }
 ///     
 ///     public static Result<Order> Create(CustomerId customerId) =>
-///         customerId.ToResult(Error.Validation("Customer ID required"))
+///         customerId.ToResult(Error.UnprocessableContent.ForField("customerId", "invalid", "Customer ID required"))
 ///             .Map(id => new Order(OrderId.NewUnique(), id));
 ///     
 ///     // All modifications go through methods that enforce invariants
 ///     public Result<Order> AddLine(ProductId productId, int quantity, Money unitPrice) =>
 ///         this.ToResult()
 ///             .Ensure(_ => Status == OrderStatus.Draft,
-///                    Error.Validation("Cannot modify submitted order"))
+///                    Error.UnprocessableContent.ForRule("invalid", "Cannot modify submitted order"))
 ///             .Ensure(_ => quantity > 0,
-///                    Error.Validation("Quantity must be positive"))
+///                    Error.UnprocessableContent.ForField("quantity", "invalid", "Quantity must be positive"))
 ///             .Ensure(_ => _lines.Count < 100,
-///                    Error.Validation("Order cannot have more than 100 lines"))
+///                    Error.UnprocessableContent.ForRule("invalid", "Order cannot have more than 100 lines"))
 ///             .Tap(_ =>
 ///             {
 ///                 var line = new OrderLine(productId, quantity, unitPrice);
@@ -90,9 +90,9 @@ using System.Text.Json.Serialization;
 ///     public Result<Order> Submit() =>
 ///         this.ToResult()
 ///             .Ensure(_ => Status == OrderStatus.Draft,
-///                    Error.Validation("Order already submitted"))
+///                    Error.UnprocessableContent.ForRule("invalid", "Order already submitted"))
 ///             .Ensure(_ => _lines.Count > 0,
-///                    Error.Validation("Cannot submit empty order"))
+///                    Error.UnprocessableContent.ForRule("invalid", "Cannot submit empty order"))
 ///             .Tap(_ =>
 ///             {
 ///                 Status = OrderStatus.Submitted;
@@ -328,7 +328,7 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     ///     catch (Exception ex)
     ///     {
     ///         await transaction.RollbackAsync(ct);
-    ///         return Error.Unexpected(ex.Message);
+    ///         return new Error.Unexpected("transaction_failed") { Detail = ex.Message };
     ///     }
     /// }
     /// ]]></code>

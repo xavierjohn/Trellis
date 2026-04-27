@@ -68,9 +68,9 @@
 ///         string street, string city, string state, string postalCode) =>
 ///         (street, city, state, postalCode).ToResult()
 ///             .Ensure(x => !string.IsNullOrWhiteSpace(x.street), 
-///                    Error.Validation("Street is required"))
+///                    Error.UnprocessableContent.ForField("street", "invalid", "Street is required"))
 ///             .Ensure(x => !string.IsNullOrWhiteSpace(x.city),
-///                    Error.Validation("City is required"))
+///                    Error.UnprocessableContent.ForField("city", "invalid", "City is required"))
 ///             .Map(x => new Address(x.street, x.city, x.state, x.postalCode));
 ///
 ///     // Define what makes two addresses equal
@@ -111,9 +111,9 @@
 ///     
 ///     public static Result&lt;Money&gt; TryCreate(decimal amount, string currency = "USD") =>
 ///         (amount, currency).ToResult()
-///             .Ensure(x => x.amount >= 0, Error.Validation("Amount cannot be negative"))
+///             .Ensure(x => x.amount >= 0, Error.UnprocessableContent.ForField("amount", "invalid", "Amount cannot be negative"))
 ///             .Ensure(x => x.currency.Length == 3, 
-///                    Error.Validation("Currency must be 3-letter ISO code"))
+///                    Error.UnprocessableContent.ForField("currency", "invalid", "Currency must be 3-letter ISO code"))
 ///             .Map(x => new Money(x.amount, x.currency.ToUpperInvariant()));
 ///     
 ///     protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
@@ -125,7 +125,7 @@
 ///     // Domain operations return new instances (immutability)
 ///     public Result&lt;Money&gt; Add(Money other) =>
 ///         Currency != other.Currency
-///             ? Error.Validation($"Cannot add {other.Currency} to {Currency}")
+///             ? Error.UnprocessableContent.ForRule("currency_mismatch", $"Cannot add {other.Currency} to {Currency}")
 ///             : new Money(Amount + other.Amount, Currency).ToResult();
 ///     
 ///     public Money Multiply(decimal factor) =>
