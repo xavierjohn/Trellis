@@ -12,7 +12,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 |----|----------|-------|-------------|
 | `TRLS001` | Warning | Result return value is not handled | Result<T> return values should be handled to ensure errors are not silently ignored. Use Bind, Map, Match, or assign to a variable. |
 | `TRLS002` | Info | Use Bind instead of Map when lambda returns Result | When the transformation function returns a Result<T>, use Bind (flatMap) instead of Map. Map will produce Result<Result<T>> which is likely not intended. |
-| `TRLS003` | Warning | Unsafe access to Maybe.Value | Maybe.Value throws an InvalidOperationException if the Maybe has no value. Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult. |
+| `TRLS003` | Error | Unsafe access to Maybe.Value | Maybe.Value throws an InvalidOperationException if the Maybe has no value. Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult. `Maybe<T>.Value` is hidden from IntelliSense as polish; this analyzer is the enforcement mechanism. |
 | `TRLS004` | Warning | Result is double-wrapped | Result should not be wrapped inside another Result. This creates Result<Result<T>> which is almost always unintended. If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result. |
 | `TRLS005` | Warning | Incorrect async Result usage | Task<Result<T>> should be awaited, not blocked with .Result or .Wait(). Blocking can cause deadlocks and prevents proper async execution. Use await instead. |
 | `TRLS007` | Warning | Maybe is double-wrapped | Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. Consider converting to Result with ToResult() for better composability. |
@@ -94,7 +94,7 @@ The public static class `Trellis.Analyzers.DiagnosticDescriptors` exposes one `p
 | --- | --- | --- | --- |
 | `ResultNotHandled` | `TRLS001` | Warning | Trellis.Result |
 | `UseBindInsteadOfMap` | `TRLS002` | Info | Trellis.Result |
-| `UnsafeMaybeValueAccess` | `TRLS003` | Warning | Trellis.Maybe |
+| `UnsafeMaybeValueAccess` | `TRLS003` | Error | Trellis.Maybe |
 | `ResultDoubleWrapping` | `TRLS004` | Warning | Trellis.Result |
 | `AsyncResultMisuse` | `TRLS005` | Warning | Trellis.Result |
 | `MaybeDoubleWrapping` | `TRLS007` | Warning | Trellis.Maybe |

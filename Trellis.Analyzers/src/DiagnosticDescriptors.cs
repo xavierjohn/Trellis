@@ -46,10 +46,10 @@ public static class DiagnosticDescriptors
         title: "Unsafe access to Maybe.Value",
         messageFormat: "Accessing Maybe.Value without checking HasValue may throw an exception",
         category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Maybe.Value throws an InvalidOperationException if the Maybe has no value. " +
-                     "Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult.",
+                      "Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult.",
         helpLinkUri: HelpLinkBase + "TRLS003");
 
     /// <summary>

@@ -1,6 +1,7 @@
 namespace Trellis.Http.Tests.HttpResponseExtensionsTests;
 
 using System;
+using System.Globalization;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,16 +12,56 @@ public class ToResultAsyncTests
 {
     [Theory]
     [InlineData(HttpStatusCode.OK)]
-    [InlineData(HttpStatusCode.NotFound)]
-    [InlineData(HttpStatusCode.InternalServerError)]
-    public async Task Default_null_status_map_returns_Ok_for_all_status_codes(HttpStatusCode status)
+    [InlineData(HttpStatusCode.Created)]
+    [InlineData(HttpStatusCode.NoContent)]
+    public async Task Default_null_status_map_returns_Ok_for_success_status_codes(HttpStatusCode status)
     {
-        using var response = new HttpResponseMessage(status);
-        var task = Task.FromResult<HttpResponseMessage>(response);
+        var tracker = new TrackingHttpResponseMessage(status);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
 
         var result = await task.ToResultAsync();
 
         result.Should().BeSuccess().Which.StatusCode.Should().Be(status);
+        tracker.Disposed.Should().BeFalse();
+        tracker.Dispose();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest, typeof(Error.BadRequest))]
+    [InlineData(HttpStatusCode.Unauthorized, typeof(Error.Unauthorized))]
+    [InlineData(HttpStatusCode.Forbidden, typeof(Error.Forbidden))]
+    [InlineData(HttpStatusCode.NotFound, typeof(Error.NotFound))]
+    [InlineData(HttpStatusCode.Conflict, typeof(Error.Conflict))]
+    [InlineData(HttpStatusCode.Gone, typeof(Error.Gone))]
+    [InlineData(HttpStatusCode.UnprocessableEntity, typeof(Error.UnprocessableContent))]
+    [InlineData(HttpStatusCode.ServiceUnavailable, typeof(Error.ServiceUnavailable))]
+    public async Task Default_null_status_map_returns_typed_failure_for_known_non_success_statuses(
+        HttpStatusCode status,
+        Type errorType)
+    {
+        var tracker = new TrackingHttpResponseMessage(status);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType(errorType);
+        result.Error!.Detail.Should().Contain(((int)status).ToString(CultureInfo.InvariantCulture));
+        tracker.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Default_null_status_map_returns_InternalServerError_for_unknown_status()
+    {
+        const HttpStatusCode status = (HttpStatusCode)599;
+        var tracker = new TrackingHttpResponseMessage(status);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        result.Should().BeFailureOfType<Error.InternalServerError>()
+            .Which.Detail.Should().Contain("599");
+        tracker.Disposed.Should().BeTrue();
     }
 
     [Fact]

@@ -431,7 +431,7 @@ Eighteen nested `sealed record` cases under `Error`. Each case constructor is `i
 | `Error.BadRequest` | `(string ReasonCode, InputPointer? At = null)` | 400 | `Code` returns `ReasonCode`; `At` is an optional RFC 6901 JSON Pointer to the offending input. |
 | `Error.Unauthorized` | `(EquatableArray<AuthChallenge> Challenges = default)` | 401 | Round-trips real `WWW-Authenticate` (per RFC 9110 §11.6.1). |
 | `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | 403 | `Code` returns `PolicyId`. |
-| `Error.NotFound` | `(ResourceRef Resource)` | 404 | `Resource` (e.g. `new ResourceRef("Order", "42")`) drives ProblemDetails `instance`. |
+| `Error.NotFound` | `(ResourceRef Resource)` | 404 | `Resource` (e.g. `ResourceRef.For<Order>(orderId)`) drives ProblemDetails `instance`. |
 | `Error.MethodNotAllowed` | `(EquatableArray<string> Allow)` | 405 | `Allow` populates the `Allow` response header (RFC 9110 §15.5.6). |
 | `Error.NotAcceptable` | `(EquatableArray<string> Available)` | 406 | Available media types. |
 | `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | 409 | `Code` returns `ReasonCode`. |
@@ -453,7 +453,7 @@ Eighteen nested `sealed record` cases under `Error`. Each case constructor is `i
 
 | Type | Shape | Purpose |
 | --- | --- | --- |
-| `ResourceRef` | `readonly record struct (string Type, string? Id = null)` | Aggregate identity (e.g. `new ResourceRef("Order", "42")`). |
+| `ResourceRef` | `readonly record struct (string Type, string? Id = null)` plus `ResourceRef.For(string type, object? id = null)` and `ResourceRef.For<TResource>(object? id = null)` | Aggregate identity. The `For(...)` helpers convert IDs with invariant formatting when possible and `For<TResource>` uses `typeof(TResource).Name` exactly. |
 | `InputPointer` | `readonly record struct (string Path)` | RFC 6901 JSON Pointer (e.g. `/email`). Construct via `InputPointer.ForProperty("email")`, append with `Append(...)`, or use the document-root sentinel `InputPointer.Root` (path `""`). `InputPointer.Root` is the canonical pointer for whole-body / object-level violations. |
 | `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Single per-field violation inside `UnprocessableContent.Fields`. `Detail` is the 4th positional parameter; supplies the boundary renderer's user-facing message when non-null. `Equals`/`GetHashCode` compare `Args` by content. |
 | `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `UnprocessableContent.Rules`. `Detail` is the 4th positional parameter. `Equals`/`GetHashCode` compare `Args` by content. |
@@ -826,6 +826,26 @@ For tuple-enabled families, generated overloads cover the declared arity ranges 
 
 The reference signatures below cover every `Result*Extensions(Async)` static class shipped by `Trellis.Core`. Each subsection lists the static class name(s), a methods table, and one representative usage example. All members live in the `Trellis` namespace.
 
+#### Task adapter family — `TaskAdapters`
+
+Adapters for returning a synchronous `Result` from an async-shaped API without target-typed `new(...)` wrappers.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Task<Result> AsTask(this Result result)` | `Task<Result>` | Wraps the exact non-generic result state in a completed `Task`. |
+| `public static Task<Result<T>> AsTask<T>(this Result<T> result)` | `Task<Result<T>>` | Wraps the exact generic result state in a completed `Task`. |
+| `public static ValueTask<Result> AsValueTask(this Result result)` | `ValueTask<Result>` | Wraps the exact non-generic result state in a completed `ValueTask`. |
+| `public static ValueTask<Result<T>> AsValueTask<T>(this Result<T> result)` | `ValueTask<Result<T>>` | Wraps the exact generic result state in a completed `ValueTask`. |
+
+```csharp
+public ValueTask<Result<OrderId>> Handle(CreateOrderCommand cmd, CancellationToken ct) =>
+    OrderId.TryCreate(cmd.OrderId)
+        .Bind(id => Order.Create(id))
+        .Tap(repo.Add)
+        .Map(order => order.Id)
+        .AsValueTask();
+```
+
 #### Bind family — `BindExtensions`, `BindExtensionsAsync`, `ResultBindExtensions`, `ResultBindExtensionsAsync`, `BindZipExtensions`, `BindZipExtensionsAsync`
 
 Sequential composition of result-producing functions. `Bind` is the monadic flatMap; `BindZip` keeps the upstream value in scope by zipping it into the next stage.
@@ -845,7 +865,7 @@ Sequential composition of result-producing functions. `Bind` is the monadic flat
 Result<Order> Place(OrderId id) =>
     LoadCustomer(id)
         .BindZip(c => LoadCart(c.Id))    // Result<(Customer, Cart)>
-        .Bind(t => Charge(t.Item1, t.Item2));
+        .Bind((customer, cart) => Charge(customer, cart));
 ```
 
 #### Map family — `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions`, `ResultMapExtensions`, `ResultMapExtensionsAsync`
@@ -865,7 +885,7 @@ Pure transformation of the success value (or failure error). Use `Map` when the 
 Task<Result<OrderDto>> Pipeline(OrderId id) =>
     LoadOrderAsync(id)
         .MapAsync(o => OrderDto.From(o))
-        .MapOnFailureAsync(e => e is Error.NotFound ? new Error.Gone(new ResourceRef("Order", id.Value.ToString())) : e);
+        .MapOnFailureAsync(e => e is Error.NotFound ? new Error.Gone(ResourceRef.For<Order>(id)) : e);
 ```
 
 #### Tap and TapOnFailure families — `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync`, `ResultTapExtensions`, `ResultTapExtensionsAsync`, `ResultTapOnFailureExtensions`, `ResultTapOnFailureExtensionsAsync`

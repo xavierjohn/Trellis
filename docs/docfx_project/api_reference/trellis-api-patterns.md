@@ -257,7 +257,7 @@ public static async Task<Result> UpdateNameAsync(
     return await db.Products
         .FirstOrDefaultResultAsync(
             p => p.Id == id,
-            new Error.NotFound(new ResourceRef("Product", id.ToString())) { Detail = "Product not found." },
+            new Error.NotFound(ResourceRef.For("Product", id)) { Detail = "Product not found." },
             cancellationToken)
         .Tap(product => product.Name = name)
         .CheckAsync(_ => db.SaveChangesResultUnitAsync(cancellationToken));
@@ -299,7 +299,7 @@ using Trellis.Http;
 
 public static Task<Result<UserResponse>> GetUserAsync(HttpClient httpClient, Guid id, CancellationToken cancellationToken) =>
     httpClient.GetAsync($"/users/{id}", cancellationToken)
-        .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found." })
+        .HandleNotFoundAsync(new Error.NotFound(ResourceRef.For("User", id)) { Detail = "User not found." })
         .ReadJsonAsync(UserJsonContext.Default.UserResponse, cancellationToken);
 
 public sealed record UserResponse(Guid Id, string Name);

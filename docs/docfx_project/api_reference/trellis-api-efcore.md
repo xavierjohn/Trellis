@@ -164,7 +164,7 @@ public class OrderRepository(DbContext context) : RepositoryBase<Order, OrderId>
 // In a command handler (pipeline auto-commits on success):
 var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
 return maybe
-    .ToResult(new Error.NotFound(new ResourceRef("Order")) { Detail = "Order not found." })
+    .ToResult(new Error.NotFound(ResourceRef.For("Order")) { Detail = "Order not found." })
     .Bind(order => order.Ship());
 // Tracked changes are committed automatically by TransactionalCommandBehavior.
 ```
@@ -652,7 +652,7 @@ await using var db = new AppDbContext(options);
 
 var result = await db.Customers.FirstOrDefaultResultAsync(
     x => x.Name == "missing",
-    new Error.NotFound(new ResourceRef("Customer")) { Detail = "Customer not found." });
+    new Error.NotFound(ResourceRef.For("Customer")) { Detail = "Customer not found." });
 
 var submittedCustomers = await db.Customers
     .WhereHasValue(x => x.SubmittedAt)

@@ -19,7 +19,7 @@ With Trellis, you describe the outcomes you expect and keep composing with the r
 
 ```mermaid
 flowchart LR
-    A[HttpClient call] --> B[ToResultAsync / Handle*Async]
+    A[HttpClient call] --> B[ToResultAsync / Handle*Async / ReadJsonOrNoneOn404Async]
     B --> C[ReadJsonAsync / ReadJsonMaybeAsync]
     C --> D[Result<T> or Result<Maybe<T>>]
     D --> E[Bind / Map / Tap / Ensure]
@@ -31,19 +31,20 @@ flowchart LR
 dotnet add package Trellis.Http
 ```
 
-## The v2 surface
+## The v3 surface
 
-`Trellis.Http` is a single static class &mdash; `HttpResponseExtensions` &mdash; with seven methods.
+`Trellis.Http` is a single static class &mdash; `HttpResponseExtensions` &mdash; with a small canonical method set.
 
 | Method | Receiver | Purpose |
 | --- | --- | --- |
-| `ToResultAsync(statusMap?)` | `Task<HttpResponseMessage>` | Bridge into `Task<Result<HttpResponseMessage>>`. Map any status to an `Error?` (return `null` to pass through). |
+| `ToResultAsync(statusMap?)` | `Task<HttpResponseMessage>` | Bridge into `Task<Result<HttpResponseMessage>>`. With no map, 2xx stays `Ok` and non-2xx becomes a typed Trellis failure. With a map, return `null` to pass through. |
 | `ToResultAsync(mapper, ct)` | `Task<HttpResponseMessage>` | Body-aware bridge. Async mapper invoked only on non-success status codes. Replaces the v1 `HandleFailureAsync<TContext>`. |
 | `HandleNotFoundAsync(error)` | `Task<HttpResponseMessage>` | Map 404 to `Fail`. |
 | `HandleConflictAsync(error)` | `Task<HttpResponseMessage>` | Map 409 to `Fail`. |
 | `HandleUnauthorizedAsync(error)` | `Task<HttpResponseMessage>` | Map 401 to `Fail`. |
 | `ReadJsonAsync<T>(jsonTypeInfo, ct)` | `Task<Result<HttpResponseMessage>>` | Read and deserialize the body. Required-payload semantics: empty / `null` / invalid JSON / `204` / `205` &rarr; `Fail`. |
 | `ReadJsonMaybeAsync<T>(jsonTypeInfo, ct)` | `Task<Result<HttpResponseMessage>>` | Optional-payload variant. `204`, `205`, empty body, JSON `null` &rarr; `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). |
+| `ReadJsonOrNoneOn404Async<T>(jsonTypeInfo, ct)` | `Task<HttpResponseMessage>` | Terminal optional-resource variant. `404` &rarr; `Ok(Maybe.None)`; other non-2xx statuses use strict mapping. |
 
 > [!TIP]
 > `ReadJsonAsync<T>` and `ReadJsonMaybeAsync<T>` require `T : notnull`. Use them with real payload types, not nullable reference types.
@@ -66,7 +67,7 @@ public sealed class UserDirectoryClient(HttpClient httpClient)
 {
     public Task<Result<UserDto>> GetUserAsync(string userId, CancellationToken cancellationToken) =>
         httpClient.GetAsync($"users/{userId}", cancellationToken)
-            .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("User", userId)) { Detail = $"User {userId} not found" })
+            .HandleNotFoundAsync(new Error.NotFound(ResourceRef.For<UserDto>(userId)) { Detail = $"User {userId} not found" })
             .ReadJsonAsync(ApiJsonContext.Default.UserDto, cancellationToken);
 }
 ```
@@ -122,7 +123,7 @@ public sealed class ProductsClient(HttpClient httpClient)
         httpClient.GetAsync($"products/{productId}", ct)
             .ToResultAsync(status => status switch
             {
-                HttpStatusCode.NotFound  => new Error.NotFound(new ResourceRef("Product", productId)),
+                HttpStatusCode.NotFound  => new Error.NotFound(ResourceRef.For<ProductDto>(productId)),
                 HttpStatusCode.Forbidden => new Error.Forbidden("products.read"),
                 _ when (int)status >= 500 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
                 _ when (int)status >= 400 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"client error {status}" },
@@ -178,6 +179,13 @@ Why split this into two helpers? Because "missing payload is a bug" and "missing
 - `204`, `205`, empty content, JSON `null` &rarr; `Ok(Maybe.None)`
 - valid JSON body &rarr; `Ok(Maybe.From(value))`
 
+### `ReadJsonOrNoneOn404Async` &mdash; resource optional
+
+- `404 NotFound` &rarr; `Ok(Maybe.None)`
+- other non-success status &rarr; typed Trellis failure via strict status mapping
+- `204`, `205`, empty content, JSON `null` &rarr; `Ok(Maybe.None)`
+- valid JSON body &rarr; `Ok(Maybe.From(value))`
+
 > [!WARNING]
 > `ReadJsonMaybeAsync` does **not** catch `JsonException`. Use it when "optional body" is allowed, not when you want malformed JSON silently treated as "no value". The response is still disposed before the exception escapes.
 
@@ -186,8 +194,8 @@ Why split this into two helpers? Because "missing payload is a bug" and "missing
 The library owns `HttpResponseMessage` disposal on terminal or transformative paths:
 
 - `ToResultAsync` (both overloads) and `Handle*Async` dispose the response on the `Fail` path.
-- `ReadJsonAsync` and `ReadJsonMaybeAsync` always dispose after reading, success or failure.
-- Pass-through paths (no `statusMap`, non-matching `Handle*Async`, mapper returning `null`) leave disposal to the caller until the chain reaches `ReadJson*`.
+- `ReadJsonAsync`, `ReadJsonMaybeAsync`, and `ReadJsonOrNoneOn404Async` always dispose after reading, success or failure.
+- Pass-through paths (success from bare `ToResultAsync`, non-matching `Handle*Async`, mapper returning `null`) leave disposal to the caller until the chain reaches `ReadJson*`.
 
 In practice: **once you call `ReadJson*`, you no longer need to dispose the response yourself.**
 
@@ -213,7 +221,7 @@ public Task<Result<PaymentReceiptDto>> ChargeAsync(string productId, Cancellatio
 ## Practical guidance
 
 - **Prefer source-generated JSON metadata** &mdash; keeps the chain AOT-friendly and matches the `JsonTypeInfo<T>` overloads.
-- **Handle expected failures explicitly.** If `404` is part of normal control flow, map it with `HandleNotFoundAsync`; do not fold it into a generic `ToResultAsync` mapping.
+- **Use optional reads intentionally.** If `404` means absence, use `ReadJsonOrNoneOn404Async`; if it is an error, let bare `ToResultAsync()` produce a failure or map it with `HandleNotFoundAsync`.
 - **Always pass the `CancellationToken`.** Every Trellis HTTP helper accepts it for a reason.
 - **Need a sync receiver?** Wrap with `Task.FromResult(response)`. In practice every `HttpClient` call is already async, so this is rarely necessary.
 

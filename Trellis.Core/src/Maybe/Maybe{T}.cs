@@ -1,5 +1,6 @@
-﻿namespace Trellis;
+namespace Trellis;
 
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -122,8 +123,10 @@ public readonly struct Maybe<T> :
     /// <value>The underlying value of type <typeparamref name="T"/>.</value>
     /// <exception cref="InvalidOperationException">Thrown when <see cref="HasValue"/> is false.</exception>
     /// <remarks>
-    /// Always check <see cref="HasValue"/> before accessing this property, or use <see cref="GetValueOrDefault(T)"/> instead.
+    /// Always check <see cref="HasValue"/> before accessing this property, or use
+    /// <see cref="TryGetValue"/>, <see cref="Match{TResult}"/>, or <see cref="GetValueOrDefault(T)"/> instead.
     /// </remarks>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public T Value => GetValueOrThrow();
 
     /// <summary>

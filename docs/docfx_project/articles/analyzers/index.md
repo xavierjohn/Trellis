@@ -8,7 +8,7 @@ Trellis analyzers help you keep `Result<T>`, `Maybe<T>`, EF Core integration, an
 |---|---|---|---|
 | TRLS001 | Warning | Result return value is not handled | [TRLS001](TRLS001.md) |
 | TRLS002 | Info | Use Bind instead of Map when lambda returns Result | [TRLS002](TRLS002.md) |
-| TRLS003 | Warning | Unsafe access to Maybe.Value | [TRLS003](TRLS003.md) |
+| TRLS003 | Error | Unsafe access to Maybe.Value | [TRLS003](TRLS003.md) |
 | TRLS004 | Warning | Result is double-wrapped | [TRLS004](TRLS004.md) |
 | TRLS005 | Warning | Incorrect async Result usage | [TRLS005](TRLS005.md) |
 | TRLS007 | Warning | Maybe is double-wrapped | [TRLS007](TRLS007.md) |

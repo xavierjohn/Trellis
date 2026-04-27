@@ -23,6 +23,8 @@ Result<string> email = Result.Ok("ada@example.com")
 - Compose success and failure paths with `Bind`, `Map`, `Tap`, and `Ensure`.
 - Model optional data with `Maybe<T>` instead of `null`.
 - Return typed errors that map cleanly to APIs, logs, and tests.
+- Use `AsTask()` / `AsValueTask()` to return synchronous `Result` chains from async-shaped APIs.
+- Build resource-aware HTTP errors tersely with `ResourceRef.For<TResource>(id)`.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/error-handling.html)

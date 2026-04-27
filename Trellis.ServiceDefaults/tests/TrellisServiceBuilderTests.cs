@@ -1,5 +1,6 @@
-﻿namespace Trellis.ServiceDefaults.Tests;
+namespace Trellis.ServiceDefaults.Tests;
 
+using System;
 using System.Linq;
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +61,24 @@ public class TrellisServiceBuilderTests
         services.Count(d =>
             d.ServiceType == typeof(IMessageValidator<>) &&
             d.ImplementationType?.Name == "FluentValidationMessageValidatorAdapter`1").Should().Be(1);
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_WithoutAssemblies_RegistersMediatorOnly()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options.UseResourceAuthorization());
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>) &&
+            d.ImplementationType == typeof(AuthorizationBehavior<,>));
+        services.Count(d =>
+            d.ServiceType.IsGenericType &&
+            d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>) &&
+            d.ImplementationType is not null &&
+            d.ImplementationType.Name.StartsWith("ResourceAuthorizationBehavior", StringComparison.Ordinal))
+            .Should().Be(0);
     }
 
     [Fact]

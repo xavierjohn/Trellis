@@ -10,14 +10,15 @@
 dotnet add package Trellis.Http
 ```
 
-## What we provide (v2 surface)
+## What we provide (v3 surface)
 
-A single static class `Trellis.Http.HttpResponseExtensions` with seven methods:
+A single static class `Trellis.Http.HttpResponseExtensions` with the canonical HTTP result methods:
 
-- `ToResultAsync(statusMap?)` &mdash; bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>`.
+- `ToResultAsync(statusMap?)` &mdash; bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>`; without a map, non-2xx statuses become typed failures.
 - `ToResultAsync(mapper, ct)` &mdash; body-aware bridge invoked only for non-success status codes.
 - `HandleNotFoundAsync` / `HandleConflictAsync` / `HandleUnauthorizedAsync` &mdash; single-status convenience entry points on `Task<HttpResponseMessage>`.
 - `ReadJsonAsync<T>` / `ReadJsonMaybeAsync<T>` &mdash; deserialize the body of `Task<Result<HttpResponseMessage>>` into `T` or `Maybe<T>`.
+- `ReadJsonOrNoneOn404Async<T>` &mdash; terminal optional-resource read where `404` maps to `Ok(Maybe.None)`.
 
 ## Quick example
 
@@ -33,7 +34,7 @@ public partial class ProfileJsonContext : JsonSerializerContext { }
 
 var userId = "current-user";
 var result = await httpClient.GetAsync("/profile", cancellationToken)
-    .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Profile", userId)))
+    .HandleNotFoundAsync(new Error.NotFound(ResourceRef.For("Profile", userId)))
     .ReadJsonAsync(ProfileJsonContext.Default.ProfileDto, cancellationToken);
 ```
 
@@ -43,7 +44,7 @@ The library owns `HttpResponseMessage` disposal on terminal/transformative paths
 
 ## Breaking changes from v1
 
-`Trellis.Http` has collapsed from 60+ overloads to 7 methods. Removed verbs: `HandleForbidden*`, `HandleClientError*`, `HandleServerError*`, `EnsureSuccess`/`EnsureSuccessAsync`, `HandleFailureAsync<TContext>`, and all sync / `Result<HRM>` / `HttpResponseMessage`-receiver overloads. Renamed verbs: `ReadResultFromJsonAsync` -> `ReadJsonAsync`, `ReadResultMaybeFromJsonAsync` -> `ReadJsonMaybeAsync`. See the package README on GitHub for the full migration table.
+`Trellis.Http` has collapsed from 60+ overloads to a small canonical method set. Removed verbs: `HandleForbidden*`, `HandleClientError*`, `HandleServerError*`, `EnsureSuccess`/`EnsureSuccessAsync`, `HandleFailureAsync<TContext>`, and all sync / `Result<HRM>` / `HttpResponseMessage`-receiver overloads. Renamed verbs: `ReadResultFromJsonAsync` -> `ReadJsonAsync`, `ReadResultMaybeFromJsonAsync` -> `ReadJsonMaybeAsync`. See the package README on GitHub for the full migration table.
 
 ## Part of Trellis
 

@@ -29,7 +29,7 @@ public sealed class TrellisServiceBuilder
 | `public TrellisServiceBuilder UseAsp(Action<TrellisAspOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `Trellis.Asp` integration via `AddTrellisAsp(...)`. |
 | `public TrellisServiceBuilder UseMediator(Action<TrellisMediatorTelemetryOptions>? configureTelemetry = null)` | `TrellisServiceBuilder` | Registers Trellis Mediator behaviors via `AddTrellisBehaviors(...)`. |
 | `public TrellisServiceBuilder UseFluentValidation(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers the FluentValidation adapter. When assemblies are supplied, also scans them for validators. Implies `UseMediator()`. |
-| `public TrellisServiceBuilder UseResourceAuthorization(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers resource authorization behaviors/loaders discovered in assemblies. Implies `UseMediator()`. |
+| `public TrellisServiceBuilder UseResourceAuthorization(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers resource authorization behaviors/loaders discovered in assemblies. With no assemblies, enables the mediator pipeline for explicit resource-authorization registrations without scanning. Implies `UseMediator()`. |
 | `public TrellisServiceBuilder UseClaimsActorProvider(Action<ClaimsActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `ClaimsActorProvider` as `IActorProvider`. |
 | `public TrellisServiceBuilder UseEntraActorProvider(Action<EntraActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `EntraActorProvider` as `IActorProvider`. |
 | `public TrellisServiceBuilder UseDevelopmentActorProvider(Action<DevelopmentActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `DevelopmentActorProvider` as `IActorProvider`. Use only in development/testing hosts. |
@@ -72,6 +72,13 @@ services.AddTrellis(options => options
 services.AddTrellis(options => options
     .UseMediator()
     .UseFluentValidation());
+```
+
+```csharp
+// No assembly scanning; resource authorization registrations are explicit elsewhere.
+services.AddTrellis(options => options
+    .UseMediator()
+    .UseResourceAuthorization());
 ```
 
 ```csharp

@@ -7,7 +7,7 @@ Rule ID  | Category | Severity | Notes
 ---------|----------|----------|------------------------------------------------------------------------
 TRLS001  | Trellis  | Warning  | Result return value is not handled (must be observed via Match/Bind/Map/Tap/IsSuccess gate).
 TRLS002  | Trellis  | Info     | Use Bind instead of Map when the lambda returns a Result<T>.
-TRLS003  | Trellis  | Warning  | Unsafe access to Maybe.Value without a HasValue/TryGetValue guard.
+TRLS003  | Trellis  | Error    | Unsafe access to Maybe.Value without a HasValue/TryGetValue guard.
 TRLS004  | Trellis  | Warning  | Result is double-wrapped (Result<Result<T>>).
 TRLS005  | Trellis  | Warning  | Incorrect async Result usage (e.g., awaiting Result<T> instead of using async extension).
 TRLS007  | Trellis  | Warning  | Maybe is double-wrapped (Maybe<Maybe<T>>).
