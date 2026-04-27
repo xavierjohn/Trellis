@@ -443,7 +443,7 @@ using Trellis.Testing;
 var success = Result.Ok(42);
 success.Should().BeSuccess().Which.Should().Be(42);
 
-var notFound = Result.Fail<int>(new Error.NotFound(new ResourceRef("Order", "123")) { Detail = "Order 123 not found" });
+var notFound = Result.Fail<int>(new Error.NotFound(ResourceRef.For("Order", "123")) { Detail = "Order 123 not found" });
 notFound.Should().BeFailure()
     .Which.Detail.Should().Be("Order 123 not found");
 ```

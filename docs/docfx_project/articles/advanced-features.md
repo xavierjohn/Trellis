@@ -145,7 +145,7 @@ var result = Result.Try(
     () => File.ReadAllText("settings.json"),
     exception => exception switch
     {
-        FileNotFoundException => new Error.NotFound(new ResourceRef("Resource")) { Detail = "settings.json was not found" },
+        FileNotFoundException => new Error.NotFound(ResourceRef.For("File", "settings.json")) { Detail = "settings.json was not found" },
         UnauthorizedAccessException => new Error.Forbidden("policy.id") { Detail = "Access denied" },
         _ => new Error.InternalServerError("fault-id") { Detail = exception.Message }
     });
@@ -269,7 +269,7 @@ Sometimes the only question is “did I get a value?” — not “why did it fa
 using Trellis;
 
 Maybe<string> cachedName = Result.Ok("Ada").ToMaybe();
-Maybe<string> missingName = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource")) { Detail = "User not found" }).ToMaybe();
+Maybe<string> missingName = Result.Fail<string>(new Error.NotFound(ResourceRef.For("User")) { Detail = "User not found" }).ToMaybe();
 ```
 
 And the async version:

@@ -157,17 +157,17 @@ var result = await GetUserAsync(id)
 
 ```csharp
 var result = await GetUserAsync(id)
-    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"User {id} not found" })
+    .ToResultAsync(new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" })
     .EnsureAsync(u => u.IsActive, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("isActive"), "validation.error") { Detail = "User account is inactive" })))
     .BindAsync(u => GetOrdersAsync(u.Id))
-    .EnsureAsync(orders => orders.Any(), new Error.NotFound(new ResourceRef("Resource")) { Detail = $"No orders for user {id}" });
+    .EnsureAsync(orders => orders.Any(), new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"No orders for user {id}" });
 ```
 
 **Break the chain into named variables for breakpoints:**
 
 ```csharp
 var userResult = await GetUserAsync(id)
-    .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = "User not found" });
+    .ToResultAsync(new Error.NotFound(ResourceRef.For("User", id)) { Detail = "User not found" });
 
 var activeResult = userResult
     .Ensure(u => u.IsActive, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Inactive" });

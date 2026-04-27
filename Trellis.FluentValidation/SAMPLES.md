@@ -688,7 +688,7 @@ public class OrderService
     {
         // Validate customer
         return await _customerService.GetByIdAsync(request.CustomerId, cancellationToken)
-            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Customer {request.CustomerId} not found" })
+            .ToResultAsync(new Error.NotFound(ResourceRef.For("Customer", request.CustomerId)) { Detail = $"Customer {request.CustomerId} not found" })
             .EnsureAsync(
                 async (customer, ct) => await customer.IsActiveAsync(ct),
                 new Error.Conflict(null, "conflict") { Detail = "Customer account is inactive" },
@@ -699,7 +699,7 @@ public class OrderService
                     await request.Items.TraverseAsync(
                         async (itemReq, innerCt) =>
                             await _inventoryService.GetProductAsync(itemReq.ProductId, innerCt)
-                                .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Product {itemReq.ProductId} not found" })
+                                .ToResultAsync(new Error.NotFound(ResourceRef.For("Product", itemReq.ProductId)) { Detail = $"Product {itemReq.ProductId} not found" })
                                 .EnsureAsync(
                                     async (product, productCt) => 
                                         await _inventoryService.HasStockAsync(product.Id, itemReq.Quantity, productCt),
@@ -1084,7 +1084,7 @@ public class OrderService : IOrderService
         CancellationToken cancellationToken)
     {
         return await _repository.GetByIdAsync(orderId, cancellationToken)
-            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource")) { Detail = $"Order {orderId} not found" })
+            .ToResultAsync(new Error.NotFound(ResourceRef.For("Order", orderId)) { Detail = $"Order {orderId} not found" })
             .BindAsync(
                 async (order, ct) => await order.SubmitAsync(ct),
                 cancellationToken)

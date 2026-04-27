@@ -1,6 +1,9 @@
 ﻿namespace Trellis.ServiceDefaults.Tests;
 
+using System;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,6 +66,64 @@ public class TrellisServiceBuilderTests
     }
 
     [Fact]
+    public void UseResourceAuthorization_WithoutAssemblies_RegistersMediatorOnly()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options.UseResourceAuthorization());
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>) &&
+            d.ImplementationType == typeof(AuthorizationBehavior<,>));
+        services.Should().NotContain(d =>
+            d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderCommand, Result<string>>));
+        services.Should().NotContain(d =>
+            d.ServiceType == typeof(IResourceLoader<UpdateProtectedOrderCommand, ProtectedOrder>));
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_WithAssembly_RegistersResourceAuthorizationForDiscoveredMessages()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options.UseResourceAuthorization(typeof(UpdateProtectedOrderCommand).Assembly));
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>) &&
+            d.ImplementationType == typeof(AuthorizationBehavior<,>));
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderCommand, Result<string>>));
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IResourceLoader<UpdateProtectedOrderCommand, ProtectedOrder>) &&
+            d.ImplementationType == typeof(UpdateProtectedOrderLoader));
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_NullAssemblyArray_ThrowsArgumentNullException()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options.UseResourceAuthorization(null!));
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("assemblies");
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_NullAssemblyElement_ThrowsArgumentException()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options.UseResourceAuthorization(
+            typeof(UpdateProtectedOrderCommand).Assembly,
+            null!));
+
+        act.Should().Throw<ArgumentException>()
+            .Where(ex => ex.ParamName == "assemblies")
+            .And.Message.Should().Contain("[1]");
+    }
+
+    [Fact]
     public void UseAsp_RegistersTrellisAspOptionsAndScalarValidationInfrastructure()
     {
         var services = new ServiceCollection();
@@ -116,5 +177,22 @@ public class TrellisServiceBuilderTests
             : base(options)
         {
         }
+    }
+
+    public sealed record ProtectedOrder(string Id, string OwnerId);
+
+    public sealed record UpdateProtectedOrderCommand(string ResourceId)
+        : ICommand<Result<string>>, IAuthorizeResource<ProtectedOrder>
+    {
+        public IResult Authorize(Actor actor, ProtectedOrder resource) =>
+            actor.Id == resource.OwnerId
+                ? Result.Ok()
+                : Result.Fail(new Error.Forbidden("protected-order.owner") { Detail = "Only the owner can update the order." });
+    }
+
+    public sealed class UpdateProtectedOrderLoader : IResourceLoader<UpdateProtectedOrderCommand, ProtectedOrder>
+    {
+        public Task<Result<ProtectedOrder>> LoadAsync(UpdateProtectedOrderCommand message, CancellationToken cancellationToken) =>
+            Task.FromResult(Result.Ok(new ProtectedOrder(message.ResourceId, "owner-1")));
     }
 }

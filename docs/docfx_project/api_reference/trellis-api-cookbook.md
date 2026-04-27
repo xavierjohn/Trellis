@@ -9,7 +9,7 @@
   - [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md) — `AddTrellisFluentValidation`
   - [trellis-api-efcore.md](trellis-api-efcore.md) — `SaveChangesResultAsync`, `MaybePropertyMapping`, `EfRepositoryBase<>`
   - [trellis-api-asp.md](trellis-api-asp.md) — `ToHttpResponse`, `HttpResponseOptionsBuilder<T>`, `AddTrellisAsp`, `AsActionResult`
-  - [trellis-api-http.md](trellis-api-http.md) — `RangeOutcome`, range parser
+  - [trellis-api-http.md](trellis-api-http.md) — `ToResultAsync`, `ReadJsonAsync`, `ReadJsonOrNoneOn404Async`
   - [trellis-api-authorization.md](trellis-api-authorization.md) — `IActorProvider`, `IAuthorize`, `IAuthorizeResource<>`
   - [trellis-api-servicedefaults.md](trellis-api-servicedefaults.md) — `AddTrellis`, `TrellisServiceBuilder`
   - [trellis-api-statemachine.md](trellis-api-statemachine.md) — `FireResult`, `LazyStateMachine<,>`
@@ -48,6 +48,9 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Add resource authorization | [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) |
 | Map `Maybe<T>` or composite value objects with EF Core | [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects), [Recipe 13](#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership), [Recipe 15](#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap) |
 | Add optional request/response fields | [Recipe 14](#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport) |
+| Read optional HTTP resources where 404 means absent | [Recipe 19](#recipe-19--http-client-result-safety-and-optional-reads) |
+| Return synchronous `Result` chains from `Task`/`ValueTask` APIs | [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), then `AsTask()` / `AsValueTask()` in [trellis-api-core.md](trellis-api-core.md) |
+| Create HTTP-oriented resource errors | Use `ResourceRef.For<TResource>(id)` from [trellis-api-core.md](trellis-api-core.md) |
 | Add a state transition | [Recipe 9](#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
 | Write handler/domain tests | [Recipe 10](#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) |
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
@@ -163,11 +166,12 @@ public sealed class PlaceOrderHandler(IOrderRepository repo)
     : ICommandHandler<PlaceOrderCommand, Result<OrderId>>
 {
     public ValueTask<Result<OrderId>> Handle(PlaceOrderCommand cmd, CancellationToken cancellationToken) =>
-        new(OrderId.TryCreate(cmd.OrderId)
+        OrderId.TryCreate(cmd.OrderId)
             .BindZip(_ => CurrencyCode.TryCreate(cmd.Currency).Map(c => new Money(cmd.Amount, c)))
-            .Bind(t => Order.Create(t.Item1, t.Item2))
+            .Bind((orderId, money) => Order.Create(orderId, money))
             .Tap(repo.Add)
-            .Map(o => o.Id));
+            .Map(o => o.Id)
+            .AsValueTask();
 }
 
 // Composition root
@@ -195,7 +199,7 @@ public static class OrdersDi
 // FIX — MatchAsync awaits the Maybe carrier and dispatches without leaving the Result chain.
 .BindAsync(id => repo.FindAsync(id, ct)
     .MatchAsync(
-        some: _  => Result.Fail<OrderId>(new Error.Conflict(new ResourceRef("Order", id.Value.ToString()), "already_exists")),
+        some: _  => Result.Fail<OrderId>(new Error.Conflict(ResourceRef.For<Order>(id), "already_exists")),
         none: () => Result.Ok(id)))
 ```
 
@@ -379,7 +383,7 @@ public sealed record UpdateOrderCommand(OrderId OrderId, decimal NewAmount)
     public Trellis.IResult Authorize(Actor actor, Order resource) =>
         resource.OwnerId == actor.Id || actor.Permissions.Contains("orders:write")
             ? Result.Ok()
-            : Result.Fail(new Error.Forbidden(PolicyId: "orders.owner", Resource: new ResourceRef("Order", OrderId.Value.ToString())));
+            : Result.Fail(new Error.Forbidden(PolicyId: "orders.owner", Resource: ResourceRef.For<Order>(OrderId)));
 }
 
 // DI wiring
@@ -639,7 +643,7 @@ string city = customer.Email.Value;                // TRLS003
 if (customer.Email.HasValue) { var v = customer.Email.Value; }
 
 // FIX 2 — convert to Result
-Result<EmailAddress> r = customer.Email.ToResult(new Error.NotFound(new ResourceRef("Email", customer.Id.ToString())));
+Result<EmailAddress> r = customer.Email.ToResult(new Error.NotFound(ResourceRef.For("Email", customer.Id)));
 ```
 
 ### TRLS010 — Throwing in a Result chain
@@ -649,7 +653,7 @@ Result<EmailAddress> r = customer.Email.ToResult(new Error.NotFound(new Resource
 .Bind(o => throw new InvalidOperationException("bad"))   // TRLS010
 
 // FIX
-.Bind(o => Result.Fail<Order>(new Error.Conflict(new ResourceRef("Order", o.Id.ToString()), "invalid_state")))
+.Bind(o => Result.Fail<Order>(new Error.Conflict(ResourceRef.For<Order>(o.Id), "invalid_state")))
 ```
 
 ### TRLS016 — `HasIndex` on a `Maybe<T>` property
@@ -1166,9 +1170,10 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
     : ICommandHandler<CreateOrderCommand, Result<OrderId>>
 {
     public ValueTask<Result<OrderId>> Handle(CreateOrderCommand cmd, CancellationToken ct) =>
-        new(Order.Create(cmd.Total)
+        Order.Create(cmd.Total)
             .Tap(repo.Add)                  // stages — no save here
-            .Map(o => o.Id));               // handler returns immediately
+            .Map(o => o.Id)
+            .AsValueTask();                 // handler returns immediately
 }
 ```
 
@@ -1321,7 +1326,7 @@ public sealed record CreateCustomerCommand(EmailAddress Email, CustomerName Cust
         Result.Combine(
                 EmailAddress.TryCreate(request.Email, nameof(request.Email)),
                 CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
-            .Map(values => new CreateCustomerCommand(values.Item1, values.Item2));
+            .Map((email, customerName) => new CreateCustomerCommand(email, customerName));
 }
 
 [ApiController]
@@ -1358,7 +1363,48 @@ var command = new CreateCustomerCommand(
 var command = Result.Combine(
         EmailAddress.TryCreate(request.Email, nameof(request.Email)),
         CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
-    .Map(values => new CreateCustomerCommand(values.Item1, values.Item2));
+    .Map((email, customerName) => new CreateCustomerCommand(email, customerName));
+```
+
+---
+
+## Recipe 19 — HTTP client result safety and optional reads
+
+**Problem.** Call an upstream HTTP resource safely, preserving non-success status codes as Trellis errors and treating a missing optional resource as `Maybe.None`.
+
+```csharp
+using System.Net;
+using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Http;
+
+[JsonSerializable(typeof(OrderDto))]
+public sealed partial class OrderJsonContext : JsonSerializerContext;
+
+public sealed record OrderDto(Guid Id, decimal Total);
+
+public Task<Result<OrderDto>> GetRequiredOrderAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    client.GetAsync($"/orders/{id}", ct)
+        .ToResultAsync()
+        .ReadJsonAsync(OrderJsonContext.Default.OrderDto, ct);
+
+public Task<Result<Maybe<OrderDto>>> FindOrderAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    client.GetAsync($"/orders/{id}", ct)
+        .ReadJsonOrNoneOn404Async(OrderJsonContext.Default.OrderDto, ct);
+```
+
+**What it shows.**
+
+- Bare `ToResultAsync()` is strict in v3: 2xx responses stay on the success track; non-2xx responses become typed Trellis errors.
+- Use `ReadJsonOrNoneOn404Async(...)` when `404` is expected domain absence, not failure.
+- Use explicit status mapping only when the upstream status needs a domain-specific resource or policy:
+
+```csharp
+client.GetAsync($"/orders/{id}", ct)
+    .ToResultAsync(status => status == HttpStatusCode.NotFound
+        ? new Error.NotFound(ResourceRef.For<OrderDto>(id))
+        : null)
+    .ReadJsonAsync(OrderJsonContext.Default.OrderDto, ct);
 ```
 
 ---
@@ -1367,7 +1413,7 @@ var command = Result.Combine(
 
 - **Run analyzers in CI.** `Trellis.Analyzers` ships in the framework and runs as part of every `dotnet build`. Treat warnings as errors for `TRLS00x` once your codebase is clean.
 - **Do not mix sync chain methods with async lambdas.** `result.Map(async v => …)` triggers `TRLS009`; use `MapAsync`. The fix provider can apply this rewrite automatically.
-- **Construct errors via the closed ADT.** `new Error.NotFound(new ResourceRef("Order", id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
+- **Construct errors via the closed ADT.** `new Error.NotFound(ResourceRef.For<Order>(id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
 - **Aggregate per-item Results with `Traverse` / `Sequence`.** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure (matching ADR-002 §3.6 — there is no `AggregateError`). For per-field validation aggregation, use the `Validate` builder which returns a single `Error.UnprocessableContent` carrying every field violation.
 - **Use `Error.UnprocessableContent.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.UnprocessableContent.ForField("email", "invalid_format", "must contain @")` over `new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "invalid_format") { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>` or use the `Validate` builder.

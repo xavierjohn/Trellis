@@ -6,7 +6,7 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
-> **v2 surface (ADR-002 §7).** This package was reduced from 60+ overloads to a single static class with seven canonical methods. See the *Breaking changes from v1* section at the end of this file.
+> **v3 surface (ADR-003).** Bare `ToResultAsync()` is strict by default: non-2xx responses become typed Trellis failures instead of remaining on the success track.
 
 ## Type
 
@@ -18,15 +18,16 @@ public static class HttpResponseExtensions
 
 | Signature | Returns | Notes |
 | --- | --- | --- |
-| `ToResultAsync(this Task<HttpResponseMessage> response, Func<HttpStatusCode, Error?>? statusMap = null)` | `Task<Result<HttpResponseMessage>>` | When `statusMap` is `null`, every status passes through as `Ok(response)`. When supplied, a `null` return passes through; a non-null `Error` becomes `Fail` and the underlying response is disposed. |
+| `ToResultAsync(this Task<HttpResponseMessage> response, Func<HttpStatusCode, Error?>? statusMap = null)` | `Task<Result<HttpResponseMessage>>` | When `statusMap` is `null`, 2xx statuses pass through as `Ok(response)` and non-2xx statuses map to typed Trellis errors. When supplied, a `null` return passes through; a non-null `Error` becomes `Fail` and the underlying response is disposed. |
 | `ToResultAsync(this Task<HttpResponseMessage> response, Func<HttpResponseMessage, CancellationToken, Task<Error?>> mapper, CancellationToken ct = default)` | `Task<Result<HttpResponseMessage>>` | Body-aware bridge. The mapper is invoked **only** when `IsSuccessStatusCode == false`. `null` return -> `Ok(response)`; non-null -> `Fail` (response disposed). |
 | `HandleNotFoundAsync(this Task<HttpResponseMessage> response, Error.NotFound error)` | `Task<Result<HttpResponseMessage>>` | Maps `404` to `Fail(error)` (response disposed); any other status passes through as `Ok(response)`. |
 | `HandleConflictAsync(this Task<HttpResponseMessage> response, Error.Conflict error)` | `Task<Result<HttpResponseMessage>>` | Maps `409` to `Fail(error)` (response disposed); pass through otherwise. |
 | `HandleUnauthorizedAsync(this Task<HttpResponseMessage> response, Error.Unauthorized error)` | `Task<Result<HttpResponseMessage>>` | Maps `401` to `Fail(error)` (response disposed); pass through otherwise. |
 | `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<T>>` | Already-failed input short-circuits with the upstream error. Otherwise reads the body and deserializes; non-success status, `204`, `205`, empty body, null payload, or `JsonException` (caught) all map to `Fail<InternalServerError>`. **Always disposes** the response after reading. |
 | `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Already-failed input short-circuits. Non-success status -> `Fail<InternalServerError>`. `204`, `205`, empty body, JSON `null` -> `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). **Always disposes** the response. |
+| `ReadJsonOrNoneOn404Async<T>(this Task<HttpResponseMessage> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Terminal optional-resource helper. `404` -> `Ok(Maybe.None)`; other non-2xx statuses use strict status mapping; `204`, `205`, empty body, and JSON `null` keep `ReadJsonMaybeAsync` semantics. **Always disposes** the response. |
 
-> **Business API default.** Do not call bare `ToResultAsync()` for domain-facing HTTP clients unless every status code is intentionally handled later. With `statusMap: null`, `404`, `409`, and other non-success statuses remain on the success track until a later terminal operation maps them. Prefer `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync`, or an explicit `statusMap` before calling `ReadJsonAsync`.
+> **Business API default.** Bare `ToResultAsync()` is now the safe default for domain-facing HTTP clients. Use `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync`, or an explicit `statusMap` only when the endpoint needs domain-specific error payloads.
 
 ## Disposal contract
 
@@ -34,8 +35,8 @@ The library owns the `HttpResponseMessage` lifecycle on terminal or transformati
 
 - `ToResultAsync` (both overloads) dispose the response on the `Fail` path.
 - `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync` dispose on the matched-status `Fail` path.
-- `ReadJsonAsync` and `ReadJsonMaybeAsync` **always** dispose after reading, success or failure (including when `JsonException` propagates from the `Maybe` overload).
-- Pass-through paths (no `statusMap`, non-matching `Handle*`, mapper returning `null`) leave disposal to the caller.
+- `ReadJsonAsync`, `ReadJsonMaybeAsync`, and `ReadJsonOrNoneOn404Async` **always** dispose after reading, success or failure (including when `JsonException` propagates from the `Maybe` overload).
+- Pass-through paths (success from bare `ToResultAsync`, non-matching `Handle*`, mapper returning `null`) leave disposal to the caller.
 
 In practice: once you call `ReadJson*`, you no longer need to dispose the response yourself.
 
@@ -55,7 +56,7 @@ public sealed record TodoDto(Guid Id, string Title);
 
 public Task<Result<TodoDto>> GetTodoAsync(HttpClient client, Guid id, CancellationToken ct) =>
     client.GetAsync($"/todos/{id}", ct)
-        .HandleNotFoundAsync(new Error.NotFound(new ResourceRef("Todo", id.ToString())))
+        .HandleNotFoundAsync(new Error.NotFound(ResourceRef.For<TodoDto>(id)))
         .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
 ```
 
@@ -66,7 +67,7 @@ public Task<Result<TodoDto>> GetTodoStrictAsync(HttpClient client, Guid id, Canc
     client.GetAsync($"/todos/{id}", ct)
         .ToResultAsync(status => status switch
         {
-            HttpStatusCode.NotFound => new Error.NotFound(new ResourceRef("Todo", id.ToString())),
+            HttpStatusCode.NotFound => new Error.NotFound(ResourceRef.For<TodoDto>(id)),
             HttpStatusCode.Forbidden => new Error.Forbidden("todo.read"),
             _ when (int)status >= 500 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
             _ => null,
@@ -91,18 +92,17 @@ public Task<Result<TodoDto>> GetTodoWithProblemDetailsAsync(HttpClient client, G
         .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
 ```
 
-### Optional resource with `ReadJsonMaybeAsync`
+### Optional resource with `ReadJsonOrNoneOn404Async`
 
 ```csharp
 public Task<Result<Maybe<TodoDto>>> FindTodoAsync(HttpClient client, Guid id, CancellationToken ct) =>
     client.GetAsync($"/todos/{id}", ct)
-        .ToResultAsync()
-        .ReadJsonMaybeAsync(AppJsonContext.Default.TodoDto, ct);
+        .ReadJsonOrNoneOn404Async(AppJsonContext.Default.TodoDto, ct);
 ```
 
 ## Breaking changes from v1
 
-The v1 surface (60+ overloads across two static classes) has been collapsed into a single seven-method class. There are no shims or compatibility redirects: this is a clean cut, taken pre-GA.
+The v1 surface (60+ overloads across two static classes) has been collapsed into a small canonical method set. There are no shims or compatibility redirects: this is a clean cut, taken pre-GA.
 
 | v1 API | v2 replacement |
 | --- | --- |

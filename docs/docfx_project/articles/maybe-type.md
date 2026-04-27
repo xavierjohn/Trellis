@@ -220,7 +220,7 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe<string>.None;
 
 Result<string> emailResult = maybeEmail.ToResult(
-    new Error.NotFound(new ResourceRef("Resource")) { Detail = "Primary email address was not found" });
+    new Error.NotFound(ResourceRef.For("Email", "primary")) { Detail = "Primary email address was not found" });
 ```
 
 There is also a lazy overload when creating the error is expensive or needs runtime context.
@@ -229,7 +229,7 @@ There is also a lazy overload when creating the error is expensive or needs runt
 using Trellis;
 
 var result = Maybe<string>.None.ToResult(
-    () => new Error.NotFound(new ResourceRef("Resource")) { Detail = "Primary email address was not found" });
+    () => new Error.NotFound(ResourceRef.For("Email", "primary")) { Detail = "Primary email address was not found" });
 ```
 
 ## Converting `Result<T>` to `Maybe<T>`
@@ -240,7 +240,7 @@ Sometimes you want the opposite tradeoff: “keep the value if successful, other
 using Trellis;
 
 Maybe<string> existing = Result.Ok("Ada").ToMaybe();
-Maybe<string> missing = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource")) { Detail = "User not found" }).ToMaybe();
+Maybe<string> missing = Result.Fail<string>(new Error.NotFound(ResourceRef.For("User")) { Detail = "User not found" }).ToMaybe();
 ```
 
 Use this only when dropping the error is the right thing to do.

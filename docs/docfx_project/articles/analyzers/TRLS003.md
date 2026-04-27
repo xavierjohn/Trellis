@@ -1,6 +1,6 @@
 ﻿# TRLS003 — Unsafe access to Maybe.Value
 
-- **Severity:** Warning
+- **Severity:** Error
 - **Category:** Trellis
 
 ## What it detects

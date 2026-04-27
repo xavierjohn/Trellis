@@ -83,7 +83,7 @@ public class MapTests : TestBase
         var i = Result.Ok(5);
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -97,7 +97,7 @@ public class MapTests : TestBase
         var i = Result.Fail<int>(Error1);
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -122,7 +122,7 @@ public class MapTests : TestBase
         var i = Result.Ok(5).AsTask();
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -136,7 +136,7 @@ public class MapTests : TestBase
         var i = Result.Fail<int>(Error1).AsTask();
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -180,7 +180,7 @@ public class MapTests : TestBase
         var i = Result.Ok(5);
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -194,7 +194,7 @@ public class MapTests : TestBase
         var i = Result.Fail<int>(Error1);
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -208,7 +208,7 @@ public class MapTests : TestBase
         var i = Result.Ok(5).AsValueTask();
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -222,7 +222,7 @@ public class MapTests : TestBase
         var i = Result.Fail<int>(Error1).AsValueTask();
 
         // Act
-        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsValueTask());
+        var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
         result.IsFailure.Should().BeTrue();

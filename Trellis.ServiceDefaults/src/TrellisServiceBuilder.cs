@@ -26,6 +26,7 @@ public sealed class TrellisServiceBuilder
     private bool _useAsp;
     private bool _useMediator;
     private bool _useFluentValidation;
+    private bool _useResourceAuthorization;
     private ActorProviderKind _actorProviderKind;
 
     internal TrellisServiceBuilder(IServiceCollection services) =>
@@ -74,9 +75,17 @@ public sealed class TrellisServiceBuilder
     /// Registers resource authorization behaviors and resource loaders discovered in assemblies.
     /// Implies <see cref="UseMediator"/>.
     /// </summary>
+    /// <remarks>
+    /// Passing no assemblies keeps the resource-authorization pipeline available for explicit
+    /// registrations without performing assembly scanning.
+    /// </remarks>
     public TrellisServiceBuilder UseResourceAuthorization(params Assembly[] assemblies)
     {
-        AddAssemblies(_resourceAuthorizationAssemblies, assemblies, nameof(assemblies));
+        ArgumentNullException.ThrowIfNull(assemblies);
+        if (assemblies.Length > 0)
+            AddAssemblies(_resourceAuthorizationAssemblies, assemblies, nameof(assemblies));
+
+        _useResourceAuthorization = true;
         _useMediator = true;
         return this;
     }
@@ -140,7 +149,7 @@ public sealed class TrellisServiceBuilder
                 _services.AddTrellisBehaviors(_configureMediatorTelemetry);
         }
 
-        if (_resourceAuthorizationAssemblies.Count > 0)
+        if (_useResourceAuthorization && _resourceAuthorizationAssemblies.Count > 0)
             _services.AddResourceAuthorization([.. _resourceAuthorizationAssemblies]);
 
         if (_useFluentValidation && _fluentValidationAssemblies.Count == 0)

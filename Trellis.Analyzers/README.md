@@ -21,7 +21,7 @@ var result = Parse("abc")
 ```
 
 ## Key Features
-- Flags unsafe `Maybe.Value` access (TRLS003).
+- Flags unsafe `Maybe.Value` access as an error (TRLS003).
 - Catches async misuse, double-wrapped results, and common ROP anti-patterns.
 - Flags composite value objects exposed through request/response DTOs without `CompositeValueObjectJsonConverter<T>` (TRLS020).
 - Flags redundant EF Core `HasConversion`, `OwnsOne`, and `Ignore` mappings for Trellis convention-owned properties (TRLS021).

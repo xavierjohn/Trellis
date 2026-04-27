@@ -14,7 +14,7 @@ using Trellis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the v2 (ADR-002 §7) surface for <c>Trellis.Http</c>. It collapses the v1
+/// This is the v3 (ADR-003) surface for <c>Trellis.Http</c>. It collapses the v1
 /// "60+ overload" surface into a small set of composable operators that bridge
 /// <see cref="Task{TResult}"/> of <see cref="HttpResponseMessage"/> into
 /// <see cref="Result{TValue}"/> pipelines and deserialize JSON payloads.
@@ -24,11 +24,16 @@ using Trellis;
 /// <see cref="HttpResponseMessage"/> on terminal or transformative paths:
 /// <list type="bullet">
 ///   <item><description>
-///     <see cref="ToResultAsync(Task{HttpResponseMessage}, Func{HttpStatusCode, Error?}?)"/> and the
-///     body-aware overload dispose the response when the supplied mapper returns a non-null
-///     <see cref="Error"/> (the <c>Fail</c> path). When the mapper returns <see langword="null"/>
-///     (or no mapper is supplied), the response flows through and the caller still owns disposal
-///     until a subsequent <c>ReadJson*</c> call consumes it.
+///     <see cref="ToResultAsync(Task{HttpResponseMessage}, Func{HttpStatusCode, Error?}?)"/>
+///     disposes the response when bare strict mapping or a supplied mapper returns a non-null
+///     <see cref="Error"/> (the <c>Fail</c> path). When a supplied mapper returns
+///     <see langword="null"/> or bare strict mapping sees a successful status code, the response
+///     flows through and the caller still owns disposal until a subsequent <c>ReadJson*</c> call
+///     consumes it.
+///   </description></item>
+///   <item><description>
+///     The body-aware <c>ToResultAsync</c> overload disposes the response when its mapper returns a
+///     non-null <see cref="Error"/>; a <see langword="null"/> return passes through unchanged.
 ///   </description></item>
 ///   <item><description>
 ///     <see cref="HandleNotFoundAsync"/>, <see cref="HandleConflictAsync"/>, and
@@ -36,9 +41,10 @@ using Trellis;
 ///     <c>Fail</c> path; non-match passes the response through unchanged.
 ///   </description></item>
 ///   <item><description>
-///     <see cref="ReadJsonAsync"/> and <see cref="ReadJsonMaybeAsync"/> always dispose the
-///     response after reading (success or failure), and short-circuit when the input
-///     <see cref="Result{TValue}"/> is already a failure (no response to dispose in that case).
+///     <see cref="ReadJsonAsync"/>, <see cref="ReadJsonMaybeAsync"/>, and
+///     <see cref="ReadJsonOrNoneOn404Async{T}"/> always dispose the response after reading
+///     (success or failure), and the <c>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</c> JSON readers
+///     short-circuit when the input is already a failure (no response to dispose in that case).
 ///   </description></item>
 /// </list>
 /// In practice: once you call <c>ReadJson*</c>, you no longer need to dispose the
@@ -54,9 +60,9 @@ public static class HttpResponseExtensions
     /// <param name="response">The pending HTTP response.</param>
     /// <param name="statusMap">
     /// Optional mapper from <see cref="HttpStatusCode"/> to <see cref="Error"/>.
-    /// When <see langword="null"/> (the default), every status code yields
-    /// <see cref="Result.Ok{T}(T)"/> and the caller is responsible for downstream
-    /// status checks. When supplied, a <see langword="null"/> return passes the
+    /// When <see langword="null"/> (the default), successful status codes yield
+    /// <see cref="Result.Ok{T}(T)"/> and non-success status codes are mapped to
+    /// Trellis errors. When supplied, a <see langword="null"/> return passes the
     /// response through as <see cref="Result.Ok{T}(T)"/>, and a non-<see langword="null"/>
     /// return becomes a <see cref="Result.Fail{T}(Error)"/>; in the failure case
     /// the underlying <see cref="HttpResponseMessage"/> is disposed.
@@ -74,7 +80,14 @@ public static class HttpResponseExtensions
         var message = await response.ConfigureAwait(false);
 
         if (statusMap is null)
-            return Result.Ok(message);
+        {
+            if (message.IsSuccessStatusCode)
+                return Result.Ok(message);
+
+            var error = MapStatusToError(message.StatusCode);
+            message.Dispose();
+            return Result.Fail<HttpResponseMessage>(error);
+        }
 
         Error? mapped;
         try
@@ -92,6 +105,78 @@ public static class HttpResponseExtensions
 
         message.Dispose();
         return Result.Fail<HttpResponseMessage>(mapped);
+    }
+
+    /// <summary>
+    /// Reads JSON from a successful HTTP response into <see cref="Maybe{T}"/>, treating
+    /// <see cref="HttpStatusCode.NotFound"/> as <see cref="Maybe{T}.None"/>.
+    /// </summary>
+    /// <typeparam name="T">The payload type. Must be a non-nullable reference or value type.</typeparam>
+    /// <param name="response">The pending HTTP response.</param>
+    /// <param name="jsonTypeInfo">Source-generated JSON metadata for <typeparamref name="T"/>.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>
+    /// A result containing <see cref="Maybe{T}.None"/> for 404, a populated maybe for a
+    /// successful JSON body, or a failure for other non-success statuses.
+    /// </returns>
+    public static async Task<Result<Maybe<T>>> ReadJsonOrNoneOn404Async<T>(
+        this Task<HttpResponseMessage> response,
+        JsonTypeInfo<T> jsonTypeInfo,
+        CancellationToken ct = default)
+        where T : notnull
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(jsonTypeInfo);
+
+        var message = await response.ConfigureAwait(false);
+
+        if (message.StatusCode == HttpStatusCode.NotFound)
+        {
+            message.Dispose();
+            return Result.Ok(Maybe<T>.None);
+        }
+
+        if (!message.IsSuccessStatusCode)
+        {
+            var error = MapStatusToError(message.StatusCode);
+            message.Dispose();
+            return Result.Fail<Maybe<T>>(error);
+        }
+
+        return await Result.Ok(message)
+            .AsTask()
+            .ReadJsonMaybeAsync(jsonTypeInfo, ct)
+            .ConfigureAwait(false);
+    }
+
+    private static Error MapStatusToError(HttpStatusCode statusCode)
+    {
+        var detail = $"HTTP response returned status code {(int)statusCode} ({statusCode}).";
+        var resource = ResourceRef.For("HttpResponse");
+
+        Error error = statusCode switch
+        {
+            HttpStatusCode.BadRequest => new Error.BadRequest("http.bad_request"),
+            HttpStatusCode.Unauthorized => new Error.Unauthorized(),
+            HttpStatusCode.Forbidden => new Error.Forbidden("http.forbidden"),
+            HttpStatusCode.NotFound => new Error.NotFound(resource),
+            HttpStatusCode.MethodNotAllowed => new Error.MethodNotAllowed(EquatableArray<string>.Empty),
+            HttpStatusCode.NotAcceptable => new Error.NotAcceptable(EquatableArray<string>.Empty),
+            HttpStatusCode.Conflict => new Error.Conflict(null, "http.conflict"),
+            HttpStatusCode.Gone => new Error.Gone(resource),
+            HttpStatusCode.PreconditionFailed => new Error.PreconditionFailed(resource, PreconditionKind.IfMatch),
+            HttpStatusCode.RequestEntityTooLarge => new Error.ContentTooLarge(),
+            HttpStatusCode.UnsupportedMediaType => new Error.UnsupportedMediaType(EquatableArray<string>.Empty),
+            HttpStatusCode.RequestedRangeNotSatisfiable => new Error.RangeNotSatisfiable(0),
+            HttpStatusCode.UnprocessableEntity => Error.UnprocessableContent.ForRule("http.unprocessable_content"),
+            (HttpStatusCode)428 => new Error.PreconditionRequired(PreconditionKind.IfMatch),
+            (HttpStatusCode)429 => new Error.TooManyRequests(),
+            HttpStatusCode.NotImplemented => new Error.NotImplemented("http.not_implemented"),
+            HttpStatusCode.ServiceUnavailable => new Error.ServiceUnavailable(),
+            _ => new Error.InternalServerError(Guid.NewGuid().ToString("N")),
+        };
+
+        return error with { Detail = detail };
     }
 
     /// <summary>
