@@ -10,8 +10,6 @@
   href: TRLS004.md
 - name: TRLS005 - Incorrect async Result usage
   href: TRLS005.md
-- name: TRLS006 - Use specific error type
-  href: TRLS006.md
 - name: TRLS007 - Maybe double-wrapped
   href: TRLS007.md
 - name: TRLS008 - Use Result.Combine
@@ -20,8 +18,6 @@
   href: TRLS009.md
 - name: TRLS010 - Don't throw in Result chains
   href: TRLS010.md
-- name: TRLS011 - Empty error message
-  href: TRLS011.md
 - name: TRLS012 - Don't compare to null
   href: TRLS012.md
 - name: TRLS013 - Unsafe Maybe.Value in LINQ
