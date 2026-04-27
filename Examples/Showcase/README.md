@@ -13,7 +13,7 @@ the two hosting styles side-by-side over a single, identical contract.
 | `Error.NotFound` with `ResourceRef` | `Showcase.Application/Persistence/IAccountRepository.cs` |
 | `Error.PreconditionFailed` | `ConditionalRequestExample` (sibling sample) |
 | `Error.Forbidden` with `policyId` | `Showcase.Application/Services/InMemoryIdentityVerifier.cs` |
-| `Error.InternalServerError(faultId)` | `Showcase.Mvc/Controllers/DiagnosticsController.cs` and `Showcase.MinimalApi/Endpoints/DiagnosticsEndpoints.cs` |
+| `Error.InternalServerError` with `faultId` | `Showcase.Mvc/Controllers/DiagnosticsController.cs` and `Showcase.MinimalApi/Endpoints/DiagnosticsEndpoints.cs` |
 | `Error.Unauthorized` from a boundary adapter | `Showcase.Application/Services/InMemoryIdentityVerifier.cs` |
 | Plain ROP (`Ensure`/`Bind`/`Tap`/`Map`) | `Showcase.Domain/Aggregates/BankAccount.cs` (money operations) |
 | `Trellis.StateMachine` lifecycle modeling | `Showcase.Domain/Aggregates/BankAccount.cs` (`Freeze`, `Unfreeze`, `Close`) |

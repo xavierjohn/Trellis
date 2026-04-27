@@ -45,7 +45,7 @@ The problem with raw exceptions is that they mix two very different things:
 Trellis separates them:
 
 - expected failures are `Error.X` cases inside `Result<T>` failures
-- unexpected exceptions become `Error.InternalServerError(faultId)` via `Result.Try` / `Result.TryAsync`
+- unexpected exceptions become `new Error.InternalServerError(faultId)` via `Result.Try` / `Result.TryAsync`
 
 ## The Error ADT
 
@@ -74,7 +74,7 @@ Trellis separates them:
 | `Error.Aggregate` | `(EquatableArray<Error> Errors)` | varies | Multiple failures collected; auto-flattens nested aggregates |
 
 > [!TIP]
-> `Error.Conflict(resource, "domain.violation")` is usually a better fit than `Error.UnprocessableContent` when the input is structurally valid but violates a business rule.
+> `new Error.Conflict(resource, "domain.violation")` is usually a better fit than `Error.UnprocessableContent` when the input is structurally valid but violates a business rule.
 
 ## Construction syntax
 
@@ -279,12 +279,12 @@ Boundary renderers (ProblemDetails / gRPC / GraphQL) read `Kind` for `type` and 
 ## Practical Rules of Thumb
 
 - `Error.UnprocessableContent` when the caller can fix the request data
-- `Error.Conflict(_, "domain.violation")` when the input is valid but a business rule blocks it
-- `Error.Conflict(_, "duplicate.key")` (or similar) when current state blocks the operation
+- `Error.Conflict` with reason code `"domain.violation"` when the input is valid but a business rule blocks it
+- `Error.Conflict` with reason code `"duplicate.key"` (or similar) when current state blocks the operation
 - `Error.NotFound` when the resource does not exist
 - `Error.PreconditionFailed` for optimistic-concurrency mismatches
 - `Error.Gone` for soft-deleted resources
-- `Error.InternalServerError(faultId)` only for true surprises — never for business logic
+- `new Error.InternalServerError(faultId)` only for true surprises — never for business logic
 - `Match` (or a property pattern on `result.Error`) at system boundaries
 - `TapOnFailure` for logging and metrics
 - `MapOnFailure` when crossing layers

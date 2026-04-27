@@ -252,7 +252,7 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Per ADR-002 §3.5.1, default(Result) and default(Result<T>) are typed failures carrying " +
-                     "the Error.Unexpected(\"default_initialized\") sentinel — never a silent success. " +
+                     "the new Error.Unexpected(\"default_initialized\") sentinel — never a silent success. " +
                      "default(Maybe<T>) equals Maybe<T>.None but the explicit literal obscures intent. " +
                      "Always construct via Result.Ok(...)/Result.Fail(...) or Maybe<T>.None / Maybe.From(...). " +
                      "Suppress with [SuppressMessage(\"Trellis\", \"TRLS019\")] or '#pragma warning disable TRLS019' " +
