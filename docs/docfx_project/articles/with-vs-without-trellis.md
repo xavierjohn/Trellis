@@ -106,7 +106,7 @@ app.MapPost("/users/register", (RegisterUserRequest request) =>
                 firstName.Value,
                 lastName.Value,
                 emailAddress.Value)))
-        .ToHttpResult());
+        .ToHttpResponse());
 
 app.Run();
 ```

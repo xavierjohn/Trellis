@@ -66,7 +66,7 @@ No matter which integration you use, the same design rule keeps paying off:
 That usually means:
 
 - `Result<T>` stays in handlers, services, and repositories
-- ASP.NET Core controllers/endpoints call `ToActionResult(...)` or `ToHttpResult(...)`
+- ASP.NET Core controllers/endpoints call `ToHttpResponse(...)`, with `.AsActionResult<T>()` for typed MVC signatures
 - outbound HTTP code turns responses back into `Result<T>`
 - validation, authorization, and persistence all return explicit failures instead of throwing for expected conditions
 

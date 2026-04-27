@@ -12,7 +12,7 @@ The big win is simple: **your happy path stays readable even when the real world
 - **Compose workflows safely** with `Combine`, `Bind`, `Ensure`, `Tap`, and `Match`
 - **Return structured errors** with concrete types like `Error.UnprocessableContent`, `Error.NotFound`, and `Error.Conflict`
 - **Keep domain code expressive** with aggregates, entities, specifications, and domain events
-- **Integrate with ASP.NET Core** using `ToActionResult()` and `ToHttpResult()` when you are ready to expose APIs
+- **Integrate with ASP.NET Core** using `ToHttpResponse()` and `AsActionResult<T>()` when you are ready to expose APIs
 
 > [!NOTE]
 > Trellis error codes end with `.error` by default. For example, `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }` produces the code `not.found.error`.
@@ -147,7 +147,7 @@ If you want the full API surface, jump to the **[API reference](api/index.md)** 
 
 - `Unit` is `record struct Unit;` and has **no** `Unit.Value` property. Use `Result.Ok()` for a success-without-payload flow, or `new Unit()` / `default` when you need a `Unit` instance.
 - `Error.Equals(...)` compares **only the error code**, not the detail text.
-- `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and the other factory methods create specific error subtypes with default `.error` codes.
+- `new Error.NotFound(new ResourceRef("Resource")) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and the other case constructors create specific error subtypes with default `.error` codes.
 
 ---
 

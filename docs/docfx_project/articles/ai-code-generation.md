@@ -46,7 +46,7 @@ app.MapPost("/users/register", (RegisterUserRequest request) =>
                 firstName.Value,
                 lastName.Value,
                 emailAddress.Value)))
-        .ToHttpResult());
+        .ToHttpResponse());
 
 app.Run();
 ```
@@ -111,7 +111,7 @@ A reviewer learns one Trellis service and can usually review the next one much f
 - validate with `TryCreate`
 - compose with `Bind`, `Map`, `Ensure`, `Tap`, `Combine`
 - branch with `Match` (with a `switch` expression on the closed `Error` ADT)
-- map to HTTP with `ToHttpResult()` or `ToActionResult(this)`
+- map to HTTP with `ToHttpResponse()` or `ToHttpResponse().AsActionResult<T>()`
 
 ## Spec-to-code mapping
 
@@ -125,7 +125,7 @@ This is where Trellis becomes especially useful for AI-assisted development.
 | A business rule on a success value | Validation step | `.Ensure(...)` |
 | Independent validations | Aggregation | `.Combine(...)` |
 | A side effect that should not change the value | Side-effect step | `.Tap(...)` |
-| HTTP response mapping | ASP.NET integration | `.ToHttpResult()` / `.ToActionResult(this)` |
+| HTTP response mapping | ASP.NET integration | `.ToHttpResponse()` / `.AsActionResult<T>()` |
 | Workflow transition | Stateless integration | `machine.FireResult(trigger)` |
 
 ## State transitions are explicit too
@@ -167,7 +167,7 @@ When a team prompts an AI with Trellis vocabulary, prompts become more precise:
 - "Use value objects for validated inputs."
 - "Return `Result<T>` from application services."
 - "Use `Combine` for independent validation."
-- "Map endpoint results with `ToHttpResult()`."
+- "Map endpoint results with `ToHttpResponse()`."
 
 That is easier to execute than vague instructions like "follow good architecture."
 
@@ -197,7 +197,7 @@ If you want better results, ask for these things explicitly:
 - return `Result<T>` from operations that can fail
 - use `Combine` before `Bind` for independent validation steps
 - use `Ensure` for business-rule checks
-- use `ToHttpResult()` or `ToActionResult(this)` at the API boundary
+- use `ToHttpResponse()` or `ToHttpResponse().AsActionResult<T>()` at the API boundary
 - use `FireResult` for state-machine transitions instead of throwing for invalid transitions
 
 ## Bottom line
