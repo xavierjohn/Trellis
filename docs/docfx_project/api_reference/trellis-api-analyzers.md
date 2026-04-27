@@ -15,12 +15,10 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | `TRLS003` | Warning | Unsafe access to Maybe.Value | Maybe.Value throws an InvalidOperationException if the Maybe has no value. Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult. |
 | `TRLS004` | Warning | Result is double-wrapped | Result should not be wrapped inside another Result. This creates Result<Result<T>> which is almost always unintended. If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result. |
 | `TRLS005` | Warning | Incorrect async Result usage | Task<Result<T>> should be awaited, not blocked with .Result or .Wait(). Blocking can cause deadlocks and prevents proper async execution. Use await instead. |
-| `TRLS006` | Info | Use specific error type instead of base Error class | `Error` is an abstract closed ADT. Construct one of the nested cases — `new Error.NotFound(...)`, `new Error.UnprocessableContent(...)`, etc. The base record cannot be instantiated directly. |
 | `TRLS007` | Warning | Maybe is double-wrapped | Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. Consider converting to Result with ToResult() for better composability. |
 | `TRLS008` | Info | Consider using Result.Combine | When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result. |
 | `TRLS009` | Warning | Use async method variant for async lambda | When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited. |
 | `TRLS010` | Warning | Don't throw exceptions in Result chains | Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. Return Result.Fail<T>() to signal errors and keep the error on the failure track. |
-| `TRLS011` | Warning | Error message should not be empty | Error messages should provide context for debugging and user feedback. Empty error messages make it difficult to diagnose issues. |
 | `TRLS012` | Warning | Don't compare Result or Maybe to null | Result<T> and Maybe<T> are structs and cannot be null. Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe. |
 | `TRLS013` | Warning | Unsafe access to Maybe.Value in LINQ expression | When using LINQ on collections of Maybe<T>, filter by HasValue first, or use Select with Match to safely extract values. |
 | `TRLS014` | Error | Combine chain exceeds maximum supported tuple size | Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. Group related fields into intermediate value objects or sub-results, then combine those groups. |
@@ -64,12 +62,10 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `UnsafeMaybeValueAccess` | `TRLS003` | `UnsafeValueAccessAnalyzer` |
 | `ResultDoubleWrapping` | `TRLS004` | `ResultDoubleWrappingAnalyzer` |
 | `AsyncResultMisuse` | `TRLS005` | `AsyncResultMisuseAnalyzer` |
-| `UseSpecificErrorType` | `TRLS006` | `ErrorBaseClassAnalyzer` |
 | `MaybeDoubleWrapping` | `TRLS007` | `MaybeDoubleWrappingAnalyzer` |
 | `UseResultCombine` | `TRLS008` | `UseResultCombineAnalyzer` |
 | `UseAsyncMethodVariant` | `TRLS009` | `AsyncLambdaWithSyncMethodAnalyzer` |
 | `ThrowInResultChain` | `TRLS010` | `ThrowInResultChainAnalyzer` |
-| `EmptyErrorMessage` | `TRLS011` | `EmptyErrorMessageAnalyzer` |
 | `ComparingToNull` | `TRLS012` | `ComparingToNullAnalyzer` |
 | `UnsafeMaybeValueInLinq` | `TRLS013` | `UnsafeValueInLinqAnalyzer` |
 | `CombineChainTooLong` | `TRLS014` | `CombineLimitAnalyzer` |
@@ -101,12 +97,10 @@ The public static class `Trellis.Analyzers.DiagnosticDescriptors` exposes one `p
 | `UnsafeMaybeValueAccess` | `TRLS003` | Warning | Trellis.Maybe |
 | `ResultDoubleWrapping` | `TRLS004` | Warning | Trellis.Result |
 | `AsyncResultMisuse` | `TRLS005` | Warning | Trellis.Result |
-| `UseSpecificErrorType` | `TRLS006` | Info | Trellis.Error |
 | `MaybeDoubleWrapping` | `TRLS007` | Warning | Trellis.Maybe |
 | `UseResultCombine` | `TRLS008` | Info | Trellis.Result |
 | `UseAsyncMethodVariant` | `TRLS009` | Warning | Trellis.Result |
 | `ThrowInResultChain` | `TRLS010` | Warning | Trellis.Result |
-| `EmptyErrorMessage` | `TRLS011` | Warning | Trellis.Error |
 | `ComparingToNull` | `TRLS012` | Warning | Trellis.Result |
 | `UnsafeValueInLinq` | `TRLS013` | Warning | Trellis.Maybe |
 | `CombineChainTooLong` | `TRLS014` | Error | Trellis.Result |
@@ -236,13 +230,6 @@ This analyzer was deleted in v2. The `result.IsSuccess ? result.Value : fallback
   - `DebugOnFailure`, `DebugOnFailureAsync`
 - No code fix.
 
-#### `EmptyErrorMessageAnalyzer` — `TRLS011`
-- Flags empty or whitespace-only `Detail` values supplied to `Error` cases. With v2's closed ADT there are no static factory methods; the analyzer inspects the `Detail` initializer on `new Error.X(...) { Detail = ... }` constructions.
-- Recognizes `""`, whitespace string literals, interpolated strings containing only whitespace text, and `string.Empty`.
-- No code fix.
-
-> **Note:** The analyzer source still lists v1 factory names (`Validation`, `NotFound`, `Unauthorized`, `Forbidden`, `Conflict`, `Unexpected`); a follow-up pass updates the analyzer itself to inspect the `Detail` initializer on the closed-ADT cases.
-
 #### `ComparingToNullAnalyzer` — `TRLS012`
 - Flags `== null`, `!= null`, `is null`, and `is not null` when the non-null side is a Trellis `Result<T>` or `Maybe<T>`.
 - Suggests `IsSuccess` / `IsFailure` for `Result<T>` and `HasValue` / `HasNoValue` for `Maybe<T>`.
@@ -269,11 +256,6 @@ This analyzer was deleted in v2. The `result.IsSuccess ? result.Value : fallback
 - No code fix.
 
 ### Error, EF Core, and value-object rules
-
-#### `ErrorBaseClassAnalyzer` — `TRLS006`
-- Flags any attempt to construct the abstract base `Error` directly (which won't compile but is sometimes attempted via `new Error(...)` or implicit `new(...)` inference).
-- Construct one of the nested cases instead: `new Error.NotFound(resource)`, `new Error.UnprocessableContent(fields)`, etc. See `docs/api_reference/trellis-api-core.md` for the full case catalog.
-- No code fix.
 
 #### `UseSaveChangesResultAnalyzer` — `TRLS015`
 - Activates only when the compilation references `Trellis.EntityFrameworkCore.DbContextExtensions`.

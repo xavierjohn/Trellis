@@ -10,12 +10,10 @@ TRLS002  | Trellis  | Info     | Use Bind instead of Map when the lambda returns
 TRLS003  | Trellis  | Warning  | Unsafe access to Maybe.Value without a HasValue/TryGetValue guard.
 TRLS004  | Trellis  | Warning  | Result is double-wrapped (Result<Result<T>>).
 TRLS005  | Trellis  | Warning  | Incorrect async Result usage (e.g., awaiting Result<T> instead of using async extension).
-TRLS006  | Trellis  | Info     | Use a specific Error subclass instead of the base Error class.
 TRLS007  | Trellis  | Warning  | Maybe is double-wrapped (Maybe<Maybe<T>>).
 TRLS008  | Trellis  | Info     | Consider using Result.Combine to aggregate multiple results.
 TRLS009  | Trellis  | Warning  | Use the async method variant when the lambda is async.
 TRLS010  | Trellis  | Warning  | Don't throw exceptions inside Result chains; convert to Error instead.
-TRLS011  | Trellis  | Warning  | Error message should not be empty.
 TRLS012  | Trellis  | Warning  | Don't compare Result or Maybe to null; use IsSuccess / HasValue.
 TRLS013  | Trellis  | Warning  | Unsafe access to Maybe.Value inside a LINQ expression.
 TRLS014  | Trellis  | Error    | Combine chain exceeds the maximum supported tuple size.

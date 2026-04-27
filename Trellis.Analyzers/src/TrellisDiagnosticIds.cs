@@ -44,8 +44,10 @@ public static class TrellisDiagnosticIds
     /// <summary>TRLS005 — Incorrect async <c>Result</c> usage.</summary>
     public const string AsyncResultMisuse = "TRLS005";
 
-    /// <summary>TRLS006 — Use specific error type instead of base <c>Error</c> class.</summary>
-    public const string UseSpecificErrorType = "TRLS006";
+    // TRLS006 (UseSpecificErrorType / ErrorBaseClassAnalyzer) was removed in
+    // v3-alpha. It detected `new Error(...)`, but v2 `Error` is an abstract
+    // record — the C# compiler blocks construction with CS0144 before the
+    // analyzer ever runs, so the rule was redundant with the language.
 
     /// <summary>TRLS007 — <c>Maybe</c> is double-wrapped.</summary>
     public const string MaybeDoubleWrapping = "TRLS007";
@@ -59,8 +61,12 @@ public static class TrellisDiagnosticIds
     /// <summary>TRLS010 — Don't throw exceptions in <c>Result</c> chains.</summary>
     public const string ThrowInResultChain = "TRLS010";
 
-    /// <summary>TRLS011 — Error message should not be empty.</summary>
-    public const string EmptyErrorMessage = "TRLS011";
+    // TRLS011 (EmptyErrorMessage / EmptyErrorMessageAnalyzer) was removed in
+    // v3-alpha. It hard-coded the v1 static factory names (Error.Validation,
+    // Error.NotFound, Error.Unauthorized, Error.Forbidden, Error.Conflict,
+    // Error.Unexpected) as its detection set. None of those factories exist
+    // on the v2 closed-ADT Error type (only UnprocessableContent.ForField/
+    // ForRule survived), so the analyzer never matched a real call site.
 
     /// <summary>TRLS012 — Don't compare <c>Result</c> or <c>Maybe</c> to null.</summary>
     public const string ComparingToNull = "TRLS012";

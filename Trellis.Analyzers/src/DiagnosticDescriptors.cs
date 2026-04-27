@@ -81,20 +81,6 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase + "TRLS005");
 
     /// <summary>
-    /// TRLS006: Using Error base class directly instead of specific error types.
-    /// </summary>
-    public static readonly DiagnosticDescriptor UseSpecificErrorType = new(
-        id: TrellisDiagnosticIds.UseSpecificErrorType,
-        title: "Use specific error type instead of base Error class",
-        messageFormat: "Use Error.Validation(), Error.NotFound(), or other specific error types instead of instantiating Error directly",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Info,
-        isEnabledByDefault: true,
-        description: "Using specific error types (ValidationError, NotFoundError, etc.) enables type-safe error handling with MatchError. " +
-                     "Avoid instantiating the base Error class directly.",
-        helpLinkUri: HelpLinkBase + "TRLS006");
-
-    /// <summary>
     /// TRLS007: Maybe is double-wrapped as Maybe&lt;Maybe&lt;T&gt;&gt;.
     /// </summary>
     public static readonly DiagnosticDescriptor MaybeDoubleWrapping = new(
@@ -150,20 +136,6 @@ public static class DiagnosticDescriptors
         description: "Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. " +
                      "Return Result.Fail<T>() to signal errors and keep the error on the failure track.",
         helpLinkUri: HelpLinkBase + "TRLS010");
-
-    /// <summary>
-    /// TRLS011: Empty or missing error message.
-    /// </summary>
-    public static readonly DiagnosticDescriptor EmptyErrorMessage = new(
-        id: TrellisDiagnosticIds.EmptyErrorMessage,
-        title: "Error message should not be empty",
-        messageFormat: "Error message should not be empty. Provide a meaningful message for debugging.",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Error messages should provide context for debugging and user feedback. " +
-                     "Empty error messages make it difficult to diagnose issues.",
-        helpLinkUri: HelpLinkBase + "TRLS011");
 
     /// <summary>
     /// TRLS012: Comparing Result or Maybe to null.
