@@ -70,6 +70,7 @@
   <Folder Name="/Trellis.Asp/">
     <File Path="Trellis.Asp/SAMPLES.md" />
     <Project Path="Trellis.Asp/generator/Trellis.AspSourceGenerator.csproj" />
+    <Project Path="Trellis.Asp/generator-tests/Trellis.AspSourceGenerator.Tests.csproj" />
     <Project Path="Trellis.Asp/src/Trellis.Asp.csproj" />
     <Project Path="Trellis.Asp/tests/Trellis.Asp.Tests.csproj" />
   </Folder>
@@ -82,6 +83,7 @@
   </Folder>
   <Folder Name="/Trellis.EntityFrameworkCore/">
     <Project Path="Trellis.EntityFrameworkCore/generator/Trellis.EntityFrameworkCore.Generator.csproj" />
+    <Project Path="Trellis.EntityFrameworkCore/generator-tests/Trellis.EntityFrameworkCore.Generator.Tests.csproj" />
     <Project Path="Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj" />
     <Project Path="Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj" />
   </Folder>

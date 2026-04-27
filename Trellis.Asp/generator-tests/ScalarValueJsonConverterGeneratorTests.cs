@@ -168,11 +168,11 @@ public class ScalarValueJsonConverterGeneratorTests
                 private Duration(System.TimeSpan value) : base(value) { }
 
                 public static Result<Duration> TryCreate(System.TimeSpan value, string? fieldName = null) =>
-                    new Duration(value);
+                    Result.Ok(new Duration(value));
                 public static Result<Duration> TryCreate(string? value, string? fieldName = null) =>
                     System.TimeSpan.TryParse(value, out var v)
-                        ? new Duration(v)
-                        : Result.Fail<Duration>(Error.Validation("Invalid", fieldName));
+                        ? Result.Ok(new Duration(v))
+                        : Result.Fail<Duration>(Error.UnprocessableContent.ForField(fieldName ?? "value", "Invalid"));
             }
             """;
 
@@ -216,11 +216,11 @@ public class ScalarValueJsonConverterGeneratorTests
                 private Duration(System.TimeSpan value) : base(value) { }
 
                 public static Result<Duration> TryCreate(System.TimeSpan value, string? fieldName = null) =>
-                    new Duration(value);
+                    Result.Ok(new Duration(value));
                 public static Result<Duration> TryCreate(string? value, string? fieldName = null) =>
                     System.TimeSpan.TryParse(value, out var v)
-                        ? new Duration(v)
-                        : Result.Fail<Duration>(Error.Validation("Invalid", fieldName));
+                        ? Result.Ok(new Duration(v))
+                        : Result.Fail<Duration>(Error.UnprocessableContent.ForField(fieldName ?? "value", "Invalid"));
             }
             """;
 
@@ -285,9 +285,9 @@ public class ScalarValueJsonConverterGeneratorTests
                 {
                     private Quantity(int value) : base(value) { }
 
-                    public static Result<Quantity> TryCreate(int value, string? fieldName = null) => new Quantity(value);
+                    public static Result<Quantity> TryCreate(int value, string? fieldName = null) => Result.Ok(new Quantity(value));
                     public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
-                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Fail<Quantity>(Error.Validation("Invalid", fieldName));
+                        int.TryParse(value, out var v) ? Result.Ok(new Quantity(v)) : Result.Fail<Quantity>(Error.UnprocessableContent.ForField(fieldName ?? "value", "Invalid"));
                 }
             }
 
@@ -297,9 +297,9 @@ public class ScalarValueJsonConverterGeneratorTests
                 {
                     private Quantity(int value) : base(value) { }
 
-                    public static Result<Quantity> TryCreate(int value, string? fieldName = null) => new Quantity(value);
+                    public static Result<Quantity> TryCreate(int value, string? fieldName = null) => Result.Ok(new Quantity(value));
                     public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
-                        int.TryParse(value, out var v) ? new Quantity(v) : Result.Fail<Quantity>(Error.Validation("Invalid", fieldName));
+                        int.TryParse(value, out var v) ? Result.Ok(new Quantity(v)) : Result.Fail<Quantity>(Error.UnprocessableContent.ForField(fieldName ?? "value", "Invalid"));
                 }
             }
             """;
