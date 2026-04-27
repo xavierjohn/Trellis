@@ -28,8 +28,8 @@ namespace Trellis;
 /// Key characteristics:
 /// <list type="bullet">
 /// <item>All validations are executed (no short-circuiting)</item>
-/// <item>ValidationErrors are merged into a single ValidationError</item>
-/// <item>Mixed error types create an AggregateError</item>
+/// <item><see cref="Error.UnprocessableContent"/> failures are merged into a single <see cref="Error.UnprocessableContent"/></item>
+/// <item>Mixed error types create a composite failure</item>
 /// <item>Success returns a tuple containing all values</item>
 /// </list>
 /// </para>

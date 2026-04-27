@@ -62,12 +62,12 @@
 /// // Create from existing integer with validation
 /// var result1 = TicketNumber.TryCreate(12345);
 /// // Returns: Success(TicketNumber)
-/// // Returns: Failure(ValidationError) if null
+/// // Returns: Failure(Error.UnprocessableContent) if null
 /// 
 /// // Create from string with validation
 /// var result2 = TicketNumber.TryCreate("12345");
 /// // Returns: Success(TicketNumber) if valid integer format
-/// // Returns: Failure(ValidationError) if invalid format
+/// // Returns: Failure(Error.UnprocessableContent) if invalid format
 /// 
 /// // With custom field name for validation errors
 /// var result3 = TicketNumber.TryCreate(input, "ticket.number");

@@ -5,7 +5,7 @@
     that sets TrellisApiRefName (e.g., <TrellisApiRefName>asp</TrellisApiRefName>).
   -->
   <ItemGroup Condition="'$(TrellisApiRefName)' != ''">
-    <None Include="$(MSBuildThisFileDirectory)docs\api_reference\trellis-api-$(TrellisApiRefName).md"
+    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-$(TrellisApiRefName).md"
           Pack="true" PackagePath="trellis\" />
     <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
           Pack="true" PackagePath="build\$(PackageId).targets" />
@@ -19,7 +19,7 @@
     Opt in per package by setting <TrellisShipsCookbook>true</TrellisShipsCookbook>.
   -->
   <ItemGroup Condition="'$(TrellisShipsCookbook)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)docs\api_reference\trellis-api-cookbook.md"
+    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-cookbook.md"
           Pack="true" PackagePath="trellis\" />
   </ItemGroup>
 

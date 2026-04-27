@@ -50,7 +50,7 @@ using Trellis;
 /// // Returns: Success(Url("https://api.example.com/search?q=test"))
 /// 
 /// var invalid = Url.TryCreate("not-a-url");
-/// // Returns: Failure(ValidationError("URL must be a valid absolute HTTP or HTTPS URL."))
+/// // Returns: Failure(Error.UnprocessableContent with detail "URL must be a valid absolute HTTP or HTTPS URL.")
 /// </code>
 /// </example>
 [JsonConverter(typeof(ParsableJsonConverter<Url>))]
@@ -67,7 +67,7 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
     /// <param name="value">The URL string to validate.</param>
     /// <param name="fieldName">Optional field name to use in validation error messages.</param>
     /// <returns>
-    /// Success with the Url if the string is a valid HTTP/HTTPS URL; otherwise Failure with a ValidationError.
+    /// Success with the Url if the string is a valid HTTP/HTTPS URL; otherwise Failure with <see cref="Error.UnprocessableContent"/>.
     /// </returns>
     public static Result<Url> TryCreate(string? value, string? fieldName = null)
     {

@@ -33,7 +33,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// </summary>
     /// <param name="value">The decimal value (must be non-negative).</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
-    /// <returns>Success with the MonetaryAmount if valid; Failure with ValidationError if negative.</returns>
+    /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.UnprocessableContent"/> if negative.</returns>
     public static Result<MonetaryAmount> TryCreate(decimal value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
@@ -67,7 +67,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// </summary>
     /// <param name="value">The string value to parse (must be a valid decimal).</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
-    /// <returns>Success with the MonetaryAmount if valid; Failure with ValidationError otherwise.</returns>
+    /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.UnprocessableContent"/> otherwise.</returns>
     public static Result<MonetaryAmount> TryCreate(string? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
@@ -88,7 +88,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// <param name="value">The string value to parse (must be a valid decimal).</param>
     /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
-    /// <returns>Success with the MonetaryAmount if valid; Failure with ValidationError otherwise.</returns>
+    /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.UnprocessableContent"/> otherwise.</returns>
     public static Result<MonetaryAmount> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));

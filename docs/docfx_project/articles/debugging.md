@@ -13,7 +13,7 @@ flowchart LR
     B -->|failure| F[Error track]
     C -->|success| D[Step 3]
     C -->|failure| F
-    D -->|success| E[Match / ToHttpResult / ToActionResult]
+    D -->|success| E[Match / ToHttpResponse]
     D -->|failure| F
     F --> E
 ```
@@ -91,7 +91,7 @@ static string Describe(Result<int> result) =>
 | Expression | Why it is risky |
 | --- | --- |
 | `result.Value` | Throws when the result is a failure. |
-| `result.Error` | Throws when the result is a success. |
+| `result.Error!` without checking | Null on success; dereferencing it without checking can throw. |
 
 > [!WARNING]
 > In the Watch window, prefer `TryGetValue(out var value)` and `TryGetError(out var error)` over direct property access.
@@ -177,7 +177,7 @@ Good places to log:
 
 - after parsing input
 - after loading from a repository
-- before converting to HTTP with `ToHttpResult()` or `ToActionResult(this)`
+- before converting to HTTP with `ToHttpResponse()` or `ToHttpResponse().AsActionResult<T>()`
 - around external service calls
 
 ### Pattern 2: name the method instead of hiding it in a lambda

@@ -47,7 +47,7 @@ using Trellis.Primitives;
 /// app.MapPost("/users", (CreateUserRequest request) =>
 ///     EmailAddress.TryCreate(request.Email) // This creates a traced activity
 ///         .Bind(email => _userService.CreateUser(email))
-///         .ToHttpResult());
+///         .ToHttpResponse());
 /// </code>
 /// </example>
 /// <example>

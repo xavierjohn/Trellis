@@ -8,7 +8,7 @@ endpoints and converts to an MVC `ActionResult<T>` via `.AsActionResult<T>()`.
 
 `ToHttpResponse` collapses the previous family of 16+ verbs
 (`ToActionResult`, `ToHttpResult`, `ToActionResultAsync`,
-`ToHttpResultAsync`, `ToPageHttpResult`, …) into one fluent surface that
+`ToHttpResultAsync`, `ToPagedHttpResult`, …) into one fluent surface that
 honors the same RFC 9110 conditional-request, `Prefer`, `Vary`, `Range` and
 companion-header semantics they did.
 
@@ -127,7 +127,7 @@ in v3. Migrate as follows:
 | `result.ToHttpResult(httpContext)`                 | `result.ToHttpResponse()` (returns `IResult`)                    |
 | `outcome.ToActionResult(routeName, routeValues)`   | `result.ToHttpResponse(o => o.CreatedAtRoute(routeName, rv))`    |
 | `outcome.ToHttpResult(httpContext, map)`           | `result.ToHttpResponse(o => o.CreatedAtRoute(...))`              |
-| `pageResult.ToPageHttpResult(nextUrlBuilder, ...)` | `result.ToHttpResponse(nextUrlBuilder, body: p => p.Items)`      |
+| `pageResult.ToPagedHttpResult(nextUrlBuilder, ...)` | `result.ToHttpResponse(nextUrlBuilder, body: p => p.Items)`     |
 
 ### Other migration notes
 

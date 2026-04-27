@@ -13,7 +13,8 @@ When your application already returns `Result<T>`, the next problem is predictab
 
 It gives you:
 
-- `ToActionResult(...)` and `ToHttpResult(...)` for mapping `Result<T>` to HTTP responses
+- `ToHttpResponse(...)` for mapping `Result<T>` to HTTP responses in Minimal APIs and MVC
+- `AsActionResult<T>()` for typed MVC `ActionResult<T>` signatures
 - default error-type-to-status-code mappings
 - Problem Details responses for failures
 - automatic `204 No Content` for successful `Result`
@@ -28,6 +29,7 @@ If you are using controllers, this is the smallest complete setup:
 
 ```csharp
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Trellis;
 using Trellis.Asp;
 
@@ -62,18 +64,26 @@ public sealed record UserResponse(string Id, string Email)
 public sealed class UsersController(IUserService users) : ControllerBase
 {
     [HttpGet("{id}", Name = nameof(GetById))]
-    public async Task<ActionResult<UserResponse>> GetById(string id, CancellationToken ct) =>
-        await users.GetByIdAsync(id, ct)
-            .ToActionResultAsync(this, UserResponse.From);
+    public async Task<ActionResult<UserResponse>> GetById(string id, CancellationToken ct)
+    {
+        Result<User> result = await users.GetByIdAsync(id, ct);
+        return result
+            .ToHttpResponse(UserResponse.From)
+            .AsActionResult<UserResponse>();
+    }
 
     [HttpPost]
-    public async Task<ActionResult<UserResponse>> Create(CreateUserRequest request, CancellationToken ct) =>
-        await users.CreateAsync(request, ct)
-            .ToCreatedAtActionResultAsync(
-                this,
-                nameof(GetById),
-                user => new { id = user.Id },
-                UserResponse.From);
+    public async Task<ActionResult<UserResponse>> Create(CreateUserRequest request, CancellationToken ct)
+    {
+        Result<User> result = await users.CreateAsync(request, ct);
+        return result
+            .ToHttpResponse(
+                UserResponse.From,
+                opts => opts.CreatedAtRoute(
+                    nameof(GetById),
+                    user => new RouteValueDictionary(new { id = user.Id })))
+            .AsActionResult<UserResponse>();
+    }
 }
 ```
 
@@ -105,8 +115,7 @@ app.MapGet("/users/{id}", async (
     IUserService users,
     CancellationToken ct) =>
     await users.GetByIdAsync(id, ct)
-        .MapAsync(UserResponse.From)
-        .ToHttpResultAsync())
+        .ToHttpResponseAsync(UserResponse.From))
     .WithName("GetUser");
 
 app.MapPost("/users", async (
@@ -114,10 +123,11 @@ app.MapPost("/users", async (
     IUserService users,
     CancellationToken ct) =>
     await users.CreateAsync(request, ct)
-        .ToCreatedAtRouteHttpResultAsync(
-            routeName: "GetUser",
-            routeValues: user => new RouteValueDictionary(new { id = user.Id }),
-            map: UserResponse.From));
+        .ToHttpResponseAsync(
+            UserResponse.From,
+            opts => opts.CreatedAtRoute(
+                "GetUser",
+                user => new RouteValueDictionary(new { id = user.Id }))));
 
 app.Run();
 
@@ -156,7 +166,7 @@ One of the biggest wins of `Trellis.Asp` is that you do not need a custom `switc
 
 | Trellis error type | Default HTTP status |
 | --- | --- |
-| `Error.UnprocessableContent` | `400 Bad Request` |
+| `Error.UnprocessableContent` | `422 Unprocessable Content` |
 | `Error.BadRequest` | `400 Bad Request` |
 | `Error.Unauthorized` | `401 Unauthorized` |
 | `Error.Forbidden` | `403 Forbidden` |
@@ -169,27 +179,29 @@ One of the biggest wins of `Trellis.Asp` is that you do not need a custom `switc
 | `Error.ContentTooLarge` | `413 Content Too Large` |
 | `Error.UnsupportedMediaType` | `415 Unsupported Media Type` |
 | `Error.RangeNotSatisfiable` | `416 Range Not Satisfiable` |
-| `Error.Conflict` | `422 Unprocessable Content` |
 | `Error.PreconditionRequired` | `428 Precondition Required` |
 | `Error.TooManyRequests` | `429 Too Many Requests` |
 | `Error.InternalServerError` | `500 Internal Server Error` |
+| `Error.Unexpected` | `500 Internal Server Error` |
+| `Error.NotImplemented` | `501 Not Implemented` |
 | `Error.ServiceUnavailable` | `503 Service Unavailable` |
 
 > [!NOTE]
-> Trellis error codes follow the `.error` suffix convention, such as `validation.error`, `not.found.error`, and `conflict.error`.
+> Trellis error codes default to the error kind, such as `unprocessable-content` or `not-found`. Some payload-bearing cases expose a per-instance reason code instead.
 
 ## Problem Details output
 
 Failures are returned as Problem Details responses, so clients get a standard shape instead of ad hoc JSON.
 
 ```http
-HTTP/1.1 400 Bad Request
+HTTP/1.1 422 Unprocessable Content
 Content-Type: application/problem+json
 
 {
-  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
   "title": "One or more validation errors occurred.",
-  "status": 400,
+  "status": 422,
+  "code": "unprocessable-content",
+  "kind": "unprocessable-content",
   "errors": {
     "email": ["Email is required"]
   }
@@ -278,15 +290,16 @@ Use representation metadata to emit response headers such as `ETag`.
 using Trellis;
 using Trellis.Asp;
 
-app.MapGet("/products/{id:guid}", (Guid id, ProductDbContext db, HttpContext httpContext) =>
+app.MapGet("/products/{id:guid}", (Guid id, ProductDbContext db) =>
     db.Products
         .FirstOrDefaultResultAsync(
             p => p.Id == ProductId.Create(id),
             new Error.NotFound(new ResourceRef("Resource", id.ToString())) { Detail = "Product not found." })
-        .ToHttpResultAsync(
-            httpContext,
-            product => RepresentationMetadata.WithStrongETag(product.ETag),
-            ProductResponse.From));
+        .ToHttpResponseAsync(
+            ProductResponse.From,
+            opts => opts
+                .WithETag(product => product.ETag)
+                .EvaluatePreconditions()));
 
 public sealed record ProductResponse(Guid Id, string Name, decimal Price, string ETag)
 {
@@ -314,10 +327,12 @@ app.MapPut("/products/{id:guid}", (Guid id, UpdateProductRequest request, Produc
         .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
         .BindAsync(product => product.UpdatePrice(request.Price))
         .CheckAsync(_ => db.SaveChangesResultUnitAsync())
-        .ToUpdatedHttpResultAsync(
-            httpContext,
-            product => RepresentationMetadata.WithStrongETag(product.ETag),
-            ProductResponse.From));
+        .MapAsync(product => (WriteOutcome<Product>)new WriteOutcome<Product>.Updated(product))
+        .ToHttpResponseAsync(
+            ProductResponse.From,
+            opts => opts
+                .WithETag(product => product.ETag)
+                .HonorPrefer()));
 
 public sealed record UpdateProductRequest(MonetaryAmount Price);
 public sealed record ProductResponse(Guid Id, string Name, decimal Price, string ETag)
@@ -356,13 +371,14 @@ app.MapPut("/orders/{id:guid}", async (
     Guid id,
     UpdateOrderRequest request,
     IOrderService orders,
-    HttpContext httpContext,
     CancellationToken ct) =>
     await orders.UpdateAsync(id, request, ct)
-        .ToUpdatedHttpResultAsync(
-            httpContext,
-            order => RepresentationMetadata.WithStrongETag(order.ETag),
-            OrderResponse.From));
+        .MapAsync(order => (WriteOutcome<Order>)new WriteOutcome<Order>.Updated(order))
+        .ToHttpResponseAsync(
+            OrderResponse.From,
+            opts => opts
+                .WithETag(order => order.ETag)
+                .HonorPrefer()));
 ```
 
 Behavior:
@@ -408,7 +424,7 @@ app.MapGet("/products", async (ProductDbContext db, int? page, int? pageSize) =>
         return Results.Ok(items);
 
     var to = from + items.Length - 1;
-    return Result.Ok(items).ToHttpResult(from, to, total);
+    return Result.Ok(items).ToHttpResponse(opts => opts.WithRange(from, to, total));
 });
 ```
 
@@ -428,7 +444,7 @@ app.MapPost("/orders", async (
         onSuccess: order => Results.Created($"/orders/{order.Id}", order),
         onFailure: error => error switch
         {
-            Error.UnprocessableContent uc => Results.BadRequest(new
+            Error.UnprocessableContent uc => Results.UnprocessableEntity(new
             {
                 message = "Validation failed",
                 errors = uc.Fields.Items

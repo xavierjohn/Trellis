@@ -429,7 +429,7 @@ IResult httpResult = result.Match(
     onSuccess: value => Results.Ok(value),
     onFailure: error => error switch
     {
-        Error.UnprocessableContent uc => Results.BadRequest(uc.Fields.Items),
+        Error.UnprocessableContent uc => Results.UnprocessableEntity(uc.Fields.Items),
         Error.NotFound nf             => Results.NotFound(nf.Detail),
         Error.Conflict c              => Results.Conflict(c.Detail),
         _                              => Results.StatusCode(StatusCodes.Status500InternalServerError)

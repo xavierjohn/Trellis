@@ -103,7 +103,10 @@ using System.Text.Json.Serialization;
 /// {
 ///     // Value objects are already parsed and validated from JSON
 ///     return _userService.CreateUser(request.Email, request.FirstName, request.LastName)
-///         .ToHttpResult();
+///         .ToHttpResponse(user => new UserDto(
+///             user.Id,
+///             user.Email,
+///             user.FirstName));
 /// });
 /// 
 /// // MVC Controller
@@ -112,7 +115,11 @@ using System.Text.Json.Serialization;
 /// {
 ///     // ASP.NET Core automatically deserializes JSON strings to value objects
 ///     return _userService.CreateUser(request.Email, request.FirstName, request.LastName)
-///         .ToActionResult(this);
+///         .ToHttpResponse(user => new UserDto(
+///             user.Id,
+///             user.Email,
+///             user.FirstName))
+///         .AsActionResult&lt;UserDto&gt;();
 /// }
 /// 
 /// // JSON Request:

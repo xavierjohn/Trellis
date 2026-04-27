@@ -15,7 +15,7 @@ return Results.Ok(new User(request.Email.Trim().ToLowerInvariant()));
 // With Trellis — AI follows the types, the compiler catches the rest
 return EmailAddress.TryCreate(request.Email)
     .Map(email => new User(email))
-    .ToHttpResult();
+    .ToHttpResponse();
 ```
 
 > New to Trellis? Start with the [Introduction](~/articles/intro.md), see [how AI uses Trellis](~/articles/ai-code-generation.md), or browse the [examples](~/articles/examples.md).

@@ -112,29 +112,35 @@ public readonly record struct Quantity(int Value)
 
 ---
 
-## Pattern: MVC controllers returning `ActionResult`
+## Pattern: MVC controllers returning typed `ActionResult<T>`
 
 ### Applicable APIs
 
 | API | Exact Signature |
 | --- | --- |
-| Sync mapping | `ToActionResult(this Result<TValue> result, ControllerBase controllerBase)` |
-| Async mapping | `public static Task<ActionResult<TValue>> ToActionResultAsync<TValue>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase)` |
-| Created response | `public static Task<ActionResult<TValue>> ToCreatedAtActionResultAsync<TValue>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, string? controllerName = null)` |
-| Created+mapped response | `public static Task<ActionResult<TOut>> ToCreatedAtActionResultAsync<TValue, TOut>(this Task<Result<TValue>> resultTask, ControllerBase controllerBase, string actionName, Func<TValue, object?> routeValues, Func<TValue, TOut> map, string? controllerName = null)` |
+| Result response mapping | `public static IResult ToHttpResponse<T>(this Result<T> result, Action<HttpResponseOptionsBuilder<T>>? configure = null)` |
+| Result response projection | `public static IResult ToHttpResponse<TDomain, TBody>(this Result<TDomain> result, Func<TDomain, TBody> body, Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)` |
+| Task async mapping | `public static Task<IResult> ToHttpResponseAsync<T>(this Task<Result<T>> resultTask, Action<HttpResponseOptionsBuilder<T>>? configure = null)` |
+| ValueTask async mapping | `public static ValueTask<IResult> ToHttpResponseAsync<T>(this ValueTask<Result<T>> resultTask, Action<HttpResponseOptionsBuilder<T>>? configure = null)` |
+| Typed MVC adapter | `public static ActionResult<T> AsActionResult<T>(this IResult result)` |
+| Task typed MVC adapter | `public static Task<ActionResult<T>> AsActionResultAsync<T>(this Task<IResult> resultTask)` |
+| ValueTask typed MVC adapter | `public static ValueTask<ActionResult<T>> AsActionResultAsync<T>(this ValueTask<IResult> resultTask)` |
+| Created response option | `public HttpResponseOptionsBuilder<TDomain> CreatedAtRoute(string routeName, Func<TDomain, RouteValueDictionary> routeValues)` |
 
 ### Notes
 
 | Fact | Value |
 | --- | --- |
-| `Result.Ok()` returns | non-generic `Result` |
-| `Unit.Value` | **does not exist** |
-| Explicit unit value when needed | `default(Unit)` or `new Unit()` |
+| Single supported ASP response verb | `ToHttpResponse(...)` / `ToHttpResponseAsync(...)` |
+| MVC typed signatures | Chain `.AsActionResult<T>()` / `.AsActionResultAsync<T>()` after `ToHttpResponse` |
+| Created responses | Configure `Created(...)`, `CreatedAtRoute(...)`, or `CreatedAtAction(...)` through `HttpResponseOptionsBuilder<T>` |
+| AOT guidance | Prefer `CreatedAtRoute(...)`; `CreatedAtAction(...)` is annotated as not trim/AOT-safe |
 
 ### Compile-correct example
 
 ```csharp
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Trellis;
 using Trellis.Asp;
 
@@ -143,18 +149,24 @@ using Trellis.Asp;
 public sealed class ProductsController : ControllerBase
 {
     [HttpPost]
-    public Task<ActionResult<ProductResponse>> Create(
+    public async Task<ActionResult<ProductResponse>> Create(
         [FromBody] CreateProductRequest request,
-        CancellationToken cancellationToken) =>
-        ProductName.TryCreate(request.Name)
+        CancellationToken cancellationToken)
+    {
+        var result = await ProductName.TryCreate(request.Name)
             .BindAsync(name => CreateProductAsync(name, cancellationToken))
-            .ToCreatedAtActionResultAsync(
-                this,
-                actionName: nameof(GetById),
-                routeValues: p => new { id = p.Id },
-                map: ProductResponse.From);
+            .ConfigureAwait(false);
 
-    [HttpGet("{id}")]
+        return result
+            .ToHttpResponse(
+                ProductResponse.From,
+                opts => opts.CreatedAtRoute(
+                    "products.get",
+                    product => new RouteValueDictionary { ["id"] = product.Id }))
+            .AsActionResult<ProductResponse>();
+    }
+
+    [HttpGet("{id}", Name = "products.get")]
     public ActionResult<string> GetById(Guid id) => Ok(id.ToString());
 
     private static Task<Result<Product>> CreateProductAsync(ProductName name, CancellationToken cancellationToken) =>
@@ -184,11 +196,11 @@ public sealed record ProductResponse(Guid Id, string Name)
 
 | API | Exact Signature |
 | --- | --- |
-| Standard mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TValue>(this Task<Result<TValue>> resultTask, TrellisAspOptions? options = null)` |
-| Created-at-route mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToCreatedAtRouteHttpResultAsync<TValue>(this Task<Result<TValue>> resultTask, string routeName, Func<TValue, RouteValueDictionary> routeValues, TrellisAspOptions? options = null)` |
-| Metadata-aware mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToHttpResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, HttpContext httpContext, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)` |
-| Created+metadata mapping | `public static Task<Microsoft.AspNetCore.Http.IResult> ToCreatedHttpResultAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, HttpContext httpContext, Func<TIn, string> uriSelector, Func<TIn, RepresentationMetadata> metadataSelector, Func<TIn, TOut> map, TrellisAspOptions? options = null)` |
-| Update+Prefer mapping | `ToUpdatedHttpResultAsync(...)` async overloads on `Result<T>`/`Task<Result<T>>` |
+| Standard mapping | `public static IResult ToHttpResponse<T>(this Result<T> result, Action<HttpResponseOptionsBuilder<T>>? configure = null)` |
+| Body projection | `public static IResult ToHttpResponse<TDomain, TBody>(this Result<TDomain> result, Func<TDomain, TBody> body, Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)` |
+| Async standard mapping | `public static Task<IResult> ToHttpResponseAsync<T>(this Task<Result<T>> resultTask, Action<HttpResponseOptionsBuilder<T>>? configure = null)` |
+| Async body projection | `public static Task<IResult> ToHttpResponseAsync<TDomain, TBody>(this Task<Result<TDomain>> resultTask, Func<TDomain, TBody> body, Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)` |
+| Metadata / created / prefer mapping | Configure `HttpResponseOptionsBuilder<T>` with `WithETag`, `WithLastModified`, `Created`, `CreatedAtRoute`, `CreatedAtAction`, `EvaluatePreconditions`, and `HonorPrefer`. |
 
 ### Compile-correct example
 
@@ -196,12 +208,11 @@ public sealed record ProductResponse(Guid Id, string Name)
 using Trellis;
 using Trellis.Asp;
 
-app.MapGet("/products/{id:guid}", (Guid id, HttpContext httpContext) =>
+app.MapGet("/products/{id:guid}", (Guid id) =>
     LoadProductAsync(id)
-        .ToHttpResultAsync(
-            httpContext,
-            p => RepresentationMetadata.WithStrongETag(p.ETag),
-            ProductResponse.From));
+        .ToHttpResponseAsync(
+            ProductResponse.From,
+            opts => opts.WithETag(p => p.ETag)));
 
 static Task<Result<Product>> LoadProductAsync(Guid id) =>
     Task.FromResult(Result.Ok(new Product(id, "sample-etag")));

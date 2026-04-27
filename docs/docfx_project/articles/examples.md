@@ -79,7 +79,7 @@ public sealed class UsersController : ControllerBase
     public ActionResult<UserResponse> Register([FromBody] RegisterUserRequest request)
     {
         Result<UserResponse> result = RegisterCore(request);
-        return result.ToActionResult(this);
+        return result.ToHttpResponse().AsActionResult<UserResponse>();
     }
 
     private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
@@ -94,7 +94,7 @@ public sealed record RegisterUserRequest(string Email);
 public sealed record UserResponse(string Email);
 ```
 
-`ToActionResult(this)` handles the common success/failure mapping so the controller can stay focused on orchestration.
+`ToHttpResponse().AsActionResult<T>()` handles the common success/failure mapping while preserving a typed MVC return signature.
 
 For the full integration guide, see [ASP.NET Core Integration](integration-aspnet.md).
 
@@ -114,7 +114,7 @@ public static class UserRoutes
     public static void MapUserRoutes(this WebApplication app)
     {
         app.MapPost("/users", (RegisterUserRequest request) =>
-            RegisterCore(request).ToHttpResult());
+            RegisterCore(request).ToHttpResponse());
     }
 
     private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
@@ -129,7 +129,7 @@ public sealed record RegisterUserRequest(string Email);
 public sealed record UserResponse(string Email);
 ```
 
-When your endpoint is already expressed as a `Result<T>`, `ToHttpResult()` keeps the web layer very small.
+When your endpoint is already expressed as a `Result<T>`, `ToHttpResponse()` keeps the web layer very small.
 
 ---
 
@@ -266,14 +266,14 @@ IResult httpResult = result.Match(
     onSuccess: order => Results.Ok(order),
     onFailure: error => error switch
     {
-        Error.UnprocessableContent uc => Results.BadRequest(uc.Fields.Items),
+        Error.UnprocessableContent uc => Results.UnprocessableEntity(uc.Fields.Items),
         Error.NotFound nf             => Results.NotFound(nf.Detail),
         Error.Conflict c              => Results.Conflict(c.Detail),
         _                              => Results.StatusCode(StatusCodes.Status500InternalServerError)
     });
 ```
 
-This is especially handy when you want to shape the HTTP response yourself instead of delegating to `ToActionResult()` or `ToHttpResult()`.
+This is especially handy when you want to shape the HTTP response yourself instead of delegating to `ToHttpResponse()`.
 
 ---
 
@@ -286,7 +286,7 @@ This is especially handy when you want to shape the HTTP response yourself inste
 | Add a business rule | `.Ensure(..., new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = ... })` |
 | Save or notify on success | `.Tap(...)` / `.TapAsync(...)` |
 | Fallback on acceptable failures | `.RecoverOnFailure(...)` |
-| Return HTTP from MVC or Minimal API | `.ToActionResult(this)` / `.ToHttpResult()` |
+| Return HTTP from MVC or Minimal API | `.ToHttpResponse()` / `.ToHttpResponse().AsActionResult<T>()` |
 | Branch by concrete error type | `result.Match(_, e => e switch { Error.X => ..., ... })` |
 
 ## Where to go next

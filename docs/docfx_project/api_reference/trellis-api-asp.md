@@ -844,4 +844,4 @@ app.MapGet("/products/{id:ProductId}", (ProductId id) => Results.Ok(id));
 - [trellis-api-authorization.md](trellis-api-authorization.md) — `Actor`, `IActorProvider`, `IAuthorize`, `IAuthorizeResource<TResource>`, resource loaders.
 - [trellis-api-primitives.md](trellis-api-primitives.md) — `IScalarValue<TSelf, TPrimitive>`, `Maybe<T>`.
 - [trellis-api-http.md](trellis-api-http.md) — Pure HTTP value objects shared between hosts.
-- [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — `WebApplicationFactoryExtensions.CreateClientWithActor` (writes the `X-Test-Actor` header consumed by `DevelopmentActorProvider`).
+- [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md) — `WebApplicationFactoryExtensions.CreateClientWithActor` (writes the `X-Test-Actor` header consumed by `DevelopmentActorProvider`).

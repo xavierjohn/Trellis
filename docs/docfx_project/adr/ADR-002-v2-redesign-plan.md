@@ -74,7 +74,7 @@ template/
    → **Migrated** in Phase 3: §6's single `ToHttpResponse` verb subsumes all seven for both MVC and Minimal. The seven-idiom pattern is exactly what the redesign aims to collapse, and the migrated controller is the concrete proof that §6 works (see Appendix A — included with the Phase 3 deliverable).
 7. **`[CustomerResourceId] TodoId id` action-parameter attribute** binds + authorizes resource ids. → **Preserved**, namespace migrates to `Trellis.Asp` after Phase 3 absorbs `Trellis.Asp.Authorization`.
 8. **`app.UseScalarValueValidation()` in Program.cs.** → **Preserved**, with the auto-registration option from §6.5 making the explicit call optional.
-9. **Template ships its own `.github/copilot-instructions.md` + 13 `trellis-api-*.md` files.** → **Preserved as the canonical AI surface.** The repo-level `docs/api_reference/` files are the source; the template's copies are kept in sync by Phase 5 tooling.
+9. **Template ships its own `.github/copilot-instructions.md` + 13 `trellis-api-*.md` files.** → **Preserved as the canonical AI surface.** The repo-level `docs/docfx_project/api_reference/` files are the source; the template's copies are kept in sync by Phase 5 tooling.
 
 **Process commitment — template is rewritten as a post-GA Phase 6 deliverable.**
 
@@ -391,7 +391,7 @@ Scalar VOs expose `Value`, `ToString()`, and (for numerics/dates only) `ToString
 If `Trellis.Asp` is installed, HTTP mapping is `Trellis.Asp`-prefixed. Each package's surface is self-describing.
 
 ### H. **The doc is the API.**
-The per-package `docs/api_reference/trellis-api-*.md` is the canonical surface; it ships in every NuGet package and is generated from source where possible.
+The per-package `docs/docfx_project/api_reference/trellis-api-*.md` is the canonical surface; it ships in every NuGet package and is generated from source where possible.
 
 ### I. **Diagnostics complement — not replace — boundary adapters.**
 We keep `Result.Try(Func<T>, Func<Exception, Error>?)` and `Result.TryAsync` as explicit boundary adapters for foreign code (EF, HttpClient, BCL parsing, third-party). Analyzers (`TRLS015`) catch unguarded `throw` *inside* a chain — but they cannot catch exceptions from foreign code, which is exactly what `Try` exists for. Removing `Try` would force the AI to reinvent it badly.
@@ -1143,7 +1143,7 @@ public static class RetryAfterValueHttpExtensions
 - **API** → references everything. Owns `Trellis.Asp` consumption. Parses `If-Match` via `ETagHelper.ParseIfMatch(Request)` into `EntityTagValue[]?` and passes it into commands; writes ETag/RetryAfter response headers via the `Trellis.Asp` extensions.
 
 ### 12.3 Documentation contract
-- `docs/api_reference/trellis-api-*.md` is generated from source by an analyzer-time tool (Roslyn-driven).
+- `docs/docfx_project/api_reference/trellis-api-*.md` is generated from source by an analyzer-time tool (Roslyn-driven).
 - Each NuGet package ships its own `trellis-api-*.md` file as content (already done via `Trellis.ApiReference.targets` — keep that).
 - The `copilot-instructions.md` for the template package references the generated docs by relative path — they always match the installed version.
 
@@ -1363,6 +1363,6 @@ Section 7 sketched the canonical surface but deferred several details to impleme
 
 4. **Single canonical shape for the post-bridge chain.** §7's example showed `HandleNotFound(this Task<HttpResponseMessage> r, ...)` (singular). Phase 4b implements `Handle*Async` strictly on `Task<HttpResponseMessage>` &mdash; they are *entry points*, not composable mid-chain operators. Multi-status mapping after the bridge is expressed via `ToResultAsync(statusMap)`. This avoids the v1 trap of having both `Task<HRM>` and `Task<Result<HRM>>` overloads for every verb.
 
-5. **Clean cut, no shims.** Pre-GA, every removed/renamed verb is deleted outright; there are no `[Obsolete]` redirects. Migration is mechanical (per the table in `docs/api_reference/trellis-api-http.md`) and tightly scoped &mdash; the framework had zero in-tree production callers of the removed verbs.
+5. **Clean cut, no shims.** Pre-GA, every removed/renamed verb is deleted outright; there are no `[Obsolete]` redirects. Migration is mechanical (per the table in `docs/docfx_project/api_reference/trellis-api-http.md`) and tightly scoped &mdash; the framework had zero in-tree production callers of the removed verbs.
 
 These decisions are implemented in PR for branch `dev/xavier/v2-phase4b-http-slim` and codified in tests under `Trellis.Http/tests/HttpResponseExtensionsTests/`.

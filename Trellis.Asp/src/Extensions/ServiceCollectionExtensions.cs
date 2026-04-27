@@ -74,13 +74,13 @@ public static class ServiceCollectionExtensions
     /// public class UsersController : ControllerBase
     /// {
     ///     [HttpPost]
-    ///     public IActionResult Register(RegisterUserDto dto)
+    ///     public ActionResult&lt;User&gt; Register(RegisterUserDto dto)
     ///     {
     ///         // If we reach here, dto is fully validated!
     ///         // All scalar values passed validation
     ///
     ///         var user = User.TryCreate(dto.Email, dto.FirstName);
-    ///         return user.ToActionResult(this);
+    ///         return user.ToHttpResponse().AsActionResult&lt;User&gt;();
     ///     }
     /// }
     /// </code>

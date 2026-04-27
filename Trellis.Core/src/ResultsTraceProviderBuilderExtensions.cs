@@ -8,14 +8,14 @@ using OpenTelemetry.Trace;
 public static class ResultsTraceProviderBuilderExtensions
 {
     /// <summary>
-    /// Adds Functional DDD Railway Oriented Programming instrumentation to the OpenTelemetry tracer provider.
+    /// Adds Trellis Railway Oriented Programming instrumentation to the OpenTelemetry tracer provider.
     /// This enables distributed tracing and observability for Result operations.
     /// </summary>
     /// <param name="builder">The <see cref="TracerProviderBuilder"/> to configure.</param>
     /// <returns>The same <see cref="TracerProviderBuilder"/> instance for method chaining.</returns>
     /// <remarks>
     /// <para>
-    /// This method registers the FunctionalDDD ROP activity source with OpenTelemetry,
+    /// This method registers the Trellis ROP activity source with OpenTelemetry,
     /// allowing you to trace Result operations through your application using tools like
     /// Application Insights, Jaeger, Zipkin, or other OpenTelemetry-compatible backends.
     /// </para>

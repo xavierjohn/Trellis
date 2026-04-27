@@ -76,10 +76,10 @@ namespace Trellis;
 /// // Returns: Success(FirstName("John"))
 /// 
 /// var result2 = FirstName.TryCreate("");
-/// // Returns: Failure(ValidationError("First Name cannot be empty."))
+/// // Returns: Failure(Error.UnprocessableContent with detail "First Name cannot be empty.")
 /// 
 /// var result3 = FirstName.TryCreate(null);
-/// // Returns: Failure(ValidationError("First Name cannot be empty."))
+/// // Returns: Failure(Error.UnprocessableContent with detail "First Name cannot be empty.")
 /// 
 /// var result4 = FirstName.TryCreate("  John  ");
 /// // Returns: Success(FirstName("John")) - automatically trimmed
@@ -139,13 +139,13 @@ namespace Trellis;
 ///     }
 /// }
 ///
-/// // Invalid request automatically returns 400 Bad Request:
+/// // Invalid request automatically returns 422 Unprocessable Content:
 /// // POST /api/users with { "firstName": "", "lastName": "Doe", "email": "test@example.com" }
-/// // Response: 400 Bad Request
+/// // Response: 422 Unprocessable Content
 /// // {
 /// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
 /// //   "title": "One or more validation errors occurred.",
-/// //   "status": 400,
+/// //   "status": 422,
 /// //   "errors": {
 /// //     "firstName": ["First Name cannot be empty."]
 /// //   }
@@ -164,14 +164,14 @@ namespace Trellis;
 ///         .Combine(LastName.TryCreate(request.LastName, nameof(request.LastName)))
 ///         .Combine(EmailAddress.TryCreate(request.Email, nameof(request.Email)))
 ///         .Bind((first, last, email) => User.Create(first, last, email))
-///         .ToHttpResult());
+///         .ToHttpResponse());
 /// 
 /// // POST /users with empty FirstName:
-/// // Response: 400 Bad Request
+/// // Response: 422 Unprocessable Content
 /// // {
 /// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
 /// //   "title": "One or more validation errors occurred.",
-/// //   "status": 400,
+/// //   "status": 422,
 /// //   "errors": {
 /// //     "firstName": ["First Name cannot be empty."]
 /// //   }
