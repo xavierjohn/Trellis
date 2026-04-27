@@ -73,12 +73,12 @@ namespace Trellis;
 /// // Create from existing GUID with validation
 /// var result1 = CustomerId.TryCreate(existingGuid);
 /// // Returns: Success(CustomerId) if guid != Guid.Empty
-/// // Returns: Failure(ValidationError) if guid == Guid.Empty
+/// // Returns: Failure(Error.UnprocessableContent) if guid == Guid.Empty
 /// 
 /// // Create from string with validation
 /// var result2 = CustomerId.TryCreate("550e8400-e29b-41d4-a716-446655440000");
 /// // Returns: Success(CustomerId) if valid GUID format
-/// // Returns: Failure(ValidationError) if invalid format or empty GUID
+/// // Returns: Failure(Error.UnprocessableContent) if invalid format or empty GUID
 /// 
 /// // With custom field name for validation errors
 /// var result3 = CustomerId.TryCreate(input, "customer.id");
@@ -154,14 +154,14 @@ namespace Trellis;
 ///     CustomerId.TryCreate(id)
 ///         .Bind(_customerRepository.GetAsync)
 ///         .Map(customer => new CustomerDto(customer))
-///         .ToHttpResult());
+///         .ToHttpResponse());
 /// 
 /// // JSON request/response examples:
 /// // Request: GET /customers/550e8400-e29b-41d4-a716-446655440000
 /// // Response: { "customerId": "550e8400-e29b-41d4-a716-446655440000", "name": "John" }
 /// // 
 /// // Invalid GUID: GET /customers/00000000-0000-0000-0000-000000000000
-/// // Response: 400 Bad Request with ValidationError
+/// // Response: 422 Unprocessable Content with Error.UnprocessableContent
 /// </code>
 /// </example>
 /// <example>

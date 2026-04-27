@@ -252,4 +252,4 @@ string? tenant = actor.GetAttribute(ActorAttributes.TenantId);
 - [trellis-api-asp.md](trellis-api-asp.md) — `Trellis.Asp.Authorization` actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`) and the matching `AddClaimsActorProvider` / `AddEntraActorProvider` / `AddDevelopmentActorProvider` / `AddCachingActorProvider<T>` registration helpers.
 - [trellis-api-mediator.md](trellis-api-mediator.md) — `AuthorizationBehavior<TMessage, TResponse>` pipeline behavior.
 - [trellis-api-core.md](trellis-api-core.md) — `Result`, `Error.Forbidden`, `Error.NotFound`.
-- [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — `WebApplicationFactoryExtensions.CreateClientWithActor` (writes the `X-Test-Actor` header consumed by `DevelopmentActorProvider`).
+- [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md) — `WebApplicationFactoryExtensions.CreateClientWithActor` (writes the `X-Test-Actor` header consumed by `DevelopmentActorProvider`).

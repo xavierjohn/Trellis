@@ -12,7 +12,7 @@ using Trellis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class bridges FluentValidation's imperative validation model with FunctionalDDD's
+/// This class bridges FluentValidation's imperative validation model with Trellis'
 /// Railway Oriented Programming approach. Key benefits:
 /// <list type="bullet">
 /// <item>Automatic conversion of validation errors to <see cref="Error.UnprocessableContent"/></item>
@@ -120,7 +120,7 @@ using Trellis;
 ///             .Combine(LastName.TryCreate(req.LastName))
 ///             .Combine(EmailAddress.TryCreate(req.Email))
 ///             .Bind((first, last, email) =&gt; service.CreateUser(first, last, email, req.Password)))
-///         .ToHttpResult();
+///         .ToHttpResponse();
 /// });
 /// 
 /// // Validation errors automatically formatted with field names
@@ -162,7 +162,7 @@ public static class FluentValidationResultExtensions
     /// <para>
     /// The resulting <see cref="Error.UnprocessableContent"/> can be automatically converted to:
     /// <list type="bullet">
-    /// <item>HTTP 422 Unprocessable Content with validation problem details (via ToActionResult/ToHttpResult)</item>
+    /// <item>HTTP 422 Unprocessable Content with validation problem details (via ToHttpResponse)</item>
     /// <item>Structured error responses with field-level error messages</item>
     /// </list>
     /// </para>
@@ -378,7 +378,7 @@ public static class FluentValidationResultExtensions
     ///     CancellationToken ct) =&gt;
     ///     await validator.ValidateToResultAsync(request, cancellationToken: ct)
     ///         .BindAsync(req =&gt; service.CreateUserAsync(req, ct), ct)
-    ///         .ToHttpResultAsync());
+    ///         .ToHttpResponseAsync());
     /// </code>
     /// </example>
     /// <example>

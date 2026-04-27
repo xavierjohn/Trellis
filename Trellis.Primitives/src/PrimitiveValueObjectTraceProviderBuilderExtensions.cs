@@ -92,7 +92,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     ///         .Combine(FirstName.TryCreate(request.FirstName))
     ///         .Combine(LastName.TryCreate(request.LastName))
     ///         .Bind((email, first, last) => _userService.CreateUser(email, first, last))
-    ///         .ToHttpResult());
+    ///         .ToHttpResponse());
     /// 
     /// // Resulting trace hierarchy:
     /// // POST /users (200ms)

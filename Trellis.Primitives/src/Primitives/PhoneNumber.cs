@@ -54,7 +54,7 @@ using Trellis;
 /// // Returns: Success(PhoneNumber("+14155551234"))
 /// 
 /// var invalid = PhoneNumber.TryCreate("555-1234");
-/// // Returns: Failure(ValidationError("Phone number must be in E.164 format (e.g., +14155551234)."))
+/// // Returns: Failure(Error.UnprocessableContent with detail "Phone number must be in E.164 format (e.g., +14155551234).")
 /// </code>
 /// </example>
 [JsonConverter(typeof(ParsableJsonConverter<PhoneNumber>))]
@@ -101,7 +101,7 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
     /// <param name="value">The phone number string to validate.</param>
     /// <param name="fieldName">Optional field name to use in validation error messages.</param>
     /// <returns>
-    /// Success with the PhoneNumber if the string is in E.164 format; otherwise Failure with a ValidationError.
+    /// Success with the PhoneNumber if the string is in E.164 format; otherwise Failure with <see cref="Error.UnprocessableContent"/>.
     /// </returns>
     public static Result<PhoneNumber> TryCreate(string? value, string? fieldName = null)
     {

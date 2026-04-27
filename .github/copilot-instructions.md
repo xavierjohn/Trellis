@@ -38,6 +38,7 @@ Start with the task lookup table at the top of `docs/docfx_project/api_reference
 | Mediator pipeline behaviors | `docs/docfx_project/api_reference/trellis-api-mediator.md` |
 | State machine integration | `docs/docfx_project/api_reference/trellis-api-statemachine.md` |
 | Testing helpers | `docs/docfx_project/api_reference/trellis-api-testing-reference.md` |
+| ASP.NET Core integration-test helpers | `docs/docfx_project/api_reference/trellis-api-testing-aspnetcore.md` |
 | Analyzer rules (TRLS001-TRLS021) | `docs/docfx_project/api_reference/trellis-api-analyzers.md` |
 
 These files document the exact method signatures, overloads, and usage patterns. Do not assume APIs based on naming conventions — read the reference first.

@@ -323,7 +323,7 @@ This confirmed:
 
 When V6 is adopted, several artifacts still describe earlier worlds and must be updated in the same change or a tightly-coupled follow-up:
 
-- `docs/api_reference/trellis-api-core.md` — if it still documents `TryGetError` or "Error throws on success", rewrite to the V6 surface.
+- `docs/docfx_project/api_reference/trellis-api-core.md` — if it still documents `TryGetError` or "Error throws on success", rewrite to the V6 surface.
 - `Trellis.Analyzers/src/DiagnosticDescriptors.cs` — if it still states `Result.Error` may throw, update wording. Consider new analyzer rules for the footguns listed above (deconstruction without bool check; property pattern over `Value`).
 - `copilot-instructions.md` — examples that use `TryGetError` patterns must migrate to `if (result.Error is { } e)`.
 - Active redesign-plan documents — align any sections that assumed the V2 internal-only model.

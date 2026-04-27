@@ -54,13 +54,13 @@ using Trellis;
 /// 
 /// // Invalid email addresses
 /// var invalid1 = EmailAddress.TryCreate("not-an-email");
-/// // Returns: Failure(ValidationError("Email address is not valid."))
+/// // Returns: Failure(Error.UnprocessableContent with detail "Email address is not valid.")
 /// 
 /// var invalid2 = EmailAddress.TryCreate("@example.com");
-/// // Returns: Failure(ValidationError("Email address is not valid."))
+/// // Returns: Failure(Error.UnprocessableContent with detail "Email address is not valid.")
 /// 
 /// var invalid3 = EmailAddress.TryCreate(null);
-/// // Returns: Failure(ValidationError("Email address is not valid."))
+/// // Returns: Failure(Error.UnprocessableContent with detail "Email address is not valid.")
 /// </code>
 /// </example>
 /// <example>
@@ -95,7 +95,7 @@ using Trellis;
 /// <code>
 /// // Specify field name for better error messages
 /// var result = EmailAddress.TryCreate("invalid", "userEmail");
-/// // Returns: Failure(ValidationError("Email address is not valid.", fieldName: "userEmail"))
+/// // Returns: Failure(Error.UnprocessableContent with field "userEmail")
 /// 
 /// // In API validation
 /// public record RegisterUserRequest(string Email, string Password);
@@ -103,7 +103,7 @@ using Trellis;
 /// app.MapPost("/register", (RegisterUserRequest request) =>
 ///     EmailAddress.TryCreate(request.Email, nameof(request.Email))
 ///         .Bind(email => _authService.RegisterAsync(email, request.Password))
-///         .ToHttpResult());
+///         .ToHttpResponse());
 /// 
 /// // Invalid email response:
 /// // {

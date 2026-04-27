@@ -49,7 +49,7 @@ using System.Reflection;
 ///     EmailAddress.TryCreate(request.Email)
 ///         .Bind(email => User.Create(email))  // Traced activity
 ///         .Tap(user => _logger.LogInformation("Created user"))  // Traced activity
-///         .ToHttpResult());
+///         .ToHttpResponse());
 /// </code>
 /// </example>
 /// <seealso cref="ResultsTraceProviderBuilderExtensions"/>

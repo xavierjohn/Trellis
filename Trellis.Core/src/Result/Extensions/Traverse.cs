@@ -250,7 +250,7 @@ public static class TraverseExtensions
     /// <para>
     /// Failure semantics are first-failure-wins (matching <see cref="Traverse{TIn,TOut}"/>
     /// and the v2 design — see ADR-002 §3.6). For per-field validation aggregation,
-    /// use the <c>Validate</c> builder which accumulates into a single <c>ValidationError</c>.
+    /// use the <c>Validate</c> builder which accumulates into a single <see cref="Error.UnprocessableContent"/>.
     /// </para>
     /// </remarks>
     /// <example>

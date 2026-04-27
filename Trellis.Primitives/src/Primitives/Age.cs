@@ -63,7 +63,7 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     /// <param name="value">The string value to parse.</param>
     /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
-    /// <returns>Success with the Age if valid; Failure with ValidationError otherwise.</returns>
+    /// <returns>Success with the Age if valid; Failure with <see cref="Error.UnprocessableContent"/> otherwise.</returns>
     public static Result<Age> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Age) + '.' + nameof(TryCreate));

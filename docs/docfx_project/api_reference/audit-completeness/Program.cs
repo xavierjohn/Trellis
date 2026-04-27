@@ -4,30 +4,29 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Xml.Linq;
+using System.Globalization;
 
-string fwRoot = Environment.GetEnvironmentVariable("TRELLIS_FW_ROOT") ?? @"C:\GitHub\Trellis\TrellisFramework";
-string docsDir = Path.Combine(fwRoot, "docs", "api_reference");
+string fwRoot = Environment.GetEnvironmentVariable("TRELLIS_FW_ROOT")
+    ?? FindRepositoryRoot(Environment.CurrentDirectory)
+    ?? @"C:\GitHub\Trellis\TrellisFramework";
+string docsDir = Path.Combine(fwRoot, "docs", "docfx_project", "api_reference");
 
-var packages = new (string Pkg, string Doc)[] {
-    ("Trellis.Core",                "trellis-api-core.md"),
-    ("Trellis.Primitives",          "trellis-api-primitives.md"),
-    ("Trellis.Mediator",            "trellis-api-mediator.md"),
-    ("Trellis.FluentValidation",    "trellis-api-fluentvalidation.md"),
-    ("Trellis.Asp",                 "trellis-api-asp.md"),
-    ("Trellis.Authorization",       "trellis-api-authorization.md"),
-    ("Trellis.EntityFrameworkCore", "trellis-api-efcore.md"),
-    ("Trellis.Http",                "trellis-api-http.md"),
-    ("Trellis.StateMachine",        "trellis-api-statemachine.md"),
-    ("Trellis.Testing",             "trellis-api-testing-reference.md"),
-    ("Trellis.Analyzers",           "trellis-api-analyzers.md"),
-};
+var packages = DiscoverPackages(fwRoot, docsDir).ToArray();
 
-string? FindDll(string pkg) {
+if (packages.Length == 0)
+{
+    Console.WriteLine($"No package projects with TrellisApiRefName found under {fwRoot}");
+    return;
+}
+
+string? FindDll(PackageInfo package) {
+    var projectDir = Path.GetDirectoryName(package.ProjectPath)!;
     var candidates = new[] {
-        Path.Combine(fwRoot, pkg, "src", "bin", "Release", "net10.0", $"{pkg}.dll"),
-        Path.Combine(fwRoot, pkg, "src", "bin", "Debug",   "net10.0", $"{pkg}.dll"),
-        Path.Combine(fwRoot, pkg, "src", "bin", "Release", "netstandard2.0", $"{pkg}.dll"),
-        Path.Combine(fwRoot, pkg, "src", "bin", "Debug",   "netstandard2.0", $"{pkg}.dll"),
+        Path.Combine(projectDir, "bin", "Release", "net10.0", $"{package.AssemblyName}.dll"),
+        Path.Combine(projectDir, "bin", "Debug",   "net10.0", $"{package.AssemblyName}.dll"),
+        Path.Combine(projectDir, "bin", "Release", "netstandard2.0", $"{package.AssemblyName}.dll"),
+        Path.Combine(projectDir, "bin", "Debug",   "netstandard2.0", $"{package.AssemblyName}.dll"),
     };
     return candidates.FirstOrDefault(File.Exists);
 }
@@ -35,8 +34,8 @@ string? FindDll(string pkg) {
 string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
 var refPaths = new HashSet<string>(Directory.GetFiles(runtimeDir, "*.dll"), StringComparer.OrdinalIgnoreCase);
 
-foreach (var (pkg, _) in packages) {
-    var d = FindDll(pkg);
+foreach (var package in packages) {
+    var d = FindDll(package);
     if (d == null) continue;
     refPaths.Add(d);
     var dir = Path.GetDirectoryName(d)!;
@@ -58,16 +57,16 @@ string[] skipMembers = { "Equals","GetHashCode","ToString","GetType","Memberwise
 var sb = new StringBuilder();
 var summary = new List<(string Pkg, int Types, int UndocTypes, int Members, int UndocMembers)>();
 
-foreach (var (pkg, doc) in packages) {
-    var dll = FindDll(pkg);
-    if (dll == null) { Console.WriteLine($"[{pkg}] DLL not found, skipping"); continue; }
-    var docPath = Path.Combine(docsDir, doc);
-    if (!File.Exists(docPath)) { Console.WriteLine($"[{pkg}] Doc missing: {docPath}"); continue; }
+foreach (var package in packages) {
+    var dll = FindDll(package);
+    if (dll == null) { Console.WriteLine($"[{package.PackageName}] DLL not found, skipping"); continue; }
+    var docPath = Path.Combine(docsDir, package.DocFile);
+    if (!File.Exists(docPath)) { Console.WriteLine($"[{package.PackageName}] Doc missing: {docPath}"); continue; }
     var docText = File.ReadAllText(docPath).ToLowerInvariant();
 
     Assembly asm;
     try { asm = mlc.LoadFromAssemblyPath(dll); }
-    catch (Exception ex) { Console.WriteLine($"[{pkg}] Load failed: {ex.Message}"); continue; }
+    catch (Exception ex) { Console.WriteLine($"[{package.PackageName}] Load failed: {ex.Message}"); continue; }
 
     Type[] types;
     try { types = asm.GetExportedTypes(); }
@@ -78,7 +77,7 @@ foreach (var (pkg, doc) in packages) {
     int memberTotal = 0;
 
     foreach (var t in types) {
-        if (t.Name.StartsWith("<")) continue;
+        if (t.Name.StartsWith("<", StringComparison.Ordinal)) continue;
         var simple = t.Name.Contains('`') ? t.Name.Substring(0, t.Name.IndexOf('`')) : t.Name;
         if (!docText.Contains(simple.ToLowerInvariant())) {
             undocTypes.Add(t.FullName ?? simple);
@@ -93,28 +92,29 @@ foreach (var (pkg, doc) in packages) {
         foreach (var m in members) {
             memberTotal++;
             if (skipMembers.Contains(m.Name)) continue;
-            if (m.Name.StartsWith("op_") || m.Name.StartsWith("get_") || m.Name.StartsWith("set_")
-                || m.Name.StartsWith("add_") || m.Name.StartsWith("remove_")) continue;
+            if (m.Name.StartsWith("op_", StringComparison.Ordinal) || m.Name.StartsWith("get_", StringComparison.Ordinal) || m.Name.StartsWith("set_", StringComparison.Ordinal)
+                || m.Name.StartsWith("add_", StringComparison.Ordinal) || m.Name.StartsWith("remove_", StringComparison.Ordinal)) continue;
             if (!docText.Contains(m.Name.ToLowerInvariant()))
                 undocMembers.Add($"{t.FullName}::{m.Name}");
         }
     }
 
-    summary.Add((pkg, types.Length, undocTypes.Count, memberTotal, undocMembers.Count));
+    summary.Add((package.PackageName, types.Length, undocTypes.Count, memberTotal, undocMembers.Count));
     var dedupedMembers = undocMembers.Distinct().OrderBy(x => x).ToList();
     sb.AppendLine();
-    sb.AppendLine($"## {pkg}");
-    sb.AppendLine($"- Types: {types.Length} ({undocTypes.Count} undocumented)");
-    sb.AppendLine($"- Members: {memberTotal} total, {undocMembers.Count} undocumented signatures, {dedupedMembers.Count} unique undocumented names");
+    sb.AppendLine(CultureInfo.InvariantCulture, $"## {package.PackageName}");
+    sb.AppendLine(CultureInfo.InvariantCulture, $"- Doc: `{package.DocFile}`");
+    sb.AppendLine(CultureInfo.InvariantCulture, $"- Types: {types.Length} ({undocTypes.Count} undocumented)");
+    sb.AppendLine(CultureInfo.InvariantCulture, $"- Members: {memberTotal} total, {undocMembers.Count} undocumented signatures, {dedupedMembers.Count} unique undocumented names");
     if (undocTypes.Any()) {
         sb.AppendLine();
         sb.AppendLine("### Undocumented types");
-        foreach (var u in undocTypes.OrderBy(x => x)) sb.AppendLine($"- `{u}`");
+        foreach (var u in undocTypes.OrderBy(x => x)) sb.AppendLine(CultureInfo.InvariantCulture, $"- `{u}`");
     }
     if (dedupedMembers.Any()) {
         sb.AppendLine();
         sb.AppendLine("### Undocumented members on documented types (deduped — overloads collapsed)");
-        foreach (var u in dedupedMembers) sb.AppendLine($"- `{u}`");
+        foreach (var u in dedupedMembers) sb.AppendLine(CultureInfo.InvariantCulture, $"- `{u}`");
     }
 }
 
@@ -128,3 +128,64 @@ var outPath = Path.Combine(docsDir, "completeness-report.md");
 File.WriteAllText(outPath, "# API Reference Completeness Report\n" + sb.ToString());
 Console.WriteLine();
 Console.WriteLine($"Report written: {outPath}");
+
+static string? FindRepositoryRoot(string startDirectory)
+{
+    var directory = new DirectoryInfo(startDirectory);
+
+    while (directory is not null)
+    {
+        if (File.Exists(Path.Combine(directory.FullName, "Trellis.slnx")))
+            return directory.FullName;
+
+        directory = directory.Parent;
+    }
+
+    return null;
+}
+
+static IEnumerable<PackageInfo> DiscoverPackages(string fwRoot, string docsDir)
+{
+    return Directory
+        .EnumerateFiles(fwRoot, "*.csproj", SearchOption.AllDirectories)
+        .Where(path => path.Contains($"{Path.DirectorySeparatorChar}src{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+        .Select(TryReadPackageInfo)
+        .Where(info => info is not null)
+        .Cast<PackageInfo>()
+        .OrderBy(info => info.PackageName, StringComparer.Ordinal);
+
+    PackageInfo? TryReadPackageInfo(string projectPath)
+    {
+        XDocument project;
+        try { project = XDocument.Load(projectPath); }
+        catch { return null; }
+
+        var apiRefName = project
+            .Descendants("TrellisApiRefName")
+            .Select(element => element.Value.Trim())
+            .FirstOrDefault(value => value.Length > 0);
+
+        if (apiRefName is null)
+            return null;
+
+        var assemblyName = project
+            .Descendants("AssemblyName")
+            .Select(element => element.Value.Trim())
+            .FirstOrDefault(value => value.Length > 0)
+            ?? Path.GetFileNameWithoutExtension(projectPath);
+
+        var packageName = project
+            .Descendants("PackageId")
+            .Select(element => element.Value.Trim())
+            .FirstOrDefault(value => value.Length > 0)
+            ?? assemblyName;
+
+        var docFile = $"trellis-api-{apiRefName}.md";
+        if (!File.Exists(Path.Combine(docsDir, docFile)))
+            Console.WriteLine($"[{packageName}] Expected doc not found: {docFile}");
+
+        return new PackageInfo(packageName, assemblyName, projectPath, docFile);
+    }
+}
+
+internal sealed record PackageInfo(string PackageName, string AssemblyName, string ProjectPath, string DocFile);
