@@ -44,14 +44,14 @@ namespace Trellis;
 ///     
 ///     public static Result<CustomerId> TryCreate(Guid value) =>
 ///         value.ToResult()
-///             .Ensure(v => v != Guid.Empty, Error.Validation("Customer ID cannot be empty"))
+///             .Ensure(v => v != Guid.Empty, Error.UnprocessableContent.ForField("customerId", "invalid", "Customer ID cannot be empty"))
 ///             .Map(v => new CustomerId(v));
 ///     
 ///     public static Result<CustomerId> TryCreate(string? stringOrNull) =>
-///         stringOrNull.ToResult(Error.Validation("Customer ID cannot be empty"))
+///         stringOrNull.ToResult(Error.UnprocessableContent.ForField("customerId", "invalid", "Customer ID cannot be empty"))
 ///             .Bind(s => Guid.TryParse(s, out var guid)
 ///                 ? Result.Ok(guid)
-///                 : Error.Validation("Invalid GUID format"))
+///                 : Error.UnprocessableContent.ForField("customerId", "invalid", "Invalid GUID format"))
 ///             .Bind(TryCreate);
 /// }
 /// 
@@ -70,9 +70,9 @@ namespace Trellis;
 ///     public static Result<Temperature> TryCreate(decimal value) =>
 ///         value.ToResult()
 ///             .Ensure(v => v >= -273.15m, 
-///                    Error.Validation("Temperature cannot be below absolute zero"))
+///                    Error.UnprocessableContent.ForField("temperature", "invalid", "Temperature cannot be below absolute zero"))
 ///             .Ensure(v => v <= 1_000_000m,
-///                    Error.Validation("Temperature exceeds physical limits"))
+///                    Error.UnprocessableContent.ForField("temperature", "invalid", "Temperature exceeds physical limits"))
 ///             .Map(v => new Temperature(v));
 ///     
 ///     // Custom equality - round to 2 decimal places
@@ -106,13 +106,13 @@ namespace Trellis;
 ///     private EmailAddress(string value) : base(value) { }
 ///     
 ///     public static Result<EmailAddress> TryCreate(string email) =>
-///         email.ToResult(Error.Validation("Email is required", "email"))
+///         email.ToResult(Error.UnprocessableContent.ForField("email", "invalid", "Email is required"))
 ///             .Ensure(e => !string.IsNullOrWhiteSpace(e),
-///                    Error.Validation("Email cannot be empty", "email"))
+///                    Error.UnprocessableContent.ForField("email", "invalid", "Email cannot be empty"))
 ///             .Ensure(e => e.Contains("@"),
-///                    Error.Validation("Email must contain @", "email"))
+///                    Error.UnprocessableContent.ForField("email", "invalid", "Email must contain @"))
 ///             .Ensure(e => e.Length <= 254,
-///                    Error.Validation("Email too long", "email"))
+///                    Error.UnprocessableContent.ForField("email", "invalid", "Email too long"))
 ///             .Map(e => new EmailAddress(e.Trim().ToLowerInvariant()));
 ///     
 ///     public string Domain => Value.Split('@')[1];

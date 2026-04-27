@@ -31,7 +31,7 @@ using System.Diagnostics;
 ///     .Bind(firstName => LastName.TryCreate(lastNameInput)
 ///         .Bind(lastName => EmailAddress.TryCreate(emailInput)
 ///             .Ensure(email => email.Value.EndsWith("@company.com"), 
-///                     Error.Validation("Must be company email"))
+///                     Error.UnprocessableContent.ForField("email", "invalid", "Must be company email"))
 ///             .Map(email => new User(firstName, lastName, email))));
 /// </code>
 /// </example>

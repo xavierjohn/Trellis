@@ -14,7 +14,7 @@ using System.Diagnostics;
 /// <code>
 /// // Convert nullable value type to Result
 /// int? maybeAge = GetAge();
-/// var result = maybeAge.ToResult(Error.Validation("Age is required"));
+/// var result = maybeAge.ToResult(Error.UnprocessableContent.ForField("age", "invalid", "Age is required"));
 /// 
 /// // Convert nullable reference type to Result
 /// User? maybeUser = FindUser(id);

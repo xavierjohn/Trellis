@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 /// 
 /// // Add context to an error
 /// var result = ValidateEmail(email)
-///     .MapOnFailure(err => Error.Validation($"Email validation failed: {err.Detail}", "email"));
+///     .MapOnFailure(err => Error.UnprocessableContent.ForField("email", "invalid", $"Email validation failed: {(err as Error.UnprocessableContent)?.Fields[0].Detail}"));
 /// 
 /// // Async with CancellationToken using closure capture
 /// var ct = cancellationToken;

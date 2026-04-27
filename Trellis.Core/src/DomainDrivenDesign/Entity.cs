@@ -61,7 +61,7 @@
 ///     
 ///     public static Result&lt;Customer&gt; TryCreate(string name, EmailAddress email) =>
 ///         name.ToResult()
-///             .Ensure(n => !string.IsNullOrWhiteSpace(n), Error.Validation("Name required"))
+///             .Ensure(n => !string.IsNullOrWhiteSpace(n), Error.UnprocessableContent.ForField("name", "invalid", "Name required"))
 ///             .Map(n => new Customer(CustomerId.NewUnique(), n, email));
 ///     
 ///     public Result&lt;Customer&gt; UpdateEmail(EmailAddress newEmail) =>
