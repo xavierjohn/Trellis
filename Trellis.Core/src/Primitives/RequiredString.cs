@@ -139,7 +139,7 @@ namespace Trellis;
 ///     }
 /// }
 ///
-/// // Invalid request automatically returns 400 Bad Request:
+/// // Invalid request automatically returns 422 Unprocessable Content:
 /// // POST /api/users with { "firstName": "", "lastName": "Doe", "email": "test@example.com" }
 /// // Response: 422 Unprocessable Content
 /// // {
@@ -167,11 +167,11 @@ namespace Trellis;
 ///         .ToHttpResponse());
 /// 
 /// // POST /users with empty FirstName:
-/// // Response: 400 Bad Request
+/// // Response: 422 Unprocessable Content
 /// // {
 /// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
 /// //   "title": "One or more validation errors occurred.",
-/// //   "status": 400,
+/// //   "status": 422,
 /// //   "errors": {
 /// //     "firstName": ["First Name cannot be empty."]
 /// //   }

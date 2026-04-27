@@ -132,11 +132,11 @@ namespace Trellis;
 ///
 /// // Invalid GUID is rejected automatically:
 /// // GET /api/customers/00000000-0000-0000-0000-000000000000
-/// // Response: 400 Bad Request
+/// // Response: 422 Unprocessable Content
 /// // {
 /// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
 /// //   "title": "One or more validation errors occurred.",
-/// //   "status": 400,
+/// //   "status": 422,
 /// //   "errors": {
 /// //     "id": ["Customer Id cannot be empty."]
 /// //   }
