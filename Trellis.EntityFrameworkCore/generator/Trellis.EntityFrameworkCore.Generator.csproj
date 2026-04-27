@@ -25,16 +25,11 @@
   </ItemGroup>
 
   <!--
-      Analyzer release tracking (RS2008). Every diagnostic emitted from a static
-      DiagnosticDescriptor field must be listed in AnalyzerReleases.{Shipped,Unshipped}.md
-      so consumers can see what changed between analyzer versions.
+      Analyzer release tracking (RS2008). Diagnostics emitted from static DiagnosticDescriptor
+      fields must be listed in AnalyzerReleases.{Shipped,Unshipped}.md. The
+      Microsoft.CodeAnalysis.Analyzers package auto-registers these as AdditionalFiles;
+      we only need them on disk.
    -->
-  <ItemGroup>
-    <None Remove="AnalyzerReleases.Shipped.md" />
-    <None Remove="AnalyzerReleases.Unshipped.md" />
-    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
-    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
-  </ItemGroup>
 
    <!--
       Force-disable PublishAot/PublishTrimmed inherited from a parent AOT-publishing project.
