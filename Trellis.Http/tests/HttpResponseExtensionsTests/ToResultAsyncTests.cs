@@ -1,4 +1,4 @@
-namespace Trellis.Http.Tests.HttpResponseExtensionsTests;
+﻿namespace Trellis.Http.Tests.HttpResponseExtensionsTests;
 
 using System;
 using System.Globalization;
@@ -27,18 +27,28 @@ public class ToResultAsyncTests
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.BadRequest, typeof(Error.BadRequest))]
-    [InlineData(HttpStatusCode.Unauthorized, typeof(Error.Unauthorized))]
-    [InlineData(HttpStatusCode.Forbidden, typeof(Error.Forbidden))]
-    [InlineData(HttpStatusCode.NotFound, typeof(Error.NotFound))]
-    [InlineData(HttpStatusCode.Conflict, typeof(Error.Conflict))]
-    [InlineData(HttpStatusCode.Gone, typeof(Error.Gone))]
-    [InlineData(HttpStatusCode.UnprocessableEntity, typeof(Error.UnprocessableContent))]
-    [InlineData(HttpStatusCode.ServiceUnavailable, typeof(Error.ServiceUnavailable))]
+    [InlineData((int)HttpStatusCode.BadRequest, typeof(Error.BadRequest))]
+    [InlineData((int)HttpStatusCode.Unauthorized, typeof(Error.Unauthorized))]
+    [InlineData((int)HttpStatusCode.Forbidden, typeof(Error.Forbidden))]
+    [InlineData((int)HttpStatusCode.NotFound, typeof(Error.NotFound))]
+    [InlineData((int)HttpStatusCode.MethodNotAllowed, typeof(Error.MethodNotAllowed))]
+    [InlineData((int)HttpStatusCode.NotAcceptable, typeof(Error.NotAcceptable))]
+    [InlineData((int)HttpStatusCode.Conflict, typeof(Error.Conflict))]
+    [InlineData((int)HttpStatusCode.Gone, typeof(Error.Gone))]
+    [InlineData((int)HttpStatusCode.PreconditionFailed, typeof(Error.PreconditionFailed))]
+    [InlineData((int)HttpStatusCode.RequestEntityTooLarge, typeof(Error.ContentTooLarge))]
+    [InlineData((int)HttpStatusCode.UnsupportedMediaType, typeof(Error.UnsupportedMediaType))]
+    [InlineData((int)HttpStatusCode.RequestedRangeNotSatisfiable, typeof(Error.RangeNotSatisfiable))]
+    [InlineData((int)HttpStatusCode.UnprocessableEntity, typeof(Error.UnprocessableContent))]
+    [InlineData(428, typeof(Error.PreconditionRequired))]
+    [InlineData(429, typeof(Error.TooManyRequests))]
+    [InlineData((int)HttpStatusCode.NotImplemented, typeof(Error.NotImplemented))]
+    [InlineData((int)HttpStatusCode.ServiceUnavailable, typeof(Error.ServiceUnavailable))]
     public async Task Default_null_status_map_returns_typed_failure_for_known_non_success_statuses(
-        HttpStatusCode status,
+        int statusCode,
         Type errorType)
     {
+        var status = (HttpStatusCode)statusCode;
         var tracker = new TrackingHttpResponseMessage(status);
         var task = Task.FromResult<HttpResponseMessage>(tracker);
 

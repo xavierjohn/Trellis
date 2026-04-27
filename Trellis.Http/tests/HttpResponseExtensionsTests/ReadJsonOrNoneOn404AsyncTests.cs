@@ -1,4 +1,4 @@
-namespace Trellis.Http.Tests.HttpResponseExtensionsTests;
+﻿namespace Trellis.Http.Tests.HttpResponseExtensionsTests;
 
 using System;
 using System.Net;
@@ -37,8 +37,9 @@ public class ReadJsonOrNoneOn404AsyncTests
         var result = await task.ReadJsonOrNoneOn404Async(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
         var maybe = result.Should().BeSuccess().Subject;
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.firstName.Should().Be("Ada");
+        maybe.TryGetValue(out var person).Should().BeTrue();
+        person.Should().NotBeNull();
+        person!.firstName.Should().Be("Ada");
         tracker.Disposed.Should().BeTrue();
     }
 
@@ -85,6 +86,20 @@ public class ReadJsonOrNoneOn404AsyncTests
     }
 
     [Fact]
+    public async Task Unknown_non_success_status_returns_InternalServerError_and_disposes_response()
+    {
+        const HttpStatusCode status = (HttpStatusCode)599;
+        var tracker = new TrackingHttpResponseMessage(status);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ReadJsonOrNoneOn404Async(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+
+        result.Should().BeFailureOfType<Error.InternalServerError>()
+            .Which.Detail.Should().Contain("599");
+        tracker.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Throws_ArgumentNullException_when_response_task_is_null()
     {
         Task<HttpResponseMessage> task = null!;
@@ -93,5 +108,17 @@ public class ReadJsonOrNoneOn404AsyncTests
 
         await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("response");
+    }
+
+    [Fact]
+    public async Task Throws_ArgumentNullException_when_json_metadata_is_null()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult(response);
+
+        var act = async () => await task.ReadJsonOrNoneOn404Async<camelcasePerson>(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("jsonTypeInfo");
     }
 }
