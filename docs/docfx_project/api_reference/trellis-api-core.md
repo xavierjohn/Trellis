@@ -128,7 +128,7 @@ Static factory and helper surface for `Result<TValue>` and the non-generic `Resu
 | --- | --- | --- |
 | `IsSuccess` | `bool` | Success flag. `[MemberNotNullWhen(false, nameof(Error))]`. |
 | `IsFailure` | `bool` | Failure flag. `[MemberNotNullWhen(true, nameof(Error))]`. `default(Result).IsFailure` is `true`. |
-| `Error` | `Error?` | `null` on success; never throws. For `default(Result)`, returns the shared `Error.Unexpected("default_initialized")` sentinel. |
+| `Error` | `Error?` | `null` on success; never throws. For `default(Result)`, returns the shared `new Error.Unexpected("default_initialized")` sentinel. |
 
 #### Instance methods
 
@@ -188,7 +188,7 @@ Represents either a successful `TValue` or a failure `Error`.
 
 | Name | Type | Notes |
 | --- | --- | --- |
-| `Error` | `Error?` | `null` on success; never throws. Pattern-match on the value (e.g. `if (result.Error is { } error)`) for imperative branches. For `default(Result<T>)`, returns the shared `Error.Unexpected("default_initialized")` sentinel. |
+| `Error` | `Error?` | `null` on success; never throws. Pattern-match on the value (e.g. `if (result.Error is { } error)`) for imperative branches. For `default(Result<T>)`, returns the shared `new Error.Unexpected("default_initialized")` sentinel. |
 | `IsSuccess` | `bool` | Success flag. `[MemberNotNullWhen(false, nameof(Error))]`. |
 | `IsFailure` | `bool` | Failure flag. `[MemberNotNullWhen(true, nameof(Error))]`. `default(Result<T>).IsFailure` is `true`. |
 
