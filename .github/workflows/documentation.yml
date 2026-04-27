@@ -45,6 +45,12 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
+    - name: Build source generators for DocFX
+      run: |
+        dotnet build Trellis.Core/generator/Trellis.Core.Generator.csproj --no-restore -c Release
+        dotnet build Trellis.Asp/generator/Trellis.AspSourceGenerator.csproj --no-restore -c Release
+        dotnet build Trellis.EntityFrameworkCore/generator/Trellis.EntityFrameworkCore.Generator.csproj --no-restore -c Release
+
     - name: Update doc tools
       run: dotnet tool update -g docfx
 
