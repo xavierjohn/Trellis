@@ -26,7 +26,7 @@ public sealed class Document
 
 public sealed class DocumentService
 {
-    public Result<DocumentState> Submit(Document doc)
+    public static Result<DocumentState> Submit(Document doc)
     {
         var machine = new StateMachine<DocumentState, DocumentTrigger>(doc.State);
         machine.Configure(DocumentState.Draft).Permit(DocumentTrigger.Submit, DocumentState.Submitted);

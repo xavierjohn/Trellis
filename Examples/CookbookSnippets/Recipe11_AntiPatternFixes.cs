@@ -12,6 +12,7 @@ using CookbookSnippets.Recipe08;
 
 public static class AntiPatternFixes
 {
+#pragma warning disable CA1707 // Diagnostic IDs are deliberately embedded in recipe method names for searchability.
     // ─── TRLS001 — Result return value not handled ─────────────────────────
 #if FALSE
     // WRONG — Result<T> dropped on the floor.
@@ -61,6 +62,7 @@ public static class AntiPatternFixes
     // ─── TRLS019 — default(Result) / default(Maybe<T>) ─────────────────────
     public static Result TRLS019_FixResult() => Result.Ok();
     public static Maybe<EmailAddress> TRLS019_FixMaybe() => Maybe<EmailAddress>.None;
+#pragma warning restore CA1707
 
     // Helpers used above — minimal stubs.
     private static Result<OrderId> PlaceOrder(object cmd) => Result.Fail<OrderId>(new Error.NotFound(new ResourceRef("Order")));

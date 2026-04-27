@@ -2,7 +2,6 @@
 
 namespace Trellis.Asp.Validation;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -49,8 +48,6 @@ public sealed class MaybeScalarValueJsonConverter<TValue, TPrimitive> : ScalarVa
     protected override Maybe<TValue> OnValidationFailure() => default;
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JSON serialization of primitive types is compatible with AOT")]
     public override void Write(Utf8JsonWriter writer, Maybe<TValue> value, JsonSerializerOptions options)
     {
         if (value.HasNoValue)

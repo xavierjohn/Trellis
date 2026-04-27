@@ -13,6 +13,7 @@ using Xunit;
 
 public class PlaceOrderHandlerTests
 {
+#pragma warning disable CA1707 // Cookbook test recipe intentionally shows readable xUnit-style test names.
     [Fact]
     public async Task PlaceOrder_returns_id_on_success()
     {
@@ -41,4 +42,5 @@ public class PlaceOrderHandlerTests
         unwrapped.Should().BeOfType<Error.UnprocessableContent>();
         error.Should().HaveFieldError("currency");
     }
+#pragma warning restore CA1707
 }

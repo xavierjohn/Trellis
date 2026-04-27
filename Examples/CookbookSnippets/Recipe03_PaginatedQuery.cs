@@ -18,22 +18,22 @@ public sealed class ListOrdersHandler(AppDbContext db)
 {
     private const int MaxLimit = 100;
 
-    public async ValueTask<Result<Page<OrderListItem>>> Handle(ListOrdersQuery q, CancellationToken ct)
+    public async ValueTask<Result<Page<OrderListItem>>> Handle(ListOrdersQuery query, CancellationToken cancellationToken)
     {
-        var requested = q.Limit;
+        var requested = query.Limit;
         var applied   = System.Math.Clamp(requested, 1, MaxLimit);
 
-        var query = db.Orders.AsNoTracking().OrderBy(o => o.Id);
-        if (q.Cursor is not null)
+        var orders = db.Orders.AsNoTracking().OrderBy(o => o.Id);
+        if (query.Cursor is not null)
         {
-            if (!System.Guid.TryParseExact(q.Cursor, "N", out var cursorId))
+            if (!System.Guid.TryParseExact(query.Cursor, "N", out var cursorId))
                 return Result.Fail<Page<OrderListItem>>(
-                    Error.UnprocessableContent.ForField(nameof(q.Cursor), "Cursor is not a valid pagination token."));
+                    Error.UnprocessableContent.ForField(nameof(query.Cursor), "Cursor is not a valid pagination token."));
 
-            query = query.Where(o => o.Id.Value > cursorId).OrderBy(o => o.Id);
+            orders = orders.Where(o => o.Id.Value > cursorId).OrderBy(o => o.Id);
         }
 
-        var rows = await query.Take(applied + 1).ToListAsync(ct);
+        var rows = await orders.Take(applied + 1).ToListAsync(cancellationToken);
         var hasNext = rows.Count > applied;
         var items   = rows.Take(applied)
                           .Select(o => new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value))
@@ -42,7 +42,7 @@ public sealed class ListOrdersHandler(AppDbContext db)
         return Result.Ok(new Page<OrderListItem>(
             Items: items,
             Next: hasNext ? new Cursor(items[^1].Id.ToString("N")) : null,
-            Previous: q.Cursor is null ? null : new Cursor(q.Cursor),
+            Previous: query.Cursor is null ? null : new Cursor(query.Cursor),
             RequestedLimit: requested,
             AppliedLimit: applied));
     }

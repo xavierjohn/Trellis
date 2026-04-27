@@ -198,6 +198,37 @@ public class ValidatingJsonConverterPrimitiveTypesTests
             throw new NotImplementedException();
     }
 
+    public readonly record struct CustomPrimitive(string Value) : IComparable
+    {
+        public static bool operator <(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) < 0;
+
+        public static bool operator <=(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) <= 0;
+
+        public static bool operator >(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) > 0;
+
+        public static bool operator >=(CustomPrimitive left, CustomPrimitive right) =>
+            string.Compare(left.Value, right.Value, StringComparison.Ordinal) >= 0;
+
+        public int CompareTo(object? obj) =>
+            obj is CustomPrimitive other
+                ? string.Compare(Value, other.Value, StringComparison.Ordinal)
+                : 1;
+
+        public override string ToString() => Value;
+    }
+
+    public class CustomPrimitiveVO : ScalarValueObject<CustomPrimitiveVO, CustomPrimitive>, IScalarValue<CustomPrimitiveVO, CustomPrimitive>
+    {
+        private CustomPrimitiveVO(CustomPrimitive value) : base(value) { }
+        public static Result<CustomPrimitiveVO> TryCreate(CustomPrimitive value, string? fieldName = null) =>
+            Result.Ok(new CustomPrimitiveVO(value));
+        public static Result<CustomPrimitiveVO> TryCreate(string? value, string? fieldName = null) =>
+            throw new NotImplementedException();
+    }
+
     #endregion
 
     #region String Tests
@@ -545,6 +576,27 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         roundTripped!.Value.Should().Be(date);
     }
 
+    [Fact]
+    public void Read_InvalidDateOnly_CollectsInvalidValueError()
+    {
+        var converter = new ValidatingJsonConverter<DateOnlyVO, DateOnly>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"not-a-date\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(DateOnlyVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/dateOnlyVO"
+                    && v.Detail == "'dateOnlyVO' is not a valid DateOnly.");
+        }
+    }
+
     #endregion
 
     #region TimeOnly Tests
@@ -574,6 +626,27 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         roundTripped!.Value.Should().Be(time);
     }
 
+    [Fact]
+    public void Read_InvalidTimeOnly_CollectsInvalidValueError()
+    {
+        var converter = new ValidatingJsonConverter<TimeOnlyVO, TimeOnly>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"not-a-time\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(TimeOnlyVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/timeOnlyVO"
+                    && v.Detail == "'timeOnlyVO' is not a valid TimeOnly.");
+        }
+    }
+
     #endregion
 
     #region TimeSpan Tests
@@ -598,6 +671,27 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<TimeSpanVO, TimeSpan>());
 
         roundTripped!.Value.Should().Be(value);
+    }
+
+    [Fact]
+    public void Read_InvalidTimeSpan_CollectsInvalidValueError()
+    {
+        var converter = new ValidatingJsonConverter<TimeSpanVO, TimeSpan>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"not-a-duration\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(TimeSpanVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/timeSpanVO"
+                    && v.Detail == "'timeSpanVO' is not a valid TimeSpan.");
+        }
     }
 
     #endregion
@@ -742,6 +836,32 @@ public class ValidatingJsonConverterPrimitiveTypesTests
         var roundTripped = RoundTrip(vo, new ValidatingJsonConverter<ULongVO, ulong>());
 
         roundTripped!.Value.Should().Be(18446744073709551615ul);
+    }
+
+    #endregion
+
+    #region Unsupported Primitive Tests
+
+    [Fact]
+    public void Read_UnsupportedPrimitive_CollectsValidationError()
+    {
+        var converter = new ValidatingJsonConverter<CustomPrimitiveVO, CustomPrimitive>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes("\"abc\""));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = converter.Read(ref reader, typeof(CustomPrimitiveVO), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.HasErrors.Should().BeTrue();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/customPrimitiveVO"
+                    && v.Detail == "Primitive type 'CustomPrimitive' is not supported by the Trellis validation JSON converter. Provide a custom JsonConverter.");
+        }
     }
 
     #endregion

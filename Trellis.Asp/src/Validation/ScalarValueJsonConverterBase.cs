@@ -1,6 +1,6 @@
 ﻿namespace Trellis.Asp.Validation;
 
-using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -39,8 +39,6 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     protected abstract TResult OnValidationFailure();
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JSON deserialization of primitive types is compatible with AOT")]
     public override TResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
@@ -50,7 +48,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
         }
 
         var fieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
-        if (!TryReadPrimitiveValue(ref reader, options, fieldName, out var primitiveValue))
+        if (!TryReadPrimitiveValue(ref reader, fieldName, out var primitiveValue))
             return OnValidationFailure();
 
         if (primitiveValue is null)
@@ -76,15 +74,28 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             });
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "TPrimitive type parameter is preserved by JSON serialization infrastructure")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JSON deserialization of primitive types is compatible with AOT")]
     private static bool TryReadPrimitiveValue(
         ref Utf8JsonReader reader,
-        JsonSerializerOptions options,
         string fieldName,
         out TPrimitive? primitiveValue)
     {
-        if (typeof(TPrimitive).IsEnum && reader.TokenType == JsonTokenType.String)
+        if (typeof(TPrimitive).IsEnum)
+            return TryReadEnumValue(ref reader, fieldName, out primitiveValue);
+
+        if (!PrimitiveJsonReader.TryRead(ref reader, fieldName, out primitiveValue))
+            return false;
+
+        return true;
+    }
+
+    private static bool TryReadEnumValue(
+        ref Utf8JsonReader reader,
+        string fieldName,
+        out TPrimitive? primitiveValue)
+    {
+        primitiveValue = default;
+
+        if (reader.TokenType == JsonTokenType.String)
         {
             var rawValue = reader.GetString();
             if (TryParseEnumValue(rawValue, out primitiveValue))
@@ -94,25 +105,39 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             return false;
         }
 
-        try
+        if (reader.TokenType == JsonTokenType.Number)
         {
-            primitiveValue = JsonSerializer.Deserialize<TPrimitive>(ref reader, options);
-        }
-        catch (JsonException)
-        {
-            primitiveValue = default;
-            ValidationErrorsContext.AddError(fieldName, $"{typeof(TValue).Name} is invalid.");
-            return false;
+            try
+            {
+                var enumValue = ReadNumericEnumValue(ref reader);
+                if (!IsValidEnumValue(enumValue))
+                {
+                    ValidationErrorsContext.AddError(fieldName, $"'{enumValue}' is not a valid {typeof(TPrimitive).Name}.");
+                    return false;
+                }
+
+                primitiveValue = (TPrimitive)enumValue;
+                return true;
+            }
+            catch (Exception ex) when (ex is FormatException or InvalidOperationException)
+            {
+                ValidationErrorsContext.AddError(fieldName, $"JSON number is not a valid {typeof(TPrimitive).Name}.");
+                return false;
+            }
         }
 
-        if (typeof(TPrimitive).IsEnum && primitiveValue is not null && !IsValidEnumValue(primitiveValue))
-        {
-            ValidationErrorsContext.AddError(fieldName, $"'{primitiveValue}' is not a valid {typeof(TPrimitive).Name}.");
-            primitiveValue = default;
-            return false;
-        }
+        ValidationErrorsContext.AddError(fieldName, $"JSON token '{reader.TokenType}' is not a valid {typeof(TPrimitive).Name}.");
+        return false;
+    }
 
-        return true;
+    private static object ReadNumericEnumValue(ref Utf8JsonReader reader)
+    {
+        var underlyingType = Enum.GetUnderlyingType(typeof(TPrimitive));
+        var rawValue = underlyingType == typeof(ulong)
+            ? reader.GetUInt64()
+            : Convert.ChangeType(reader.GetInt64(), underlyingType, CultureInfo.InvariantCulture);
+
+        return Enum.ToObject(typeof(TPrimitive), rawValue);
     }
 
     private static bool TryParseEnumValue(string? rawValue, out TPrimitive? primitiveValue)

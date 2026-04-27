@@ -11,8 +11,7 @@ using CookbookSnippets.Stubs;
 
 public static class ConditionalGetSample
 {
-    public static void Map(IEndpointRouteBuilder app)
-    {
+    public static void Map(IEndpointRouteBuilder app) =>
         app.MapGet("/blobs/{id:guid}", async (System.Guid id, HttpRequest req, IBlobRepository repo, CancellationToken ct) =>
         {
             Result<BlobContent> result = await repo.FindAsync(new BlobId(id), ct);
@@ -33,5 +32,4 @@ public static class ConditionalGetSample
                 })
                 .EvaluatePreconditions());
         });
-    }
 }

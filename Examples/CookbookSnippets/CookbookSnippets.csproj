@@ -8,8 +8,8 @@
     <RootNamespace>CookbookSnippets</RootNamespace>
     <!-- Cookbook snippets intentionally exercise reflection-based overloads (e.g.
          AddTrellisFluentValidation(Assembly), AddResourceAuthorization(Assembly)). They
-         are not AOT consumers, so suppress the related advisory warnings. -->
-    <NoWarn>$(NoWarn);IL2026;IL3050;CA1707;CA1725;CA1822;CA1812;CA2007;IDE0022;IDE0021;IDE0058;IDE0059;IDE0060;IDE0001;IDE1006</NoWarn>
+         are not AOT consumers, so suppress only those advisory warnings globally. -->
+    <NoWarn>$(NoWarn);IL2026;IL3050</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
