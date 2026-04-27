@@ -55,7 +55,8 @@ jobs:
         # Catches stale v1-style references that a v2 user/AI could mistakenly copy.
         # Patterns:
         #   1. `Error.Validation(`, `Error.Domain(`, `Error.Failure(`  — names removed entirely in v2
-        #   2. `Error.<case>("..."`  not preceded by `new ` — case names that exist in v2 only via `new Error.<case>(...)` ctor
+        #   2. `Error.<case>(`  not preceded by `new ` — case names that exist in v2 only via `new Error.<case>(...)` ctor.
+        #      Case list mirrors the 20 sealed nested records in Trellis.Core/src/Errors/Error.cs.
         # Allowlist:
         #   - Historical files: MIGRATION_v3.md, CHANGELOG.md, docs/docfx_project/adr/**
         #   - Anti-pattern teaching: .github/copilot-instructions.md
@@ -63,8 +64,8 @@ jobs:
         #   - Per-line opt-out marker: append  v1-stale-ok  on the same line
         ALLOWLIST_RE='^(MIGRATION_v3\.md|CHANGELOG\.md|\.github/copilot-instructions\.md|docs/docfx_project/adr/|Trellis\.Analyzers/tests/|Trellis\.Asp/generator-tests/)'
         HITS=$( {
-          git grep -nE '\bError\.(Validation|Domain|Failure)\s*\(' -- '*.cs' '*.md' || true;
-          git grep -nP '(?<!new\s)\bError\.(NotFound|Conflict|Unauthorized|Forbidden|Unexpected|InternalServerError|BadRequest)\s*\("' -- '*.cs' '*.md' || true;
+          git grep -nE '\bError\.(Validation|Domain|Failure)\(' -- '*.cs' '*.md' || true;
+          git grep -nP '(?<!new\s)\bError\.(BadRequest|Unauthorized|Forbidden|NotFound|MethodNotAllowed|NotAcceptable|Conflict|Gone|PreconditionFailed|ContentTooLarge|UnsupportedMediaType|RangeNotSatisfiable|UnprocessableContent|PreconditionRequired|TooManyRequests|InternalServerError|Unexpected|NotImplemented|ServiceUnavailable|Aggregate)\(' -- '*.cs' '*.md' || true;
         } | grep -v 'v1-stale-ok' \
           | grep -vE "$ALLOWLIST_RE" \
           || true)

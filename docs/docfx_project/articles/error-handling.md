@@ -279,8 +279,8 @@ Boundary renderers (ProblemDetails / gRPC / GraphQL) read `Kind` for `type` and 
 ## Practical Rules of Thumb
 
 - `Error.UnprocessableContent` when the caller can fix the request data
-- `Error.Conflict(_, "domain.violation")` when the input is valid but a business rule blocks it
-- `Error.Conflict(_, "duplicate.key")` (or similar) when current state blocks the operation
+- `Error.Conflict` with reason code `"domain.violation"` when the input is valid but a business rule blocks it
+- `Error.Conflict` with reason code `"duplicate.key"` (or similar) when current state blocks the operation
 - `Error.NotFound` when the resource does not exist
 - `Error.PreconditionFailed` for optimistic-concurrency mismatches
 - `Error.Gone` for soft-deleted resources
