@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > This guide documents the historical FunctionalDDD v2.x → Trellis v3.0 migration (renamed failure-track operations: `TapError` → `TapOnFailure`, `Compensate` → `RecoverOnFailure`, etc.). The advice below still applies for projects upgrading from FunctionalDDD v2.x.
 >
-> **Trellis V2 (the current major release) introduces a separate, larger breaking change**: the `Error` type is now a closed discriminated-union ADT with 18 nested `sealed record` cases (no static factory methods, typed payloads). See [ADR-001](docs/adr/ADR-001-result-api-surface.md) and the [Error Handling guide](docs/docfx_project/articles/error-handling.md) for the full surface and migration patterns. The error snippets in this document have been updated in-place to use the V2 closed-ADT syntax.
+> **Trellis V2 (the current major release) introduces a separate, larger breaking change**: the `Error` type is now a closed discriminated-union ADT with 18 nested `sealed record` cases (no static factory methods, typed payloads). See [ADR-001](docs/docfx_project/adr/ADR-001-result-api-surface.md) and the [Error Handling guide](docs/docfx_project/articles/error-handling.md) for the full surface and migration patterns. The error snippets in this document have been updated in-place to use the V2 closed-ADT syntax.
 
 ## Breaking Changes Summary
 

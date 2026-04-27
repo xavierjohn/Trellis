@@ -6,7 +6,7 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
-> **ASP.NET Core integration test helpers** (WebApplicationFactory, DI replacement, MSAL tokens) are in a separate package: [`Trellis.Testing.AspNetCore`](#trelllistestingaspnetcore--api-reference).
+> **ASP.NET Core integration test helpers** (WebApplicationFactory, DI replacement, MSAL tokens) are in a separate package: [`Trellis.Testing.AspNetCore`](#trellistestingaspnetcore--api-reference).
 
 ## Types
 

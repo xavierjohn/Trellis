@@ -2,6 +2,17 @@ name: Publish documentation.
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '**/*.cs'
+      - '.github/workflows/documentation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '**/*.cs'
+      - '.github/workflows/documentation.yml'
 
 jobs:
   publish-docs:
@@ -36,9 +47,26 @@ jobs:
 
     - name: Update doc tools
       run: dotnet tool update -g docfx
-      
-    - name: Build docs
-      run: docfx docs/docfx_project/docfx.json
+
+    - name: Build docs (warnings as errors)
+      shell: bash
+      run: |
+        set -o pipefail
+        # Capture full output so we can both display it and gate on it.
+        docfx docs/docfx_project/docfx.json 2>&1 | tee docfx_output.log
+        # FailedToLoadAnalyzer warnings are benign: docfx 2.x bundles an older
+        # Roslyn than our source generators target (ReferencesNewerCompiler).
+        # Source generators are not needed to extract XML doc metadata, so we
+        # ignore those specific warnings. ALL other warnings fail the build.
+        REMAINING=$(grep -E '^(warning|error|.*\.md\([0-9]+,[0-9]+\): warning)' docfx_output.log \
+          | grep -v 'FailedToLoadAnalyzer' \
+          || true)
+        if [ -n "$REMAINING" ]; then
+          echo "::error::docfx produced warnings/errors that are not on the known-benign list:"
+          echo "$REMAINING"
+          exit 1
+        fi
+        echo "docfx build clean (only known-benign FailedToLoadAnalyzer warnings, if any)."
 
     - name: Verify documentation build
       run: |
@@ -49,6 +77,7 @@ jobs:
         echo "Documentation build successful"
 
     - name: Deploy to GitHub Pages
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}

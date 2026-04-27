@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+namespace Trellis.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -62,7 +62,7 @@ internal sealed class ValueObjectMappingGuardConvention : IModelFinalizingConven
                         $"Remove any explicit '.Property(x => x.{property.Name})' call from OnModelCreating " +
                         "(the convention handles it). For custom column names, use " +
                         $"'.OwnsOne(x => x.{property.Name}, m => {{ ... }})' explicitly. " +
-                        "See: docs/api_reference/trellis-api-efcore.md#money");
+                        "See: docs/docfx_project/api_reference/trellis-api-efcore.md#money");
                 }
 
                 if (clrType.IsGenericType && clrType.GetGenericTypeDefinition() == s_maybeOpenGeneric)
@@ -74,7 +74,7 @@ internal sealed class ValueObjectMappingGuardConvention : IModelFinalizingConven
                         $"Remove any explicit '.Property(x => x.{property.Name})' call from OnModelCreating, " +
                         $"and ensure the property is declared as 'public partial Maybe<{innerName}> {property.Name} {{ get; set; }}' " +
                         "on a 'partial' entity class so the Trellis.EntityFrameworkCore.Generator can emit the storage member. " +
-                        "See: docs/api_reference/trellis-api-efcore.md#maybe-properties");
+                        "See: docs/docfx_project/api_reference/trellis-api-efcore.md#maybe-properties");
                 }
             }
         }

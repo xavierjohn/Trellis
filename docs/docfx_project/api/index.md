@@ -29,9 +29,9 @@ The foundation — zero dependencies beyond the .NET runtime. One `using Trellis
 | Type | Purpose |
 |------|---------|
 | [`Result<T>`](xref:Trellis.Result`1) | An operation that succeeds with `T` or fails with an [`Error`](xref:Trellis.Error) — the core of Railway-Oriented Programming |
+| [`Result`](xref:Trellis.Result) | Non-generic result for void operations — succeeds without a value or fails with an [`Error`](xref:Trellis.Error) |
 | [`Maybe<T>`](xref:Trellis.Maybe`1) | A value that may or may not exist — type-safe alternative to `null` |
 | [`Error`](xref:Trellis.Error) | Typed error hierarchy with built-in HTTP status code mapping |
-| [`Unit`](xref:Trellis.Unit) | Represents "no value" for void operations like `Result` |
 
 ### Pipeline Operations
 

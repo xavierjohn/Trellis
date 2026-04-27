@@ -44,13 +44,13 @@ Key changes:
 - **No static factory methods.** Replace `Error.Validation("msg", "field")` with `new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "reason_code") { Detail = "msg" }))`. Same pattern for `Error.NotFound`, `Error.Conflict`, `Error.Forbidden`, `Error.Unexpected`, etc.
 - **Typed payloads.** Each case carries a strongly typed payload — `ResourceRef` for `NotFound`/`Gone`/`Conflict`, `EquatableArray<FieldViolation>` for `UnprocessableContent`, `PreconditionKind` for `PreconditionFailed`, etc. No more `object?` bags.
 - **`Detail` and `Cause` on the base.** Set them via object initializer; equality compares discriminator + payload + `Detail` (Cause excluded).
-- **`Result.Error` is now `public Error?`** (null on success, never throws). `Result<T>.Value` still throws on failure — required because `T` may be a struct where `default(T)` is indistinguishable from a real value. See [ADR-001](docs/adr/ADR-001-result-api-surface.md) for the full design rationale.
+- **`Result.Error` is now `public Error?`** (null on success, never throws). `Result<T>.Value` still throws on failure — required because `T` may be a struct where `default(T)` is indistinguishable from a real value. See [ADR-001](docs/docfx_project/adr/ADR-001-result-api-surface.md) for the full design rationale.
 - **`Result<Unit>` collapsed to non-generic `Result`.** `Unit` is retained for tuple-result interop only.
 - **Removed:** `MatchError`, `SwitchError`, `FlattenValidationErrors` extensions; `ValidationError`/`NotFoundError`/`ConflictError`/etc. concrete subclasses; `Error.Instance` field. The ASP wire layer synthesizes `ProblemDetails.Instance` from request URL + `ResourceRef`.
 - **Renamed wire identifiers.** Default `Code` values changed from `"validation.error"`/`"not.found.error"`/etc. to the IANA-aligned slugs `"unprocessable-content"`/`"not-found"`/etc.
 - **TRLS005 analyzer (`UseMatchErrorAnalyzer`) removed** — the C# compiler now provides exhaustiveness for free.
 
-Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full patterns and [api-results.md](docs/api_reference/trellis-api-core.md) for the reference table.
+Migration path: every `Error.X(...)` factory call site must be rewritten. `MatchError(...)` becomes `result.Match(_, e => e switch { Error.X => ..., ... })`. See [Error Handling](docs/docfx_project/articles/error-handling.md) for the full patterns and [api-results.md](docs/docfx_project/api_reference/trellis-api-core.md) for the reference table.
 
 #### Trellis.Testing — Package Restructure
 

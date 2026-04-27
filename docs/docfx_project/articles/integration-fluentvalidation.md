@@ -16,7 +16,6 @@ This article starts with the everyday case first, then covers null handling, asy
 - [Null input behavior](#null-input-behavior)
 - [Converting an existing `ValidationResult`](#converting-an-existing-validationresult)
 - [Mediator integration: `AddTrellisFluentValidation()`](#mediator-integration-addtrellisfluentvalidation)
-- [Practical guidance](#practical-guidance)
 
 ## Quick start
 
