@@ -1,4 +1,4 @@
-# Migration Guide: v2.x → v3.0
+﻿# Migration Guide: v2.x → v3.0
 
 > [!IMPORTANT]
 > This guide documents the historical FunctionalDDD v2.x → Trellis v3.0 migration (renamed failure-track operations: `TapError` → `TapOnFailure`, `Compensate` → `RecoverOnFailure`, etc.). The advice below still applies for projects upgrading from FunctionalDDD v2.x.
@@ -270,19 +270,21 @@ public async Task<IActionResult> ProcessOrder(CreateOrderRequest request)
             new Error.Conflict(null, "inventory.insufficient") { Detail = "Insufficient inventory" })
         .TapOnFailure(err => _metrics.RecordFailure("order.create", err.Code)) // ✅ Changed
         
-        .RecoverOnFailure(err => err is ConflictError                           // ✅ Changed
+        .RecoverOnFailure(err => err is Error.Conflict                          // ✅ Changed
             ? SuggestAlternativeProductsAsync(request.ProductId)
             : Result.Fail<Order>(err))
         
-        .MapOnFailure(err => Error.Domain($"Order processing failed: {err.Detail}")) // ✅ Changed
+        .MapOnFailure(err => new Error.Unexpected("order_processing_failed")        // ✅ Changed
+        {
+            Detail = $"Order processing failed: {err.Detail}",
+            Cause = err
+        })
         
         .TapAsync(order => SaveOrderAsync(order))
         .TapAsync(order => PublishOrderCreatedEventAsync(order))
         
-        .Match(
-            onSuccess: order => Created($"/orders/{order.Id}", order),
-            onFailure: error => error.ToHttpResult()
-        );
+        .ToHttpResponseAsync(o => o.Created(order => $"/orders/{order.Id}"))
+        .AsActionResultAsync<Order>();
 }
 ```
 

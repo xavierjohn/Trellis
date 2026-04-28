@@ -251,7 +251,7 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
 ```csharp
 public static class ValidationErrorAssertionsExtensions
 {
-    // Bound to Error.UnprocessableContent (the replacement for the old ValidationError class).
+    // Bound to Error.UnprocessableContent (the replacement for the previous validation error class).
     // Method names preserved for source-compat at test sites.
     public static ValidationErrorAssertions Should(this Error.UnprocessableContent error);
 }

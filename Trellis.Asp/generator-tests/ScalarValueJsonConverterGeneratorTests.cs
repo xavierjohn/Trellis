@@ -1,4 +1,4 @@
-namespace Trellis.AspSourceGenerator.Tests;
+﻿namespace Trellis.AspSourceGenerator.Tests;
 
 using System.Reflection;
 using Microsoft.CodeAnalysis;
@@ -83,7 +83,9 @@ public class ScalarValueJsonConverterGeneratorTests
 
                 public static Result<Temperature> TryCreate(decimal value, string? fieldName = null) =>
                     value.ToResult()
-                        .Ensure(v => v >= -273.15m, Error.Validation("Below absolute zero", fieldName ?? "temperature"))
+                        .Ensure(
+                            v => v >= -273.15m,
+                            Error.UnprocessableContent.ForField(fieldName ?? "temperature", "below_absolute_zero", "Below absolute zero"))
                         .Map(v => new Temperature(v));
             }
             """;

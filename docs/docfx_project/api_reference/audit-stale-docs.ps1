@@ -73,6 +73,7 @@ try {
         @{ Pattern = '\bResult\.SuccessIf(?:Async)?\b'; Message = 'Result.SuccessIf is removed; use a ternary with Result.Ok/Fail.' },
         @{ Pattern = '\bResult\.FailureIf(?:Async)?\b'; Message = 'Result.FailureIf is removed; use a ternary with Result.Ok/Fail.' },
         @{ Pattern = '(?-i:\bError\.(?:Validation|Domain|Failure)\b)'; Message = 'Error.Validation/Error.Domain/Error.Failure are not current API cases; use the closed-ADT error cases.' },
+        @{ Pattern = '(?-i:\b(?:Validation|NotFound|Conflict|Unauthorized|Forbidden|Unexpected)Error\b)'; Message = 'Old concrete error subclasses are not current API types; use Error.<Case> records.' },
         @{ Pattern = '\bFinally\s*\('; Message = 'Finally is removed; use Match(onSuccess:, onFailure:) as the terminal verb.' },
         @{ Pattern = '(?-i:(?<!\.)\b(?:result|[a-z][A-Za-z0-9_]*Result|r)\.Value\b)'; Message = 'Result<T>.Value was removed; use TryGetValue, Match, Deconstruct, or GetValueOrDefault.' },
         @{ Pattern = '\bADR-00[0-9]+\b'; Message = 'Current-facing docs should describe current behavior, not design-process ADR references.' },

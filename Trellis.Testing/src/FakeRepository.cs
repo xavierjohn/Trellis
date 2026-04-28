@@ -72,7 +72,7 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A Result containing the aggregate or a NotFoundError.</returns>
+    /// <returns>A Result containing the aggregate or an <see cref="Error.NotFound"/>.</returns>
     public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
         if (_store.TryGetValue(id, out var aggregate))
@@ -200,7 +200,7 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A Result indicating success or NotFoundError.</returns>
+    /// <returns>A Result indicating success or <see cref="Error.NotFound"/>.</returns>
     public Task<Result> DeleteAsync(TId id, CancellationToken cancellationToken = default)
     {
         if (_store.Remove(id))
