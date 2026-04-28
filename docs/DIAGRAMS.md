@@ -252,7 +252,7 @@ graph TB
     COMMAND --> DB
     DB -.->|Success| RES_OK[Result.Ok]
     DB -.->|Duplicate Key| RES_CONFLICT[Error.Conflict]
-    DB -.->|FK Violation| RES_DOMAIN[Error.Domain]
+    DB -.->|FK Violation| RES_DOMAIN[Error.UnprocessableContent]
     DB -.->|Concurrency| RES_CONFLICT2[Error.Conflict]
     
     RES_OK --> HTTP_OK[200 OK]
@@ -314,7 +314,7 @@ flowchart TB
     
     TRY -->|DbUpdateException<br/>Duplicate Key| CONFLICT2[Error.Conflict<br/>Email already exists]
     
-    TRY -->|DbUpdateException<br/>Foreign Key| DOMAIN[Error.Domain<br/>Referential integrity]
+    TRY -->|DbUpdateException<br/>Foreign Key| DOMAIN[Error.UnprocessableContent<br/>Referential integrity]
     
     TRY -->|Other Exception<br/>Connection/Timeout| PROPAGATE[Exception Propagates<br/>Global Handler]
     
@@ -344,7 +344,7 @@ flowchart TB
     
     EXPECTED1 --> CONVERT1[Convert to Result<br/>Error.Conflict]
     EXPECTED2 --> CONVERT2[Convert to Result<br/>Error.Conflict]
-    EXPECTED3 --> CONVERT3[Convert to Result<br/>Error.Domain]
+    EXPECTED3 --> CONVERT3[Convert to Result<br/>Error.UnprocessableContent]
     
     CONVERT1 --> RETURN[Return Result&lt;T&gt;<br/>to caller]
     CONVERT2 --> RETURN

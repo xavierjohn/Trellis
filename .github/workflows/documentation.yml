@@ -60,7 +60,7 @@ jobs:
         set -o pipefail
         # Catches stale v1-style references that a v2 user/AI could mistakenly copy.
         # Patterns:
-        #   1. `Error.Validation(`, `Error.Domain(`, `Error.Failure(`  — names removed entirely in v2
+        #   1. `Error.Validation(`, `Error.Domain(`, `Error.Failure(`  — names removed from the current API  v1-stale-ok
         #   2. `Error.<case>(`  not preceded on the same line by `new <whitespace> Error.` —
         #      case names that exist in v2 only via `new Error.<case>(...)` ctor.
         #      Case list mirrors the 20 sealed nested records in Trellis.Core/src/Errors/Error.cs.

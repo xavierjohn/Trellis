@@ -83,16 +83,16 @@ Comparison of ROP style vs traditional if-style code for the same logic.
 // ROP Style
 FirstName.TryCreate("Xavier")
     .Combine(EmailAddress.TryCreate("xavier@somewhere.com"))
-    .Finally(
-        ok => ok.Item1 + " " + ok.Item2,
-        error => error.Detail
+    .Match(
+        onSuccess: ok => ok.Item1 + " " + ok.Item2,
+        onFailure: error => error.Detail
     );
 
 // Imperative Style (equivalent logic)
 var rFirstName = FirstName.TryCreate("Xavier");
 var rEmailAddress = EmailAddress.TryCreate("xavier@somewhere.com");
-if (rFirstName.IsSuccess && rEmailAddress.IsSuccess)
-    return rFirstName.Value + " " + rEmailAddress.Value;
+if (rFirstName.TryGetValue(out var firstName) && rEmailAddress.TryGetValue(out var emailAddress))
+    return firstName + " " + emailAddress;
 
 Error? error = null;
 if (rFirstName.IsFailure)
