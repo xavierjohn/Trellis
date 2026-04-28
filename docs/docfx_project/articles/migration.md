@@ -34,7 +34,6 @@ That is good news: you usually do **not** need to rethink your domain model or r
 | `FunctionalDdd.Asp` | `Trellis.Asp` |
 | `FunctionalDdd.Http` | `Trellis.Http` |
 | `FunctionalDdd.FluentValidation` | `Trellis.FluentValidation` |
-| `FunctionalDdd.ArdalisSpecification` | Remove and use native `Specification<T>` from `Trellis.Core` |
 
 Optional new packages with no direct one-to-one predecessor include:
 
@@ -103,9 +102,9 @@ If you enabled OpenTelemetry integration, rename these extension methods:
 | `.AddFunctionalDddRopInstrumentation()` | `.AddResultsInstrumentation()` |
 | `.AddFunctionalDddCvoInstrumentation()` | `.AddPrimitiveValueObjectInstrumentation()` |
 
-## Step 4: replace Ardalis specification usage
+## Step 4: use native Trellis specifications
 
-If you were using `FunctionalDdd.ArdalisSpecification`, migrate to native Trellis specifications.
+Use native Trellis specifications from `Trellis.Core`.
 
 ```csharp
 using System.Linq.Expressions;

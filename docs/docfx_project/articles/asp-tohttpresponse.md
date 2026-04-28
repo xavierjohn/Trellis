@@ -123,7 +123,7 @@ in v3. Migrate as follows:
 | Old                                                | New                                                              |
 |----------------------------------------------------|------------------------------------------------------------------|
 | `result.ToActionResult()`                          | `result.ToHttpResponse().AsActionResult<T>()`                    | <!-- stale-doc-ok: legacy verb in migration table -->
-| `result.ToActionResultAsync()`                     | `(await result).ToHttpResponse().AsActionResult<T>()`            | <!-- stale-doc-ok: legacy verb in migration table -->
+| `result.ToActionResultAsync()`                     | `result.ToHttpResponseAsync().AsActionResultAsync<T>()`          | <!-- stale-doc-ok: legacy verb in migration table -->
 | `result.ToHttpResult(httpContext)`                 | `result.ToHttpResponse()` (returns `IResult`)                    | <!-- stale-doc-ok: legacy verb in migration table -->
 | `outcome.ToActionResult(routeName, routeValues)`   | `result.ToHttpResponse(o => o.CreatedAtRoute(routeName, rv))`    | <!-- stale-doc-ok: legacy verb in migration table -->
 | `outcome.ToHttpResult(httpContext, map)`           | `result.ToHttpResponse(o => o.CreatedAtRoute(...))`              | <!-- stale-doc-ok: legacy verb in migration table -->
