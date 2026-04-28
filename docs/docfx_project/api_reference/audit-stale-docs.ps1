@@ -16,6 +16,7 @@ try {
     $allowlistedPathPatterns = @(
         '^CHANGELOG\.md$',
         '^MIGRATION_v3\.md$',
+        '^docs/docfx_project/api_reference/audit-stale-docs\.ps1$',
         '^docs/docfx_project/adr/',
         '^Trellis\.Core/src/Result/Unit\.cs$',
         '(^|/)tests/',
