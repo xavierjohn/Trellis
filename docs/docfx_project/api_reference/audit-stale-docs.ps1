@@ -1,4 +1,6 @@
-﻿param(
+﻿#Requires -Version 7
+
+param(
     [string] $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..' '..')).Path
 )
 
@@ -29,6 +31,7 @@ try {
 
     $allowlistedLinePatterns = @(
         'stale-doc-ok',
+        'v1-stale-ok',
         '\bunit test\b',
         '\bUnit-test\b',
         '\bUnit of Work\b',
@@ -64,6 +67,10 @@ try {
         @{ Pattern = '\bTrellis\.Results\b'; Message = 'Trellis.Results is not a current package; use Trellis.Core unless this is historical migration content.' },
         @{ Pattern = '\bTrellis\.DomainDrivenDesign\b'; Message = 'Trellis.DomainDrivenDesign is not a current package; use Trellis.Core unless this is historical migration content.' },
         @{ Pattern = '\b(ToActionResult|ToActionResultAsync|ToHttpResult|ToHttpResultAsync|ToCreatedAtActionResult|ToCreatedAtRouteHttpResult|ToCreatedHttpResult|ToUpdatedActionResult|ToUpdatedHttpResult|ToPagedActionResult|ToPagedHttpResult)\b'; Message = 'Use ToHttpResponse(Async) and AsActionResult<T>(Async) for current ASP response mapping.' },
+        @{ Pattern = '\bResult\.Success\s*[(<]'; Message = 'Result.Success is removed; use Result.Ok(...).' },
+        @{ Pattern = '\bResult\.Failure\s*[(<]'; Message = 'Result.Failure is removed; use Result.Fail<T>(...).' },
+        @{ Pattern = '\bResult\.SuccessIf(?:Async)?\b'; Message = 'Result.SuccessIf is removed; use a ternary with Result.Ok/Fail.' },
+        @{ Pattern = '\bResult\.FailureIf(?:Async)?\b'; Message = 'Result.FailureIf is removed; use a ternary with Result.Ok/Fail.' },
         @{ Pattern = '\bADR-002\b'; Message = 'Current-facing docs should describe current behavior, not redesign-plan references.' },
         @{ Pattern = '\bv2 redesign\b'; Message = 'Current-facing docs should not reference completed redesign process wording.' },
         @{ Pattern = '\bPhase\s+[0-9][A-Za-z]?\b'; Message = 'Current-facing docs should not reference completed phase process wording.' },
