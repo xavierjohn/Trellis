@@ -30,7 +30,7 @@ public sealed class Money(decimal amount, CurrencyCode currency) : ValueObject
 // (NOT C# enums). The partial keyword triggers the source generator.
 public partial class OrderStatus : RequiredEnum<OrderStatus>
 {
-    public static readonly OrderStatus Draft     = new();
+    public static readonly OrderStatus Draft = new();
     public static readonly OrderStatus Submitted = new();
     public static readonly OrderStatus Cancelled = new();
 }

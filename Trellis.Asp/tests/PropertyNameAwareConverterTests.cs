@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -7,8 +7,8 @@ using System.Text.Json.Serialization;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
-using Xunit;
 using Trellis.Testing;
+using Xunit;
 
 /// <summary>
 /// Tests for PropertyNameAwareConverter to ensure proper property name tracking.
@@ -95,8 +95,8 @@ public class PropertyNameAwareConverterTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
-                        error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/PrimaryEmail", "wrapper should set property name");
+            error!.Fields.Items.Should().ContainSingle()
+    .Which.Field.Path.Should().Be("/PrimaryEmail", "wrapper should set property name");
         }
     }
 
@@ -263,7 +263,7 @@ public class PropertyNameAwareConverterTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
-                        // Empty string should still be set as property name
+            // Empty string should still be set as property name
             error!.Fields.Items.Should().ContainSingle()
                 .Which.Field.Path.Should().Be("");
         }
@@ -339,7 +339,7 @@ public class PropertyNameAwareConverterTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
-                        error!.Fields.Items.Should().ContainSingle();
+            error!.Fields.Items.Should().ContainSingle();
             error.Fields.Items[0].Field.Path.Should().Be("/Email");
             error.Fields.Items[0].Detail.Should().Be("DomainOnlyEmail is invalid.");
         }

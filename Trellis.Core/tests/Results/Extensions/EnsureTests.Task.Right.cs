@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Functional.Results.Extensions;
+﻿namespace Trellis.Core.Tests.Functional.Results.Extensions;
 
 using Trellis;
 using Trellis.Testing;

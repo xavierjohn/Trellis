@@ -1,16 +1,16 @@
-// Cookbook Recipe 14 — Optional fields in request DTOs: Maybe<TScalar> vs nullable transport.
+﻿// Cookbook Recipe 14 — Optional fields in request DTOs: Maybe<TScalar> vs nullable transport.
 namespace CookbookSnippets.Recipe14;
 
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Recipe13;
+using global::Mediator;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using global::Mediator;
 using Trellis;
 using Trellis.Asp;
 using Trellis.Mediator;
 using Trellis.Primitives;
-using CookbookSnippets.Recipe13;
 
 public sealed partial class EmailAddress : RequiredString<EmailAddress>;
 

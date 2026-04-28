@@ -1,14 +1,14 @@
-// Cookbook Recipe 2 — Command + handler + FluentValidation + EF persistence.
+﻿// Cookbook Recipe 2 — Command + handler + FluentValidation + EF persistence.
 namespace CookbookSnippets.Recipe02;
 
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Recipe01;
+using CookbookSnippets.Stubs;
 using FluentValidation;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
-using CookbookSnippets.Recipe01;
-using CookbookSnippets.Stubs;
 using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;

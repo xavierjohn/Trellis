@@ -1,4 +1,4 @@
-namespace Trellis.Authorization;
+﻿namespace Trellis.Authorization;
 
 /// <summary>
 /// Loads the resource required for resource-based authorization.

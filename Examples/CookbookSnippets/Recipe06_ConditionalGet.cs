@@ -1,13 +1,13 @@
-// Cookbook Recipe 6 — Conditional GET with EntityTagValue and byte-range with RangeOutcome.
+﻿// Cookbook Recipe 6 — Conditional GET with EntityTagValue and byte-range with RangeOutcome.
 namespace CookbookSnippets.Recipe06;
 
 using System.Threading;
+using CookbookSnippets.Stubs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Trellis;
 using Trellis.Asp;
-using CookbookSnippets.Stubs;
 
 public static class ConditionalGetSample
 {
@@ -27,7 +27,7 @@ public static class ConditionalGetSample
                     return outcome switch
                     {
                         RangeOutcome.PartialContent pc => new System.Net.Http.Headers.ContentRangeHeaderValue(pc.From, pc.To, pc.CompleteLength),
-                        _                              => new System.Net.Http.Headers.ContentRangeHeaderValue(b.Length),
+                        _ => new System.Net.Http.Headers.ContentRangeHeaderValue(b.Length),
                     };
                 })
                 .EvaluatePreconditions());

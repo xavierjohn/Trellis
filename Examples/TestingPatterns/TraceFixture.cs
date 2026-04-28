@@ -1,4 +1,4 @@
-namespace TestingPatterns;
+﻿namespace TestingPatterns;
 
 using System;
 using System.Diagnostics;

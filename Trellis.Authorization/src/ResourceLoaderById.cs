@@ -1,4 +1,4 @@
-namespace Trellis.Authorization;
+﻿namespace Trellis.Authorization;
 
 /// <summary>
 /// Convenience base class for resource loaders that extract a typed ID from the message

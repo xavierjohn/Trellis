@@ -1,7 +1,10 @@
-// Cookbook Recipe 4 — Minimal-API endpoint wiring Result<T> → ToHttpResponse.
+﻿// Cookbook Recipe 4 — Minimal-API endpoint wiring Result<T> → ToHttpResponse.
 namespace CookbookSnippets.Recipe04;
 
 using System.Threading;
+using CookbookSnippets.Recipe01;
+using CookbookSnippets.Recipe02;
+using CookbookSnippets.Stubs;
 using global::Mediator;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -9,9 +12,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
-using CookbookSnippets.Recipe01;
-using CookbookSnippets.Recipe02;
-using CookbookSnippets.Stubs;
 
 public static class MinimalApiSample
 {

@@ -1,8 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Maybes;
 
-using Trellis.Testing;
-
 using Trellis;
+using Trellis.Testing;
 
 public class OptionalTests
 {

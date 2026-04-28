@@ -1,9 +1,9 @@
-using Trellis.Testing;
+﻿using Trellis.Testing;
 namespace Trellis.EntityFrameworkCore.Tests;
 
+using System.Linq.Expressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 
 public partial class RepositoryBaseTests : IDisposable

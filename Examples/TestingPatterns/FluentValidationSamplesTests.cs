@@ -1,5 +1,5 @@
+﻿using Trellis.FluentValidation;
 using Trellis.Testing;
-using Trellis.FluentValidation;
 
 namespace TestingPatterns;
 

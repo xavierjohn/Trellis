@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests;
+﻿namespace Trellis.Core.Tests;
 
 public class RepresentationMetadataTests
 {

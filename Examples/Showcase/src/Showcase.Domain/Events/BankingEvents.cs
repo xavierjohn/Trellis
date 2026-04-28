@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Domain.Events;
+﻿namespace Trellis.Showcase.Domain.Events;
 
 using Trellis;
 using Trellis.Primitives;

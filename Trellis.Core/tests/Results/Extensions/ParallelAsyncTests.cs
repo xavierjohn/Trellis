@@ -1,8 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
-using Trellis.Testing;
-
 using System.Diagnostics;
+using Trellis.Testing;
 
 /// <summary>
 /// Functional tests for ParallelAsync operations.

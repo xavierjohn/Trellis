@@ -1,4 +1,4 @@
-namespace TestingPatterns;
+﻿namespace TestingPatterns;
 
 using System.Diagnostics;
 using Trellis;

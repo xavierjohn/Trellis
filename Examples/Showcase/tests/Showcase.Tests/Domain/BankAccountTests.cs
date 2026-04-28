@@ -1,12 +1,12 @@
 ﻿namespace Trellis.Showcase.Tests.Domain;
 
 using Microsoft.Extensions.Time.Testing;
-using Trellis.Testing;
 using Trellis;
 using Trellis.Primitives;
 using Trellis.Showcase.Domain.Aggregates;
 using Trellis.Showcase.Domain.Events;
 using Trellis.Showcase.Domain.ValueObjects;
+using Trellis.Testing;
 
 public class BankAccountTests
 {

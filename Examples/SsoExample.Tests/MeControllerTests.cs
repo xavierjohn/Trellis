@@ -1,4 +1,4 @@
-namespace SsoExample.Tests;
+﻿namespace SsoExample.Tests;
 
 using System.Net;
 using System.Net.Http.Json;

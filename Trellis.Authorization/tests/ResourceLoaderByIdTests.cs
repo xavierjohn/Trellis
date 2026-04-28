@@ -1,4 +1,4 @@
-using Trellis.Testing;
+﻿using Trellis.Testing;
 namespace Trellis.Authorization.Tests;
 
 /// <summary>

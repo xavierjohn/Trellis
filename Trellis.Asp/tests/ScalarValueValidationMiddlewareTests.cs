@@ -330,7 +330,7 @@ public class ScalarValueValidationMiddlewareTests
         public int Value { get; }
         private IntOnlyScalarValue(int value) => Value = value;
         public static Result<IntOnlyScalarValue> TryCreate(int value, string? fieldName = null) =>
-            value > 0 ? Result.Ok(new IntOnlyScalarValue(value) ): Result.Fail<IntOnlyScalarValue>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be positive." })));
+            value > 0 ? Result.Ok(new IntOnlyScalarValue(value)) : Result.Fail<IntOnlyScalarValue>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be positive." })));
         public static Result<IntOnlyScalarValue> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

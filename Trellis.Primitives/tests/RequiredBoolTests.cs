@@ -1,4 +1,4 @@
-namespace Trellis.Primitives.Tests;
+﻿namespace Trellis.Primitives.Tests;
 
 using System.Text.Json;
 using Trellis.Testing;

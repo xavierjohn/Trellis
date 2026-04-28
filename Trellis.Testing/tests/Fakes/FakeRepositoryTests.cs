@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Tests.Fakes;
+﻿namespace Trellis.Testing.Tests.Fakes;
 
 public class FakeRepositoryTests
 {

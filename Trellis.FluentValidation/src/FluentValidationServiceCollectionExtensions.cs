@@ -1,4 +1,4 @@
-namespace Trellis.FluentValidation;
+﻿namespace Trellis.FluentValidation;
 
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -146,4 +146,3 @@ public static class FluentValidationServiceCollectionExtensions
         }
     }
 }
-

@@ -1,4 +1,4 @@
-using Trellis.Testing;
+﻿using Trellis.Testing;
 namespace Trellis.FluentValidation.Tests;
 
 using global::FluentValidation;

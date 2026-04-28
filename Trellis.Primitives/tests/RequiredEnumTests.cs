@@ -1,9 +1,9 @@
-namespace Trellis.Primitives.Tests;
+﻿namespace Trellis.Primitives.Tests;
 
 using System.Text.Json;
 using Trellis;
-using Xunit;
 using Trellis.Testing;
+using Xunit;
 
 /// <summary>
 /// Test enum value object for order states.

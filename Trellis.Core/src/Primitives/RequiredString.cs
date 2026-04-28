@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Base class for creating strongly-typed string value objects that cannot be null or empty.
@@ -311,4 +311,3 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     public bool EndsWith(string value) => Value.EndsWith(value);
 #pragma warning restore CA1310
 }
-

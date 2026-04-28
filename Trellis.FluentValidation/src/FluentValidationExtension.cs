@@ -1,4 +1,4 @@
-namespace Trellis.FluentValidation;
+﻿namespace Trellis.FluentValidation;
 
 using System.Linq;
 using System.Runtime.CompilerServices;

@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Domain.Entities;
+﻿namespace Trellis.Showcase.Domain.Entities;
 
 using Trellis;
 using Trellis.Primitives;

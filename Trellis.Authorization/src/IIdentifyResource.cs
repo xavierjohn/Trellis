@@ -1,4 +1,4 @@
-namespace Trellis.Authorization;
+﻿namespace Trellis.Authorization;
 
 /// <summary>
 /// Declares that this message carries a typed resource identifier that can be

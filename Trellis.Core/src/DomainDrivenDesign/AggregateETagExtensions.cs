@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Extension methods for ETag-based optimistic concurrency validation on aggregate results.

@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Errors;
+﻿namespace Trellis.Core.Tests.Errors;
 
 using Trellis.Testing;
 

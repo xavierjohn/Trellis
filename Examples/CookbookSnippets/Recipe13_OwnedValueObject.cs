@@ -1,4 +1,4 @@
-// Cookbook Recipe 13 — EF Core: composite owned value object ([OwnedEntity] + OwnsOne not needed).
+﻿// Cookbook Recipe 13 — EF Core: composite owned value object ([OwnedEntity] + OwnsOne not needed).
 namespace CookbookSnippets.Recipe13;
 
 using System;

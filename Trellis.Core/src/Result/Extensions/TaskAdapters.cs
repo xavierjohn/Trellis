@@ -42,4 +42,3 @@ public static class ResultTaskAdapterExtensions
     public static ValueTask<Result<TValue>> AsValueTask<TValue>(this Result<TValue> result) =>
         new(result);
 }
-

@@ -1,4 +1,4 @@
-namespace Benchmark;
+﻿namespace Benchmark;
 
 using BenchmarkDotNet.Attributes;
 using Trellis;
@@ -21,9 +21,9 @@ public class ErrorBenchmarks
             EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), "validation.error") { Detail = "Test validation error" }));
         _notFoundError = new Error.NotFound(new ResourceRef("Resource", "resource123")) { Detail = "Resource not found" };
         _complexValidationError = new Error.UnprocessableContent(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"),    "validation.error") { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" },
             new FieldViolation(InputPointer.ForProperty("password"), "validation.error") { Detail = "Password is required" },
-            new FieldViolation(InputPointer.ForProperty("age"),      "validation.error") { Detail = "Age must be 18 or older" }));
+            new FieldViolation(InputPointer.ForProperty("age"), "validation.error") { Detail = "Age must be 18 or older" }));
     }
 
     [Benchmark(Baseline = true)]

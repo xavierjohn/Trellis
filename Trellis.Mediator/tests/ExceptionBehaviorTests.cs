@@ -1,4 +1,4 @@
-using Trellis.Testing;
+﻿using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.Logging;

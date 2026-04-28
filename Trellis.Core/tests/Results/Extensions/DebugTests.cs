@@ -1,9 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
-using Trellis.Testing;
-
 using System.Diagnostics;
 using Trellis.Core.Tests.Helpers;
+using Trellis.Testing;
 
 public class DebugTests : TestBase
 {

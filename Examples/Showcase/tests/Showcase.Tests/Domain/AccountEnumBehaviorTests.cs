@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Tests.Domain;
+﻿namespace Trellis.Showcase.Tests.Domain;
 
 using Trellis.Showcase.Domain.Aggregates;
 

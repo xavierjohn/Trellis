@@ -121,4 +121,3 @@ public class TaskAdapterTests
             .Which.ReasonCode.Should().Be("default_initialized");
     }
 }
-

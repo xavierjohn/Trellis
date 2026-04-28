@@ -53,9 +53,9 @@ public class ValidationErrorAssertionsTests
     {
         // Arrange
         var error = new Error.UnprocessableContent(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"),    "validation.error") { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" },
             new FieldViolation(InputPointer.ForProperty("password"), "validation.error") { Detail = "Password is required" },
-            new FieldViolation(InputPointer.ForProperty("age"),      "validation.error") { Detail = "Invalid age" }));
+            new FieldViolation(InputPointer.ForProperty("age"), "validation.error") { Detail = "Invalid age" }));
 
         // Act & Assert
         error.Should().HaveFieldCount(3);
@@ -78,7 +78,7 @@ public class ValidationErrorAssertionsTests
     {
         // Arrange
         var error = new Error.UnprocessableContent(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"),    "validation.error") { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" },
             new FieldViolation(InputPointer.ForProperty("password"), "validation.error") { Detail = "Password is required" }));
 
         // Act & Assert

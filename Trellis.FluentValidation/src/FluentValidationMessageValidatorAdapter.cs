@@ -1,4 +1,4 @@
-namespace Trellis.FluentValidation;
+﻿namespace Trellis.FluentValidation;
 
 using System.Collections.Generic;
 using System.Threading;

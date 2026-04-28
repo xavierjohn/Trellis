@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.MinimalApi.Endpoints;
+﻿namespace Trellis.Showcase.MinimalApi.Endpoints;
 
 using Trellis;
 using Trellis.Asp;

@@ -1,4 +1,4 @@
-using Trellis.Testing;
+﻿using Trellis.Testing;
 namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.EntityFrameworkCore;

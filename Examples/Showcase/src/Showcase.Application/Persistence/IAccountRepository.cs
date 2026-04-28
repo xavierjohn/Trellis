@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Application.Persistence;
+﻿namespace Trellis.Showcase.Application.Persistence;
 
 using Trellis;
 using Trellis.Primitives;

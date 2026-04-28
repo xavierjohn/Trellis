@@ -1,4 +1,4 @@
-// Cookbook Recipe 8 — EF Core: MaybePropertyMapping for nullable value objects.
+﻿// Cookbook Recipe 8 — EF Core: MaybePropertyMapping for nullable value objects.
 namespace CookbookSnippets.Recipe08;
 
 using System;

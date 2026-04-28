@@ -1,13 +1,13 @@
-// Cookbook Recipe 10 — Test: handler test using Trellis.Testing assertions.
+﻿// Cookbook Recipe 10 — Test: handler test using Trellis.Testing assertions.
 namespace CookbookSnippets.Recipe10;
 
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
-using Trellis;
 using CookbookSnippets.Recipe02;
 using CookbookSnippets.Stubs;
+using FluentAssertions;
+using Trellis;
 using Trellis.Testing;
 using Xunit;
 
@@ -18,7 +18,7 @@ public class PlaceOrderHandlerTests
     public async Task PlaceOrder_returns_id_on_success()
     {
         var repo = new InMemoryOrderRepository();
-        var sut  = new PlaceOrderHandler(repo);
+        var sut = new PlaceOrderHandler(repo);
 
         var result = await sut.Handle(
             new PlaceOrderCommand(Guid.NewGuid(), 100m, "USD"),

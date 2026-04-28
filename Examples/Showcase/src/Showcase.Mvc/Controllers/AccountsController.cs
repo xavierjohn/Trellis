@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Mvc.Controllers;
+﻿namespace Trellis.Showcase.Mvc.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
 using Trellis;

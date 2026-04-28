@@ -1,4 +1,4 @@
-namespace Trellis.Http.Tests.HttpResponseExtensionsTests;
+﻿namespace Trellis.Http.Tests.HttpResponseExtensionsTests;
 
 using System;
 using System.Net;

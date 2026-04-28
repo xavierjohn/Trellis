@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results.Extensions.Bind;
+﻿namespace Trellis.Core.Tests.Results.Extensions.Bind;
 
 using Trellis.Testing;
 

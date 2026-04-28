@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Domain.Aggregates;
+﻿namespace Trellis.Showcase.Domain.Aggregates;
 
 using global::Stateless;
 using Trellis;

@@ -1,12 +1,11 @@
 ﻿namespace EfCoreExample.Tests;
 
-using Trellis.Testing;
-
 using EfCoreExample.Data;
 using EfCoreExample.Entities;
 using EfCoreExample.Enums;
 using EfCoreExample.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for the EfCoreExample data layer. Each test uses a fresh

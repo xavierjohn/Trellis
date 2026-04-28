@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Generator.Tests;
+﻿namespace Trellis.EntityFrameworkCore.Generator.Tests;
 
 using System.Linq;
 using Microsoft.CodeAnalysis;

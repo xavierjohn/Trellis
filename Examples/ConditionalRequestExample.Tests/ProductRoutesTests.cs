@@ -1,4 +1,4 @@
-namespace ConditionalRequestExample.Tests;
+﻿namespace ConditionalRequestExample.Tests;
 
 using System.Net;
 using System.Net.Http.Headers;

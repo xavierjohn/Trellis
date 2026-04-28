@@ -1,11 +1,11 @@
-using Trellis.Primitives;
+﻿using Trellis.Primitives;
 
 namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
 using System.Text.Json;
-using Xunit;
 using Trellis.Testing;
+using Xunit;
 
 public class EmailAddressTests
 {

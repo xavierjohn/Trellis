@@ -1,4 +1,4 @@
-namespace Trellis.Testing.AspNetCore.Http;
+﻿namespace Trellis.Testing.AspNetCore.Http;
 
 using System;
 using System.Collections.Generic;
