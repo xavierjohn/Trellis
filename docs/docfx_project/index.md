@@ -146,7 +146,7 @@ If you want the full API surface, jump to the **[API reference](api/index.md)** 
 ## A few accuracy notes worth knowing early
 
 - Use `Result.Ok()` for a success-without-payload flow; `Unit` is not public API.
-- `Error.Equals(...)` compares **only the error code**, not the detail text.
+- `Error.Equals(...)` is value-based for each error case. Compare `Code` when you only need the stable machine-readable category.
 - `new Error.NotFound(ResourceRef.For("Order", orderId)) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and the other case constructors create specific error subtypes whose `Code` defaults to the hyphenated `Kind` unless that case exposes a payload-specific code.
 
 ---

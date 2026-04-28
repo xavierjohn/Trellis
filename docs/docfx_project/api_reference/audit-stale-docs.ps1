@@ -1,12 +1,14 @@
 ﻿param(
-    [string] $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    [string] $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..' '..')).Path
 )
 
 $ErrorActionPreference = 'Stop'
 
 Push-Location $RepositoryRoot
 try {
-    $trackedFiles = git ls-files
+    $trackedFiles = @(git ls-files)
+    $untrackedFiles = @(git ls-files --others --exclude-standard)
+    $filesToScan = @($trackedFiles + $untrackedFiles | Sort-Object -Unique)
 
     $includedExtensions = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($extension in @('.cs', '.md', '.ps1', '.t4', '.tt', '.yaml', '.yml')) {
@@ -38,6 +40,7 @@ try {
 
     $stalePatterns = @(
         @{ Pattern = '\bUnit\.Value\b'; Message = 'Unit.Value is not a public API; use Result.Ok() for no-payload success.' },
+        @{ Pattern = '\bUnit\.Default\b'; Message = 'Unit.Default is not a public API; use Result.Ok() for no-payload success.' },
         @{ Pattern = '\bnew\s+Unit\s*\('; Message = 'Unit is not a public API; use non-generic Result for no-payload operations.' },
         @{ Pattern = '\bdefault\s*\(\s*Unit\s*\)'; Message = 'Unit is not a public API; use non-generic Result for no-payload operations.' },
         @{ Pattern = '\bResult\s*<\s*Unit\s*>'; Message = 'Result<Unit> is not a public API; use non-generic Result.' },
@@ -50,6 +53,11 @@ try {
         @{ Pattern = '\bUnit Results\b'; Message = 'Prefer non-generic Result wording.' },
         @{ Pattern = '\bUnit support\b'; Message = 'Prefer non-generic Result wording.' },
         @{ Pattern = '\bvoid/Unit\b'; Message = 'Prefer no-payload or void-style Result wording.' },
+        @{ Pattern = '\bnon-generic\s+non-generic\b'; Message = 'Remove duplicated non-generic wording.' },
+        @{ Pattern = '\bAPI\s+\.'; Message = 'Remove stray space before punctuation.' },
+        @{ Pattern = '^\s*///,'; Message = 'Fix XML doc punctuation after line wrapping.' },
+        @{ Pattern = '\bvoid/No-payload\b'; Message = 'Use no-payload wording without mixed casing/slashes.' },
+        @{ Pattern = 'Error\.Equals\(\.\.\.\) compares \*\*only the error code\*\*'; Message = 'Error equality is value-based; compare Code for category-only checks.' },
         @{ Pattern = '\bADR-002\b'; Message = 'Current-facing docs should describe current behavior, not redesign-plan references.' },
         @{ Pattern = '\bv2 redesign\b'; Message = 'Current-facing docs should not reference completed redesign process wording.' },
         @{ Pattern = '\bPhase\s+[0-9][A-Za-z]?\b'; Message = 'Current-facing docs should not reference completed phase process wording.' },
@@ -68,7 +76,7 @@ try {
 
     $hits = New-Object System.Collections.Generic.List[string]
 
-    foreach ($file in $trackedFiles) {
+    foreach ($file in $filesToScan) {
         $normalizedPath = $file -replace '\\', '/'
         $extension = [System.IO.Path]::GetExtension($normalizedPath)
 

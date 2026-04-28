@@ -45,7 +45,7 @@ public static class TrellisDiagnosticIds
     public const string AsyncResultMisuse = "TRLS005";
 
     // TRLS006 (UseSpecificErrorType / ErrorBaseClassAnalyzer) was removed in
-// v3-alpha. It detected `new Error(...)`, but `Error` is an abstract
+    // v3-alpha. It detected `new Error(...)`, but `Error` is an abstract
     // record — the C# compiler blocks construction with CS0144 before the
     // analyzer ever runs, so the rule was redundant with the language.
 
@@ -65,7 +65,7 @@ public static class TrellisDiagnosticIds
     // v3-alpha. It hard-coded the v1 static factory names (Error.Validation,
     // Error.NotFound, Error.Unauthorized, Error.Forbidden, Error.Conflict,
     // Error.Unexpected) as its detection set. None of those factories exist
-// on the closed-ADT Error type (only UnprocessableContent.ForField/
+    // on the closed-ADT Error type (only UnprocessableContent.ForField/
     // ForRule survived), so the analyzer never matched a real call site.
 
     /// <summary>TRLS012 — Don't compare <c>Result</c> or <c>Maybe</c> to null.</summary>

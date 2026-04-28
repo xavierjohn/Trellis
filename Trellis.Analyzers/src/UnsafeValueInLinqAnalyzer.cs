@@ -77,7 +77,7 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         if (type == null)
             return;
 
-// Only Maybe<T>.Value remains a runtime hazard.
+        // Only Maybe<T>.Value remains a runtime hazard.
         if (!type.IsMaybeType())
             return;
 

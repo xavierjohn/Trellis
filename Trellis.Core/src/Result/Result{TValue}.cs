@@ -117,7 +117,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     //
     // Note: in v1 there was a `public TValue Value { get; }` property that threw
     // InvalidOperationException on failure — the primary cause of TRLS003. It was
-    // removed from the current API . Use TryGetValue, Match, or Deconstruct
+    // removed from the current API. Use TryGetValue, Match, or Deconstruct
     // to extract the success value safely. The non-throwing nullable `Error` property
     // is intentionally retained because it powers clean pattern-match idioms
     // (`if (r.Error is { } e) ...`, `r.Error switch { Error.NotFound => ..., ... }`).
@@ -295,8 +295,8 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// </summary>
     /// <remarks>
     /// Use <see cref="AsUnit"/> when a pipeline returns a value but the next step only cares about success/failure
-    /// (e.g., bridging a value-producing operation into a void/No-payload consumer). Replaces the v1 idiom
-    /// <c>result.Map(_ =&gt; Unit.Default)</c> / <c>non-generic Result</c>. For default-initialized failures
+    /// (e.g., bridging a value-producing operation into a no-payload consumer). This returns the canonical
+    /// non-generic <see cref="Result"/> shape. For default-initialized failures
     /// the returned non-generic <see cref="Result"/> is constructed via <see cref="Result.Fail(Error)"/> with
     /// the shared sentinel — never returns <c>default(Result)</c>.
     /// </remarks>
