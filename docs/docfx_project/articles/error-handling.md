@@ -294,4 +294,3 @@ Boundary renderers (ProblemDetails / gRPC / GraphQL) read `Kind` for `type` and 
 
 - Read [Advanced Features](advanced-features.md) for `Try`, `ParallelAsync`, tuple destructuring, and LINQ flows
 - Read [Why Maybe?](maybe-type.md) for optional values that compose with `Result<T>`
-- Read [ADR-001](../adr/ADR-001-result-api-surface.md) for the Result/Error API design rationale

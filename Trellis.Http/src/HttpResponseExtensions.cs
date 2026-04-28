@@ -14,10 +14,8 @@ using Trellis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the v3 (ADR-003) surface for <c>Trellis.Http</c>. It collapses the v1
-/// "60+ overload" surface into a small set of composable operators that bridge
-/// <see cref="Task{TResult}"/> of <see cref="HttpResponseMessage"/> into
-/// <see cref="Result{TValue}"/> pipelines and deserialize JSON payloads.
+/// Operators bridge <see cref="Task{TResult}"/> of <see cref="HttpResponseMessage"/>
+/// into <see cref="Result{TValue}"/> pipelines and deserialize JSON payloads.
 /// </para>
 /// <para>
 /// <b>Disposal contract.</b> The library owns the lifecycle of the underlying

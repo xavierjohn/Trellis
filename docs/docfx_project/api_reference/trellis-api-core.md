@@ -379,7 +379,7 @@ Inherited only.
 
 ### `public abstract record Error`
 
-Closed discriminated union of error values. Each case is a nested `sealed record` mirroring an entry from the IANA HTTP Status Code Registry (RFC 9110, RFC 6585) and carrying a strongly-typed payload. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit, which makes `switch` over an `Error` reference exhaustive at the language level. See `docs/adr/ADR-001-result-api-surface.md` for the design rationale.
+Closed discriminated union of error values. Each case is a nested `sealed record` mirroring an entry from the IANA HTTP Status Code Registry (RFC 9110, RFC 6585) and carrying a strongly-typed payload. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit, which makes `switch` over an `Error` reference exhaustive at the language level.
 
 #### Properties
 

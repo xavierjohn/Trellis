@@ -6,7 +6,7 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
-> **v3 surface (ADR-003).** Bare `ToResultAsync()` is strict by default: non-2xx responses become typed Trellis failures instead of remaining on the success track.
+> Bare `ToResultAsync()` is strict by default: non-2xx responses become typed Trellis failures instead of remaining on the success track.
 
 ## Type
 
