@@ -786,7 +786,7 @@ public class ProductService
     {
         // Model binder automatically uses IParsable<ProductId>
         var product = _repository.GetById(id);
-        return product.ToActionResult(this);
+        return product.ToHttpResponse().AsActionResult<Product>();
     }
 }
 ```
@@ -963,7 +963,7 @@ public class UsersController : ControllerBase
         var user = await _repository.GetByIdAsync(id)
             .ToResultAsync(new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" });
         
-        return user.ToActionResult(this);
+        return user.ToHttpResponse().AsActionResult<User>();
     }
     
     // Request body with value objects
@@ -981,13 +981,12 @@ public class UsersController : ControllerBase
             .BindAsync(validEmail =>
                 User.TryCreateAsync(validEmail, request.FirstName, request.LastName));
         
-        if (emailResult.IsFailure)
-            return emailResult.ToActionResult(this);
+        if (!emailResult.TryGetValue(out var user))
+            return emailResult.ToHttpResponse().AsActionResult<User>();
         
-        var user = emailResult.Value;
         await _repository.AddAsync(user);
         
-        return user.ToActionResult(this);
+        return Result.Ok(user).ToHttpResponse().AsActionResult<User>();
     }
 }
 ```

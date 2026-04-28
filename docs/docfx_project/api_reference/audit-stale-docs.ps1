@@ -11,7 +11,7 @@ try {
     $filesToScan = @($trackedFiles + $untrackedFiles | Sort-Object -Unique)
 
     $includedExtensions = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($extension in @('.cs', '.md', '.ps1', '.t4', '.tt', '.yaml', '.yml')) {
+    foreach ($extension in @('.cs', '.csproj', '.json', '.md', '.props', '.ps1', '.targets', '.t4', '.tt', '.yaml', '.yml')) {
         [void] $includedExtensions.Add($extension)
     }
 
@@ -20,9 +20,11 @@ try {
         '^MIGRATION_v3\.md$',
         '^docs/docfx_project/api_reference/audit-stale-docs\.ps1$',
         '^docs/docfx_project/adr/',
+        '^Trellis\.Asp/SAMPLES\.md$',
         '^Trellis\.Core/src/Result/Unit\.cs$',
         '(^|/)tests/',
-        '(^|/)generator-tests/'
+        '(^|/)generator-tests/',
+        '^Examples/[^/]+\.Tests/'
     )
 
     $allowlistedLinePatterns = @(
@@ -44,6 +46,7 @@ try {
         @{ Pattern = '\bnew\s+Unit\s*\('; Message = 'Unit is not a public API; use non-generic Result for no-payload operations.' },
         @{ Pattern = '\bdefault\s*\(\s*Unit\s*\)'; Message = 'Unit is not a public API; use non-generic Result for no-payload operations.' },
         @{ Pattern = '\bResult\s*<\s*Unit\s*>'; Message = 'Result<Unit> is not a public API; use non-generic Result.' },
+        @{ Pattern = '\bResult\s*&lt;\s*Unit\s*&gt;'; Message = 'Result&lt;Unit&gt; is not a public API; use non-generic Result.' },
         @{ Pattern = '\bResult\{Unit\}'; Message = 'Result{Unit} is not a public API; use non-generic Result.' },
         @{ Pattern = '\bpublic\s+record\s+struct\s+Unit\b'; Message = 'Unit is not a public type; do not document it as public API.' },
         @{ Pattern = '\brecord\s+struct\s+Unit\b'; Message = 'Unit is not a public type; do not document it as public API.' },
@@ -58,6 +61,9 @@ try {
         @{ Pattern = '^\s*///,'; Message = 'Fix XML doc punctuation after line wrapping.' },
         @{ Pattern = '\bvoid/No-payload\b'; Message = 'Use no-payload wording without mixed casing/slashes.' },
         @{ Pattern = 'Error\.Equals\(\.\.\.\) compares \*\*only the error code\*\*'; Message = 'Error equality is value-based; compare Code for category-only checks.' },
+        @{ Pattern = '\bTrellis\.Results\b'; Message = 'Trellis.Results is not a current package; use Trellis.Core unless this is historical migration content.' },
+        @{ Pattern = '\bTrellis\.DomainDrivenDesign\b'; Message = 'Trellis.DomainDrivenDesign is not a current package; use Trellis.Core unless this is historical migration content.' },
+        @{ Pattern = '\b(ToActionResult|ToActionResultAsync|ToHttpResult|ToHttpResultAsync|ToCreatedAtActionResult|ToCreatedAtRouteHttpResult|ToCreatedHttpResult|ToUpdatedActionResult|ToUpdatedHttpResult|ToPagedActionResult|ToPagedHttpResult)\b'; Message = 'Use ToHttpResponse(Async) and AsActionResult<T>(Async) for current ASP response mapping.' },
         @{ Pattern = '\bADR-002\b'; Message = 'Current-facing docs should describe current behavior, not redesign-plan references.' },
         @{ Pattern = '\bv2 redesign\b'; Message = 'Current-facing docs should not reference completed redesign process wording.' },
         @{ Pattern = '\bPhase\s+[0-9][A-Za-z]?\b'; Message = 'Current-facing docs should not reference completed phase process wording.' },

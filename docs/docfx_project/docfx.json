@@ -1,4 +1,4 @@
-{
+﻿{
   "metadata": [
     {
       "src": [
@@ -6,7 +6,6 @@
           "src": "../..",
           "files": [
             "Trellis.Core/src/Trellis.Core.csproj",
-            "Trellis.DomainDrivenDesign/src/Trellis.DomainDrivenDesign.csproj",
             "Trellis.FluentValidation/src/Trellis.FluentValidation.csproj",
             "Trellis.Asp/src/Trellis.Asp.csproj",
             "Trellis.Http/src/Trellis.Http.csproj",

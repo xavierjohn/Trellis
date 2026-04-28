@@ -1,4 +1,4 @@
-# Mermaid Diagrams for Documentation
+﻿# Mermaid Diagrams for Documentation
 
 This document contains reusable Mermaid diagram scripts for the Trellis documentation. All diagrams use the ````mermaid` code fence and are compatible with DocFX, GitHub, and mermaid.live.
 
@@ -80,7 +80,7 @@ graph TB
 graph TB
     subgraph API["API Layer (ASP.NET Core)"]
         CTRL[Controllers/Endpoints]
-        HTTP[ToActionResult/ToHttpResult]
+        HTTP[ToHttpResponse / AsActionResult]
     end
     
     subgraph Application["Application Layer (CQRS)"]

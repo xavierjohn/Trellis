@@ -19,8 +19,8 @@ the two hosting styles side-by-side over a single, identical contract.
 | `Trellis.StateMachine` lifecycle modeling | `Showcase.Domain/Aggregates/BankAccount.cs` (`Freeze`, `Unfreeze`, `Close`) |
 | Invalid state transition → `Error.Conflict` via `FireResult` | `BankAccount.Unfreeze` on an Active account |
 | Application/workflow boundary (events → AcceptChanges → persist) | `Showcase.Application/Workflows/BankingWorkflow.cs` |
-| `Trellis.Asp.ToActionResult` mapping (MVC) | `Showcase.Mvc/Controllers/*` |
-| `Trellis.Asp.ToHttpResultAsync` mapping (Minimal API) | `Showcase.MinimalApi/Endpoints/*` |
+| `Trellis.Asp.ToHttpResponse(...).AsActionResult<T>()` mapping (MVC) | `Showcase.Mvc/Controllers/*` |
+| `Trellis.Asp.ToHttpResponseAsync(...)` mapping (Minimal API) | `Showcase.MinimalApi/Endpoints/*` |
 | **Mediator pipeline** (`AddMediator` + `AddTrellisBehaviors`) | `Showcase.MinimalApi/Program.cs` |
 | **`IValidate` + FluentValidation composition** in one `ValidationBehavior` stage | `Showcase.Application/Features/SubmitBatchTransfers/*` |
 | **JSON Pointer normalization** for FluentValidation nested (`/Metadata/Reference`) and indexer (`/Lines/0/Memo`) paths | `Showcase.Application/Features/SubmitBatchTransfers/SubmitBatchTransfersValidator.cs` |
@@ -56,7 +56,7 @@ Examples/Showcase/
 The split into `Domain` / `Application` / `Mvc` + `MinimalApi` makes the architectural boundary
 explicit: the Minimal API host adds **zero** new application code — it reuses the same DTOs,
 repository, workflow, and seed that the MVC host uses. The only delta is how routes are mapped
-and how `Result<T>` is converted to an HTTP response (`ToActionResult` vs `ToHttpResult`).
+and how `Result<T>` is converted to an HTTP response (`ToHttpResponse(...).AsActionResult<T>()` vs `ToHttpResponseAsync(...)`).
 
 This is intentionally a teaching shape, not the template's full 4-layer shape (Domain /
 Application / Acl / Api). The production template adds an Acl layer, Service Level Indicators,

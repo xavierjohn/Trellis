@@ -21,8 +21,8 @@
   </ItemGroup>
 
   <!--
-    Phase 2: bundle the (formerly standalone) Trellis.AspSourceGenerator into
-    Trellis.Asp.nupkg under analyzers/dotnet/cs. Source-tree consumers reference
+    Bundle the Trellis.AspSourceGenerator into Trellis.Asp.nupkg under
+    analyzers/dotnet/cs. Source-tree consumers reference
     the generator csproj directly via OutputItemType="Analyzer" (see
     Examples/ConditionalRequestExample, generator-tests). NuGet consumers get
     the generator transparently via the bundled dll.

@@ -1,4 +1,4 @@
-# ToHttpResponse — the unified ASP.NET response verb
+﻿# ToHttpResponse — the unified ASP.NET response verb
 
 `Result<T>.ToHttpResponse(...)` is the single, recommended verb for translating a
 Trellis `Result` (or `Result<WriteOutcome<T>>`, or `Result<Page<T>>`) into an
@@ -7,8 +7,8 @@ HTTP response in **both MVC and Minimal API** apps. It returns
 endpoints and converts to an MVC `ActionResult<T>` via `.AsActionResult<T>()`.
 
 `ToHttpResponse` collapses the previous family of 16+ verbs
-(`ToActionResult`, `ToHttpResult`, `ToActionResultAsync`,
-`ToHttpResultAsync`, `ToPagedHttpResult`, …) into one fluent surface that
+(`ToActionResult`, `ToHttpResult`, `ToActionResultAsync`, <!-- stale-doc-ok: legacy verb list in migration guidance -->
+`ToHttpResultAsync`, `ToPagedHttpResult`, …) into one fluent surface that <!-- stale-doc-ok: legacy verb list in migration guidance -->
 honors the same RFC 9110 conditional-request, `Prefer`, `Vary`, `Range` and
 companion-header semantics they did.
 
@@ -122,12 +122,12 @@ in v3. Migrate as follows:
 
 | Old                                                | New                                                              |
 |----------------------------------------------------|------------------------------------------------------------------|
-| `result.ToActionResult()`                          | `result.ToHttpResponse().AsActionResult<T>()`                    |
-| `result.ToActionResultAsync()`                     | `(await result).ToHttpResponse().AsActionResult<T>()`            |
-| `result.ToHttpResult(httpContext)`                 | `result.ToHttpResponse()` (returns `IResult`)                    |
-| `outcome.ToActionResult(routeName, routeValues)`   | `result.ToHttpResponse(o => o.CreatedAtRoute(routeName, rv))`    |
-| `outcome.ToHttpResult(httpContext, map)`           | `result.ToHttpResponse(o => o.CreatedAtRoute(...))`              |
-| `pageResult.ToPagedHttpResult(nextUrlBuilder, ...)` | `result.ToHttpResponse(nextUrlBuilder, body: p => p.Items)`     |
+| `result.ToActionResult()`                          | `result.ToHttpResponse().AsActionResult<T>()`                    | <!-- stale-doc-ok: legacy verb in migration table -->
+| `result.ToActionResultAsync()`                     | `(await result).ToHttpResponse().AsActionResult<T>()`            | <!-- stale-doc-ok: legacy verb in migration table -->
+| `result.ToHttpResult(httpContext)`                 | `result.ToHttpResponse()` (returns `IResult`)                    | <!-- stale-doc-ok: legacy verb in migration table -->
+| `outcome.ToActionResult(routeName, routeValues)`   | `result.ToHttpResponse(o => o.CreatedAtRoute(routeName, rv))`    | <!-- stale-doc-ok: legacy verb in migration table -->
+| `outcome.ToHttpResult(httpContext, map)`           | `result.ToHttpResponse(o => o.CreatedAtRoute(...))`              | <!-- stale-doc-ok: legacy verb in migration table -->
+| `pageResult.ToPagedHttpResult(nextUrlBuilder, ...)` | `result.ToHttpResponse(nextUrlBuilder, body: p => p.Items)`     | <!-- stale-doc-ok: legacy verb in migration table -->
 
 ### Other migration notes
 

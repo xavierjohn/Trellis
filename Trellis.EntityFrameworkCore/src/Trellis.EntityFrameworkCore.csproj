@@ -31,8 +31,8 @@
   </ItemGroup>
 
   <!--
-    Phase 2: bundle the (formerly standalone) Trellis.EntityFrameworkCore.Generator
-    into Trellis.EntityFrameworkCore.nupkg under analyzers/dotnet/cs. Source-tree
+    Bundle the Trellis.EntityFrameworkCore.Generator into Trellis.EntityFrameworkCore.nupkg
+    under analyzers/dotnet/cs. Source-tree
     consumers reference the generator csproj directly via OutputItemType="Analyzer"
     (see tests/, generator-tests/). NuGet consumers get the generator transparently
     via the bundled dll.

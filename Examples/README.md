@@ -51,7 +51,7 @@ These are the rules each sample is held to. If you see a sample violate one, fil
 | **A2** | Route params bind to VOs via generator-emitted `IParsable` — `{id:ProductId}` not `{id:guid}`. |
 | **A3** | No `.Value` on `Result<T>` in production code. Permitted only in tests and seed/bootstrap with literal-construction inputs. |
 | **A4** | Composite VOs are composed via `Result.Combine` and chained through `Bind`/`BindAsync`. |
-| **A5** | Errors travel as `Result<T>` and are surfaced via `ToActionResult` / `ToHttpResultAsync`. No hand-built `ProblemDetails`, no `BadRequest(...)`. |
+| **A5** | Errors travel as `Result<T>` and are surfaced via `ToHttpResponse(Async)` / `AsActionResult<T>(Async)`. No hand-built `ProblemDetails`, no `BadRequest(...)`. |
 | **A6** | One canonical solution per use-case in a sample. Alternatives belong in docs/blog/test fixtures, not adjacent in the same project. |
 | **A7** | Workflows depend on injected abstractions for all external effects (clock, identity, fraud, repository, publisher, HTTP). |
 | **A8** | Domain layer purity — no references to ASP.NET, EF Core, or the FluentValidation adapter from a domain project. |

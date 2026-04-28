@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Source code generator for RequiredString and RequiredGuid primitive value objects. Automatically generates TryCreate, Parse, TryParse methods and explicit cast operators with IParsable&lt;T&gt; support. Bundled inside Trellis.Core.nupkg; not published as a standalone NuGet package.</Description>
-    <!-- Bundled into Trellis.Core.nupkg in Phase 2; do not produce a standalone .nupkg. -->
+    <!-- Bundled into Trellis.Core.nupkg; do not produce a standalone .nupkg. -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>
    <PropertyGroup>
