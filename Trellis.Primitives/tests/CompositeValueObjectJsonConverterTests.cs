@@ -349,9 +349,17 @@ public class CompositeValueObjectJsonConverterTests
             DateTime dt, DateTimeOffset dto, decimal dec) =>
             new()
             {
-                I = i, L = l, S = s, By = by,
-                D = d, F = f, B = b, G = g,
-                Dt = dt, Dto = dto, Dec = dec,
+                I = i,
+                L = l,
+                S = s,
+                By = by,
+                D = d,
+                F = f,
+                B = b,
+                G = g,
+                Dt = dt,
+                Dto = dto,
+                Dec = dec,
             };
 
         public static Result<AllPrimitivesVo> TryCreate(

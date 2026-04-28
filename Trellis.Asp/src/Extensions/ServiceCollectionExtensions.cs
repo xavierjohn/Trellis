@@ -497,7 +497,7 @@ public static class ServiceCollectionExtensions
         configure(options);
         services.AddSingleton(options);
 
-        // Phase 3 (ADR-002 section 6.5): auto-register VO binding / JSON converter infrastructure.
+        // auto-register VO binding / JSON converter infrastructure.
         // Idempotent: configures both MVC and Minimal API JSON pipelines for ScalarValue/Maybe support.
         services.AddScalarValueValidation();
         return services;

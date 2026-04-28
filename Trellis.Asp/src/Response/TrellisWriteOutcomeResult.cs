@@ -44,7 +44,7 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
 
         var response = httpContext.Response;
 
-        // Always emit Vary: Prefer when honoring Prefer (invariant per ADR-002 section 6).
+        // Always emit Vary: Prefer when honoring Prefer.
         if (_options.HonorPrefer)
             TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, "Prefer");
 

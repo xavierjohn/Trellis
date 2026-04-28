@@ -1,4 +1,4 @@
-namespace Trellis.Primitives;
+﻿namespace Trellis.Primitives;
 
 using System;
 using System.Collections.Generic;
@@ -47,7 +47,7 @@ using Trellis;
 /// </remarks>
 public sealed class CompositeValueObjectJsonConverter<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.PublicProperties)]
-    T> : JsonConverter<T>
+T> : JsonConverter<T>
     where T : ValueObject
 {
     private static readonly CompositeMetadata Metadata = CompositeMetadata.Build(typeof(T));

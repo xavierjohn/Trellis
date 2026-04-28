@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>
 /// TRLS019 — flags explicit <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and
-/// <c>default(Maybe&lt;T&gt;)</c> at use sites. Per ADR-002 §3.5.1, default-initialized
+/// <c>default(Maybe&lt;T&gt;)</c> at use sites. default-initialized
 /// <see cref="Trellis.Result"/> and <see cref="Trellis.Result{TValue}"/> represent a typed
 /// failure (<see cref="Trellis.Error.Unexpected"/> sentinel), and <c>default(Maybe&lt;T&gt;)</c>
 /// is semantically <c>Maybe&lt;T&gt;.None</c>; in both cases the explicit literal obscures

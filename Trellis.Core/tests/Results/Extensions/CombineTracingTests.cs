@@ -1,9 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
-using Trellis.Testing;
-
 using System.Diagnostics;
 using Trellis.Core.Tests.Helpers;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for Activity tracing in Combine operations (both base and tuple-based from T4 templates).

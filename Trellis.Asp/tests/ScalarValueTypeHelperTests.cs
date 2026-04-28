@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text.Json.Serialization;
@@ -21,7 +21,7 @@ public class ScalarValueTypeHelperTests
     {
         private ValidVO(string value) : base(value) { }
         public static Result<ValidVO> TryCreate(string? value, string? fieldName = null) =>
-            string.IsNullOrEmpty(value) ? Result.Fail<ValidVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" })) ): Result.Ok(new ValidVO(value));
+            string.IsNullOrEmpty(value) ? Result.Fail<ValidVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" }))) : Result.Ok(new ValidVO(value));
     }
 
     // CRTP violation - TSelf doesn't match the class
@@ -54,7 +54,7 @@ public class ScalarValueTypeHelperTests
         public int Value { get; }
         private InterfaceOnlyValidated(int value) => Value = value;
         public static Result<InterfaceOnlyValidated> TryCreate(int value, string? fieldName = null) =>
-            value > 0 ? Result.Ok(new InterfaceOnlyValidated(value) ): Result.Fail<InterfaceOnlyValidated>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Must be positive." })));
+            value > 0 ? Result.Ok(new InterfaceOnlyValidated(value)) : Result.Fail<InterfaceOnlyValidated>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Must be positive." })));
         public static Result<InterfaceOnlyValidated> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -66,7 +66,7 @@ public class ScalarValueTypeHelperTests
         private GenericVO(T value) : base(value) { }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required by IScalarValue interface pattern")]
         public static Result<GenericVO<T>> TryCreate(T? value, string? fieldName = null) =>
-            value is null ? Result.Fail<Asp.Tests.ScalarValueTypeHelperTests.GenericVO<T>>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" })) ): Result.Ok(new GenericVO<T>(value));
+            value is null ? Result.Fail<Asp.Tests.ScalarValueTypeHelperTests.GenericVO<T>>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" }))) : Result.Ok(new GenericVO<T>(value));
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required by IScalarValue interface pattern")]
         public static Result<GenericVO<T>> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -79,7 +79,7 @@ public class ScalarValueTypeHelperTests
     {
         private MultiInterfaceVO(string value) : base(value) { }
         public static Result<MultiInterfaceVO> TryCreate(string? value, string? fieldName = null) =>
-            string.IsNullOrEmpty(value) ? Result.Fail<MultiInterfaceVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" })) ): Result.Ok(new MultiInterfaceVO(value));
+            string.IsNullOrEmpty(value) ? Result.Fail<MultiInterfaceVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" }))) : Result.Ok(new MultiInterfaceVO(value));
         public int CompareTo(MultiInterfaceVO? other) => string.Compare(Value, other?.Value, StringComparison.Ordinal);
     }
 

@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Maybes;
+﻿namespace Trellis.Core.Tests.Maybes;
 
 using Xunit;
 

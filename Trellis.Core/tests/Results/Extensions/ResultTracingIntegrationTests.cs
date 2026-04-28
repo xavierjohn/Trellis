@@ -1,9 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
-using Trellis.Testing;
-
 using System.Diagnostics;
 using Trellis.Core.Tests.Helpers;
+using Trellis.Testing;
 
 /// <summary>
 /// Integration tests for Activity tracing across complex ROP pipelines.

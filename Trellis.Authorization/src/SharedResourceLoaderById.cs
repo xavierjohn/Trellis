@@ -1,4 +1,4 @@
-namespace Trellis.Authorization;
+﻿namespace Trellis.Authorization;
 
 /// <summary>
 /// Shared resource loader that loads a resource by ID. Register one per resource type

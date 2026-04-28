@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Tests.Api;
+﻿namespace Trellis.Showcase.Tests.Api;
 
 using System;
 using System.Collections.Generic;

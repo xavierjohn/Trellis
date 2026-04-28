@@ -83,16 +83,16 @@ Comparison of ROP style vs traditional if-style code for the same logic.
 // ROP Style
 FirstName.TryCreate("Xavier")
     .Combine(EmailAddress.TryCreate("xavier@somewhere.com"))
-    .Finally(
-        ok => ok.Item1 + " " + ok.Item2,
-        error => error.Detail
+    .Match(
+        onSuccess: ok => ok.Item1 + " " + ok.Item2,
+        onFailure: error => error.Detail
     );
 
 // Imperative Style (equivalent logic)
 var rFirstName = FirstName.TryCreate("Xavier");
 var rEmailAddress = EmailAddress.TryCreate("xavier@somewhere.com");
-if (rFirstName.IsSuccess && rEmailAddress.IsSuccess)
-    return rFirstName.Value + " " + rEmailAddress.Value;
+if (rFirstName.TryGetValue(out var firstName) && rEmailAddress.TryGetValue(out var emailAddress))
+    return firstName + " " + emailAddress;
 
 Error? error = null;
 if (rFirstName.IsFailure)
@@ -298,7 +298,7 @@ Testing parallel result aggregation for validation scenarios.
 - **Error aggregation overhead**: ~4-7 ns when combining errors
 - **Value object validation**: 143 ns for complete user validation (firstName, lastName, email)
 - **Async overhead**: ~17 ns additional for async operations (dominated by Task machinery)
-- **Unit support**: `Combine` with `Unit` at 12 ns — efficient for void-returning operations
+- **No-payload support**: `Combine` with non-generic `Result` at 12 ns — efficient for void-returning operations
 - Memory allocations only occur on failure paths for error aggregation
 
 **Use Case:**

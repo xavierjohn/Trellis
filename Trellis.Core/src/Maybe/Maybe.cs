@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Contains static methods to create a <see cref="Maybe{T}"/> object.

@@ -1,14 +1,14 @@
-// Cookbook Recipe 5 — MVC controller using AsActionResult.
+﻿// Cookbook Recipe 5 — MVC controller using AsActionResult.
 namespace CookbookSnippets.Recipe05;
 
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Recipe01;
+using CookbookSnippets.Stubs;
 using global::Mediator;
 using Microsoft.AspNetCore.Mvc;
 using Trellis;
 using Trellis.Asp;
-using CookbookSnippets.Recipe01;
-using CookbookSnippets.Stubs;
 
 [ApiController]
 [Route("orders")]

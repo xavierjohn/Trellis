@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -372,8 +372,8 @@ public abstract record Error
     }
 
     /// <summary>
-    /// HTTP 500 — a "shouldn't happen" condition. Used for default-initialized <see cref="Result"/>/<see cref="Result{TValue}"/>
-    /// (per ADR-002 §3.5.1), exhausted match arms, or other internal invariant violations whose root cause
+    /// HTTP 500 — a "shouldn't happen" condition. Used for default-initialized <see cref="Result"/>/<see cref="Result{TValue}"/>,
+    /// exhausted match arms, or other internal invariant violations whose root cause
     /// is a programming error rather than a documented server-side fault.
     /// </summary>
     /// <param name="ReasonCode">A stable, machine-readable identifier of the invariant that was violated

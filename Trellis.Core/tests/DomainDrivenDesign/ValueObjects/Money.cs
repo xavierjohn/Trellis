@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.DomainDrivenDesign.ValueObjects;
+﻿namespace Trellis.Core.Tests.DomainDrivenDesign.ValueObjects;
 
 internal class Money : ScalarValueObject<Money, decimal>, IScalarValue<Money, decimal>
 {

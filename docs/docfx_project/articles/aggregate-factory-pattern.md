@@ -1,4 +1,4 @@
-# Aggregate Factory Pattern
+﻿# Aggregate Factory Pattern
 
 When an aggregate can be both **created from scratch** and **reconstituted from existing data**, one factory method is not enough.
 
@@ -76,19 +76,19 @@ public sealed class Product : Aggregate<ProductId>
     public static Product Create(ProductName name, Sku sku)
     {
         var result = TryCreate(name, sku);
-        if (result.IsFailure)
-            throw new InvalidOperationException(result.Error.Detail);
+        if (!result.TryGetValue(out var product))
+            throw new InvalidOperationException(result.Error!.Detail);
 
-        return result.Value;
+        return product;
     }
 
     public static Product CreateExisting(ProductId id, ProductName name, Sku sku)
     {
         var result = TryCreateExisting(id, name, sku);
-        if (result.IsFailure)
-            throw new InvalidOperationException(result.Error.Detail);
+        if (!result.TryGetValue(out var product))
+            throw new InvalidOperationException(result.Error!.Detail);
 
-        return result.Value;
+        return product;
     }
 }
 ```

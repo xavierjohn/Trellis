@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Tests.Application;
+﻿namespace Trellis.Showcase.Tests.Application;
 
 using System.Threading;
 using Trellis;

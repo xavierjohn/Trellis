@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Application.Services;
+﻿namespace Trellis.Showcase.Application.Services;
 
 #pragma warning disable CA1873 // Sample-grade event logging; hot-path optimization not required.
 

@@ -13,8 +13,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 /// <summary>
 /// Code fix provider that wraps unsafe <c>Maybe&lt;T&gt;.Value</c> access in an
-/// <c>if (maybe.HasValue)</c> guard. The Result-side fixes for TRLS003/TRLS004 were
-/// removed in v2 (Result.Value no longer exists; Result.Error is nullable and handled by NRT).
+/// <c>if (maybe.HasValue)</c> guard. The Result-side fixes were removed from the current API
+/// because Result.Value no longer exists and Result.Error is nullable and handled by NRT.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(AddResultGuardCodeFixProvider))]
 [Shared]

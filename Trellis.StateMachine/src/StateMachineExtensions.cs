@@ -121,7 +121,8 @@ public static class StateMachineExtensions
             return Result.Fail<TState>(
                 Error.UnprocessableContent.ForRule(
                     reasonCode: "state.machine.invalid.transition",
-                    detail: detail) with { Detail = detail });
+                    detail: detail) with
+                { Detail = detail });
         }
 
         // Custom OnUnhandledTrigger swallowed the trigger — surface the (unchanged) state as success.

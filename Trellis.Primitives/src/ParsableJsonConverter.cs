@@ -47,15 +47,19 @@ using System.Text.Json.Serialization;
 ///         var result = TryCreate(s);
 ///         if (result.IsFailure)
 ///             throw new FormatException("Invalid email address");
-///         return result.Value;
+///         if (!result.TryGetValue(out var value))
+///             throw new FormatException("Invalid email address");
+///         return value;
 ///     }
 ///     
 ///     public static bool TryParse(string? s, IFormatProvider? provider, 
 ///         out EmailAddress result)
 ///     {
 ///         var r = TryCreate(s);
-///         result = r.IsSuccess ? r.Value : default!;
-///         return r.IsSuccess;
+///         if (r.TryGetValue(out result))
+///             return true;
+///         result = default!;
+///         return false;
 ///     }
 ///     
 ///     public override string ToString() => Value;

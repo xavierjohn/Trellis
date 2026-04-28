@@ -1,4 +1,4 @@
-<#@ template debug="false" hostspecific="false" language="C#" #>
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
@@ -66,13 +66,13 @@ public static partial class CombineExtensions
   for(var i = 3; i <=9; i++) { 
 #>
     /// <summary>
-    /// Combines a <#= i - 1 #>-element tuple result with a Unit result, preserving the original tuple on success.
+    /// Combines a <#= i - 1 #>-element tuple result with a non-generic Result, preserving the original tuple on success.
     /// </summary>
 <# for(var j = 1; j <= i - 1; j++) { #>
     /// <typeparam name="T<#= j #>">The type of element <#= j #> in the tuple.</typeparam>
 <# } #>
     /// <param name="t1">The result containing a <#= i - 1 #>-element tuple.</param>
-    /// <param name="tc">The Unit result to combine (typically a validation with no return value).</param>
+    /// <param name="tc">The non-generic Result to combine (typically a validation with no return value).</param>
     /// <returns>
     /// If both results succeed, returns a success result with the original <#= i - 1 #>-element tuple.
     /// If either fails, returns a failure with the combined errors.

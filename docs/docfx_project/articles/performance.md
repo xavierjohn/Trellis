@@ -1,4 +1,4 @@
-# Performance
+﻿# Performance
 
 If you're deciding whether Trellis is "too expensive," the short answer is usually **no**.
 
@@ -62,8 +62,8 @@ var firstName = FirstName.TryCreate("Ada");
 var email = EmailAddress.TryCreate("ada@example.com");
 
 string output;
-if (firstName.IsSuccess && email.IsSuccess)
-    output = $"{firstName.Value} <{email.Value}>";
+if (firstName.TryGetValue(out var firstNameValue) && email.TryGetValue(out var emailValue))
+    output = $"{firstNameValue} <{emailValue}>";
 else
 {
     Error? error = null;

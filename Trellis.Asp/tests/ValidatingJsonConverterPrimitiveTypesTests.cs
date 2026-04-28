@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -6,8 +6,8 @@ using System.Text.Json;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
-using Xunit;
 using Trellis.Testing;
+using Xunit;
 
 /// <summary>
 /// Tests for ValidatingJsonConverter to ensure all primitive types are serialized correctly.
@@ -22,7 +22,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private StringVO(string value) : base(value) { }
         public static Result<StringVO> TryCreate(string? value, string? fieldName = null) =>
-            string.IsNullOrEmpty(value) ? Result.Fail<StringVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" })) ): Result.Ok(new StringVO(value));
+            string.IsNullOrEmpty(value) ? Result.Fail<StringVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" }))) : Result.Ok(new StringVO(value));
     }
 
     // Guid
@@ -30,7 +30,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private GuidVO(Guid value) : base(value) { }
         public static Result<GuidVO> TryCreate(Guid value, string? fieldName = null) =>
-            value == Guid.Empty ? Result.Fail<GuidVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" })) ): Result.Ok(new GuidVO(value));
+            value == Guid.Empty ? Result.Fail<GuidVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" }))) : Result.Ok(new GuidVO(value));
         public static Result<GuidVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -50,7 +50,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private LongVO(long value) : base(value) { }
         public static Result<LongVO> TryCreate(long value, string? fieldName = null) =>
-            value < 0 ? Result.Fail<LongVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" })) ): Result.Ok(new LongVO(value));
+            value < 0 ? Result.Fail<LongVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" }))) : Result.Ok(new LongVO(value));
         public static Result<LongVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -80,7 +80,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DecimalVO(decimal value) : base(value) { }
         public static Result<DecimalVO> TryCreate(decimal value, string? fieldName = null) =>
-            value < 0 ? Result.Fail<DecimalVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" })) ): Result.Ok(new DecimalVO(value));
+            value < 0 ? Result.Fail<DecimalVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" }))) : Result.Ok(new DecimalVO(value));
         public static Result<DecimalVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -100,7 +100,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DateTimeVO(DateTime value) : base(value) { }
         public static Result<DateTimeVO> TryCreate(DateTime value, string? fieldName = null) =>
-            value == DateTime.MinValue ? Result.Fail<DateTimeVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "MinValue" })) ): Result.Ok(new DateTimeVO(value));
+            value == DateTime.MinValue ? Result.Fail<DateTimeVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "MinValue" }))) : Result.Ok(new DateTimeVO(value));
         public static Result<DateTimeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -110,7 +110,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private DateTimeOffsetVO(DateTimeOffset value) : base(value) { }
         public static Result<DateTimeOffsetVO> TryCreate(DateTimeOffset value, string? fieldName = null) =>
-            value == DateTimeOffset.MinValue ? Result.Fail<DateTimeOffsetVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "MinValue" })) ): Result.Ok(new DateTimeOffsetVO(value));
+            value == DateTimeOffset.MinValue ? Result.Fail<DateTimeOffsetVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "MinValue" }))) : Result.Ok(new DateTimeOffsetVO(value));
         public static Result<DateTimeOffsetVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -139,7 +139,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private TimeSpanVO(TimeSpan value) : base(value) { }
         public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
-            value < TimeSpan.Zero ? Result.Fail<TimeSpanVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" })) ): Result.Ok(new TimeSpanVO(value));
+            value < TimeSpan.Zero ? Result.Fail<TimeSpanVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" }))) : Result.Ok(new TimeSpanVO(value));
         public static Result<TimeSpanVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -148,7 +148,7 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     {
         private ShortVO(short value) : base(value) { }
         public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
-            value < 0 ? Result.Fail<ShortVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" })) ): Result.Ok(new ShortVO(value));
+            value < 0 ? Result.Fail<ShortVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Negative" }))) : Result.Ok(new ShortVO(value));
         public static Result<ShortVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

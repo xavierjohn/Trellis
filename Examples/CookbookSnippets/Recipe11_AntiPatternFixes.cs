@@ -1,14 +1,14 @@
-// Cookbook Recipe 11 — Anti-pattern → fix gallery (the analyzers in action).
+﻿// Cookbook Recipe 11 — Anti-pattern → fix gallery (the analyzers in action).
 namespace CookbookSnippets.Recipe11;
 
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Recipe01;
+using CookbookSnippets.Recipe08;
 using Microsoft.AspNetCore.Http;
 using Trellis;
 using Trellis.Asp;
-using CookbookSnippets.Recipe01;
-using CookbookSnippets.Recipe08;
 
 public static class AntiPatternFixes
 {

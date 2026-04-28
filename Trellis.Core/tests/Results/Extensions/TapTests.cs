@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results.Extensions.Tap;
+﻿namespace Trellis.Core.Tests.Results.Extensions.Tap;
 
 public partial class TapTests : TestBase
 {

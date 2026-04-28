@@ -1,11 +1,11 @@
-namespace CookbookSnippets.Stubs;
+﻿namespace CookbookSnippets.Stubs;
 
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Trellis;
 using CookbookSnippets.Recipe01;
 using CookbookSnippets.Recipe06;
+using Trellis;
 
 public sealed class EfOrderRepository(AppDbContext db) : IOrderRepository
 {

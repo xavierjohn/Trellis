@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- Phase 2: this generator is no longer published as its own NuGet package.
-         It is bundled into Trellis.EntityFrameworkCore.nupkg (see ../src/Trellis.EntityFrameworkCore.csproj). -->
+    <!-- This generator is bundled into Trellis.EntityFrameworkCore.nupkg
+         (see ../src/Trellis.EntityFrameworkCore.csproj), not published as its own NuGet package. -->
     <IsPackable>false</IsPackable>
     <!-- Source generators must target netstandard 2.0 -->
     <TargetFramework>netstandard2.0</TargetFramework>

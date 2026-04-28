@@ -1,8 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions.WhenTests;
 
-using Trellis.Testing;
-
 using System.Threading.Tasks;
+using Trellis.Testing;
 
 public class WhenTests : TestBase
 {

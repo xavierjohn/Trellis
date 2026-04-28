@@ -1,13 +1,13 @@
-// Cookbook Recipe 7 — Authorization: IActorProvider + IAuthorize + resource-based auth.
+﻿// Cookbook Recipe 7 — Authorization: IActorProvider + IAuthorize + resource-based auth.
 namespace CookbookSnippets.Recipe07;
 
 using System.Collections.Generic;
+using CookbookSnippets.Recipe01;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp.Authorization;
 using Trellis.Authorization;
-using CookbookSnippets.Recipe01;
 using Trellis.Mediator;
 
 public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result>, IAuthorize

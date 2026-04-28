@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Pagination;
+﻿namespace Trellis.Core.Tests.Pagination;
 
 using System;
 

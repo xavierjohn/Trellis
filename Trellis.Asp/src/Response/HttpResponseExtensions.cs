@@ -17,10 +17,6 @@ using Trellis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Replaces the v1 quartet of <c>ToHttpResult</c> / <c>ToActionResult</c> /
-/// <c>ToCreatedHttpResult</c> / <c>ToUpdatedHttpResult</c> extensions across MVC and Minimal API.
-/// </para>
-/// <para>
 /// Configure protocol semantics via the optional fluent <see cref="HttpResponseOptionsBuilder{T}"/>:
 /// <c>WithETag</c>, <c>WithLastModified</c>, <c>Vary</c>, <c>CreatedAtRoute</c>,
 /// <c>EvaluatePreconditions</c>, <c>HonorPrefer</c>, etc. All selectors run against the domain value;

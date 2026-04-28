@@ -1,4 +1,4 @@
-namespace ConditionalRequestExample.Tests;
+﻿namespace ConditionalRequestExample.Tests;
 
 using System;
 using System.Collections.Generic;

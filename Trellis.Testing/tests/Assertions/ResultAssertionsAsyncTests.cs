@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Tests.Assertions;
+﻿namespace Trellis.Testing.Tests.Assertions;
 
 public class ResultAssertionsAsyncTests
 {

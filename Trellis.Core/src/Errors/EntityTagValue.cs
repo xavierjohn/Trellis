@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Represents an RFC 9110 §8.8.1 entity tag (ETag) value with explicit weak/strong semantics.

@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Errors;
+﻿namespace Trellis.Core.Tests.Errors;
 
 /// <summary>
 /// Tests for <see cref="InputPointer"/>'s RFC 6901 (JSON Pointer) compliance.

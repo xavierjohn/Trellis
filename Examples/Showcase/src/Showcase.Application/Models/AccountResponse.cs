@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Application.Models;
+﻿namespace Trellis.Showcase.Application.Models;
 
 using Trellis.Primitives;
 using Trellis.Showcase.Domain.Aggregates;

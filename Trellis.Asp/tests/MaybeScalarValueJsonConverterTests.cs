@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System;
 using System.Text;
@@ -6,8 +6,8 @@ using System.Text.Json;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
-using Xunit;
 using Trellis.Testing;
+using Xunit;
 
 /// <summary>
 /// Tests for <see cref="MaybeScalarValueJsonConverter{TValue, TPrimitive}"/> and

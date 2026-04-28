@@ -1,8 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions.Map;
 
-using Trellis.Testing;
-
 using System.Globalization;
+using Trellis.Testing;
 using Xunit;
 
 public class MapTests : TestBase

@@ -1,5 +1,5 @@
+﻿using Trellis.Primitives;
 using Trellis.Testing;
-using Trellis.Primitives;
 
 namespace Example;
 

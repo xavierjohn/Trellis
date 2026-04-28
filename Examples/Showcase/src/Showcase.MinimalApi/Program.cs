@@ -37,7 +37,7 @@ builder.Services.AddSingleton<IIdentityVerifier, InMemoryIdentityVerifier>();
 builder.Services.AddSingleton<IEventPublisher, LoggingEventPublisher>();
 builder.Services.AddScoped<BankingWorkflow>();
 
-// v2 Mediator pipeline: AddTrellisBehaviors() registers the canonical
+// Mediator pipeline: AddTrellisBehaviors() registers the canonical
 // (Exception, Tracing, Logging, Authorization, Validation) stack.
 // AddTrellisFluentValidation() plugs the open-generic FluentValidation adapter into the
 // Validation stage via IMessageValidator<>, so IValidate failures and FluentValidation

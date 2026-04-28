@@ -26,7 +26,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | `TRLS016` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
 | `TRLS017` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
 | `TRLS018` | Warning | Result<T> deconstruction reads value without success gate | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
-| `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | Per ADR-002 §3.5.1, `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
+| `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
 | `TRLS020` | Warning | Composite value object DTO property is missing JSON converter | Composite `[OwnedEntity]` value objects exposed through request/response DTO surfaces must carry `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` so JSON binding round-trips through `TryCreate`. |
 | `TRLS021` | Warning | EF configuration duplicates Trellis conventions | Flags `HasConversion`, `OwnsOne`, and `Ignore` calls on `Maybe<T>` or `[OwnedEntity]` properties when `ApplyTrellisConventions(...)` / `ApplyTrellisConventionsFor<TContext>()` is wired. Remove the manual mapping and let Trellis conventions own the property. |
 | `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
@@ -150,11 +150,11 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 - **Inside `Expression<Func<...>>` lambdas (EF Core, Specifications, FluentValidation):** the rule is *not* relaxed. Use the `HasValue && Value` short-circuit idiom — e.g. `e => e.SubmittedAt.HasValue && e.SubmittedAt.Value < cutoff`. EF Core needs the `HasValue` predicate to translate to `IS NOT NULL`, and the short-circuit form keeps the analyzer satisfied without `#pragma` suppressions.
 - Code fix: `AddResultGuardCodeFixProvider`.
 
-> **TRLS003, TRLS004 (removed in v2):** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` (TRLS003) and `Result<T>.Error` (TRLS004). Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
+> **Result accessors:** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` and `Result<T>.Error`. Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
 
-#### `UseMatchErrorAnalyzer` — `TRLS005` *(removed in v2)*
+#### `UseMatchErrorAnalyzer` — `TRLS005` *(removed from the current API)*
 
-This analyzer was deleted in v2. With the closed-ADT `Error` (see `docs/adr/ADR-001-result-api-surface.md`), `switch` over an `Error` reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled — so manual error-type discrimination is the recommended pattern. Replace any remaining `result.MatchError(onValidation: ..., onNotFound: ..., ...)` calls with:
+This analyzer was deleted from the current API. With the closed-ADT `Error`, `switch` over an `Error` reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled — so manual error-type discrimination is the recommended pattern. Replace any remaining `result.MatchError(onValidation: ..., onNotFound: ..., ...)` calls with:
 
 ```csharp
 result.Match(
@@ -168,9 +168,9 @@ result.Match(
     });
 ```
 
-#### `TryCreateValueAccessAnalyzer` — `TRLS007` *(removed in v2)*
+#### `TryCreateValueAccessAnalyzer` — `TRLS007` *(removed from the current API)*
 
-This analyzer was deleted in v2. The pattern `TryCreate(...).Value` no longer compiles because `Result<T>.Value` was removed (see TRLS003). Call `Create(...)` directly when the input is known-good, or handle the `Result` returned by `TryCreate(...)` explicitly via `TryGetValue` / `Match` / `Bind`.
+This analyzer was deleted from the current API. The pattern `TryCreate(...).Value` no longer compiles because `Result<T>.Value` was removed (see TRLS003). Call `Create(...)` directly when the input is known-good, or handle the `Result` returned by `TryCreate(...)` explicitly via `TryGetValue` / `Match` / `Bind`.
 
 #### `ResultDoubleWrappingAnalyzer` — `TRLS004`
 - Flags declared or inferred `Result<Result<T>>` in:
@@ -200,9 +200,9 @@ This analyzer was deleted in v2. The pattern `TryCreate(...).Value` no longer co
 - Uses operation analysis, so it looks at semantic property access rather than raw text.
 - No code fix.
 
-#### `TernaryValueOrDefaultAnalyzer` — `TRLS013` *(removed in v2)*
+#### `TernaryValueOrDefaultAnalyzer` — `TRLS013` *(removed from the current API)*
 
-This analyzer was deleted in v2. The `result.IsSuccess ? result.Value : fallback` shape no longer compiles because `Result<T>.Value` was removed. Use `result.GetValueOrDefault(fallback)` or `result.Match(onSuccess: v => v, onFailure: _ => fallback)`.
+This analyzer was deleted from the current API. The `result.IsSuccess ? result.Value : fallback` shape no longer compiles because `Result<T>.Value` was removed. Use `result.GetValueOrDefault(fallback)` or `result.Match(onSuccess: v => v, onFailure: _ => fallback)`. <!-- stale-doc-ok: analyzer migration note intentionally cites removed value accessor -->
 
 #### `AsyncLambdaWithSyncMethodAnalyzer` — `TRLS009`
 - Flags synchronous Trellis methods called with async work:
@@ -246,7 +246,7 @@ This analyzer was deleted in v2. The `result.IsSuccess ? result.Value : fallback
   - `OrderByDescending`
   - `ThenBy`
   - `ThenByDescending`
-- Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed in v2 along with `Result<T>.Value`.
+- Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed along with `Result<T>.Value`.
 - Suppresses the diagnostic when an earlier `.Where(maybe => maybe.HasValue)` in the same chain proves the access is safe.
 - No code fix.
 
@@ -299,7 +299,7 @@ This analyzer was deleted in v2. The `result.IsSuccess ? result.Value : fallback
   - `default(T)` typeof-style: `return default(Result<int>);`
   - Target-typed `default`: `return default;` in a `Result<T>`-returning method, parameter defaults, etc.
   - Null-suppressed `default!`: `return default!;` is treated identically — the null-suppressing operator does not change the underlying value.
-- Per ADR-002 §3.5.1, `default(Result)`/`default(Result<T>)` represent typed failures carrying the shared `new Error.Unexpected("default_initialized")` sentinel — *never* silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` (semantically correct) but the explicit literal obscures intent.
+- `default(Result)`/`default(Result<T>)` represent typed failures carrying the shared `new Error.Unexpected("default_initialized")` sentinel — *never* silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` (semantically correct) but the explicit literal obscures intent.
 - Suggested replacements:
   - `Result` → `Result.Ok()` or `Result.Fail(error)`
   - `Result<T>` → `Result.Ok(value)` or `Result.Fail<T>(error)`

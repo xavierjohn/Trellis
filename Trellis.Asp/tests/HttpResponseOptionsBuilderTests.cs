@@ -1,4 +1,4 @@
-namespace Trellis.Asp.Tests;
+﻿namespace Trellis.Asp.Tests;
 
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Routing;

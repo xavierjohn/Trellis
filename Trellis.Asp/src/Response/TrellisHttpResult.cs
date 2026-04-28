@@ -266,12 +266,12 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
                 return _options.LocationSelector!(domain);
 
             case LocationKind.Route:
-            {
-                var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
-                var rv = _options.RouteValuesSelector!(domain);
-                return lg.GetUriByName(httpContext, _options.RouteName!, rv)
-                    ?? lg.GetPathByName(httpContext, _options.RouteName!, rv);
-            }
+                {
+                    var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
+                    var rv = _options.RouteValuesSelector!(domain);
+                    return lg.GetUriByName(httpContext, _options.RouteName!, rv)
+                        ?? lg.GetPathByName(httpContext, _options.RouteName!, rv);
+                }
 
             case LocationKind.Action:
                 return ResolveActionLocation(httpContext, domain);

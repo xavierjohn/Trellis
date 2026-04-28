@@ -1,4 +1,4 @@
-namespace Trellis.Primitives;
+﻿namespace Trellis.Primitives;
 
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;

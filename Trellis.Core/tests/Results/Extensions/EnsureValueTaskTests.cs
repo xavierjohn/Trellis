@@ -1,10 +1,9 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
-using Trellis.Testing;
-
 using System.Threading.Tasks;
 using FluentAssertions;
 using Trellis;
+using Trellis.Testing;
 using Xunit;
 
 public class EnsureValueTaskTests

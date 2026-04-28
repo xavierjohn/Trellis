@@ -1,4 +1,4 @@
-# Fluent Validation Extension - Comprehensive Examples
+﻿# Fluent Validation Extension - Comprehensive Examples
 
 This document provides detailed examples and advanced patterns for integrating FluentValidation with Railway Oriented Programming in Trellis.
 
@@ -1117,7 +1117,8 @@ public class ProductsController : ControllerBase
             .BindAsync(
                 async (req, ct) => await _productService.CreateAsync(req, ct),
                 cancellationToken)
-            .ToActionResultAsync(this);
+            .ToHttpResponseAsync()
+            .AsActionResultAsync<Product>();
     
     [HttpPut("{id}")]
     public async Task<ActionResult<Product>> UpdateProductAsync(
@@ -1128,7 +1129,8 @@ public class ProductsController : ControllerBase
             .BindAsync(
                 async (req, ct) => await _productService.UpdateAsync(id, req, ct),
                 cancellationToken)
-            .ToActionResultAsync(this);
+            .ToHttpResponseAsync()
+            .AsActionResultAsync<Product>();
 }
 ```
 

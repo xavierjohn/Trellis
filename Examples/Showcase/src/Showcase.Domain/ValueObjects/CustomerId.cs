@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Domain.ValueObjects;
+﻿namespace Trellis.Showcase.Domain.ValueObjects;
 
 using Trellis;
 

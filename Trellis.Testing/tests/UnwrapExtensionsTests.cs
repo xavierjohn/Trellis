@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Tests;
+﻿namespace Trellis.Testing.Tests;
 
 /// <summary>
 /// Tests for <see cref="UnwrapExtensions"/> — Result and Maybe unwrap helpers for test code.

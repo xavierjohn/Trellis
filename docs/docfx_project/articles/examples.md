@@ -1,4 +1,4 @@
-# Examples
+﻿# Examples
 
 This article is a pattern library for real application code. Each section starts with the problem, then shows a working Trellis approach you can adapt.
 
@@ -236,7 +236,7 @@ static Task<Customer?> GetCustomerByIdAsync(long id) =>
     Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
 
 static Task<Result> SendPromotionNotificationAsync(string email) =>
-    Task.FromResult(Result.Ok(new Unit()));
+    Task.FromResult(Result.Ok());
 
 string message = await GetCustomerByIdAsync(1)
     .ToResultAsync(new Error.NotFound(ResourceRef.For("Customer", 1)) { Detail = "Customer not found." })

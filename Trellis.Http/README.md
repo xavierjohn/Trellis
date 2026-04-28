@@ -1,4 +1,4 @@
-# Trellis.Http
+﻿# Trellis.Http
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Http.svg)](https://www.nuget.org/packages/Trellis.Http)
 
@@ -57,7 +57,7 @@ In practice: once you call `ReadJson*`, you no longer need to dispose the respon
 
 The v1 surface (60+ overloads) has been collapsed into a small canonical method set. Replacements:
 
-| v1 API | v2 replacement |
+| Previous API | Current replacement |
 | --- | --- |
 | `HandleNotFound`, `HandleNotFoundAsync` (sync, `Result<HRM>`, `Task<Result<HRM>>` overloads) | `HandleNotFoundAsync(this Task<HttpResponseMessage>, ...)` |
 | `HandleConflict*`, `HandleUnauthorized*` | `HandleConflictAsync` / `HandleUnauthorizedAsync` (single shape) |
@@ -68,7 +68,7 @@ The v1 surface (60+ overloads) has been collapsed into a small canonical method 
 | `ReadResultFromJsonAsync` (sync, `Result<HRM>`, `Task<HRM>`, `Task<Result<HRM>>`) | **Renamed** to `ReadJsonAsync(this Task<Result<HttpResponseMessage>>, ...)`. |
 | `ReadResultMaybeFromJsonAsync` (all shapes) | **Renamed** to `ReadJsonMaybeAsync(this Task<Result<HttpResponseMessage>>, ...)`. |
 
-There are no shims or compatibility redirects: v2 is a clean cut. To call the new API on a synchronous response, wrap it: `Task.FromResult(response).ToResultAsync()`.
+There are no shims or compatibility redirects. To call the current API on a synchronous response, wrap it: `Task.FromResult(response).ToResultAsync()`.
 
 ## Documentation
 

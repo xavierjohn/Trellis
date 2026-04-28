@@ -42,12 +42,12 @@ public static partial class CheckExtensionsAsync
     }
 
     /// <summary>
-    /// Asynchronously runs a validation function that returns <see cref="Result{Unit}"/> on the success value,
+    /// Asynchronously runs a validation function that returns a non-generic <see cref="Result"/> on the success value,
     /// preserving the original value on success. Both the input and the check function are async.
     /// </summary>
     /// <typeparam name="T">Type of the original result value.</typeparam>
     /// <param name="resultTask">The task containing the result to check.</param>
-    /// <param name="func">The async validation function that returns a Result of Unit.</param>
+    /// <param name="func">The async validation function that returns a non-generic Result.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
     public static async Task<Result<T>> CheckAsync<T>(this Task<Result<T>> resultTask, Func<T, Task<Result>> func)
     {

@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Application.Workflows;
+﻿namespace Trellis.Showcase.Application.Workflows;
 
 using Trellis;
 using Trellis.Primitives;

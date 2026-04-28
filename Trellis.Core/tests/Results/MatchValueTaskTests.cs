@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests;
+﻿namespace Trellis.Core.Tests;
 
 /// <summary>
 /// Tests for Match/Switch ValueTask extension methods.

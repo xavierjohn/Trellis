@@ -1,4 +1,4 @@
-# TRLS019 — Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)`
+﻿# TRLS019 — Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)`
 
 - **Severity:** Warning
 - **Category:** Trellis
@@ -13,7 +13,7 @@ Flags explicit `default` expressions whose type is `Trellis.Result`, `Trellis.Re
 
 ## Why it matters
 
-Per [ADR-002 §3.5.1](../../adr/ADR-002-v2-redesign-plan.md), `default(Result)` and `default(Result<T>)` are typed **failures** carrying the shared `new Error.Unexpected("default_initialized")` sentinel. They are observationally equivalent to `Result.Fail(sentinel)` / `Result.Fail<T>(sentinel)`. The explicit `default` literal at a call site obscures intent — readers see `default` and assume "the zero value of this type", but the runtime semantics are *failure*.
+`default(Result)` and `default(Result<T>)` are typed **failures** carrying the shared `new Error.Unexpected("default_initialized")` sentinel. They are observationally equivalent to `Result.Fail(sentinel)` / `Result.Fail<T>(sentinel)`. The explicit `default` literal at a call site obscures intent — readers see `default` and assume "the zero value of this type", but the runtime semantics are *failure*.
 
 `default(Maybe<T>)` happens to equal `Maybe<T>.None` (the type uses an `_isValueSet` discriminator that defaults to `false`). The runtime behavior is correct, but writing `default(Maybe<T>)` instead of `Maybe<T>.None` is poor style: the explicit `None` factory communicates intent.
 

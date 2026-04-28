@@ -1,16 +1,16 @@
-// Cookbook Recipe 12 — DI wiring playbook.
+﻿// Cookbook Recipe 12 — DI wiring playbook.
 namespace CookbookSnippets.Recipe12;
 
+using CookbookSnippets.Recipe01;
+using CookbookSnippets.Recipe02;
+using CookbookSnippets.Recipe07;
+using CookbookSnippets.Stubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
 using Trellis.Asp.Routing;
-using CookbookSnippets.Recipe01;
-using CookbookSnippets.Recipe02;
-using CookbookSnippets.Recipe07;
-using CookbookSnippets.Stubs;
 using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;

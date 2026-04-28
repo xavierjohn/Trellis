@@ -251,7 +251,7 @@ public static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Per ADR-002 §3.5.1, default(Result) and default(Result<T>) are typed failures carrying " +
+        description: "default(Result) and default(Result<T>) are typed failures carrying " +
                      "the new Error.Unexpected(\"default_initialized\") sentinel — never a silent success. " +
                      "default(Maybe<T>) equals Maybe<T>.None but the explicit literal obscures intent. " +
                      "Always construct via Result.Ok(...)/Result.Fail(...) or Maybe<T>.None / Maybe.From(...). " +

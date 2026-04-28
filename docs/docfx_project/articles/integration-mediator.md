@@ -196,10 +196,10 @@ public sealed class RenameDocumentHandler(IDocumentRepository repository)
         CancellationToken cancellationToken)
     {
         var documentResult = await repository.GetByIdAsync(command.DocumentId, cancellationToken);
-        if (documentResult.IsFailure)
-            return Result.Fail<Document>(documentResult.Error);
+        if (!documentResult.TryGetValue(out var document))
+            return Result.Fail<Document>(documentResult.Error!);
 
-        return await repository.RenameAsync(documentResult.Value, command.Title, cancellationToken);
+        return await repository.RenameAsync(document, command.Title, cancellationToken);
     }
 }
 ```

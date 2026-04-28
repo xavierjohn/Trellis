@@ -1,13 +1,13 @@
-// Cookbook Recipe 3 — Query handler returning Page<T>.
+﻿// Cookbook Recipe 3 — Query handler returning Page<T>.
 namespace CookbookSnippets.Recipe03;
 
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Stubs;
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Trellis;
-using CookbookSnippets.Stubs;
 
 public sealed record ListOrdersQuery(string? Cursor, int Limit) : IQuery<Result<Page<OrderListItem>>>;
 
@@ -21,7 +21,7 @@ public sealed class ListOrdersHandler(AppDbContext db)
     public async ValueTask<Result<Page<OrderListItem>>> Handle(ListOrdersQuery query, CancellationToken cancellationToken)
     {
         var requested = query.Limit;
-        var applied   = System.Math.Clamp(requested, 1, MaxLimit);
+        var applied = System.Math.Clamp(requested, 1, MaxLimit);
 
         var orders = db.Orders.AsNoTracking().OrderBy(o => o.Id);
         if (query.Cursor is not null)
@@ -35,7 +35,7 @@ public sealed class ListOrdersHandler(AppDbContext db)
 
         var rows = await orders.Take(applied + 1).ToListAsync(cancellationToken);
         var hasNext = rows.Count > applied;
-        var items   = rows.Take(applied)
+        var items = rows.Take(applied)
                           .Select(o => new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value))
                           .ToList();
 

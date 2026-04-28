@@ -1,4 +1,4 @@
-namespace Trellis.FluentValidation.Tests;
+﻿namespace Trellis.FluentValidation.Tests;
 
 using global::FluentValidation;
 using global::Mediator;

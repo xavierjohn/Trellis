@@ -7,8 +7,8 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Primitives;
 using Trellis.Showcase.Application;
-using Trellis.Showcase.Mvc;
 using Trellis.Showcase.Application.Models;
+using Trellis.Showcase.Mvc;
 
 /// <summary>
 /// Black-box integration tests over the Showcase HTTP API. Each test verifies that an Error case

@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Application.Features.SubmitBatchTransfers;
+﻿namespace Trellis.Showcase.Application.Features.SubmitBatchTransfers;
 
 using global::FluentValidation;
 

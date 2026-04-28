@@ -23,8 +23,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 /// </para>
 /// <para>
 /// The runtime API uses reflection-based assembly scanning; the generated path is a
-    /// drop-in replacement for scenarios where reflection over arbitrary
-/// assemblies is undesirable. See ADR-002 §8.1.
+/// drop-in replacement for scenarios where reflection over arbitrary
+/// assemblies is undesirable. Avoid introducing an extra dependency from analyzer assemblies.
 /// </para>
 /// </remarks>
 [Generator(LanguageNames.CSharp)]

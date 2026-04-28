@@ -1,4 +1,4 @@
-// Cookbook Recipe 1 — CRUD aggregate (DDD value objects + entity + repository contract).
+﻿// Cookbook Recipe 1 — CRUD aggregate (DDD value objects + entity + repository contract).
 namespace CookbookSnippets.Recipe01;
 
 using System.Collections.Generic;
@@ -30,7 +30,7 @@ public sealed class Money(decimal amount, CurrencyCode currency) : ValueObject
 // (NOT C# enums). The partial keyword triggers the source generator.
 public partial class OrderStatus : RequiredEnum<OrderStatus>
 {
-    public static readonly OrderStatus Draft     = new();
+    public static readonly OrderStatus Draft = new();
     public static readonly OrderStatus Submitted = new();
     public static readonly OrderStatus Cancelled = new();
 }
@@ -51,7 +51,7 @@ public sealed class Order : Aggregate<OrderId>
 }
 
 // Repository contract — uses Maybe<T> for "may legitimately find nothing"
-// (per ADR-002); reserve Result<T> for failures the caller can act on.
+// Reserve Result<T> for failures the caller can act on.
 public interface IOrderRepository
 {
     Task<Maybe<Order>> FindAsync(OrderId id, CancellationToken ct);

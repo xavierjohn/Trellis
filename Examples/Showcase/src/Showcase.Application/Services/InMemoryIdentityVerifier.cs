@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Application.Services;
+﻿namespace Trellis.Showcase.Application.Services;
 
 using Trellis;
 using Trellis.Primitives;

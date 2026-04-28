@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Provides extension methods for converting <see cref="Maybe{TValue}"/> instances to <see cref="Result{TValue}"/>

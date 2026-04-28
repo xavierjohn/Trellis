@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Results;
+﻿namespace Trellis.Core.Tests.Results;
 
 using System.Diagnostics;
 using Trellis.Core.Tests.Helpers;

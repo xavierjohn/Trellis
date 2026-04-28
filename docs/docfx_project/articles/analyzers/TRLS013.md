@@ -6,7 +6,7 @@
 ## What it detects
 Flags `.Value` access on a `Maybe<T>` LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier `Where(...)` guard proves the value is safe.
 
-The Result-side equivalent was removed in V2 along with `Result<T>.Value` (see ADR-002 §3.1). This rule now applies only to `Maybe<T>`.
+The Result-side equivalent was removed along with `Result<T>.Value`. This rule now applies only to `Maybe<T>`.
 
 ## Why it matters
 Collection pipelines make it easy to forget that some items may be `Maybe<T>.None`. One unsafe `.Value` access can throw for the whole query.

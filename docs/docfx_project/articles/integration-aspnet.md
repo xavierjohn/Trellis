@@ -1,4 +1,4 @@
-# ASP.NET Core Integration
+﻿# ASP.NET Core Integration
 
 **Level:** Intermediate | **Time:** 25-35 min | **Prerequisites:** [Basics](basics.md)
 
@@ -467,7 +467,7 @@ Use this approach when you need:
 
 1. **Convert at the API boundary only.** Keep `Result<T>` in your application layer.
 2. **Use MVC-specific or Minimal-API-specific validation setup.** Do not rely on the shared convenience overload alone for MVC.
-3. **Use `Result` for side-effect operations.** Trellis maps successful unit results to `204 No Content`.
+3. **Use `Result` for side-effect operations.** Trellis maps successful no-payload results to `204 No Content`.
 4. **Prefer typed ETag helpers.** `ParseIfMatch(...)` and `ParseIfNoneMatch(...)` return `EntityTagValue[]?`, which matches the concurrency APIs.
 5. **Use representation metadata instead of hand-writing headers** when you want `ETag`, `Last-Modified`, `Vary`, or related response metadata.
 

@@ -1,4 +1,4 @@
-namespace Trellis.Analyzers;
+﻿namespace Trellis.Analyzers;
 
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;

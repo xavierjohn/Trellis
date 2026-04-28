@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.Domain.Lifecycle;
+﻿namespace Trellis.Showcase.Domain.Lifecycle;
 
 using Trellis;
 

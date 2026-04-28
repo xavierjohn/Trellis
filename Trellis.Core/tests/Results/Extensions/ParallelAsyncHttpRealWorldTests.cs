@@ -1,9 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
-using Trellis.Testing;
-
 using System.Diagnostics;
 using System.Net;
+using Trellis.Testing;
 
 /// <summary>
 /// Real-world example demonstrating ParallelAsync with HTTP calls.
