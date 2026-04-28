@@ -83,7 +83,7 @@ jobs:
           || true)
         if [ -n "$HITS" ]; then
           echo "::error::Found stale v1 Error.X(...) factory references."
-            echo "Use closed-ADT form: 'new Error.X(payload) { Detail = \"...\" }' or"
+          echo "Use closed-ADT form: 'new Error.X(payload) { Detail = \"...\" }' or"
           echo "'Error.UnprocessableContent.ForField/ForRule(field, reasonCode, detail)'."
           echo "To intentionally allow a single line, append the marker:  v1-stale-ok"
           echo ""

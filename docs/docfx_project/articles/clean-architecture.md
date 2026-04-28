@@ -142,13 +142,13 @@ public sealed class RegisterUserService
             return userResult;
 
         if (await _repository.EmailExistsAsync(user.Email, ct))
-            return new Error.Conflict(null, "conflict") { Detail = $"Email {user.Email} is already registered." };
+            return Result.Fail<User>(new Error.Conflict(null, "conflict") { Detail = $"Email {user.Email} is already registered." });
 
         var saveResult = await _repository.AddAsync(user, ct);
-        if (saveResult.IsFailure)
-            return saveResult.Error;
+        if (saveResult.TryGetError(out var saveError))
+            return Result.Fail<User>(saveError);
 
-        return user;
+        return Result.Ok(user);
     }
 }
 ```
@@ -279,7 +279,7 @@ public sealed class User : Aggregate<UserId>
     public Result<User> Deactivate()
     {
         if (!IsActive)
-            return new Error.Conflict(null, "domain.violation") { Detail = "User is already inactive." };
+            return Result.Fail<User>(new Error.Conflict(null, "domain.violation") { Detail = "User is already inactive." });
 
         IsActive = false;
         return Result.Ok(this);
@@ -311,21 +311,21 @@ public sealed class RegisterUserHandler
     public async Task<Result<User>> HandleAsync(RegisterUserCommand command, CancellationToken ct)
     {
         if (await _repository.EmailExistsAsync(command.Email, ct))
-            return new Error.Conflict(null, "conflict") { Detail = $"Email {command.Email} is already registered." };
+            return Result.Fail<User>(new Error.Conflict(null, "conflict") { Detail = $"Email {command.Email} is already registered." });
 
         var userResult = User.TryCreate(command.Email, command.FirstName, command.LastName);
         if (!userResult.TryGetValue(out var user))
             return userResult;
 
         var saveResult = await _repository.AddAsync(user, ct);
-        if (saveResult.IsFailure)
-            return saveResult.Error;
+        if (saveResult.TryGetError(out var saveError))
+            return Result.Fail<User>(saveError);
 
         var emailResult = await _welcomeEmailSender.SendAsync(command.Email, ct);
-        if (emailResult.IsFailure)
-            return emailResult.Error;
+        if (emailResult.TryGetError(out var emailError))
+            return Result.Fail<User>(emailError);
 
-        return user;
+        return Result.Ok(user);
     }
 }
 ```
