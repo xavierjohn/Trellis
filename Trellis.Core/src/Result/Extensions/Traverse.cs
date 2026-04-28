@@ -249,7 +249,7 @@ public static class TraverseExtensions
     /// </para>
     /// <para>
     /// Failure semantics are first-failure-wins (matching <see cref="Traverse{TIn,TOut}"/>
-    /// and the v2 design — see ADR-002 §3.6). For per-field validation aggregation,
+    /// and the current first-failure-wins design). For per-field validation aggregation,
     /// use the <c>Validate</c> builder which accumulates into a single <see cref="Error.UnprocessableContent"/>.
     /// </para>
     /// </remarks>
@@ -289,11 +289,11 @@ public static class TraverseExtensions
     }
 
     /// <summary>
-    /// Sequences a collection of unit-shaped <see cref="Result"/> values into a single
+    /// Sequences a collection of no-payload <see cref="Result"/> values into a single
     /// <see cref="Result"/>. Short-circuits on the first failure.
     /// </summary>
     /// <remarks>
-    /// First-failure-wins semantics, matching <see cref="Traverse{TIn,TOut}"/> and ADR-002 §3.6.
+    /// First-failure-wins semantics, matching <see cref="Traverse{TIn,TOut}"/>.
     /// For per-field validation aggregation, use the <c>Validate</c> builder.
     /// </remarks>
     /// <param name="source">Source collection of results.</param>

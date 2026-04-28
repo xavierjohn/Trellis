@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 /// <summary>
 /// Analyzer that detects accessing <c>.Value</c> on <c>Maybe&lt;T&gt;</c> inside LINQ
 /// projections without first filtering by <c>HasValue</c>. The Result-side equivalent
-/// was removed in v2 along with <c>Result&lt;T&gt;.Value</c> (see ADR-002 §3.1).
+/// was removed from the current API along with <c>Result&lt;T&gt;.Value</c>.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
@@ -77,7 +77,7 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         if (type == null)
             return;
 
-        // Only Maybe<T>.Value remains a runtime hazard in v2.
+// Only Maybe<T>.Value remains a runtime hazard.
         if (!type.IsMaybeType())
             return;
 

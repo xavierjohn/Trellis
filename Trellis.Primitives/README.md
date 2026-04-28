@@ -2,14 +2,14 @@
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Primitives.svg)](https://www.nuget.org/packages/Trellis.Primitives)
 
-Strongly typed value objects for .NET, with built-in primitives like `EmailAddress` and `Money` plus base classes for your own types.
+Strongly typed value objects for .NET, with built-in primitives like `EmailAddress` and `Money` plus JSON/tracing infrastructure for primitive value objects.
 
 ## Installation
 ```bash
 dotnet add package Trellis.Primitives
 ```
 
-The source generator that powers the `Required*<TSelf>` and `ScalarValueObject<TSelf, TUnderlying>` base classes is bundled inside the `Trellis.Core` package (transitively referenced by `Trellis.Primitives`) — no extra package is required.
+The `Required*<TSelf>` and `ScalarValueObject<TSelf, TUnderlying>` base classes live in `Trellis.Core`. The source generator that powers them is bundled inside the `Trellis.Core` package (transitively referenced by `Trellis.Primitives`) — no extra package is required.
 
 ## Quick Example
 ```csharp
@@ -33,7 +33,7 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 
 ## Key Features
 - Ready-to-use value objects for common concepts such as email, URL, money, and percentages.
-- Base classes like `RequiredString<CustomerEmail>` and `RequiredGuid<OrderId>` for custom domain types.
+- `Trellis.Core` base classes like `RequiredString<CustomerEmail>` and `RequiredGuid<OrderId>` for custom domain types.
 - Validation and parsing rules that stay with the type instead of leaking into handlers and controllers.
 
 ## Documentation

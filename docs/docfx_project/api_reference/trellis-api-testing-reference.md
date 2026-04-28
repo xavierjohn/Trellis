@@ -245,13 +245,13 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
 }
 ```
 
-> **v2 note:** The `HaveInstance(...)` assertion was removed. `Error.Instance` is no longer part of the closed-ADT base — the ASP wire layer synthesizes `ProblemDetails.Instance` from the request URL plus any `ResourceRef` carried by the typed payload (e.g. `Error.NotFound.Resource`). Assert against `ResourceRef` directly via `BeOfType<Error.NotFound>().Which.Resource`.
+> **Note:** The `HaveInstance(...)` assertion was removed. `Error.Instance` is no longer part of the closed-ADT base — the ASP wire layer synthesizes `ProblemDetails.Instance` from the request URL plus any `ResourceRef` carried by the typed payload (e.g. `Error.NotFound.Resource`). Assert against `ResourceRef` directly via `BeOfType<Error.NotFound>().Which.Resource`.
 
 #### `ValidationErrorAssertionsExtensions`
 ```csharp
 public static class ValidationErrorAssertionsExtensions
 {
-    // Bound to Error.UnprocessableContent (the v2 replacement for v1's ValidationError class).
+    // Bound to Error.UnprocessableContent (the replacement for the old ValidationError class).
     // Method names preserved for source-compat at test sites.
     public static ValidationErrorAssertions Should(this Error.UnprocessableContent error);
 }

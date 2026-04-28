@@ -9,7 +9,7 @@ using System.Diagnostics;
 public static partial class CombineExtensions
 {
     /// <summary>
-    /// Combine a <see cref="Result{TValue}"/> with a non-generic <see cref="Result"/> (unit-shaped), returning <see cref="Result{TValue}"/>.
+    /// Combine a <see cref="Result{TValue}"/> with a non-generic <see cref="Result"/> (no-payload), returning <see cref="Result{TValue}"/>.
     /// </summary>
     public static Result<T1> Combine<T1>(this Result<T1> t1, Result t2)
     {
@@ -114,7 +114,7 @@ public static partial class CombineExtensionsAsync
     }
 
     /// <summary>
-    /// Combine a Task result with a non-generic unit result.
+    /// Combine a Task result with a non-generic <see cref="Result"/>.
     /// </summary>
     public static async Task<Result<T1>> CombineAsync<T1>(this Task<Result<T1>> tt1, Result t2)
     {
@@ -182,7 +182,7 @@ public static partial class CombineExtensionsAsync
     }
 
     /// <summary>
-    /// Combine a ValueTask result with a non-generic unit result.
+    /// Combine a ValueTask result with a non-generic <see cref="Result"/>.
     /// </summary>
     public static async ValueTask<Result<T1>> CombineAsync<T1>(this ValueTask<Result<T1>> vt1, Result t2)
     {

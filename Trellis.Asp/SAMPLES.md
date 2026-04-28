@@ -1,14 +1,14 @@
-# ASP Extension - Comprehensive Examples
+﻿# ASP Extension - Comprehensive Examples
 
 > [!IMPORTANT]
-> **This document predates the Phase 3 response unification.** The sample
+> **This document is historical.** The sample
 > code below uses legacy verbs (`ToActionResult`, `ToHttpResult`,
 > `ToCreatedAtActionResult`, `ToCreatedAtRouteHttpResult`, `ToPaged*`,
 > etc.) that were **removed** in v3. The single supported verb is now
 > `result.ToHttpResponse(...)` / `result.ToHttpResponseAsync(...)`, with
 > `.AsActionResult<T>()` for MVC typed signatures. See
 > [`docs/docfx_project/articles/asp-tohttpresponse.md`](../docs/docfx_project/articles/asp-tohttpresponse.md)
-> for the canonical guide and patterns; the Phase 3 snippets there
+> for the canonical guide and patterns; the snippets there
 > supersede every example in this file.
 
 This document provides detailed examples and advanced patterns for using the ASP extension with Railway Oriented Programming in ASP.NET Core applications.

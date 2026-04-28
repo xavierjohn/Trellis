@@ -1,4 +1,4 @@
-# Why Maybe<T>?
+﻿# Why Maybe<T>?
 
 C# already gives you `T?`, `Nullable<T>`, and plain old `null`. So why does Trellis add `Maybe<T>`?
 
@@ -357,22 +357,19 @@ IEnumerable<string> values = names.Choose();
 IEnumerable<int> lengths = names.Choose(name => name.Length);
 ```
 
-## `Maybe<T>` and Unit Results
+## `Maybe<T>` and no-payload results
 
 Sometimes the next question is: “what if my operation has no payload?”
 
-For Trellis unit results:
+For no-payload Trellis results:
 
 - prefer `Result.Ok()` for a successful `Result`
-- use `new Unit()` or `default` if you need a `Unit` value explicitly
-- do **not** use `Unit.Value` — that API does not exist
+- use non-generic `Result` when the operation only needs success/failure
 
 ```csharp
 using Trellis;
 
 Result ok = Result.Ok();
-Unit unit = new Unit();
-Unit alsoUnit = default;
 ```
 
 ## Practical Rules of Thumb

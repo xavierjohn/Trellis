@@ -3,7 +3,7 @@
 /// <summary>
 /// Internal default-state sentinel for <see cref="Result"/> and <see cref="Result{TValue}"/>.
 /// Single shared allocation across all closed generic instantiations of <see cref="Result{TValue}"/>.
-/// Per ADR-002 §3.5.1, <c>default(Result)</c> and <c>default(Result&lt;T&gt;)</c> are observationally
+/// <c>default(Result)</c> and <c>default(Result&lt;T&gt;)</c> are observationally
 /// equivalent to <c>Result.Fail(<see cref="Sentinel"/>)</c> / <c>Result.Fail&lt;T&gt;(<see cref="Sentinel"/>)</c>.
 /// </summary>
 internal static class ResultDefaults

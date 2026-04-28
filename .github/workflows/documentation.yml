@@ -1,4 +1,4 @@
-name: Publish documentation.
+﻿name: Publish documentation.
 
 on:
   workflow_dispatch:
@@ -83,7 +83,7 @@ jobs:
           || true)
         if [ -n "$HITS" ]; then
           echo "::error::Found stale v1 Error.X(...) factory references."
-          echo "Use v2 closed-ADT form: 'new Error.X(payload) { Detail = \"...\" }' or"
+            echo "Use closed-ADT form: 'new Error.X(payload) { Detail = \"...\" }' or"
           echo "'Error.UnprocessableContent.ForField/ForRule(field, reasonCode, detail)'."
           echo "To intentionally allow a single line, append the marker:  v1-stale-ok"
           echo ""
@@ -91,6 +91,10 @@ jobs:
           exit 1
         fi
         echo "No stale v1 Error.X factory references found."
+
+    - name: Gate stale current-facing docs
+      shell: pwsh
+      run: ./docs/docfx_project/api_reference/audit-stale-docs.ps1
 
     - name: Build docs (warnings as errors)
       shell: bash

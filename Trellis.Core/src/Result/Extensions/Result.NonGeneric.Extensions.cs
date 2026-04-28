@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 // Pipeline verb extensions for the non-generic Result.
 //
 // This file mirrors the seven pipeline verbs (Map, Bind, Tap, TapOnFailure, Ensure,
-// Match, Recover) plus a small set of cross-shape helpers, but for the
-// non-generic Result that replaces Result<Unit>. It is deliberately a single
+// Match, Recover) plus a small set of cross-shape helpers for non-generic Result.
+// It is deliberately a single
 // file rather than the per-verb / per-async-shape split that Result<T> uses,
 // because:
-//   1. The unit shape has no value to project, so Map/Bind/Tap/Ensure/Recover
+//   1. The no-payload shape has no value to project, so Map/Bind/Tap/Ensure/Recover
 //      collapse to a much smaller set of overloads (no Func<T, …> shape).
-//   2. Co-locating the unit-Result surface keeps the migration auditable.
+//   2. Co-locating the non-generic Result surface keeps the migration auditable.
 //
-// Async overload model mirrors §3.3 of the v2 redesign plan: 6 overloads per
+// Async overload model mirrors the current overload matrix: 6 overloads per
 // verb covering Sync/Task/ValueTask × sync/async function. Mixing Task and
 // ValueTask requires explicit conversion (deliberate constraint).
 //
@@ -136,7 +136,7 @@ public static class ResultBindExtensions
         return output;
     }
 
-    /// <summary>Chains a value-producing step from a unit-shaped success. Failure short-circuits.</summary>
+    /// <summary>Chains a value-producing step from a no-payload success. Failure short-circuits.</summary>
     public static Result<TOut> Bind<TOut>(this Result result, Func<Result<TOut>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
@@ -152,7 +152,7 @@ public static class ResultBindExtensions
         return output;
     }
 
-    /// <summary>Cross-shape: discards the value of a value-bearing result and chains a unit-shaped step.</summary>
+    /// <summary>Cross-shape: discards the value of a value-bearing result and chains a no-payload step.</summary>
     public static Result Bind<TIn>(this Result<TIn> result, Func<TIn, Result> func)
     {
         ArgumentNullException.ThrowIfNull(func);
@@ -175,7 +175,7 @@ public static class ResultBindExtensionsAsync
 {
     // unit → unit
 
-    /// <summary>Awaits <paramref name="resultTask"/> and chains a unit-shaped step via <paramref name="func"/>.</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and chains a no-payload step via <paramref name="func"/>.</summary>
     public static async Task<Result> BindAsync(this Task<Result> resultTask, Func<Result> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
@@ -183,7 +183,7 @@ public static class ResultBindExtensionsAsync
         return (await resultTask.ConfigureAwait(false)).Bind(func);
     }
 
-    /// <summary>Chains an async unit-shaped step via <paramref name="func"/>. Failure short-circuits.</summary>
+    /// <summary>Chains an async no-payload step via <paramref name="func"/>. Failure short-circuits.</summary>
     public static async Task<Result> BindAsync(this Result result, Func<Task<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
@@ -199,7 +199,7 @@ public static class ResultBindExtensionsAsync
         return output;
     }
 
-    /// <summary>Awaits <paramref name="resultTask"/> and chains an async unit-shaped step via <paramref name="func"/>.</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and chains an async no-payload step via <paramref name="func"/>.</summary>
     public static async Task<Result> BindAsync(this Task<Result> resultTask, Func<Task<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
@@ -208,14 +208,14 @@ public static class ResultBindExtensionsAsync
         return await result.BindAsync(func).ConfigureAwait(false);
     }
 
-    /// <summary>Awaits <paramref name="resultTask"/> and chains a unit-shaped step via <paramref name="func"/>.</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and chains a no-payload step via <paramref name="func"/>.</summary>
     public static async ValueTask<Result> BindAsync(this ValueTask<Result> resultTask, Func<Result> func)
     {
         ArgumentNullException.ThrowIfNull(func);
         return (await resultTask.ConfigureAwait(false)).Bind(func);
     }
 
-    /// <summary>Chains an async unit-shaped step (ValueTask). Failure short-circuits.</summary>
+    /// <summary>Chains an async no-payload step (ValueTask). Failure short-circuits.</summary>
     public static async ValueTask<Result> BindAsync(this Result result, Func<ValueTask<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
@@ -231,7 +231,7 @@ public static class ResultBindExtensionsAsync
         return output;
     }
 
-    /// <summary>Awaits <paramref name="resultTask"/> and chains an async unit-shaped step (ValueTask).</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and chains an async no-payload step (ValueTask).</summary>
     public static async ValueTask<Result> BindAsync(this ValueTask<Result> resultTask, Func<ValueTask<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
@@ -307,7 +307,7 @@ public static class ResultBindExtensionsAsync
 
     // value → unit (cross-shape)
 
-    /// <summary>Awaits <paramref name="resultTask"/> and discards the value to chain a unit-shaped step.</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and discards the value to chain a no-payload step.</summary>
     public static async Task<Result> BindAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Result> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
@@ -315,7 +315,7 @@ public static class ResultBindExtensionsAsync
         return (await resultTask.ConfigureAwait(false)).Bind(func);
     }
 
-    /// <summary>Cross-shape async: chains an async unit-shaped step from a value-bearing success.</summary>
+    /// <summary>Cross-shape async: chains an async no-payload step from a value-bearing success.</summary>
     public static async Task<Result> BindAsync<TIn>(this Result<TIn> result, Func<TIn, Task<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
@@ -331,7 +331,7 @@ public static class ResultBindExtensionsAsync
         return output;
     }
 
-    /// <summary>Awaits <paramref name="resultTask"/> and chains an async unit-shaped step from a value-bearing success.</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and chains an async no-payload step from a value-bearing success.</summary>
     public static async Task<Result> BindAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Task<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
@@ -340,14 +340,14 @@ public static class ResultBindExtensionsAsync
         return await result.BindAsync(func).ConfigureAwait(false);
     }
 
-    /// <summary>Awaits <paramref name="resultTask"/> and discards the value to chain a unit-shaped step.</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and discards the value to chain a no-payload step.</summary>
     public static async ValueTask<Result> BindAsync<TIn>(this ValueTask<Result<TIn>> resultTask, Func<TIn, Result> func)
     {
         ArgumentNullException.ThrowIfNull(func);
         return (await resultTask.ConfigureAwait(false)).Bind(func);
     }
 
-    /// <summary>Cross-shape async (ValueTask): chains an async unit-shaped step from a value-bearing success.</summary>
+    /// <summary>Cross-shape async (ValueTask): chains an async no-payload step from a value-bearing success.</summary>
     public static async ValueTask<Result> BindAsync<TIn>(this Result<TIn> result, Func<TIn, ValueTask<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
@@ -363,7 +363,7 @@ public static class ResultBindExtensionsAsync
         return output;
     }
 
-    /// <summary>Awaits <paramref name="resultTask"/> and chains an async unit-shaped step (ValueTask) from a value-bearing success.</summary>
+    /// <summary>Awaits <paramref name="resultTask"/> and chains an async no-payload step (ValueTask) from a value-bearing success.</summary>
     public static async ValueTask<Result> BindAsync<TIn>(this ValueTask<Result<TIn>> resultTask, Func<TIn, ValueTask<Result>> func)
     {
         ArgumentNullException.ThrowIfNull(func);

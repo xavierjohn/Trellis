@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 /// <summary>
 /// Analyzer that detects unsafe access to <c>Maybe&lt;T&gt;.Value</c> without proper
 /// presence checks. The corresponding rules for <c>Result&lt;T&gt;.Value</c> (TRLS003)
-/// and <c>Result&lt;T&gt;.Error</c> (TRLS004) were removed in v2: <c>Value</c> no longer
+/// and <c>Result&lt;T&gt;.Error</c> (TRLS004) were removed from the current API: <c>Value</c> no longer
 /// exists on <c>Result&lt;T&gt;</c>, and <c>Error</c> is now nullable so NRT handles
 /// unsafe access at the language level.
 /// </summary>

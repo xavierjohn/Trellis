@@ -1,4 +1,4 @@
-namespace Trellis.Showcase.MinimalApi.Endpoints;
+﻿namespace Trellis.Showcase.MinimalApi.Endpoints;
 
 using System.Collections.Generic;
 using global::Mediator;
@@ -7,7 +7,7 @@ using Trellis.Showcase.Application.Features.SubmitBatchTransfers;
 using Trellis.Showcase.Domain.ValueObjects;
 
 /// <summary>
-/// Demonstrates the v2 Mediator pipeline end-to-end: HTTP → command → unified validation
+/// Demonstrates the Mediator pipeline end-to-end: HTTP → command → unified validation
 /// stage (IValidate + FluentValidation) → handler → HTTP response. See
 /// <see cref="SubmitBatchTransfersCommand"/> for the full design narrative.
 /// </summary>

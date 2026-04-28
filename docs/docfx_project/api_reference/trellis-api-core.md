@@ -4,15 +4,15 @@
 **Namespace:** `Trellis`  
 **Purpose:** Provides Trellis result, maybe, scalar-value, and HTTP-oriented error primitives for railway-oriented application flows.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package, [trellis-api-patterns.md](trellis-api-patterns.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-primitives.md](trellis-api-primitives.md).
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package, [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-primitives.md](trellis-api-primitives.md).
 
 ---
 
 ## Breaking changes from v1
 
-Running list of v2 breaking changes in `Trellis.Core`. See `docs/adr/ADR-001-result-api-surface.md` for the full design rationale.
+Migration notes for users moving from the previous `Trellis.Core` API surface.
 
-| Change | v1 | v2 | Migration |
+| Change | Previous API | Current API | Migration |
 |---|---|---|---|
 | Result success factory | `Result.Success(value)` / `Result.Success<T>(...)` / `Result.Success()` | `Result.Ok(value)` / `Result.Ok<T>(...)` / `Result.Ok()` | Mechanical find-and-replace of `Result.Success` → `Result.Ok` |
 | Result failure factory | `Result.Failure<T>(error)` / `Result.Failure(error)` | `Result.Fail<T>(error)` / `Result.Fail(error)` | Mechanical find-and-replace of `Result.Failure` → `Result.Fail` |
@@ -23,14 +23,14 @@ Running list of v2 breaking changes in `Trellis.Core`. See `docs/adr/ADR-001-res
 | Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `await predicate() ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed) |
 | Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(new Error.InternalServerError(faultId) { Detail = ex.Message, Cause = ... })` or rely on `Result.Try` / `Result.TryAsync` for inline exception capture. |
 | Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
-| Non-generic `Result` for void flows | `Result<Unit>` | `Result` (non-generic struct) | `Result<Unit>` is still accepted for source compat, but new code should write `Result`. `Unit` is retained for tuple-result interop. |
+| Non-generic `Result` for void flows | Generic result with a no-payload marker type | `Result` (non-generic struct) | Use `Result` for success/failure operations with no success payload. |
 | `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, …). Closed via `private` constructor; no static factories. | Replace `Error.X("msg")` factories with `new Error.X(payload) { Detail = "msg" }`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.UnprocessableContent`, `Error.NotFound`. See "Error Cases (closed ADT)" below. | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
 | `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.UnprocessableContent uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
 | `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.UnprocessableContent.Fields` and `.Rules`. |
 | `Error.Instance` field | `error.Instance` (string-shaped HTTP vocabulary) | *(removed)* | The ASP wire layer synthesizes `ProblemDetails.Instance` from the request URL plus any `ResourceRef` carried by the typed payload. |
-| Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). The throwing `result.Value` getter was **removed** entirely (ADR-002 §3.1, ga-03) — it was the primary cause of `TRLS003`. | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Extract success values with `result.TryGetValue(out var v)`, `result.TryGetValue(out var v, out var err)`, `result.Match(...)`, or `var (ok, v, err) = result;` (Deconstruct). |
+| Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). The throwing `result.Value` getter was removed entirely because it was the primary cause of unsafe value access. | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Extract success values with `result.TryGetValue(out var v)`, `result.TryGetValue(out var v, out var err)`, `result.Match(...)`, or `var (ok, v, err) = result;` (Deconstruct). |
 | `WriteOutcome<T>` package + namespace | `Trellis.Asp.WriteOutcome<T>` (in `Trellis.Asp`) | `Trellis.WriteOutcome<T>` (in `Trellis.Core`) | Replace `using Trellis.Asp;` with `using Trellis;` for any file that names `WriteOutcome<T>` directly. The type, its case records, and member shapes are unchanged; only the assembly and namespace move. ASP-specific HTTP mapping remains in `Trellis.Asp` through `ToHttpResponse(...)` / `ToHttpResponseAsync(...)` and the typed MVC adapters `AsActionResult<T>()` / `AsActionResultAsync<T>()`. |
-| Package id | `Trellis.Results` | `Trellis.Core` | Replace `<PackageReference Include="Trellis.Results" ... />` with `<PackageReference Include="Trellis.Core" ... />`. The CLR namespace stays `Trellis` — no `using` changes are needed. The legacy `Trellis.Results` package is unlisted at v2.0.0 with a redirect notice; there is no metapackage shim. |
+| Package id | `Trellis.Results` | `Trellis.Core` | Replace `<PackageReference Include="Trellis.Results" ... />` with `<PackageReference Include="Trellis.Core" ... />`. The CLR namespace stays `Trellis` — no `using` changes are needed. The legacy `Trellis.Results` package is unlisted with a redirect notice; there is no metapackage shim. |
 | OpenTelemetry `ActivitySource` name | `"Trellis.Results"` | `"Trellis.Core"` | Update OTel subscriptions: `builder.AddSource("Trellis.Results")` → `builder.AddSource("Trellis.Core")`. The `RopTrace.ActivitySourceName` constant exposes the name programmatically. |
 | Test helper namespace | `Trellis.Results.Tests.*` | `Trellis.Core.Tests.*` | Internal change only — affects users who took an InternalsVisibleTo dependency on the test assembly (none expected). |
 | Package merge: DDD | <PackageReference Include="Trellis.DomainDrivenDesign" .../> | *(removed)* | All DDD types (`Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, etc.) moved into `Trellis.Core`. Drop the `Trellis.DomainDrivenDesign` PackageReference; the types are still in `namespace Trellis;` so no using changes are needed. |
@@ -72,7 +72,7 @@ None.
 
 ### `public interface IResult<TValue> : IResult`
 
-Typed success/failure contract. Note: there is **no** `Value` property — the v1 `Value` getter was removed in v2 (it threw on failure and was the leading source of `TRLS003`). Use `TryGetValue` to extract the success payload.
+Typed success/failure contract. Note: there is **no** `Value` property — the previous `Value` getter threw on failure and was the leading source of `TRLS003`. Use `TryGetValue` to extract the success payload.
 
 #### Properties
 
@@ -114,7 +114,7 @@ None.
 
 Static factory and helper surface for `Result<TValue>` and the non-generic `Result` (success/failure for void flows).
 
-> **Default-state invariant (ADR-002 §3.5.1).** `default(Result)` represents a **failure** carrying the
+> **Default-state invariant.** `default(Result)` represents a **failure** carrying the
 > shared `new Error.Unexpected("default_initialized")` sentinel — *not* success. This makes uninitialized
 > state a typed failure rather than a silent success that would hide a programming error. Always
 > construct via `Result.Ok()` or `Result.Fail(error)`. Analyzer **`TRLS019`** flags explicit
@@ -167,7 +167,7 @@ The default exception mapper produces `new Error.InternalServerError(FaultId: Gu
 
 #### Factory Methods
 
-`Ok`, `Fail`, `CreateFailure`, `Ensure`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed in v2 (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`.
+`Ok`, `Fail`, `CreateFailure`, `Ensure`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed from the current API (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`.
 
 ---
 
@@ -175,14 +175,14 @@ The default exception mapper produces `new Error.InternalServerError(FaultId: Gu
 
 Represents either a successful `TValue` or a failure `Error`.
 
-> **Default-state invariant (ADR-002 §3.5.1).** `default(Result<T>)` represents a **failure** carrying
+> **Default-state invariant.** `default(Result<T>)` represents a **failure** carrying
 > the shared `new Error.Unexpected("default_initialized")` sentinel — *not* success with `default(T)`.
 > All failure-facing APIs (`Error`, `TryGetError`, `Deconstruct`, `Equals`, `GetHashCode`, `ToString`,
 > `AsUnit`) route through this sentinel so that `default(Result<T>)` is observationally equivalent to
 > `Result.Fail<T>(new Error.Unexpected("default_initialized"))`. Always construct via `Result.Ok(value)`
 > or `Result.Fail<T>(error)`. Analyzer **`TRLS019`** flags explicit `default(Result<T>)` at call sites.
 
-> **No `Value` property.** The v1 throwing `public TValue Value` getter was removed in v2 (ADR-002 §3.1). Use `TryGetValue`, `Match`, or `Deconstruct` to extract success values.
+> **No `Value` property.** The throwing `public TValue Value` getter was removed. Use `TryGetValue`, `Match`, or `Deconstruct` to extract success values.
 
 #### Properties
 
@@ -209,7 +209,7 @@ Represents either a successful `TValue` or a failure `Error`.
 
 #### Operators
 
-The implicit conversion operators (`TValue → Result<TValue>`, `Error → Result<TValue>`) were removed in v2. Use `Result.Ok(value)` / `Result.Fail<T>(error)`.
+The implicit conversion operators (`TValue → Result<TValue>`, `Error → Result<TValue>`) were removed from the current API. Use `Result.Ok(value)` / `Result.Fail<T>(error)`.
 
 | Signature | Notes |
 | --- | --- |
@@ -219,24 +219,6 @@ The implicit conversion operators (`TValue → Result<TValue>`, `Error → Resul
 #### Factory Methods
 
 Use the static `Result` type.
-
----
-
-### `public record struct Unit`
-
-Represents "no value" used for tuple-result interop (e.g. `Result<(Unit, T2)>`). For void-style success/failure use the non-generic `Result` returned by `Result.Ok()` / `Result.Fail(error)`.
-
-#### Properties
-
-None.
-
-#### Methods
-
-None.
-
-#### Factory Methods
-
-Use `Result.Ok()`.
 
 ---
 
@@ -796,7 +778,7 @@ The result API contains a large generated extension surface. Exact public famili
 | `GetValueOrDefaultExtensions` | Non-throwing value fallback helpers |
 | `ResultLinqExtensions` | LINQ query syntax support via `Select`/`SelectMany` |
 | `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions` | Success-path mapping, conditional mapping, and failure remapping; tuple overloads generated for arities 2-9 |
-| `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync` | Terminal branching for normal and tuple results. (v1's `MatchErrorExtensions` was removed in v2 — use `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., ... })` against the closed catalog.) |
+| `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync` | Terminal branching for normal and tuple results. (The previous `MatchErrorExtensions` API was removed — use `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., ... })` against the closed catalog.) |
 | `NullableExtensions`, `NullableExtensionsAsync` | Converts nullable reference/value types to `Result<T>` |
 | `RecoverExtensions`, `RecoverExtensionsAsync`, `RecoverOnFailureExtensions`, `RecoverOnFailureExtensionsAsync` | Converts failures into fallback success values or results |
 | `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync` | Side effects on success or failure; tuple overloads generated for arities 2-9 |
@@ -1081,7 +1063,7 @@ Folds a sequence of inputs through a `Result`-producing selector into a single `
 | `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, ValueTask<Result<TOut>>> selector)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | ValueTask variant. |
 | `public static Task<Result> TraverseAsync<TIn>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result>> selector, CancellationToken cancellationToken = default)` | `Task<Result>` | Non-generic async traversal for fire-each pipelines. |
 | `public static Result<IReadOnlyList<T>> Sequence<T>(this IEnumerable<Result<T>> source)` | `Result<IReadOnlyList<T>>` | Identity-selector form of `Traverse`. Lifts an `IEnumerable<Result<T>>` to `Result<IReadOnlyList<T>>`; short-circuits on the first failure. |
-| `public static Result Sequence(this IEnumerable<Result> source)` | `Result` | Unit-shaped sequence; short-circuits on the first failure. |
+| `public static Result Sequence(this IEnumerable<Result> source)` | `Result` | No-payload sequence; short-circuits on the first failure. |
 
 ```csharp
 Task<Result<IReadOnlyList<Order>>> orders =
@@ -1293,7 +1275,7 @@ return Result.Combine(streetCity, contact)
 
 ## Domain-Driven Design
 
-The DDD primitives (Aggregate<T>, Entity<T>, ValueObject, Specification<T>, ...) live in `Trellis.Core` (Phase 2). They share the `Trellis` namespace.
+The DDD primitives (`Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, ...) live in `Trellis.Core`. They share the `Trellis` namespace.
 
 ### Types
 
@@ -1500,7 +1482,7 @@ Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON conve
 
 ## Primitive value object base classes
 
-These types ship in `Trellis.Core` (since Phase 2; previously in `Trellis.Primitives`). They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`) attach declarative invariants that the generator wires into the generated validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md).
+These types ship in `Trellis.Core`. They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`) attach declarative invariants that the generator wires into the generated validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md).
 
 ### `RangeAttribute`
 

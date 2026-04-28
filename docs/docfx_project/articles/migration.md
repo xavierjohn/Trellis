@@ -1,4 +1,4 @@
-# Migrating from FunctionalDDD
+﻿# Migrating from FunctionalDDD
 
 Migrating from `FunctionalDdd.*` to `Trellis.*` is mostly a **rename exercise**, not a redesign.
 
@@ -28,13 +28,13 @@ That is good news: you usually do **not** need to rethink your domain model or r
 | Old package | New package |
 | --- | --- |
 | `FunctionalDdd.RailwayOrientedProgramming` | `Trellis.Core` |
-| `FunctionalDdd.DomainDrivenDesign` | `Trellis.DomainDrivenDesign` |
+| `FunctionalDdd.DomainDrivenDesign` | `Trellis.Core` |
 | `FunctionalDdd.PrimitiveValueObjects` | `Trellis.Primitives` |
 | `FunctionalDdd.PrimitiveValueObjectGenerator` | _bundled inside `Trellis.Core` (no separate package)_ |
 | `FunctionalDdd.Asp` | `Trellis.Asp` |
 | `FunctionalDdd.Http` | `Trellis.Http` |
 | `FunctionalDdd.FluentValidation` | `Trellis.FluentValidation` |
-| `FunctionalDdd.ArdalisSpecification` | Remove and use native `Specification<T>` from `Trellis.DomainDrivenDesign` |
+| `FunctionalDdd.ArdalisSpecification` | Remove and use native `Specification<T>` from `Trellis.Core` |
 
 Optional new packages with no direct one-to-one predecessor include:
 
@@ -63,7 +63,6 @@ If you centralize package versions in `Directory.Packages.props`, this is the fa
 ```xml
 <ItemGroup>
   <PackageVersion Include="Trellis.Core" Version="3.x.x" />
-  <PackageVersion Include="Trellis.DomainDrivenDesign" Version="3.x.x" />
   <PackageVersion Include="Trellis.Asp" Version="3.x.x" />
   <PackageVersion Include="Trellis.Primitives" Version="3.x.x" />
   <!-- Trellis.Core.Generator is bundled inside Trellis.Core; no separate package -->
@@ -126,15 +125,13 @@ public sealed class ActiveCustomerSpecification : Specification<Customer>
 
 ## Step 5: fix the small but important gotchas
 
-### `Unit.Value` does not exist
+### Use `Result.Ok()` for no-payload success
 
-If older code or snippets refer to `Unit.Value`, replace that usage with either:
+If older no-payload snippets use a dedicated sentinel value, replace that usage with non-generic `Result`:
 
 ```csharp
 using Trellis;
 
-var unit1 = default(Unit);
-var unit2 = new Unit();
 var success = Result.Ok();
 ```
 
@@ -205,11 +202,11 @@ For most codebases, the migration is intentionally boring:
 
 That is exactly what you want from a rebrand-style migration.
 
-## v2 framework changes (post-rename)
+## Framework changes after the rename
 
-Beyond the rename, v2 also ships incremental package-level redesigns. Each is described in detail in the relevant API reference; this section is the scannable index.
+Beyond the rename, Trellis also ships package-level API changes. Each is described in detail in the relevant API reference; this section is the scannable index.
 
-### Phase 4b &mdash; `Trellis.Http` slim
+### `Trellis.Http` slim package
 
 `Trellis.Http` collapsed from 60+ overloads to a single seven-method static class. The full migration table lives in [`docs/docfx_project/api_reference/trellis-api-http.md`](../api_reference/trellis-api-http.md#breaking-changes-from-v1); the headlines:
 

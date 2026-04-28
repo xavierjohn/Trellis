@@ -1,4 +1,4 @@
-# Trellis Cross-Package Cookbook
+﻿# Trellis Cross-Package Cookbook
 
 - **Audience:** AI coding agents (and humans) writing Trellis code from documentation alone.
 - **Purpose:** End-to-end recipes that cross package boundaries — DDD, Mediator, FluentValidation, EF Core, ASP.NET Core, Authorization, State Machine, Testing, Analyzers — using the *exact* public surface listed in the per-package API references.
@@ -33,6 +33,16 @@ Conventions used throughout:
 - `Result.Ok` / `Result.Fail` are *the* construction APIs. `default(Result<T>)` is a typed failure; do not rely on it as success.
 - Every async pipeline uses `*Async` extensions; mixing sync chain methods with `Task<Result<T>>` triggers `TRLS009`.
 - Examples reference an `OrderId : RequiredGuid<OrderId>` value object and an `Order` aggregate. Substitute your own types without changing the structure.
+
+Known non-APIs and corrected assumptions:
+
+| Do not write | Correct source-backed statement |
+|---|---|
+| `WithDocumentPerVersion()` | No Trellis API with this name exists. |
+| `MapScalarApiReference()` | Sample-app helper only; not a Trellis framework API. |
+| Place `UseScalarValueValidation()` anywhere | Add it before routing/endpoints that deserialize request bodies. |
+| Mutate `IAuthorize.RequiredPermissions` | `RequiredPermissions` is an `IReadOnlyList<string>`. |
+| `IValidate.Validate()` returns `Result` | The declared return type is `IResult`. |
 
 ## Task -> recipe lookup
 
@@ -108,7 +118,7 @@ public partial class OrderStatus : RequiredEnum<OrderStatus>
 }
 
 // Repository contract — uses Maybe<T> for "may legitimately find nothing"
-// (per ADR-002); reserve Result<T> for failures the caller can act on.
+// Reserve Result<T> for failures the caller can act on.
 public interface IOrderRepository
 {
     Task<Maybe<Order>> FindAsync(OrderId id, CancellationToken ct);
@@ -1074,7 +1084,7 @@ services.AddTrellisAsp();
 services.AddControllers();
 ```
 
-> A `MaybeCompositeValueObjectJsonConverterFactory` to make Pattern B unnecessary is tracked in `BACKLOG.md` under *Open — Framework Features*.
+> A future `MaybeCompositeValueObjectJsonConverterFactory` could make Pattern B unnecessary; until then, nullable transport plus controller-seam adaptation is the supported pattern.
 
 ---
 
@@ -1415,7 +1425,7 @@ client.GetAsync($"/orders/{id}", ct)
 - **Do not mix sync chain methods with async lambdas.** `result.Map(async v => …)` triggers `TRLS009`; use `MapAsync`. The fix provider can apply this rewrite automatically.
 - **Construct errors via the closed ADT.** `new Error.NotFound(ResourceRef.For<Order>(id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
-- **Aggregate per-item Results with `Traverse` / `Sequence`.** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure (matching ADR-002 §3.6 — there is no `AggregateError`). For per-field validation aggregation, use the `Validate` builder which returns a single `Error.UnprocessableContent` carrying every field violation.
+- **Aggregate per-item Results with `Traverse` / `Sequence`.** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure; there is no aggregate-error carrier. For per-field validation aggregation, use the `Validate` builder which returns a single `Error.UnprocessableContent` carrying every field violation.
 - **Use `Error.UnprocessableContent.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.UnprocessableContent.ForField("email", "invalid_format", "must contain @")` over `new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "invalid_format") { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>` or use the `Validate` builder.
 - **`InputPointer.Root` for whole-body violations.** Use `InputPointer.ForProperty(name)` for field-level violations and `InputPointer.Root` when the rule is object-level.
 - **Only the `Trellis` namespace is auto-imported.** The template's implicit usings include `Trellis` (which exposes `Result`, `Result<T>`, `Error`, `Maybe<T>`, `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredDateTime<T>`, etc.). Every other Trellis namespace requires an explicit `using` per file — e.g. `using Trellis.Primitives;` for `Money` / `EmailAddress` / `PhoneNumber` / `MonetaryAmount` / `CurrencyCode` / `CountryCode` / etc., `using Trellis.StateMachine;` for `StateMachine<TState, TTrigger>`, `using Trellis.Authorization;` for permission types. This is intentional: implicit usings cannot be added at the template level without breaking services that don't reference the package.

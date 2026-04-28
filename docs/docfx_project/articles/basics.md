@@ -1,4 +1,4 @@
-# Basics
+﻿# Basics
 
 This article teaches the handful of Trellis concepts you will use most often: **value objects**, **`Result<T>`**, and the core operators that turn a multi-step workflow into readable code.
 
@@ -351,7 +351,7 @@ public static Task<Customer?> GetCustomerByIdAsync(long id) =>
     Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
 
 public static Task<Result> SendPromotionNotificationAsync(string email) =>
-    Task.FromResult(Result.Ok(new Unit()));
+    Task.FromResult(Result.Ok());
 
 string message = await GetCustomerByIdAsync(1)
     .ToResultAsync(new Error.NotFound(ResourceRef.For("Customer", 1)) { Detail = "Customer not found." })
@@ -364,7 +364,7 @@ string message = await GetCustomerByIdAsync(1)
 ```
 
 > [!NOTE]
-> `Unit` has no `Value` property. When you need a successful `Result`, use `Result.Ok()` or create a `Unit` with `new Unit()` / `default`.
+> Use `Result.Ok()` for successful operations that do not produce a payload.
 
 ### Parallel async work
 

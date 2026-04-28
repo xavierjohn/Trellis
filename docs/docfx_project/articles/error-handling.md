@@ -1,9 +1,9 @@
-# Error Handling
+﻿# Error Handling
 
 Errors are where Trellis becomes practical. They let you keep business rules, validation, and HTTP concerns explicit **without** falling back to exceptions for normal control flow.
 
 > [!TIP]
-> In Trellis V2, an error is a **closed discriminated union of typed records**. You can log it, transform it, combine it, test it, and `switch` over it with compile-time exhaustiveness checking.
+> In Trellis, an error is a **closed discriminated union of typed records**. You can log it, transform it, combine it, test it, and `switch` over it with compile-time exhaustiveness checking.
 
 ## Start Here: the Everyday Flow
 
@@ -65,7 +65,7 @@ Trellis separates them:
 | `Error.ContentTooLarge` | `(long? MaxBytes = null)` | 413 | Request body too large |
 | `Error.UnsupportedMediaType` | `(EquatableArray<string> Supported)` | 415 | Content-Type not supported |
 | `Error.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | 416 | Requested range invalid |
-| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | Domain-validation failures (replaces the pre-V2 `ValidationError` class) |
+| `Error.UnprocessableContent` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | 422 | Domain-validation failures |
 | `Error.PreconditionRequired` | `(PreconditionKind Condition)` | 428 | Required precondition header missing |
 | `Error.TooManyRequests` | `(RetryAfter? RetryAfter = null)` | 429 | Rate-limited |
 | `Error.InternalServerError` | `(string FaultId)` | 500 | Unhandled failure; rich diagnostics live in your log indexed by `FaultId` |
@@ -180,7 +180,7 @@ var message = LoadUser("42").Match(
 The C# compiler verifies exhaustiveness against the closed catalog. Add a new case to `Error` and every `switch` that doesn't handle it lights up.
 
 > [!NOTE]
-> The pre-V2 `MatchError` / `SwitchError` extensions and `FlattenValidationErrors` were removed. Use `switch` patterns and `Combine` instead.
+> The previous `MatchError` / `SwitchError` extensions and `FlattenValidationErrors` were removed. Use `switch` patterns and `Combine` instead.
 
 ## Side Effects Without Breaking the Pipeline
 

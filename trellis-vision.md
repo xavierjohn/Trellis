@@ -1,4 +1,4 @@
-# Trellis — Vision Statement
+﻿# Trellis — Vision Statement
 
 > **A .NET framework that makes AI-generated enterprise software reliable, not just fast.**
 
@@ -78,7 +78,7 @@ Install template → Scaffold project → Give AI the spec → Working software
 
 3. **AI implements the spec** — the human pastes the specification. The AI produces the full implementation: domain model, business logic, API endpoints, database persistence, and comprehensive tests.
 
-4. **Compiler validates correctness** — 19 built-in code analyzers catch common mistakes at build time. The type system prevents entire categories of bugs from compiling.
+4. **Compiler validates correctness** — built-in code analyzers catch common mistakes at build time. The type system prevents entire categories of bugs from compiling.
 
 5. **AI reports framework friction** — after every project, the AI generates a structured feedback report. This creates a continuous improvement loop: every AI-generated project makes the framework better for the next one.
 
@@ -111,7 +111,7 @@ Every team that adopts structured patterns in C# ends up writing the same glue c
 No other .NET framework provides the full AI-native pipeline:
 - A project template with baked-in AI instructions
 - A mechanical spec-to-code mapping
-- Compiler-enforced correctness via 19 analyzers
+- Compiler-enforced correctness via built-in analyzers
 - A structured feedback loop where every AI-generated project reports framework friction
 
 The combination makes Trellis uniquely suited for AI-driven enterprise development.
@@ -140,8 +140,8 @@ Trellis is distributed as a set of NuGet packages (the standard .NET package man
 
 | Category | What It Covers |
 |----------|---------------|
-| **Core** (5 packages) | Error handling, domain building blocks, typed value objects, code analyzers, source generator |
-| **Integration** (9 packages) | ASP.NET Core, HTTP clients, validation, testing, state machines, authorization, CQRS, database persistence |
+| **Core** | Error handling, domain building blocks, typed value objects, code analyzers, and bundled source generators |
+| **Integration** | ASP.NET Core, HTTP clients, validation, testing, state machines, authorization, CQRS, service defaults, and database persistence |
 | **Template** (1 package) | Project scaffolding with AI instructions |
 
 All packages are versioned together and follow semantic versioning. MIT licensed.
@@ -168,8 +168,8 @@ All packages are versioned together and follow semantic versioning. MIT licensed
 - **Aggregates and entities** with domain events — enforce business rules and consistency boundaries.
 - **State machine integration** — transitions return `Result<T>` instead of throwing, composable with the pipeline.
 - **Composable Specifications** — business rules as reusable, storage-agnostic expression trees.
-- **19 Roslyn analyzers** — catch incorrect usage at compile time.
-- **Source generator** for value object boilerplate.
+- **Roslyn analyzers** — catch incorrect usage at compile time.
+- **Bundled source generators** for value object, JSON converter, and EF Core boilerplate.
 - **CQRS pipeline behaviors** — validation, authorization, logging, and tracing, all short-circuiting on failure.
 - **Authorization building blocks** — Actor, permissions, resource-based auth, returning `Result<T>` on failure.
 
@@ -210,22 +210,26 @@ Each term maps directly to a Trellis construct:
 
 ### Error Types
 
-Trellis provides 10 discriminated error types that map to HTTP status codes:
+Trellis provides a closed set of typed error cases that map to HTTP status codes:
 
 | Error | HTTP | Use Case |
 |-------|------|----------|
-| Error.UnprocessableContent | 400 | Invalid input with field-level details |
+| Error.BadRequest | 400 | Malformed input or invalid request syntax |
+| Error.Unauthorized | 401 | Missing or invalid authentication |
+| Error.Forbidden | 403 | Insufficient permissions |
 | Error.NotFound | 404 | Entity doesn't exist |
 | Error.Conflict | 409 | Duplicate or concurrency violation |
-| Error.Forbidden | 403 | Insufficient permissions |
-| Error.Conflict | 422 | Business rule violation |
+| Error.PreconditionFailed | 412 | Failed conditional request or concurrency precondition |
+| Error.UnprocessableContent | 422 | Invalid domain input with field-level or rule-level details |
+| Error.TooManyRequests | 429 | Rate limit exceeded |
 | Error.InternalServerError | 500 | Unhandled failure |
+| Error.ServiceUnavailable | 503 | Temporary dependency or service outage |
 
-Plus `Error.BadRequest` (400), `Error.Unauthorized` (401), `Error.TooManyRequests` (429), `Error.ServiceUnavailable` (503).
+The API reference is the source of truth for the full error catalog and default ASP.NET mappings.
 
 ### Analyzer Rules
 
-19 compile-time rules catch common mistakes. Examples:
+Compile-time analyzer rules catch common mistakes. Examples:
 
 | Rule | What It Catches |
 |------|----------------|
@@ -241,11 +245,9 @@ Full rule table: [Analyzer Documentation](https://xavierjohn.github.io/Trellis/a
 **Core packages:**
 | Package | Purpose |
 |---------|---------|
-| `Trellis.Core` | Result\<T\>, Maybe\<T\>, error types, pipeline operators |
-| `Trellis.DomainDrivenDesign` | Aggregate, Entity, ValueObject, Domain Events, Specification |
-| `Trellis.Primitives` | 12 ready-to-use value objects + base types |
-| `Trellis.Core.Generator` | Source generator for value object boilerplate |
-| `Trellis.Analyzers` | 19 Roslyn analyzers |
+| `Trellis.Core` | `Result<T>`, `Maybe<T>`, typed errors, DDD building blocks, scalar value base types, and bundled value-object generator |
+| `Trellis.Primitives` | Ready-to-use concrete value objects plus JSON/tracing infrastructure |
+| `Trellis.Analyzers` | Compile-time guidance for Result, Maybe, and EF Core usage |
 
 **Integration packages:**
 | Package | Purpose |
@@ -254,10 +256,12 @@ Full rule table: [Analyzer Documentation](https://xavierjohn.github.io/Trellis/a
 | `Trellis.Http` | HttpClient extensions returning Result\<T\> |
 | `Trellis.FluentValidation` | Bridge FluentValidation into the pipeline |
 | `Trellis.Testing` | FluentAssertions extensions, test builders |
+| `Trellis.Testing.AspNetCore` | ASP.NET Core integration-test helpers |
 | `Trellis.StateMachine` | State machine integration |
 | `Trellis.Authorization` | Actor, permissions, resource-based auth (ASP.NET actor providers — Claims, Entra, Development — ship inside `Trellis.Asp`) |
 | `Trellis.Mediator` | CQRS pipeline behaviors |
 | `Trellis.EntityFrameworkCore` | EF Core conventions, query extensions |
+| `Trellis.ServiceDefaults` | Opinionated composition builder for Trellis web-service modules |
 
 ### Performance
 
@@ -282,7 +286,7 @@ Semantic versioning. All packages versioned together. Migration guide with every
 
 1. Install `Trellis.Core` — start returning `Result<T>` from new methods
 2. Add `Trellis.Primitives` — introduce value objects for new domain concepts
-3. Add `Trellis.Asp` — use `ToActionResult()` on new endpoints
+3. Add `Trellis.Asp` — use `ToHttpResponse(...)` on new endpoints, with `.AsActionResult<T>()` when an MVC controller needs a typed `ActionResult<T>`
 4. Migrate gradually — convert existing endpoints one at a time
 
 ### Migration from FunctionalDDD

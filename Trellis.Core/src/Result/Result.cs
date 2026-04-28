@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Non-generic <see cref="Result"/> is the v2 replacement for <c>Result&lt;Unit&gt;</c>. Use it for operations that
+/// Non-generic <see cref="Result"/> represents operations that
 /// either succeed (no value) or fail (with an <see cref="Error"/>).
 /// </para>
 /// <para>
-/// Per ADR-002 §3.5.1, <c>default(Result)</c> represents a <em>failure</em> carrying a sentinel
+/// <c>default(Result)</c> represents a <em>failure</em> carrying a sentinel
 /// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success. Always construct via
 /// <see cref="Ok()"/> or <see cref="Fail(Error)"/>; analyzer <c>TRLS019</c> flags explicit
@@ -36,7 +36,7 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
 
     /// <summary>True when the result represents failure.</summary>
     /// <remarks>
-    /// <c>default(Result).IsFailure</c> is <see langword="true"/> per ADR-002 §3.5.1.
+    /// <c>default(Result).IsFailure</c> is <see langword="true"/>.
     /// </remarks>
     [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
     public bool IsFailure => !_isOk;
@@ -80,7 +80,7 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     /// Reading this property never throws. The nullable return type is the discriminator: a non-null
     /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
     /// For <c>default(Result)</c>, returns the shared <see cref="Trellis.Error.Unexpected"/> sentinel
-    /// (per ADR-002 §3.5.1) so default-initialized failures are observationally equivalent to
+    /// so default-initialized failures are observationally equivalent to
     /// <c>Result.Fail(new Error.Unexpected("default_initialized"))</c>.
     /// </remarks>
     /// <example>
@@ -181,7 +181,7 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     /// <remarks>
     /// Goes through the constructor so that <see cref="Activity.Current"/> receives the success status,
     /// matching the tracing behavior of <see cref="Ok{TValue}(TValue)"/>. Always prefer this factory over
-    /// <c>default(Result)</c>: per ADR-002 §3.5.1, <c>default(Result)</c> represents <em>failure</em> with
+    /// <c>default(Result)</c>: <c>default(Result)</c> represents <em>failure</em> with
     /// the <see cref="Trellis.Error.Unexpected"/> sentinel, not success.
     /// </remarks>
     public static Result Ok() => new(false, null);

@@ -1,4 +1,4 @@
-# Trellis
+﻿# Trellis
 
 [![Build](https://github.com/xavierjohn/Trellis/actions/workflows/build.yml/badge.svg)](https://github.com/xavierjohn/Trellis/actions/workflows/build.yml)
 [![codecov](https://codecov.io/gh/xavierjohn/Trellis/branch/main/graph/badge.svg)](https://codecov.io/gh/xavierjohn/Trellis)
@@ -11,10 +11,12 @@
 [![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://xavierjohn.github.io/Trellis/)
 
 <p align="center">
-  <img src="docs/images/hero-banner.png" alt="Trellis — Typed errors, validated objects, composable pipelines for .NET" />
+  <img src="docs/images/hero-banner.png" alt="Trellis — Structured building blocks for AI-driven enterprise software" />
 </p>
 
-> Typed errors, validated value objects, and composable application pipelines for .NET.
+> Structured building blocks for AI-driven enterprise software.
+
+Trellis helps AI create consistent, reliable .NET services by turning typed errors, validated value objects, and composable application pipelines into compiler-enforced guardrails.
 
 ## Before / After
 
@@ -72,7 +74,7 @@ var result = Result.Ok("ada@example.com")
 | Package | What it gives you |
 | --- | --- |
 | [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, and pipeline operators |
-| [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use value objects plus base classes for your own |
+| [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use concrete value objects plus JSON/tracing infrastructure |
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | Compile-time guidance for Result, Maybe, and EF Core usage |
 
 ### Integration

@@ -14,7 +14,7 @@ using System.Diagnostics;
 /// an operation can fail in a predictable way that should be handled by the caller.
 /// </para>
 /// <para>
-/// Per ADR-002 §3.5.1, <c>default(Result&lt;T&gt;)</c> represents a <em>failure</em> carrying a sentinel
+/// <c>default(Result&lt;T&gt;)</c> represents a <em>failure</em> carrying a sentinel
 /// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success that would hide a programming error.
 /// Always construct via <see cref="Result.Ok{T}(T)"/> or <see cref="Result.Fail{T}(Error)"/>; analyzer
@@ -59,7 +59,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// </summary>
     /// <value>True if failed; otherwise false.</value>
     /// <remarks>
-    /// <c>default(Result&lt;T&gt;).IsFailure</c> is <see langword="true"/> per ADR-002 §3.5.1.
+    /// <c>default(Result&lt;T&gt;).IsFailure</c> is <see langword="true"/>.
     /// </remarks>
     [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
     public bool IsFailure => !_isOk;
@@ -117,7 +117,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     //
     // Note: in v1 there was a `public TValue Value { get; }` property that threw
     // InvalidOperationException on failure — the primary cause of TRLS003. It was
-    // removed in v2 (ADR-002 §3.1 + ga-03). Use TryGetValue, Match, or Deconstruct
+    // removed from the current API . Use TryGetValue, Match, or Deconstruct
     // to extract the success value safely. The non-throwing nullable `Error` property
     // is intentionally retained because it powers clean pattern-match idioms
     // (`if (r.Error is { } e) ...`, `r.Error switch { Error.NotFound => ..., ... }`).
@@ -129,7 +129,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// Reading this property never throws. The nullable return type is the discriminator: a non-null
     /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
     /// For <c>default(Result&lt;T&gt;)</c>, returns the shared <see cref="Trellis.Error.Unexpected"/>
-    /// sentinel (per ADR-002 §3.5.1) so default-initialized failures are observationally equivalent to
+    /// sentinel so default-initialized failures are observationally equivalent to
     /// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default_initialized"))</c>.
     /// </remarks>
     /// <example>
@@ -247,7 +247,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <remarks>
     /// Two results are equal if they have the same success/failure state and equal values/errors.
     /// Default-initialized failures use the shared sentinel <see cref="Trellis.Error.Unexpected"/>
-    /// per ADR-002 §3.5.1, so two <c>default(Result&lt;T&gt;)</c> values are equal, and a default
+    /// so two <c>default(Result&lt;T&gt;)</c> values are equal, and a default
     /// equals an explicit <c>Result.Fail&lt;T&gt;(...)</c> with the same sentinel.
     /// </remarks>
     public bool Equals(Result<TValue> other)
@@ -295,8 +295,8 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// </summary>
     /// <remarks>
     /// Use <see cref="AsUnit"/> when a pipeline returns a value but the next step only cares about success/failure
-    /// (e.g., bridging a value-producing operation into a void/Unit-shaped consumer). Replaces the v1 idiom
-    /// <c>result.Map(_ =&gt; Unit.Default)</c> / <c>Result&lt;Unit&gt;</c>. For default-initialized failures
+    /// (e.g., bridging a value-producing operation into a void/No-payload consumer). Replaces the v1 idiom
+    /// <c>result.Map(_ =&gt; Unit.Default)</c> / <c>non-generic Result</c>. For default-initialized failures
     /// the returned non-generic <see cref="Result"/> is constructed via <see cref="Result.Fail(Error)"/> with
     /// the shared sentinel — never returns <c>default(Result)</c>.
     /// </remarks>
