@@ -40,6 +40,7 @@ try {
         'Error\.RangeNotSatisfiable.*Unit = "bytes"',
         'Content-Range: \{Unit\}',
         '<param name="Unit">',
+        'bindingContext\.Result = emptyResult\.Value',
         'range unit'
     )
 
@@ -71,6 +72,7 @@ try {
         @{ Pattern = '\bResult\.Failure\s*[(<]'; Message = 'Result.Failure is removed; use Result.Fail<T>(...).' },
         @{ Pattern = '\bResult\.SuccessIf(?:Async)?\b'; Message = 'Result.SuccessIf is removed; use a ternary with Result.Ok/Fail.' },
         @{ Pattern = '\bResult\.FailureIf(?:Async)?\b'; Message = 'Result.FailureIf is removed; use a ternary with Result.Ok/Fail.' },
+        @{ Pattern = '(?-i:(?<!\.)\b(?:result|[a-z][A-Za-z0-9_]*Result|r)\.Value\b)'; Message = 'Result<T>.Value was removed; use TryGetValue, Match, Deconstruct, or GetValueOrDefault.' },
         @{ Pattern = '\bADR-002\b'; Message = 'Current-facing docs should describe current behavior, not redesign-plan references.' },
         @{ Pattern = '\bv2 redesign\b'; Message = 'Current-facing docs should not reference completed redesign process wording.' },
         @{ Pattern = '\bPhase\s+[0-9][A-Za-z]?\b'; Message = 'Current-facing docs should not reference completed phase process wording.' },

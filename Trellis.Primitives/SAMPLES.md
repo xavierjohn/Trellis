@@ -77,9 +77,9 @@ public void SafeProcessing(string input)
 {
     var result = OrderNumber.TryCreate(input);
     
-    if (result.IsSuccess)
+    if (result.TryGetValue(out var orderNumber))
     {
-        Console.WriteLine($"Valid order number: {result.Value}");
+        Console.WriteLine($"Valid order number: {orderNumber}");
     }
     else
     {
@@ -307,9 +307,8 @@ public void ParseFromGuid()
     var guid = Guid.Parse("550e8400-e29b-41d4-a716-446655440000");
     
     var result = UserId.TryCreate(guid);
-    if (result.IsSuccess)
+    if (result.TryGetValue(out var userId))
     {
-        var userId = result.Value;
         Console.WriteLine($"User ID: {userId}");
     }
     
@@ -322,9 +321,8 @@ public void ParseFromString()
 {
     var result = UserId.TryCreate("550e8400-e29b-41d4-a716-446655440000");
     
-    if (result.IsSuccess)
+    if (result.TryGetValue(out var userId))
     {
-        var userId = result.Value;
         Console.WriteLine($"User ID: {userId}");
     }
     else
@@ -603,12 +601,12 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
     public static TrackingId Parse(string s, IFormatProvider? provider)
     {
         var r = TryCreate(s);
-        if (r.IsFailure)
+        if (!r.TryGetValue(out var value))
         {
-            var val = (Error.UnprocessableContent)r.Error;
+            var val = (Error.UnprocessableContent)r.Error!;
             throw new FormatException(val.FieldErrors[0].Details[0]);
         }
-        return r.Value;
+        return value;
     }
 
     public static bool TryParse(
@@ -617,14 +615,11 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
         [MaybeNullWhen(false)] out TrackingId result)
     {
         var r = TryCreate(s);
-        if (r.IsFailure)
-        {
-            result = default;
-            return false;
-        }
+        if (r.TryGetValue(out result))
+            return true;
 
-        result = r.Value;
-        return true;
+        result = default;
+        return false;
     }
 
     public static Result<TrackingId> TryCreate(string? requiredStringOrNothing, string? fieldName = null)
@@ -694,12 +689,12 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
     public static EmployeeId Parse(string s, IFormatProvider? provider)
     {
         var r = TryCreate(s);
-        if (r.IsFailure)
+        if (!r.TryGetValue(out var value))
         {
-            var val = (Error.UnprocessableContent)r.Error;
+            var val = (Error.UnprocessableContent)r.Error!;
             throw new FormatException(val.FieldErrors[0].Details[0]);
         }
-        return r.Value;
+        return value;
     }
 
     public static bool TryParse(
@@ -708,14 +703,11 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
         [MaybeNullWhen(false)] out EmployeeId result)
     {
         var r = TryCreate(s);
-        if (r.IsFailure)
-        {
-            result = default;
-            return false;
-        }
+        if (r.TryGetValue(out result))
+            return true;
 
-        result = r.Value;
-        return true;
+        result = default;
+        return false;
     }
 
     public static EmployeeId NewUnique() => new(Guid.NewGuid());

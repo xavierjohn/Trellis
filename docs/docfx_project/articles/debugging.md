@@ -1,4 +1,4 @@
-# Debugging Trellis Pipelines
+﻿# Debugging Trellis Pipelines
 
 Trellis pipelines are easy to read when they work — and sometimes harder to inspect when they do not.
 
@@ -90,7 +90,7 @@ static string Describe(Result<int> result) =>
 
 | Expression | Why it is risky |
 | --- | --- |
-| `result.Value` | Throws when the result is a failure. |
+| Removed `Value` accessor | `Result<T>.Value` is not available. Use `TryGetValue(out var value)` or `Match(...)` instead. |
 | `result.Error!` without checking | Null on success; dereferencing it without checking can throw. |
 
 > [!WARNING]

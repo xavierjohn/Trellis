@@ -157,17 +157,18 @@ else if (result.TryGetError(out var error))
     Console.WriteLine(error.Detail);
 ```
 
-#### Option 3: explicit state checks
+#### Option 3: deconstruct
 
 ```csharp
-if (result.IsSuccess)
-    Console.WriteLine(result.Value);
+var (isSuccess, name, error) = result;
+if (isSuccess)
+    Console.WriteLine(name);
 else
-    Console.WriteLine(result.Error.Detail);
+    Console.WriteLine(error?.Detail);
 ```
 
 > [!WARNING]
-> `Value` throws when the result is a failure, and `Error` throws when the result is a success. Use `Match`, `TryGetValue`, or explicit state checks unless you are certain which track you are on.
+> `Result<T>.Value` no longer exists. Use `Match`, `TryGetValue`, or deconstruction to extract the success value. `result.Error` is `null` on success and never throws.
 
 ## Core operations
 

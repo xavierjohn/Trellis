@@ -202,7 +202,7 @@ This analyzer was deleted from the current API. The pattern `TryCreate(...).Valu
 
 #### `TernaryValueOrDefaultAnalyzer` — `TRLS013` *(removed from the current API)*
 
-This analyzer was deleted from the current API. The `result.IsSuccess ? result.Value : fallback` shape no longer compiles because `Result<T>.Value` was removed. Use `result.GetValueOrDefault(fallback)` or `result.Match(onSuccess: v => v, onFailure: _ => fallback)`.
+This analyzer was deleted from the current API. The `result.IsSuccess ? result.Value : fallback` shape no longer compiles because `Result<T>.Value` was removed. Use `result.GetValueOrDefault(fallback)` or `result.Match(onSuccess: v => v, onFailure: _ => fallback)`. <!-- stale-doc-ok: analyzer migration note intentionally cites removed value accessor -->
 
 #### `AsyncLambdaWithSyncMethodAnalyzer` — `TRLS009`
 - Flags synchronous Trellis methods called with async work:

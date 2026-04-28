@@ -138,17 +138,17 @@ public sealed class RegisterUserService
             .Combine(LastName.TryCreate(request.LastName, nameof(request.LastName)))
             .Bind(User.TryCreate);
 
-        if (userResult.IsFailure)
+        if (!userResult.TryGetValue(out var user))
             return userResult;
 
-        if (await _repository.EmailExistsAsync(userResult.Value.Email, ct))
-            return new Error.Conflict(null, "conflict") { Detail = $"Email {userResult.Value.Email} is already registered." };
+        if (await _repository.EmailExistsAsync(user.Email, ct))
+            return new Error.Conflict(null, "conflict") { Detail = $"Email {user.Email} is already registered." };
 
-        var saveResult = await _repository.AddAsync(userResult.Value, ct);
+        var saveResult = await _repository.AddAsync(user, ct);
         if (saveResult.IsFailure)
             return saveResult.Error;
 
-        return userResult.Value;
+        return user;
     }
 }
 ```
@@ -314,10 +314,10 @@ public sealed class RegisterUserHandler
             return new Error.Conflict(null, "conflict") { Detail = $"Email {command.Email} is already registered." };
 
         var userResult = User.TryCreate(command.Email, command.FirstName, command.LastName);
-        if (userResult.IsFailure)
+        if (!userResult.TryGetValue(out var user))
             return userResult;
 
-        var saveResult = await _repository.AddAsync(userResult.Value, ct);
+        var saveResult = await _repository.AddAsync(user, ct);
         if (saveResult.IsFailure)
             return saveResult.Error;
 
@@ -325,7 +325,7 @@ public sealed class RegisterUserHandler
         if (emailResult.IsFailure)
             return emailResult.Error;
 
-        return userResult.Value;
+        return user;
     }
 }
 ```
