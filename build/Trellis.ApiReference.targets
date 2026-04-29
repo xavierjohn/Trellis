@@ -11,26 +11,20 @@
   -->
 
   <!--
-    Idempotency guard, keyed on this targets file's full path. Each Trellis
-    package ships its own renamed copy (build/<PackageId>.targets and
-    buildTransitive/<PackageId>.targets), so we must allow every distinct
-    package to register its own TrellisApiReference items, but block the
-    case where the same package's targets file is imported twice (e.g. via
-    both build/ and buildTransitive/ assets, or a re-evaluation pass).
-    _TrellisApiReferenceTargetsImported is a semicolon-separated list of
-    already-imported file paths.
-  -->
-  <PropertyGroup>
-    <!-- Reset on each import; MSBuild properties persist across evaluations,
-         so stale 'true' from a prior duplicate-import would otherwise cause
-         a later first-time import of a different package to be skipped. -->
-    <_TrellisApiRefAlreadyImported></_TrellisApiRefAlreadyImported>
-    <_TrellisApiRefImportKey>;$(MSBuildThisFileFullPath.ToLowerInvariant());</_TrellisApiRefImportKey>
-    <_TrellisApiRefAlreadyImported Condition="'$(_TrellisApiReferenceTargetsImported)' != '' AND $([System.String]::Copy(';$(_TrellisApiReferenceTargetsImported);').Contains('$(_TrellisApiRefImportKey)'))">true</_TrellisApiRefAlreadyImported>
-    <_TrellisApiReferenceTargetsImported Condition="'$(_TrellisApiRefAlreadyImported)' != 'true'">$(_TrellisApiReferenceTargetsImported);$(MSBuildThisFileFullPath.ToLowerInvariant())</_TrellisApiReferenceTargetsImported>
-  </PropertyGroup>
+    Each Trellis package ships this targets file at both build/<PackageId>.targets
+    and buildTransitive/<PackageId>.targets. NuGet may import either or both
+    depending on whether the package is referenced directly, transitively, or
+    both, so this file can run multiple times per package and once per package
+    in a multi-package solution.
 
-  <ItemGroup Condition="'$(_TrellisApiRefAlreadyImported)' != 'true'">
+    We declare TrellisApiReference items unconditionally and dedupe at copy
+    time by canonical %(FullPath). PropertyGroup-based "already imported"
+    guards do NOT work for ItemGroup conditions: MSBuild evaluates all
+    PropertyGroups across all imports first, then all ItemGroups, so any
+    ItemGroup condition would see the final property value, not the per-import
+    value.
+  -->
+  <ItemGroup>
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
   </ItemGroup>
 
@@ -91,17 +85,25 @@
     obj/, and would not actually reduce contention across projects.)
     Retries on Copy handle the residual race when two projects in a parallel
     solution build write the same file at the same instant.
+
+    %(FullPath) canonicalizes paths like "build\..\trellis\x.md" and
+    "buildTransitive\..\trellis\x.md" to the same absolute path, so
+    KeepDuplicates="false" collapses the build/ vs buildTransitive/ pickups
+    of the same package to a single Copy.
   -->
   <Target Name="_CopyTrellisApiReference"
           BeforeTargets="Build"
           Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
+    <ItemGroup>
+      <_TrellisApiReferenceUnique Include="@(TrellisApiReference->'%(FullPath)')" KeepDuplicates="false" />
+    </ItemGroup>
     <Message Text="Trellis API references not copied: .git not found within 11 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
              Importance="Low"
              Condition="'$(_TrellisApiOutputDir)' == ''" />
     <MakeDir Directories="$(_TrellisApiOutputDir)"
              ContinueOnError="WarnAndContinue"
              Condition="'$(_TrellisApiOutputDir)' != '' AND !Exists('$(_TrellisApiOutputDir)')" />
-    <Copy SourceFiles="@(TrellisApiReference)"
+    <Copy SourceFiles="@(_TrellisApiReferenceUnique)"
           DestinationFolder="$(_TrellisApiOutputDir)"
           SkipUnchangedFiles="true"
           Retries="3"
