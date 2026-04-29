@@ -153,22 +153,36 @@ public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
 ```csharp
 using FluentValidation;
 using Mediator;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
+using Trellis.Asp;
 using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Primitives;
 
-public sealed record PlaceOrderCommand(Guid OrderId, decimal Amount, string Currency)
-    : ICommand<Result<OrderId>>;
+public sealed record PlaceOrderRequest(Guid OrderId, decimal Amount, string Currency);
+
+public sealed record PlaceOrderCommand(OrderId OrderId, Money Total)
+    : ICommand<Result<OrderId>>
+{
+    public static Result<PlaceOrderCommand> TryCreate(PlaceOrderRequest request) =>
+        Result.Combine(
+                OrderId.TryCreate(request.OrderId, nameof(request.OrderId)),
+                MonetaryAmount.TryCreate(request.Amount, nameof(request.Amount)),
+                CurrencyCode.TryCreate(request.Currency, nameof(request.Currency)))
+            .Map((orderId, amount, currency) =>
+                new PlaceOrderCommand(orderId, Money.Create(amount.Value, currency.Value)));
+}
 
 public sealed class PlaceOrderValidator : AbstractValidator<PlaceOrderCommand>
 {
     public PlaceOrderValidator()
     {
-        RuleFor(x => x.OrderId).NotEmpty();
-        RuleFor(x => x.Amount).GreaterThan(0);
-        RuleFor(x => x.Currency).Length(3);
+        RuleFor(x => x.Total.Amount)
+            .LessThanOrEqualTo(10_000m)
+            .WithMessage("Orders over 10,000 require manual approval.");
     }
 }
 
@@ -176,12 +190,22 @@ public sealed class PlaceOrderHandler(IOrderRepository repo)
     : ICommandHandler<PlaceOrderCommand, Result<OrderId>>
 {
     public ValueTask<Result<OrderId>> Handle(PlaceOrderCommand cmd, CancellationToken cancellationToken) =>
-        OrderId.TryCreate(cmd.OrderId)
-            .BindZip(_ => CurrencyCode.TryCreate(cmd.Currency).Map(c => new Money(cmd.Amount, c)))
-            .Bind((orderId, money) => Order.Create(orderId, money))
+        Order.Create(cmd.OrderId, cmd.Total)
             .Tap(repo.Add)
             .Map(o => o.Id)
             .AsValueTask();
+}
+
+[ApiController]
+[Route("orders")]
+public sealed class OrdersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask<ActionResult<OrderId>> Place([FromBody] PlaceOrderRequest request, CancellationToken ct) =>
+        PlaceOrderCommand.TryCreate(request)
+            .BindAsync(command => sender.Send(command, ct))
+            .ToHttpResponseAsync()
+            .AsActionResultAsync<OrderId>();
 }
 
 // Composition root
@@ -196,7 +220,9 @@ public static class OrdersDi
 }
 ```
 
-**What it shows.** The mediator pipeline already runs `ValidationBehavior<TMessage, TResponse>` before the handler — `AddTrellisFluentValidation` plugs every `IValidator<T>` into it via the open-generic `IMessageValidator<T>` adapter. `AddTrellisUnitOfWork<TContext>` registers `TransactionalCommandBehavior<,>` *after* the others, so it lands innermost and commits only when the handler returns success. The handler itself is pure: no `try`/`catch`, no `await db.SaveChangesAsync()` — that's the unit of work's job.
+**What it shows.** The mediator pipeline already runs `ValidationBehavior<TMessage, TResponse>` before the handler — `AddTrellisFluentValidation` plugs every `IValidator<T>` into it via the open-generic `IMessageValidator<T>` adapter. `AddTrellisUnitOfWork<TContext>` registers `TransactionalCommandBehavior<,>` *after* the others, so it lands innermost and commits only when the handler returns success. The handler itself is pure: no `try`/`catch`, no primitive parsing, no `await db.SaveChangesAsync()` — that's the unit of work's job.
+
+> **Validation ownership.** Primitive→VO conversion happens at the transport seam. FluentValidation validates VO-shaped commands for cross-field rules and business invariants. Handlers receive value-object-shaped commands and must not parse primitives. See [Recipe 18](#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) for the canonical controller-seam adapter.
 
 **Anti-pattern → fix (TRLS010).**
 
@@ -222,6 +248,7 @@ public static class OrdersDi
 ```csharp
 using Trellis;
 
+// Paging cursor and limit are protocol/query-string controls validated at the transport seam.
 public sealed record ListOrdersQuery(string? Cursor, int Limit) : IQuery<Result<Page<OrderListItem>>>;
 
 public sealed record OrderListItem(Guid Id, decimal Amount, string Currency);
@@ -284,7 +311,10 @@ var app = builder.Build();
 
 app.MapGet("/orders/{id:guid}", async (Guid id, IMediator mediator, CancellationToken ct) =>
 {
-    Result<Order> result = await mediator.Send(new GetOrderQuery(id), ct);
+    Result<OrderId> orderId = OrderId.TryCreate(id, nameof(id));
+    if (!orderId.IsSuccess) return orderId.Error.ToHttpResponse();
+
+    Result<Order> result = await mediator.Send(new GetOrderQuery(orderId.Value), ct);
 
     return result.ToHttpResponse(opts => opts
         .WithETag(o => o.ETag)                         // strong ETag from aggregate
@@ -316,7 +346,10 @@ public sealed class OrdersController(IMediator mediator) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<OrderDto>> Get(Guid id, CancellationToken ct)
     {
-        Result<Order> result = await mediator.Send(new GetOrderQuery(id), ct);
+        Result<OrderId> orderId = OrderId.TryCreate(id, nameof(id));
+        if (!orderId.IsSuccess) return orderId.Error.ToHttpResponse().AsActionResult<OrderDto>();
+
+        Result<Order> result = await mediator.Send(new GetOrderQuery(orderId.Value), ct);
 
         return result
             .ToHttpResponse(
@@ -382,7 +415,7 @@ public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result>, IAu
     public IReadOnlyList<string> RequiredPermissions => ["orders:delete"];
 }
 
-public sealed record UpdateOrderCommand(OrderId OrderId, decimal NewAmount)
+public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
     : ICommand<Result>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
 {
     // Typed VO carried straight through — no parse, no throw.
@@ -591,6 +624,7 @@ unproc.Rules.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machin
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
+using Trellis.Primitives;
 using Trellis.Testing;
 using Xunit;
 
@@ -602,22 +636,22 @@ public class PlaceOrderHandlerTests
         var repo = new InMemoryOrderRepository();
         var sut  = new PlaceOrderHandler(repo);
 
-        var result = await sut.Handle(
-            new PlaceOrderCommand(Guid.NewGuid(), 100m, "USD"),
-            CancellationToken.None);
+        var command = new PlaceOrderCommand(
+            OrderId.TryCreate(Guid.NewGuid()).Unwrap(),
+            Money.TryCreate(100m, "USD").Unwrap());
+
+        var result = await sut.Handle(command, CancellationToken.None);
 
         result.Should().BeSuccess();
         result.Should().HaveValue(repo.Last().Id);                  // structural equality on Result<T>
     }
 
     [Fact]
-    public async Task PlaceOrder_fails_with_validation_when_currency_invalid()
+    public void PlaceOrder_request_adapter_fails_when_currency_invalid()
     {
-        var sut = new PlaceOrderHandler(new InMemoryOrderRepository());
+        var request = new PlaceOrderRequest(Guid.NewGuid(), 100m, "US"); // 2 chars, not 3
 
-        var result = await sut.Handle(
-            new PlaceOrderCommand(Guid.NewGuid(), 100m, "US"),       // 2 chars, not 3
-            CancellationToken.None);
+        var result = PlaceOrderCommand.TryCreate(request);
 
         result.Should().BeFailureOfType<Error.UnprocessableContent>()
             .Which.Should().HaveFieldError("currency");

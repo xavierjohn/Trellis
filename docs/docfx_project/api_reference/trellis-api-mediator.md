@@ -287,7 +287,7 @@ The Trellis pipeline executes outermost → innermost in this order. The first f
 
 ## Code examples
 
-### Registering behaviors and explicit resource authorization
+### Registering behaviors and shared resource authorization
 
 ```csharp
 using System;
@@ -304,36 +304,41 @@ using Trellis.Mediator;
 var services = new ServiceCollection();
 
 services.AddScoped<IActorProvider, StaticActorProvider>();
-services.AddScoped<IResourceLoader<GetOrderQuery, Order>, GetOrderResourceLoader>();
+services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
 services.AddTrellisBehaviors();
 services.AddResourceAuthorization<GetOrderQuery, Order, Result<Order>>();
 
 var behaviorOrder = Trellis.Mediator.ServiceCollectionExtensions.PipelineBehaviors;
 Console.WriteLine(string.Join(", ", behaviorOrder.Select(type => type.Name)));
 
-public sealed record Order(string Id, string OwnerId);
+public sealed partial class OrderId : RequiredGuid<OrderId>;
+public sealed partial class ActorId : RequiredString<ActorId>;
 
-public sealed record GetOrderQuery(string Id)
-    : IQuery<Result<Order>>, IAuthorize, IAuthorizeResource<Order>, IValidate
+public sealed record Order(OrderId Id, ActorId OwnerId);
+
+public sealed record GetOrderQuery(OrderId Id)
+    : IQuery<Result<Order>>, IAuthorize, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>, IValidate
 {
     public IReadOnlyList<string> RequiredPermissions => ["orders:read"];
 
-    public IResult Validate() =>
-        string.IsNullOrWhiteSpace(Id)
-            ? Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Id)), "required") { Detail = "Order ID is required." })))
-            : Result.Ok();
+    public OrderId GetResourceId() => Id;
+
+    public IResult Validate() => Result.Ok();
 
     public IResult Authorize(Actor actor, Order resource) =>
-        actor.IsOwner(resource.OwnerId)
+        resource.OwnerId.Value == actor.Id
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden("orders.read") { Detail = "Only the owner can view the order." });
 }
 
-public sealed class GetOrderResourceLoader : IResourceLoader<GetOrderQuery, Order>
+public sealed class OrderResourceLoader : SharedResourceLoaderById<Order, OrderId>
 {
-    public Task<Result<Order>> LoadAsync(GetOrderQuery message, CancellationToken cancellationToken) =>
-        Task.FromResult(Result.Ok(new Order(message.Id, "user-1")));
+    public override Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken cancellationToken) =>
+        Task.FromResult(ActorId.TryCreate("user-1").Map(ownerId => new Order(id, ownerId)));
 }
+
+// Escape hatch: prefer IIdentifyResource<TResource, TId> + SharedResourceLoaderById<TResource, TId> in generated services.
+// services.AddScoped<IResourceLoader<GetOrderQuery, Order>, GetOrderResourceLoader>();
 
 public sealed class StaticActorProvider : IActorProvider
 {
