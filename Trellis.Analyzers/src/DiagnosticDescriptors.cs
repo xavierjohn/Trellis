@@ -194,15 +194,15 @@ public static class DiagnosticDescriptors
         id: TrellisDiagnosticIds.UseSaveChangesResult,
         title: "Use SaveChangesResultAsync instead of SaveChangesAsync",
         messageFormat: "Use 'SaveChangesResultUnitAsync' or 'SaveChangesResultAsync' instead of '{0}' in non-UoW contexts. " +
-                       "Direct SaveChanges calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
-                       "Note: under AddTrellisUnitOfWork<TContext> the pipeline owns commit — repositories should stage changes only and not call SaveChanges* at all.",
+                       "Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
+                       "Note: under AddTrellisUnitOfWork<TContext> the pipeline owns commit — repositories should stage changes only and not call SaveChanges/SaveChangesAsync at all.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
                      "In non-UoW contexts, use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result). " +
                      "Under AddTrellisUnitOfWork<TContext> the TransactionalCommandBehavior owns commit; repositories should stage changes via " +
-                     "DbContext APIs (Add/Update/Remove) and not invoke SaveChanges at all.",
+                     "DbContext APIs (Add/Update/Remove) and not invoke SaveChanges/SaveChangesAsync at all.",
         helpLinkUri: HelpLinkBase + "TRLS015");
 
     /// <summary>

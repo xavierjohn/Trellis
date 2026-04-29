@@ -264,7 +264,7 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
 - Recommends (non-UoW contexts):
   - `SaveChangesResultAsync` when the return value is used
   - `SaveChangesResultUnitAsync` when the value is discarded
-- Under `AddTrellisUnitOfWork<TContext>` the `TransactionalCommandBehavior` owns commit; repositories should stage changes via DbContext APIs (`Add`/`Update`/`Remove`) and not invoke `SaveChanges*` at all.
+- Under `AddTrellisUnitOfWork<TContext>` the `TransactionalCommandBehavior` owns commit; repositories should stage changes via DbContext APIs (`Add`/`Update`/`Remove`) and not invoke `SaveChanges`/`SaveChangesAsync` at all.
 - Code fix: `UseSaveChangesResultCodeFixProvider`.
 
 #### `HasIndexMaybePropertyAnalyzer` — `TRLS016`
