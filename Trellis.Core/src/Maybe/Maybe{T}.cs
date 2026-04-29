@@ -11,6 +11,35 @@ using System.Diagnostics.CodeAnalysis;
 /// and composes with <see cref="Result{T}"/> pipelines.
 /// </summary>
 /// <typeparam name="T">The type of the optional value. Must be a non-null type.</typeparam>
+/// <remarks>
+/// <para>
+/// <strong>EF Core / IQueryable predicates:</strong> By default, EF Core cannot translate
+/// <c>.Value</c>, <c>.HasValue</c>, or <c>GetValueOrDefault(d)</c> on a <c>Maybe&lt;T&gt;</c>
+/// property because <c>MaybeConvention</c> ignores the CLR property and maps the value via a
+/// generated <c>_camelCase</c> storage member. You have two supported options:
+/// </para>
+/// <list type="bullet">
+/// <item><description>
+/// Register <c>Trellis.EntityFrameworkCore.DbContextOptionsBuilderExtensions.AddTrellisInterceptors()</c>
+/// — <c>MaybeQueryInterceptor</c> / <c>MaybeExpressionRewriter</c> rewrite
+/// <c>.HasValue</c>, <c>.HasNoValue</c>, <c>.Value</c>, and <c>GetValueOrDefault(d)</c> into
+/// <c>EF.Property</c> (with <c>!= null</c>, <c>== null</c>, or <c>?? d</c>) so natural LINQ syntax
+/// translates to SQL.
+/// </description></item>
+/// <item><description>
+/// Use <c>Trellis.EntityFrameworkCore.MaybeQueryableExtensions</c> explicitly:
+/// <c>WhereHasValue</c>, <c>WhereNone</c>, <c>WhereEquals</c>, <c>WhereLessThan</c>,
+/// <c>WhereLessThanOrEqual</c>, <c>WhereGreaterThan</c>, <c>WhereGreaterThanOrEqual</c>, and the
+/// matching <c>OrderBy*</c>/<c>ThenBy*</c> overloads. These work without registering interceptors.
+/// </description></item>
+/// </list>
+/// <para>
+/// Without one of those, direct <c>.Value</c> / <c>GetValueOrDefault(sentinel)</c> on a mapped
+/// <c>Maybe&lt;T&gt;</c> property either throws at materialization or fails to translate.
+/// The <c>UnsafeValueInLinqAnalyzer</c> (TRLS013) flags <c>.Value</c> in Select-family LINQ
+/// projections (in-memory case).
+/// </para>
+/// </remarks>
 /// <example>
 /// <code>
 /// // Create a Maybe with a value
@@ -26,8 +55,15 @@ using System.Diagnostics.CodeAnalysis;
 ///
 /// // Consume with pattern matching
 /// string display = name.Match(v =&gt; $"Hello, {v}!", () =&gt; "Hello, stranger!");
+///
+/// // EF Core predicate over Maybe&lt;T&gt; — pick one:
+/// // (a) With AddTrellisInterceptors() registered, natural syntax translates:
+/// //     db.Orders.Where(o =&gt; o.SubmittedAt.HasValue &amp;&amp; o.SubmittedAt.Value &lt; cutoff)
+/// // (b) Without interceptors, use MaybeQueryableExtensions:
+/// //     db.Orders.WhereLessThan(o =&gt; o.SubmittedAt, cutoff)
 /// </code>
 /// </example>
+/// <seealso cref="Result{T}"/>
 [DebuggerDisplay("{_isValueSet ? \"Some(\" + _value + \")\": \"None\"}")]
 public readonly struct Maybe<T> :
     IEquatable<T>,

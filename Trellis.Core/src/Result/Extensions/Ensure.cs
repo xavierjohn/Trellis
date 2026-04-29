@@ -8,10 +8,35 @@ using System.Diagnostics;
 /// If conditions fail, the result is converted to a failure with the specified error.
 /// </summary>
 /// <remarks>
-/// Ensure methods allow you to validate result values against conditions and convert successful results
-/// to failures if the validation fails. This is useful for enforcing business rules and constraints
-/// in a functional pipeline without breaking the railway pattern.
+/// <para>
+/// Ensure is the <strong>canonical guard primitive</strong> in Trellis. Prefer it over hand-written
+/// <c>if (!cond) return Result.Fail(error);</c> blocks — Ensure participates in tracing, composes
+/// inside railway pipelines, and threads through both <see cref="Result"/> and <see cref="Result{T}"/>.
+/// </para>
+/// <para>
+/// For non-generic guards (no value to thread), call <see cref="Result.Ensure(bool, Error)"/> as a
+/// static factory: <c>Result.Ensure(condition, error)</c> — it returns <c>Result.Ok()</c> when
+/// <c>condition</c> is <c>true</c> and <c>Result.Fail(error)</c> otherwise.
+/// </para>
+/// <para>
+/// For value-threaded guards, call <c>result.Ensure(predicate, error)</c> as an extension on
+/// <see cref="Result{T}"/>. The extension shape short-circuits on failure: if the receiver is
+/// already a failure, the predicate is not evaluated and the original error is preserved.
+/// </para>
+/// <para>
+/// <strong>Note:</strong> there is no <c>Result.SuccessIf</c> method — <see cref="Result.Ensure(bool, Error)"/> covers that scenario. <!-- stale-doc-ok -->
+/// </para>
 /// </remarks>
+/// <example>
+/// <code>
+/// // Non-generic guard at the top of a handler:
+/// var guard = Result.Ensure(order.IsOpen, new Error.Conflict(null, "order_closed"));
+///
+/// // Value-threaded guard inside a pipeline:
+/// var validated = parseAmount
+///     .Ensure(amt =&gt; amt &gt; 0, Error.UnprocessableContent.ForField("amount", "must_be_positive"));
+/// </code>
+/// </example>
 [DebuggerStepThrough]
 public static class EnsureExtensions
 {
