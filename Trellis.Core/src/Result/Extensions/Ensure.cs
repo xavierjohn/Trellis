@@ -26,7 +26,7 @@ using System.Diagnostics;
 /// <example>
 /// <code>
 /// // Non-generic guard at the top of a handler:
-/// var guard = Result.Ensure(order.IsOpen, Error.Conflict("order_closed"));
+/// var guard = Result.Ensure(order.IsOpen, new Error.Conflict("order_closed"));
 ///
 /// // Value-threaded guard inside a pipeline:
 /// var validated = parseAmount
