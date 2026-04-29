@@ -21,9 +21,13 @@
     already-imported file paths.
   -->
   <PropertyGroup>
-    <_TrellisApiRefImportKey>;$(MSBuildThisFileFullPath);</_TrellisApiRefImportKey>
+    <!-- Reset on each import; MSBuild properties persist across evaluations,
+         so stale 'true' from a prior duplicate-import would otherwise cause
+         a later first-time import of a different package to be skipped. -->
+    <_TrellisApiRefAlreadyImported></_TrellisApiRefAlreadyImported>
+    <_TrellisApiRefImportKey>;$(MSBuildThisFileFullPath.ToLowerInvariant());</_TrellisApiRefImportKey>
     <_TrellisApiRefAlreadyImported Condition="'$(_TrellisApiReferenceTargetsImported)' != '' AND $([System.String]::Copy(';$(_TrellisApiReferenceTargetsImported);').Contains('$(_TrellisApiRefImportKey)'))">true</_TrellisApiRefAlreadyImported>
-    <_TrellisApiReferenceTargetsImported Condition="'$(_TrellisApiRefAlreadyImported)' != 'true'">$(_TrellisApiReferenceTargetsImported);$(MSBuildThisFileFullPath)</_TrellisApiReferenceTargetsImported>
+    <_TrellisApiReferenceTargetsImported Condition="'$(_TrellisApiRefAlreadyImported)' != 'true'">$(_TrellisApiReferenceTargetsImported);$(MSBuildThisFileFullPath.ToLowerInvariant())</_TrellisApiReferenceTargetsImported>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(_TrellisApiRefAlreadyImported)' != 'true'">
@@ -47,18 +51,33 @@
     <_Tp3>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp2)', '..'))))</_Tp3>
     <_Tp4>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp3)', '..'))))</_Tp4>
     <_Tp5>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp4)', '..'))))</_Tp5>
+    <_Tp6>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp5)', '..'))))</_Tp6>
+    <_Tp7>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp6)', '..'))))</_Tp7>
+    <_Tp8>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp7)', '..'))))</_Tp8>
+    <_Tp9>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp8)', '..'))))</_Tp9>
+    <_Tp10>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp9)', '..'))))</_Tp10>
     <_Tp0Git>$([System.IO.Path]::Combine('$(_Tp0)', '.git'))</_Tp0Git>
     <_Tp1Git>$([System.IO.Path]::Combine('$(_Tp1)', '.git'))</_Tp1Git>
     <_Tp2Git>$([System.IO.Path]::Combine('$(_Tp2)', '.git'))</_Tp2Git>
     <_Tp3Git>$([System.IO.Path]::Combine('$(_Tp3)', '.git'))</_Tp3Git>
     <_Tp4Git>$([System.IO.Path]::Combine('$(_Tp4)', '.git'))</_Tp4Git>
     <_Tp5Git>$([System.IO.Path]::Combine('$(_Tp5)', '.git'))</_Tp5Git>
+    <_Tp6Git>$([System.IO.Path]::Combine('$(_Tp6)', '.git'))</_Tp6Git>
+    <_Tp7Git>$([System.IO.Path]::Combine('$(_Tp7)', '.git'))</_Tp7Git>
+    <_Tp8Git>$([System.IO.Path]::Combine('$(_Tp8)', '.git'))</_Tp8Git>
+    <_Tp9Git>$([System.IO.Path]::Combine('$(_Tp9)', '.git'))</_Tp9Git>
+    <_Tp10Git>$([System.IO.Path]::Combine('$(_Tp10)', '.git'))</_Tp10Git>
     <_TrellisRepoRoot Condition="Exists('$(_Tp0Git)')">$(_Tp0)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp1Git)')">$(_Tp1)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp2Git)')">$(_Tp2)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp3Git)')">$(_Tp3)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp4Git)')">$(_Tp4)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp5Git)')">$(_Tp5)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp6Git)')">$(_Tp6)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp7Git)')">$(_Tp7)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp8Git)')">$(_Tp8)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp9Git)')">$(_Tp9)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp10Git)')">$(_Tp10)</_TrellisRepoRoot>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -76,7 +95,7 @@
   <Target Name="_CopyTrellisApiReference"
           BeforeTargets="Build"
           Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
-    <Message Text="Trellis API references not copied: .git not found within 6 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
+    <Message Text="Trellis API references not copied: .git not found within 11 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
              Importance="Low"
              Condition="'$(_TrellisApiOutputDir)' == ''" />
     <MakeDir Directories="$(_TrellisApiOutputDir)"
