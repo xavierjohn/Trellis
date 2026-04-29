@@ -11,17 +11,22 @@
   -->
 
   <!--
-    Idempotency guard. NuGet imports build/<id>.targets for direct refs and
-    buildTransitive/<id>.targets for transitive refs; we ship both so direct
-    consumers always get the sync. If the same package is imported through
-    both paths (or imported twice for any other reason), this guard prevents
-    duplicate TrellisApiReference items and target re-registration.
+    Idempotency guard, keyed on this targets file's full path. Each Trellis
+    package ships its own renamed copy (build/<PackageId>.targets and
+    buildTransitive/<PackageId>.targets), so we must allow every distinct
+    package to register its own TrellisApiReference items, but block the
+    case where the same package's targets file is imported twice (e.g. via
+    both build/ and buildTransitive/ assets, or a re-evaluation pass).
+    _TrellisApiReferenceTargetsImported is a semicolon-separated list of
+    already-imported file paths.
   -->
   <PropertyGroup>
-    <_TrellisApiReferenceTargetsImported Condition="'$(_TrellisApiReferenceTargetsImported)' == ''">$(MSBuildThisFileFullPath)</_TrellisApiReferenceTargetsImported>
+    <_TrellisApiRefImportKey>;$(MSBuildThisFileFullPath);</_TrellisApiRefImportKey>
+    <_TrellisApiRefAlreadyImported Condition="'$(_TrellisApiReferenceTargetsImported)' != '' AND $([System.String]::Copy(';$(_TrellisApiReferenceTargetsImported);').Contains('$(_TrellisApiRefImportKey)'))">true</_TrellisApiRefAlreadyImported>
+    <_TrellisApiReferenceTargetsImported Condition="'$(_TrellisApiRefAlreadyImported)' != 'true'">$(_TrellisApiReferenceTargetsImported);$(MSBuildThisFileFullPath)</_TrellisApiReferenceTargetsImported>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(_TrellisApiReferenceTargetsImported)' == '$(MSBuildThisFileFullPath)'">
+  <ItemGroup Condition="'$(_TrellisApiRefAlreadyImported)' != 'true'">
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
   </ItemGroup>
 
@@ -58,15 +63,18 @@
 
   <PropertyGroup>
     <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != ''">$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::Combine('$(_TrellisRepoRoot)', '.github'))))</_TrellisApiOutputDir>
-    <!-- Stamp file used as Outputs to make this target incremental and reduce
-         contention when multiple projects build in parallel. -->
-    <_TrellisApiSyncStamp Condition="'$(_TrellisApiOutputDir)' != ''">$(IntermediateOutputPath)trellis-api-sync.stamp</_TrellisApiSyncStamp>
   </PropertyGroup>
 
+  <!--
+    SkipUnchangedFiles="true" makes the Copy a no-op when destinations are
+    up-to-date, so we don't need an Inputs/Outputs stamp file. (A per-project
+    obj/ stamp would also go stale if .github/ is cleaned independently of
+    obj/, and would not actually reduce contention across projects.)
+    Retries on Copy handle the residual race when two projects in a parallel
+    solution build write the same file at the same instant.
+  -->
   <Target Name="_CopyTrellisApiReference"
           BeforeTargets="Build"
-          Inputs="@(TrellisApiReference)"
-          Outputs="$(_TrellisApiSyncStamp)"
           Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
     <Message Text="Trellis API references not copied: .git not found within 6 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
              Importance="Low"
@@ -81,24 +89,12 @@
           RetryDelayMilliseconds="200"
           ContinueOnError="WarnAndContinue"
           Condition="'$(_TrellisApiOutputDir)' != ''" />
-    <!-- Touch the stamp so subsequent builds skip when inputs are unchanged. -->
-    <MakeDir Directories="$(IntermediateOutputPath)"
-             Condition="'$(_TrellisApiSyncStamp)' != '' AND !Exists('$(IntermediateOutputPath)')" />
-    <Touch Files="$(_TrellisApiSyncStamp)"
-           AlwaysCreate="true"
-           ContinueOnError="WarnAndContinue"
-           Condition="'$(_TrellisApiSyncStamp)' != ''" />
   </Target>
 
   <!--
     Manual invocation: dotnet build /t:TrellisSyncApiReference
-    Copies API reference files without running a full build. Forces re-sync
-    by deleting the stamp file first so Inputs/Outputs incremental skip
-    doesn't short-circuit a deliberate sync request.
+    Copies API reference files without running a full build.
   -->
-  <Target Name="TrellisSyncApiReference">
-    <Delete Files="$(_TrellisApiSyncStamp)"
-            Condition="'$(_TrellisApiSyncStamp)' != '' AND Exists('$(_TrellisApiSyncStamp)')" />
-    <CallTarget Targets="_CopyTrellisApiReference" />
-  </Target>
+  <Target Name="TrellisSyncApiReference"
+          DependsOnTargets="_CopyTrellisApiReference" />
 </Project>
