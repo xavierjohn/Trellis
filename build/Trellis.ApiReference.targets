@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!--
     Shared targets file packed into each Trellis NuGet package.
     Declares TrellisApiReference items pointing to the API reference markdown
@@ -9,7 +9,19 @@
     Set TrellisDisableApiReferenceSync=true to disable automatic sync.
     Manual sync: dotnet build /t:TrellisSyncApiReference
   -->
-  <ItemGroup>
+
+  <!--
+    Idempotency guard. NuGet imports build/<id>.targets for direct refs and
+    buildTransitive/<id>.targets for transitive refs; we ship both so direct
+    consumers always get the sync. If the same package is imported through
+    both paths (or imported twice for any other reason), this guard prevents
+    duplicate TrellisApiReference items and target re-registration.
+  -->
+  <PropertyGroup>
+    <_TrellisApiReferenceTargetsImported Condition="'$(_TrellisApiReferenceTargetsImported)' == ''">$(MSBuildThisFileFullPath)</_TrellisApiReferenceTargetsImported>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(_TrellisApiReferenceTargetsImported)' == '$(MSBuildThisFileFullPath)'">
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
   </ItemGroup>
 
@@ -46,26 +58,47 @@
 
   <PropertyGroup>
     <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != ''">$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::Combine('$(_TrellisRepoRoot)', '.github'))))</_TrellisApiOutputDir>
+    <!-- Stamp file used as Outputs to make this target incremental and reduce
+         contention when multiple projects build in parallel. -->
+    <_TrellisApiSyncStamp Condition="'$(_TrellisApiOutputDir)' != ''">$(IntermediateOutputPath)trellis-api-sync.stamp</_TrellisApiSyncStamp>
   </PropertyGroup>
 
   <Target Name="_CopyTrellisApiReference"
           BeforeTargets="Build"
+          Inputs="@(TrellisApiReference)"
+          Outputs="$(_TrellisApiSyncStamp)"
           Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
     <Message Text="Trellis API references not copied: .git not found within 6 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
              Importance="Low"
              Condition="'$(_TrellisApiOutputDir)' == ''" />
     <MakeDir Directories="$(_TrellisApiOutputDir)"
+             ContinueOnError="WarnAndContinue"
              Condition="'$(_TrellisApiOutputDir)' != '' AND !Exists('$(_TrellisApiOutputDir)')" />
     <Copy SourceFiles="@(TrellisApiReference)"
           DestinationFolder="$(_TrellisApiOutputDir)"
           SkipUnchangedFiles="true"
+          Retries="3"
+          RetryDelayMilliseconds="200"
+          ContinueOnError="WarnAndContinue"
           Condition="'$(_TrellisApiOutputDir)' != ''" />
+    <!-- Touch the stamp so subsequent builds skip when inputs are unchanged. -->
+    <MakeDir Directories="$(IntermediateOutputPath)"
+             Condition="'$(_TrellisApiSyncStamp)' != '' AND !Exists('$(IntermediateOutputPath)')" />
+    <Touch Files="$(_TrellisApiSyncStamp)"
+           AlwaysCreate="true"
+           ContinueOnError="WarnAndContinue"
+           Condition="'$(_TrellisApiSyncStamp)' != ''" />
   </Target>
 
   <!--
     Manual invocation: dotnet build /t:TrellisSyncApiReference
-    Copies API reference files without running a full build.
+    Copies API reference files without running a full build. Forces re-sync
+    by deleting the stamp file first so Inputs/Outputs incremental skip
+    doesn't short-circuit a deliberate sync request.
   -->
-  <Target Name="TrellisSyncApiReference"
-          DependsOnTargets="_CopyTrellisApiReference" />
+  <Target Name="TrellisSyncApiReference">
+    <Delete Files="$(_TrellisApiSyncStamp)"
+            Condition="'$(_TrellisApiSyncStamp)' != '' AND Exists('$(_TrellisApiSyncStamp)')" />
+    <CallTarget Targets="_CopyTrellisApiReference" />
+  </Target>
 </Project>
