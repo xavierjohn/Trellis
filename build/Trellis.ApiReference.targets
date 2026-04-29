@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!--
     Shared targets file packed into each Trellis NuGet package.
     Declares TrellisApiReference items pointing to the API reference markdown
@@ -8,6 +8,21 @@
     Override TrellisApiReferenceRoot to change the destination root.
     Set TrellisDisableApiReferenceSync=true to disable automatic sync.
     Manual sync: dotnet build /t:TrellisSyncApiReference
+  -->
+
+  <!--
+    Each Trellis package ships this targets file at both build/<PackageId>.targets
+    and buildTransitive/<PackageId>.targets. NuGet may import either or both
+    depending on whether the package is referenced directly, transitively, or
+    both, so this file can run multiple times per package and once per package
+    in a multi-package solution.
+
+    We declare TrellisApiReference items unconditionally and dedupe at copy
+    time by canonical %(FullPath). PropertyGroup-based "already imported"
+    guards do NOT work for ItemGroup conditions: MSBuild evaluates all
+    PropertyGroups across all imports first, then all ItemGroups, so any
+    ItemGroup condition would see the final property value, not the per-import
+    value.
   -->
   <ItemGroup>
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
@@ -30,32 +45,70 @@
     <_Tp3>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp2)', '..'))))</_Tp3>
     <_Tp4>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp3)', '..'))))</_Tp4>
     <_Tp5>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp4)', '..'))))</_Tp5>
+    <_Tp6>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp5)', '..'))))</_Tp6>
+    <_Tp7>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp6)', '..'))))</_Tp7>
+    <_Tp8>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp7)', '..'))))</_Tp8>
+    <_Tp9>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp8)', '..'))))</_Tp9>
+    <_Tp10>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp9)', '..'))))</_Tp10>
     <_Tp0Git>$([System.IO.Path]::Combine('$(_Tp0)', '.git'))</_Tp0Git>
     <_Tp1Git>$([System.IO.Path]::Combine('$(_Tp1)', '.git'))</_Tp1Git>
     <_Tp2Git>$([System.IO.Path]::Combine('$(_Tp2)', '.git'))</_Tp2Git>
     <_Tp3Git>$([System.IO.Path]::Combine('$(_Tp3)', '.git'))</_Tp3Git>
     <_Tp4Git>$([System.IO.Path]::Combine('$(_Tp4)', '.git'))</_Tp4Git>
     <_Tp5Git>$([System.IO.Path]::Combine('$(_Tp5)', '.git'))</_Tp5Git>
+    <_Tp6Git>$([System.IO.Path]::Combine('$(_Tp6)', '.git'))</_Tp6Git>
+    <_Tp7Git>$([System.IO.Path]::Combine('$(_Tp7)', '.git'))</_Tp7Git>
+    <_Tp8Git>$([System.IO.Path]::Combine('$(_Tp8)', '.git'))</_Tp8Git>
+    <_Tp9Git>$([System.IO.Path]::Combine('$(_Tp9)', '.git'))</_Tp9Git>
+    <_Tp10Git>$([System.IO.Path]::Combine('$(_Tp10)', '.git'))</_Tp10Git>
     <_TrellisRepoRoot Condition="Exists('$(_Tp0Git)')">$(_Tp0)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp1Git)')">$(_Tp1)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp2Git)')">$(_Tp2)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp3Git)')">$(_Tp3)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp4Git)')">$(_Tp4)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp5Git)')">$(_Tp5)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp6Git)')">$(_Tp6)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp7Git)')">$(_Tp7)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp8Git)')">$(_Tp8)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp9Git)')">$(_Tp9)</_TrellisRepoRoot>
+    <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp10Git)')">$(_Tp10)</_TrellisRepoRoot>
   </PropertyGroup>
 
   <PropertyGroup>
     <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != ''">$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::Combine('$(_TrellisRepoRoot)', '.github'))))</_TrellisApiOutputDir>
   </PropertyGroup>
 
+  <!--
+    SkipUnchangedFiles="true" makes the Copy a no-op when destinations are
+    up-to-date, so we don't need an Inputs/Outputs stamp file. (A per-project
+    obj/ stamp would also go stale if .github/ is cleaned independently of
+    obj/, and would not actually reduce contention across projects.)
+    Retries on Copy handle the residual race when two projects in a parallel
+    solution build write the same file at the same instant.
+
+    %(FullPath) canonicalizes paths like "build\..\trellis\x.md" and
+    "buildTransitive\..\trellis\x.md" to the same absolute path, so
+    KeepDuplicates="false" collapses the build/ vs buildTransitive/ pickups
+    of the same package to a single Copy.
+  -->
   <Target Name="_CopyTrellisApiReference"
           BeforeTargets="Build"
-          Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true'">
-    <Warning Text="Trellis API references not copied: .git not found within 6 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
+          Condition="'@(TrellisApiReference)' != '' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
+    <ItemGroup>
+      <_TrellisApiReferenceUnique Include="@(TrellisApiReference->'%(FullPath)')" KeepDuplicates="false" />
+    </ItemGroup>
+    <Message Text="Trellis API references not copied: .git not found within 11 levels of $(MSBuildProjectDirectory). Set TrellisApiReferenceRoot to override."
+             Importance="Low"
              Condition="'$(_TrellisApiOutputDir)' == ''" />
-    <Copy SourceFiles="@(TrellisApiReference)"
+    <MakeDir Directories="$(_TrellisApiOutputDir)"
+             ContinueOnError="WarnAndContinue"
+             Condition="'$(_TrellisApiOutputDir)' != '' AND !Exists('$(_TrellisApiOutputDir)')" />
+    <Copy SourceFiles="@(_TrellisApiReferenceUnique)"
           DestinationFolder="$(_TrellisApiOutputDir)"
           SkipUnchangedFiles="true"
+          Retries="3"
+          RetryDelayMilliseconds="200"
+          ContinueOnError="WarnAndContinue"
           Condition="'$(_TrellisApiOutputDir)' != ''" />
   </Target>
 
