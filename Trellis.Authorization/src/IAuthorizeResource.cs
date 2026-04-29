@@ -18,7 +18,23 @@
 /// If loading fails (e.g., resource not found), the pipeline short-circuits with the loader's error
 /// before <see cref="Authorize"/> is called.
 /// </para>
+/// <para>
+/// Use <see cref="Result.Ensure(bool, Error)"/> as the canonical guard inside <see cref="Authorize"/>
+/// rather than hand-written <c>if</c>/<c>return</c> blocks or ad-hoc ternaries — Ensure participates
+/// in tracing and reads as a single declarative line. There is no <c>Result.SuccessIf</c>; <see cref="Result.Ensure(bool, Error)"/> covers that scenario. <!-- stale-doc-ok -->
+/// </para>
 /// </remarks>
+/// <example>
+/// <code>
+/// public sealed record CancelOrderCommand(OrderId Id) : IAuthorizeResource&lt;Order&gt;
+/// {
+///     public IResult Authorize(Actor actor, Order resource) =&gt;
+///         Result.Ensure(
+///             resource.OwnerId == actor.UserId,
+///             new Error.Forbidden("order_not_owned"));
+/// }
+/// </code>
+/// </example>
 public interface IAuthorizeResource<in TResource>
 {
     /// <summary>

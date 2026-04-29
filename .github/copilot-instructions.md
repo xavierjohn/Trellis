@@ -115,7 +115,7 @@ Before considering code work complete:
 1. Run `dotnet build` from the repository root.
 2. Run `dotnet test` from the repository root.
 3. Confirm public API changes are reflected in the API references and related package docs.
-4. For changed code, use a code-review agent with `model: gpt-5.4` before committing.
+4. For changed code, use a code-review agent with `model: gpt-5.5` before committing.
 
 Documentation-only changes do not require a build or test run unless they affect generated docs, examples that are compiled, or documented public API behavior.
 
@@ -141,5 +141,5 @@ Before committing any changes after explicit approval:
 
 1. Confirm required validation has passed.
 2. Confirm the diff contains only intended changes.
-3. Run a code-review agent with `model: gpt-5.4` for changed code and address substantive findings.
+3. Run a code-review agent with `model: gpt-5.5` for changed code and address substantive findings.
 4. Present the final summary to the user.

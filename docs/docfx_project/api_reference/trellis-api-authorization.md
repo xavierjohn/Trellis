@@ -208,9 +208,9 @@ public sealed record CancelOrderCommand(string OrderId)
     public string GetResourceId() => OrderId;
 
     public IResult Authorize(Actor actor, Order order) =>
-        actor.IsOwner(order.OwnerId) || actor.HasPermission("orders:cancel-any")
-            ? Result.Ok()
-            : Result.Fail(new Error.Forbidden("orders.cancel")
+        Result.Ensure(
+            actor.IsOwner(order.OwnerId) || actor.HasPermission("orders:cancel-any"),
+            new Error.Forbidden("orders.cancel")
                 { Detail = "Only the owner can cancel this order." });
 }
 

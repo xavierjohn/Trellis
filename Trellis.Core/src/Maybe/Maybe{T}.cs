@@ -11,6 +11,20 @@ using System.Diagnostics.CodeAnalysis;
 /// and composes with <see cref="Result{T}"/> pipelines.
 /// </summary>
 /// <typeparam name="T">The type of the optional value. Must be a non-null type.</typeparam>
+/// <remarks>
+/// <para>
+/// <strong>EF Core / IQueryable predicates:</strong> Never write <c>.Value</c>, <c>.HasValue</c>, or
+/// <c>GetValueOrDefault(sentinel)</c> inside a LINQ expression that EF Core will translate to SQL —
+/// the <c>MaybeConvention</c> ignores the CLR <c>Maybe&lt;T&gt;</c> property and maps it via a
+/// generated <c>_camelCase</c> storage member, so EF Core cannot translate direct member access on
+/// the property. Use <c>Trellis.EntityFrameworkCore.MaybeQueryableExtensions</c> instead:
+/// <c>WhereHasValue</c>, <c>WhereNone</c>, <c>WhereEquals</c>, <c>WhereLessThan</c>,
+/// <c>WhereLessThanOrEqual</c>, <c>WhereGreaterThan</c>, <c>WhereGreaterThanOrEqual</c>, and the
+/// matching <c>OrderBy*</c>/<c>ThenBy*</c> overloads. The <c>UnsafeValueInLinqAnalyzer</c> (TRLS013)
+/// flags the <c>.Value</c> case; the <c>GetValueOrDefault(sentinel)</c> hack silently produces wrong
+/// SQL and is never the correct workaround.
+/// </para>
+/// </remarks>
 /// <example>
 /// <code>
 /// // Create a Maybe with a value
@@ -26,8 +40,16 @@ using System.Diagnostics.CodeAnalysis;
 ///
 /// // Consume with pattern matching
 /// string display = name.Match(v =&gt; $"Hello, {v}!", () =&gt; "Hello, stranger!");
+///
+/// // EF Core predicate over Maybe&lt;T&gt; — use MaybeQueryableExtensions, never .Value:
+/// // var pending = await db.Orders
+/// //     .WhereLessThan(o =&gt; o.SubmittedAt, cutoff)   // ✓ translates to SQL
+/// //     .ToListAsync(ct);
+/// // Anti-pattern (won't translate; do NOT do this):
+/// // db.Orders.Where(o =&gt; o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) &lt; cutoff)
 /// </code>
 /// </example>
+/// <seealso cref="Result{T}"/>
 [DebuggerDisplay("{_isValueSet ? \"Some(\" + _value + \")\": \"None\"}")]
 public readonly struct Maybe<T> :
     IEquatable<T>,

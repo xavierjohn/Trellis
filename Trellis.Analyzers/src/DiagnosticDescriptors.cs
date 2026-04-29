@@ -156,13 +156,19 @@ public static class DiagnosticDescriptors
     /// </summary>
     public static readonly DiagnosticDescriptor UnsafeValueInLinq = new(
         id: TrellisDiagnosticIds.UnsafeMaybeValueInLinq,
-        title: "Unsafe access to Maybe.Value in LINQ expression",
-        messageFormat: "Accessing '{0}' in LINQ without filtering by {1} first may throw exceptions",
+        title: "Unsafe access to Maybe.Value in LINQ projection",
+        messageFormat: "Accessing '{0}' in a LINQ projection without filtering by {1} first may throw at runtime. " +
+                       "Filter via .Where(x => x.HasValue) before the projection, or use .Match.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "When using LINQ on collections of Maybe<T>, filter by HasValue first, " +
-                     "or use Select with Match to safely extract values.",
+        description: "Direct .Value access on Maybe<T> inside Select-family LINQ projections " +
+                     "(Select/SelectMany/OrderBy/OrderByDescending/ThenBy/ThenByDescending/GroupBy/ToDictionary/ToLookup) " +
+                     "throws InvalidOperationException for None elements unless an earlier .Where(x => x.HasValue) " +
+                     "makes the access safe. For EF Core IQueryable predicates over Maybe<T>, use " +
+                     "Trellis.EntityFrameworkCore.MaybeQueryableExtensions " +
+                     "(WhereHasValue/WhereNone/WhereEquals/WhereLessThan/WhereLessThanOrEqual/WhereGreaterThan/WhereGreaterThanOrEqual) — " +
+                     "never .Value or GetValueOrDefault(sentinel).",
         helpLinkUri: HelpLinkBase + "TRLS013");
 
     /// <summary>
@@ -185,12 +191,16 @@ public static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor UseSaveChangesResult = new(
         id: TrellisDiagnosticIds.UseSaveChangesResult,
         title: "Use SaveChangesResultAsync instead of SaveChangesAsync",
-        messageFormat: "Use 'SaveChangesResultUnitAsync' or 'SaveChangesResultAsync' instead of '{0}'. Direct SaveChanges calls bypass the Result pipeline and turn database errors into unhandled exceptions.",
+        messageFormat: "Use 'SaveChangesResultUnitAsync' or 'SaveChangesResultAsync' instead of '{0}' in non-UoW contexts. " +
+                       "Direct SaveChanges calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
+                       "Note: under AddTrellisUnitOfWork<TContext> the pipeline owns commit — repositories should stage changes only and not call SaveChanges* at all.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
-                     "Use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result) instead.",
+                     "In non-UoW contexts, use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result). " +
+                     "Under AddTrellisUnitOfWork<TContext> the TransactionalCommandBehavior owns commit; repositories should stage changes via " +
+                     "DbContext APIs (Add/Update/Remove) and not invoke SaveChanges at all.",
         helpLinkUri: HelpLinkBase + "TRLS015");
 
     /// <summary>
