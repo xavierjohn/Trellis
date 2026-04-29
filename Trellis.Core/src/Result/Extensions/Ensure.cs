@@ -15,9 +15,13 @@ using System.Diagnostics;
 /// </para>
 /// <para>
 /// For non-generic guards (no value to thread), call <see cref="Result.Ensure(bool, Error)"/> as a
-/// static factory: <c>Result.Ensure(condition, error)</c>. For value-threaded guards, call
-/// <c>result.Ensure(predicate, error)</c> as an extension on <see cref="Result{T}"/>. Both shapes
-/// short-circuit on failure and preserve the original error when the receiver is already a failure.
+/// static factory: <c>Result.Ensure(condition, error)</c> — it returns <c>Result.Ok()</c> when
+/// <c>condition</c> is <c>true</c> and <c>Result.Fail(error)</c> otherwise.
+/// </para>
+/// <para>
+/// For value-threaded guards, call <c>result.Ensure(predicate, error)</c> as an extension on
+/// <see cref="Result{T}"/>. The extension shape short-circuits on failure: if the receiver is
+/// already a failure, the predicate is not evaluated and the original error is preserved.
 /// </para>
 /// <para>
 /// <strong>Note:</strong> there is no <c>Result.SuccessIf</c> method — <see cref="Result.Ensure(bool, Error)"/> covers that scenario. <!-- stale-doc-ok -->

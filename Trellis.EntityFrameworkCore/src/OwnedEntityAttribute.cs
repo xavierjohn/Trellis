@@ -11,15 +11,13 @@
 /// The source generator emits a private parameterless constructor that initializes all
 /// reference-type properties with <c>null!</c> to satisfy the compiler's nullability analysis.
 /// </para>
-/// <para>Properties should be settable (for example, with <c>private set;</c>) so EF Core can populate them during materialization.</para>
+/// <para>Properties should be settable so EF Core can populate them during materialization. Use <c>{ get; private set; }</c> as the supported pattern.</para>
 /// <para>
-/// <strong>Known incompatibility — init-only properties.</strong> EF Core materialization through
-/// the generated private parameterless constructor cannot assign <c>{ get; init; }</c> properties
-/// (init setters are only callable during object initialization, not from a separate property
-/// assignment after construction). Use <c>{ get; private set; }</c> on owned-entity properties
-/// instead. Mixing <c>[OwnedEntity]</c> with init-only properties currently silently fails to
-/// populate those properties during read; a future analyzer (TRLS024) will surface this at
-/// compile time.
+/// <strong>Note — init-only properties.</strong> The supported shape is <c>{ get; private set; }</c>.
+/// <c>{ get; init; }</c> on properties of <c>[OwnedEntity]</c> types is not currently exercised by
+/// Trellis tests, and the generated private parameterless constructor pattern is designed around
+/// post-construction assignment (which init setters do not allow). A future analyzer is planned
+/// to explicitly enforce <c>private set;</c> on <c>[OwnedEntity]</c> properties at compile time.
 /// </para>
 /// </remarks>
 /// <example>
