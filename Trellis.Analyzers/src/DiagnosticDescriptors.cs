@@ -165,10 +165,12 @@ public static class DiagnosticDescriptors
         description: "Direct .Value access on Maybe<T> inside Select-family LINQ projections " +
                      "(Select/SelectMany/OrderBy/OrderByDescending/ThenBy/ThenByDescending/GroupBy/ToDictionary/ToLookup) " +
                      "throws InvalidOperationException for None elements unless an earlier .Where(x => x.HasValue) " +
-                     "makes the access safe. For EF Core IQueryable predicates over Maybe<T>, use " +
-                     "Trellis.EntityFrameworkCore.MaybeQueryableExtensions " +
-                     "(WhereHasValue/WhereNone/WhereEquals/WhereLessThan/WhereLessThanOrEqual/WhereGreaterThan/WhereGreaterThanOrEqual) — " +
-                     "never .Value or GetValueOrDefault(sentinel).",
+                     "makes the access safe. For EF Core IQueryable predicates over a Maybe<T> property, either " +
+                     "register Trellis.EntityFrameworkCore.DbContextOptionsBuilderExtensions.AddTrellisInterceptors() " +
+                     "(which rewrites .HasValue/.Value/GetValueOrDefault into EF.Property/null-checks/COALESCE), " +
+                     "or use Trellis.EntityFrameworkCore.MaybeQueryableExtensions " +
+                     "(WhereHasValue/WhereNone/WhereEquals/WhereLessThan/WhereLessThanOrEqual/WhereGreaterThan/WhereGreaterThanOrEqual) " +
+                     "explicitly.",
         helpLinkUri: HelpLinkBase + "TRLS013");
 
     /// <summary>
