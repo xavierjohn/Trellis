@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Http — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Http — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-http.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellishttp--api-reference">Trellis.Http — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Http</code>
+<strong>Namespace:</strong> <code>Trellis.Http</code>
+<strong>Purpose:</strong> Bridge <code>Task&lt;HttpResponseMessage&gt;</code> into <code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code> pipelines and deserialize JSON payloads into <code>Result&lt;T&gt;</code> / <code>Result&lt;Maybe&lt;T&gt;&gt;</code>.</p>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<blockquote>
+<p>Bare <code>ToResultAsync()</code> is strict by default: non-2xx responses become typed Trellis failures instead of remaining on the success track.</p>
+</blockquote>
+<h2 id="type">Type</h2>
+<h3 id="httpresponseextensions"><code>HttpResponseExtensions</code></h3>
+<pre><code class="lang-csharp">public static class HttpResponseExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ToResultAsync(this Task&lt;HttpResponseMessage&gt; response, Func&lt;HttpStatusCode, Error?&gt;? statusMap = null)</code></td>
+<td><code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code></td>
+<td>When <code>statusMap</code> is <code>null</code>, 2xx statuses pass through as <code>Ok(response)</code> and non-2xx statuses map to typed Trellis errors. When supplied, a <code>null</code> return passes through; a non-null <code>Error</code> becomes <code>Fail</code> and the underlying response is disposed.</td>
+</tr>
+<tr>
+<td><code>ToResultAsync(this Task&lt;HttpResponseMessage&gt; response, Func&lt;HttpResponseMessage, CancellationToken, Task&lt;Error?&gt;&gt; mapper, CancellationToken ct = default)</code></td>
+<td><code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code></td>
+<td>Body-aware bridge. The mapper is invoked <strong>only</strong> when <code>IsSuccessStatusCode == false</code>. <code>null</code> return -&gt; <code>Ok(response)</code>; non-null -&gt; <code>Fail</code> (response disposed).</td>
+</tr>
+<tr>
+<td><code>HandleNotFoundAsync(this Task&lt;HttpResponseMessage&gt; response, Error.NotFound error)</code></td>
+<td><code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code></td>
+<td>Maps <code>404</code> to <code>Fail(error)</code> (response disposed); any other status passes through as <code>Ok(response)</code>.</td>
+</tr>
+<tr>
+<td><code>HandleConflictAsync(this Task&lt;HttpResponseMessage&gt; response, Error.Conflict error)</code></td>
+<td><code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code></td>
+<td>Maps <code>409</code> to <code>Fail(error)</code> (response disposed); pass through otherwise.</td>
+</tr>
+<tr>
+<td><code>HandleUnauthorizedAsync(this Task&lt;HttpResponseMessage&gt; response, Error.Unauthorized error)</code></td>
+<td><code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code></td>
+<td>Maps <code>401</code> to <code>Fail(error)</code> (response disposed); pass through otherwise.</td>
+</tr>
+<tr>
+<td><code>ReadJsonAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt; response, JsonTypeInfo&lt;T&gt; jsonTypeInfo, CancellationToken ct = default) where T : notnull</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code></td>
+<td>Already-failed input short-circuits with the upstream error. Otherwise reads the body and deserializes; non-success status, <code>204</code>, <code>205</code>, empty body, null payload, or <code>JsonException</code> (caught) all map to <code>Fail&lt;InternalServerError&gt;</code>. <strong>Always disposes</strong> the response after reading.</td>
+</tr>
+<tr>
+<td><code>ReadJsonMaybeAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt; response, JsonTypeInfo&lt;T&gt; jsonTypeInfo, CancellationToken ct = default) where T : notnull</code></td>
+<td><code>Task&lt;Result&lt;Maybe&lt;T&gt;&gt;&gt;</code></td>
+<td>Already-failed input short-circuits. Non-success status -&gt; <code>Fail&lt;InternalServerError&gt;</code>. <code>204</code>, <code>205</code>, empty body, JSON <code>null</code> -&gt; <code>Ok(Maybe.None)</code>. Invalid JSON throws <code>JsonException</code> (intentional). <strong>Always disposes</strong> the response.</td>
+</tr>
+<tr>
+<td><code>ReadJsonOrNoneOn404Async&lt;T&gt;(this Task&lt;HttpResponseMessage&gt; response, JsonTypeInfo&lt;T&gt; jsonTypeInfo, CancellationToken ct = default) where T : notnull</code></td>
+<td><code>Task&lt;Result&lt;Maybe&lt;T&gt;&gt;&gt;</code></td>
+<td>Terminal optional-resource helper. <code>404</code> -&gt; <code>Ok(Maybe.None)</code>; other non-2xx statuses use strict status mapping; <code>204</code>, <code>205</code>, empty body, and JSON <code>null</code> keep <code>ReadJsonMaybeAsync</code> semantics. <strong>Always disposes</strong> the response.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Business API default.</strong> Bare <code>ToResultAsync()</code> is now the safe default for domain-facing HTTP clients. Use <code>HandleNotFoundAsync</code>, <code>HandleConflictAsync</code>, <code>HandleUnauthorizedAsync</code>, or an explicit <code>statusMap</code> only when the endpoint needs domain-specific error payloads.</p>
+</blockquote>
+<h2 id="disposal-contract">Disposal contract</h2>
+<p>The library owns the <code>HttpResponseMessage</code> lifecycle on terminal or transformative paths:</p>
+<ul>
+<li><code>ToResultAsync</code> (both overloads) dispose the response on the <code>Fail</code> path.</li>
+<li><code>HandleNotFoundAsync</code>, <code>HandleConflictAsync</code>, <code>HandleUnauthorizedAsync</code> dispose on the matched-status <code>Fail</code> path.</li>
+<li><code>ReadJsonAsync</code>, <code>ReadJsonMaybeAsync</code>, and <code>ReadJsonOrNoneOn404Async</code> <strong>always</strong> dispose after reading, success or failure (including when <code>JsonException</code> propagates from the <code>Maybe</code> overload).</li>
+<li>Pass-through paths (success from bare <code>ToResultAsync</code>, non-matching <code>Handle*</code>, mapper returning <code>null</code>) leave disposal to the caller.</li>
+</ul>
+<p>In practice: once you call <code>ReadJson*</code>, you no longer need to dispose the response yourself.</p>
+<h2 id="examples">Examples</h2>
+<h3 id="happy-path-get-map-404-deserialize">Happy path: GET, map 404, deserialize</h3>
+<pre><code class="lang-csharp">using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Http;
+
+[JsonSerializable(typeof(TodoDto))]
+internal partial class AppJsonContext : JsonSerializerContext { }
+
+public sealed record TodoDto(Guid Id, string Title);
+
+public Task&lt;Result&lt;TodoDto&gt;&gt; GetTodoAsync(HttpClient client, Guid id, CancellationToken ct) =&gt;
+    client.GetAsync($&quot;/todos/{id}&quot;, ct)
+        .HandleNotFoundAsync(new Error.NotFound(ResourceRef.For&lt;TodoDto&gt;(id)))
+        .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
+</code></pre>
+<h3 id="multi-status-mapping-with-toresultasyncstatusmap">Multi-status mapping with <code>ToResultAsync(statusMap)</code></h3>
+<pre><code class="lang-csharp">public Task&lt;Result&lt;TodoDto&gt;&gt; GetTodoStrictAsync(HttpClient client, Guid id, CancellationToken ct) =&gt;
+    client.GetAsync($&quot;/todos/{id}&quot;, ct)
+        .ToResultAsync(status =&gt; status switch
+        {
+            HttpStatusCode.NotFound =&gt; new Error.NotFound(ResourceRef.For&lt;TodoDto&gt;(id)),
+            HttpStatusCode.Forbidden =&gt; new Error.Forbidden(&quot;todo.read&quot;),
+            _ when (int)status &gt;= 500 =&gt; new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = $&quot;upstream {status}&quot; },
+            _ =&gt; null,
+        })
+        .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
+</code></pre>
+<h3 id="body-aware-mapping-replaces-handlefailureasynctcontext">Body-aware mapping (replaces <code>HandleFailureAsync&lt;TContext&gt;</code>)</h3>
+<pre><code class="lang-csharp">public Task&lt;Result&lt;TodoDto&gt;&gt; GetTodoWithProblemDetailsAsync(HttpClient client, Guid id, CancellationToken ct) =&gt;
+    client.GetAsync($&quot;/todos/{id}&quot;, ct)
+        .ToResultAsync(async (response, token) =&gt;
+        {
+            // Read RFC 9457 problem-details body to synthesize a richer error.
+            var problem = await response.Content
+                .ReadFromJsonAsync&lt;ProblemDetails&gt;(cancellationToken: token);
+            return problem is null
+                ? null
+                : new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = problem.Detail ?? &quot;upstream error&quot; };
+        }, ct)
+        .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
+</code></pre>
+<h3 id="optional-resource-with-readjsonornoneon404async">Optional resource with <code>ReadJsonOrNoneOn404Async</code></h3>
+<pre><code class="lang-csharp">public Task&lt;Result&lt;Maybe&lt;TodoDto&gt;&gt;&gt; FindTodoAsync(HttpClient client, Guid id, CancellationToken ct) =&gt;
+    client.GetAsync($&quot;/todos/{id}&quot;, ct)
+        .ReadJsonOrNoneOn404Async(AppJsonContext.Default.TodoDto, ct);
+</code></pre>
+<h2 id="breaking-changes-from-v1">Breaking changes from v1</h2>
+<p>The v1 surface (60+ overloads across two static classes) has been collapsed into a small canonical method set. There are no shims or compatibility redirects: this is a clean cut, taken pre-GA.</p>
+<table>
+<thead>
+<tr>
+<th>Previous API</th>
+<th>Current replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HandleNotFound</code>, <code>HandleNotFoundAsync</code> (sync, <code>Result&lt;HRM&gt;</code>, <code>Task&lt;Result&lt;HRM&gt;&gt;</code> overloads)</td>
+<td><code>HandleNotFoundAsync(this Task&lt;HttpResponseMessage&gt;, Error.NotFound)</code></td>
+</tr>
+<tr>
+<td><code>HandleConflict*</code></td>
+<td><code>HandleConflictAsync(this Task&lt;HttpResponseMessage&gt;, Error.Conflict)</code></td>
+</tr>
+<tr>
+<td><code>HandleUnauthorized*</code></td>
+<td><code>HandleUnauthorizedAsync(this Task&lt;HttpResponseMessage&gt;, Error.Unauthorized)</code></td>
+</tr>
+<tr>
+<td><code>HandleForbidden*</code></td>
+<td><strong>Deleted.</strong> Use <code>ToResultAsync(status =&gt; status == HttpStatusCode.Forbidden ? new Error.Forbidden(...) : null)</code>.</td>
+</tr>
+<tr>
+<td><code>HandleClientError*</code> (4xx range), <code>HandleServerError*</code> (5xx range)</td>
+<td><strong>Deleted.</strong> Use <code>ToResultAsync(statusMap)</code> with a <code>switch</code> over <code>HttpStatusCode</code>.</td>
+</tr>
+<tr>
+<td><code>EnsureSuccess</code>, <code>EnsureSuccessAsync</code> (all shapes)</td>
+<td><strong>Deleted.</strong> Use <code>ToResultAsync(status =&gt; (int)status &gt;= 400 ? error : null)</code> or the body-aware <code>ToResultAsync(mapper, ct)</code>.</td>
+</tr>
+<tr>
+<td><code>HandleFailureAsync&lt;TContext&gt;</code> (response-shape and <code>Result&lt;HRM&gt;</code>-shape)</td>
+<td><strong>Deleted.</strong> Use the body-aware <code>ToResultAsync(mapper, ct)</code>; capture additional state via closure.</td>
+</tr>
+<tr>
+<td><code>ReadResultFromJsonAsync&lt;T&gt;</code> (sync, <code>Result&lt;HRM&gt;</code>, <code>Task&lt;HRM&gt;</code>, <code>Task&lt;Result&lt;HRM&gt;&gt;</code>)</td>
+<td><strong>Renamed</strong> <code>ReadJsonAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</code>.</td>
+</tr>
+<tr>
+<td><code>ReadResultMaybeFromJsonAsync&lt;T&gt;</code> (all shapes)</td>
+<td><strong>Renamed</strong> <code>ReadJsonMaybeAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</code>.</td>
+</tr>
+<tr>
+<td>Sync receivers (<code>HttpResponseMessage</code>, <code>Result&lt;HRM&gt;</code>)</td>
+<td><strong>Deleted.</strong> Wrap with <code>Task.FromResult(...)</code> if needed; in practice every <code>HttpClient</code> call is already async.</td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-http.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

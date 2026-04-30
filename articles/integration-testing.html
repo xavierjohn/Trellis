@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Testing | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Testing | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-testing.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="testing">Testing</h1>
+
+<p><strong>Level:</strong> Intermediate 📘 | <strong>Time:</strong> 20-30 min | <strong>Prerequisites:</strong> <a href="basics.html">Basics</a>, <a href="integration-mediator.html">Mediator Pipeline</a></p>
+<p>Good Trellis tests read like the production code they protect: success and failure are values, authorization is explicit, and integration tests exercise the real pipeline.</p>
+<p><code>Trellis.Testing</code> gives you purpose-built assertions, fakes, and test helpers for that style.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Testing
+</code></pre>
+<h2 id="what-problem-does-this-solve">What problem does this solve?</h2>
+<p>The package helps you avoid common test friction:</p>
+<ul>
+<li>noisy assertions against <code>Result&lt;T&gt;</code> and <code>Maybe&lt;T&gt;</code></li>
+<li>brittle repository mocks</li>
+<li>hand-built actor headers for integration tests</li>
+<li>repeated boilerplate for test errors and validation failures</li>
+</ul>
+<h2 id="start-here-result-assertions">Start here: result assertions</h2>
+<p>When a handler returns <code>Result&lt;T&gt;</code>, assert on the result directly instead of unpacking booleans yourself.</p>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var success = Result.Ok(42);
+success.Should().BeSuccess().Which.Should().Be(42);
+
+var failure = Result.Fail&lt;int&gt;(new Error.NotFound(new ResourceRef(&quot;Resource&quot;, &quot;123&quot;)) { Detail = &quot;Order 123 not found&quot; });
+failure.Should().BeFailureOfType&lt;Error.NotFound&gt;();
+failure.Should().HaveErrorCode(&quot;not.found.error&quot;);
+failure.Should().HaveErrorDetail(&quot;Order 123 not found&quot;);
+</code></pre>
+<h3 id="async-assertions">Async assertions</h3>
+<p>This detail matters: async assertions are extensions on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code> directly.</p>
+<pre><code class="lang-csharp">using System.Threading.Tasks;
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+Task&lt;Result&lt;int&gt;&gt; taskResult = Task.FromResult(Result.Ok(42));
+ValueTask&lt;Result&lt;int&gt;&gt; valueTaskResult = ValueTask.FromResult(Result.Ok(7));
+
+(await taskResult.BeSuccessAsync()).Which.Should().Be(42);
+(await valueTaskResult.BeSuccessAsync()).Which.Should().Be(7);
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Do <strong>not</strong> write <code>await result.Should().BeSuccessAsync()</code>. The async helpers are not extensions on <code>ResultAssertions&lt;T&gt;</code>.</p>
+</div>
+<h2 id="maybet-and-error-assertions"><code>Maybe&lt;T&gt;</code> and <code>Error</code> assertions</h2>
+<p>Use the Trellis-specific assertions so failures explain the intent of the test.</p>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var maybeName = Maybe.From(&quot;Ada&quot;);
+maybeName.Should().HaveValue().Which.Should().Be(&quot;Ada&quot;);
+
+var none = Maybe&lt;string&gt;.None;
+none.Should().BeNone();
+
+var error = new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;validation.error&quot;) { Detail = &quot;Email is required.&quot; }));
+error.Should().HaveCode(&quot;validation.error&quot;);
+error.Should().HaveDetailContaining(&quot;required&quot;);
+</code></pre>
+<h2 id="fakerepository-fast-handler-tests-without-mocks"><code>FakeRepository</code>: fast handler tests without mocks</h2>
+<p>If you are testing application handlers, <code>FakeRepository&lt;TAggregate, TId&gt;</code> is usually better than mocking repository calls by hand.</p>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+public sealed record OrderId(Guid Value);
+
+public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public Order(OrderId id, string email) : base(id) =&gt; Email = email;
+
+    public string Email { get; }
+}
+
+var repo = new FakeRepository&lt;Order, OrderId&gt;()
+    .WithUniqueConstraint(order =&gt; order.Email);
+
+var order = new Order(new OrderId(Guid.NewGuid()), &quot;ada@example.com&quot;);
+
+await repo.SaveAsync(order).BeSuccessAsync();
+(await repo.GetByIdAsync(order.Id)).Should().BeSuccess().Which.Should().BeSameAs(order);
+repo.Exists(order.Id).Should().BeTrue();
+repo.Count.Should().Be(1);
+</code></pre>
+<p>Important details from the current API:</p>
+<ul>
+<li><code>SaveAsync</code> returns <code>Task&lt;Result&gt;</code></li>
+<li><code>DeleteAsync</code> returns <code>Task&lt;Result&gt;</code></li>
+<li>unique constraint conflicts return <code>Error.Conflict</code></li>
+<li>missing aggregates use details like <code>&quot;{AggregateTypeName} with ID {id} not found&quot;</code></li>
+</ul>
+<h2 id="testactorprovider-authorization-tests-without-plumbing"><code>TestActorProvider</code>: authorization tests without plumbing</h2>
+<p>When you want to test permission checks or resource ownership, use <code>TestActorProvider</code>.</p>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis.Authorization;
+using Trellis.Testing;
+
+var actorProvider = new TestActorProvider(&quot;admin&quot;, &quot;Orders.Read&quot;, &quot;Orders.Write&quot;);
+
+await using var scope = actorProvider.WithActor(&quot;user-1&quot;, &quot;Orders.Read&quot;);
+var actor = await actorProvider.GetCurrentActorAsync();
+
+actor.Id.Should().Be(&quot;user-1&quot;);
+actor.HasPermission(&quot;Orders.Read&quot;).Should().BeTrue();
+actor.HasPermission(&quot;Orders.Write&quot;).Should().BeFalse();
+</code></pre>
+<p>There is also an overload that accepts a full <code>Actor</code>, which is useful when you need:</p>
+<ul>
+<li><code>ForbiddenPermissions</code></li>
+<li><code>Attributes</code></li>
+</ul>
+<h2 id="building-failures-for-tests">Building failures for tests</h2>
+<p>Use the standard <code>Result</code> and <code>Error</code> factory methods directly — no special test builder needed.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+var success = Result.Ok(42);
+var notFound = Result.Fail&lt;int&gt;(new Error.NotFound(new ResourceRef(&quot;Resource&quot;, &quot;123&quot;)) { Detail = &quot;Order 123 not found&quot; });
+var forbidden = Result.Fail&lt;int&gt;(new Error.Forbidden(&quot;policy.id&quot;) { Detail = &quot;Not allowed.&quot; });
+</code></pre>
+<p><code>new Error.NotFound(new ResourceRef(&quot;Resource&quot;, &quot;123&quot;)) { Detail = &quot;Order 123 not found&quot; }</code> produces:</p>
+<ul>
+<li>detail: <code>Order 123 not found</code></li>
+<li>instance: <code>123</code></li>
+</ul>
+<h2 id="http-integration-tests-with-actor-headers">HTTP integration tests with actor headers</h2>
+<p>When your app uses <code>DevelopmentActorProvider</code>, <code>CreateClientWithActor</code> is the easiest way to exercise authorization through the HTTP pipeline.</p>
+<h3 id="convenience-overload">Convenience overload</h3>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Mvc.Testing;
+using Trellis.Testing.AspNetCore;
+
+public sealed class Program
+{
+}
+
+WebApplicationFactory&lt;Program&gt; factory = default!;
+
+var client = factory.CreateClientWithActor(&quot;user-1&quot;, &quot;Orders.Create&quot;, &quot;Orders.Read&quot;);
+</code></pre>
+<h3 id="full-actor-overload">Full <code>Actor</code> overload</h3>
+<p>Use this when the test needs more than id + granted permissions.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Trellis.Authorization;
+using Trellis.Testing.AspNetCore;
+
+public sealed class Program
+{
+}
+
+WebApplicationFactory&lt;Program&gt; factory = default!;
+
+var actor = new Actor(
+    id: &quot;user-1&quot;,
+    permissions: new HashSet&lt;string&gt; { &quot;Orders.Read&quot; },
+    forbiddenPermissions: new HashSet&lt;string&gt; { &quot;Orders.Delete&quot; },
+    attributes: new Dictionary&lt;string, string&gt; { [&quot;tenant&quot;] = &quot;acme&quot; });
+
+var client = factory.CreateClientWithActor(actor);
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The <code>X-Test-Actor</code> header includes <code>Id</code>, <code>Permissions</code>, <code>ForbiddenPermissions</code>, and <code>Attributes</code>. That matches what <code>DevelopmentActorProvider</code> expects.</p>
+</div>
+<h2 id="replacing-infrastructure-in-integration-tests">Replacing infrastructure in integration tests</h2>
+<p>Two helpers are especially useful in <code>WebApplicationFactory</code>-based tests.</p>
+<h3 id="swap-the-ef-core-provider">Swap the EF Core provider</h3>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Trellis.Testing.AspNetCore;
+
+public sealed class AppDbContext(DbContextOptions&lt;AppDbContext&gt; options) : DbContext(options)
+{
+}
+
+public sealed class Program
+{
+}
+
+public sealed class TestWebApplicationFactory : WebApplicationFactory&lt;Program&gt;
+{
+    private readonly SqliteConnection _connection = new(&quot;DataSource=:memory:&quot;);
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        _connection.Open();
+
+        builder.ConfigureServices(services =&gt;
+            services.ReplaceDbProvider&lt;AppDbContext&gt;(options =&gt; options.UseSqlite(_connection)));
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        _connection.Dispose();
+        base.Dispose(disposing);
+    }
+}
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>ReplaceDbProvider&lt;TContext&gt;</code> re-registers the context via <code>AddDbContext&lt;TContext&gt;</code>. If your app uses <code>AddDbContextFactory</code> or <code>AddPooledDbContextFactory</code>, replace those registrations directly instead.</p>
+</div>
+<h3 id="replace-a-resource-loader">Replace a resource loader</h3>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Testing.AspNetCore;
+
+public sealed record GetOrderQuery(string OrderId);
+public sealed record OrderResource(string Id);
+
+public sealed class FakeOrderLoader : IResourceLoader&lt;GetOrderQuery, OrderResource&gt;
+{
+    public Task&lt;Result&lt;OrderResource&gt;&gt; LoadAsync(
+        GetOrderQuery message,
+        CancellationToken cancellationToken) =&gt;
+        Task.FromResult(Result.Ok(new OrderResource(message.OrderId)));
+}
+
+var services = new ServiceCollection();
+services.ReplaceResourceLoader&lt;GetOrderQuery, OrderResource&gt;(_ =&gt; new FakeOrderLoader());
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<h3 id="prefer-fakes-over-mocks-for-repositories">Prefer fakes over mocks for repositories</h3>
+<p><code>FakeRepository</code> behaves more like the real thing:</p>
+<ul>
+<li>not-found behavior</li>
+<li>unique constraints</li>
+<li>domain event capture</li>
+</ul>
+<h3 id="assert-on-error-codes-when-it-matters">Assert on error codes when it matters</h3>
+<p>Trellis default error codes end in <code>.error</code>, which makes them good assertion targets.</p>
+<h3 id="use-the-actor-overload-when-authorization-rules-are-richer">Use the actor overload when authorization rules are richer</h3>
+<p>If your policy uses forbidden permissions or attributes, pass a real <code>Actor</code> to <code>CreateClientWithActor</code>.</p>
+<h3 id="keep-entra-token-tests-separate">Keep Entra token tests separate</h3>
+<p>Use <code>CreateClientWithActor</code> for fast local and CI tests. Use real tokens only when you need to validate the full authentication pipeline.</p>
+<h2 id="next-steps">Next steps</h2>
+<ul>
+<li><a href="integration-entra-testing.html">Testing with Azure Entra ID Tokens</a></li>
+<li><a href="integration-mediator.html">Mediator Pipeline</a></li>
+<li><a href="../api_reference/trellis-api-testing-reference.html">trellis-api-testing-reference.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-testing.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

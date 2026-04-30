@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>With Trellis vs Without Trellis | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="With Trellis vs Without Trellis | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/with-vs-without-trellis.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="with-trellis-vs-without-trellis">With Trellis vs Without Trellis</h1>
+
+<p>If you are using AI to build production software, the real question is not &quot;Can it generate code?&quot;</p>
+<p>The real question is: <strong>Which setup gives you code that is safer to review and harder to get subtly wrong?</strong></p>
+<p>This study compared both approaches on the same Order Management specification.</p>
+<h2 id="the-study-in-one-minute">The study in one minute</h2>
+<p>Three models built the same service twice:</p>
+<ul>
+<li><strong>With Trellis</strong> — starting from the <code>trellis-asp</code> template plus Trellis documentation and instructions</li>
+<li><strong>Without Trellis</strong> — starting from an empty folder with only the spec and standard .NET requirements</li>
+</ul>
+<p>Then different models reviewed the implementations.</p>
+<h2 id="results-at-a-glance">Results at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th style="text-align: right;">With Trellis</th>
+<th style="text-align: right;">Without Trellis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build succeeds</td>
+<td style="text-align: right;">3/3</td>
+<td style="text-align: right;">3/3</td>
+</tr>
+<tr>
+<td>All tests pass</td>
+<td style="text-align: right;">3/3</td>
+<td style="text-align: right;">3/3</td>
+</tr>
+<tr>
+<td>Average test count</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">65</td>
+</tr>
+<tr>
+<td>Endpoints correct</td>
+<td style="text-align: right;"><strong>16/16</strong></td>
+<td style="text-align: right;">13-16/16</td>
+</tr>
+<tr>
+<td>Auth vulnerabilities found</td>
+<td style="text-align: right;"><strong>0</strong></td>
+<td style="text-align: right;">2 of 3 implementations</td>
+</tr>
+<tr>
+<td>Average cross-review score</td>
+<td style="text-align: right;"><strong>8.2/10</strong></td>
+<td style="text-align: right;"><strong>7.1/10</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The surprising part is not that both approaches worked.</p>
+<p>The surprising part is <strong>where the failures clustered</strong> when Trellis was absent:</p>
+<ul>
+<li>endpoint path drift</li>
+<li>permission mistakes</li>
+<li>inconsistent error handling</li>
+<li>security gaps that were easy to miss in casual review</li>
+</ul>
+<h2 id="why-this-matters">Why this matters</h2>
+<p>On day one, the non-Trellis code often looked more familiar.</p>
+<p>But as the spec grew, Trellis gave the AI stronger rails:</p>
+<ul>
+<li>the template scaffolded the correct endpoint shapes</li>
+<li>result-based flows made failure handling explicit</li>
+<li>the authorization and error-handling patterns were less ad hoc</li>
+<li>reviewers saw more uniform code across features</li>
+</ul>
+<h2 id="beforeafter-the-kind-of-difference-reviewers-felt">Before/after: the kind of difference reviewers felt</h2>
+<h3 id="without-trellis">Without Trellis</h3>
+<p>This style is ordinary ASP.NET Core. It is also easy for an AI to make inconsistent across many endpoints.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
+public sealed record RegisterUserResponse(string FirstName, string LastName, string Email);
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapPost(&quot;/users/register&quot;, (RegisterUserRequest request) =&gt;
+{
+    if (string.IsNullOrWhiteSpace(request.FirstName))
+        return Results.BadRequest(new { code = &quot;validation.error&quot;, detail = &quot;First name is required.&quot; });
+
+    if (string.IsNullOrWhiteSpace(request.LastName))
+        return Results.BadRequest(new { code = &quot;validation.error&quot;, detail = &quot;Last name is required.&quot; });
+
+    if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
+        return Results.BadRequest(new { code = &quot;validation.error&quot;, detail = &quot;Email is invalid.&quot; });
+
+    return Results.Ok(new RegisterUserResponse(request.FirstName, request.LastName, request.Email));
+});
+
+app.Run();
+</code></pre>
+<h3 id="with-trellis">With Trellis</h3>
+<p>The Trellis version pushes the code into a more uniform shape.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp;
+using Trellis.Primitives;
+
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
+public sealed record RegisterUserResponse(string FirstName, string LastName, string Email);
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddTrellisAsp();
+
+var app = builder.Build();
+
+app.MapPost(&quot;/users/register&quot;, (RegisterUserRequest request) =&gt;
+    FirstName.TryCreate(request.FirstName)
+        .Combine(LastName.TryCreate(request.LastName))
+        .Combine(EmailAddress.TryCreate(request.Email))
+        .Bind((firstName, lastName, emailAddress) =&gt;
+            Result.Ok(new RegisterUserResponse(
+                firstName.Value,
+                lastName.Value,
+                emailAddress.Value)))
+        .ToHttpResponse());
+
+app.Run();
+</code></pre>
+<p>Neither version is impossible to review. The Trellis version is simply <strong>more constrained</strong>, which makes large-scale AI output easier to keep consistent.</p>
+<h2 id="five-findings-that-mattered-most">Five findings that mattered most</h2>
+<h3 id="1-trellis-reduced-spec-drift">1. Trellis reduced spec drift</h3>
+<p>The biggest difference was not raw code quality. It was <strong>compliance with the spec</strong>.</p>
+<p>One non-Trellis implementation got <strong>6 of 16 endpoint paths wrong</strong>. The same model, working with Trellis scaffolding, got them right.</p>
+<p>Why? Because the template turned correctness into the default starting point.</p>
+<h3 id="2-trellis-reduced-security-mistakes">2. Trellis reduced security mistakes</h3>
+<p>Two of the three non-Trellis implementations had authorization vulnerabilities.</p>
+<p>The issues included:</p>
+<ul>
+<li>defaulting to an admin-like actor when test headers were missing or malformed</li>
+<li>leaking internal exception details into HTTP responses</li>
+</ul>
+<p>The Trellis-based implementations avoided those classes of mistakes structurally.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In the Trellis setup, <code>DevelopmentActorProvider</code> is explicitly for development, and the error-handling middleware returns a generic 500 response instead of exposing internals.</p>
+</div>
+<h3 id="3-cross-review-exposed-the-gap-more-clearly-than-self-review">3. Cross-review exposed the gap more clearly than self-review</h3>
+<p>When models reviewed their own code, the difference looked smaller.</p>
+<p>When a different model reviewed the code, the Trellis implementations scored better more consistently. That suggests Trellis improved not just generation, but <strong>reviewability by another reader</strong>.</p>
+<h3 id="4-the-template-mattered-a-lot">4. The template mattered a lot</h3>
+<p>Reviewers repeatedly credited the template for preventing a whole class of mistakes before business logic even started.</p>
+<p>The template contributed:</p>
+<ul>
+<li>correct endpoint paths and verbs</li>
+<li>permission scaffolding</li>
+<li>testing infrastructure</li>
+<li>a consistent project layout</li>
+<li>instructions that guide implementation order</li>
+</ul>
+<h3 id="5-non-trellis-code-was-easier-to-read-at-first">5. Non-Trellis code was easier to read at first</h3>
+<p>This was the strongest point in favor of the non-Trellis approach.</p>
+<p>For a developer seeing the code for the first time, plain ASP.NET Core often felt more familiar.</p>
+<p>But reviewers also agreed that this advantage fades as the codebase grows. Once you have more aggregates, more rules, and more contributors, consistency begins to matter more than first-contact familiarity.</p>
+<h2 id="where-each-approach-wins">Where each approach wins</h2>
+<h3 id="choose-trellis-when">Choose Trellis when</h3>
+<ul>
+<li>the service will grow beyond a small prototype</li>
+<li>multiple developers will touch the code over time</li>
+<li>authorization rules are non-trivial</li>
+<li>AI is generating a meaningful amount of the implementation</li>
+<li>you want compile-time and template-level guardrails</li>
+</ul>
+<h3 id="skip-trellis-when">Skip Trellis when</h3>
+<ul>
+<li>you are building a tiny throwaway prototype</li>
+<li>the team strongly prefers plain ASP.NET Core patterns</li>
+<li>short-term onboarding speed matters more than long-term uniformity</li>
+</ul>
+<h2 id="the-bigger-lesson">The bigger lesson</h2>
+<p>The study does <strong>not</strong> say that AI without Trellis cannot succeed.</p>
+<p>It says something more practical:</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>When AI has stronger structural constraints, it is less likely to drift away from the spec in ways that still compile and still look plausible.</p>
+</div>
+<p>That is the real value.</p>
+<h2 id="bottom-line">Bottom line</h2>
+<p>Without Trellis, AI can absolutely produce working software.</p>
+<p>With Trellis, it more consistently produced software that was:</p>
+<ul>
+<li>closer to the spec</li>
+<li>safer around auth and errors</li>
+<li>easier for another reviewer to assess quickly</li>
+</ul>
+<p>That is why teams using AI for serious work should care.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/with-vs-without-trellis.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

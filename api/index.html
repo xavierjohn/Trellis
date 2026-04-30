@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis-api-reference">Trellis API Reference</h1>
+
+<p>Trellis is a .NET framework that <strong>guides AI to develop structured, maintainable enterprise software</strong>. It combines Railway-Oriented Programming and Domain-Driven Design into building blocks where the compiler enforces correctness — errors must be handled, objects cannot be constructed in invalid states, and business logic reads like the specification it was generated from.</p>
+<p>A trellis guides growth in the right direction. In a garden, plants grow along the trellis rather than sprawling randomly. In software, Trellis guides AI-generated code into correct, composable patterns — turning a plain-language specification into working, tested software with zero warnings and zero skipped validations.</p>
+<pre><code class="lang-csharp">// Without Trellis — AI scatters validation, misses edge cases, drifts across endpoints
+if (string.IsNullOrWhiteSpace(request.Email))
+    return Results.BadRequest(new { code = &quot;validation.error&quot;, detail = &quot;Email is required.&quot; });
+if (!request.Email.Contains('@'))
+    return Results.BadRequest(new { code = &quot;validation.error&quot;, detail = &quot;Email is invalid.&quot; });
+return Results.Ok(new User(request.Email.Trim().ToLowerInvariant()));
+
+// With Trellis — AI follows the types, the compiler catches the rest
+return EmailAddress.TryCreate(request.Email)
+    .Map(email =&gt; new User(email))
+    .ToHttpResponse();
+</code></pre>
+<blockquote>
+<p>New to Trellis? Start with the <a href="../articles/intro.html">Introduction</a>, see <a href="../articles/ai-code-generation.html">how AI uses Trellis</a>, or browse the <a href="../articles/examples.html">examples</a>.</p>
+</blockquote>
+<hr>
+<h2 id="core-types">Core Types</h2>
+<p>The foundation — zero dependencies beyond the .NET runtime. One <code>using Trellis;</code> makes these available.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="xref" href="Trellis.Result-1.html"><code>Result&lt;T&gt;</code></a></td>
+<td>An operation that succeeds with <code>T</code> or fails with an <a class="xref" href="Trellis.Error.html"><code>Error</code></a> — the core of Railway-Oriented Programming</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Result.html"><code>Result</code></a></td>
+<td>Non-generic result for void operations — succeeds without a value or fails with an <a class="xref" href="Trellis.Error.html"><code>Error</code></a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Maybe-1.html"><code>Maybe&lt;T&gt;</code></a></td>
+<td>A value that may or may not exist — type-safe alternative to <code>null</code></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Error.html"><code>Error</code></a></td>
+<td>Typed error hierarchy with built-in HTTP status code mapping</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pipeline-operations">Pipeline Operations</h3>
+<p>Chain operations into readable workflows. Each method has sync, <code>Task</code>, and <code>ValueTask</code> overloads.</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="xref" href="Trellis.BindExtensions.html"><code>Bind</code></a></td>
+<td>Chain an operation that returns <code>Result</code> — the railway switch</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.MapExtensions.html"><code>Map</code></a></td>
+<td>Transform the success value</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.TapExtensions.html"><code>Tap</code></a></td>
+<td>Run a side effect without changing the result</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.EnsureExtensions.html"><code>Ensure</code></a></td>
+<td>Validate a business rule — fail if the predicate is false</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.CombineExtensions.html"><code>Combine</code></a></td>
+<td>Merge multiple results, collecting <strong>all</strong> errors</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.CheckExtensions.html"><code>Check</code></a></td>
+<td>Run a validation that returns <code>Result</code>, keep the original value on success</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.MatchExtensions.html"><code>Match</code></a></td>
+<td>Unwrap the result by handling both success and failure</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.RecoverOnFailureExtensions.html"><code>RecoverOnFailure</code></a></td>
+<td>Provide a fallback value on failure</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.MapOnFailureExtensions.html"><code>MapOnFailure</code></a></td>
+<td>Transform the value on the failure track</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.TapOnFailureExtensions.html"><code>TapOnFailure</code></a></td>
+<td>Run a side effect on the failure track</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.WhenExtensions.html"><code>When</code></a></td>
+<td>Execute conditionally based on a predicate</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Learn the pipeline patterns: <a href="../articles/basics.html">Core Concepts</a> · <a href="../articles/error-handling.html">Error Handling</a> · <a href="../articles/advanced-features.html">Advanced Features</a></p>
+</blockquote>
+<hr>
+<h2 id="domain-driven-design">Domain-Driven Design</h2>
+<p>DDD building blocks for modeling your domain. Also in the <code>Trellis</code> namespace.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="xref" href="Trellis.Aggregate-1.html"><code>Aggregate&lt;T&gt;</code></a></td>
+<td>Consistency boundary with a typed identity and domain events</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Entity-1.html"><code>Entity&lt;T&gt;</code></a></td>
+<td>Domain object with a unique identity</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.ValueObject.html"><code>ValueObject</code></a></td>
+<td>Immutable object defined by its attributes, not its identity</td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Specification-1.html"><code>Specification&lt;T&gt;</code></a></td>
+<td>Composable business rule that can be combined with <code>And</code>, <code>Or</code>, <code>Not</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Learn more: <a href="../articles/aggregate-factory-pattern.html">Aggregate Factory Pattern</a> · <a href="../articles/specifications.html">Specifications</a></p>
+</blockquote>
+<hr>
+<h2 id="value-objects">Value Objects</h2>
+<p>Base classes in the <code>Trellis</code> namespace; ready-to-use primitives in <code>Trellis.Primitives</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Base class</th>
+<th>Wraps</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="xref" href="Trellis.RequiredString-1.html"><code>RequiredString&lt;TSelf&gt;</code></a></td>
+<td>Non-empty <code>string</code></td>
+<td><code>FirstName</code>, <code>ProductCode</code></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.RequiredGuid-1.html"><code>RequiredGuid&lt;TSelf&gt;</code></a></td>
+<td>Non-empty <code>Guid</code></td>
+<td><code>OrderId</code>, <code>UserId</code></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.RequiredInt-1.html"><code>RequiredInt&lt;TSelf&gt;</code></a></td>
+<td>Validated <code>int</code></td>
+<td><code>Quantity</code>, <code>LineNumber</code></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.RequiredDecimal-1.html"><code>RequiredDecimal&lt;TSelf&gt;</code></a></td>
+<td>Validated <code>decimal</code></td>
+<td><code>Price</code>, <code>Weight</code></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.RequiredEnum-1.html"><code>RequiredEnum&lt;TSelf&gt;</code></a></td>
+<td>Validated <code>enum</code></td>
+<td><code>OrderStatus</code>, <code>Priority</code></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.ScalarValueObject-2.html"><code>ScalarValueObject&lt;TSelf, T&gt;</code></a></td>
+<td>Any single primitive</td>
+<td>Custom scalar values</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Ready-to-use:</strong> <a class="xref" href="Trellis.Primitives.EmailAddress.html"><code>EmailAddress</code></a>, <a class="xref" href="Trellis.Primitives.Money.html"><code>Money</code></a>, <a class="xref" href="Trellis.Primitives.PhoneNumber.html"><code>PhoneNumber</code></a>, <a class="xref" href="Trellis.Primitives.Url.html"><code>Url</code></a>, <a class="xref" href="Trellis.Primitives.Slug.html"><code>Slug</code></a>, <a class="xref" href="Trellis.Primitives.CountryCode.html"><code>CountryCode</code></a>, <a class="xref" href="Trellis.Primitives.CurrencyCode.html"><code>CurrencyCode</code></a>, <a class="xref" href="Trellis.Primitives.Percentage.html"><code>Percentage</code></a>, and <a class="xref" href="Trellis.Primitives.html">more</a>.</p>
+<blockquote>
+<p>Learn more: <a href="../articles/primitives.html">Primitive Value Objects</a></p>
+</blockquote>
+<hr>
+<h2 id="integration-packages">Integration Packages</h2>
+<p>Each integration has its own namespace and pulls in the relevant third-party dependency.</p>
+<table>
+<thead>
+<tr>
+<th>Namespace</th>
+<th>What it does</th>
+<th>Guide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a class="xref" href="Trellis.Asp.html"><code>Trellis.Asp</code></a></td>
+<td><code>Result&lt;T&gt;</code> → HTTP responses for MVC and Minimal APIs; ASP.NET actor providers (Claims, Entra, Development)</td>
+<td><a href="../articles/integration-aspnet.html">ASP.NET Core</a> · <a href="../articles/integration-asp-authorization.html">Authorization</a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Authorization.html"><code>Trellis.Authorization</code></a></td>
+<td><code>Actor</code>, permission checks, resource authorization</td>
+<td><a href="../articles/integration-asp-authorization.html">Authorization</a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Http.html"><code>Trellis.Http</code></a></td>
+<td><code>HttpClient</code> extensions that stay inside the Result pipeline</td>
+<td><a href="../articles/integration-http.html">HTTP Client</a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.FluentValidation.html"><code>Trellis.FluentValidation</code></a></td>
+<td>FluentValidation output → Trellis <code>Result</code></td>
+<td><a href="../articles/integration-fluentvalidation.html">FluentValidation</a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.EntityFrameworkCore.html"><code>Trellis.EntityFrameworkCore</code></a></td>
+<td>Value object converters, <code>Maybe&lt;T&gt;</code> queries, safe save</td>
+<td><a href="../articles/integration-ef.html">EF Core</a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Mediator.html"><code>Trellis.Mediator</code></a></td>
+<td>Result-aware pipeline behaviors for Mediator</td>
+<td><a href="../articles/integration-mediator.html">Mediator</a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.StateMachine.html"><code>Trellis.StateMachine</code></a></td>
+<td>State machine transitions returning <code>Result&lt;TState&gt;</code></td>
+<td><a href="../articles/state-machines.html">State Machines</a></td>
+</tr>
+<tr>
+<td><a class="xref" href="Trellis.Testing.html"><code>Trellis.Testing</code></a></td>
+<td>FluentAssertions extensions for <code>Result&lt;T&gt;</code> and <code>Maybe&lt;T&gt;</code></td>
+<td><a href="../articles/integration-testing.html">Testing</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="tooling">Tooling</h2>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.nuget.org/packages/Trellis.Analyzers">Trellis.Analyzers</a></td>
+<td>19+ Roslyn analyzers that catch common mistakes at build time</td>
+</tr>
+<tr>
+<td><em>Trellis.Core.Generator</em></td>
+<td>Source generation for <code>RequiredString</code> and related primitives — <strong>bundled inside <code>Trellis.Core</code> (no separate package)</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>See all analyzer rules: <a href="../articles/analyzers/toc.html">Analyzer Rules</a></p>
+</blockquote>
+<hr>
+<h2 id="observability">Observability</h2>
+<p>Built-in OpenTelemetry tracing via <a class="xref" href="Trellis.ResultsTraceProviderBuilderExtensions.html"><code>ResultsTraceProviderBuilderExtensions</code></a> and <a class="xref" href="Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions.html"><code>PrimitiveValueObjectTraceProviderBuilderExtensions</code></a>. Automatic span creation for pipeline operations and value object creation boundaries.</p>
+<blockquote>
+<p>Learn more: <a href="../articles/integration-observability.html">Observability &amp; Monitoring</a></p>
+</blockquote>
+<hr>
+<h2 id="next-steps">Next Steps</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Where to go</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Understand the concepts</td>
+<td><a href="../articles/intro.html">Introduction</a></td>
+</tr>
+<tr>
+<td>Learn the pipeline operations</td>
+<td><a href="../articles/basics.html">Core Concepts</a></td>
+</tr>
+<tr>
+<td>See it compared side-by-side</td>
+<td><a href="../articles/with-vs-without-trellis.html">With vs Without Trellis</a></td>
+</tr>
+<tr>
+<td>Browse working code</td>
+<td><a href="../articles/examples.html">Examples</a></td>
+</tr>
+<tr>
+<td>Set up integrations</td>
+<td><a href="../articles/integration.html">Integration Overview</a></td>
+</tr>
+<tr>
+<td>Run the benchmarks</td>
+<td><a href="../articles/performance.html">Performance</a></td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

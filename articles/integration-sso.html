@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Setting Up Single Sign-On (SSO) | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Setting Up Single Sign-On (SSO) | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-sso.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="setting-up-single-sign-on-sso">Setting Up Single Sign-On (SSO)</h1>
+
+<p><strong>Level:</strong> Intermediate | <strong>Time:</strong> 30-45 min | <strong>Prerequisites:</strong> <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a>, <a href="integration-entra-testing.html">Testing with Entra ID Tokens</a></p>
+<p>By the end of this guide, your API will authenticate users via SSO and map their identity to Trellis's <code>Actor</code> model.</p>
+<p>This guide starts from the Trellis ASP template:</p>
+<pre><code class="lang-bash">dotnet new trellis-asp
+</code></pre>
+<p>It is written for startup teams and indie developers who want a practical path to:</p>
+<ol>
+<li>sign users in with a major identity provider</li>
+<li>validate tokens in the API</li>
+<li>translate claims into a Trellis <code>Actor</code></li>
+<li>protect endpoints with <code>[Authorize]</code> and Trellis authorization</li>
+</ol>
+<h2 id="what-youll-build">What You'll Build</h2>
+<p>You will wire an external identity provider into the Trellis ASP template so your API can:</p>
+<ol>
+<li>accept a bearer token</li>
+<li>validate that token</li>
+<li>create an <code>Actor</code> from the authenticated user</li>
+<li>authorize requests using Trellis permissions and attributes</li>
+</ol>
+<pre><code class="lang-mermaid">flowchart LR
+    Browser[Browser or mobile app]
+    Idp[Entra ID / Google / OIDC provider]
+    Token[JWT or ID token]
+    Api[ASP.NET Core API]
+    Provider[EntraActorProvider or ClaimsActorProvider]
+    Actor[Actor]
+    Authz[Authorize attribute / IAuthorize]
+
+    Browser --&gt; Idp
+    Idp --&gt; Token
+    Token --&gt; Api
+    Api --&gt; Provider
+    Provider --&gt; Actor
+    Actor --&gt; Authz
+</code></pre>
+<p>Trellis authorization revolves around <code>Actor</code>, which contains:</p>
+<ul>
+<li><code>Id</code></li>
+<li><code>Permissions</code></li>
+<li><code>ForbiddenPermissions</code></li>
+<li><code>Attributes</code></li>
+</ul>
+<p>Scoped permissions use <code>Actor.PermissionScopeSeparator</code>, which is <code>':'</code>. A scoped permission looks like <code>todos:read:tenant-123</code> only if <strong>you</strong> choose that naming scheme; Trellis itself only guarantees the separator character.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Read <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a> first if you want the full mental model behind <code>Actor</code>, <code>IActorProvider</code>, and <code>IAuthorize</code>.</p>
+</div>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before you start, make sure you have:</p>
+<ol>
+<li><strong>.NET installed</strong> and the Trellis template available:
+<pre><code class="lang-bash">dotnet new trellis-asp
+</code></pre>
+</li>
+<li><strong>A running template project</strong>:
+<pre><code class="lang-bash">dotnet run --project .\Api\src\Api.csproj
+</code></pre>
+</li>
+<li><strong>An identity provider account</strong>:
+<ul>
+<li>Microsoft Entra admin access for Part 1</li>
+<li>Google Cloud Console access for Part 2</li>
+<li>Okta/Auth0/Keycloak or another OIDC issuer for Part 3</li>
+</ul>
+</li>
+<li><strong>A frontend or API client</strong> that can obtain tokens
+<ul>
+<li>browser SPA</li>
+<li>Postman</li>
+<li>curl plus a token copied from your frontend</li>
+</ul>
+</li>
+<li><strong>A clear local callback URL</strong> for your frontend, such as:
+<ul>
+<li><code>http://localhost:3000/auth/callback</code></li>
+<li><code>http://localhost:5173/auth/callback</code></li>
+</ul>
+</li>
+</ol>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>The Trellis ASP template ships with <code>DevelopmentActorProvider</code> for Development only. It throws outside Development. Keep it for fast local testing, but do not expect real SSO to work until you run the app in a non-Development environment.</p>
+</div>
+<h2 id="part-1-microsoft-entra-id-azure-ad">Part 1: Microsoft Entra ID (Azure AD)</h2>
+<p>This is the simplest production path because Trellis already includes <code>AddEntraActorProvider()</code>, and <code>EntraActorProvider</code> understands common Entra claims out of the box.</p>
+<h3 id="step-1-register-your-app-in-azure-portal">Step 1: Register Your App in Azure Portal</h3>
+<ol>
+<li>Open <strong>Azure Portal</strong>.</li>
+<li>Go to <strong>Microsoft Entra ID</strong> -&gt; <strong>App registrations</strong> -&gt; <strong>New registration</strong>.</li>
+<li>Name the app something like <code>TodoSample.Api</code>.</li>
+<li>Choose the account type that matches your product:
+<ul>
+<li><strong>Single tenant</strong> for internal company apps</li>
+<li><strong>Multitenant</strong> for SaaS apps used by many organizations</li>
+</ul>
+</li>
+<li>Click <strong>Register</strong>.</li>
+<li>Copy these values:
+<ul>
+<li><strong>Directory (tenant) ID</strong></li>
+<li><strong>Application (client) ID</strong></li>
+</ul>
+</li>
+<li>If you have a browser frontend, add its redirect URI under <strong>Authentication</strong>.</li>
+<li>If you want Trellis permissions from Entra roles, create <strong>App roles</strong> such as:
+<ul>
+<li><code>todos:read</code></li>
+<li><code>todos:create</code></li>
+<li><code>todos:update</code></li>
+<li><code>todos:delete</code></li>
+</ul>
+</li>
+<li>Assign those roles to users or groups through <strong>Enterprise applications</strong> -&gt; your app -&gt; <strong>Users and groups</strong>.</li>
+</ol>
+<p><strong>Screenshot target:</strong> You should be looking at <strong>Entra ID -&gt; App registrations -&gt; Your app -&gt; Overview</strong>, then <strong>Authentication</strong>, then <strong>App roles</strong>.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>If you forget the frontend redirect URI, sign-in succeeds at Entra but the browser never gets back to your app.</p>
+</div>
+<h3 id="step-2-configure-appsettingsjson">Step 2: Configure <code>appsettings.json</code></h3>
+<p>In <code>Api\src\appsettings.json</code>, add an <code>Authentication</code> section:</p>
+<pre><code class="lang-json">{
+  &quot;Logging&quot;: {
+    &quot;LogLevel&quot;: {
+      &quot;Default&quot;: &quot;Information&quot;,
+      &quot;Microsoft.AspNetCore&quot;: &quot;Warning&quot;
+    }
+  },
+  &quot;AllowedHosts&quot;: &quot;*&quot;,
+  &quot;Authentication&quot;: {
+    &quot;Authority&quot;: &quot;https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0&quot;,
+    &quot;Audience&quot;: &quot;&lt;api-client-id&gt;&quot;
+  }
+}
+</code></pre>
+<p>Replace:</p>
+<ol>
+<li><code>&lt;tenant-id&gt;</code> with the Entra tenant ID</li>
+<li><code>&lt;api-client-id&gt;</code> with the app registration client ID</li>
+</ol>
+<p>For local secrets, user secrets are fine:</p>
+<pre><code class="lang-bash">dotnet user-secrets --project .\Api\src\Api.csproj set &quot;Authentication:Authority&quot; &quot;https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0&quot;
+dotnet user-secrets --project .\Api\src\Api.csproj set &quot;Authentication:Audience&quot; &quot;&lt;api-client-id&gt;&quot;
+</code></pre>
+<h3 id="step-3-wire-up-authentication-in-programcs">Step 3: Wire Up Authentication in <code>Program.cs</code></h3>
+<p>The Trellis ASP template already has authorization, but it does not enable real authentication yet. Make these two changes.</p>
+<h4 id="31-update-apisrcprogramcs">3.1 Update <code>Api\src\Program.cs</code></h4>
+<p>Change the <code>AddPresentation(...)</code> call so <code>DependencyInjection.cs</code> can read configuration:</p>
+<pre><code class="lang-csharp">builder.Services
+    .AddPresentation(builder.Configuration, builder.Environment)
+    .AddApplication()
+    .AddAntiCorruptionLayer(builder.Configuration.GetConnectionString(&quot;DefaultConnection&quot;) ?? &quot;Data Source=todos.db&quot;);
+</code></pre>
+<p>Then add authentication middleware before authorization:</p>
+<pre><code class="lang-csharp">app.UseHttpsRedirection();
+
+if (!app.Environment.IsDevelopment())
+    app.UseAuthentication();
+
+app.UseAuthorization();
+</code></pre>
+<h4 id="32-update-apisrcdependencyinjectioncs">3.2 Update <code>Api\src\DependencyInjection.cs</code></h4>
+<p>Replace the current development/production actor-provider block with this:</p>
+<pre><code class="lang-csharp">namespace TodoSample.Api;
+
+using System.Collections.Generic;
+using Asp.Versioning.Conventions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
+using ServiceLevelIndicators;
+using TodoSample.Api.Middleware;
+using Trellis.Asp;
+using Trellis.Asp.Authorization;
+
+internal static class DependencyInjection
+{
+    public static IServiceCollection AddPresentation(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        services.ConfigureOpenTelemetry();
+        services.ConfigureServiceLevelIndicators();
+        services.AddProblemDetails();
+        services.AddControllers().AddScalarValueValidation();
+        services.AddApiVersioning()
+                .AddMvc(options =&gt; options.Conventions.Add(new VersionByNamespaceConvention()))
+                .AddApiExplorer()
+                .AddOpenApi(options =&gt; options.Document.AddScalarTransformers());
+        services.AddScoped&lt;ErrorHandlingMiddleware&gt;();
+        services.AddHealthChecks();
+
+        services.AddAuthorization(options =&gt;
+        {
+            if (!environment.IsDevelopment())
+            {
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+            }
+        });
+
+        if (environment.IsDevelopment())
+        {
+            services.AddDevelopmentActorProvider(options =&gt;
+            {
+                options.DefaultActorId = &quot;development&quot;;
+                options.DefaultPermissions = new HashSet&lt;string&gt;
+                {
+                    &quot;todos:read&quot;,
+                    &quot;todos:create&quot;,
+                    &quot;todos:update&quot;
+                };
+            });
+        }
+        else
+        {
+            var auth = configuration.GetSection(&quot;Authentication&quot;);
+
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =&gt;
+                {
+                    options.Authority = auth[&quot;Authority&quot;];
+                    options.Audience = auth[&quot;Audience&quot;];
+                });
+
+            services.AddEntraActorProvider();
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureOpenTelemetry(this IServiceCollection services)
+    {
+        static void configureResource(ResourceBuilder r) =&gt; r.AddService(
+            serviceName: &quot;TodoSampleService&quot;,
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? &quot;unknown&quot;);
+
+        services.AddOpenTelemetry()
+            .ConfigureResource(configureResource)
+            .WithMetrics(builder =&gt;
+            {
+                builder.AddAspNetCoreInstrumentation();
+                builder.AddServiceLevelIndicatorInstrumentation();
+                builder.AddMeter(
+                    &quot;Microsoft.AspNetCore.Hosting&quot;,
+                    &quot;Microsoft.AspNetCore.Server.Kestrel&quot;,
+                    &quot;System.Net.Http&quot;);
+                builder.AddOtlpExporter();
+            })
+            .WithTracing(builder =&gt;
+            {
+                builder.AddAspNetCoreInstrumentation();
+                builder.AddPrimitiveValueObjectInstrumentation();
+                builder.AddOtlpExporter();
+            });
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureServiceLevelIndicators(this IServiceCollection services)
+    {
+        services.AddServiceLevelIndicator(options =&gt;
+        {
+            options.LocationId = ServiceLevelIndicator.CreateLocationId(&quot;public&quot;, &quot;westus3&quot;);
+        })
+        .AddMvc()
+        .AddApiVersion();
+
+        return services;
+    }
+}
+</code></pre>
+<h3 id="step-4-map-entra-claims-to-trellis-actor">Step 4: Map Entra Claims to Trellis <code>Actor</code></h3>
+<p>The happy-path setup is simple because <code>EntraActorProvider</code> already maps the most useful claims.</p>
+<table>
+<thead>
+<tr>
+<th><code>Actor</code> field</th>
+<th>Default Entra mapping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Id</code></td>
+<td><code>oid</code> / object identifier</td>
+</tr>
+<tr>
+<td><code>Permissions</code></td>
+<td><code>roles</code> and <code>ClaimTypes.Role</code></td>
+</tr>
+<tr>
+<td><code>ForbiddenPermissions</code></td>
+<td>empty set</td>
+</tr>
+<tr>
+<td><code>Attributes[&quot;tid&quot;]</code></td>
+<td>tenant ID</td>
+</tr>
+<tr>
+<td><code>Attributes[&quot;preferred_username&quot;]</code></td>
+<td>preferred username</td>
+</tr>
+<tr>
+<td><code>Attributes[&quot;azp&quot;]</code></td>
+<td>authorized party</td>
+</tr>
+<tr>
+<td><code>Attributes[&quot;azpacr&quot;]</code></td>
+<td>client auth method</td>
+</tr>
+<tr>
+<td><code>Attributes[&quot;acrs&quot;]</code></td>
+<td>auth context class reference</td>
+</tr>
+<tr>
+<td><code>Attributes[&quot;ip_address&quot;]</code></td>
+<td>current request IP</td>
+</tr>
+<tr>
+<td><code>Attributes[&quot;mfa&quot;]</code></td>
+<td>derived from <code>amr == &quot;mfa&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<p>That means this works without extra mapping code:</p>
+<pre><code class="lang-csharp">builder.Services.AddEntraActorProvider();
+</code></pre>
+<p>If you want to customize permissions later, do it in one place:</p>
+<pre><code class="lang-csharp">builder.Services.AddEntraActorProvider(options =&gt;
+{
+    options.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;roles&quot;, StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(c.Type, System.Security.Claims.ClaimTypes.Role, StringComparison.OrdinalIgnoreCase))
+        .Select(c =&gt; c.Value)
+        .ToHashSet(StringComparer.Ordinal);
+});
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Use Entra app roles for coarse-grained permissions first. It is the quickest way to get Trellis permission checks working.</p>
+</div>
+<h3 id="step-5-protect-your-endpoints">Step 5: Protect Your Endpoints</h3>
+<p>Add a simple controller so you can see the mapped actor:</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Trellis.Authorization;
+
+namespace TodoSample.Api.Controllers;
+
+[ApiController]
+[Route(&quot;api/[controller]&quot;)]
+public sealed class MeController(IActorProvider actorProvider) : ControllerBase
+{
+    [Authorize]
+    [HttpGet]
+    public async Task&lt;IResult&gt; Get(CancellationToken cancellationToken)
+    {
+        var actor = await actorProvider.GetCurrentActorAsync(cancellationToken);
+
+        return Results.Ok(new
+        {
+            actor.Id,
+            Permissions = actor.Permissions.OrderBy(p =&gt; p).ToArray(),
+            TenantId = actor.GetAttribute(ActorAttributes.TenantId),
+            Mfa = actor.GetAttribute(ActorAttributes.MfaAuthenticated)
+        });
+    }
+}
+</code></pre>
+<p>Then use Trellis permissions in application code:</p>
+<pre><code class="lang-csharp">if (!actor.HasPermission(&quot;todos:read&quot;))
+    return Result.Fail(new Error.Forbidden(&quot;policy.id&quot;) { Detail = &quot;Missing todos:read permission.&quot; });
+</code></pre>
+<p>For tenant-scoped permissions, keep using <code>':'</code> as the separator:</p>
+<pre><code class="lang-csharp">if (!actor.HasPermission(&quot;todos:read&quot;, tenantId))
+    return Result.Fail(new Error.Forbidden(&quot;policy.id&quot;) { Detail = &quot;Missing tenant-scoped permission.&quot; });
+</code></pre>
+<h3 id="step-6-test-it">Step 6: Test It</h3>
+<h4 id="fast-local-testing-with-developmentactorprovider">Fast local testing with <code>DevelopmentActorProvider</code></h4>
+<ol>
+<li>Run the app normally:
+<pre><code class="lang-bash">dotnet run --project .\Api\src\Api.csproj
+</code></pre>
+</li>
+<li>Send an <code>X-Test-Actor</code> header:</li>
+</ol>
+<pre><code class="lang-powershell">$actor = '{&quot;Id&quot;:&quot;local-user&quot;,&quot;Permissions&quot;:[&quot;todos:read&quot;,&quot;todos:create&quot;],&quot;ForbiddenPermissions&quot;:[],&quot;Attributes&quot;:{&quot;tid&quot;:&quot;local-tenant&quot;,&quot;mfa&quot;:&quot;false&quot;}}'
+Invoke-RestMethod https://localhost:5001/api/me -Headers @{ &quot;X-Test-Actor&quot; = $actor }
+</code></pre>
+<h4 id="real-entra-token-testing-on-your-machine">Real Entra token testing on your machine</h4>
+<p>Run the app in a non-Development environment so the Entra path executes:</p>
+<pre><code class="lang-powershell">$env:ASPNETCORE_ENVIRONMENT = &quot;Staging&quot;
+dotnet run --project .\Api\src\Api.csproj
+</code></pre>
+<p>Then call the API with a real bearer token:</p>
+<pre><code class="lang-powershell">Invoke-RestMethod https://localhost:5001/api/me -Headers @{ Authorization = &quot;Bearer &lt;access-token&gt;&quot; }
+</code></pre>
+<p>If you want automated tests against real Entra tokens, use the patterns in <a href="integration-entra-testing.html">Testing with Entra ID Tokens</a>.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>If the token validates but <code>actor.Permissions</code> is empty, the usual cause is that Entra app roles were created but never assigned to the user or group.</p>
+</div>
+<h2 id="part-2-google-oauth-openid-connect">Part 2: Google OAuth (OpenID Connect)</h2>
+<p>Google is usually the fastest consumer-facing option. The main difference from Entra is that Google gives you identity first, while your app usually decides permissions.</p>
+<h3 id="step-1-create-oauth-credentials-in-google-cloud-console">Step 1: Create OAuth Credentials in Google Cloud Console</h3>
+<ol>
+<li>Open <strong>Google Cloud Console</strong>.</li>
+<li>Go to <strong>APIs &amp; Services</strong> -&gt; <strong>OAuth consent screen</strong> and configure your app name.</li>
+<li>Go to <strong>Credentials</strong> -&gt; <strong>Create Credentials</strong> -&gt; <strong>OAuth client ID</strong>.</li>
+<li>Choose <strong>Web application</strong>.</li>
+<li>Add your frontend origins and redirect URIs, for example:
+<ul>
+<li><code>http://localhost:5173</code></li>
+<li><code>http://localhost:5173/auth/callback</code></li>
+</ul>
+</li>
+<li>Copy the <strong>Client ID</strong>.</li>
+</ol>
+<p><strong>Screenshot target:</strong> You should be looking at <strong>Google Cloud Console -&gt; APIs &amp; Services -&gt; Credentials</strong> with an OAuth 2.0 client ID visible.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Google redirect URI matching is exact. A missing trailing path segment such as <code>/auth/callback</code> will break sign-in.</p>
+</div>
+<h3 id="step-2-configure-appsettingsjson-1">Step 2: Configure <code>appsettings.json</code></h3>
+<p>Use Google as the token issuer:</p>
+<pre><code class="lang-json">{
+  &quot;Logging&quot;: {
+    &quot;LogLevel&quot;: {
+      &quot;Default&quot;: &quot;Information&quot;,
+      &quot;Microsoft.AspNetCore&quot;: &quot;Warning&quot;
+    }
+  },
+  &quot;AllowedHosts&quot;: &quot;*&quot;,
+  &quot;Authentication&quot;: {
+    &quot;Authority&quot;: &quot;https://accounts.google.com&quot;,
+    &quot;Audience&quot;: &quot;&lt;google-client-id&gt;&quot;,
+    &quot;ActorIdClaim&quot;: &quot;sub&quot;,
+    &quot;PermissionsClaim&quot;: &quot;permissions&quot;
+  }
+}
+</code></pre>
+<h3 id="step-3-wire-up-google-authentication">Step 3: Wire Up Google Authentication</h3>
+<p>For Google, use <code>ClaimsActorProvider</code>. It is the generic Trellis provider for JWT/OIDC claims.</p>
+<p>Replace the non-development branch in <code>Api\src\DependencyInjection.cs</code> with this version:</p>
+<pre><code class="lang-csharp">var auth = configuration.GetSection(&quot;Authentication&quot;);
+
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];
+        options.Audience = auth[&quot;Audience&quot;];
+        options.TokenValidationParameters.ValidIssuers =
+        [
+            &quot;https://accounts.google.com&quot;,
+            &quot;accounts.google.com&quot;
+        ];
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim = auth[&quot;ActorIdClaim&quot;] ?? &quot;sub&quot;;
+    options.PermissionsClaim = auth[&quot;PermissionsClaim&quot;] ?? &quot;permissions&quot;;
+});
+</code></pre>
+<p>Use the same <code>Program.cs</code> changes from Part 1:</p>
+<pre><code class="lang-csharp">builder.Services
+    .AddPresentation(builder.Configuration, builder.Environment)
+    .AddApplication()
+    .AddAntiCorruptionLayer(builder.Configuration.GetConnectionString(&quot;DefaultConnection&quot;) ?? &quot;Data Source=todos.db&quot;);
+</code></pre>
+<pre><code class="lang-csharp">app.UseHttpsRedirection();
+
+if (!app.Environment.IsDevelopment())
+    app.UseAuthentication();
+
+app.UseAuthorization();
+</code></pre>
+<h3 id="step-4-map-google-claims-to-trellis-actor">Step 4: Map Google Claims to Trellis <code>Actor</code></h3>
+<p>With this setup:</p>
+<ol>
+<li><code>Actor.Id</code> comes from Google <code>sub</code></li>
+<li><code>Actor.Permissions</code> comes from whatever claim you choose as <code>PermissionsClaim</code></li>
+<li>if your Google token does not contain permission claims, <code>Actor.Permissions</code> is just empty</li>
+</ol>
+<p>That is still a valid starting point. Many startup apps begin with:</p>
+<ol>
+<li><code>[Authorize]</code> for &quot;signed-in users only&quot;</li>
+<li>application-level permissions loaded later from their own database</li>
+</ol>
+<p>If you want to add app permissions during token validation, create flat <code>permissions</code> claims:</p>
+<pre><code class="lang-csharp">services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];
+        options.Audience = auth[&quot;Audience&quot;];
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =&gt;
+            {
+                if (context.Principal?.Identity is not System.Security.Claims.ClaimsIdentity identity)
+                    return Task.CompletedTask;
+
+                identity.AddClaim(new System.Security.Claims.Claim(&quot;permissions&quot;, &quot;todos:read&quot;));
+
+                var email = identity.FindFirst(&quot;email&quot;)?.Value;
+                if (!string.IsNullOrWhiteSpace(email) &amp;&amp;
+                    email.EndsWith(&quot;@yourcompany.com&quot;, StringComparison.OrdinalIgnoreCase))
+                {
+                    identity.AddClaim(new System.Security.Claims.Claim(&quot;permissions&quot;, &quot;todos:create&quot;));
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+    });
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>ClaimsActorProvider</code> only maps a flat actor ID claim and a flat permissions claim. If you also need <code>Actor.Attributes</code> or forbidden permissions from Google claims, create a custom <code>IActorProvider</code> and optionally wrap it with <code>AddCachingActorProvider&lt;T&gt;()</code>.</p>
+</div>
+<h3 id="step-5-test-it">Step 5: Test It</h3>
+<ol>
+<li>Keep local day-to-day development on <code>DevelopmentActorProvider</code>.</li>
+<li>Run the app in <code>Staging</code> to exercise Google token validation:</li>
+</ol>
+<pre><code class="lang-powershell">$env:ASPNETCORE_ENVIRONMENT = &quot;Staging&quot;
+dotnet run --project .\Api\src\Api.csproj
+</code></pre>
+<ol start="3">
+<li>Sign in through your frontend.</li>
+<li>Send the returned token to your API:</li>
+</ol>
+<pre><code class="lang-powershell">Invoke-RestMethod https://localhost:5001/api/me -Headers @{ Authorization = &quot;Bearer &lt;google-token&gt;&quot; }
+</code></pre>
+<p>If <code>/api/me</code> returns an <code>Id</code>, your SSO path is working.</p>
+<h2 id="part-3-generic-oidc-provider">Part 3: Generic OIDC Provider</h2>
+<h3 id="the-pattern-works-with-okta-auth0-keycloak-etc">The Pattern (works with Okta, Auth0, Keycloak, etc.)</h3>
+<p>The Trellis pattern for any OIDC provider is:</p>
+<ol>
+<li>validate the token with ASP.NET Core authentication</li>
+<li>map a stable user claim to <code>Actor.Id</code></li>
+<li>map a flat permissions or roles claim to <code>Actor.Permissions</code></li>
+<li>optionally switch to a custom provider if you need database-backed permissions or attributes</li>
+</ol>
+<p>Use this <code>appsettings.json</code> shape:</p>
+<pre><code class="lang-json">{
+  &quot;Authentication&quot;: {
+    &quot;Authority&quot;: &quot;https://your-provider.example.com&quot;,
+    &quot;Audience&quot;: &quot;your-api-audience&quot;,
+    &quot;ActorIdClaim&quot;: &quot;sub&quot;,
+    &quot;PermissionsClaim&quot;: &quot;permissions&quot;
+  }
+}
+</code></pre>
+<p>Then use this registration:</p>
+<pre><code class="lang-csharp">var auth = configuration.GetSection(&quot;Authentication&quot;);
+
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];
+        options.Audience = auth[&quot;Audience&quot;];
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim = auth[&quot;ActorIdClaim&quot;] ?? &quot;sub&quot;;
+    options.PermissionsClaim = auth[&quot;PermissionsClaim&quot;] ?? &quot;permissions&quot;;
+});
+</code></pre>
+<p>Provider-specific tips:</p>
+<ol>
+<li><strong>Okta</strong> often uses <code>scp</code> or custom permissions claims.</li>
+<li><strong>Auth0</strong> often uses <code>permissions</code>.</li>
+<li><strong>Keycloak</strong> often uses <code>roles</code>, but nested role payloads may need normalization first.</li>
+</ol>
+<p>If your provider emits permissions in a flat claim, you are done.</p>
+<p>If your provider only proves identity and you load permissions from your own database, use a custom provider and cache it per request:</p>
+<pre><code class="lang-csharp">services.AddCachingActorProvider&lt;DatabaseActorProvider&gt;();
+</code></pre>
+<p>That pattern is useful when:</p>
+<ol>
+<li>the token contains <code>sub</code> but no app permissions</li>
+<li>you need tenant-specific permissions from your own data store</li>
+<li>you want custom <code>Actor.Attributes</code></li>
+</ol>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>ClaimsActorProvider</code> does not understand nested JSON claims like Keycloak <code>realm_access.roles</code>. Flatten them into regular claims during token validation or use a custom provider.</p>
+</div>
+<h2 id="development-vs-deployed-environments">Development vs Deployed Environments</h2>
+<p>Use <code>DevelopmentActorProvider</code> locally so you can iterate without a real identity provider. In every deployed environment (staging, production, etc.) use the <strong>same SSO provider</strong> — just point at different tenants or client IDs via configuration.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Do <strong>not</strong> use a different auth provider in staging than in production. Auth bugs are subtle — if staging uses Google and production uses Entra, you will miss token-format and claim-mapping issues until they hit real users.</p>
+</div>
+<h3 id="environment-specific-configuration">Environment-specific configuration</h3>
+<p>The only thing that changes between staging and production is the config values, not the provider type.</p>
+<h4 id="apisrcappsettingsstagingjson"><code>Api\src\appsettings.Staging.json</code></h4>
+<pre><code class="lang-json">{
+  &quot;Authentication&quot;: {
+    &quot;Authority&quot;: &quot;https://login.microsoftonline.com/&lt;staging-tenant-id&gt;/v2.0&quot;,
+    &quot;Audience&quot;: &quot;&lt;staging-api-client-id&gt;&quot;
+  }
+}
+</code></pre>
+<h4 id="apisrcappsettingsproductionjson"><code>Api\src\appsettings.Production.json</code></h4>
+<pre><code class="lang-json">{
+  &quot;Authentication&quot;: {
+    &quot;Authority&quot;: &quot;https://login.microsoftonline.com/&lt;prod-tenant-id&gt;/v2.0&quot;,
+    &quot;Audience&quot;: &quot;&lt;prod-api-client-id&gt;&quot;
+  }
+}
+</code></pre>
+<h3 id="registration-pattern">Registration pattern</h3>
+<pre><code class="lang-csharp">if (environment.IsDevelopment())
+{
+    services.AddDevelopmentActorProvider();
+}
+else
+{
+    var auth = configuration.GetSection(&quot;Authentication&quot;);
+    services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =&gt;
+        {
+            options.Authority = auth[&quot;Authority&quot;];
+            options.Audience = auth[&quot;Audience&quot;];
+        });
+
+    services.AddEntraActorProvider(); // Same provider everywhere
+}
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>If you use separate Azure AD tenants for staging and production, create an app registration in each tenant with the same redirect URIs and permission scopes. This gives you full isolation while keeping the auth code path identical.</p>
+</div>
+<h2 id="common-pitfalls">Common Pitfalls</h2>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>Redirect URI mismatch</strong> is the number-one setup error. The URI in your identity provider must exactly match your frontend callback URI.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>Audience mismatch</strong> means the token was issued for the wrong app. Make sure <code>Authentication:Audience</code> matches the token's <code>aud</code> claim.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>CORS failures look like auth failures.</strong> If your browser app runs on <code>http://localhost:5173</code> and your API runs somewhere else, configure CORS before blaming OIDC.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>DevelopmentActorProvider is Development-only.</strong> If <code>ASPNETCORE_ENVIRONMENT</code> is not <code>Development</code>, Trellis will not allow the <code>X-Test-Actor</code> shortcut.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>Permissions are case-sensitive.</strong> <code>todos:read</code> and <code>Todos.Read</code> are different strings. Pick one naming convention and stay consistent.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>Do not use <code>preferred_username</code> or email as your stable actor ID</strong> when the provider gives you a better immutable identifier like <code>oid</code> or <code>sub</code>.</p>
+</div>
+<h2 id="next-steps">Next Steps</h2>
+<p>Now that sign-in works:</p>
+<ol>
+<li>read <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a> for deeper <code>Actor</code>, <code>IAuthorize</code>, and resource-authorization patterns</li>
+<li>read <a href="integration-entra-testing.html">Testing with Entra ID Tokens</a> if you want end-to-end token validation tests</li>
+<li>move coarse permissions into provider roles first, then add database-backed permissions only when you actually need them</li>
+<li>add tenant or business attributes to <code>Actor.Attributes</code> when your authorization rules go beyond simple role checks</li>
+</ol>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-sso.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

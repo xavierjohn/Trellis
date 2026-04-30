@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Actor | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Actor | Trellis ">
+      
+      <meta name="description" content="Represents the current authenticated user making the request. Contains identity, permissions, forbidden permissions, and contextual attributes used by authorization behaviors.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Authorization_Actor.md&amp;value=---%0Auid%3A%20Trellis.Authorization.Actor%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Authorization.Actor">
+
+
+
+  <h1 id="Trellis_Authorization_Actor" data-uid="Trellis.Authorization.Actor" class="text-break">
+Class Actor  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L27"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Authorization.html">Authorization</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Authorization.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Represents the current authenticated user making the request.
+Contains identity, permissions, forbidden permissions, and contextual attributes
+used by authorization behaviors.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed record Actor : IEquatable&lt;Actor&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">Actor</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.Authorization.Actor.html">Actor</a>&gt;</div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Authorization_Actor_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Hydrated during authentication/middleware. Permissions should be pre-flattened from all
+sources (JWT roles, database groups, organizational hierarchies) before constructing the Actor
+so that all permission checks remain O(1).
+</p>
+<p>
+Scoped permissions use the <code>"Permission:Scope"</code> convention
+(e.g., <code>"Document.Edit:Tenant_A"</code>).
+Add scoped entries to <a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_Permissions">Permissions</a> and check with
+<a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_HasPermission_System_String_System_String_">HasPermission(string, string)</a>.
+</p>
+<p>
+All permission and attribute lookups use ordinal (case-sensitive) comparison.
+Ensure consistent casing when hydrating permissions, forbidden permissions, and attributes.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Authorization_Actor__ctor_" data-uid="Trellis.Authorization.Actor.#ctor*"></a>
+
+  <h3 id="Trellis_Authorization_Actor__ctor_System_String_System_Collections_Generic_IReadOnlySet_System_String__System_Collections_Generic_IReadOnlySet_System_String__System_Collections_Generic_IReadOnlyDictionary_System_String_System_String__" data-uid="Trellis.Authorization.Actor.#ctor(System.String,System.Collections.Generic.IReadOnlySet{System.String},System.Collections.Generic.IReadOnlySet{System.String},System.Collections.Generic.IReadOnlyDictionary{System.String,System.String})">
+  Actor(string, IReadOnlySet&lt;string&gt;, IReadOnlySet&lt;string&gt;, IReadOnlyDictionary&lt;string, string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new <a class="xref" href="Trellis.Authorization.Actor.html">Actor</a> and snapshots the supplied authorization state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Actor(string id, IReadOnlySet&lt;string&gt; permissions, IReadOnlySet&lt;string&gt; forbiddenPermissions, IReadOnlyDictionary&lt;string, string&gt; attributes)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The unique identifier of the actor (e.g., user ID from JWT sub claim).</p>
+</dd>
+    <dt><code>permissions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlyset-1">IReadOnlySet</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>The set of permissions granted to the actor.
+Implementations such as <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.hashset-1">HashSet&lt;T&gt;</a> and <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.frozen.frozenset-1">FrozenSet&lt;T&gt;</a>
+provide O(1) lookups.</p>
+</dd>
+    <dt><code>forbiddenPermissions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlyset-1">IReadOnlySet</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>Permissions that are explicitly denied for this actor.
+A permission present in both <code class="paramref">permissions</code> and <code class="paramref">forbiddenPermissions</code>
+is treated as denied (deny always overrides allow).</p>
+</dd>
+    <dt><code>attributes</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2">IReadOnlyDictionary</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>Contextual attributes for attribute-based access control (ABAC).
+Stores environmental metadata such as IP address, MFA status, risk score, or VPN status.
+Use <a class="xref" href="Trellis.Authorization.ActorAttributes.html">ActorAttributes</a> constants for well-known keys.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="Trellis_Authorization_Actor_PermissionScopeSeparator" data-uid="Trellis.Authorization.Actor.PermissionScopeSeparator">
+  PermissionScopeSeparator
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The separator used between permission name and scope in scoped permission strings.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const char PermissionScopeSeparator = &#39;:&#39;</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Authorization_Actor_Attributes_" data-uid="Trellis.Authorization.Actor.Attributes*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_Attributes" data-uid="Trellis.Authorization.Actor.Attributes">
+  Attributes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L96"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Contextual attributes for attribute-based access control (ABAC).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyDictionary&lt;string, string&gt; Attributes { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2">IReadOnlyDictionary</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_ForbiddenPermissions_" data-uid="Trellis.Authorization.Actor.ForbiddenPermissions*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_ForbiddenPermissions" data-uid="Trellis.Authorization.Actor.ForbiddenPermissions">
+  ForbiddenPermissions
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Permissions that are explicitly denied for this actor.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlySet&lt;string&gt; ForbiddenPermissions { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlyset-1">IReadOnlySet</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_Id_" data-uid="Trellis.Authorization.Actor.Id*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_Id" data-uid="Trellis.Authorization.Actor.Id">
+  Id
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L73"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The unique identifier of the actor (e.g., user ID from JWT sub claim).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Id { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_Permissions_" data-uid="Trellis.Authorization.Actor.Permissions*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_Permissions" data-uid="Trellis.Authorization.Actor.Permissions">
+  Permissions
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The set of permissions granted to the actor.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlySet&lt;string&gt; Permissions { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlyset-1">IReadOnlySet</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Authorization_Actor_Create_" data-uid="Trellis.Authorization.Actor.Create*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_Create_System_String_System_Collections_Generic_IReadOnlySet_System_String__" data-uid="Trellis.Authorization.Actor.Create(System.String,System.Collections.Generic.IReadOnlySet{System.String})">
+  Create(string, IReadOnlySet&lt;string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L109"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an <a class="xref" href="Trellis.Authorization.Actor.html">Actor</a> with no forbidden permissions and no ABAC attributes.
+Convenience factory for the common case where only identity and permissions are needed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Actor Create(string id, IReadOnlySet&lt;string&gt; permissions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The unique identifier of the actor.</p>
+</dd>
+    <dt><code>permissions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlyset-1">IReadOnlySet</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>The set of permissions granted to the actor.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Authorization.Actor.html">Actor</a></dt>
+    <dd><p>A new <a class="xref" href="Trellis.Authorization.Actor.html">Actor</a> instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_GetAttribute_" data-uid="Trellis.Authorization.Actor.GetAttribute*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_GetAttribute_System_String_" data-uid="Trellis.Authorization.Actor.GetAttribute(System.String)">
+  GetAttribute(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L170"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the value of the specified attribute, or <code>null</code> if the attribute does not exist.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string? GetAttribute(string key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The attribute key. Use <a class="xref" href="Trellis.Authorization.ActorAttributes.html">ActorAttributes</a> constants for well-known keys.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The attribute value if found; otherwise <code>null</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_HasAllPermissions_" data-uid="Trellis.Authorization.Actor.HasAllPermissions*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_HasAllPermissions_System_Collections_Generic_IEnumerable_System_String__" data-uid="Trellis.Authorization.Actor.HasAllPermissions(System.Collections.Generic.IEnumerable{System.String})">
+  HasAllPermissions(IEnumerable&lt;string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns true if this actor has ALL of the specified permissions.
+Each permission is checked against <a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_ForbiddenPermissions">ForbiddenPermissions</a> (deny-aware).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasAllPermissions(IEnumerable&lt;string&gt; permissions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>permissions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>The permissions to check.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the actor has every specified permission and none are forbidden; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_HasAnyPermission_" data-uid="Trellis.Authorization.Actor.HasAnyPermission*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_HasAnyPermission_System_Collections_Generic_IEnumerable_System_String__" data-uid="Trellis.Authorization.Actor.HasAnyPermission(System.Collections.Generic.IEnumerable{System.String})">
+  HasAnyPermission(IEnumerable&lt;string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L148"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns true if this actor has ANY of the specified permissions.
+Each permission is checked against <a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_ForbiddenPermissions">ForbiddenPermissions</a> (deny-aware).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasAnyPermission(IEnumerable&lt;string&gt; permissions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>permissions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>The permissions to check.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the actor has at least one non-forbidden specified permission; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_HasAttribute_" data-uid="Trellis.Authorization.Actor.HasAttribute*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_HasAttribute_System_String_" data-uid="Trellis.Authorization.Actor.HasAttribute(System.String)">
+  HasAttribute(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L163"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns true if this actor has the specified attribute.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasAttribute(string key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The attribute key. Use <a class="xref" href="Trellis.Authorization.ActorAttributes.html">ActorAttributes</a> constants for well-known keys.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the attribute exists; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_HasPermission_" data-uid="Trellis.Authorization.Actor.HasPermission*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_HasPermission_System_String_" data-uid="Trellis.Authorization.Actor.HasPermission(System.String)">
+  HasPermission(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns true if this actor has the specified permission and it is not forbidden.
+If the permission exists in both <a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_Permissions">Permissions</a> and <a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_ForbiddenPermissions">ForbiddenPermissions</a>,
+deny wins and this returns false.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasPermission(string permission)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>permission</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The permission to check (case-sensitive, ordinal comparison).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the permission is granted and not explicitly denied; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_HasPermission_" data-uid="Trellis.Authorization.Actor.HasPermission*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_HasPermission_System_String_System_String_" data-uid="Trellis.Authorization.Actor.HasPermission(System.String,System.String)">
+  HasPermission(string, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L130"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns true if this actor has the specified permission within the given scope
+and it is not forbidden. Uses the <code>&quot;Permission:Scope&quot;</code> convention with
+<a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_PermissionScopeSeparator">PermissionScopeSeparator</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasPermission(string permission, string scope)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>permission</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The base permission (e.g., <code>&quot;Document.Edit&quot;</code>).</p>
+</dd>
+    <dt><code>scope</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The scope qualifier (e.g., <code>&quot;Tenant_A&quot;</code> or a resource ID). Case-sensitive.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the scoped permission is granted and not explicitly denied; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_Actor_IsOwner_" data-uid="Trellis.Authorization.Actor.IsOwner*"></a>
+
+  <h3 id="Trellis_Authorization_Actor_IsOwner_System_String_" data-uid="Trellis.Authorization.Actor.IsOwner(System.String)">
+  IsOwner(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L157"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns true if this actor is the owner of the specified resource.
+Compares the actor's <a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_Id">Id</a> against the resource owner ID using ordinal comparison.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsOwner(string resourceOwnerId)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resourceOwnerId</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The identifier of the resource owner (e.g., creator ID).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the actor's ID matches the resource owner ID; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/Actor.cs/#L27" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

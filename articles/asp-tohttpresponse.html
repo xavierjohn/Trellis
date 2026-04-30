@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ToHttpResponse — the unified ASP.NET response verb | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ToHttpResponse — the unified ASP.NET response verb | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/asp-tohttpresponse.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="tohttpresponse--the-unified-aspnet-response-verb">ToHttpResponse — the unified ASP.NET response verb</h1>
+
+<p><code>Result&lt;T&gt;.ToHttpResponse(...)</code> is the single, recommended verb for translating a
+Trellis <code>Result</code> (or <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>, or <code>Result&lt;Page&lt;T&gt;&gt;</code>) into an
+HTTP response in <strong>both MVC and Minimal API</strong> apps. It returns
+<code>Microsoft.AspNetCore.Http.IResult</code>, so it works directly in Minimal API
+endpoints and converts to an MVC <code>ActionResult&lt;T&gt;</code> via <code>.AsActionResult&lt;T&gt;()</code>.</p>
+<p><code>ToHttpResponse</code> collapses the previous family of 16+ verbs
+(<code>ToActionResult</code>, <code>ToHttpResult</code>, <code>ToActionResultAsync</code>, <!-- stale-doc-ok: legacy verb list in migration guidance -->
+<code>ToHttpResultAsync</code>, <code>ToPagedHttpResult</code>, …) into one fluent surface that <!-- stale-doc-ok: legacy verb list in migration guidance -->
+honors the same RFC 9110 conditional-request, <code>Prefer</code>, <code>Vary</code>, <code>Range</code> and
+companion-header semantics they did.</p>
+<h2 id="read-endpoint-success--200-failure--mapped-status">Read endpoint (success → 200, failure → mapped status)</h2>
+<pre><code class="lang-csharp">[HttpGet(&quot;{id:guid}&quot;)]
+public Task&lt;ActionResult&lt;TodoItem&gt;&gt; Get(Guid id, CancellationToken ct) =&gt;
+    _mediator.SendAsync(new GetTodo(id), ct)
+             .ToHttpResponseAsync()       // returns IResult
+             .AsActionResultAsync&lt;TodoItem&gt;();
+</code></pre>
+<p>In Minimal API:</p>
+<pre><code class="lang-csharp">app.MapGet(&quot;/todos/{id:guid}&quot;, (Guid id, IMediator m, CancellationToken ct) =&gt;
+    m.SendAsync(new GetTodo(id), ct).ToHttpResponseAsync());
+</code></pre>
+<h2 id="write-endpoint-resultwriteoutcomet">Write endpoint (<code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>)</h2>
+<p><code>ToHttpResponse</code> understands every <code>WriteOutcome</code> variant
+(<code>Created</code>, <code>Updated</code>, <code>UpdatedNoContent</code>, <code>Accepted</code>, <code>AcceptedNoContent</code>)
+and emits the right status, <code>Location</code>, <code>ETag</code> and <code>Last-Modified</code> headers.</p>
+<pre><code class="lang-csharp">[HttpPost]
+public Task&lt;ActionResult&lt;TodoItem&gt;&gt; Create(CreateTodo cmd, CancellationToken ct) =&gt;
+    _mediator.SendAsync(cmd, ct)
+             .ToHttpResponseAsync(opts =&gt; opts.CreatedAtRoute(
+                 routeName: &quot;GetTodo&quot;,
+                 routeValues: t =&gt; new RouteValueDictionary { [&quot;id&quot;] = t.Id }))
+             .AsActionResultAsync&lt;TodoItem&gt;();
+</code></pre>
+<h2 id="conditional-requests--prefer">Conditional requests &amp; <code>Prefer</code></h2>
+<p><code>HonorPreconditions</code> and <code>HonorPrefer</code> are on by default. Pair with
+<code>WithETag</code> / <code>WithLastModified</code> to opt in:</p>
+<pre><code class="lang-csharp">result.ToHttpResponse(opts =&gt; opts
+    .WithETag(t =&gt; EntityTagHeaderValue.Parse($&quot;\&quot;{t.Version}\&quot;&quot;))
+    .WithLastModified(t =&gt; t.UpdatedAt));
+</code></pre>
+<p>This emits <code>ETag</code> / <code>Last-Modified</code> on success, evaluates
+<code>If-Match</code> / <code>If-None-Match</code> / <code>If-Modified-Since</code> / <code>If-Unmodified-Since</code>,
+and respects <code>Prefer: return=minimal|representation</code>.</p>
+<h2 id="vary-range-paginated-and-projected-bodies">Vary, Range, paginated and projected bodies</h2>
+<pre><code class="lang-csharp">opts.Vary(&quot;Accept-Language&quot;, &quot;Accept-Encoding&quot;);
+opts.WithRange(maxRangeBytes: 4 * 1024 * 1024);
+</code></pre>
+<p>Paginated:</p>
+<pre><code class="lang-csharp">result.ToHttpResponse(
+    nextUrlBuilder: page =&gt; $&quot;/todos?cursor={page.NextCursor}&quot;,
+    body: page =&gt; page.Items);
+</code></pre>
+<p>Body projection:</p>
+<pre><code class="lang-csharp">result.ToHttpResponse&lt;TodoItem, TodoDto&gt;(opts =&gt; opts.WithBody(t =&gt; TodoDto.From(t)));
+</code></pre>
+<h2 id="error-mapping">Error mapping</h2>
+<p>Default mapping is configured at startup with <code>AddTrellisAsp</code>. Override per call:</p>
+<pre><code class="lang-csharp">// Startup — configure global defaults:
+builder.Services.AddTrellisAsp(options =&gt;
+{
+    options.MapError&lt;Error.Conflict&gt;(StatusCodes.Status400BadRequest);
+});
+
+// Per call — override for a single endpoint:
+opts.WithErrorMapping&lt;Error.NotFound&gt;(StatusCodes.Status410Gone);
+</code></pre>
+<p>Companion headers (<code>Allow</code>, <code>Retry-After</code>, <code>Content-Range</code>, …) are emitted
+automatically based on the concrete <code>Error</code> subtype.</p>
+<h2 id="mvc--minimal-api">MVC ↔ Minimal API</h2>
+<p>Same code, two presentation styles:</p>
+<table>
+<thead>
+<tr>
+<th>API style</th>
+<th>Wrap with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Minimal API</td>
+<td><code>await result.ToHttpResponse()</code></td>
+</tr>
+<tr>
+<td>MVC controller</td>
+<td><code>result.ToHttpResponse().AsActionResult&lt;T&gt;()</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>.AsActionResult&lt;T&gt;()</code> implements <code>IConvertToActionResult</code> and forwards
+<code>ExecuteResultAsync</code> to <code>IResult.ExecuteAsync</code>, so the MVC pipeline executes
+the same <code>IResult</code> you would use in Minimal API.</p>
+<h2 id="migration-from-the-legacy-verbs">Migration from the legacy verbs</h2>
+<p>The previous extension classes
+(<code>HttpResultExtensions</code>, <code>HttpResultExtensionsAsync</code>, <code>ActionResultExtensions</code>,
+<code>ActionResultExtensionsAsync</code>, <code>WriteOutcomeExtensions</code>,
+<code>PageHttpResultExtensions</code>, <code>PageActionResultExtensions</code>) have been <strong>deleted</strong>
+in v3. Migrate as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Old</th>
+<th>New</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>result.ToActionResult()</code></td>
+<td><code>result.ToHttpResponse().AsActionResult&lt;T&gt;()</code></td>
+<td><!-- stale-doc-ok: legacy verb in migration table --></td>
+</tr>
+<tr>
+<td><code>result.ToActionResultAsync()</code></td>
+<td><code>result.ToHttpResponseAsync().AsActionResultAsync&lt;T&gt;()</code></td>
+<td><!-- stale-doc-ok: legacy verb in migration table --></td>
+</tr>
+<tr>
+<td><code>result.ToHttpResult(httpContext)</code></td>
+<td><code>result.ToHttpResponse()</code> (returns <code>IResult</code>)</td>
+<td><!-- stale-doc-ok: legacy verb in migration table --></td>
+</tr>
+<tr>
+<td><code>outcome.ToActionResult(routeName, routeValues)</code></td>
+<td><code>result.ToHttpResponse(o =&gt; o.CreatedAtRoute(routeName, rv))</code></td>
+<td><!-- stale-doc-ok: legacy verb in migration table --></td>
+</tr>
+<tr>
+<td><code>outcome.ToHttpResult(httpContext, map)</code></td>
+<td><code>result.ToHttpResponse(o =&gt; o.CreatedAtRoute(...))</code></td>
+<td><!-- stale-doc-ok: legacy verb in migration table --></td>
+</tr>
+<tr>
+<td><code>pageResult.ToPagedHttpResult(nextUrlBuilder, ...)</code></td>
+<td><code>result.ToHttpResponse(nextUrlBuilder, body: p =&gt; p.Items)</code></td>
+<td><!-- stale-doc-ok: legacy verb in migration table --></td>
+</tr>
+</tbody>
+</table>
+<h3 id="other-migration-notes">Other migration notes</h3>
+<ul>
+<li><strong>VO binding auto-registration.</strong> <code>services.AddTrellisAsp()</code> now
+automatically calls <code>AddScalarValueValidation()</code>. The standalone
+<code>UseScalarValueValidation()</code> / <code>WithScalarValueValidation()</code> calls remain
+functional but are redundant when <code>AddTrellisAsp</code> is used.</li>
+<li><strong>Controller-test pattern.</strong> Tests that previously asserted on
+<code>ActionResult</code> shapes can now exercise the <code>IResult</code> directly:
+<code>var http = (await result).ToHttpResponse(); await http.ExecuteAsync(httpContext);</code></li>
+<li><strong>MVC formatter bypass.</strong> <code>ToHttpResponse</code> writes responses through the
+Minimal API <code>Results.*</code> infrastructure, bypassing MVC output formatters.
+If an endpoint depends on a custom MVC formatter (e.g. XML), return an MVC
+<code>ActionResult</code> / <code>ObjectResult</code> directly from the controller for that
+endpoint and use <code>ToHttpResponse().AsActionResult&lt;T&gt;()</code> for the rest.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/asp-tohttpresponse.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

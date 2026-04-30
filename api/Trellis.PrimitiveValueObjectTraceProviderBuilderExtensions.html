@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class PrimitiveValueObjectTraceProviderBuilderExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class PrimitiveValueObjectTraceProviderBuilderExtensions | Trellis ">
+      
+      <meta name="description" content="Provides extension methods for configuring OpenTelemetry tracing for Trellis primitive value objects.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_PrimitiveValueObjectTraceProviderBuilderExtensions.md&amp;value=---%0Auid%3A%20Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions">
+
+
+
+  <h1 id="Trellis_PrimitiveValueObjectTraceProviderBuilderExtensions" data-uid="Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions" class="text-break">
+Class PrimitiveValueObjectTraceProviderBuilderExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/PrimitiveValueObjectTraceProviderBuilderExtensions.cs/#L15"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Primitives.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides extension methods for configuring OpenTelemetry tracing for Trellis primitive value objects.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class PrimitiveValueObjectTraceProviderBuilderExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">PrimitiveValueObjectTraceProviderBuilderExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_PrimitiveValueObjectTraceProviderBuilderExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This class enables distributed tracing and monitoring for value object operations such as
+creation, validation, and parsing. When configured, value object operations will automatically
+generate trace spans in your OpenTelemetry pipeline.</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_PrimitiveValueObjectTraceProviderBuilderExtensions_AddPrimitiveValueObjectInstrumentation_" data-uid="Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions.AddPrimitiveValueObjectInstrumentation*"></a>
+
+  <h3 id="Trellis_PrimitiveValueObjectTraceProviderBuilderExtensions_AddPrimitiveValueObjectInstrumentation_OpenTelemetry_Trace_TracerProviderBuilder_" data-uid="Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions.AddPrimitiveValueObjectInstrumentation(OpenTelemetry.Trace.TracerProviderBuilder)">
+  AddPrimitiveValueObjectInstrumentation(TracerProviderBuilder)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/PrimitiveValueObjectTraceProviderBuilderExtensions.cs/#L124"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds primitive value object instrumentation to the OpenTelemetry tracing pipeline.
+Enables distributed tracing for value object creation, validation, and parsing operations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>builder</code> <span class="xref">TracerProviderBuilder</span></dt>
+    <dd><p>The <span class="xref">OpenTelemetry.Trace.TracerProviderBuilder</span> to configure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TracerProviderBuilder</span></dt>
+    <dd><p>The configured <span class="xref">OpenTelemetry.Trace.TracerProviderBuilder</span> for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_PrimitiveValueObjectTraceProviderBuilderExtensions_AddPrimitiveValueObjectInstrumentation_OpenTelemetry_Trace_TracerProviderBuilder__examples">Examples</h4>
+  <p>Basic OpenTelemetry configuration in ASP.NET Core:</p>
+<pre><code class="lang-csharp">var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProviderBuilder =&gt;
+        tracerProviderBuilder
+            .AddPrimitiveValueObjectInstrumentation()  // Enable Trellis primitive tracing
+            .AddAspNetCoreInstrumentation()         // Add ASP.NET Core tracing
+            .AddHttpClientInstrumentation()         // Add HTTP client tracing
+            .AddConsoleExporter());                 // Export to console
+
+var app = builder.Build();
+app.Run();</code></pre>
+
+  <p>Configuration with Application Insights:</p>
+<pre><code class="lang-csharp">builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProviderBuilder =&gt;
+        tracerProviderBuilder
+            .AddPrimitiveValueObjectInstrumentation()
+            .AddAspNetCoreInstrumentation()
+            .AddAzureMonitorTraceExporter(options =&gt;
+            {
+                options.ConnectionString = 
+                    builder.Configuration["ApplicationInsights:ConnectionString"];
+            }));
+
+// Now you can see Trellis primitive traces in Application Insights:
+// - Search for operations like "EmailAddress.TryCreate"
+// - View validation success/failure rates
+// - Analyze performance metrics</code></pre>
+
+  <p>Trace hierarchy example in a typical API call:</p>
+<pre><code class="lang-csharp">// HTTP Request: POST /users
+app.MapPost("/users", (CreateUserRequest request) =&gt;
+    EmailAddress.TryCreate(request.Email)
+        .Combine(FirstName.TryCreate(request.FirstName))
+        .Combine(LastName.TryCreate(request.LastName))
+        .Bind((email, first, last) =&gt; _userService.CreateUser(email, first, last))
+        .ToHttpResponse());
+
+// Resulting trace hierarchy:
+// POST /users (200ms)
+//   ├─ EmailAddress.TryCreate (1ms) [Status: Ok]
+//   ├─ FirstName.TryCreate (0.5ms) [Status: Ok]
+//   ├─ LastName.TryCreate (0.5ms) [Status: Ok]
+//   └─ UserService.CreateUser (195ms)
+//      ├─ Repository.Add (180ms)
+//      │  └─ SQL INSERT (175ms)
+//      └─ EventBus.Publish (15ms)</code></pre>
+
+  <p>Monitoring validation failures:</p>
+<pre><code class="lang-csharp">// When validation fails, traces show error status:
+// EmailAddress.TryCreate (1ms) [Status: Error]
+//   └─ Error: "Email address is not valid."
+
+// Query Application Insights for failed validations:
+// requests
+// | where operation_Name == "EmailAddress.TryCreate"
+// | where success == false
+// | summarize count() by bin(timestamp, 1h)</code></pre>
+
+
+  <h4 class="section" id="Trellis_PrimitiveValueObjectTraceProviderBuilderExtensions_AddPrimitiveValueObjectInstrumentation_OpenTelemetry_Trace_TracerProviderBuilder__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This extension method registers the Trellis primitive value object <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.activitysource">ActivitySource</a> with OpenTelemetry,
+allowing you to observe and monitor value object operations in your distributed tracing system.
+</p>
+<p>
+Once enabled, operations like <a class="xref" href="Trellis.Primitives.EmailAddress.html#Trellis_Primitives_EmailAddress_TryCreate_System_String_System_String_">TryCreate(string?, string?)</a> will automatically create
+trace spans with:
+<ul><li>Operation name (e.g., "EmailAddress.TryCreate")</li><li>Success/error status</li><li>Duration metrics</li><li>Parent-child relationship with calling code</li></ul>
+
+<p>
+Benefits of enabling primitive value object instrumentation:
+<ul><li>Monitor validation performance and identify slow operations</li><li>Track validation failure rates and patterns</li><li>Correlate value object operations with business transactions</li><li>Debug distributed systems by following trace hierarchies</li><li>Analyze user input validation patterns</li></ul>
+
+</div>
+
+
+  <dl class="typelist seealso">
+    <dt>See Also</dt>
+    <dd>
+    <div><a class="xref" href="Trellis.PrimitiveValueObjectTrace.html">PrimitiveValueObjectTrace</a></div>
+    <div><span class="xref">TracerProviderBuilder</span></div>
+    </dd>
+  </dl>
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/PrimitiveValueObjectTraceProviderBuilderExtensions.cs/#L15" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

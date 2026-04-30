@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class HttpResponseExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class HttpResponseExtensions | Trellis ">
+      
+      <meta name="description" content="Canonical Railway-Oriented HTTP extensions for .">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Http_HttpResponseExtensions.md&amp;value=---%0Auid%3A%20Trellis.Http.HttpResponseExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Http.HttpResponseExtensions">
+
+
+
+  <h1 id="Trellis_Http_HttpResponseExtensions" data-uid="Trellis.Http.HttpResponseExtensions" class="text-break">
+Class HttpResponseExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Http.html">Http</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Http.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Canonical Railway-Oriented HTTP extensions for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class HttpResponseExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">HttpResponseExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Http_HttpResponseExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Operators bridge <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>
+into <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> pipelines and deserialize JSON payloads.
+</p>
+<p>
+<b>Disposal contract.</b> The library owns the lifecycle of the underlying
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a> on terminal or transformative paths:
+<ul><li>
+    <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_ToResultAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__System_Func_System_Net_HttpStatusCode_Trellis_Error__">ToResultAsync(Task&lt;HttpResponseMessage&gt;, Func&lt;HttpStatusCode, Error?&gt;?)</a>
+    disposes the response when bare strict mapping or a supplied mapper returns a non-null
+    <a class="xref" href="Trellis.Error.html">Error</a> (the <code>Fail</code> path). When a supplied mapper returns
+    <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> or bare strict mapping sees a successful status code, the response
+    flows through and the caller still owns disposal until a subsequent <code>ReadJson*</code> call
+    consumes it.
+  </li><li>
+    The body-aware <code>ToResultAsync</code> overload disposes the response when its mapper returns a
+    non-null <a class="xref" href="Trellis.Error.html">Error</a>; a <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> return passes through unchanged.
+  </li><li>
+    <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_HandleNotFoundAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_NotFound_">HandleNotFoundAsync(Task&lt;HttpResponseMessage&gt;, NotFound)</a>, <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_HandleConflictAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_Conflict_">HandleConflictAsync(Task&lt;HttpResponseMessage&gt;, Conflict)</a>, and
+    <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_HandleUnauthorizedAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_Unauthorized_">HandleUnauthorizedAsync(Task&lt;HttpResponseMessage&gt;, Unauthorized)</a> dispose the response on the matched-status
+    <code>Fail</code> path; non-match passes the response through unchanged.
+  </li><li>
+    <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_ReadJsonAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_">ReadJsonAsync&lt;T&gt;(Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</a>, <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_ReadJsonMaybeAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_">ReadJsonMaybeAsync&lt;T&gt;(Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</a>, and
+    <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_ReadJsonOrNoneOn404Async__1_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_">ReadJsonOrNoneOn404Async&lt;T&gt;(Task&lt;HttpResponseMessage&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</a> always dispose the response after reading
+    (success or failure), and the <code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code> JSON readers
+    short-circuit when the input is already a failure (no response to dispose in that case).
+  </li></ul>
+<p>In practice: once you call <code>ReadJson*</code>, you no longer need to dispose the
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a> yourself.</p>
+
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_HandleConflictAsync_" data-uid="Trellis.Http.HttpResponseExtensions.HandleConflictAsync*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_HandleConflictAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_Conflict_" data-uid="Trellis.Http.HttpResponseExtensions.HandleConflictAsync(System.Threading.Tasks.Task{System.Net.Http.HttpResponseMessage},Trellis.Error.Conflict)">
+  HandleConflictAsync(Task&lt;HttpResponseMessage&gt;, Conflict)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L275"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-conflict">Conflict</a> to a
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> carrying <code class="paramref">error</code>; any other
+status code passes through as <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; HandleConflictAsync(this Task&lt;HttpResponseMessage&gt; response, Error.Conflict error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;</dt>
+    <dd><p>The pending HTTP response.</p>
+</dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.Conflict.html">Conflict</a></dt>
+    <dd><p>The <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a> to surface on a 409 match.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> producing the mapped <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Http_HttpResponseExtensions_HandleConflictAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_Conflict__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>On a matched 409 the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a> is disposed
+before returning; on any other status the caller continues to own disposal.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_HandleNotFoundAsync_" data-uid="Trellis.Http.HttpResponseExtensions.HandleNotFoundAsync*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_HandleNotFoundAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_NotFound_" data-uid="Trellis.Http.HttpResponseExtensions.HandleNotFoundAsync(System.Threading.Tasks.Task{System.Net.Http.HttpResponseMessage},Trellis.Error.NotFound)">
+  HandleNotFoundAsync(Task&lt;HttpResponseMessage&gt;, NotFound)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L246"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-notfound">NotFound</a> to a
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> carrying <code class="paramref">error</code>; any other
+status code passes through as <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; HandleNotFoundAsync(this Task&lt;HttpResponseMessage&gt; response, Error.NotFound error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;</dt>
+    <dd><p>The pending HTTP response.</p>
+</dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.NotFound.html">NotFound</a></dt>
+    <dd><p>The <a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a> to surface on a 404 match.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> producing the mapped <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Http_HttpResponseExtensions_HandleNotFoundAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_NotFound__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>On a matched 404 the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a> is disposed
+before returning. On any non-match the caller continues to own disposal until a
+downstream operator (typically <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_ReadJsonAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_">ReadJsonAsync&lt;T&gt;(Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</a> or
+<a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_ReadJsonMaybeAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_">ReadJsonMaybeAsync&lt;T&gt;(Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</a>) consumes the response.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_HandleUnauthorizedAsync_" data-uid="Trellis.Http.HttpResponseExtensions.HandleUnauthorizedAsync*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_HandleUnauthorizedAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_Unauthorized_" data-uid="Trellis.Http.HttpResponseExtensions.HandleUnauthorizedAsync(System.Threading.Tasks.Task{System.Net.Http.HttpResponseMessage},Trellis.Error.Unauthorized)">
+  HandleUnauthorizedAsync(Task&lt;HttpResponseMessage&gt;, Unauthorized)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L304"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-unauthorized">Unauthorized</a> to a
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> carrying <code class="paramref">error</code>; any other
+status code passes through as <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; HandleUnauthorizedAsync(this Task&lt;HttpResponseMessage&gt; response, Error.Unauthorized error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;</dt>
+    <dd><p>The pending HTTP response.</p>
+</dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.Unauthorized.html">Unauthorized</a></dt>
+    <dd><p>The <a class="xref" href="Trellis.Error.Unauthorized.html">Error.Unauthorized</a> to surface on a 401 match.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> producing the mapped <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Http_HttpResponseExtensions_HandleUnauthorizedAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__Trellis_Error_Unauthorized__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>On a matched 401 the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a> is disposed
+before returning; on any other status the caller continues to own disposal.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_ReadJsonAsync_" data-uid="Trellis.Http.HttpResponseExtensions.ReadJsonAsync*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_ReadJsonAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_" data-uid="Trellis.Http.HttpResponseExtensions.ReadJsonAsync``1(System.Threading.Tasks.Task{Trellis.Result{System.Net.Http.HttpResponseMessage}},System.Text.Json.Serialization.Metadata.JsonTypeInfo{``0},System.Threading.CancellationToken)">
+  ReadJsonAsync&lt;T&gt;(Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L339"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reads and deserializes the body of a successful HTTP response into
+<code class="typeparamref">T</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;T&gt;&gt; ReadJsonAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt; response, JsonTypeInfo&lt;T&gt; jsonTypeInfo, CancellationToken ct = default) where T : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;&gt;</dt>
+    <dd><p>A pending <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>.</p>
+</dd>
+    <dt><code>jsonTypeInfo</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.text.json.serialization.metadata.jsontypeinfo-1">JsonTypeInfo</a>&lt;T&gt;</dt>
+    <dd><p>Source-generated JSON metadata for <code class="typeparamref">T</code>.</p>
+</dd>
+    <dt><code>ct</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;&gt;</dt>
+    <dd><p>On already-failed input: short-circuits with the upstream error (no response to dispose).
+On success status with a deserializable body: <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>.
+On non-success status, empty/null body, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-nocontent">NoContent</a>,
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-resetcontent">ResetContent</a>, or invalid JSON (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.text.json.jsonexception">JsonException</a>):
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> wrapping <a class="xref" href="Trellis.Error.InternalServerError.html">Error.InternalServerError</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The payload type. Must be a non-nullable reference or value type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Http_HttpResponseExtensions_ReadJsonAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Whenever a response is read (success or failure), it is disposed before returning.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_ReadJsonMaybeAsync_" data-uid="Trellis.Http.HttpResponseExtensions.ReadJsonMaybeAsync*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_ReadJsonMaybeAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_" data-uid="Trellis.Http.HttpResponseExtensions.ReadJsonMaybeAsync``1(System.Threading.Tasks.Task{Trellis.Result{System.Net.Http.HttpResponseMessage}},System.Text.Json.Serialization.Metadata.JsonTypeInfo{``0},System.Threading.CancellationToken)">
+  ReadJsonMaybeAsync&lt;T&gt;(Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L431"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reads and deserializes the body of a successful HTTP response into
+<a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>, treating <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-nocontent">NoContent</a>,
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-resetcontent">ResetContent</a>, an empty body, or a JSON
+<code>null</code> literal as <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;Maybe&lt;T&gt;&gt;&gt; ReadJsonMaybeAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt; response, JsonTypeInfo&lt;T&gt; jsonTypeInfo, CancellationToken ct = default) where T : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;&gt;</dt>
+    <dd><p>A pending <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>.</p>
+</dd>
+    <dt><code>jsonTypeInfo</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.text.json.serialization.metadata.jsontypeinfo-1">JsonTypeInfo</a>&lt;T&gt;</dt>
+    <dd><p>Source-generated JSON metadata for <code class="typeparamref">T</code>.</p>
+</dd>
+    <dt><code>ct</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd><p>On already-failed input: short-circuits with the upstream error (no response to dispose).
+On non-success status: <a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> with
+<a class="xref" href="Trellis.Error.InternalServerError.html">Error.InternalServerError</a>. On success status with a parseable
+payload: <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a> wrapping
+<a class="xref" href="Trellis.Maybe.html#Trellis_Maybe_From__1___0_">From&lt;T&gt;(T?)</a> or <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The payload type. Must be a non-nullable reference or value type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Http_HttpResponseExtensions_ReadJsonMaybeAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Unlike <a class="xref" href="Trellis.Http.HttpResponseExtensions.html#Trellis_Http_HttpResponseExtensions_ReadJsonAsync__1_System_Threading_Tasks_Task_Trellis_Result_System_Net_Http_HttpResponseMessage___System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_">ReadJsonAsync&lt;T&gt;(Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</a>, an invalid JSON body is <strong>not</strong> caught:
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.text.json.jsonexception">JsonException</a> propagates to the caller. The response is still
+disposed before that exception escapes. Whenever a response is read
+(success or exception), it is disposed before returning.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_ReadJsonOrNoneOn404Async_" data-uid="Trellis.Http.HttpResponseExtensions.ReadJsonOrNoneOn404Async*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_ReadJsonOrNoneOn404Async__1_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__System_Text_Json_Serialization_Metadata_JsonTypeInfo___0__System_Threading_CancellationToken_" data-uid="Trellis.Http.HttpResponseExtensions.ReadJsonOrNoneOn404Async``1(System.Threading.Tasks.Task{System.Net.Http.HttpResponseMessage},System.Text.Json.Serialization.Metadata.JsonTypeInfo{``0},System.Threading.CancellationToken)">
+  ReadJsonOrNoneOn404Async&lt;T&gt;(Task&lt;HttpResponseMessage&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L120"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reads JSON from a successful HTTP response into <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>, treating
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode#system-net-httpstatuscode-notfound">NotFound</a> as <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;Maybe&lt;T&gt;&gt;&gt; ReadJsonOrNoneOn404Async&lt;T&gt;(this Task&lt;HttpResponseMessage&gt; response, JsonTypeInfo&lt;T&gt; jsonTypeInfo, CancellationToken ct = default) where T : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;</dt>
+    <dd><p>The pending HTTP response.</p>
+</dd>
+    <dt><code>jsonTypeInfo</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.text.json.serialization.metadata.jsontypeinfo-1">JsonTypeInfo</a>&lt;T&gt;</dt>
+    <dd><p>Source-generated JSON metadata for <code class="typeparamref">T</code>.</p>
+</dd>
+    <dt><code>ct</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd><p>A result containing <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a> for 404, a populated maybe for a
+successful JSON body, or a failure for other non-success statuses.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The payload type. Must be a non-nullable reference or value type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_ToResultAsync_" data-uid="Trellis.Http.HttpResponseExtensions.ToResultAsync*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_ToResultAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__System_Func_System_Net_Http_HttpResponseMessage_System_Threading_CancellationToken_System_Threading_Tasks_Task_Trellis_Error___System_Threading_CancellationToken_" data-uid="Trellis.Http.HttpResponseExtensions.ToResultAsync(System.Threading.Tasks.Task{System.Net.Http.HttpResponseMessage},System.Func{System.Net.Http.HttpResponseMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Trellis.Error}},System.Threading.CancellationToken)">
+  ToResultAsync(Task&lt;HttpResponseMessage&gt;, Func&lt;HttpResponseMessage, CancellationToken, Task&lt;Error?&gt;&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L201"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Bridges a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> into a
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>, allowing the
+failure mapper to inspect the response body or headers asynchronously.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; ToResultAsync(this Task&lt;HttpResponseMessage&gt; response, Func&lt;HttpResponseMessage, CancellationToken, Task&lt;Error?&gt;&gt; mapper, CancellationToken ct = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;</dt>
+    <dd><p>The pending HTTP response.</p>
+</dd>
+    <dt><code>mapper</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Error.html">Error</a>&gt;&gt;</dt>
+    <dd><p>Asynchronous mapper invoked only when
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage.issuccessstatuscode">IsSuccessStatusCode</a> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.
+Returning <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> passes the response through as
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>. Returning a non-<a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>
+<a class="xref" href="Trellis.Error.html">Error</a> causes the response to be disposed and
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> to be returned.</p>
+</dd>
+    <dt><code>ct</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token forwarded to <code class="paramref">mapper</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;&gt;</dt>
+    <dd><p>The mapped <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Http_HttpResponseExtensions_ToResultAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__System_Func_System_Net_Http_HttpResponseMessage_System_Threading_CancellationToken_System_Threading_Tasks_Task_Trellis_Error___System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Replaces the v1 <code>HandleFailureAsync&lt;TContext&gt;</code> overloads. The
+<code>TContext</code> channel is unnecessary because closures already capture
+caller state.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Http_HttpResponseExtensions_ToResultAsync_" data-uid="Trellis.Http.HttpResponseExtensions.ToResultAsync*"></a>
+
+  <h3 id="Trellis_Http_HttpResponseExtensions_ToResultAsync_System_Threading_Tasks_Task_System_Net_Http_HttpResponseMessage__System_Func_System_Net_HttpStatusCode_Trellis_Error__" data-uid="Trellis.Http.HttpResponseExtensions.ToResultAsync(System.Threading.Tasks.Task{System.Net.Http.HttpResponseMessage},System.Func{System.Net.HttpStatusCode,Trellis.Error})">
+  ToResultAsync(Task&lt;HttpResponseMessage&gt;, Func&lt;HttpStatusCode, Error?&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Bridges a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> into a
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; ToResultAsync(this Task&lt;HttpResponseMessage&gt; response, Func&lt;HttpStatusCode, Error?&gt;? statusMap = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>response</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;</dt>
+    <dd><p>The pending HTTP response.</p>
+</dd>
+    <dt><code>statusMap</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode">HttpStatusCode</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd><p>Optional mapper from <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.httpstatuscode">HttpStatusCode</a> to <a class="xref" href="Trellis.Error.html">Error</a>.
+When <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> (the default), successful status codes yield
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a> and non-success status codes are mapped to
+Trellis errors. When supplied, a <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> return passes the
+response through as <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>, and a non-<a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>
+return becomes a <a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a>; in the failure case
+the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a> is disposed.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> that completes with <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>
+or <a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> per the contract above.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Http/src/HttpResponseExtensions.cs/#L52" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

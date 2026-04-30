@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Performance | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Performance | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/performance.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="performance">Performance</h1>
+
+<p>If you're deciding whether Trellis is &quot;too expensive,&quot; the short answer is usually <strong>no</strong>.</p>
+<p>Trellis adds a very small amount of CPU overhead so you can get explicit errors, composable workflows, and easier-to-review code. In real applications, database calls, HTTP calls, and serialization dominate the timeline long before Trellis does.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Measure Trellis the same way you measure LINQ: compare it to the real work around it, not to an empty method.</p>
+</div>
+<h2 id="the-practical-answer">The practical answer</h2>
+<p>On the latest benchmark run captured in this repository, the simple happy-path comparison showed Trellis adding roughly <strong>4-5 ns</strong> over imperative code on a fast desktop CPU. Older runs on different hardware landed in the <strong>11-16 ns</strong> range. The exact number moves with hardware and JIT behavior, but the conclusion does not: <strong>the overhead is tiny</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Practical answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Does Trellis allocate more than equivalent imperative code?</td>
+<td>Usually <strong>no</strong> on the same path.</td>
+</tr>
+<tr>
+<td>Is the happy path fast?</td>
+<td>Yes — common <code>Map</code>, <code>Bind</code>, and <code>Tap</code> calls stay in the low-nanosecond range.</td>
+</tr>
+<tr>
+<td>Is the failure path expensive?</td>
+<td>Usually no — short-circuiting keeps it predictable.</td>
+</tr>
+<tr>
+<td>Should I optimize Trellis before I optimize I/O?</td>
+<td>Almost never.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-the-overhead-usually-does-not-matter">Why the overhead usually does not matter</h2>
+<p>A few nanoseconds sounds real in a benchmark because the benchmark is isolating the framework cost. Your production code usually is not.</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th style="text-align: right;">Typical scale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Map</code> / <code>Bind</code> / <code>Tap</code></td>
+<td style="text-align: right;">single-digit to low double-digit ns</td>
+</tr>
+<tr>
+<td>JSON serialization</td>
+<td style="text-align: right;">microseconds</td>
+</tr>
+<tr>
+<td>Database query</td>
+<td style="text-align: right;">milliseconds</td>
+</tr>
+<tr>
+<td>HTTP call</td>
+<td style="text-align: right;">milliseconds to tens of milliseconds</td>
+</tr>
+</tbody>
+</table>
+<p>That means Trellis overhead is usually lost in the noise of:</p>
+<ul>
+<li>database access</li>
+<li>network latency</li>
+<li>disk I/O</li>
+<li>logging and serialization</li>
+<li>your own business logic</li>
+</ul>
+<h2 id="a-simple-example">A simple example</h2>
+<p>This is the kind of code the benchmarks are measuring:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+var output = FirstName.TryCreate(&quot;Ada&quot;)
+    .Combine(EmailAddress.TryCreate(&quot;ada@example.com&quot;))
+    .Match(
+        onSuccess: values =&gt; $&quot;{values.Item1} &lt;{values.Item2}&gt;&quot;,
+        onFailure: error =&gt; error.Detail);
+</code></pre>
+<p>The imperative equivalent is a little closer to the metal, but not by much:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+var firstName = FirstName.TryCreate(&quot;Ada&quot;);
+var email = EmailAddress.TryCreate(&quot;ada@example.com&quot;);
+
+string output;
+if (firstName.TryGetValue(out var firstNameValue) &amp;&amp; email.TryGetValue(out var emailValue))
+    output = $&quot;{firstNameValue} &lt;{emailValue}&gt;&quot;;
+else
+{
+    Error? error = null;
+    if (firstName.IsFailure)
+        error = firstName.Error;
+    if (email.IsFailure)
+        error = error is null ? email.Error : error.Combine(email.Error);
+
+    output = error!.Detail;
+}
+</code></pre>
+<h2 id="headline-numbers-from-the-benchmark-suite">Headline numbers from the benchmark suite</h2>
+<p>These figures come from the benchmark data checked into this repository. Treat them as <strong>directionally useful</strong>, not as universal constants.</p>
+<h3 id="rop-vs-imperative">ROP vs imperative</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RopStyleHappy</code></td>
+<td style="text-align: right;">98.32 ns</td>
+<td style="text-align: right;">296 B</td>
+</tr>
+<tr>
+<td><code>IfStyleHappy</code></td>
+<td style="text-align: right;">93.86 ns</td>
+<td style="text-align: right;">296 B</td>
+</tr>
+<tr>
+<td><code>RopStyleSad</code></td>
+<td style="text-align: right;">65.63 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+<tr>
+<td><code>IfStyleSad</code></td>
+<td style="text-align: right;">75.08 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="core-operations">Core operations</h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Representative result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Bind</code></td>
+<td>~4.85 ns for a single happy-path bind</td>
+</tr>
+<tr>
+<td><code>Map</code></td>
+<td>~3.24 ns for a single happy-path map</td>
+</tr>
+<tr>
+<td><code>Tap</code></td>
+<td>~2.88 ns for a single happy-path tap</td>
+</tr>
+<tr>
+<td><code>Ensure</code></td>
+<td>~12.06 ns for one predicate</td>
+</tr>
+<tr>
+<td><code>Combine</code></td>
+<td>~7.27 ns for two successful results</td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Benchmarks vary by CPU, runtime version, and benchmark shape. Compare <strong>relative cost</strong> and <strong>allocation behavior</strong> more than any single absolute number.</p>
+</div>
+<h2 id="what-actually-makes-trellis-fast-enough">What actually makes Trellis fast enough</h2>
+<h3 id="1-success-path-operations-are-tiny">1. Success-path operations are tiny</h3>
+<p>Common pipeline steps are intentionally lightweight. If your chain is mostly validation, mapping, and short-circuiting, Trellis is not likely to be your bottleneck.</p>
+<h3 id="2-failure-short-circuits">2. Failure short-circuits</h3>
+<p>Once a result is failed, downstream success-path work is skipped. That makes failure behavior predictable and often surprisingly cheap.</p>
+<h3 id="3-the-memory-story-is-good">3. The memory story is good</h3>
+<p>For equivalent logic, the benchmark suite repeatedly shows <strong>matching allocations</strong> between Trellis and imperative code. When allocations do appear, they usually come from:</p>
+<ul>
+<li>constructing errors</li>
+<li>allocating strings or objects in your mapping code</li>
+<li>async machinery</li>
+<li>logging or collection growth</li>
+</ul>
+<h2 id="performance-advice-that-actually-pays-off">Performance advice that actually pays off</h2>
+<h3 id="combine-validations-before-you-bind">Combine validations before you bind</h3>
+<p>When validations are independent, aggregate them first.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+Result&lt;string&gt; CreateDisplayName(string first, string last, string email) =&gt;
+    FirstName.TryCreate(first)
+        .Combine(LastName.TryCreate(last))
+        .Combine(EmailAddress.TryCreate(email))
+        .Bind((firstName, lastName, emailAddress) =&gt;
+            Result.Ok($&quot;{firstName} {lastName} &lt;{emailAddress}&gt;&quot;));
+</code></pre>
+<p>That is usually clearer <em>and</em> more efficient than deeply nested sequential validation.</p>
+<h3 id="reuse-stable-errors-on-hot-paths">Reuse stable errors on hot paths</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static class CustomerRules
+{
+    private static readonly Error MinimumSpendError =
+        new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = &quot;Customer must have spent at least 1000.&quot; };
+
+    public static Result&lt;decimal&gt; Validate(decimal totalSpend) =&gt;
+        totalSpend &gt;= 1000m
+            ? Result.Ok(totalSpend)
+            : MinimumSpendError;
+}
+</code></pre>
+<h3 id="prefer-valuetask-only-when-it-is-genuinely-helpful">Prefer <code>ValueTask</code> only when it is genuinely helpful</h3>
+<p>If an async API frequently completes synchronously — for example, cache hits — <code>ValueTask</code> can help reduce allocations. If the work is always real I/O, <code>Task</code> is usually fine.</p>
+<h3 id="optimize-io-before-you-optimize-trellis">Optimize I/O before you optimize Trellis</h3>
+<p>If a request is slow, look for:</p>
+<ul>
+<li>N+1 database queries</li>
+<li>repeated HTTP calls</li>
+<li>unnecessary serialization</li>
+<li>chatty logging</li>
+<li>inefficient collection or string processing</li>
+</ul>
+<p>Those costs dwarf the framework overhead.</p>
+<h2 id="running-the-benchmarks-yourself">Running the benchmarks yourself</h2>
+<p>Run the full benchmark suite:</p>
+<pre><code class="lang-bash">dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release
+</code></pre>
+<p>Run one subset:</p>
+<pre><code class="lang-bash">dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter *Combine*
+</code></pre>
+<h2 id="when-you-should-care-more">When you should care more</h2>
+<p>There <em>are</em> cases where micro-overhead matters:</p>
+<ul>
+<li>extremely hot CPU-bound loops</li>
+<li>high-frequency in-memory processing</li>
+<li>code paths called millions of times per second</li>
+<li>allocation-sensitive low-latency services</li>
+</ul>
+<p>If that is your world, benchmark your exact workload. Trellis is still viable in many of those scenarios, but you should verify with production-shaped data.</p>
+<h2 id="bottom-line">Bottom line</h2>
+<p>Trellis is a trade: a few nanoseconds for clearer control flow, explicit errors, and easier composition.</p>
+<p>For most systems, that is an excellent trade.</p>
+<p>If you want the raw numbers, keep reading: <a href="BENCHMARKS.html">Benchmarks</a>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/performance.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

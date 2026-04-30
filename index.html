@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title> Trellis | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content=" Trellis | Trellis ">
+      
+      
+      <link rel="icon" href="favicon.ico">
+      <link rel="stylesheet" href="public/docfx.min.css">
+      <link rel="stylesheet" href="public/main.css">
+      <meta name="docfx:navrel" content="toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="index.html">
+            <img id="logo" class="svg" src="/images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="-trellis"><img src="images/icon.png" alt="Trellis logo" width="48" style="vertical-align: middle; margin-right: 8px;"> Trellis</h1>
+
+<blockquote>
+<p><strong>Structured building blocks for readable, explicit enterprise code</strong></p>
+</blockquote>
+<p>Trellis helps you model your domain with <strong>type-safe value objects</strong>, compose workflows with <strong>Railway-Oriented Programming</strong>, and return consistent errors without filling your codebase with null checks and exception plumbing.</p>
+<h2 id="why-teams-reach-for-trellis">Why teams reach for Trellis</h2>
+<p>The big win is simple: <strong>your happy path stays readable even when the real world is messy</strong>.</p>
+<ul>
+<li><strong>Validate once, trust everywhere</strong> with value objects such as <code>FirstName</code>, <code>OrderId</code>, and <code>CustomerEmail</code></li>
+<li><strong>Compose workflows safely</strong> with <code>Combine</code>, <code>Bind</code>, <code>Ensure</code>, <code>Tap</code>, and <code>Match</code></li>
+<li><strong>Return structured errors</strong> with concrete types like <code>Error.UnprocessableContent</code>, <code>Error.NotFound</code>, and <code>Error.Conflict</code></li>
+<li><strong>Keep domain code expressive</strong> with aggregates, entities, specifications, and domain events</li>
+<li><strong>Integrate with ASP.NET Core</strong> using <code>ToHttpResponse()</code> and <code>AsActionResult&lt;T&gt;()</code> when you are ready to expose APIs</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Trellis error codes default to the error kind. For example, <code>new Error.NotFound(ResourceRef.For(&quot;Order&quot;, orderId)) { Detail = ... }</code> produces the code <code>not-found</code>.</p>
+</div>
+<hr>
+<h2 id="before-and-after">Before and after</h2>
+<p>The problem: everyday application code often turns into defensive boilerplate.</p>
+<h3 id="traditional-approach">Traditional approach</h3>
+<pre><code class="lang-csharp">var firstName = ValidateFirstName(input.FirstName);
+if (firstName is null)
+    return BadRequest(&quot;Invalid first name.&quot;);
+
+var lastName = ValidateLastName(input.LastName);
+if (lastName is null)
+    return BadRequest(&quot;Invalid last name.&quot;);
+
+var email = ValidateEmail(input.Email);
+if (email is null)
+    return BadRequest(&quot;Invalid email.&quot;);
+
+if (_repository.EmailExists(email))
+    return Conflict(&quot;Email already registered.&quot;);
+
+var user = new User(firstName, lastName, email);
+_repository.Save(user);
+_emailService.SendWelcome(email);
+
+return Ok(user);
+</code></pre>
+<h3 id="with-trellis">With Trellis</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+public partial class CustomerEmail : RequiredString&lt;CustomerEmail&gt; { }
+
+public sealed record RegisterUserInput(string FirstName, string LastName, string Email);
+
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
+{
+    public static Result&lt;User&gt; TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =&gt;
+        Result.Ok(new User(firstName, lastName, email));
+}
+
+public static Result&lt;User&gt; RegisterUser(
+    RegisterUserInput input,
+    Func&lt;CustomerEmail, bool&gt; emailExists,
+    Action&lt;User&gt; saveUser,
+    Action&lt;CustomerEmail&gt; sendWelcomeEmail)
+{
+    return FirstName.TryCreate(input.FirstName)
+        .Combine(LastName.TryCreate(input.LastName))
+        .Combine(CustomerEmail.TryCreate(input.Email, fieldName: &quot;email&quot;))
+        .Bind((firstName, lastName, email) =&gt; User.TryCreate(firstName, lastName, email))
+        .Ensure(user =&gt; !emailExists(user.Email), new Error.Conflict(null, &quot;conflict&quot;) { Detail = &quot;Email already registered.&quot; })
+        .Tap(saveUser)
+        .Tap(user =&gt; sendWelcomeEmail(user.Email));
+}
+</code></pre>
+<p><strong>Same workflow, less ceremony:</strong> validate -&gt; create -&gt; check -&gt; save -&gt; notify.</p>
+<hr>
+<h2 id="quick-start">Quick start</h2>
+<p>Start with the packages most developers need first:</p>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+dotnet add package Trellis.Primitives
+dotnet add package Trellis.Analyzers
+</code></pre>
+<blockquote>
+<p>The source generator that backs the <code>Required*&lt;TSelf&gt;</code> base classes is bundled inside <code>Trellis.Core</code> (under <code>analyzers/dotnet/cs/</code>); no separate <code>Trellis.Core.Generator</code> package is needed.</p>
+</blockquote>
+<p>Then create your first value object and use it in a result flow.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class OrderNumber : RequiredString&lt;OrderNumber&gt; { }
+
+Result&lt;OrderNumber&gt; orderNumber = OrderNumber.TryCreate(&quot;SO-2025-0001&quot;);
+
+string message = orderNumber.Match(
+    onSuccess: value =&gt; $&quot;Created order number {value}.&quot;,
+    onFailure: error =&gt; $&quot;Validation failed: {error.Detail}&quot;
+);
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>For quick custom value objects, inherit from the generic base type such as <code>RequiredString&lt;OrderNumber&gt;</code> or <code>RequiredGuid&lt;OrderId&gt;</code>. The generic parameter is required.</p>
+</div>
+<hr>
+<h2 id="what-you-get">What you get</h2>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Why it matters</th>
+<th>Learn more</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>Result&lt;T&gt;</code> and <code>Maybe&lt;T&gt;</code></strong></td>
+<td>Make success and failure explicit instead of hiding them in exceptions and nulls</td>
+<td><a href="articles/basics.html">Basics</a></td>
+</tr>
+<tr>
+<td><strong>Generated value objects</strong></td>
+<td>Turn raw primitives into domain language the compiler understands</td>
+<td><a href="articles/intro.html">Introduction</a></td>
+</tr>
+<tr>
+<td><strong>DDD building blocks</strong></td>
+<td>Model aggregates, entities, value objects, and specifications directly</td>
+<td><a href="articles/aggregate-factory-pattern.html">Aggregate Factory Pattern</a></td>
+</tr>
+<tr>
+<td><strong>Structured error types</strong></td>
+<td>Return meaningful failures with default HTTP mappings</td>
+<td><a href="articles/error-handling.html">Error Handling</a></td>
+</tr>
+<tr>
+<td><strong>ASP.NET integration</strong></td>
+<td>Convert results to MVC or Minimal API responses without repetitive switch logic</td>
+<td><a href="articles/integration-aspnet.html">ASP.NET Core Integration</a></td>
+</tr>
+<tr>
+<td><strong>Roslyn analyzers</strong></td>
+<td>Catch unsafe <code>.Value</code> access and other ROP mistakes during development</td>
+<td><a href="articles/analyzers/index.html">Analyzers</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="a-practical-learning-path">A practical learning path</h2>
+<p>If you are new to Trellis, follow this order:</p>
+<ol>
+<li><strong><a href="articles/intro.html">Introduction</a></strong> - understand the problems Trellis is solving</li>
+<li><strong><a href="articles/basics.html">Basics</a></strong> - learn the core result operators you will use every day</li>
+<li><strong><a href="articles/examples.html">Examples</a></strong> - copy real patterns for APIs, async work, and validation</li>
+<li><strong><a href="articles/integration-aspnet.html">ASP.NET Core Integration</a></strong> - wire domain results into HTTP endpoints</li>
+</ol>
+<p>If you want the full API surface, jump to the <strong><a href="api/index.html">API reference</a></strong> after you understand the concepts.</p>
+<hr>
+<h2 id="a-few-accuracy-notes-worth-knowing-early">A few accuracy notes worth knowing early</h2>
+<ul>
+<li>Use <code>Result.Ok()</code> for a success-without-payload flow; <code>Unit</code> is not public API.</li>
+<li><code>Error.Equals(...)</code> is value-based for each error case. Compare <code>Code</code> when you only need the stable machine-readable category.</li>
+<li><code>new Error.NotFound(ResourceRef.For(&quot;Order&quot;, orderId)) { Detail = ... }</code>, <code>new Error.Conflict(null, &quot;conflict&quot;) { Detail = ... }</code>, and the other case constructors create specific error subtypes whose <code>Code</code> defaults to the hyphenated <code>Kind</code> unless that case exposes a payload-specific code.</li>
+</ul>
+<hr>
+<h2 id="learn-more">Learn more</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Start here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build your first result pipeline</td>
+<td><a href="articles/basics.html">Basics</a></td>
+</tr>
+<tr>
+<td>Understand the mental model</td>
+<td><a href="articles/intro.html">Introduction</a></td>
+</tr>
+<tr>
+<td>See working scenarios</td>
+<td><a href="articles/examples.html">Examples</a></td>
+</tr>
+<tr>
+<td>Expose APIs</td>
+<td><a href="articles/integration-aspnet.html">ASP.NET Core Integration</a></td>
+</tr>
+<tr>
+<td>Dive into reference material</td>
+<td><a href="api/index.html">API Documentation</a></td>
+</tr>
+</tbody>
+</table>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Specifications | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Specifications | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/specifications.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="specifications">Specifications</h1>
+
+<p>The same business rule often shows up in three places:</p>
+<ul>
+<li>query filters</li>
+<li>validation logic</li>
+<li>reporting or batch jobs</li>
+</ul>
+<p>Without a specification, that rule gets copied, renamed, and slowly drifts apart.</p>
+<p><code>Specification&lt;T&gt;</code> gives you one reusable home for that rule.</p>
+<h2 id="start-with-a-practical-example">Start with a practical example</h2>
+<pre><code class="lang-csharp">using System.Linq.Expressions;
+using Trellis;
+
+namespace SpecificationExamples;
+
+public sealed class Order
+{
+    public decimal TotalAmount { get; init; }
+    public DateTimeOffset DueAt { get; init; }
+    public bool IsPaid { get; init; }
+    public string Region { get; init; } = string.Empty;
+}
+
+public sealed class OverdueOrderSpecification(DateTimeOffset now) : Specification&lt;Order&gt;
+{
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        order =&gt; !order.IsPaid &amp;&amp; order.DueAt &lt; now;
+}
+
+public sealed class HighValueOrderSpecification(decimal threshold) : Specification&lt;Order&gt;
+{
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        order =&gt; order.TotalAmount &gt;= threshold;
+}
+
+public sealed class RegionSpecification(string region) : Specification&lt;Order&gt;
+{
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        order =&gt; order.Region == region;
+}
+</code></pre>
+<p>Now the business rule reads clearly:</p>
+<pre><code class="lang-csharp">var spec = new OverdueOrderSpecification(DateTimeOffset.UtcNow)
+    .And(new HighValueOrderSpecification(500m))
+    .And(new RegionSpecification(&quot;West&quot;));
+</code></pre>
+<h2 id="why-this-is-better-than-inline-predicates">Why this is better than inline predicates</h2>
+<p>Inline LINQ predicates are fine for one-off queries. Specifications help when the rule has a name and a life of its own.</p>
+<p>They give you:</p>
+<ul>
+<li><strong>reuse</strong> across repository methods and services</li>
+<li><strong>composability</strong> through <code>And</code>, <code>Or</code>, and <code>Not</code></li>
+<li><strong>storage-agnostic expressions</strong> for LINQ providers</li>
+<li><strong>testability</strong> through <code>IsSatisfiedBy(...)</code></li>
+</ul>
+<h2 id="in-memory-evaluation">In-memory evaluation</h2>
+<p>Use <code>IsSatisfiedBy(...)</code> when you already have objects in memory:</p>
+<pre><code class="lang-csharp">var spec = new HighValueOrderSpecification(500m);
+
+bool isMatch = spec.IsSatisfiedBy(new Order
+{
+    TotalAmount = 750m,
+    DueAt = DateTimeOffset.UtcNow.AddDays(2),
+    IsPaid = false,
+    Region = &quot;West&quot;
+});
+</code></pre>
+<p><code>Specification&lt;T&gt;</code> caches the compiled delegate by default, so repeated in-memory checks stay cheap.</p>
+<h2 id="composing-rules">Composing rules</h2>
+<p>Composition is where specifications become really useful:</p>
+<pre><code class="lang-csharp">var overdue = new OverdueOrderSpecification(DateTimeOffset.UtcNow);
+var highValue = new HighValueOrderSpecification(500m);
+var westRegion = new RegionSpecification(&quot;West&quot;);
+
+var urgent = overdue.And(highValue);
+var westOrUrgent = westRegion.Or(urgent);
+var notOverdue = overdue.Not();
+</code></pre>
+<h2 id="querying-with-iqueryable">Querying with <code>IQueryable</code></h2>
+<p><code>Specification&lt;T&gt;</code> has an implicit conversion to <code>Expression&lt;Func&lt;T, bool&gt;&gt;</code>, so it plugs directly into LINQ:</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Linq;
+
+List&lt;Order&gt; orders =
+[
+    new() { TotalAmount = 250m, DueAt = DateTimeOffset.UtcNow.AddDays(1), IsPaid = false, Region = &quot;West&quot; },
+    new() { TotalAmount = 750m, DueAt = DateTimeOffset.UtcNow.AddDays(-2), IsPaid = false, Region = &quot;West&quot; }
+];
+
+IQueryable&lt;Order&gt; query = orders.AsQueryable();
+
+var spec = new OverdueOrderSpecification(DateTimeOffset.UtcNow)
+    .And(new HighValueOrderSpecification(500m));
+
+var filtered = query.Where(spec);
+</code></pre>
+<p>That same pattern works with EF Core and other LINQ providers.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Composed specifications use <code>Expression.Invoke</code> internally. For EF Core translation, use <strong>EF Core 8+</strong>.</p>
+</div>
+<h2 id="repository-friendly-design">Repository-friendly design</h2>
+<p>A repository can accept a specification without learning any business details:</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+
+namespace RepositoryExample;
+
+public sealed class Order
+{
+    public decimal TotalAmount { get; init; }
+}
+
+public interface IOrderRepository
+{
+    Task&lt;IReadOnlyList&lt;Order&gt;&gt; ListAsync(Specification&lt;Order&gt; specification, CancellationToken ct);
+    Task&lt;bool&gt; AnyAsync(Specification&lt;Order&gt; specification, CancellationToken ct);
+}
+</code></pre>
+<p>That keeps the repository generic and the business rules named.</p>
+<h2 id="when-to-disable-cached-compilation">When to disable cached compilation</h2>
+<p>Most specifications are created with immutable constructor values and should keep the default behavior.</p>
+<p>If your expression depends on mutable state, override <code>CacheCompilation</code>:</p>
+<pre><code class="lang-csharp">using System.Linq.Expressions;
+using Trellis;
+
+namespace CacheControlExample;
+
+public sealed class ThresholdSpecification(Func&lt;int&gt; getThreshold) : Specification&lt;int&gt;
+{
+    protected override bool CacheCompilation =&gt; false;
+
+    public override Expression&lt;Func&lt;int, bool&gt;&gt; ToExpression() =&gt;
+        value =&gt; value &gt; getThreshold();
+}
+</code></pre>
+<h2 id="specifications-and-trellis-value-objects">Specifications and Trellis value objects</h2>
+<p>Specifications work well with Trellis primitives because the domain types can stay in the predicate instead of being peeled back to raw values everywhere.</p>
+<p>For example, you can use specifications over aggregates or entities that expose:</p>
+<ul>
+<li><code>EmailAddress</code></li>
+<li><code>RequiredEnum&lt;TSelf&gt;</code> members</li>
+<li><code>MonetaryAmount</code></li>
+<li><code>Money</code></li>
+</ul>
+<p>That keeps your query language aligned with the domain language.</p>
+<h2 id="maybet-support-in-ef-core-queries"><code>Maybe&lt;T&gt;</code> support in EF Core queries</h2>
+<p>If your specification references <code>Maybe&lt;T&gt;</code> members in EF Core, register the Trellis interceptors so the query can be rewritten correctly.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+
+public sealed class AppDbContext : DbContext
+{
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =&gt;
+        optionsBuilder.AddTrellisInterceptors();
+}
+</code></pre>
+<p>Then expressions like <code>HasValue</code> and <code>Value</code> can translate cleanly in supported scenarios.</p>
+<h2 id="when-specifications-are-a-good-fit">When specifications are a good fit</h2>
+<p>Use them when the rule:</p>
+<ul>
+<li>has a clear business name</li>
+<li>appears in more than one place</li>
+<li>should run both in memory and in queries</li>
+<li>is worth testing independently</li>
+</ul>
+<p>Skip them when a predicate is truly one-off and unlikely to matter again.</p>
+<h2 id="summary">Summary</h2>
+<p>Specifications help you keep business rules:</p>
+<ul>
+<li>named</li>
+<li>reusable</li>
+<li>composable</li>
+<li>testable</li>
+</ul>
+<p>That is the main win. They are less about pattern purity and more about preventing rule duplication.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="clean-architecture.html">Clean Architecture</a></li>
+<li><a href="primitives.html">Primitive Value Objects</a></li>
+<li><a href="../api_reference/trellis-api-core.html">Trellis DDD API reference</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/specifications.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

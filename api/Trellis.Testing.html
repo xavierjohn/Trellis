@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Namespace Trellis.Testing | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Namespace Trellis.Testing | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing">
+
+  <h1 id="Trellis_Testing" data-uid="Trellis.Testing" class="text-break">Namespace Trellis.Testing</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+
+    <h3 id="classes">
+Classes
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.AggregateTestMutator.html">AggregateTestMutator</a></dt>
+      <dd><p>Reflection-based helpers for setting source-generated <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>
+backing fields in test scenarios. Works on the CLR object directly —
+no DbContext needed for the mutation itself.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a></dt>
+      <dd><p>Contains assertion methods for Error types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.ErrorAssertionsExtensions.html">ErrorAssertionsExtensions</a></dt>
+      <dd><p>Extension methods to enable FluentAssertions on Error types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.FakeRepository-2.html">FakeRepository&lt;TAggregate, TId&gt;</a></dt>
+      <dd><p>In-memory fake repository for testing aggregates.
+Provides a simple in-memory store with domain event tracking.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.FakeSharedResourceLoader-2.html">FakeSharedResourceLoader&lt;TResource, TId&gt;</a></dt>
+      <dd><p>In-memory fake implementation of <a class="xref" href="Trellis.Authorization.SharedResourceLoaderById-2.html">SharedResourceLoaderById&lt;TResource, TId&gt;</a>
+that delegates to a <a class="xref" href="Trellis.Testing.FakeRepository-2.html">FakeRepository&lt;TAggregate, TId&gt;</a>.
+Use in application-layer tests to wire resource-based authorization
+without hand-writing a loader per command.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.MaybeAssertionsExtensions.html">MaybeAssertionsExtensions</a></dt>
+      <dd><p>Extension methods to enable FluentAssertions on Maybe types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.MaybeAssertions-1.html">MaybeAssertions&lt;T&gt;</a></dt>
+      <dd><p>Contains assertion methods for Maybe types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.NonGenericResultAssertions.html">NonGenericResultAssertions</a></dt>
+      <dd><p>Contains assertion methods for the non-generic <a class="xref" href="Trellis.Result.html">Result</a> type.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.NonGenericResultAssertionsExtensions.html">NonGenericResultAssertionsExtensions</a></dt>
+      <dd><p>Extension methods to enable FluentAssertions on the non-generic <a class="xref" href="Trellis.Result.html">Result</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.ResultAssertionsAsyncExtensions.html">ResultAssertionsAsyncExtensions</a></dt>
+      <dd><p>Extension methods to enable FluentAssertions on async Result types (Task and ValueTask).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.ResultAssertionsExtensions.html">ResultAssertionsExtensions</a></dt>
+      <dd><p>Extension methods to enable FluentAssertions on Result types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions&lt;TValue&gt;</a></dt>
+      <dd><p>Contains assertion methods for Result types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.TestActorProvider.html">TestActorProvider</a></dt>
+      <dd><p>Mutable <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> for integration and authorization testing.
+Stores the current actor in an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.asynclocal-1">AsyncLocal&lt;T&gt;</a> so parallel tests using
+overlapping <a class="xref" href="Trellis.Testing.TestActorProvider.html#Trellis_Testing_TestActorProvider_WithActor_Trellis_Authorization_Actor_">WithActor(Actor)</a> scopes never interfere with each other.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.TestActorScope.html">TestActorScope</a></dt>
+      <dd><p>Captures the current <a class="xref" href="Trellis.Authorization.Actor.html">Actor</a> and restores it on dispose.
+Created by <a class="xref" href="Trellis.Testing.TestActorProvider.html#Trellis_Testing_TestActorProvider_WithActor_Trellis_Authorization_Actor_">WithActor(Actor)</a>.
+Supports both <code>await using</code> and <code>using</code> patterns.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.UnwrapExtensions.html">UnwrapExtensions</a></dt>
+      <dd><p>Provides <code>Unwrap()</code> extension methods for extracting values from <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>
+and <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> in test code. These methods throw a descriptive exception on failure/none
+rather than letting the test crash with an opaque error, keeping the test intent explicit.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.UnwrapFailedException.html">UnwrapFailedException</a></dt>
+      <dd><p>Exception thrown when <a class="xref" href="Trellis.Testing.UnwrapExtensions.html#Trellis_Testing_UnwrapExtensions_Unwrap__1_Trellis_Result___0__">Unwrap&lt;T&gt;(Result&lt;T&gt;)</a> or
+<a class="xref" href="Trellis.Testing.UnwrapExtensions.html#Trellis_Testing_UnwrapExtensions_Unwrap__1_Trellis_Maybe___0__">Unwrap&lt;T&gt;(Maybe&lt;T&gt;)</a> is called on a failure/none value.
+Provides a descriptive message including the error details for test diagnostics.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.ValidationErrorAssertions.html">ValidationErrorAssertions</a></dt>
+      <dd><p>Contains assertion methods for <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Testing.ValidationErrorAssertionsExtensions.html">ValidationErrorAssertionsExtensions</a></dt>
+      <dd><p>Extension methods to enable FluentAssertions on <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a>.</p>
+</dd>
+    </dl>
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

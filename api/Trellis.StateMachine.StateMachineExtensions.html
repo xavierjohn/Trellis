@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class StateMachineExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class StateMachineExtensions | Trellis ">
+      
+      <meta name="description" content="Provides extension methods for  that return  instead of throwing on invalid transitions.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_StateMachine_StateMachineExtensions.md&amp;value=---%0Auid%3A%20Trellis.StateMachine.StateMachineExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.StateMachine.StateMachineExtensions">
+
+
+
+  <h1 id="Trellis_StateMachine_StateMachineExtensions" data-uid="Trellis.StateMachine.StateMachineExtensions" class="text-break">
+Class StateMachineExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.StateMachine/src/StateMachineExtensions.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.StateMachine.html">StateMachine</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.StateMachine.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides extension methods for <span class="xref">Stateless.StateMachine&lt;TState, TTrigger&gt;</span> that return
+<a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instead of throwing on invalid transitions.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class StateMachineExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">StateMachineExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_StateMachine_StateMachineExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+These extensions pre-check the trigger with <span class="xref">Stateless.StateMachine&lt;TState, TTrigger&gt;.CanFire(TTrigger)</span>
+(which honors <code>PermitIf</code>/<code>IgnoreIf</code> guards) and translate disallowed transitions
+into an <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a> (HTTP 422) — the requested action is a
+semantic rule violation against the aggregate's current state, not a concurrent-modification
+conflict. Exceptions thrown by user-supplied entry/exit/transition actions are not swallowed.
+</p>
+<p>
+These extensions do not change the concurrency model of <span class="xref">Stateless.StateMachine&lt;TState, TTrigger&gt;</span>.
+Stateless state machines are not thread-safe, so concurrent calls to <a class="xref" href="Trellis.StateMachine.StateMachineExtensions.html#Trellis_StateMachine_StateMachineExtensions_FireResult__2_Stateless_StateMachine___0___1____1_">FireResult&lt;TState, TTrigger&gt;(StateMachine&lt;TState, TTrigger&gt;, TTrigger)</a>
+on the same machine instance must still be externally synchronized. Because Stateless is
+single-threaded by contract, the <code>CanFire</code>+<code>Fire</code> pre-check pattern is race-free
+when used as documented.
+</p>
+<p>
+Usage with Railway Oriented Programming:
+<pre><code class="lang-csharp">var machine = new StateMachine&lt;OrderState, OrderTrigger&gt;(OrderState.New);
+machine.Configure(OrderState.New)
+    .Permit(OrderTrigger.Submit, OrderState.Submitted);
+
+Result&lt;OrderState&gt; result = machine.FireResult(OrderTrigger.Submit);</code></pre>
+
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_StateMachine_StateMachineExtensions_FireResult_" data-uid="Trellis.StateMachine.StateMachineExtensions.FireResult*"></a>
+
+  <h3 id="Trellis_StateMachine_StateMachineExtensions_FireResult__2_Stateless_StateMachine___0___1____1_" data-uid="Trellis.StateMachine.StateMachineExtensions.FireResult``2(Stateless.StateMachine{``0,``1},``1)">
+  FireResult&lt;TState, TTrigger&gt;(StateMachine&lt;TState, TTrigger&gt;, TTrigger)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.StateMachine/src/StateMachineExtensions.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Fires the specified trigger on the state machine and returns the new state as a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TState&gt; FireResult&lt;TState, TTrigger&gt;(this StateMachine&lt;TState, TTrigger&gt; stateMachine, TTrigger trigger) where TState : notnull where TTrigger : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateMachine</code> <span class="xref">StateMachine</span>&lt;TState, TTrigger&gt;</dt>
+    <dd><p>The state machine to fire the trigger on.</p>
+</dd>
+    <dt><code>trigger</code> <span class="xref">TTrigger</span></dt>
+    <dd><p>The trigger to fire.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TState&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> containing the new state if the transition is valid,
+or an <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a> carrying a single
+<a class="xref" href="Trellis.RuleViolation.html">RuleViolation</a> with reason code <code>state.machine.invalid.transition</code>
+if the trigger cannot be fired from the current state (including when blocked by a guard).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TState</code></dt>
+    <dd><p>The type representing the states of the state machine.</p>
+</dd>
+    <dt><code>TTrigger</code></dt>
+    <dd><p>The type representing the triggers/events of the state machine.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_StateMachine_StateMachineExtensions_FireResult__2_Stateless_StateMachine___0___1____1__examples">Examples</h4>
+  <pre><code class="lang-csharp">var machine = new StateMachine&lt;State, Trigger&gt;(State.Idle);
+machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+
+// Valid transition
+Result&lt;State&gt; result = machine.FireResult(Trigger.Start);
+// result.IsSuccess == true; result holds State.Running.
+
+// Invalid transition — Idle has no Trigger.Start defined here.
+Result&lt;State&gt; invalid = machine.FireResult(Trigger.Pause);
+// invalid.IsFailure == true; invalid.Error is Error.UnprocessableContent.</code></pre>
+
+
+  <h4 class="section" id="Trellis_StateMachine_StateMachineExtensions_FireResult__2_Stateless_StateMachine___0___1____1__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Pre-checks with <span class="xref">Stateless.StateMachine&lt;TState, TTrigger&gt;.CanFire(TTrigger)</span> — which
+honors <code>PermitIf</code>/<code>IgnoreIf</code> guards — and only invokes
+<span class="xref">Stateless.StateMachine&lt;TState, TTrigger&gt;.Fire(TTrigger)</span> when the transition is permitted.
+This avoids any dependency on Stateless's exception message format and is therefore
+resilient to library upgrades.
+</p>
+<p>
+<b>HTTP semantics.</b> An invalid state-machine transition is a semantic rule violation
+(the aggregate cannot honor the requested action from its current state), not a
+concurrent-modification conflict — retry will not succeed. The returned error is therefore
+<a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a> (HTTP 422), not <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a>
+(HTTP 409). Callers can still distinguish state-machine rejections from other 422s by
+matching on the <a class="xref" href="Trellis.RuleViolation.html#Trellis_RuleViolation_ReasonCode">ReasonCode</a> value <code>state.machine.invalid.transition</code>.
+</p>
+<p>
+Exceptions thrown by user entry, exit, or transition actions are not swallowed —
+they propagate to the caller as <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a> or whatever
+type the user code threw.
+</p>
+<p>
+The underlying <span class="xref">Stateless.StateMachine&lt;TState, TTrigger&gt;</span> remains not thread-safe,
+so callers must not invoke this method concurrently on the same machine instance
+without synchronization.
+</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.StateMachine/src/StateMachineExtensions.cs/#L37" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

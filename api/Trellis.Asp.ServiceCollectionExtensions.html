@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ServiceCollectionExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ServiceCollectionExtensions | Trellis ">
+      
+      <meta name="description" content="Extension methods for configuring automatic value object validation in ASP.NET Core.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_ServiceCollectionExtensions.md&amp;value=---%0Auid%3A%20Trellis.Asp.ServiceCollectionExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.ServiceCollectionExtensions">
+
+
+
+  <h1 id="Trellis_Asp_ServiceCollectionExtensions" data-uid="Trellis.Asp.ServiceCollectionExtensions" class="text-break">
+Class ServiceCollectionExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L20"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Extension methods for configuring automatic value object validation in ASP.NET Core.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class ServiceCollectionExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ServiceCollectionExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddScalarValueValidation*"></a>
+
+  <h3 id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_Microsoft_Extensions_DependencyInjection_IMvcBuilder_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddScalarValueValidation(Microsoft.Extensions.DependencyInjection.IMvcBuilder)">
+  AddScalarValueValidation(IMvcBuilder)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds automatic validation for scalar value types during
+model binding and JSON deserialization.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IMvcBuilder AddScalarValueValidation(this IMvcBuilder builder)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>builder</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.imvcbuilder">IMvcBuilder</a></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.imvcbuilder">IMvcBuilder</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.imvcbuilder">IMvcBuilder</a></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.imvcbuilder">IMvcBuilder</a> for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_Microsoft_Extensions_DependencyInjection_IMvcBuilder__examples">Examples</h4>
+  <p>Registration in Program.cs:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services
+    .AddControllers()
+    .AddScalarValueValidation();
+
+var app = builder.Build();
+app.MapControllers();
+app.Run();</code></pre>
+
+  <p>Usage in controllers with automatic validation:</p>
+<pre><code class="lang-csharp">public record RegisterUserDto
+{
+    public EmailAddress Email { get; init; } = null!;
+    public FirstName FirstName { get; init; } = null!;
+}
+
+[ApiController]
+[Route("api/users")]
+public class UsersController : ControllerBase
+{
+    [HttpPost]
+    public ActionResult&lt;User&gt; Register(RegisterUserDto dto)
+    {
+        // If we reach here, dto is fully validated!
+        // All scalar values passed validation
+
+        var user = User.TryCreate(dto.Email, dto.FirstName);
+        return user.ToHttpResponse().AsActionResult&lt;User&gt;();
+    }
+}</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_Microsoft_Extensions_DependencyInjection_IMvcBuilder__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method configures ASP.NET Core to automatically validate scalar values that implement
+<a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a> during:
+<ul><li><strong>Model binding:</strong> Values from route, query, form, or headers</li><li><strong>JSON deserialization:</strong> Values from request body (with error collection)</li></ul>
+
+<p>
+Unlike traditional validation that throws on first error, this approach:
+<ul><li>Collects ALL validation errors during JSON deserialization</li><li>Uses property names (not JSON paths) in error messages</li><li>Returns comprehensive 400 Bad Request with all field errors</li><li>Integrates seamlessly with <code>[ApiController]</code> attribute</li></ul>
+
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddScalarValueValidation*"></a>
+
+  <h3 id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_Microsoft_Extensions_DependencyInjection_IServiceCollection_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddScalarValueValidation(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+  AddScalarValueValidation(IServiceCollection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L321"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds automatic value object validation for both MVC Controllers and Minimal APIs.
+This is a convenience method that configures validation for all ASP.NET Core application types.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddScalarValueValidation(this IServiceCollection services)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_Microsoft_Extensions_DependencyInjection_IServiceCollection__examples">Examples</h4>
+  <p>Simple setup for mixed applications:</p>
+<pre><code class="lang-csharp">var builder = WebApplication.CreateBuilder(args);
+
+// Unified setup - works for both MVC and Minimal APIs
+builder.Services.AddControllers();
+builder.Services.AddScalarValueValidation();
+
+var app = builder.Build();
+
+app.UseScalarValueValidation();
+app.MapControllers();
+app.MapPost("/api/users", (RegisterDto dto) =&gt; ...).WithScalarValueValidation();
+
+app.Run();</code></pre>
+
+  <p>For MVC-only applications, prefer the fluent API:</p>
+<pre><code class="lang-csharp">builder.Services
+    .AddControllers()
+    .AddScalarValueValidation(); // ← Better for MVC-only apps</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_Microsoft_Extensions_DependencyInjection_IServiceCollection__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method is equivalent to calling both:
+<ul><li><a class="xref" href="Trellis.Asp.ServiceCollectionExtensions.html#Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidation_Microsoft_Extensions_DependencyInjection_IMvcBuilder_">AddScalarValueValidation(IMvcBuilder)</a> for MVC JSON options</li><li><a class="xref" href="Trellis.Asp.ServiceCollectionExtensions.html#Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidationForMinimalApi_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddScalarValueValidationForMinimalApi(IServiceCollection)</a> for Minimal API JSON options</li></ul>
+
+<p>
+Use this method when you have both controllers and Minimal API endpoints in your application,
+or when you're not sure which style you'll use. For applications using only one approach,
+prefer the specific methods for clarity.
+</p>
+<p>
+<strong>Note:</strong> In addition to JSON options, this method also configures the
+MVC binding/validation pipeline (<a class="xref" href="Trellis.Asp.ModelBinding.ScalarValueModelBinderProvider.html">ScalarValueModelBinderProvider</a>,
+<span class="xref">Trellis.Asp.Validation.MaybeSuppressChildValidationMetadataProvider</span>,
+<a class="xref" href="Trellis.Asp.ScalarValueValidationFilter.html">ScalarValueValidationFilter</a>, and <code>SuppressModelStateInvalidFilter</code>),
+so MVC controller hosts that call only <code>AddTrellisAsp()</code> (which invokes this method)
+still get the full scalar-value-object validation experience without having to chain
+<code>AddControllers().AddScalarValueValidation()</code>. The MVC registrations are no-ops
+when controllers are not added, and are idempotent so combining both calls is safe.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidationForMinimalApi_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddScalarValueValidationForMinimalApi*"></a>
+
+  <h3 id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidationForMinimalApi_Microsoft_Extensions_DependencyInjection_IServiceCollection_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddScalarValueValidationForMinimalApi(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+  AddScalarValueValidationForMinimalApi(IServiceCollection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L419"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Configures HTTP JSON options to use property-aware value object validation for Minimal APIs.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddScalarValueValidationForMinimalApi(this IServiceCollection services)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidationForMinimalApi_Microsoft_Extensions_DependencyInjection_IServiceCollection__examples">Examples</h4>
+  <pre><code class="lang-csharp">var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddScalarValueValidationForMinimalApi();
+
+var app = builder.Build();
+app.UseScalarValueValidation();
+
+app.MapPost("/users", (RegisterUserDto dto) =&gt; ...)
+   .WithScalarValueValidation();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidationForMinimalApi_Microsoft_Extensions_DependencyInjection_IServiceCollection__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method configures Minimal API JSON serialization to automatically validate value objects
+that implement <a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a> during JSON deserialization.
+</p>
+<p>
+For Minimal APIs, also use <a class="xref" href="Trellis.Asp.ServiceCollectionExtensions.html#Trellis_Asp_ServiceCollectionExtensions_UseScalarValueValidation_Microsoft_AspNetCore_Builder_IApplicationBuilder_">UseScalarValueValidation(IApplicationBuilder)</a> middleware and
+<a class="xref" href="Trellis.Asp.ServiceCollectionExtensions.html#Trellis_Asp_ServiceCollectionExtensions_WithScalarValueValidation_Microsoft_AspNetCore_Builder_RouteHandlerBuilder_">WithScalarValueValidation(RouteHandlerBuilder)</a> on your route handlers.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddTrellisAsp*"></a>
+
+  <h3 id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_Microsoft_Extensions_DependencyInjection_IServiceCollection_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddTrellisAsp(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+  AddTrellisAsp(IServiceCollection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L470"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers Trellis ASP.NET Core integration with default error-to-HTTP-status-code mappings.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddTrellisAsp(this IServiceCollection services)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_Microsoft_Extensions_DependencyInjection_IServiceCollection__examples">Examples</h4>
+  <pre><code class="lang-csharp">builder.Services.AddTrellisAsp();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_Microsoft_Extensions_DependencyInjection_IServiceCollection__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method uses the default error-to-status-code mappings. Most teams can use this
+zero-configuration overload. Call the overload accepting <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action&lt;T&gt;</a>
+to customize specific mappings.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddTrellisAsp*"></a>
+
+  <h3 id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_TrellisAspOptions__" data-uid="Trellis.Asp.ServiceCollectionExtensions.AddTrellisAsp(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Trellis.Asp.TrellisAspOptions})">
+  AddTrellisAsp(IServiceCollection, Action&lt;TrellisAspOptions&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L493"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers Trellis ASP.NET Core integration with custom error-to-HTTP-status-code mappings.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action&lt;TrellisAspOptions&gt; configure)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.TrellisAspOptions.html">TrellisAspOptions</a>&gt;</dt>
+    <dd><p>An action to configure error-to-HTTP-status-code mappings.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_TrellisAspOptions___examples">Examples</h4>
+  <pre><code class="lang-csharp">builder.Services.AddTrellisAsp(options =&gt;
+{
+    options.MapError&lt;DomainError&gt;(StatusCodes.Status400BadRequest);
+});</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_AddTrellisAsp_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_TrellisAspOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Default mappings are applied first. The <code class="paramref">configure</code> action can override
+any mapping using <a class="xref" href="Trellis.Asp.TrellisAspOptions.html#Trellis_Asp_TrellisAspOptions_MapError__1_System_Int32_">MapError&lt;TError&gt;(int)</a>.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ServiceCollectionExtensions_UseScalarValueValidation_" data-uid="Trellis.Asp.ServiceCollectionExtensions.UseScalarValueValidation*"></a>
+
+  <h3 id="Trellis_Asp_ServiceCollectionExtensions_UseScalarValueValidation_Microsoft_AspNetCore_Builder_IApplicationBuilder_" data-uid="Trellis.Asp.ServiceCollectionExtensions.UseScalarValueValidation(Microsoft.AspNetCore.Builder.IApplicationBuilder)">
+  UseScalarValueValidation(IApplicationBuilder)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L389"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds middleware that creates a validation error collection scope for each request.
+This middleware must be registered in the pipeline to enable validation error collection.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IApplicationBuilder UseScalarValueValidation(this IApplicationBuilder app)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>app</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.builder.iapplicationbuilder">IApplicationBuilder</a></dt>
+    <dd><p>The application builder.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.builder.iapplicationbuilder">IApplicationBuilder</a></dt>
+    <dd><p>The application builder for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_UseScalarValueValidation_Microsoft_AspNetCore_Builder_IApplicationBuilder__examples">Examples</h4>
+  <pre><code class="lang-csharp">var app = builder.Build();
+
+app.UseScalarValueValidation(); // ← Add this before routing
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_UseScalarValueValidation_Microsoft_AspNetCore_Builder_IApplicationBuilder__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This middleware creates a <a class="xref" href="Trellis.Asp.ValidationErrorsContext.html">ValidationErrorsContext</a> scope for each request,
+allowing <a class="xref" href="Trellis.Asp.Validation.ValidatingJsonConverter-2.html">ValidatingJsonConverter&lt;TValue, TPrimitive&gt;</a> to collect
+validation errors during JSON deserialization.
+</p>
+<p>
+Register this middleware early in the pipeline, before any middleware that deserializes
+JSON request bodies (such as routing or MVC).
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ServiceCollectionExtensions_WithScalarValueValidation_" data-uid="Trellis.Asp.ServiceCollectionExtensions.WithScalarValueValidation*"></a>
+
+  <h3 id="Trellis_Asp_ServiceCollectionExtensions_WithScalarValueValidation_Microsoft_AspNetCore_Builder_RouteHandlerBuilder_" data-uid="Trellis.Asp.ServiceCollectionExtensions.WithScalarValueValidation(Microsoft.AspNetCore.Builder.RouteHandlerBuilder)">
+  WithScalarValueValidation(RouteHandlerBuilder)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L450"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds the value object validation endpoint filter to the route handler.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static RouteHandlerBuilder WithScalarValueValidation(this RouteHandlerBuilder builder)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>builder</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.builder.routehandlerbuilder">RouteHandlerBuilder</a></dt>
+    <dd><p>The route handler builder.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.builder.routehandlerbuilder">RouteHandlerBuilder</a></dt>
+    <dd><p>The route handler builder for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_WithScalarValueValidation_Microsoft_AspNetCore_Builder_RouteHandlerBuilder__examples">Examples</h4>
+  <pre><code class="lang-csharp">app.MapPost("/users/register", (RegisterUserDto dto) =&gt;
+{
+    // dto is already validated
+    return Results.Ok(dto);
+}).WithScalarValueValidation();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_ServiceCollectionExtensions_WithScalarValueValidation_Microsoft_AspNetCore_Builder_RouteHandlerBuilder__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This extension adds <a class="xref" href="Trellis.Asp.ScalarValueValidationEndpointFilter.html">ScalarValueValidationEndpointFilter</a> to check for
+validation errors collected during JSON deserialization.
+</p>
+<p>
+Ensure <a class="xref" href="Trellis.Asp.ServiceCollectionExtensions.html#Trellis_Asp_ServiceCollectionExtensions_UseScalarValueValidation_Microsoft_AspNetCore_Builder_IApplicationBuilder_">UseScalarValueValidation(IApplicationBuilder)</a> middleware is registered and
+<a class="xref" href="Trellis.Asp.ServiceCollectionExtensions.html#Trellis_Asp_ServiceCollectionExtensions_AddScalarValueValidationForMinimalApi_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddScalarValueValidationForMinimalApi(IServiceCollection)</a> is called for full functionality.
+</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Extensions/ServiceCollectionExtensions.cs/#L20" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class RouteConstraintRegistrationExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class RouteConstraintRegistrationExtensions | Trellis ">
+      
+      <meta name="description" content="Extension methods that register Trellis value objects as ASP.NET Core route constraints.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_Routing_RouteConstraintRegistrationExtensions.md&amp;value=---%0Auid%3A%20Trellis.Asp.Routing.RouteConstraintRegistrationExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.Routing.RouteConstraintRegistrationExtensions">
+
+
+
+  <h1 id="Trellis_Asp_Routing_RouteConstraintRegistrationExtensions" data-uid="Trellis.Asp.Routing.RouteConstraintRegistrationExtensions" class="text-break">
+Class RouteConstraintRegistrationExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Routing/RouteConstraintRegistrationExtensions.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a>.<a class="xref" href="Trellis.Asp.Routing.html">Routing</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Extension methods that register Trellis value objects as ASP.NET Core route constraints.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class RouteConstraintRegistrationExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">RouteConstraintRegistrationExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Asp_Routing_RouteConstraintRegistrationExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Without these registrations, a route template such as <code>&quot;products/{id:ProductId}&quot;</code> silently
+returns 500 at request time because <code>RouteOptions.ConstraintMap</code> has no entry for the
+value object type. This extension scans assemblies for Trellis value objects (types implementing
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iparsable-1">IParsable&lt;TSelf&gt;</a> and <a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a>) and registers
+each one under its simple type name (e.g., <code>ProductId</code>).</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_Routing_RouteConstraintRegistrationExtensions_AddTrellisRouteConstraint_" data-uid="Trellis.Asp.Routing.RouteConstraintRegistrationExtensions.AddTrellisRouteConstraint*"></a>
+
+  <h3 id="Trellis_Asp_Routing_RouteConstraintRegistrationExtensions_AddTrellisRouteConstraint__1_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_String_" data-uid="Trellis.Asp.Routing.RouteConstraintRegistrationExtensions.AddTrellisRouteConstraint``1(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)">
+  AddTrellisRouteConstraint&lt;T&gt;(IServiceCollection, string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Routing/RouteConstraintRegistrationExtensions.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a single route constraint for the specified Trellis value object type. AOT-safe.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddTrellisRouteConstraint&lt;T&gt;(this IServiceCollection services, string? constraintName = null) where T : IParsable&lt;T&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>constraintName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional constraint name. Defaults to the simple type name of <code class="typeparamref">T</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The value object type. Must implement <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iparsable-1">IParsable&lt;TSelf&gt;</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_Routing_RouteConstraintRegistrationExtensions_AddTrellisRouteConstraints_" data-uid="Trellis.Asp.Routing.RouteConstraintRegistrationExtensions.AddTrellisRouteConstraints*"></a>
+
+  <h3 id="Trellis_Asp_Routing_RouteConstraintRegistrationExtensions_AddTrellisRouteConstraints_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly___" data-uid="Trellis.Asp.Routing.RouteConstraintRegistrationExtensions.AddTrellisRouteConstraints(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Reflection.Assembly[])">
+  AddTrellisRouteConstraints(IServiceCollection, params Assembly[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Routing/RouteConstraintRegistrationExtensions.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a route constraint for every Trellis value object discovered in the supplied
+assemblies. The constraint key is the value object's simple type name.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Reflects over assembly types to discover Trellis value objects. Use AddTrellisRouteConstraint&lt;T&gt; for AOT scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs generic route-constraint types via reflection. Use AddTrellisRouteConstraint&lt;T&gt; for AOT scenarios.&quot;)]
+public static IServiceCollection AddTrellisRouteConstraints(this IServiceCollection services, params Assembly[] assemblies)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>assemblies</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a>[]</dt>
+    <dd><p>Assemblies to scan. If empty, scans the calling assembly and the assembly defining
+<a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Routing_RouteConstraintRegistrationExtensions_AddTrellisRouteConstraints_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly____examples">Examples</h4>
+  <pre><code class="lang-csharp">builder.Services.AddTrellisRouteConstraints(typeof(ProductId).Assembly);
+// Then in a controller / minimal endpoint:
+// app.MapGet("/products/{id:ProductId}", (ProductId id) =&gt; ...)</code></pre>
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Routing/RouteConstraintRegistrationExtensions.cs/#L21" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

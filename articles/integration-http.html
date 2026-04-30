@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>HTTP Integration | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="HTTP Integration | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-http.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="http-integration">HTTP Integration</h1>
+
+<p><strong>Level:</strong> Beginner 📗 | <strong>Time:</strong> 10-15 min | <strong>Prerequisites:</strong> <a href="basics.html">Basics</a></p>
+<p>When you call another HTTP service, the hard part is rarely <code>HttpClient</code>. The hard part is turning status codes, empty bodies, and bad payloads into errors your application can reason about.</p>
+<p><code>Trellis.Http</code> gives you that bridge. You keep using <code>HttpClient</code>, but you can map responses into <code>Result&lt;T&gt;</code> and <code>Result&lt;Maybe&lt;T&gt;&gt;</code> without falling back to exception-driven flow.</p>
+<h2 id="what-problem-does-this-solve">What problem does this solve?</h2>
+<p>Without Trellis, HTTP client code often turns into a mix of:</p>
+<ul>
+<li><code>EnsureSuccessStatusCode()</code></li>
+<li>manual <code>if (response.StatusCode == ...)</code></li>
+<li>ad-hoc JSON null checks</li>
+<li>exception handling that leaks transport concerns into business code</li>
+</ul>
+<p>With Trellis, you describe the outcomes you expect and keep composing with the rest of your result pipeline.</p>
+<pre><code class="lang-mermaid">flowchart LR
+    A[HttpClient call] --&gt; B[ToResultAsync / Handle*Async / ReadJsonOrNoneOn404Async]
+    B --&gt; C[ReadJsonAsync / ReadJsonMaybeAsync]
+    C --&gt; D[Result&lt;T&gt; or Result&lt;Maybe&lt;T&gt;&gt;]
+    D --&gt; E[Bind / Map / Tap / Ensure]
+</code></pre>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Http
+</code></pre>
+<h2 id="the-v3-surface">The v3 surface</h2>
+<p><code>Trellis.Http</code> is a single static class — <code>HttpResponseExtensions</code> — with a small canonical method set.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Receiver</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ToResultAsync(statusMap?)</code></td>
+<td><code>Task&lt;HttpResponseMessage&gt;</code></td>
+<td>Bridge into <code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code>. With no map, 2xx stays <code>Ok</code> and non-2xx becomes a typed Trellis failure. With a map, return <code>null</code> to pass through.</td>
+</tr>
+<tr>
+<td><code>ToResultAsync(mapper, ct)</code></td>
+<td><code>Task&lt;HttpResponseMessage&gt;</code></td>
+<td>Body-aware bridge. Async mapper invoked only on non-success status codes. Replaces the v1 <code>HandleFailureAsync&lt;TContext&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>HandleNotFoundAsync(error)</code></td>
+<td><code>Task&lt;HttpResponseMessage&gt;</code></td>
+<td>Map 404 to <code>Fail</code>.</td>
+</tr>
+<tr>
+<td><code>HandleConflictAsync(error)</code></td>
+<td><code>Task&lt;HttpResponseMessage&gt;</code></td>
+<td>Map 409 to <code>Fail</code>.</td>
+</tr>
+<tr>
+<td><code>HandleUnauthorizedAsync(error)</code></td>
+<td><code>Task&lt;HttpResponseMessage&gt;</code></td>
+<td>Map 401 to <code>Fail</code>.</td>
+</tr>
+<tr>
+<td><code>ReadJsonAsync&lt;T&gt;(jsonTypeInfo, ct)</code></td>
+<td><code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code></td>
+<td>Read and deserialize the body. Required-payload semantics: empty / <code>null</code> / invalid JSON / <code>204</code> / <code>205</code> → <code>Fail</code>.</td>
+</tr>
+<tr>
+<td><code>ReadJsonMaybeAsync&lt;T&gt;(jsonTypeInfo, ct)</code></td>
+<td><code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code></td>
+<td>Optional-payload variant. <code>204</code>, <code>205</code>, empty body, JSON <code>null</code> → <code>Ok(Maybe.None)</code>. Invalid JSON throws <code>JsonException</code> (intentional).</td>
+</tr>
+<tr>
+<td><code>ReadJsonOrNoneOn404Async&lt;T&gt;(jsonTypeInfo, ct)</code></td>
+<td><code>Task&lt;HttpResponseMessage&gt;</code></td>
+<td>Terminal optional-resource variant. <code>404</code> → <code>Ok(Maybe.None)</code>; other non-2xx statuses use strict mapping.</td>
+</tr>
+</tbody>
+</table>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>ReadJsonAsync&lt;T&gt;</code> and <code>ReadJsonMaybeAsync&lt;T&gt;</code> require <code>T : notnull</code>. Use them with real payload types, not nullable reference types.</p>
+</div>
+<h2 id="quick-start">Quick start</h2>
+<p>The most common case: call an endpoint, map one expected status code, then deserialize JSON.</p>
+<pre><code class="lang-csharp">using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Http;
+
+[JsonSerializable(typeof(UserDto))]
+internal partial class ApiJsonContext : JsonSerializerContext { }
+
+public sealed record UserDto(string Id, string DisplayName);
+
+public sealed class UserDirectoryClient(HttpClient httpClient)
+{
+    public Task&lt;Result&lt;UserDto&gt;&gt; GetUserAsync(string userId, CancellationToken cancellationToken) =&gt;
+        httpClient.GetAsync($&quot;users/{userId}&quot;, cancellationToken)
+            .HandleNotFoundAsync(new Error.NotFound(ResourceRef.For&lt;UserDto&gt;(userId)) { Detail = $&quot;User {userId} not found&quot; })
+            .ReadJsonAsync(ApiJsonContext.Default.UserDto, cancellationToken);
+}
+</code></pre>
+<h2 id="status-handling">Status handling</h2>
+<p>Why handle status codes before deserializing? Because it keeps transport failures obvious and prevents &quot;try to read JSON from an error page&quot; bugs.</p>
+<h3 id="single-status-convenience-handlers">Single-status convenience handlers</h3>
+<p>Use these when you know which failures are part of the contract.</p>
+<table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>HTTP status</th>
+<th>Produces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HandleNotFoundAsync</code></td>
+<td><code>404</code></td>
+<td><code>Error.NotFound</code></td>
+</tr>
+<tr>
+<td><code>HandleUnauthorizedAsync</code></td>
+<td><code>401</code></td>
+<td><code>Error.Unauthorized</code></td>
+</tr>
+<tr>
+<td><code>HandleConflictAsync</code></td>
+<td><code>409</code></td>
+<td><code>Error.Conflict</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each handler operates on <code>Task&lt;HttpResponseMessage&gt;</code> — the <em>entry point</em> of the chain. After it the result is <code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code> and the next operator is <code>ReadJsonAsync</code> / <code>ReadJsonMaybeAsync</code>.</p>
+<pre><code class="lang-csharp">using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Http;
+
+[JsonSerializable(typeof(CreateOrderRequest))]
+[JsonSerializable(typeof(OrderDto))]
+internal partial class OrdersJsonContext : JsonSerializerContext { }
+
+public sealed record CreateOrderRequest(string CustomerId, decimal Total);
+public sealed record OrderDto(string Id, decimal Total);
+
+public sealed class OrdersClient(HttpClient httpClient)
+{
+    public Task&lt;Result&lt;OrderDto&gt;&gt; CreateAsync(CreateOrderRequest request, CancellationToken ct) =&gt;
+        httpClient.PostAsJsonAsync(&quot;orders&quot;, request, OrdersJsonContext.Default.CreateOrderRequest, ct)
+            .HandleUnauthorizedAsync(new Error.Unauthorized() { Detail = &quot;Sign in before creating orders.&quot; })
+            .ReadJsonAsync(OrdersJsonContext.Default.OrderDto, ct);
+}
+</code></pre>
+<h3 id="multi-status-mapping-with-toresultasyncstatusmap">Multi-status mapping with <code>ToResultAsync(statusMap)</code></h3>
+<p>Use <code>ToResultAsync</code> with a <code>Func&lt;HttpStatusCode, Error?&gt;</code> when you need to map multiple statuses, including 403, ranges, or &quot;everything that is not 2xx&quot;. Returning <code>null</code> lets the response flow through; returning an <code>Error</code> short-circuits the chain.</p>
+<pre><code class="lang-csharp">using System.Net;
+
+public sealed class ProductsClient(HttpClient httpClient)
+{
+    public Task&lt;Result&lt;ProductDto&gt;&gt; GetAsync(string productId, CancellationToken ct) =&gt;
+        httpClient.GetAsync($&quot;products/{productId}&quot;, ct)
+            .ToResultAsync(status =&gt; status switch
+            {
+                HttpStatusCode.NotFound  =&gt; new Error.NotFound(ResourceRef.For&lt;ProductDto&gt;(productId)),
+                HttpStatusCode.Forbidden =&gt; new Error.Forbidden(&quot;products.read&quot;),
+                _ when (int)status &gt;= 500 =&gt; new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = $&quot;upstream {status}&quot; },
+                _ when (int)status &gt;= 400 =&gt; new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = $&quot;client error {status}&quot; },
+                _ =&gt; null,
+            })
+            .ReadJsonAsync(ProductsJsonContext.Default.ProductDto, ct);
+}
+</code></pre>
+<p>This single primitive subsumes the v1 <code>HandleClientError</code>, <code>HandleServerError</code>, <code>HandleForbidden</code>, and <code>EnsureSuccess</code> verbs.</p>
+<h3 id="body-aware-mapping-with-toresultasyncmapper-ct">Body-aware mapping with <code>ToResultAsync(mapper, ct)</code></h3>
+<p>When status code alone is not enough, supply a <code>Func&lt;HttpResponseMessage, CancellationToken, Task&lt;Error?&gt;&gt;</code>. The mapper is invoked <strong>only</strong> for non-success responses and may read the body, headers, or problem-details payload to build a richer error.</p>
+<pre><code class="lang-csharp">using System.Net;
+using System.Net.Http.Json;
+
+public sealed class InvoicesClient(HttpClient httpClient)
+{
+    public Task&lt;Result&lt;InvoiceDto&gt;&gt; CreateAsync(CreateInvoiceRequest request, CancellationToken ct) =&gt;
+        httpClient.PostAsJsonAsync(&quot;invoices&quot;, request, InvoicesJsonContext.Default.CreateInvoiceRequest, ct)
+            .ToResultAsync(async (response, token) =&gt;
+            {
+                var body = await response.Content.ReadAsStringAsync(token);
+                return response.StatusCode switch
+                {
+                    HttpStatusCode.Conflict   =&gt; new Error.Conflict(null, &quot;conflict&quot;) { Detail = body },
+                    HttpStatusCode.BadRequest =&gt; new Error.BadRequest(&quot;bad-req&quot;) { Detail = body },
+                    _ =&gt; new Error.InternalServerError(&quot;upstream&quot;) { Detail = $&quot;Invoice request failed with {(int)response.StatusCode}: {body}&quot; },
+                };
+            }, ct)
+            .ReadJsonAsync(InvoicesJsonContext.Default.InvoiceDto, ct);
+}
+</code></pre>
+<p>Capture additional caller state via closure — the v1 <code>TContext</code> channel is gone (it was redundant).</p>
+<h2 id="reading-json">Reading JSON</h2>
+<p>Why split this into two helpers? Because &quot;missing payload is a bug&quot; and &quot;missing payload is acceptable&quot; are different cases.</p>
+<h3 id="readjsonasync--payload-required"><code>ReadJsonAsync</code> — payload required</h3>
+<ul>
+<li>non-success status → <code>Fail&lt;InternalServerError&gt;</code></li>
+<li><code>204 NoContent</code> / <code>205 ResetContent</code> → <code>Fail</code></li>
+<li><code>null</code>, empty body, or invalid JSON → <code>Fail</code></li>
+</ul>
+<h3 id="readjsonmaybeasync--payload-optional"><code>ReadJsonMaybeAsync</code> — payload optional</h3>
+<ul>
+<li>non-success status → <code>Fail&lt;InternalServerError&gt;</code></li>
+<li><code>204</code>, <code>205</code>, empty content, JSON <code>null</code> → <code>Ok(Maybe.None)</code></li>
+<li>valid JSON body → <code>Ok(Maybe.From(value))</code></li>
+</ul>
+<h3 id="readjsonornoneon404async--resource-optional"><code>ReadJsonOrNoneOn404Async</code> — resource optional</h3>
+<ul>
+<li><code>404 NotFound</code> → <code>Ok(Maybe.None)</code></li>
+<li>other non-success status → typed Trellis failure via strict status mapping</li>
+<li><code>204</code>, <code>205</code>, empty content, JSON <code>null</code> → <code>Ok(Maybe.None)</code></li>
+<li>valid JSON body → <code>Ok(Maybe.From(value))</code></li>
+</ul>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>ReadJsonMaybeAsync</code> does <strong>not</strong> catch <code>JsonException</code>. Use it when &quot;optional body&quot; is allowed, not when you want malformed JSON silently treated as &quot;no value&quot;. The response is still disposed before the exception escapes.</p>
+</div>
+<h2 id="disposal-contract">Disposal contract</h2>
+<p>The library owns <code>HttpResponseMessage</code> disposal on terminal or transformative paths:</p>
+<ul>
+<li><code>ToResultAsync</code> (both overloads) and <code>Handle*Async</code> dispose the response on the <code>Fail</code> path.</li>
+<li><code>ReadJsonAsync</code>, <code>ReadJsonMaybeAsync</code>, and <code>ReadJsonOrNoneOn404Async</code> always dispose after reading, success or failure.</li>
+<li>Pass-through paths (success from bare <code>ToResultAsync</code>, non-matching <code>Handle*Async</code>, mapper returning <code>null</code>) leave disposal to the caller until the chain reaches <code>ReadJson*</code>.</li>
+</ul>
+<p>In practice: <strong>once you call <code>ReadJson*</code>, you no longer need to dispose the response yourself.</strong></p>
+<h2 id="composing-http-with-the-rest-of-trellis">Composing HTTP with the rest of Trellis</h2>
+<p>Once an HTTP call becomes <code>Result&lt;T&gt;</code>, it composes naturally with <code>Bind</code>, <code>Map</code>, <code>Ensure</code>, etc.:</p>
+<pre><code class="lang-csharp">public Task&lt;Result&lt;PaymentReceiptDto&gt;&gt; ChargeAsync(string productId, CancellationToken ct) =&gt;
+    httpClient.GetAsync($&quot;inventory/{productId}&quot;, ct)
+        .ToResultAsync()
+        .ReadJsonAsync(CheckoutJsonContext.Default.InventoryCheckDto, ct)
+        .EnsureAsync(
+            inventory =&gt; inventory.InStock,
+            new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(productId)), &quot;validation.error&quot;) { Detail = &quot;Out of stock.&quot; })))
+        .BindAsync(
+            (_, token) =&gt; httpClient.PostAsync($&quot;payments/{productId}&quot;, null, token)
+                .ToResultAsync()
+                .ReadJsonAsync(CheckoutJsonContext.Default.PaymentReceiptDto, token),
+            ct);
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Prefer source-generated JSON metadata</strong> — keeps the chain AOT-friendly and matches the <code>JsonTypeInfo&lt;T&gt;</code> overloads.</li>
+<li><strong>Use optional reads intentionally.</strong> If <code>404</code> means absence, use <code>ReadJsonOrNoneOn404Async</code>; if it is an error, let bare <code>ToResultAsync()</code> produce a failure or map it with <code>HandleNotFoundAsync</code>.</li>
+<li><strong>Always pass the <code>CancellationToken</code>.</strong> Every Trellis HTTP helper accepts it for a reason.</li>
+<li><strong>Need a sync receiver?</strong> Wrap with <code>Task.FromResult(response)</code>. In practice every <code>HttpClient</code> call is already async, so this is rarely necessary.</li>
+</ul>
+<h2 id="breaking-changes-from-v1">Breaking changes from v1</h2>
+<p>The v1 surface (60+ overloads) has been collapsed. The deleted verbs — <code>HandleForbidden*</code>, <code>HandleClientError*</code>, <code>HandleServerError*</code>, <code>EnsureSuccess</code> / <code>EnsureSuccessAsync</code>, <code>HandleFailureAsync&lt;TContext&gt;</code>, every sync overload, every <code>Result&lt;HttpResponseMessage&gt;</code>-receiver overload — are all expressible with <code>ToResultAsync(statusMap)</code> or <code>ToResultAsync(mapper, ct)</code>. The renamed verbs are <code>ReadResultFromJsonAsync</code> → <code>ReadJsonAsync</code> and <code>ReadResultMaybeFromJsonAsync</code> → <code>ReadJsonMaybeAsync</code>. See the <a href="../api_reference/trellis-api-http.html#breaking-changes-from-v1">API reference</a> for the full migration table.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-http.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

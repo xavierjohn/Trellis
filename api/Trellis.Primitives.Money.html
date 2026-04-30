@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Money | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Money | Trellis ">
+      
+      <meta name="description" content="Represents a structured monetary value object composed of an amount and currency code. Provides type-safe arithmetic operations that prevent mixing different currencies.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Primitives_Money.md&amp;value=---%0Auid%3A%20Trellis.Primitives.Money%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Primitives.Money">
+
+
+
+  <h1 id="Trellis_Primitives_Money" data-uid="Trellis.Primitives.Money" class="text-break">
+Class Money  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L18"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Primitives.html">Primitives</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Primitives.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Represents a structured monetary value object composed of an amount and currency code.
+Provides type-safe arithmetic operations that prevent mixing different currencies.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;Money&gt;))]
+public class Money : ValueObject, IComparable&lt;ValueObject&gt;, IComparable, IEquatable&lt;ValueObject&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="Trellis.ValueObject.html">ValueObject</a></div>
+      <div><span class="xref">Money</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable-1">IComparable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_MaybeComponent__1_Trellis_Maybe___0__">ValueObject.MaybeComponent&lt;T&gt;(Maybe&lt;T&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_System_Object_">ValueObject.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_Trellis_ValueObject_">ValueObject.Equals(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetHashCode">ValueObject.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_CompareTo_Trellis_ValueObject_">ValueObject.CompareTo(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Primitives_Money_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Money is intentionally not a scalar value object because its semantic identity spans
+both <a class="xref" href="Trellis.Primitives.Money.html#Trellis_Primitives_Money_Amount">Amount</a> and <a class="xref" href="Trellis.Primitives.Money.html#Trellis_Primitives_Money_Currency">Currency</a>.
+Money uses decimal for precision and stores amounts in the currency's base unit.
+All arithmetic operations enforce currency matching and return Result for error handling.
+Amounts are automatically rounded to the appropriate number of decimal places for the currency.</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Primitives_Money_Amount_" data-uid="Trellis.Primitives.Money.Amount*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Amount" data-uid="Trellis.Primitives.Money.Amount">
+  Amount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L24"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the monetary amount in the currency's base unit.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public decimal Amount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Currency_" data-uid="Trellis.Primitives.Money.Currency*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Currency" data-uid="Trellis.Primitives.Money.Currency">
+  Currency
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L29"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the ISO 4217 currency code.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public CurrencyCode Currency { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Primitives.CurrencyCode.html">CurrencyCode</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Primitives_Money_Add_" data-uid="Trellis.Primitives.Money.Add*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Add_Trellis_Primitives_Money_" data-uid="Trellis.Primitives.Money.Add(Trellis.Primitives.Money)">
+  Add(Money)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L80"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds two Money amounts if they have the same currency.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Result&lt;Money&gt; Add(Money other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Primitives.Money.html">Money</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Allocate_" data-uid="Trellis.Primitives.Money.Allocate*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Allocate_System_Int32___" data-uid="Trellis.Primitives.Money.Allocate(System.Int32[])">
+  Allocate(params int[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L160"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Allocates money across multiple parts using ratios.
+Ensures no money is lost to rounding by allocating remainder to first portions.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Result&lt;Money[]&gt; Allocate(params int[] ratios)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ratios</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>[]</dt>
+    <dd><p>The ratios to split by (e.g., [1, 2, 1] for 25%, 50%, 25%).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>[]&gt;</dt>
+    <dd><p>Array of Money amounts matching the ratios.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Create_" data-uid="Trellis.Primitives.Money.Create*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Create_System_Decimal_System_String_" data-uid="Trellis.Primitives.Money.Create(System.Decimal,System.String)">
+  Create(decimal, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a Money instance with the specified amount and currency code.
+Throws an exception if the amount or currency is invalid.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Money Create(decimal amount, string currencyCode)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>amount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd><p>The monetary amount.</p>
+</dd>
+    <dt><code>currencyCode</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>ISO 4217 currency code (e.g., &quot;USD&quot;, &quot;EUR&quot;).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Primitives.Money.html">Money</a></dt>
+    <dd><p>The Money instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Primitives_Money_Create_System_Decimal_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Use this method when you know the values are valid (e.g., in tests or with constants).
+For user input, use <a class="xref" href="Trellis.Primitives.Money.html#Trellis_Primitives_Money_TryCreate_System_Decimal_System_String_System_String_">TryCreate(decimal, string, string?)</a> instead.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when amount is negative or currency is invalid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Primitives_Money_Divide_" data-uid="Trellis.Primitives.Money.Divide*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Divide_System_Decimal_" data-uid="Trellis.Primitives.Money.Divide(System.Decimal)">
+  Divide(decimal)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L133"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Divides the money amount by a scalar value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Result&lt;Money&gt; Divide(decimal divisor)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>divisor</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Divide_" data-uid="Trellis.Primitives.Money.Divide*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Divide_System_Int32_" data-uid="Trellis.Primitives.Money.Divide(System.Int32)">
+  Divide(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L145"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Divides the money amount by an integer to split evenly.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Result&lt;Money&gt; Divide(int divisor)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>divisor</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_GetEqualityComponents_" data-uid="Trellis.Primitives.Money.GetEqualityComponents*"></a>
+
+  <h3 id="Trellis_Primitives_Money_GetEqualityComponents" data-uid="Trellis.Primitives.Money.GetEqualityComponents">
+  GetEqualityComponents()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L222"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the equality components for value comparison.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_IsGreaterThan_" data-uid="Trellis.Primitives.Money.IsGreaterThan*"></a>
+
+  <h3 id="Trellis_Primitives_Money_IsGreaterThan_Trellis_Primitives_Money_" data-uid="Trellis.Primitives.Money.IsGreaterThan(Trellis.Primitives.Money)">
+  IsGreaterThan(Money)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L193"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks if this money is greater than another money amount (same currency required).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsGreaterThan(Money other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Primitives.Money.html">Money</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_IsGreaterThanOrEqual_" data-uid="Trellis.Primitives.Money.IsGreaterThanOrEqual*"></a>
+
+  <h3 id="Trellis_Primitives_Money_IsGreaterThanOrEqual_Trellis_Primitives_Money_" data-uid="Trellis.Primitives.Money.IsGreaterThanOrEqual(Trellis.Primitives.Money)">
+  IsGreaterThanOrEqual(Money)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L199"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks if this money is greater than or equal to another amount (same currency required).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsGreaterThanOrEqual(Money other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Primitives.Money.html">Money</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_IsLessThan_" data-uid="Trellis.Primitives.Money.IsLessThan*"></a>
+
+  <h3 id="Trellis_Primitives_Money_IsLessThan_Trellis_Primitives_Money_" data-uid="Trellis.Primitives.Money.IsLessThan(Trellis.Primitives.Money)">
+  IsLessThan(Money)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L205"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks if this money is less than another money amount (same currency required).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsLessThan(Money other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Primitives.Money.html">Money</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_IsLessThanOrEqual_" data-uid="Trellis.Primitives.Money.IsLessThanOrEqual*"></a>
+
+  <h3 id="Trellis_Primitives_Money_IsLessThanOrEqual_Trellis_Primitives_Money_" data-uid="Trellis.Primitives.Money.IsLessThanOrEqual(Trellis.Primitives.Money)">
+  IsLessThanOrEqual(Money)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks if this money is less than or equal to another amount (same currency required).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsLessThanOrEqual(Money other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Primitives.Money.html">Money</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Multiply_" data-uid="Trellis.Primitives.Money.Multiply*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Multiply_System_Decimal_" data-uid="Trellis.Primitives.Money.Multiply(System.Decimal)">
+  Multiply(decimal)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L109"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Multiplies the money amount by a scalar value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Result&lt;Money&gt; Multiply(decimal multiplier)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>multiplier</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Multiply_" data-uid="Trellis.Primitives.Money.Multiply*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Multiply_System_Int32_" data-uid="Trellis.Primitives.Money.Multiply(System.Int32)">
+  Multiply(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L121"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Multiplies the money amount by an integer quantity.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Result&lt;Money&gt; Multiply(int quantity)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>quantity</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Subtract_" data-uid="Trellis.Primitives.Money.Subtract*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Subtract_Trellis_Primitives_Money_" data-uid="Trellis.Primitives.Money.Subtract(Trellis.Primitives.Money)">
+  Subtract(Money)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Subtracts another Money amount if they have the same currency.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Result&lt;Money&gt; Subtract(Money other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Primitives.Money.html">Money</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Sum_" data-uid="Trellis.Primitives.Money.Sum*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Sum_System_Collections_Generic_IEnumerable_Trellis_Primitives_Money__" data-uid="Trellis.Primitives.Money.Sum(System.Collections.Generic.IEnumerable{Trellis.Primitives.Money})">
+  Sum(IEnumerable&lt;Money&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L254"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sums a collection of <a class="xref" href="Trellis.Primitives.Money.html">Money</a> values. All values must share the same currency.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Money&gt; Sum(IEnumerable&lt;Money&gt; values)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>values</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd><p>The monetary values to sum.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd><p>Success with the total, or failure if the collection is empty, contains mixed currencies, or overflows.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_ToString_" data-uid="Trellis.Primitives.Money.ToString*"></a>
+
+  <h3 id="Trellis_Primitives_Money_ToString" data-uid="Trellis.Primitives.Money.ToString">
+  ToString()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L231"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a string representation of the money amount with currency.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_TryCreate_" data-uid="Trellis.Primitives.Money.TryCreate*"></a>
+
+  <h3 id="Trellis_Primitives_Money_TryCreate_System_Decimal_System_String_System_String_" data-uid="Trellis.Primitives.Money.TryCreate(System.Decimal,System.String,System.String)">
+  TryCreate(decimal, string, string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a Money instance with the specified amount and currency code.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Money&gt; TryCreate(decimal amount, string currencyCode, string? fieldName = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>amount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd><p>The monetary amount.</p>
+</dd>
+    <dt><code>currencyCode</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>ISO 4217 currency code (e.g., &quot;USD&quot;, &quot;EUR&quot;).</p>
+</dd>
+    <dt><code>fieldName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional field name for validation errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd><p>Result containing the Money instance or validation errors.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Primitives_Money_Zero_" data-uid="Trellis.Primitives.Money.Zero*"></a>
+
+  <h3 id="Trellis_Primitives_Money_Zero_System_String_" data-uid="Trellis.Primitives.Money.Zero(System.String)">
+  Zero(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L217"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a zero-value Money instance for the specified currency.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Money&gt; Zero(string currencyCode = &quot;USD&quot;)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>currencyCode</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Primitives.Money.html">Money</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Primitives/src/Primitives/Money.cs/#L18" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis Cross-Package Cookbook | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis Cross-Package Cookbook | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-cookbook.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis-cross-package-cookbook">Trellis Cross-Package Cookbook</h1>
+
+<ul>
+<li><strong>Audience:</strong> AI coding agents (and humans) writing Trellis code from documentation alone.</li>
+<li><strong>Purpose:</strong> End-to-end recipes that cross package boundaries — DDD, Mediator, FluentValidation, EF Core, ASP.NET Core, Authorization, State Machine, Testing, Analyzers — using the <em>exact</em> public surface listed in the per-package API references.</li>
+<li><strong>Companion docs:</strong>
+<ul>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a> — <code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, errors, primitives, pagination</li>
+<li><a href="trellis-api-primitives.html">trellis-api-primitives.md</a> — <code>RequiredString</code>, <code>RequiredGuid</code>, <code>[Range]</code>, <code>[StringLength]</code></li>
+<li><a href="trellis-api-mediator.html">trellis-api-mediator.md</a> — <code>ICommand&lt;T&gt;</code>, <code>IQuery&lt;T&gt;</code>, <code>IPipelineBehavior&lt;,&gt;</code>, <code>AddTrellisBehaviors</code></li>
+<li><a href="trellis-api-fluentvalidation.html">trellis-api-fluentvalidation.md</a> — <code>AddTrellisFluentValidation</code></li>
+<li><a href="trellis-api-efcore.html">trellis-api-efcore.md</a> — <code>SaveChangesResultAsync</code>, <code>MaybePropertyMapping</code>, <code>EfRepositoryBase&lt;&gt;</code></li>
+<li><a href="trellis-api-asp.html">trellis-api-asp.md</a> — <code>ToHttpResponse</code>, <code>HttpResponseOptionsBuilder&lt;T&gt;</code>, <code>AddTrellisAsp</code>, <code>AsActionResult</code></li>
+<li><a href="trellis-api-http.html">trellis-api-http.md</a> — <code>ToResultAsync</code>, <code>ReadJsonAsync</code>, <code>ReadJsonOrNoneOn404Async</code></li>
+<li><a href="trellis-api-authorization.html">trellis-api-authorization.md</a> — <code>IActorProvider</code>, <code>IAuthorize</code>, <code>IAuthorizeResource&lt;&gt;</code></li>
+<li><a href="trellis-api-servicedefaults.html">trellis-api-servicedefaults.md</a> — <code>AddTrellis</code>, <code>TrellisServiceBuilder</code></li>
+<li><a href="trellis-api-statemachine.html">trellis-api-statemachine.md</a> — <code>FireResult</code>, <code>LazyStateMachine&lt;,&gt;</code></li>
+<li><a href="trellis-api-testing-reference.html">trellis-api-testing-reference.md</a> — <code>Should().Be(...)</code>, <code>UnwrapError()</code></li>
+<li><a href="trellis-api-testing-aspnetcore.html">trellis-api-testing-aspnetcore.md</a> — <code>WebApplicationFactoryExtensions</code>, <code>.http</code> replay helpers</li>
+<li><a href="trellis-api-analyzers.html">trellis-api-analyzers.md</a> — <code>TRLS001</code>–<code>TRLS021</code>, <code>TrellisDiagnosticIds</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="how-to-read-these-recipes">How to read these recipes</h2>
+<p>Every recipe follows the same shape:</p>
+<ol>
+<li><strong>Problem statement</strong> — what the consumer is trying to accomplish.</li>
+<li><strong>Solution code</strong> — copy-pasteable C# that compiles against the documented public surface only. No invented APIs.</li>
+<li><strong>What it shows</strong> — the cross-cutting concept being demonstrated.</li>
+<li><strong>Anti-pattern → fix</strong> <em>(when applicable)</em> — the wrong way and which Trellis analyzer catches it.</li>
+</ol>
+<p>Conventions used throughout:</p>
+<ul>
+<li>All Trellis types live in the <code>Trellis</code> namespace except where called out (<code>Trellis.Asp</code>, <code>Trellis.Asp.Authorization</code>, <code>Trellis.EntityFrameworkCore</code>, <code>Trellis.Analyzers</code>).</li>
+<li>Snippets use C# 12+ features (file-scoped namespaces, primary constructors, collection expressions) — Trellis targets <code>net10.0</code>.</li>
+<li><code>Result.Ok</code> / <code>Result.Fail</code> are <em>the</em> construction APIs. <code>default(Result&lt;T&gt;)</code> is a typed failure; do not rely on it as success.</li>
+<li>Every async pipeline uses <code>*Async</code> extensions; mixing sync chain methods with <code>Task&lt;Result&lt;T&gt;&gt;</code> triggers <code>TRLS009</code>.</li>
+<li>Examples reference an <code>OrderId : RequiredGuid&lt;OrderId&gt;</code> value object and an <code>Order</code> aggregate. Substitute your own types without changing the structure.</li>
+</ul>
+<p>Known non-APIs and corrected assumptions:</p>
+<table>
+<thead>
+<tr>
+<th>Do not write</th>
+<th>Correct source-backed statement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WithDocumentPerVersion()</code></td>
+<td>No Trellis API with this name exists.</td>
+</tr>
+<tr>
+<td><code>MapScalarApiReference()</code></td>
+<td>Sample-app helper only; not a Trellis framework API.</td>
+</tr>
+<tr>
+<td>Place <code>UseScalarValueValidation()</code> anywhere</td>
+<td>Add it before routing/endpoints that deserialize request bodies.</td>
+</tr>
+<tr>
+<td>Mutate <code>IAuthorize.RequiredPermissions</code></td>
+<td><code>RequiredPermissions</code> is an <code>IReadOnlyList&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>IValidate.Validate()</code> returns <code>Result</code></td>
+<td>The declared return type is <code>IResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="task---recipe-lookup">Task -&gt; recipe lookup</h2>
+<p>Use this table before writing code. If a task matches a row, read that recipe first.</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Start here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create or load an aggregate with value objects</td>
+<td><a href="#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract">Recipe 1</a></td>
+</tr>
+<tr>
+<td>Write a command handler that validates and persists</td>
+<td><a href="#recipe-2--command--handler--fluentvalidation--ef-persistence">Recipe 2</a>, then <a href="#recipe-16--unit-of-work-in-handlers-add-staging-vs-immediate-saveasync">Recipe 16</a></td>
+</tr>
+<tr>
+<td>Add a paginated list query</td>
+<td><a href="#recipe-3--query-handler-returning-paget-paginated-list-with-cursor">Recipe 3</a></td>
+</tr>
+<tr>
+<td>Add Minimal API or MVC endpoints</td>
+<td><a href="#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse">Recipe 4</a>, <a href="#recipe-5--mvc-controller-using-asactionresult">Recipe 5</a></td>
+</tr>
+<tr>
+<td>Map primitive DTO fields to value objects</td>
+<td><a href="#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap">Recipe 18</a></td>
+</tr>
+<tr>
+<td>Add resource authorization</td>
+<td><a href="#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth">Recipe 7</a></td>
+</tr>
+<tr>
+<td>Map <code>Maybe&lt;T&gt;</code> or composite value objects with EF Core</td>
+<td><a href="#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects">Recipe 8</a>, <a href="#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Recipe 13</a>, <a href="#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap">Recipe 15</a></td>
+</tr>
+<tr>
+<td>Add optional request/response fields</td>
+<td><a href="#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport">Recipe 14</a></td>
+</tr>
+<tr>
+<td>Read optional HTTP resources where 404 means absent</td>
+<td><a href="#recipe-19--http-client-result-safety-and-optional-reads">Recipe 19</a></td>
+</tr>
+<tr>
+<td>Return synchronous <code>Result</code> chains from <code>Task</code>/<code>ValueTask</code> APIs</td>
+<td><a href="#recipe-2--command--handler--fluentvalidation--ef-persistence">Recipe 2</a>, then <code>AsTask()</code> / <code>AsValueTask()</code> in <a href="trellis-api-core.html">trellis-api-core.md</a></td>
+</tr>
+<tr>
+<td>Create HTTP-oriented resource errors</td>
+<td>Use <code>ResourceRef.For&lt;TResource&gt;(id)</code> from <a href="trellis-api-core.html">trellis-api-core.md</a></td>
+</tr>
+<tr>
+<td>Add a state transition</td>
+<td><a href="#recipe-9--state-machine-canfire--fire-pattern-with-fireresult">Recipe 9</a></td>
+</tr>
+<tr>
+<td>Write handler/domain tests</td>
+<td><a href="#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror">Recipe 10</a></td>
+</tr>
+<tr>
+<td>Define domain events</td>
+<td><a href="#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp">Recipe 17</a></td>
+</tr>
+<tr>
+<td>Fix analyzer warnings</td>
+<td><a href="#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action">Recipe 11</a></td>
+</tr>
+<tr>
+<td>Wire the composition root</td>
+<td><a href="#recipe-12--di-wiring-playbook-addtrellis-composition-builder">Recipe 12</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract">Recipe 1 — CRUD aggregate (DDD value objects + entity + repository contract)</h2>
+<p><strong>Problem.</strong> Model an <code>Order</code> aggregate with a typed identifier, a value-object money type, and a repository contract that returns <code>Result&lt;T&gt;</code> for not-found.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+// Strongly-typed ID: source-generated factory, equality, parsing, JSON converter.
+public sealed partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+// Value object backed by a 3-letter ISO 4217 currency code.
+[StringLength(3, MinimumLength = 3)]
+public sealed partial class CurrencyCode : RequiredString&lt;CurrencyCode&gt;;
+
+// Composite value object — must be a class (records can't inherit ValueObject).
+public sealed class Money : ValueObject
+{
+    public Money(decimal amount, CurrencyCode currency) { Amount = amount; Currency = currency; }
+    public decimal Amount { get; }
+    public CurrencyCode Currency { get; }
+    protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    {
+        yield return Amount;
+        yield return Currency.Value;
+    }
+}
+
+// Aggregate root.
+public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public Money Total { get; private set; } = default!;
+    public OrderStatus Status { get; private set; }
+
+    private Order(OrderId id) : base(id) { }   // EF Core ctor
+
+    public static Result&lt;Order&gt; Create(OrderId id, Money total) =&gt;
+        Result.Ok(new Order(id) { Total = total, Status = OrderStatus.Draft });
+}
+
+// Trellis convention: model finite domain states as RequiredEnum&lt;TSelf&gt;
+// (NOT C# enums). The partial keyword triggers the source generator.
+public partial class OrderStatus : RequiredEnum&lt;OrderStatus&gt;
+{
+    public static readonly OrderStatus Draft     = new();
+    public static readonly OrderStatus Submitted = new();
+    public static readonly OrderStatus Cancelled = new();
+}
+
+// Repository contract — uses Maybe&lt;T&gt; for &quot;may legitimately find nothing&quot;
+// Reserve Result&lt;T&gt; for failures the caller can act on.
+public interface IOrderRepository
+{
+    Task&lt;Maybe&lt;Order&gt;&gt; FindAsync(OrderId id, CancellationToken ct);
+    void Add(Order order);
+}
+</code></pre>
+<p><strong>What it shows.</strong> <code>RequiredGuid&lt;TSelf&gt;</code> and <code>RequiredString&lt;TSelf&gt;</code> deliver a complete strongly-typed primitive (parsing, equality, JSON, EF) once you mark the partial class. <code>[StringLength]</code> and <code>[Range]</code> come from the <strong><code>Trellis</code> namespace</strong> and are placed on the <strong>class declaration</strong> — using <code>System.ComponentModel.DataAnnotations</code> versions silently compiles but is ignored by the Trellis source generator (<code>TRLS017</code>).</p>
+<p><code>Aggregate&lt;TId&gt;</code> already supplies inherited infrastructure members: <code>Id</code>, protected <code>DomainEvents</code>, persistence-managed <code>ETag</code>, and <code>IsChanged</code> based on pending domain events. Do not redeclare those members on every aggregate; use the inherited surface and add only domain-specific state.</p>
+<p><strong>Anti-pattern → fix (TRLS017).</strong></p>
+<pre><code class="lang-csharp">// WRONG — using System.ComponentModel.DataAnnotations.StringLength
+using System.ComponentModel.DataAnnotations;     // ← wrong namespace
+[StringLength(3, MinimumLength = 3)]             // TRLS017
+public sealed partial class CurrencyCode : RequiredString&lt;CurrencyCode&gt;;
+
+// FIX
+using Trellis;                                   // ← Trellis attributes
+[StringLength(3, MinimumLength = 3)]             // generator now picks it up
+public sealed partial class CurrencyCode : RequiredString&lt;CurrencyCode&gt;;
+</code></pre>
+<hr>
+<h2 id="recipe-2--command--handler--fluentvalidation--ef-persistence">Recipe 2 — Command + handler + FluentValidation + EF persistence</h2>
+<p><strong>Problem.</strong> Wire a <code>PlaceOrderCommand</code> end-to-end: validation via FluentValidation, mediator handler that uses an EF repository, transactional commit on success.</p>
+<pre><code class="lang-csharp">using FluentValidation;
+using Mediator;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp;
+using Trellis.EntityFrameworkCore;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+using Trellis.Primitives;
+
+public sealed record PlaceOrderRequest(Guid OrderId, decimal Amount, string Currency);
+
+public sealed record PlaceOrderCommand(OrderId OrderId, Money Total)
+    : ICommand&lt;Result&lt;OrderId&gt;&gt;
+{
+    public static Result&lt;PlaceOrderCommand&gt; TryCreate(PlaceOrderRequest request) =&gt;
+        Result.Combine(
+                OrderId.TryCreate(request.OrderId, nameof(request.OrderId)),
+                MonetaryAmount.TryCreate(request.Amount, nameof(request.Amount)),
+                CurrencyCode.TryCreate(request.Currency, nameof(request.Currency)))
+            .Map((orderId, amount, currency) =&gt;
+                new PlaceOrderCommand(orderId, Money.Create(amount.Value, currency.Value)));
+}
+
+public sealed class PlaceOrderValidator : AbstractValidator&lt;PlaceOrderCommand&gt;
+{
+    public PlaceOrderValidator()
+    {
+        RuleFor(x =&gt; x.Total.Amount)
+            .LessThanOrEqualTo(10_000m)
+            .WithMessage(&quot;Orders over 10,000 require manual approval.&quot;);
+    }
+}
+
+public sealed class PlaceOrderHandler(IOrderRepository repo)
+    : ICommandHandler&lt;PlaceOrderCommand, Result&lt;OrderId&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;OrderId&gt;&gt; Handle(PlaceOrderCommand cmd, CancellationToken cancellationToken) =&gt;
+        Order.Create(cmd.OrderId, cmd.Total)
+            .Tap(repo.Add)
+            .Map(o =&gt; o.Id)
+            .AsValueTask();
+}
+
+[ApiController]
+[Route(&quot;orders&quot;)]
+public sealed class OrdersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask&lt;ActionResult&lt;OrderId&gt;&gt; Place([FromBody] PlaceOrderRequest request, CancellationToken ct) =&gt;
+        PlaceOrderCommand.TryCreate(request)
+            .BindAsync(command =&gt; sender.Send(command, ct))
+            .ToHttpResponseAsync()
+            .AsActionResultAsync&lt;OrderId&gt;();
+}
+
+// Composition root
+public static class OrdersDi
+{
+    public static IServiceCollection AddOrdersFeature(this IServiceCollection services) =&gt;
+        services
+            .AddTrellisBehaviors()                              // Validation + logging + tracing
+            .AddTrellisFluentValidation(typeof(PlaceOrderValidator).Assembly)
+            .AddTrellisUnitOfWork&lt;AppDbContext&gt;()               // Innermost: commits on success
+            .AddScoped&lt;IOrderRepository, EfOrderRepository&gt;();
+}
+</code></pre>
+<p><strong>What it shows.</strong> The mediator pipeline already runs <code>ValidationBehavior&lt;TMessage, TResponse&gt;</code> before the handler — <code>AddTrellisFluentValidation</code> plugs every <code>IValidator&lt;T&gt;</code> into it via the open-generic <code>IMessageValidator&lt;T&gt;</code> adapter. <code>AddTrellisUnitOfWork&lt;TContext&gt;</code> registers <code>TransactionalCommandBehavior&lt;,&gt;</code> <em>after</em> the others, so it lands innermost and commits only when the handler returns success. The handler itself is pure: no <code>try</code>/<code>catch</code>, no primitive parsing, no <code>await db.SaveChangesAsync()</code> — that's the unit of work's job.</p>
+<blockquote>
+<p><strong>Validation ownership.</strong> Primitive→VO conversion happens at the transport seam. FluentValidation validates VO-shaped commands for cross-field rules and business invariants. Handlers receive value-object-shaped commands and must not parse primitives. See <a href="#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap">Recipe 18</a> for the canonical controller-seam adapter.</p>
+</blockquote>
+<p><strong>Anti-pattern → fix (TRLS010).</strong></p>
+<pre><code class="lang-csharp">// WRONG — sync-over-async (.Result deadlocks) + throwing inside the Result chain.
+.Bind(id =&gt; repo.FindAsync(id, ct).Result is { HasValue: true }
+    ? throw new InvalidOperationException(&quot;already exists&quot;)  // TRLS010 + TRLS005
+    : Result.Ok(id))
+
+// FIX — MatchAsync awaits the Maybe carrier and dispatches without leaving the Result chain.
+.BindAsync(id =&gt; repo.FindAsync(id, ct)
+    .MatchAsync(
+        some: _  =&gt; Result.Fail&lt;OrderId&gt;(new Error.Conflict(ResourceRef.For&lt;Order&gt;(id), &quot;already_exists&quot;)),
+        none: () =&gt; Result.Ok(id)))
+</code></pre>
+<hr>
+<h2 id="recipe-3--query-handler-returning-paget-paginated-list-with-cursor">Recipe 3 — Query handler returning <code>Page&lt;T&gt;</code> (paginated list with cursor)</h2>
+<p><strong>Problem.</strong> Expose a list endpoint that paginates <code>Order</code> rows by cursor, exposes the requested vs. applied limit, and projects a DTO.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+// Paging cursor and limit are protocol/query-string controls validated at the transport seam.
+public sealed record ListOrdersQuery(string? Cursor, int Limit) : IQuery&lt;Result&lt;Page&lt;OrderListItem&gt;&gt;&gt;;
+
+public sealed record OrderListItem(Guid Id, decimal Amount, string Currency);
+
+public sealed class ListOrdersHandler(AppDbContext db)
+    : IQueryHandler&lt;ListOrdersQuery, Result&lt;Page&lt;OrderListItem&gt;&gt;&gt;
+{
+    private const int MaxLimit = 100;
+
+    public async ValueTask&lt;Result&lt;Page&lt;OrderListItem&gt;&gt;&gt; Handle(ListOrdersQuery q, CancellationToken ct)
+    {
+        var requested = q.Limit;
+        var applied   = Math.Clamp(requested, 1, MaxLimit);
+
+        Guid afterId = Guid.Empty;
+        if (q.Cursor is not null &amp;&amp; !Guid.TryParseExact(q.Cursor, &quot;N&quot;, out afterId))
+            return Result.Fail&lt;Page&lt;OrderListItem&gt;&gt;(
+                Error.UnprocessableContent.ForField(&quot;cursor&quot;, &quot;cursor.malformed&quot;, &quot;Cursor is not a valid opaque token.&quot;));
+
+        var query = db.Orders.AsNoTracking().OrderBy(o =&gt; o.Id);
+        if (q.Cursor is not null)
+            query = query.Where(o =&gt; o.Id.Value &gt; afterId);
+
+        var rows = await query.Take(applied + 1).ToListAsync(ct);
+        var hasNext = rows.Count &gt; applied;
+        var items   = rows.Take(applied)
+                          .Select(o =&gt; new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value))
+                          .ToList();
+
+        return Result.Ok(new Page&lt;OrderListItem&gt;(
+            Items: items,
+            Next: hasNext ? new Cursor(items[^1].Id.ToString(&quot;N&quot;)) : null,
+            Previous: q.Cursor is null ? null : new Cursor(q.Cursor),
+            RequestedLimit: requested,
+            AppliedLimit: applied));
+    }
+}
+</code></pre>
+<p><strong>What it shows.</strong> <code>Page&lt;T&gt;</code> is a <code>readonly record struct</code>; instances always carry positive limits and a non-null <code>Items</code>. <code>WasCapped</code> becomes <code>true</code> automatically when the server clamped the limit. Use <code>Page.Empty&lt;T&gt;(req, app)</code> for the empty case rather than <code>default(Page&lt;T&gt;)</code>.</p>
+<blockquote>
+<p><strong>Cursor parsing must be ROP, not throwing.</strong> <code>Guid.Parse(q.Cursor)</code> would throw on malformed input and escape the handler as a 500. Use <code>Guid.TryParseExact(..., &quot;N&quot;, out var)</code> and return <code>Result.Fail&lt;T&gt;(Error.UnprocessableContent.ForField(&quot;cursor&quot;, ...))</code> so a bad cursor surfaces as a clean 422, not a stack trace. Apply the same shape (TryParse -&gt; <code>Result</code> failure) for any opaque-token format you adopt.</p>
+</blockquote>
+<hr>
+<h2 id="recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse">Recipe 4 — Minimal-API endpoint wiring <code>Result&lt;T&gt;</code> → <code>HttpResponseOptionsBuilder</code> → <code>ToHttpResponse</code></h2>
+<p><strong>Problem.</strong> Map a <code>Result&lt;Order&gt;</code> to a fully-conformant HTTP response: <code>200</code> with strong ETag and <code>Last-Modified</code>, <code>404</code>/<code>422</code> Problem Details on failure, <code>304</code> on <code>If-None-Match</code> match.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+using Trellis;
+using Trellis.Asp;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddTrellisAsp();          // error → status mapping + scalar-value validation
+builder.Services.AddOrdersFeature();       // from Recipe 2
+
+var app = builder.Build();
+
+app.MapGet(&quot;/orders/{id:guid}&quot;, async (Guid id, IMediator mediator, CancellationToken ct) =&gt;
+{
+    if (!OrderId.TryCreate(id, nameof(id)).TryGetValue(out var orderId, out var idError))
+        return idError.ToHttpResponse();
+
+    Result&lt;Order&gt; result = await mediator.Send(new GetOrderQuery(orderId), ct);
+
+    return result.ToHttpResponse(opts =&gt; opts
+        .WithETag(o =&gt; o.ETag)                         // strong ETag from aggregate
+        .WithLastModified(o =&gt; o.LastModified)         // RFC 1123
+        .Vary(&quot;Accept&quot;, &quot;Accept-Language&quot;)
+        .EvaluatePreconditions());                     // 304 / 412 handling
+});
+
+app.Run();
+</code></pre>
+<p><strong>What it shows.</strong> <code>ToHttpResponse</code> returns <code>Microsoft.AspNetCore.Http.IResult</code> and is the <strong>only</strong> supported response verb. The fluent <code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code> configures protocol semantics (<code>WithETag</code>, <code>WithLastModified</code>, <code>Vary</code>, <code>EvaluatePreconditions</code>) without leaking HTTP into the handler. Failures (<code>Error.NotFound</code>, <code>Error.UnprocessableContent</code>, …) round-trip through Problem Details using the <code>TrellisAspOptions</code> mapping registered by <code>AddTrellisAsp</code>.</p>
+<hr>
+<h2 id="recipe-5--mvc-controller-using-asactionresult">Recipe 5 — MVC controller using <code>AsActionResult</code></h2>
+<p><strong>Problem.</strong> Same payload as Recipe 4 but with a typed MVC <code>ActionResult&lt;OrderDto&gt;</code>.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+
+[ApiController]
+[Route(&quot;orders&quot;)]
+public sealed class OrdersController(IMediator mediator) : ControllerBase
+{
+    [HttpGet(&quot;{id:guid}&quot;)]
+    public async Task&lt;ActionResult&lt;OrderDto&gt;&gt; Get(Guid id, CancellationToken ct)
+    {
+        if (!OrderId.TryCreate(id, nameof(id)).TryGetValue(out var orderId, out var idError))
+            return idError.ToHttpResponse().AsActionResult&lt;OrderDto&gt;();
+
+        Result&lt;Order&gt; result = await mediator.Send(new GetOrderQuery(orderId), ct);
+
+        return result
+            .ToHttpResponse(
+                body: o =&gt; new OrderDto(o.Id.Value, o.Total.Amount, o.Total.Currency.Value),
+                configure: opts =&gt; opts.WithETag(o =&gt; o.ETag).EvaluatePreconditions())
+            .AsActionResult&lt;OrderDto&gt;();
+    }
+}
+
+public sealed record OrderDto(Guid Id, decimal Amount, string Currency);
+</code></pre>
+<p><strong>What it shows.</strong> <code>.AsActionResult&lt;TBody&gt;()</code> projects an <code>IResult</code> into a typed <code>ActionResult&lt;TBody&gt;</code>, so MVC clients still get OpenAPI/Swagger-friendly typed responses while the response itself executes through the same <code>IResult</code> pipeline as Minimal API.</p>
+<hr>
+<h2 id="recipe-6--conditional-get-with-entitytagvalue-and-byte-range-with-rangeoutcome">Recipe 6 — Conditional GET with <code>EntityTagValue</code> and byte-range with <code>RangeOutcome</code></h2>
+<p><strong>Problem.</strong> Serve a binary blob with strong-ETag conditional GET <em>and</em> RFC 9110 byte-range support.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Http;
+using Trellis;
+using Trellis.Asp;
+
+app.MapGet(&quot;/blobs/{id:guid}&quot;, async (Guid id, HttpRequest req, IBlobRepository repo, CancellationToken ct) =&gt;
+{
+    Result&lt;BlobContent&gt; result = await repo.FindAsync(new BlobId(id), ct);
+
+    return result.ToHttpResponse(opts =&gt; opts
+        .WithETag(b =&gt; EntityTagValue.Strong(b.Sha256Hex))
+        .WithLastModified(b =&gt; b.UploadedAt)
+        .Vary(&quot;Range&quot;)
+        .WithAcceptRanges(&quot;bytes&quot;)
+        .WithRange(b =&gt;
+        {
+            var outcome = RangeRequestEvaluator.Evaluate(req, b.Length);
+            return outcome switch
+            {
+                RangeOutcome.PartialContent pc =&gt; new System.Net.Http.Headers.ContentRangeHeaderValue(pc.From, pc.To, pc.CompleteLength),
+                _                              =&gt; new System.Net.Http.Headers.ContentRangeHeaderValue(b.Length),
+            };
+        })
+        .EvaluatePreconditions());
+});
+</code></pre>
+<p><strong>What it shows.</strong> <code>EntityTagValue.Strong(...)</code> and <code>EntityTagValue.Weak(...)</code> build typed ETags; <code>WithETag</code> accepts either a <code>string</code> (always strong) or an <code>EntityTagValue</code>. <code>RangeRequestEvaluator.Evaluate(...)</code> (in <code>Trellis.Asp</code>) returns the closed-ADT <code>RangeOutcome</code>: <code>FullRepresentation</code>, <code>PartialContent(From, To, CompleteLength)</code>, or <code>NotSatisfiable(CompleteLength)</code>. <code>.EvaluatePreconditions()</code> honors <code>If-Match</code>/<code>If-None-Match</code>/<code>If-Modified-Since</code>/<code>If-Unmodified-Since</code> against the configured ETag and <code>Last-Modified</code> selectors.</p>
+<hr>
+<h2 id="recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth">Recipe 7 — Authorization: <code>IActorProvider</code> + <code>IAuthorize</code> + resource-based auth</h2>
+<p><strong>Problem.</strong> Static (permission) authorization on a delete command, plus resource-based ownership check on an update command — all via the mediator pipeline.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+using Trellis.Primitives;
+
+public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand&lt;Result&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;orders:delete&quot;];
+}
+
+public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
+    : ICommand&lt;Result&gt;, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, OrderId&gt;
+{
+    // Typed VO carried straight through — no parse, no throw.
+    // ASP.NET model binding (via IScalarValue&lt;OrderId, string&gt;) handles the
+    // string→OrderId conversion at the API edge.
+    public OrderId GetResourceId() =&gt; OrderId;
+
+    public Trellis.IResult Authorize(Actor actor, Order resource) =&gt;
+        resource.OwnerId == actor.Id || actor.Permissions.Contains(&quot;orders:write&quot;)
+            ? Result.Ok()
+            : Result.Fail(new Error.Forbidden(PolicyId: &quot;orders.owner&quot;, Resource: ResourceRef.For&lt;Order&gt;(OrderId)));
+}
+
+// DI wiring
+services.AddTrellisBehaviors();
+services.AddClaimsActorProvider();               // ClaimsActorProvider for ASP.NET Core
+services.AddResourceAuthorization(typeof(UpdateOrderCommand).Assembly);
+</code></pre>
+<p><strong>What it shows.</strong> <code>IAuthorize</code> enforces an AND-permission gate via <code>AuthorizationBehavior&lt;,&gt;</code>. <code>IAuthorizeResource&lt;TResource&gt;</code> runs <em>after</em> <code>IResourceLoader&lt;TMessage, TResource&gt;</code> produces the loaded resource, then calls <code>Authorize(actor, resource)</code>. Combining <code>IAuthorizeResource&lt;TResource&gt;</code> with <code>IIdentifyResource&lt;TResource, TId&gt;</code> lets the framework reuse the shared <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> instead of requiring a per-command loader.</p>
+<hr>
+<h2 id="recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects">Recipe 8 — EF Core: <code>MaybePropertyMapping</code> for nullable value objects</h2>
+<p><strong>Problem.</strong> Persist a <code>Maybe&lt;EmailAddress&gt;</code> property with the EF Core <code>MaybeConvention</code>, then verify the generated mapping in a startup diagnostics check.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.EntityFrameworkCore;
+
+public sealed partial class EmailAddress : RequiredString&lt;EmailAddress&gt;;
+
+public sealed partial class Customer : Aggregate&lt;CustomerId&gt;
+{
+    public Customer(CustomerId id) : base(id) { }
+
+    public partial Maybe&lt;EmailAddress&gt; Email { get; set; }   // TRLS035 if not 'partial'
+}
+
+// Configure
+public sealed class AppDbContext : DbContext
+{
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =&gt;
+        configurationBuilder.ApplyTrellisConventions(typeof(AppDbContext).Assembly);
+}
+
+// Diagnostics — print the generated storage members for every Maybe&lt;T&gt; in the model
+public static class ModelDiagnostics
+{
+    public static void DumpMaybeMappings(DbContext db)
+    {
+        IReadOnlyList&lt;MaybePropertyMapping&gt; mappings = db.GetMaybePropertyMappings();
+        foreach (var m in mappings)
+            Console.WriteLine($&quot;{m.EntityTypeName}.{m.PropertyName} → {m.MappedBackingFieldName} ({m.StoreType.Name})&quot;);
+    }
+}
+</code></pre>
+<p><strong>What it shows.</strong> <code>Maybe&lt;T&gt;</code> properties are routed through <code>MaybeConvention</code>, which generates a backing field (<code>_email</code> for <code>Email</code>) that EF Core maps to a nullable column. The CLR property remains <code>Maybe&lt;EmailAddress&gt;</code> everywhere in the domain. <code>MaybePropertyMapping</code> is the diagnostic record that exposes both names — useful for <code>HasIndex</code> on the storage member.</p>
+<blockquote>
+<p>For <strong>composite</strong> value objects (multi-field <code>[OwnedEntity]</code> types like <code>ShippingAddress</code>) — and for <code>Maybe&lt;T&gt;</code> where <code>T</code> is composite — see <a href="#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Recipe 13</a>. <code>Recipe 8</code> covers scalar <code>Maybe&lt;T&gt;</code> only.</p>
+</blockquote>
+<p><strong>Anti-pattern → fix (TRLS016).</strong></p>
+<pre><code class="lang-csharp">// WRONG — HasIndex against the CLR Maybe&lt;T&gt; property silently fails
+modelBuilder.Entity&lt;Customer&gt;().HasIndex(c =&gt; c.Email);   // TRLS016
+
+// WRONG — explicit Property() configuration on a Maybe&lt;T&gt; CLR property.
+// MaybeConvention generates a private backing field (e.g., _email) and maps THAT.
+// Calling builder.Property(c =&gt; c.Email) tries to map Maybe&lt;EmailAddress&gt; as a column,
+// which is not a supported store type — fails at model validation with
+// &quot;The property 'Customer.Email' could not be mapped because the database provider
+//  does not support the type 'Maybe&lt;EmailAddress&gt;'.&quot;
+internal sealed class CustomerConfiguration : IEntityTypeConfiguration&lt;Customer&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Customer&gt; builder)
+    {
+        builder.Property(c =&gt; c.Email).IsRequired();          // ❌ — runtime error
+        builder.Property(c =&gt; c.Email).HasMaxLength(254);     // ❌ — runtime error
+    }
+}
+
+// FIX — say nothing about Maybe&lt;T&gt; in IEntityTypeConfiguration. The convention owns it.
+// If you need column metadata (max length, column name, etc.), configure the *backing field*
+// via the diagnostic name from MaybePropertyMapping, or use HasTrellisIndex for indexes.
+
+// FIX 1 — strongly-typed Trellis index helper
+modelBuilder.Entity&lt;Customer&gt;().HasTrellisIndex(c =&gt; new { c.Status, c.Email });
+
+// FIX 2 — string-based HasIndex against the storage member
+modelBuilder.Entity&lt;Customer&gt;().HasIndex(&quot;Status&quot;, &quot;_email&quot;);
+</code></pre>
+<h3 id="filtering-on-maybet-properties-in-linq-and-specificationt">Filtering on <code>Maybe&lt;T&gt;</code> properties in LINQ and <code>Specification&lt;T&gt;</code></h3>
+<p>Once <code>MaybeConvention</code> maps the storage member, the <strong><code>MaybeQueryInterceptor</code></strong> (registered by <code>optionsBuilder.AddTrellisInterceptors()</code>) lets you write natural LINQ against the CLR <code>Maybe&lt;T&gt;</code> property — no <code>EF.Property&lt;T?&gt;(o, &quot;_x&quot;)</code> boilerplate, no separate query helpers. The interceptor rewrites the expression tree before EF Core compiles it, translating <code>o.Maybe.HasValue</code>, <code>o.Maybe.Value</code>, <code>o.Maybe.GetValueOrDefault(d)</code>, and <code>o.Maybe == Maybe&lt;T&gt;.None</code> to the storage-member access.</p>
+<pre><code class="lang-csharp">// Specification — exactly the shape you'd write for an aggregate query.
+public sealed class OverdueOrderSpecification(DateTime asOf) : Specification&lt;Order&gt;
+{
+    private readonly DateTime _threshold = asOf.AddDays(-7);
+
+    // HasValue gates Value so the compiled lambda short-circuits on None for
+    // FakeRepository tests; the interceptor rewrites both halves to EF.Property.
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        o =&gt; o.Status == OrderStatus.Submitted
+             &amp;&amp; o.SubmittedAt.HasValue
+             &amp;&amp; o.SubmittedAt.Value &lt; _threshold;
+}
+
+// Repository / DbContext usage — the spec composes through IQueryable.Where.
+var overdue = await context.Orders
+    .Where(new OverdueOrderSpecification(timeProvider.GetUtcNow().DateTime).ToExpression())
+    .ToListAsync(ct);
+</code></pre>
+<p><strong>Why this works in both EF and <code>FakeRepository&lt;T, TId&gt;</code></strong> — the <code>HasValue &amp;&amp; Value</code> idiom is C# <code>AndAlso</code>, which short-circuits in the compiled <code>Func&lt;Order, bool&gt;</code> that <code>FakeRepository</code> evaluates in memory: <code>Value</code> never executes when the property is <code>None</code>, so no <code>InvalidOperationException</code>. In EF, the interceptor rewrites the entire predicate to <code>... AND &quot;_submittedAt&quot; IS NOT NULL AND &quot;_submittedAt&quot; &lt; @threshold</code> so the same expression translates faithfully to SQL. <strong>One Specification, one predicate, identical semantics in production and in tests.</strong></p>
+<pre><code class="lang-csharp">// Equivalent alternative — pick whichever reads better for your team.
+public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+    o =&gt; o.Status == OrderStatus.Submitted
+         &amp;&amp; o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) &lt; _threshold;
+</code></pre>
+<blockquote>
+<p><strong>Prerequisite.</strong> The interceptor only runs when the <code>DbContext</code> is configured with <code>optionsBuilder.AddTrellisInterceptors()</code>. Without it, EF Core sees <code>Maybe&lt;T&gt;</code> as an unmapped CLR type and either drops the predicate silently or fails translation — while the <code>FakeRepository</code> tests continue to pass. This is the failure mode that creates &quot;fake says yes, production says no&quot;. Always wire interceptors in <code>AddDbContext</code>. See <a href="#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap">Recipe 15</a> for the complete spec walkthrough.</p>
+</blockquote>
+<p>For ad-hoc <code>IQueryable&lt;T&gt;</code> calls (outside a <code>Specification&lt;T&gt;</code>), the strongly-typed <code>IQueryable&lt;T&gt;</code> extensions in <code>MaybeQueryableExtensions</code> — <code>WhereHasValue</code>, <code>WhereNone</code>, <code>WhereEquals</code>, <code>WhereLessThan</code>, <code>WhereGreaterThanOrEqual</code>, <code>OrderByMaybe</code>, etc. — are an alternative that doesn't depend on the interceptor. They compose with the same storage member directly via <code>EF.Property</code>.</p>
+<pre><code class="lang-csharp">// Equivalent ad-hoc query without a Specification (interceptor not required for this form):
+var overdue = await context.Orders
+    .Where(o =&gt; o.Status == OrderStatus.Submitted)
+    .WhereLessThan(o =&gt; o.SubmittedAt, threshold)
+    .ToListAsync(ct);
+</code></pre>
+<hr>
+<h2 id="recipe-9--state-machine-canfire--fire-pattern-with-fireresult">Recipe 9 — State machine: <code>CanFire</code> + <code>Fire</code> pattern with <code>FireResult</code></h2>
+<p><strong>Problem.</strong> Drive an order through <code>Draft → Submitted → Shipped</code> using Stateless, but expose every transition as <code>Result&lt;TState&gt;</code> so the mediator pipeline composes naturally.</p>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+
+// States and triggers as RequiredEnum value objects (Trellis convention) —
+// equality is symbolic, so Stateless's TState/TTrigger generic constraints are satisfied.
+public partial class DocumentState : RequiredEnum&lt;DocumentState&gt;
+{
+    public static readonly DocumentState Draft     = new();
+    public static readonly DocumentState Submitted = new();
+    public static readonly DocumentState Approved  = new();
+}
+
+public partial class DocumentTrigger : RequiredEnum&lt;DocumentTrigger&gt;
+{
+    public static readonly DocumentTrigger Submit  = new();
+    public static readonly DocumentTrigger Approve = new();
+    public static readonly DocumentTrigger Reject  = new();
+}
+
+public sealed class DocumentService
+{
+    public Result&lt;DocumentState&gt; Submit(Document doc)
+    {
+        var machine = new StateMachine&lt;DocumentState, DocumentTrigger&gt;(doc.State);
+        machine.Configure(DocumentState.Draft).Permit(DocumentTrigger.Submit, DocumentState.Submitted);
+        machine.Configure(DocumentState.Submitted)
+               .Permit(DocumentTrigger.Approve, DocumentState.Approved)
+               .Permit(DocumentTrigger.Reject,  DocumentState.Draft);
+
+        // FireResult pre-checks CanFire and converts invalid transitions to an
+        // Error.UnprocessableContent (HTTP 422) carrying a single RuleViolation with
+        // ReasonCode &quot;state.machine.invalid.transition&quot; — invalid transitions are
+        // semantic rule violations, not concurrent-modification conflicts.
+        Result&lt;DocumentState&gt; result = machine.FireResult(DocumentTrigger.Submit);
+        return result.Tap(newState =&gt; doc.State = newState);
+    }
+}
+</code></pre>
+<p><strong>What it shows.</strong> <code>StateMachineExtensions.FireResult(...)</code> honors <code>PermitIf</code>/<code>IgnoreIf</code> guards via <code>CanFire(...)</code> rather than parsing exception messages, so it survives Stateless library upgrades. For aggregates whose state lives in a backing field (e.g., loaded from EF), use <code>LazyStateMachine&lt;TState, TTrigger&gt;</code> to defer machine creation until the first <code>FireResult</code> call.</p>
+<p><strong>Side-effect placement.</strong> Keep Stateless configuration declarative: states, triggers, permitted transitions, and pure/idempotent guards. Put business mutation, domain events, outbox writes, and other side effects after <code>FireResult</code> succeeds, usually in <code>.Tap(...)</code> as shown above. <code>FireResult</code> intentionally invokes <code>Fire(...)</code> even when <code>CanFire(...)</code> is false so any configured <code>OnUnhandledTrigger</code> callback can run. A custom unhandled-trigger callback may swallow the trigger, in which case <code>FireResult</code> returns success with the unchanged state. If side effects live in <code>OnEntry</code>, <code>OnExit</code>, transition callbacks, or <code>OnUnhandledTrigger</code>, they can run outside the visible ROP success/failure path and make handler behavior diverge from tests.</p>
+<blockquote>
+<p><strong>HTTP semantics.</strong> Invalid state-machine transitions surface as <code>Error.UnprocessableContent</code> (HTTP 422), not <code>Error.Conflict</code> (HTTP 409). The reasoning: <code>Error.Conflict</code> semantically means &quot;your request is valid but collides with concurrent state — retry may succeed&quot;; a state-machine rejection (&quot;you asked for <code>Submit</code> on a <code>Cancelled</code> order&quot;) is not retriable and is not about concurrent modification — it's a semantic rule violation. Callers that need to distinguish state-machine rejections from other 422s can match on the <code>RuleViolation.ReasonCode</code> value <code>state.machine.invalid.transition</code>.</p>
+</blockquote>
+<pre><code class="lang-csharp">// Asserting on a state-machine rejection in tests:
+var unproc = result.Error.Should().BeOfType&lt;Error.UnprocessableContent&gt;().Subject;
+unproc.Rules.Should().ContainSingle().Which.ReasonCode.Should().Be(&quot;state.machine.invalid.transition&quot;);
+</code></pre>
+<hr>
+<h2 id="recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror">Recipe 10 — Test: handler test using <code>Trellis.Testing</code> <code>Should().Be(...)</code> / <code>UnwrapError()</code></h2>
+<p><strong>Problem.</strong> Unit-test the <code>PlaceOrderHandler</code> from Recipe 2 using FluentAssertions extensions from <code>Trellis.Testing</code>.</p>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Primitives;
+using Trellis.Testing;
+using Xunit;
+
+public class PlaceOrderHandlerTests
+{
+    [Fact]
+    public async Task PlaceOrder_returns_id_on_success()
+    {
+        var repo = new InMemoryOrderRepository();
+        var sut  = new PlaceOrderHandler(repo);
+
+        var command = new PlaceOrderCommand(
+            OrderId.TryCreate(Guid.NewGuid()).Unwrap(),
+            Money.TryCreate(100m, &quot;USD&quot;).Unwrap());
+
+        var result = await sut.Handle(command, CancellationToken.None);
+
+        result.Should().BeSuccess();
+        result.Should().HaveValue(repo.Last().Id);                  // structural equality on Result&lt;T&gt;
+    }
+
+    [Fact]
+    public void PlaceOrder_request_adapter_fails_when_currency_invalid()
+    {
+        var request = new PlaceOrderRequest(Guid.NewGuid(), 100m, &quot;US&quot;); // 2 chars, not 3
+
+        var result = PlaceOrderCommand.TryCreate(request);
+
+        result.Should().BeFailureOfType&lt;Error.UnprocessableContent&gt;()
+            .Which.Should().HaveFieldError(&quot;currency&quot;);
+    }
+}
+</code></pre>
+<p><strong>What it shows.</strong> <code>ResultAssertions&lt;TValue&gt;.HaveValue(...)</code> does structural comparison; <code>UnwrapError()</code> is the safe accessor that <em>only</em> returns the error and is intended for use after <code>Should().BeFailure...</code>. Calling <code>.Should()</code> on an <code>Error.UnprocessableContent</code> returns the specialized <code>ValidationErrorAssertions</code> (with <code>HaveFieldError</code>, <code>HaveFieldErrorWithDetail</code>, <code>HaveFieldCount</code>). Async pipelines should be awaited <em>first</em> and asserted after — <code>await result.Should().BeSuccessAsync()</code> is wrong because <code>BeSuccess()</code> is sync; the awaited <code>Result&lt;T&gt;</code> is what you assert on.</p>
+<hr>
+<h2 id="recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action">Recipe 11 — Anti-pattern → fix gallery (the analyzers in action)</h2>
+<p>A condensed atlas showing each common analyzer trigger and its idiomatic Trellis fix.</p>
+<h3 id="trls001--result-return-value-not-handled">TRLS001 — Result return value not handled</h3>
+<pre><code class="lang-csharp">// WRONG — Result&lt;T&gt; dropped on the floor
+PlaceOrder(cmd);                                   // TRLS001
+
+// FIX — handle the value or assign it
+var _ = PlaceOrder(cmd).Match(_ =&gt; 0, e =&gt; throw new(&quot;...&quot;));
+</code></pre>
+<h3 id="trls003--unsafe-maybevalue">TRLS003 — Unsafe <code>Maybe.Value</code></h3>
+<pre><code class="lang-csharp">// WRONG
+string city = customer.Email.Value;                // TRLS003
+
+// FIX 1 — guard
+if (customer.Email.HasValue) { var v = customer.Email.Value; }
+
+// FIX 2 — convert to Result
+Result&lt;EmailAddress&gt; r = customer.Email.ToResult(new Error.NotFound(ResourceRef.For(&quot;Email&quot;, customer.Id)));
+</code></pre>
+<h3 id="trls010--throwing-in-a-result-chain">TRLS010 — Throwing in a Result chain</h3>
+<pre><code class="lang-csharp">// WRONG
+.Bind(o =&gt; throw new InvalidOperationException(&quot;bad&quot;))   // TRLS010
+
+// FIX
+.Bind(o =&gt; Result.Fail&lt;Order&gt;(new Error.Conflict(ResourceRef.For&lt;Order&gt;(o.Id), &quot;invalid_state&quot;)))
+</code></pre>
+<h3 id="trls016--hasindex-on-a-maybet-property">TRLS016 — <code>HasIndex</code> on a <code>Maybe&lt;T&gt;</code> property</h3>
+<pre><code class="lang-csharp">// WRONG
+b.HasIndex(c =&gt; c.Email);                          // TRLS016 — silently no-op
+
+// FIX
+b.HasTrellisIndex(c =&gt; new { c.Email });
+</code></pre>
+<h3 id="trls017--wrong-attribute-namespace-on-a-value-object">TRLS017 — Wrong attribute namespace on a value object</h3>
+<pre><code class="lang-csharp">// WRONG — System.ComponentModel.DataAnnotations
+[System.ComponentModel.DataAnnotations.StringLength(10)]    // TRLS017 — generator ignores it
+public sealed partial class CurrencyCode : RequiredString&lt;CurrencyCode&gt;;
+
+// FIX
+[Trellis.StringLength(10)]
+public sealed partial class CurrencyCode : RequiredString&lt;CurrencyCode&gt;;
+</code></pre>
+<h3 id="trls018--unsafe-resultt-deconstruction">TRLS018 — Unsafe <code>Result&lt;T&gt;</code> deconstruction</h3>
+<pre><code class="lang-csharp">// WRONG
+var (ok, value, err) = result;
+SendEmail(value);                                  // TRLS018 — value is default on failure
+
+// FIX
+var (ok, value, err) = result;
+if (!ok) return err.ToHttpResponse();
+SendEmail(value);                                  // gated by !ok early-return
+</code></pre>
+<h3 id="trls019--defaultresult--defaultmaybet">TRLS019 — <code>default(Result)</code> / <code>default(Maybe&lt;T&gt;)</code></h3>
+<pre><code class="lang-csharp">// WRONG
+return default;                                    // TRLS019 — typed FAILURE, not success
+return default(Maybe&lt;Email&gt;);                      // TRLS019 — equivalent to .None but obscure
+
+// FIX
+return Result.Ok();
+return Maybe&lt;Email&gt;.None;
+</code></pre>
+<hr>
+<h2 id="recipe-12--di-wiring-playbook-addtrellis-composition-builder">Recipe 12 — DI wiring playbook: <code>AddTrellis</code> composition builder</h2>
+<p><strong>Problem.</strong> Compose Trellis service modules in the correct order so behaviors stack properly without forcing simple apps to install every package.</p>
+<p><strong>Preferred: tiered builder.</strong> Use <code>Trellis.ServiceDefaults</code> from the API/composition root. The builder records intent first, then applies modules in the canonical order. <code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</code>, when selected, is always applied last so <code>TransactionalCommandBehavior&lt;,&gt;</code> lands innermost.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.ServiceDefaults;
+
+public static class CompositionRoot
+{
+    public static IServiceCollection AddApp(this IServiceCollection services, string connectionString)
+    {
+        // App-owned: provider, connection string, migrations, pooling, and Mediator registration.
+        services.AddDbContext&lt;AppDbContext&gt;(opts =&gt; opts
+            .UseSqlServer(connectionString)
+            .AddTrellisInterceptors());
+
+        services.AddMediator(options =&gt; options.Assemblies = [typeof(PlaceOrderCommand).Assembly]);
+
+        services.AddTrellis(options =&gt; options
+            .UseAsp()
+            .UseMediator()
+            .UseFluentValidation(typeof(PlaceOrderValidator).Assembly)
+            .UseClaimsActorProvider()
+            .UseResourceAuthorization(typeof(UpdateOrderCommand).Assembly)
+            .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;());
+
+        services.AddScoped&lt;IOrderRepository, EfOrderRepository&gt;();
+
+        return services;
+    }
+}
+</code></pre>
+<p><strong>Builder modules, summarized.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>What it applies</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UseAsp()</code></td>
+<td><code>AddTrellisAsp()</code></td>
+<td>Error → status mapping plus scalar-value JSON/model-binding validation.</td>
+</tr>
+<tr>
+<td><code>UseMediator()</code></td>
+<td><code>AddTrellisBehaviors()</code></td>
+<td>Registers the canonical Result-aware pipeline behaviors.</td>
+</tr>
+<tr>
+<td><code>UseFluentValidation(...)</code></td>
+<td><code>AddTrellisFluentValidation(...)</code></td>
+<td>Implies <code>UseMediator()</code>. Pass assemblies to scan, or omit assemblies when validators are registered explicitly.</td>
+</tr>
+<tr>
+<td><code>UseClaimsActorProvider()</code> / <code>UseEntraActorProvider()</code> / <code>UseDevelopmentActorProvider()</code></td>
+<td>One ASP actor provider</td>
+<td>The builder rejects multiple actor providers.</td>
+</tr>
+<tr>
+<td><code>UseResourceAuthorization(...)</code></td>
+<td><code>AddResourceAuthorization(...)</code></td>
+<td>Implies <code>UseMediator()</code> and scans for resource auth/loaders.</td>
+</tr>
+<tr>
+<td><code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</code></td>
+<td><code>AddTrellisUnitOfWork&lt;TContext&gt;()</code></td>
+<td>Implies <code>UseMediator()</code> and is always applied last.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Still app-owned.</strong> <code>AddTrellis(...)</code> does <strong>not</strong> call <code>AddDbContext</code>, <code>AddMediator</code>, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.</p>
+<hr>
+<h2 id="recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Recipe 13 — Composite value object end-to-end (Domain + API JSON binding + EF Core ownership)</h2>
+<p><strong>Problem.</strong> Persist a multi-field value object (<code>ShippingAddress</code> with street/city/state/postalCode/country) as part of a <code>Customer</code> aggregate. Every field is required, the VO must validate at construction, and the JSON wire format must reuse the same validation as the domain TryCreate.</p>
+<p>The unobvious bits this recipe pins down:</p>
+<ul>
+<li><code>ApplyTrellisConventions</code> already configures <code>[OwnedEntity]</code> types as owned navigations — <strong>you do not need <code>builder.OwnsOne(...)</code> in your <code>IEntityTypeConfiguration</code></strong> (the <code>CompositeValueObjectConvention</code> discovers them by attribute when the assembly is passed to <code>ApplyTrellisConventions</code>).</li>
+<li>The class <strong>must</strong> be <code>partial</code> (<code>TRLS036</code>), inherit <code>ValueObject</code> (<code>TRLS038</code>), and have <strong>no</strong> parameterless constructor (<code>TRLS037</code>) — the source generator emits one for EF Core's materialization path.</li>
+<li><code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;TSelf&gt;))]</code> routes JSON deserialization through the public <code>TryCreate</code>, so the API surface and the domain agree on what's valid. Without it, model binding produces a default-constructed VO that bypasses <code>TryCreate</code>.</li>
+</ul>
+<pre><code class="lang-csharp">using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+[OwnedEntity]                                                        // TRLS036 if not partial; TRLS037 if you add a parameterless ctor; TRLS038 if not ValueObject
+[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;ShippingAddress&gt;))]
+public partial class ShippingAddress : ValueObject
+{
+    public string Street     { get; private set; } = null!;
+    public string City       { get; private set; } = null!;
+    public string State      { get; private set; } = null!;
+    public string PostalCode { get; private set; } = null!;
+    public string Country    { get; private set; } = null!;
+
+    private ShippingAddress(string street, string city, string state, string postalCode, string country)
+    {
+        Street = street; City = city; State = state; PostalCode = postalCode; Country = country;
+    }
+
+    public static Result&lt;ShippingAddress&gt; TryCreate(
+        string street, string city, string state, string postalCode, string country, string? fieldName = null)
+    {
+        var violations = new List&lt;FieldViolation&gt;(5);
+        AddIfBlank(violations, street,     fieldName, nameof(Street));
+        AddIfBlank(violations, city,       fieldName, nameof(City));
+        AddIfBlank(violations, state,      fieldName, nameof(State));
+        AddIfBlank(violations, postalCode, fieldName, nameof(PostalCode));
+        AddIfBlank(violations, country,    fieldName, nameof(Country));
+        return violations.Count &gt; 0
+            ? Result.Fail&lt;ShippingAddress&gt;(new Error.UnprocessableContent(EquatableArray.Create(violations.ToArray())))
+            : Result.Ok(new ShippingAddress(street.Trim(), city.Trim(), state.Trim(), postalCode.Trim(), country.Trim()));
+    }
+
+    protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    {
+        yield return Street; yield return City; yield return State; yield return PostalCode; yield return Country;
+    }
+
+    private static void AddIfBlank(List&lt;FieldViolation&gt; v, string value, string? owner, string part)
+    {
+        if (!string.IsNullOrWhiteSpace(value)) return;
+        var leaf = char.ToLowerInvariant(part[0]) + part[1..];
+        var pointer = string.IsNullOrWhiteSpace(owner)
+            ? InputPointer.ForProperty(leaf)
+            : new InputPointer($&quot;/{owner}/{leaf}&quot;);
+        v.Add(new FieldViolation(pointer, &quot;required&quot;) { Detail = $&quot;{part} is required.&quot; });
+    }
+}
+
+public sealed partial class CustomerId : RequiredGuid&lt;CustomerId&gt;;
+
+public sealed partial class Customer : Aggregate&lt;CustomerId&gt;
+{
+    public string Name { get; private set; } = null!;
+    public ShippingAddress ShippingAddress { get; private set; } = null!;     // required composite owned VO
+    public partial Maybe&lt;ShippingAddress&gt; BillingAddress { get; set; }        // optional composite owned VO
+
+    private Customer(CustomerId id, string name, ShippingAddress shipping) : base(id)
+    {
+        Name = name; ShippingAddress = shipping;
+    }
+
+    public static Result&lt;Customer&gt; Create(CustomerId id, string name, ShippingAddress shipping) =&gt;
+        string.IsNullOrWhiteSpace(name)
+            ? Result.Fail&lt;Customer&gt;(Error.UnprocessableContent.ForField(&quot;name&quot;, &quot;required&quot;, &quot;Name is required.&quot;))
+            : Result.Ok(new Customer(id, name, shipping));
+}
+
+// CONFIGURATION — note the absence of OwnsOne(c =&gt; c.ShippingAddress).
+// CompositeValueObjectConvention picks up [OwnedEntity] types automatically
+// from the assemblies passed to ApplyTrellisConventions.
+internal sealed class CustomerConfiguration : IEntityTypeConfiguration&lt;Customer&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Customer&gt; builder)
+    {
+        builder.HasKey(c =&gt; c.Id);
+        builder.Property(c =&gt; c.Name).IsRequired();
+        // No builder.OwnsOne(c =&gt; c.ShippingAddress) — the convention does this for you.
+        // No HasConversion(...) on the inner string fields — they are mapped by EF Core directly.
+    }
+}
+
+public sealed class AppDbContext(DbContextOptions&lt;AppDbContext&gt; options) : DbContext(options)
+{
+    public DbSet&lt;Customer&gt; Customers =&gt; Set&lt;Customer&gt;();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =&gt;
+        configurationBuilder.ApplyTrellisConventions(typeof(Customer).Assembly);
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =&gt;
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+}
+</code></pre>
+<p><strong>What it shows.</strong></p>
+<ul>
+<li><code>[OwnedEntity]</code> + <code>partial</code> + <code>ValueObject</code> + private ctor is the contract. The three diagnostics (<code>TRLS036</code>/<code>037</code>/<code>038</code>) catch each violation at compile time.</li>
+<li><code>CompositeValueObjectJsonConverter&lt;T&gt;</code> makes JSON deserialization round-trip through <code>TryCreate</code>, so an API request body with a missing <code>state</code> produces the same <code>Error.UnprocessableContent</code> shape the domain emits.</li>
+<li><code>ApplyTrellisConventions</code> removes the boilerplate <code>OwnsOne</code> call. You only need <code>OwnsOne</code> when you want to <strong>override</strong> the convention (custom column names, table splitting, indexes on inner properties).</li>
+</ul>
+<p><strong>Storage shape.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Aggregate property</th>
+<th>Storage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Required <code>ShippingAddress</code> (non-nullable)</td>
+<td>Table-split: 5 columns on the <code>Customers</code> table — <code>ShippingAddress_Street</code>, <code>ShippingAddress_City</code>, <code>ShippingAddress_State</code>, <code>ShippingAddress_PostalCode</code>, <code>ShippingAddress_Country</code> (all <code>NOT NULL</code>).</td>
+</tr>
+<tr>
+<td>Optional <code>Maybe&lt;ShippingAddress&gt;</code></td>
+<td>Because the inner properties are non-nullable, <code>CompositeValueObjectConvention</code> switches to a <strong>separate table</strong> named <code>{Owner}_{Property}</code> (e.g., <code>Customer_BillingAddress</code>) with a <code>1:0..1</code> FK back to <code>Customers</code>. See the storage rules in <a href="trellis-api-efcore.html">trellis-api-efcore.md</a> for the full decision matrix.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>JSON wire shape.</strong></p>
+<p>The <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;T&gt;))]</code> attribute on the value object controls the wire format. There is no auto-discovery — the attribute is required for the converter to engage on request bodies and response payloads.</p>
+<table>
+<thead>
+<tr>
+<th>C# property</th>
+<th>JSON request/response shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ShippingAddress ShippingAddress { get; private set; }</code> (required composite VO)</td>
+<td><code>&quot;shippingAddress&quot;: { &quot;street&quot;: &quot;1 Main St&quot;, &quot;city&quot;: &quot;Redmond&quot;, &quot;state&quot;: &quot;WA&quot;, &quot;postalCode&quot;: &quot;98052&quot;, &quot;country&quot;: &quot;US&quot; }</code> — every field present; missing inner field → <code>Error.UnprocessableContent</code> with field path <code>/shippingAddress/&lt;field&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>partial Maybe&lt;ShippingAddress&gt; BillingAddress { get; set; }</code> (optional composite VO on a domain model — <strong>not</strong> used directly on a request DTO; see Recipe 14)</td>
+<td>Domain model only. On the wire, request DTOs use a <strong>nullable transport</strong> (<code>ShippingAddress?</code>) and the controller adapts via <code>Maybe.From(...)</code>. Response DTOs project to <code>ShippingAddress?</code> for the same reason.</td>
+</tr>
+<tr>
+<td><code>Money Total { get; private set; }</code> (required composite VO with scalar inner properties — <code>decimal Amount</code>, <code>Currency Currency</code>)</td>
+<td><code>&quot;total&quot;: { &quot;amount&quot;: 49.99, &quot;currency&quot;: &quot;USD&quot; }</code> — the property casing comes from System.Text.Json's <code>PropertyNamingPolicy.CamelCase</code> (set by <code>AddTrellisAsp()</code>). Inner scalar VOs (e.g., <code>Currency : RequiredString&lt;Currency&gt;</code>) serialize as their underlying primitive (<code>&quot;USD&quot;</code>, not <code>{&quot;value&quot;:&quot;USD&quot;}</code>).</td>
+</tr>
+<tr>
+<td>Scalar VO (<code>OrderId : RequiredGuid&lt;OrderId&gt;</code>, <code>EmailAddress : RequiredString&lt;EmailAddress&gt;</code>)</td>
+<td>Always serializes as the underlying primitive (<code>&quot;550e8400-...&quot;</code>, <code>&quot;a@b.com&quot;</code>). Never wrapped in <code>{ &quot;value&quot;: ... }</code>. This is automatic via the source-generated <code>IScalarValue&lt;T,P&gt;</code> JSON converter.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anti-pattern → fix.</strong></p>
+<pre><code class="lang-csharp">// WRONG — explicit Property() on a composite owned VO. The convention has already
+// registered an OwnsOne relationship; calling builder.Property() tries to map the
+// composite as a single column, which fails at model validation with
+// &quot;The property 'Order.Total' could not be mapped because the database provider
+//  does not support the type 'Money'.&quot;
+internal sealed class OrderConfiguration : IEntityTypeConfiguration&lt;Order&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Order&gt; builder)
+    {
+        builder.Property(o =&gt; o.Total).IsRequired();           // ❌ — runtime error
+        builder.Property(o =&gt; o.ShippingAddress).IsRequired(); // ❌ — runtime error
+    }
+}
+
+// FIX — say nothing about composite owned VOs in IEntityTypeConfiguration. The convention
+// auto-registers them as OwnsOne. To override (rename column, add an index on an inner
+// property, force table-splitting), use OwnsOne explicitly — it is additive, not duplicative,
+// because the convention checks IsOwned() before re-registering.
+
+// WRONG — manual OwnsOne after ApplyTrellisConventions duplicates the convention's work
+// and silently overrides any annotations the convention set.
+builder.OwnsOne(c =&gt; c.ShippingAddress, owned =&gt; { /* … */ });
+
+// FIX — let the convention own the registration. Use OwnsOne only to override
+// (e.g., to rename columns or add an index on an inner property):
+builder.OwnsOne(c =&gt; c.ShippingAddress, owned =&gt;
+{
+    owned.Property(a =&gt; a.PostalCode).HasColumnName(&quot;PostalCode&quot;).HasMaxLength(20);
+    owned.HasIndex(a =&gt; a.Country);
+});
+</code></pre>
+<pre><code class="lang-csharp">// WRONG — non-partial class (TRLS036) so the generator can't emit the parameterless ctor.
+[OwnedEntity]
+public class ShippingAddress : ValueObject { /* … */ }
+
+// WRONG — declared parameterless ctor (TRLS037) shadows the generator's emitted one.
+[OwnedEntity]
+public partial class ShippingAddress : ValueObject { public ShippingAddress() { } }
+
+// WRONG — not a ValueObject (TRLS038), so equality and convention-based mapping break.
+[OwnedEntity]
+public partial class ShippingAddress { /* … */ }
+</code></pre>
+<h3 id="owned-collections-with-a-private-backing-field">Owned collections with a private backing field</h3>
+<p>When an aggregate exposes a collection navigation as an <code>IReadOnlyList&lt;T&gt;</code> (or <code>IReadOnlyCollection&lt;T&gt;</code>) facade over a private <code>List&lt;T&gt;</code> field, <strong>ignore the facade and map via the backing field name</strong>. EF Core cannot instantiate an interface type for a navigation, so it has to bind directly to the concrete <code>List&lt;T&gt;</code> field.</p>
+<pre><code class="lang-csharp">public sealed partial class Order : Aggregate&lt;OrderId&gt;
+{
+    private readonly List&lt;LineItem&gt; _lineItems = [];
+    public IReadOnlyList&lt;LineItem&gt; LineItems =&gt; _lineItems;       // public facade — interface, EF can't materialize
+    // ...
+}
+
+internal sealed class OrderConfiguration : IEntityTypeConfiguration&lt;Order&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Order&gt; builder)
+    {
+        builder.HasKey(o =&gt; o.Id);
+
+        // The public facade is IReadOnlyList&lt;T&gt; — EF cannot instantiate an interface.
+        // Ignore the facade and map directly against the private backing field by name.
+        builder.Ignore(o =&gt; o.LineItems);
+        builder.OwnsMany&lt;LineItem&gt;(&quot;_lineItems&quot;, li =&gt;
+        {
+            li.ToTable(&quot;LineItems&quot;);
+            li.HasKey(x =&gt; x.Id);
+            // Inner [OwnedEntity] composites (e.g., LineItem.UnitPrice : Money)
+            // are still picked up by CompositeValueObjectConvention — no extra OwnsOne needed here.
+        });
+    }
+}
+</code></pre>
+<p>The string <code>&quot;_lineItems&quot;</code> is unfortunately part of the public mapping contract: rename the private field and the EF model silently stops working. Two mitigations and what they buy you:</p>
+<table>
+<thead>
+<tr>
+<th>Mitigation</th>
+<th>Compile-time safety</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw string <code>&quot;_lineItems&quot;</code></td>
+<td>None — typo or rename breaks at runtime model-validation.</td>
+<td>Zero. The pattern shown above.</td>
+</tr>
+<tr>
+<td><code>private const string LineItemsField = &quot;_lineItems&quot;;</code> on <code>Order</code>, then <code>builder.OwnsMany&lt;LineItem&gt;(Order.LineItemsField, …)</code></td>
+<td>Refactoring tools follow the constant. Still no compile check that the field actually exists.</td>
+<td>Leaks the field name through <code>internal</code>/<code>public</code> constant on the aggregate — adds public surface for a persistence concern.</td>
+</tr>
+<tr>
+<td><code>builder.OwnsMany(o =&gt; o.LineItems, …)</code> directly against the facade</td>
+<td>n/a</td>
+<td>Does not work: EF reports it cannot determine the relationship from <code>IReadOnlyList&lt;LineItem&gt;</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why no <code>[OwnedEntity]</code>-style convention for collections (yet).</strong> <code>[OwnedEntity]</code> + <code>CompositeValueObjectConvention</code> discovers composite owned <em>value objects</em> by attribute. An equivalent collection convention would need to walk every aggregate, find <code>IReadOnlyList&lt;T&gt;</code> / <code>IReadOnlyCollection&lt;T&gt;</code> properties whose <code>T</code> is an entity, locate a matching <code>_camelCase</code> backing field, and register the <code>OwnsMany</code> against it. This is on the roadmap (tracked as the analogue of <code>MaybeConvention</code> for collections); for now the cookbook pattern above is the supported approach.</p>
+<hr>
+<h2 id="recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport">Recipe 14 — Optional fields in request DTOs: <code>Maybe&lt;TScalar&gt;</code> vs nullable transport</h2>
+<p><strong>Problem.</strong> A request body has an optional field — say <code>phoneNumber</code> on <code>CreateCustomerRequest</code>. The domain models it as <code>Maybe&lt;PhoneNumber&gt;</code> (the canonical Trellis pattern). What does the DTO declare it as?</p>
+<p>The answer depends on whether the inner type is a <strong>scalar</strong> (single-primitive) value object or a <strong>composite</strong> owned value object. Trellis ships a JSON converter + model binder for the scalar case but not the composite case.</p>
+<table>
+<thead>
+<tr>
+<th>Inner type</th>
+<th>Pattern</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Maybe&lt;TScalar&gt;</code> where <code>TScalar : IScalarValue&lt;TScalar, TPrimitive&gt;</code> (e.g., <code>Maybe&lt;EmailAddress&gt;</code>, <code>Maybe&lt;PhoneNumber&gt;</code>)</td>
+<td><strong>Use <code>Maybe&lt;T&gt;</code> directly on the DTO.</strong></td>
+<td><code>AddTrellisAsp()</code> registers <code>MaybeScalarValueJsonConverterFactory</code> (JSON), <code>MaybeModelBinder&lt;T,P&gt;</code> (route/query/header), and <code>MaybeSuppressChildValidationMetadataProvider</code> (stops <code>ValidationVisitor</code> from touching <code>.Value</code> when <code>None</code>). <code>null</code>/missing → <code>None</code>; valid → <code>Maybe.From(validated)</code>; invalid → ProblemDetails with the same field path the domain emits.</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;TComposite&gt;</code> where <code>TComposite : ValueObject</code> with multiple fields (e.g., <code>Maybe&lt;ShippingAddress&gt;</code>)</td>
+<td><strong>Use a nullable transport (<code>TComposite?</code>) and adapt at the controller seam.</strong></td>
+<td>No <code>MaybeCompositeValueObjectJsonConverterFactory</code> ships today — System.Text.Json would default-construct the inner type, bypassing <code>TryCreate</code>. Wrap with <code>Maybe.From(...)</code> inside the controller.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pattern-a--scalar-maybet-directly-on-the-dto">Pattern A — scalar <code>Maybe&lt;T&gt;</code> directly on the DTO</h3>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+public sealed partial class EmailAddress : RequiredString&lt;EmailAddress&gt;;
+public sealed partial class PhoneNumber  : RequiredString&lt;PhoneNumber&gt;;
+
+public sealed record CreateCustomerRequest(
+    EmailAddress         Email,           // required
+    Maybe&lt;PhoneNumber&gt;   PhoneNumber);    // optional — null/missing JSON → Maybe.None
+
+[ApiController]
+[Route(&quot;customers&quot;)]
+public sealed class CustomersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask&lt;ActionResult&lt;CustomerResponse&gt;&gt; Create(
+        [FromBody] CreateCustomerRequest request, CancellationToken ct) =&gt;
+        sender.Send(new CreateCustomerCommand(request.Email, request.PhoneNumber), ct)
+              .ToHttpResponseAsync(CustomerResponse.From, /* … */)
+              .AsActionResultAsync&lt;CustomerResponse&gt;();
+}
+</code></pre>
+<p><code>AddTrellisAsp()</code> is the only wiring required:</p>
+<pre><code class="lang-csharp">services.AddTrellisAsp();      // MaybeScalarValueJsonConverterFactory + MaybeModelBinder + ValidationVisitor patch
+services.AddControllers();
+</code></pre>
+<p>Send <code>{&quot;email&quot;:&quot;a@b.com&quot;,&quot;phoneNumber&quot;:null}</code> (or omit <code>phoneNumber</code> entirely) → handler receives <code>Maybe&lt;PhoneNumber&gt;.None</code>. Send <code>{&quot;email&quot;:&quot;a@b.com&quot;,&quot;phoneNumber&quot;:&quot;not a phone&quot;}</code> → 422 with field path <code>/phoneNumber</code> and the validation message produced by <code>PhoneNumber.Create</code>.</p>
+<h3 id="pattern-b--composite-owned-vo-nullable-transport--controller-seam-adapter">Pattern B — composite owned VO, nullable transport + controller-seam adapter</h3>
+<pre><code class="lang-csharp">public sealed record CreateCustomerRequest(
+    EmailAddress       Email,
+    ShippingAddress?   ShippingAddress);   // nullable transport — NOT Maybe&lt;ShippingAddress&gt;
+
+public sealed class CustomersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask&lt;ActionResult&lt;CustomerResponse&gt;&gt; Create(
+        [FromBody] CreateCustomerRequest request, CancellationToken ct)
+    {
+        var shipping = request.ShippingAddress is null
+            ? Maybe&lt;ShippingAddress&gt;.None
+            : Maybe.From(request.ShippingAddress);
+
+        return sender.Send(new CreateCustomerCommand(request.Email, shipping), ct)
+                     .ToHttpResponseAsync(CustomerResponse.From, /* … */)
+                     .AsActionResultAsync&lt;CustomerResponse&gt;();
+    }
+}
+</code></pre>
+<p>The composite VO must still carry <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;ShippingAddress&gt;))]</code> (see Recipe 13) so its inner fields round-trip through <code>TryCreate</code>. The seam adapter only handles the optionality.</p>
+<p><strong>Why not just declare <code>Maybe&lt;ShippingAddress&gt;</code> on the DTO?</strong> <code>MaybeScalarValueJsonConverterFactory.CanConvert</code> checks for <code>IScalarValue&lt;,&gt;</code> on the inner type. Composite VOs do not implement <code>IScalarValue</code>, so the factory returns false, and <code>Maybe&lt;ShippingAddress&gt;</code> falls back to default System.Text.Json serialization — which produces a default-constructed <code>ShippingAddress</code> (<code>{}</code>) wrapped in <code>Maybe.From</code>, silently bypassing <code>TryCreate</code>. That's a correctness bug, not just an ergonomics one.</p>
+<h3 id="anti-pattern--fix">Anti-pattern → fix</h3>
+<pre><code class="lang-csharp">// WRONG — composite Maybe&lt;T&gt; on DTO. Compiles, deserializes to Maybe.From(default(ShippingAddress)),
+// silently skips TryCreate. Discovered only when the persisted entity has empty strings.
+public sealed record CreateCustomerRequest(EmailAddress Email, Maybe&lt;ShippingAddress&gt; ShippingAddress);
+
+// FIX — nullable transport + controller-seam adapter (Pattern B above).
+public sealed record CreateCustomerRequest(EmailAddress Email, ShippingAddress? ShippingAddress);
+
+// WRONG — bypassing AddTrellisAsp() (e.g., raw services.AddControllers().AddJsonOptions(...) in isolation)
+// drops the Maybe converters AND the SuppressChildValidationMetadataProvider, so MVC's ValidationVisitor
+// will throw InvalidOperationException(&quot;Maybe has no value.&quot;) the moment a None reaches model validation.
+services.AddControllers();   // missing AddTrellisAsp()
+
+// FIX — call AddTrellisAsp() before AddControllers(); it is idempotent and configures both pipelines.
+services.AddTrellisAsp();
+services.AddControllers();
+</code></pre>
+<blockquote>
+<p>A future <code>MaybeCompositeValueObjectJsonConverterFactory</code> could make Pattern B unnecessary; until then, nullable transport plus controller-seam adaptation is the supported pattern.</p>
+</blockquote>
+<hr>
+<h2 id="recipe-15--specifications-with-maybet-the-fakereal-divergence-trap">Recipe 15 — Specifications with <code>Maybe&lt;T&gt;</code>: the fake/real divergence trap</h2>
+<p><strong>Problem.</strong> A <code>Specification&lt;T&gt;</code> whose <code>ToExpression()</code> filters on a <code>partial Maybe&lt;T&gt;</code> property must produce the <em>same</em> result set in production (EF Core → SQL) and in <code>FakeRepository&lt;T, TId&gt;</code> (compiled lambda over an in-memory list). Get this wrong and the fake passes while the real query silently returns the wrong rows — the most expensive class of bug to catch in code review.</p>
+<pre><code class="lang-csharp">using System.Linq.Expressions;
+using Trellis;
+
+public sealed class OverdueOrderSpecification : Specification&lt;Order&gt;
+{
+    private readonly DateTime _threshold;
+
+    public OverdueOrderSpecification(DateTime asOf) =&gt; _threshold = asOf.AddDays(-7);
+
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        o =&gt; o.Status == OrderStatus.Submitted
+             &amp;&amp; o.SubmittedAt.HasValue
+             &amp;&amp; o.SubmittedAt.Value &lt; _threshold;
+}
+</code></pre>
+<p><strong>Why this expression is safe in both worlds.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>What runs</th>
+<th>Why <code>.Value</code> is safe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EF Core production</td>
+<td><code>MaybeQueryInterceptor</code> (registered via <code>AddTrellisInterceptors()</code>) rewrites <code>o.SubmittedAt.HasValue</code> → <code>EF.Property&lt;DateTime?&gt;(o, &quot;_submittedAt&quot;) IS NOT NULL</code> and <code>o.SubmittedAt.Value</code> → <code>EF.Property&lt;DateTime?&gt;(o, &quot;_submittedAt&quot;)</code>. The whole predicate translates to one SQL <code>WHERE</code> clause.</td>
+<td>The CLR <code>.Value</code> accessor never executes — the interceptor strips it before EF Core compiles the query.</td>
+</tr>
+<tr>
+<td><code>FakeRepository&lt;Order, OrderId&gt;.WhereAsync(spec.ToExpression().Compile())</code></td>
+<td>The expression compiles to <code>Func&lt;Order, bool&gt;</code> and is evaluated per element. C# <code>&amp;&amp;</code> short-circuits — when <code>HasValue</code> is <code>false</code>, <code>.Value</code> is never called.</td>
+<td>C# <code>AndAlso</code> semantics on the compiled delegate.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anti-pattern → fix.</strong></p>
+<pre><code class="lang-csharp">// ❌ Wrong — predicate is incomplete; production returns ALL submitted orders.
+//   The author saw that `partial Maybe&lt;DateTime&gt;` couldn't be referenced &quot;directly&quot; and
+//   silently dropped the time filter. FakeRepository.WhereAsync(...) was filled in with a
+//   plain lambda that DID apply the threshold, masking the gap.
+public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+    o =&gt; o.Status == OrderStatus.Submitted;   // missing time filter — silent fake/real divergence
+
+// ❌ Wrong — `.Value` without `HasValue` guard. Compiles, but at runtime the FakeRepository
+//   throws InvalidOperationException(&quot;Maybe has no value.&quot;) on the first None record;
+//   EF translates fine because the interceptor rewrites both sides, hiding the bug.
+public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+    o =&gt; o.Status == OrderStatus.Submitted
+         &amp;&amp; o.SubmittedAt.Value &lt; _threshold;   // TRLS003 + fake throws on None
+
+// ✅ Correct — HasValue guards Value; one Specification, identical semantics in both paths.
+public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+    o =&gt; o.Status == OrderStatus.Submitted
+         &amp;&amp; o.SubmittedAt.HasValue
+         &amp;&amp; o.SubmittedAt.Value &lt; _threshold;
+
+// ✅ Correct alternative — GetValueOrDefault with a sentinel that always fails the comparison.
+//   Reads &quot;if no SubmittedAt, treat as never overdue (DateTime.MaxValue)&quot;.
+public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+    o =&gt; o.Status == OrderStatus.Submitted
+         &amp;&amp; o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) &lt; _threshold;
+</code></pre>
+<p><strong>Prerequisites checklist</strong> (the most common cause of &quot;works in tests, fails in prod&quot;):</p>
+<ol>
+<li><strong><code>AddTrellisInterceptors()</code> is wired in <code>AddDbContext</code>.</strong> Without it, the interceptor isn't registered and EF Core can't translate the <code>Maybe&lt;T&gt;</code> access — you'll see either a <code>NotSupportedException</code> at query time or, worse, a silently dropped predicate.</li>
+<li><strong><code>MaybeConvention</code> is applied via <code>ApplyTrellisConventions</code></strong> (see Recipe 8). Without it, no storage member exists for the interceptor to target.</li>
+<li><strong>The fake uses the <em>same</em> <code>spec.ToExpression()</code></strong> — never duplicate the predicate by hand in <code>FakeRepository.WhereAsync</code>. The whole point of <code>Specification&lt;T&gt;</code> is single-sourcing.</li>
+</ol>
+<pre><code class="lang-csharp">// FakeRepository wiring — pass the spec expression through, do NOT rewrite it.
+public Task&lt;IReadOnlyList&lt;Order&gt;&gt; FindOverdueAsync(DateTime asOf, CancellationToken ct) =&gt;
+    fake.WhereAsync(new OverdueOrderSpecification(asOf).ToExpression(), ct);
+</code></pre>
+<p><strong>For ad-hoc queries</strong> (no <code>Specification</code>), <code>MaybeQueryableExtensions</code> gives strongly-typed <code>IQueryable&lt;T&gt;</code> operators that don't depend on the interceptor:</p>
+<pre><code class="lang-csharp">var overdue = await context.Orders
+    .Where(o =&gt; o.Status == OrderStatus.Submitted)
+    .WhereLessThan(o =&gt; o.SubmittedAt, threshold)
+    .ToListAsync(ct);
+</code></pre>
+<p>These compose with <code>EF.Property&lt;T?&gt;</code> directly. They're a fine choice for one-off repository methods, but inside a reusable <code>Specification&lt;T&gt;</code> the natural-LINQ form keeps the predicate symmetric across EF and fake paths.</p>
+<hr>
+<h2 id="recipe-16--unit-of-work-in-handlers-add-staging-vs-immediate-saveasync">Recipe 16 — Unit of work in handlers: <code>Add</code> staging vs immediate <code>SaveAsync</code></h2>
+<p><strong>Problem.</strong> A command handler creates a new aggregate. Where does the <code>SaveChanges</code> call go? The first time you read a Trellis handler that ends with <code>repo.Add(order); return Result.Ok(order.Id);</code> the question is unavoidable: <em>who actually saves it?</em></p>
+<pre><code class="lang-csharp">public sealed class CreateOrderHandler(IOrderRepository repo)
+    : ICommandHandler&lt;CreateOrderCommand, Result&lt;OrderId&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;OrderId&gt;&gt; Handle(CreateOrderCommand cmd, CancellationToken ct) =&gt;
+        Order.Create(cmd.Total)
+            .Tap(repo.Add)                  // stages — no save here
+            .Map(o =&gt; o.Id)
+            .AsValueTask();                 // handler returns immediately
+}
+</code></pre>
+<blockquote>
+<p><code>repo.Add(entity)</code> stages the aggregate for insertion via EF Core; <code>TransactionalCommandBehavior</code>, registered by <code>services.AddTrellisUnitOfWork&lt;TContext&gt;()</code> in your ACL composition root, automatically calls <code>SaveChangesAsync</code> after every successful handler — no explicit save call is needed in the handler.</p>
+</blockquote>
+<p><strong>What it shows.</strong> Handlers in Trellis follow a strict separation: the handler shapes domain state and the pipeline owns the commit boundary. <code>IRepository.Add</code> returns <code>void</code> precisely to signal &quot;staged, not yet persisted&quot; — the <code>void</code> return makes it impossible to write the (wrong) <code>await repo.Add(...).Should().BeSuccess()</code>. The mediator pipeline for command handlers is, innermost first: <code>TransactionalCommandBehavior</code> → <code>ValidationBehavior</code> → <code>LoggingBehavior</code> → handler. When the handler returns a successful <code>Result&lt;T&gt;</code>, the transactional behavior calls <code>SaveChangesAsync</code> and only then surfaces the result; on failure or exception, nothing is committed.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Saves immediately?</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IRepository.Add(T)</code> (and <code>Remove(T)</code>, <code>RemoveByIdAsync(TId)</code>)</td>
+<td><code>void</code> / <code>Task&lt;Result&gt;</code> for not-found</td>
+<td><strong>No</strong> — staged for the UoW</td>
+<td>Handlers and any production-shaped repository contract</td>
+</tr>
+<tr>
+<td><code>FakeRepository.Add(T)</code></td>
+<td><code>void</code></td>
+<td>n/a (in-memory; visible immediately)</td>
+<td><strong>Test setup</strong> — &quot;put this in the store so the handler can find it&quot;</td>
+</tr>
+<tr>
+<td><code>FakeRepository.SaveAsync(T)</code></td>
+<td><code>Task&lt;Result&gt;</code></td>
+<td>n/a (in-memory; visible immediately)</td>
+<td>Tests that explicitly assert on the <code>Result</code> shape, e.g., conflict-result handling</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anti-pattern → fix.</strong></p>
+<pre><code class="lang-csharp">// ❌ Wrong — explicit SaveChangesAsync in the handler. Bypasses TransactionalCommandBehavior,
+//   so cross-aggregate behaviors that depend on a single commit boundary (outbox writes,
+//   ETag bumps, audit logs) end up in inconsistent states. Also: you've now committed even
+//   if a later behavior in the pipeline fails post-handler.
+public ValueTask&lt;Result&lt;OrderId&gt;&gt; Handle(CreateOrderCommand cmd, CancellationToken ct) =&gt;
+    Order.Create(cmd.Total)
+        .Tap(repo.Add)
+        .TapAsync(_ =&gt; dbContext.SaveChangesAsync(ct));   // ❌ — duplicates UoW, racy
+
+// ❌ Wrong — calling SaveAsync from a production handler. SaveAsync is a FakeRepository
+//   convenience for tests. EF repositories don't expose it (and shouldn't).
+.TapAsync(o =&gt; repo.SaveAsync(o, ct))   // ❌ — IRepository&lt;Order&gt;.SaveAsync doesn't exist
+
+// ✅ Correct — stage with Add, let TransactionalCommandBehavior commit on success.
+.Tap(repo.Add)
+</code></pre>
+<p><strong>Test setup pattern.</strong> When unit-testing a handler with <code>FakeRepository</code>, prefer <code>Add</code> for setup and reserve <code>SaveAsync</code> for tests that specifically assert on the Result of the save (conflict handling, etc.). The void surface keeps the test intent visually honest: setup should not have a return value to assert on.</p>
+<pre><code class="lang-csharp">// ✅ Setup: void Add — no .GetAwaiter().GetResult(), no Result assertion in setup.
+var customers = new FakeRepository&lt;Customer, CustomerId&gt;();
+customers.Add(Customer.Create(/* ... */));   // matches the handler's surface exactly
+
+// ✅ Conflict-result test: SaveAsync returns the Error.Conflict so the test can assert.
+var customers = new FakeRepository&lt;Customer, CustomerId&gt;().WithUniqueConstraint(c =&gt; c.Email);
+customers.Add(Customer.Create(&quot;alice@x.com&quot;));
+var result = await customers.SaveAsync(Customer.Create(&quot;alice@x.com&quot;));   // intentional conflict
+result.UnwrapError().Should().BeOfType&lt;Error.Conflict&gt;();
+</code></pre>
+<blockquote>
+<p><code>FakeRepository.Add</code> enforces unique constraints <strong>eagerly</strong> by throwing <code>InvalidOperationException</code> — setup-time violations are almost always test bugs and should fail loud at the offending call site, not at a deferred Result assertion further down. Use <code>SaveAsync</code> when you specifically want to test handler behavior on conflict (where the <code>Error.Conflict</code> Result is the system-under-test, not a setup mistake).</p>
+</blockquote>
+<p><strong>DI prerequisites checklist.</strong></p>
+<pre><code class="lang-csharp">services
+    .AddTrellisBehaviors()                              // validation/logging/tracing
+    .AddTrellisFluentValidation(typeof(MyValidator).Assembly)
+    .AddTrellisUnitOfWork&lt;AppDbContext&gt;()               // ⬅ registers TransactionalCommandBehavior
+    .AddScoped&lt;IOrderRepository, EfOrderRepository&gt;();
+</code></pre>
+<p>Without <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code>, <code>repo.Add(order)</code> stages the entity but <strong>nothing ever calls <code>SaveChangesAsync</code></strong> — handler tests against EF (or against a real database) silently insert nothing. This is the production analogue of the fake/real divergence trap from <a href="#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap">Recipe 15</a>: the tests pass against <code>FakeRepository</code> (which has no UoW boundary, so <code>Add</code> is immediately visible), and production silently commits nothing. Always wire <code>AddTrellisUnitOfWork</code> in the ACL composition root, not inside each handler.</p>
+<hr>
+<h2 id="recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp">Recipe 17 — Defining custom domain events: <code>OccurredAt</code> is the only timestamp</h2>
+<p><strong>Problem.</strong> You're modeling an order workflow and reach for a domain event:</p>
+<pre><code class="lang-csharp">// ❌ Wrong — CS0535 'OrderSubmitted does not implement IDomainEvent.OccurredAt'
+public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTime SubmittedAt) : IDomainEvent;
+</code></pre>
+<p>The compile error is unambiguous, but the obvious &quot;fix&quot; — adding <code>OccurredAt</code> <em>alongside</em> <code>SubmittedAt</code> — is the wrong shape:</p>
+<pre><code class="lang-csharp">// ❌ Wrong — duplicate timestamps. SubmittedAt and OccurredAt always carry the same value.
+public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTime SubmittedAt, DateTime OccurredAt) : IDomainEvent;
+</code></pre>
+<p><strong>Fix.</strong> <code>OccurredAt</code> is the canonical, only timestamp on every domain event. The semantic meaning (&quot;when the order was submitted&quot;) is carried by the <em>event type name</em> (<code>OrderSubmitted</code>), not by a parallel timestamp field. Drop the semantic alias:</p>
+<pre><code class="lang-csharp">// ✅ Correct — OccurredAt is the timestamp; the event name carries the semantic.
+public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTime OccurredAt) : IDomainEvent;
+public sealed record OrderApproved(OrderId OrderId, ActorId ApprovedBy, DateTime OccurredAt) : IDomainEvent;
+public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, DateTime OccurredAt) : IDomainEvent;
+</code></pre>
+<p><strong>Raising the event.</strong> Always pass <code>DateTime.UtcNow</code> (or an injected <code>TimeProvider.GetUtcNow().UtcDateTime</code> for testability). The aggregate's domain method, not the event constructor, is where time enters the system:</p>
+<pre><code class="lang-csharp">public Result&lt;Order&gt; Submit(TimeProvider clock)
+{
+    return this.ToResult()
+        .Ensure(_ =&gt; Status == OrderStatus.Draft, Error.UnprocessableContent.ForRule(&quot;order.already-submitted&quot;, &quot;Already submitted&quot;))
+        .Tap(_ =&gt;
+        {
+            Status = OrderStatus.Submitted;
+            DomainEvents.Add(new OrderSubmitted(Id, Total, clock.GetUtcNow().UtcDateTime));
+        });
+}
+</code></pre>
+<p><strong>On the aggregate.</strong> If your aggregate also exposes a public <code>SubmittedAt</code> property (e.g., to drive UI sort order or read-model projections), source it from the event timestamp at write time — don't track it independently:</p>
+<pre><code class="lang-csharp">public DateTime? SubmittedAt { get; private set; }
+
+public Result&lt;Order&gt; Submit(TimeProvider clock)
+{
+    var occurredAt = clock.GetUtcNow().UtcDateTime;
+    // ... ensure rules ...
+    Status = OrderStatus.Submitted;
+    SubmittedAt = occurredAt;
+    DomainEvents.Add(new OrderSubmitted(Id, Total, occurredAt));
+    return Result.Ok(this);
+}
+</code></pre>
+<p><strong>Why a single timestamp.</strong> Domain events flow into outbox tables, integration buses, audit projections, and event-sourced read models. Every consumer assumes <code>OccurredAt</code> is <em>the</em> occurrence time. Adding <code>SubmittedAt</code>/<code>ApprovedAt</code>/<code>ShippedAt</code> to individual events forces every consumer to know which field to project per event type — and the two fields can drift if the aggregate's setter and the event constructor are passed different <code>DateTime.UtcNow</code> calls.</p>
+<p><strong>See also.</strong> The XML doc on <code>IDomainEvent.OccurredAt</code> (in <code>Trellis.Core</code>) calls this out explicitly. If your IDE shows the doc on hover, the rule is right there before you hit the compile error.</p>
+<hr>
+<h2 id="recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap">Recipe 18 — DTO primitives to value-object command: no test-only <code>Unwrap()</code></h2>
+<p><strong>Problem.</strong> Request DTOs often carry primitive transport fields (<code>string email</code>, <code>string customerName</code>), while commands and domain methods should receive Trellis value objects. Each <code>TryCreate</code> returns <code>Result&lt;TVO&gt;</code>. Do not use <code>Unwrap()</code> in production code — it is a <code>Trellis.Testing</code> helper for tests.</p>
+<pre><code class="lang-csharp">using Mediator;
+using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+using Trellis.Primitives;
+
+public sealed record CreateCustomerRequest(string Email, string CustomerName);
+
+public sealed partial class CustomerId : RequiredGuid&lt;CustomerId&gt;;
+
+public sealed record CustomerResponse(CustomerId Id, string Email, string CustomerName);
+
+[StringLength(200, MinimumLength = 1)]
+public sealed partial class CustomerName : RequiredString&lt;CustomerName&gt;;
+
+public sealed record CreateCustomerCommand(EmailAddress Email, CustomerName CustomerName)
+    : ICommand&lt;Result&lt;CustomerResponse&gt;&gt;
+{
+    public static Result&lt;CreateCustomerCommand&gt; TryCreate(CreateCustomerRequest request) =&gt;
+        Result.Combine(
+                EmailAddress.TryCreate(request.Email, nameof(request.Email)),
+                CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
+            .Map((email, customerName) =&gt; new CreateCustomerCommand(email, customerName));
+}
+
+[ApiController]
+[Route(&quot;customers&quot;)]
+public sealed class CustomersController(ISender sender) : ControllerBase
+{
+    [HttpPost]
+    public ValueTask&lt;ActionResult&lt;CustomerResponse&gt;&gt; Create(
+        [FromBody] CreateCustomerRequest request,
+        CancellationToken ct) =&gt;
+        CreateCustomerCommand.TryCreate(request)
+            .BindAsync(command =&gt; sender.Send(command, ct))
+            .ToHttpResponseAsync()
+            .AsActionResultAsync&lt;CustomerResponse&gt;();
+}
+</code></pre>
+<p><strong>What it shows.</strong></p>
+<ul>
+<li>Keep DTOs transport-shaped and commands/domain methods value-object-shaped.</li>
+<li>Pass field names into <code>TryCreate</code> so failures point at the request field (<code>/Email</code>, <code>/CustomerName</code> after pointer normalization at the ASP boundary).</li>
+<li>Use <code>Result.Combine(...)</code> to aggregate per-field <code>Error.UnprocessableContent</code> failures into one validation response.</li>
+<li>Stay on the ROP track: invalid input short-circuits before <code>sender.Send(...)</code>; valid input creates the command and continues.</li>
+</ul>
+<p><strong>Anti-pattern -&gt; fix.</strong></p>
+<pre><code class="lang-csharp">// WRONG — Unwrap() is test-only and turns validation failures into thrown exceptions.
+var command = new CreateCustomerCommand(
+    EmailAddress.TryCreate(request.Email).Unwrap(),
+    CustomerName.TryCreate(request.CustomerName).Unwrap());
+
+// FIX — aggregate value-object creation results and bind into the command.
+var command = Result.Combine(
+        EmailAddress.TryCreate(request.Email, nameof(request.Email)),
+        CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
+    .Map((email, customerName) =&gt; new CreateCustomerCommand(email, customerName));
+</code></pre>
+<hr>
+<h2 id="recipe-19--http-client-result-safety-and-optional-reads">Recipe 19 — HTTP client result safety and optional reads</h2>
+<p><strong>Problem.</strong> Call an upstream HTTP resource safely, preserving non-success status codes as Trellis errors and treating a missing optional resource as <code>Maybe.None</code>.</p>
+<pre><code class="lang-csharp">using System.Net;
+using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Http;
+
+[JsonSerializable(typeof(OrderDto))]
+public sealed partial class OrderJsonContext : JsonSerializerContext;
+
+public sealed record OrderDto(Guid Id, decimal Total);
+
+public Task&lt;Result&lt;OrderDto&gt;&gt; GetRequiredOrderAsync(HttpClient client, Guid id, CancellationToken ct) =&gt;
+    client.GetAsync($&quot;/orders/{id}&quot;, ct)
+        .ToResultAsync()
+        .ReadJsonAsync(OrderJsonContext.Default.OrderDto, ct);
+
+public Task&lt;Result&lt;Maybe&lt;OrderDto&gt;&gt;&gt; FindOrderAsync(HttpClient client, Guid id, CancellationToken ct) =&gt;
+    client.GetAsync($&quot;/orders/{id}&quot;, ct)
+        .ReadJsonOrNoneOn404Async(OrderJsonContext.Default.OrderDto, ct);
+</code></pre>
+<p><strong>What it shows.</strong></p>
+<ul>
+<li>Bare <code>ToResultAsync()</code> is strict in v3: 2xx responses stay on the success track; non-2xx responses become typed Trellis errors.</li>
+<li>Use <code>ReadJsonOrNoneOn404Async(...)</code> when <code>404</code> is expected domain absence, not failure.</li>
+<li>Use explicit status mapping only when the upstream status needs a domain-specific resource or policy:</li>
+</ul>
+<pre><code class="lang-csharp">client.GetAsync($&quot;/orders/{id}&quot;, ct)
+    .ToResultAsync(status =&gt; status == HttpStatusCode.NotFound
+        ? new Error.NotFound(ResourceRef.For&lt;OrderDto&gt;(id))
+        : null)
+    .ReadJsonAsync(OrderJsonContext.Default.OrderDto, ct);
+</code></pre>
+<hr>
+<h2 id="cross-cutting-tips">Cross-cutting tips</h2>
+<ul>
+<li><strong>Run analyzers in CI.</strong> <code>Trellis.Analyzers</code> ships in the framework and runs as part of every <code>dotnet build</code>. Treat warnings as errors for <code>TRLS00x</code> once your codebase is clean.</li>
+<li><strong>Do not mix sync chain methods with async lambdas.</strong> <code>result.Map(async v =&gt; …)</code> triggers <code>TRLS009</code>; use <code>MapAsync</code>. The fix provider can apply this rewrite automatically.</li>
+<li><strong>Construct errors via the closed ADT.</strong> <code>new Error.NotFound(ResourceRef.For&lt;Order&gt;(id))</code> — never <code>new Error(&quot;not_found&quot;, &quot;...&quot;)</code>, which won't compile against the abstract base record.</li>
+<li><strong>Use <code>Result.Combine</code> (or <code>EnsureAll</code>) for accumulating validation.</strong> Manual <code>IsSuccess</code> checks across multiple results trigger <code>TRLS008</code>.</li>
+<li><strong>Aggregate per-item Results with <code>Traverse</code> / <code>Sequence</code>.</strong> When you have a collection and a per-item function returning <code>Result&lt;T&gt;</code>, use <code>items.Traverse(item =&gt; Compute(item))</code> to lift it into <code>Result&lt;IReadOnlyList&lt;T&gt;&gt;</code>. When you already have an <code>IEnumerable&lt;Result&lt;T&gt;&gt;</code> (e.g., from a <code>Select</code>), call <code>.Sequence()</code> instead. Both short-circuit on the first failure; there is no aggregate-error carrier. For per-field validation aggregation, use the <code>Validate</code> builder which returns a single <code>Error.UnprocessableContent</code> carrying every field violation.</li>
+<li><strong>Use <code>Error.UnprocessableContent.ForField</code> / <code>.ForRule</code> for single-violation 422s.</strong> The most common shape (every primitive <code>TryCreate</code>, every value-object invariant, every <code>RequiredEnum</code>/<code>RequiredString</code> failure) is a single <code>FieldViolation</code> or a single <code>RuleViolation</code>. Use the factories instead of the verbose constructor: <code>Error.UnprocessableContent.ForField(&quot;email&quot;, &quot;invalid_format&quot;, &quot;must contain @&quot;)</code> over <code>new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;invalid_format&quot;) { Detail = &quot;must contain @&quot; }))</code>. There is also <code>ForField(InputPointer field, …)</code> for nested/array pointers (e.g. <code>new InputPointer(&quot;/items/0/quantity&quot;)</code>) or <code>InputPointer.Root</code> for whole-body violations, and <code>ForRule(reasonCode, detail)</code> for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO <code>TryCreate</code>), keep the manual constructor with an <code>EquatableArray&lt;FieldViolation&gt;</code> or use the <code>Validate</code> builder.</li>
+<li><strong><code>InputPointer.Root</code> for whole-body violations.</strong> Use <code>InputPointer.ForProperty(name)</code> for field-level violations and <code>InputPointer.Root</code> when the rule is object-level.</li>
+<li><strong>Only the <code>Trellis</code> namespace is auto-imported.</strong> The template's implicit usings include <code>Trellis</code> (which exposes <code>Result</code>, <code>Result&lt;T&gt;</code>, <code>Error</code>, <code>Maybe&lt;T&gt;</code>, <code>RequiredString&lt;T&gt;</code>, <code>RequiredGuid&lt;T&gt;</code>, <code>RequiredInt&lt;T&gt;</code>, <code>RequiredDecimal&lt;T&gt;</code>, <code>RequiredDateTime&lt;T&gt;</code>, etc.). Every other Trellis namespace requires an explicit <code>using</code> per file — e.g. <code>using Trellis.Primitives;</code> for <code>Money</code> / <code>EmailAddress</code> / <code>PhoneNumber</code> / <code>MonetaryAmount</code> / <code>CurrencyCode</code> / <code>CountryCode</code> / etc., <code>using Trellis.StateMachine;</code> for <code>StateMachine&lt;TState, TTrigger&gt;</code>, <code>using Trellis.Authorization;</code> for permission types. This is intentional: implicit usings cannot be added at the template level without breaking services that don't reference the package.</li>
+<li><strong>Accessing <code>Maybe&lt;T&gt;.Value</code> inside <code>Expression&lt;Func&lt;...&gt;&gt;</code> lambdas (EF Core <code>Where</code>/<code>Select</code>, FluentValidation <code>RuleFor</code>, Specifications):</strong> TRLS003 still applies inside expression trees — use the short-circuit idiom <code>e =&gt; e.X.HasValue &amp;&amp; e.X.Value == y</code> for predicates, or hoist into a guarded variable for projections. This is intentional: EF Core needs the <code>HasValue</code> predicate to emit <code>IS NOT NULL</code> SQL, and a blanket carve-out would hide real translation bugs. Do not suppress with <code>#pragma warning disable TRLS003</code>. See <a href="#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap">Recipe 15</a> for the full Specification walkthrough including the fake-vs-real divergence trap.</li>
+<li><strong><code>EquatableArray&lt;T&gt;</code> does not implement <code>IEnumerable&lt;T&gt;</code> — project through <code>.Items</code> for LINQ / FluentAssertions / <code>string.Join</code>.</strong> The sequence-equality wrapper exposes a duck-typed <code>GetEnumerator()</code> for allocation-free <code>foreach</code> but deliberately does not implement <code>IEnumerable&lt;T&gt;</code>. LINQ extension methods (<code>Select</code>, <code>Where</code>, <code>Any</code>, <code>ToList</code>) and FluentAssertions extensions (<code>Should().ContainSingle()</code>, <code>Should().HaveCount(...)</code>, <code>Should().BeEquivalentTo(...)</code>) bind on <code>IEnumerable&lt;T&gt;</code> and will not compile against the raw wrapper. Call <code>.Items</code> first — it returns the wrapped <code>ImmutableArray&lt;T&gt;</code>, which IS <code>IEnumerable&lt;T&gt;</code>. This shows up most often in test assertions on <code>Error.UnprocessableContent.Fields</code> / <code>.Rules</code> and in error-rendering helpers. See <a href="trellis-api-core.html#public-readonly-struct-equatablearrayt--iequatableequatablearrayt"><code>EquatableArray&lt;T&gt;</code></a> in the Core reference for the worked example.</li>
+</ul>
+<hr>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-core.html#extension-class-catalog-full-signatures">trellis-api-core.md</a> — every <code>Result*Extensions(Async)</code> family with full signatures.</li>
+<li><a href="trellis-api-core.html#pagination">trellis-api-core.md</a> — <code>Cursor</code>, <code>Page&lt;T&gt;</code>, <code>Page.Empty&lt;T&gt;</code>.</li>
+<li><a href="trellis-api-asp.html">trellis-api-asp.md</a> — <code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code> member-by-member.</li>
+<li><a href="trellis-api-mediator.html#canonical-pipeline-order">trellis-api-mediator.md</a> — exact behavior ordering.</li>
+<li><a href="trellis-api-analyzers.html#constants--trellisdiagnosticids">trellis-api-analyzers.md</a> — every <code>TrellisDiagnosticIds</code> constant + emitting analyzer.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-cookbook.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

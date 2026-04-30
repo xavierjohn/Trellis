@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Debugging Trellis Pipelines | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Debugging Trellis Pipelines | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/debugging.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="debugging-trellis-pipelines">Debugging Trellis Pipelines</h1>
+
+<p>Trellis pipelines are easy to read when they work — and sometimes harder to inspect when they do not.</p>
+<p>The reason is simple: <strong>failure short-circuits the rest of the chain</strong>. That is a feature, but it changes how you debug.</p>
+<h2 id="first-remember-how-the-railway-works">First, remember how the railway works</h2>
+<pre><code class="lang-mermaid">flowchart LR
+    A[Start] --&gt; B[Step 1]
+    B --&gt;|success| C[Step 2]
+    B --&gt;|failure| F[Error track]
+    C --&gt;|success| D[Step 3]
+    C --&gt;|failure| F
+    D --&gt;|success| E[Match / ToHttpResponse]
+    D --&gt;|failure| F
+    F --&gt; E
+</code></pre>
+<p>Once a result is failed:</p>
+<ul>
+<li>later success-path operations are skipped</li>
+<li>the <strong>first failure</strong> usually explains the outcome</li>
+<li>debugging becomes easier when you inspect the chain at the point it changes tracks</li>
+</ul>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Most Trellis debugging boils down to two questions: <strong>Where did the pipeline fail?</strong> and <strong>What error was produced there?</strong></p>
+</div>
+<h2 id="the-fastest-way-to-find-the-failing-step">The fastest way to find the failing step</h2>
+<p>Add <code>Tap</code> and <code>TapOnFailure</code> around suspicious boundaries.</p>
+<pre><code class="lang-csharp">using Microsoft.Extensions.Logging;
+using Trellis;
+using Trellis.Primitives;
+
+public sealed class RegistrationService(ILogger&lt;RegistrationService&gt; logger)
+{
+    public Result&lt;EmailAddress&gt; Validate(string email) =&gt;
+        EmailAddress.TryCreate(email)
+            .Tap(value =&gt; logger.LogDebug(&quot;Validated email {Email}&quot;, value.Value))
+            .TapOnFailure(error =&gt; logger.LogWarning(
+                &quot;Email validation failed: {Code} - {Detail}&quot;,
+                error.Code,
+                error.Detail));
+}
+</code></pre>
+<p>This keeps the business logic intact while giving you visibility into the exact step that failed.</p>
+<h2 id="safely-inspect-a-resultt">Safely inspect a <code>Result&lt;T&gt;</code></h2>
+<p>The most common debugging mistake is reaching straight for <code>.Value</code> or <code>.Error</code>.</p>
+<h3 id="safe-options">Safe options</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static string Describe(Result&lt;int&gt; result)
+{
+    if (result.TryGetValue(out var value))
+        return $&quot;Value: {value}&quot;;
+
+    if (result.TryGetError(out var error))
+        return $&quot;Error: {error.Code} - {error.Detail}&quot;;
+
+    return &quot;Unknown&quot;;
+}
+</code></pre>
+<h3 id="also-safe-match-with-a-switch-expression-on-the-closed-error-adt">Also safe: <code>Match</code> (with a <code>switch</code> expression on the closed <code>Error</code> ADT)</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static string Describe(Result&lt;int&gt; result) =&gt;
+    result.Match(
+        onSuccess: value =&gt; $&quot;Value: {value}&quot;,
+        onFailure: error =&gt; error switch
+        {
+            Error.UnprocessableContent uc =&gt; $&quot;Validation: {uc.GetDisplayMessage()}&quot;,
+            _                              =&gt; $&quot;Error: {error.Code}&quot;
+        });
+</code></pre>
+<h3 id="unsafe-options">Unsafe options</h3>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Why it is risky</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Result&lt;T&gt;.Value</code></td>
+<td>Removed from the current API. Use <code>TryGetValue(out var value)</code> or <code>Match(...)</code> instead.</td>
+</tr>
+<tr>
+<td><code>result.Error!</code> without checking</td>
+<td>Null on success; dereferencing it without checking can throw.</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>In the Watch window, prefer <code>TryGetValue(out var value)</code> and <code>TryGetError(out var error)</code> over direct property access.</p>
+</div>
+<h2 id="use-the-built-in-debug-helpers-when-you-want-instant-visibility">Use the built-in debug helpers when you want instant visibility</h2>
+<p>Trellis includes debug helpers for ad-hoc tracing.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+ResultDebugSettings.EnableDebugTracing = true;
+
+var result = EmailAddress.TryCreate(&quot;ada@example.com&quot;)
+    .Debug(&quot;after email&quot;)
+    .Map(email =&gt; email.Value.ToUpperInvariant())
+    .DebugDetailed(&quot;after map&quot;);
+</code></pre>
+<p>Useful helpers include:</p>
+<ul>
+<li><code>Debug(...)</code></li>
+<li><code>DebugDetailed(...)</code></li>
+<li><code>DebugWithStack(...)</code></li>
+<li>async variants such as <code>DebugAsync(...)</code></li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>These helpers are conditionally compiled for <code>DEBUG</code> builds, so they do not add runtime cost to release builds.</p>
+</div>
+<h2 id="break-long-chains-when-you-need-a-debugger-friendly-view">Break long chains when you need a debugger-friendly view</h2>
+<p>A long fluent chain is great for production readability. It is not always the best shape for stepping through line by line.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+static Result&lt;string&gt; Register(string first, string last, string email)
+{
+    var nameResult = FirstName.TryCreate(first)
+        .Combine(LastName.TryCreate(last));
+
+    var emailResult = EmailAddress.TryCreate(email);
+
+    return nameResult
+        .Combine(emailResult)
+        .Bind((firstName, lastName, emailAddress) =&gt;
+            Result.Ok($&quot;{firstName} {lastName} &lt;{emailAddress}&gt;&quot;));
+}
+</code></pre>
+<p>That gives you stable breakpoint locations and named intermediate values.</p>
+<h2 id="debugging-aggregated-validation-errors">Debugging aggregated validation errors</h2>
+<p><code>Combine</code> is excellent for forms and DTO validation because it can return multiple failures at once. When something fails, inspect the aggregated error — not just the top-level message.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+var result = FirstName.TryCreate(&quot;&quot;)
+    .Combine(LastName.TryCreate(&quot;&quot;))
+    .Combine(EmailAddress.TryCreate(&quot;not-an-email&quot;))
+    .TapOnFailure(error =&gt; Console.WriteLine(error.Detail));
+</code></pre>
+<p>What to inspect:</p>
+<ul>
+<li><code>error.Code</code> — usually ends with <code>.error</code> (for example <code>validation.error</code>)</li>
+<li><code>error.Detail</code> — human-readable explanation</li>
+<li>concrete error type — for example <code>Error.UnprocessableContent</code></li>
+<li>nested failures if the error is aggregated</li>
+</ul>
+<h2 id="common-debugging-patterns">Common debugging patterns</h2>
+<h3 id="pattern-1-log-the-boundary-between-layers">Pattern 1: log the boundary between layers</h3>
+<p>A lot of bugs are not inside Trellis at all — they happen when data crosses boundaries.</p>
+<p>Good places to log:</p>
+<ul>
+<li>after parsing input</li>
+<li>after loading from a repository</li>
+<li>before converting to HTTP with <code>ToHttpResponse()</code> or <code>ToHttpResponse().AsActionResult&lt;T&gt;()</code></li>
+<li>around external service calls</li>
+</ul>
+<h3 id="pattern-2-name-the-method-instead-of-hiding-it-in-a-lambda">Pattern 2: name the method instead of hiding it in a lambda</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static Result&lt;int&gt; DoubleIfPositive(Result&lt;int&gt; result) =&gt;
+    result.Bind(ValidatePositive)
+        .Map(value =&gt; value * 2);
+
+static Result&lt;int&gt; ValidatePositive(int value) =&gt;
+    value &gt; 0
+        ? Result.Ok(value)
+        : new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = &quot;Value must be positive.&quot; };
+</code></pre>
+<p>Named methods give you cleaner stack traces and more searchable logs.</p>
+<h3 id="pattern-3-use-resulttry-when-the-code-you-call-still-throws">Pattern 3: use <code>Result.Try</code> when the code you call still throws</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static Result&lt;int&gt; ParsePort(string input) =&gt;
+    Result.Try(() =&gt; int.Parse(input));
+</code></pre>
+<p>That lets you keep exception-throwing code at the edge instead of letting it tear through the pipeline.</p>
+<h2 id="opentelemetry-use-it-when-you-need-full-pipeline-forensics">OpenTelemetry: use it when you need full pipeline forensics</h2>
+<p>When a simple log line is not enough, enable tracing.</p>
+<pre><code class="lang-csharp">using OpenTelemetry.Trace;
+using Trellis;
+using Trellis.Primitives;
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerBuilder =&gt; tracerBuilder
+        .AddResultsInstrumentation()
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation());
+</code></pre>
+<h3 id="when-to-enable-which-instrumentation">When to enable which instrumentation</h3>
+<table>
+<thead>
+<tr>
+<th>Instrumentation</th>
+<th>Best for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddResultsInstrumentation()</code></td>
+<td>Deep, temporary pipeline forensics</td>
+</tr>
+<tr>
+<td><code>AddPrimitiveValueObjectInstrumentation()</code></td>
+<td>Lower-noise validation and parsing diagnostics</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>AddResultsInstrumentation()</code> can generate a lot of spans because it traces individual result operations. Treat it as a break-glass diagnostic tool, not a default production setting.</p>
+</div>
+<h2 id="common-errors-and-what-they-usually-mean">Common errors and what they usually mean</h2>
+<h3 id="attempted-to-access-the-value-for-a-failed-result">&quot;Attempted to access the Value for a failed result&quot;</h3>
+<p>You read <code>.Value</code> on a failure result.</p>
+<p><strong>Fix:</strong> use <code>TryGetValue</code>, <code>Match</code>, or check <code>IsSuccess</code> first.</p>
+<h3 id="attempted-to-access-the-error-property-for-a-successful-result">&quot;Attempted to access the Error property for a successful result&quot;</h3>
+<p>You read <code>.Error</code> on a success result.</p>
+<p><strong>Fix:</strong> use <code>TryGetError</code>, <code>Match</code>, or check <code>IsFailure</code> first.</p>
+<h3 id="no-handler-provided-for-error-type-">&quot;No handler provided for error type ...&quot;</h3>
+<p>You called <code>Match</code> with a <code>switch</code> expression that is not exhaustive over the closed <code>Error</code> ADT.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+static string Render(Result&lt;int&gt; result) =&gt;
+    result.Match(
+        onSuccess: value =&gt; $&quot;Value: {value}&quot;,
+        onFailure: error =&gt; error switch
+        {
+            Error.UnprocessableContent uc =&gt; $&quot;Validation: {uc.GetDisplayMessage()}&quot;,
+            _                              =&gt; $&quot;Fallback: {error.Detail}&quot;
+        });
+</code></pre>
+<h2 id="performance-debugging-usually-debug-io-not-the-pipeline">Performance debugging: usually debug I/O, not the pipeline</h2>
+<p>If a Trellis-based request is slow, start with the expensive work around it:</p>
+<ul>
+<li>database calls</li>
+<li>HTTP calls</li>
+<li>serialization</li>
+<li>large object graphs</li>
+<li>logging</li>
+</ul>
+<p>Trellis pipeline operations are measured in nanoseconds. Most real bottlenecks are not.</p>
+<h2 id="a-practical-debugging-checklist">A practical debugging checklist</h2>
+<p>When a pipeline fails, walk this list in order:</p>
+<ul>
+<li>Check the <strong>first error</strong>.</li>
+<li>Inspect <code>error.Code</code> and <code>error.Detail</code>.</li>
+<li>Add <code>Tap</code> / <code>TapOnFailure</code> around the suspicious step.</li>
+<li>Break long fluent chains into named locals temporarily.</li>
+<li>Use <code>TryGetValue</code> / <code>TryGetError</code> in the debugger.</li>
+<li>If validation is aggregated, inspect the nested failures.</li>
+<li>Enable debug helpers in <code>DEBUG</code> builds.</li>
+<li>Turn on OpenTelemetry only if logs are not enough.</li>
+</ul>
+<h2 id="bottom-line">Bottom line</h2>
+<p>Debugging Trellis is different from debugging exception-heavy code, but it is usually simpler once you lean into the model:</p>
+<ul>
+<li>inspect the result safely</li>
+<li>find the step where the railway changed tracks</li>
+<li>let error values tell you what happened</li>
+</ul>
+<p>When you do that, most pipeline bugs become straightforward to locate.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/debugging.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

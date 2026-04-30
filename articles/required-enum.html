@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>RequiredEnum | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="RequiredEnum | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/required-enum.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="requiredenum">RequiredEnum</h1>
+
+<p>Regular C# enums are fast and familiar, but they are weak at domain modeling:</p>
+<ul>
+<li>invalid casts are possible</li>
+<li>behavior has to live somewhere else</li>
+<li>wire names and display names get bolted on afterward</li>
+</ul>
+<p><code>RequiredEnum&lt;TSelf&gt;</code> solves that by giving you a <strong>finite symbolic set with behavior</strong>.</p>
+<h2 id="start-with-a-working-example">Start with a working example</h2>
+<pre><code class="lang-csharp">using Trellis;
+
+namespace RequiredEnumExamples;
+
+public partial class OrderStatus : RequiredEnum&lt;OrderStatus&gt;
+{
+    public static readonly OrderStatus Draft = new(canShip: false, isTerminal: false);
+
+    [EnumValue(&quot;awaiting-payment&quot;)]
+    public static readonly OrderStatus AwaitingPayment = new(canShip: false, isTerminal: false);
+
+    public static readonly OrderStatus Paid = new(canShip: true, isTerminal: false);
+    public static readonly OrderStatus Shipped = new(canShip: false, isTerminal: false);
+    public static readonly OrderStatus Cancelled = new(canShip: false, isTerminal: true);
+
+    private OrderStatus(bool canShip, bool isTerminal)
+    {
+        CanShip = canShip;
+        IsTerminal = isTerminal;
+    }
+
+    public bool CanShip { get; }
+    public bool IsTerminal { get; }
+}
+</code></pre>
+<p>Usage stays simple:</p>
+<pre><code class="lang-csharp">using RequiredEnumExamples;
+
+var paid = OrderStatus.Paid;
+var parsed = OrderStatus.TryCreate(&quot;awaiting-payment&quot;);
+var shipped = OrderStatus.TryFromName(&quot;Shipped&quot;);
+var all = OrderStatus.GetAll();
+
+bool readyToShip = paid.CanShip;
+bool isOpenState = paid.Is(OrderStatus.Draft, OrderStatus.AwaitingPayment, OrderStatus.Paid);
+bool isNotTerminal = paid.IsNot(OrderStatus.Cancelled);
+</code></pre>
+<h2 id="why-teams-reach-for-requiredenumtself">Why teams reach for <code>RequiredEnum&lt;TSelf&gt;</code></h2>
+<p>It helps when your “enum” has to do more than hold an integer:</p>
+<ul>
+<li>state transitions</li>
+<li>policy flags</li>
+<li>wire-name overrides</li>
+<li>JSON/model binding</li>
+<li>richer equality semantics</li>
+</ul>
+<h2 id="what-the-api-actually-gives-you">What the API actually gives you</h2>
+<p><code>RequiredEnum&lt;TSelf&gt;</code> exposes these important members:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td>symbolic identity</td>
+</tr>
+<tr>
+<td><code>Ordinal</code></td>
+<td>declaration-order metadata only</td>
+</tr>
+<tr>
+<td><code>GetAll()</code></td>
+<td>returns every declared member</td>
+</tr>
+<tr>
+<td><code>TryFromName(...)</code></td>
+<td>case-insensitive symbolic lookup</td>
+</tr>
+<tr>
+<td><code>Is(params TSelf[])</code></td>
+<td>membership check</td>
+</tr>
+<tr>
+<td><code>IsNot(params TSelf[])</code></td>
+<td>negated membership check</td>
+</tr>
+</tbody>
+</table>
+<p>The source generator also adds:</p>
+<ul>
+<li><code>TryCreate(string value)</code></li>
+<li><code>TryCreate(string? value, string? fieldName = null)</code></li>
+<li><code>Create(string value)</code></li>
+<li>parsing and JSON support</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Generated <code>TryCreate(...)</code> delegates to <code>TryFromName(...)</code>. There is <strong>no separate <code>TryFromValue(...)</code> API path</strong> in the current Trellis implementation.</p>
+</div>
+<h2 id="value-and-ordinal-mean-different-things"><code>Value</code> and <code>Ordinal</code> mean different things</h2>
+<p>This distinction is easy to miss:</p>
+<ul>
+<li><strong><code>Value</code></strong> is the semantic identity</li>
+<li><strong><code>Ordinal</code></strong> is just declaration-order metadata</li>
+</ul>
+<p><code>Ordinal</code> is useful for diagnostics or display ordering, but it should not be treated as a stable wire contract.</p>
+<h2 id="default-names-vs-enumvalue">Default names vs <code>[EnumValue]</code></h2>
+<p>By default, the symbolic value is the field name:</p>
+<pre><code class="lang-csharp">using RequiredEnumExamples;
+
+bool usesFieldName = OrderStatus.Paid.Value == &quot;Paid&quot;;
+</code></pre>
+<p>Use <code>[EnumValue(...)]</code> only when the external symbolic name must differ:</p>
+<pre><code class="lang-csharp">using RequiredEnumExamples;
+
+bool usesOverride = OrderStatus.AwaitingPayment.Value == &quot;awaiting-payment&quot;;
+</code></pre>
+<p>That keeps one source of truth most of the time.</p>
+<h2 id="adding-behavior-is-the-real-win">Adding behavior is the real win</h2>
+<p>This is where <code>RequiredEnum&lt;TSelf&gt;</code> beats a raw enum.</p>
+<pre><code class="lang-csharp">public partial class InvoiceStatus : RequiredEnum&lt;InvoiceStatus&gt;
+{
+    public static readonly InvoiceStatus Draft = new(canPost: false);
+    public static readonly InvoiceStatus Approved = new(canPost: true);
+    public static readonly InvoiceStatus Posted = new(canPost: false);
+
+    private InvoiceStatus(bool canPost) =&gt; CanPost = canPost;
+
+    public bool CanPost { get; }
+}
+</code></pre>
+<p>Now the behavior travels with the symbolic value instead of being scattered through <code>switch</code> statements.</p>
+<h2 id="state-machine-style-modeling">State-machine style modeling</h2>
+<p><code>RequiredEnum&lt;TSelf&gt;</code> works especially well for workflows:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+namespace WorkflowExample;
+
+public partial class ShipmentStatus : RequiredEnum&lt;ShipmentStatus&gt;
+{
+    public static readonly ShipmentStatus Draft = new();
+    public static readonly ShipmentStatus Ready = new();
+    public static readonly ShipmentStatus Sent = new();
+    public static readonly ShipmentStatus Delivered = new();
+
+    private ShipmentStatus() { }
+
+    public bool CanTransitionTo(ShipmentStatus next) =&gt;
+        this switch
+        {
+            _ when this == Draft =&gt; next.Is(Ready),
+            _ when this == Ready =&gt; next.Is(Sent),
+            _ when this == Sent =&gt; next.Is(Delivered),
+            _ =&gt; false
+        };
+}
+</code></pre>
+<h2 id="serialization-and-web-input">Serialization and web input</h2>
+<p>When you declare a concrete type as <code>partial</code>, the generator provides the plumbing for:</p>
+<ul>
+<li>JSON conversion</li>
+<li>ASP.NET Core model binding</li>
+<li>parsing helpers</li>
+</ul>
+<p>That means <code>&quot;Paid&quot;</code> or <code>&quot;awaiting-payment&quot;</code> can flow naturally through APIs without hand-written converters.</p>
+<h2 id="ef-core-persistence">EF Core persistence</h2>
+<p>Persist the symbolic <code>Value</code>, not <code>Ordinal</code>.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace RequiredEnumEfExample;
+
+public sealed class Order
+{
+    public int Id { get; set; }
+    public RequiredEnumExamples.OrderStatus Status { get; set; } = null!;
+}
+
+public sealed class OrderConfiguration : IEntityTypeConfiguration&lt;Order&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Order&gt; builder)
+    {
+        builder.Property(order =&gt; order.Status)
+            .HasConversion(
+                status =&gt; status.Value,
+                value =&gt; RequiredEnumExamples.OrderStatus.Create(value))
+            .IsRequired();
+    }
+}
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Persisting <code>Ordinal</code> turns declaration order into a storage contract. That is usually a mistake.</p>
+</div>
+<h2 id="best-practices">Best practices</h2>
+<ol>
+<li>Declare members as <code>public static readonly</code></li>
+<li>Keep constructors private</li>
+<li>Prefer field names as the default symbolic value</li>
+<li>Use <code>[EnumValue(...)]</code> only for true wire-name overrides</li>
+<li>Put state behavior on the type itself</li>
+<li>Use <code>Is(...)</code> and <code>IsNot(...)</code> for readable membership checks</li>
+</ol>
+<h2 id="summary">Summary</h2>
+<p>Use <code>RequiredEnum&lt;TSelf&gt;</code> when you need a finite set of domain values that:</p>
+<ul>
+<li>must be valid</li>
+<li>may carry behavior</li>
+<li>need stable symbolic names</li>
+<li>should work cleanly with JSON and model binding</li>
+</ul>
+<p>If you just need an integer-backed constant, a regular enum is fine. If the values are part of your domain language, <code>RequiredEnum&lt;TSelf&gt;</code> is usually the better fit.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="primitives.html">Primitive Value Objects</a></li>
+<li><a href="clean-architecture.html">Clean Architecture</a></li>
+<li><a href="../api_reference/trellis-api-primitives.html">Trellis primitives API reference</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/required-enum.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

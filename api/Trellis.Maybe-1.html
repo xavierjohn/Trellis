@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Struct Maybe&lt;T&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Struct Maybe&lt;T&gt; | Trellis ">
+      
+      <meta name="description" content="Represents domain-level optionality — a value that was either provided or intentionally omitted. Unlike  (value types only) or T? (annotation only for reference types),  is a real generic type that works uniformly with both value and reference types and composes with  pipelines.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Maybe_1.md&amp;value=---%0Auid%3A%20Trellis.Maybe%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Maybe`1">
+
+
+
+  <h1 id="Trellis_Maybe_1" data-uid="Trellis.Maybe`1" class="text-break">
+Struct Maybe&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Represents domain-level optionality — a value that was either provided or intentionally omitted.
+Unlike <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.nullable-1">Nullable&lt;T&gt;</a> (value types only) or <code>T?</code> (annotation only for reference types),
+<a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> is a real generic type that works uniformly with both value and reference types
+and composes with <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> pipelines.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly struct Maybe&lt;T&gt; : IEquatable&lt;T&gt;, IEquatable&lt;Maybe&lt;T&gt;&gt; where T : notnull</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of the optional value. Must be a non-null type.</p>
+</dd>
+  </dl>
+
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;T&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;&gt;</div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1_Trellis_Maybe___0___System_Func_Trellis_Error__">MaybeExtensions.ToResult&lt;TValue&gt;(in Maybe&lt;TValue&gt;, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1_Trellis_Maybe___0___Trellis_Error_">MaybeExtensions.ToResult&lt;TValue&gt;(in Maybe&lt;TValue&gt;, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeLinqExtensions.html#Trellis_MaybeLinqExtensions_SelectMany__3_Trellis_Maybe___0__System_Func___0_Trellis_Maybe___1___System_Func___0___1___2__">MaybeLinqExtensions.SelectMany&lt;TSource, TCollection, TResult&gt;(Maybe&lt;TSource&gt;, Func&lt;TSource, Maybe&lt;TCollection&gt;&gt;, Func&lt;TSource, TCollection, TResult&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeLinqExtensions.html#Trellis_MaybeLinqExtensions_Select__2_Trellis_Maybe___0__System_Func___0___1__">MaybeLinqExtensions.Select&lt;TIn, TOut&gt;(Maybe&lt;TIn&gt;, Func&lt;TIn, TOut&gt;)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_Maybe_1_examples">Examples</h2>
+  <pre><code class="lang-csharp">// Create a Maybe with a value
+Maybe&lt;string&gt; name = Maybe.From("John");
+if (name.HasValue) Console.WriteLine(name.Value);
+
+// Create an empty Maybe
+Maybe&lt;string&gt; noName = Maybe.None&lt;string&gt;();
+string result = noName.GetValueOrDefault("Default");
+
+// Transform optional values
+Maybe&lt;string&gt; upper = name.Map(v =&gt; v.ToUpper());
+
+// Consume with pattern matching
+string display = name.Match(v =&gt; $"Hello, {v}!", () =&gt; "Hello, stranger!");
+
+// EF Core predicate over Maybe&lt;T&gt; — pick one:
+// (a) With AddTrellisInterceptors() registered, natural syntax translates:
+//     db.Orders.Where(o =&gt; o.SubmittedAt.HasValue &amp;&amp; o.SubmittedAt.Value &lt; cutoff)
+// (b) Without interceptors, use MaybeQueryableExtensions:
+//     db.Orders.WhereLessThan(o =&gt; o.SubmittedAt, cutoff)</code></pre>
+
+
+  <h2 id="Trellis_Maybe_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+<strong>EF Core / IQueryable predicates:</strong> By default, EF Core cannot translate
+<code>.Value</code>, <code>.HasValue</code>, or <code>GetValueOrDefault(d)</code> on a <code>Maybe&lt;T&gt;</code>
+property because <code>MaybeConvention</code> ignores the CLR property and maps the value via a
+generated <code>_camelCase</code> storage member. You have two supported options:
+</p>
+<ul><li>
+Register <code>Trellis.EntityFrameworkCore.DbContextOptionsBuilderExtensions.AddTrellisInterceptors()</code>
+— <code>MaybeQueryInterceptor</code> / <code>MaybeExpressionRewriter</code> rewrite
+<code>.HasValue</code>, <code>.HasNoValue</code>, <code>.Value</code>, and <code>GetValueOrDefault(d)</code> into
+<code>EF.Property</code> (with <code>!= null</code>, <code>== null</code>, or <code>?? d</code>) so natural LINQ syntax
+translates to SQL.
+</li><li>
+Use <code>Trellis.EntityFrameworkCore.MaybeQueryableExtensions</code> explicitly:
+<code>WhereHasValue</code>, <code>WhereNone</code>, <code>WhereEquals</code>, <code>WhereLessThan</code>,
+<code>WhereLessThanOrEqual</code>, <code>WhereGreaterThan</code>, <code>WhereGreaterThanOrEqual</code>, and the
+matching <code>OrderBy*</code>/<code>ThenBy*</code> overloads. These work without registering interceptors.
+</li></ul>
+<p>
+Without one of those, direct <code>.Value</code> / <code>GetValueOrDefault(sentinel)</code> on a mapped
+<code>Maybe&lt;T&gt;</code> property either throws at materialization or fails to translate.
+The <code>UnsafeValueInLinqAnalyzer</code> (TRLS013) flags <code>.Value</code> in Select-family LINQ
+projections (in-memory case).
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Maybe_1_HasNoValue_" data-uid="Trellis.Maybe`1.HasNoValue*"></a>
+
+  <h3 id="Trellis_Maybe_1_HasNoValue" data-uid="Trellis.Maybe`1.HasNoValue">
+  HasNoValue
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L181"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a value indicating whether this instance contains no value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasNoValue { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if no value is present; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_Maybe_1_HasNoValue_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This is the logical inverse of <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_HasValue">HasValue</a>. Use whichever makes your code more readable.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Maybe_1_HasValue_" data-uid="Trellis.Maybe`1.HasValue*"></a>
+
+  <h3 id="Trellis_Maybe_1_HasValue" data-uid="Trellis.Maybe`1.HasValue">
+  HasValue
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L172"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a value indicating whether this instance contains a value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasValue { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if a value is present; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_None_" data-uid="Trellis.Maybe`1.None*"></a>
+
+  <h3 id="Trellis_Maybe_1_None" data-uid="Trellis.Maybe`1.None">
+  None
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> instance with no value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[SuppressMessage(&quot;Design&quot;, &quot;CA1000:Do not declare static members on generic types&quot;, Justification = &quot;Maybe&lt;T&gt;.None is the idiomatic way to express &#39;no value&#39; for a specific Maybe type.&quot;)]
+public static Maybe&lt;T&gt; None { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Maybe_1_Bind_" data-uid="Trellis.Maybe`1.Bind*"></a>
+
+  <h3 id="Trellis_Maybe_1_Bind__1_System_Func__0_Trellis_Maybe___0___" data-uid="Trellis.Maybe`1.Bind``1(System.Func{`0,Trellis.Maybe{``0}})">
+  Bind&lt;TResult&gt;(Func&lt;T, Maybe&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L224"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Projects the value inside a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> into a new <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> using the specified function.
+If no value is present, returns <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;TResult&gt; Bind&lt;TResult&gt;(Func&lt;T, Maybe&lt;TResult&gt;&gt; selector) where TResult : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TResult&gt;&gt;</dt>
+    <dd><p>The function to apply to the value, returning a new Maybe.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TResult&gt;</dt>
+    <dd><p>The result of the selector if this instance has a value; otherwise None.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TResult</code></dt>
+    <dd><p>The type of the projected value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">selector</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Maybe_1_Equals_" data-uid="Trellis.Maybe`1.Equals*"></a>
+
+  <h3 id="Trellis_Maybe_1_Equals_System_Object_" data-uid="Trellis.Maybe`1.Equals(System.Object)">
+  Equals(object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L366"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates whether this instance and a specified object are equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Equals(object? obj)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>obj</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare with the current instance.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if <code class="paramref">obj</code> and this instance are the same type and represent the same value; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_Equals_" data-uid="Trellis.Maybe`1.Equals*"></a>
+
+  <h3 id="Trellis_Maybe_1_Equals_Trellis_Maybe__0__" data-uid="Trellis.Maybe`1.Equals(Trellis.Maybe{`0})">
+  Equals(Maybe&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L375"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates whether the current object is equal to another object of the same type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Equals(Maybe&lt;T&gt; other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>An object to compare with this object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the current object is equal to the <code class="paramref">other</code> parameter; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_Equals_" data-uid="Trellis.Maybe`1.Equals*"></a>
+
+  <h3 id="Trellis_Maybe_1_Equals__0_" data-uid="Trellis.Maybe`1.Equals(`0)">
+  Equals(T?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L381"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates whether the current object is equal to another object of the same type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Equals(T? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <span class="xref">T</span></dt>
+    <dd><p>An object to compare with this object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the current object is equal to the <code class="paramref">other</code> parameter; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_From_" data-uid="Trellis.Maybe`1.From*"></a>
+
+  <h3 id="Trellis_Maybe_1_From__0_" data-uid="Trellis.Maybe`1.From(`0)">
+  From(T?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L90"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> from a value.
+If the value is null, creates an empty Maybe.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[SuppressMessage(&quot;Design&quot;, &quot;CA1000:Do not declare static members on generic types&quot;, Justification = &quot;Maybe&lt;T&gt;.From(value) mirrors Maybe&lt;T&gt;.None for a symmetric API.&quot;)]
+public static Maybe&lt;T&gt; From(T? value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to wrap. If null, returns <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> with the value, or <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a> if null.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_GetHashCode_" data-uid="Trellis.Maybe`1.GetHashCode*"></a>
+
+  <h3 id="Trellis_Maybe_1_GetHashCode" data-uid="Trellis.Maybe`1.GetHashCode">
+  GetHashCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L386"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the hash code for this instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A 32-bit signed integer that is the hash code for this instance.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_GetValueOrDefault_" data-uid="Trellis.Maybe`1.GetValueOrDefault*"></a>
+
+  <h3 id="Trellis_Maybe_1_GetValueOrDefault_System_Func__0__" data-uid="Trellis.Maybe`1.GetValueOrDefault(System.Func{`0})">
+  GetValueOrDefault(Func&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L132"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the underlying value if present, otherwise evaluates and returns the result of the specified factory.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public T GetValueOrDefault(Func&lt;T&gt; defaultFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>defaultFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;T&gt;</dt>
+    <dd><p>The factory to evaluate when <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_HasValue">HasValue</a> is false.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd><p>The underlying value or the result of <code class="paramref">defaultFactory</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">defaultFactory</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Maybe_1_GetValueOrDefault_" data-uid="Trellis.Maybe`1.GetValueOrDefault*"></a>
+
+  <h3 id="Trellis_Maybe_1_GetValueOrDefault__0_" data-uid="Trellis.Maybe`1.GetValueOrDefault(`0)">
+  GetValueOrDefault(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L118"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the underlying value if present, otherwise returns the specified default value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public T GetValueOrDefault(T defaultValue)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>defaultValue</code> <span class="xref">T</span></dt>
+    <dd><p>The value to return when <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_HasValue">HasValue</a> is false.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd><p>The underlying value or <code class="paramref">defaultValue</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Maybe_1_GetValueOrDefault__0__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This is the recommended way to safely extract values from Maybe.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Maybe_1_GetValueOrThrow_" data-uid="Trellis.Maybe`1.GetValueOrThrow*"></a>
+
+  <h3 id="Trellis_Maybe_1_GetValueOrThrow_System_String_" data-uid="Trellis.Maybe`1.GetValueOrThrow(System.String)">
+  GetValueOrThrow(string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L102"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the underlying value if present, otherwise throws an exception.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public T GetValueOrThrow(string? errorMessage = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>errorMessage</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional custom error message to use when throwing.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd><p>The underlying value of type <code class="typeparamref">T</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Maybe_1_GetValueOrThrow_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Prefer <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_GetValueOrDefault__0_">GetValueOrDefault(T)</a> or <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_TryGetValue__0__">TryGetValue(out T)</a> to avoid exceptions.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_HasValue">HasValue</a> is false.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Maybe_1_Map_" data-uid="Trellis.Maybe`1.Map*"></a>
+
+  <h3 id="Trellis_Maybe_1_Map__1_System_Func__0___0__" data-uid="Trellis.Maybe`1.Map``1(System.Func{`0,``0})">
+  Map&lt;TResult&gt;(Func&lt;T, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L196"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Transforms the value inside a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> using the specified function.
+If no value is present, returns <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;TResult&gt; Map&lt;TResult&gt;(Func&lt;T, TResult&gt; selector) where TResult : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TResult&gt;</dt>
+    <dd><p>The function to apply to the value.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TResult&gt;</dt>
+    <dd><p>A Maybe containing the transformed value, or None if this instance has no value.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TResult</code></dt>
+    <dd><p>The type of the transformed value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_Match_" data-uid="Trellis.Maybe`1.Match*"></a>
+
+  <h3 id="Trellis_Maybe_1_Match__1_System_Func__0___0__System_Func___0__" data-uid="Trellis.Maybe`1.Match``1(System.Func{`0,``0},System.Func{``0})">
+  Match&lt;TResult&gt;(Func&lt;T, TResult&gt;, Func&lt;TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L213"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Pattern matches on the Maybe, calling <code class="paramref">some</code> if a value is present
+or <code class="paramref">none</code> if no value is present.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TResult Match&lt;TResult&gt;(Func&lt;T, TResult&gt; some, Func&lt;TResult&gt; none)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>some</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TResult&gt;</dt>
+    <dd><p>The function to call when a value is present.</p>
+</dd>
+    <dt><code>none</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;TResult&gt;</dt>
+    <dd><p>The function to call when no value is present.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TResult</span></dt>
+    <dd><p>The result of the matched function.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TResult</code></dt>
+    <dd><p>The return type of the match.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_Or_" data-uid="Trellis.Maybe`1.Or*"></a>
+
+  <h3 id="Trellis_Maybe_1_Or_System_Func_Trellis_Maybe__0___" data-uid="Trellis.Maybe`1.Or(System.Func{Trellis.Maybe{`0}})">
+  Or(Func&lt;Maybe&lt;T&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L270"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns this <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> if it has a value; otherwise evaluates the factory and returns its result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;T&gt; Or(Func&lt;Maybe&lt;T&gt;&gt; fallbackFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fallbackFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;&gt;</dt>
+    <dd><p>The factory to evaluate when no value is present.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>This instance if it has a value; otherwise the factory result.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">fallbackFactory</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Maybe_1_Or_" data-uid="Trellis.Maybe`1.Or*"></a>
+
+  <h3 id="Trellis_Maybe_1_Or_System_Func__0__" data-uid="Trellis.Maybe`1.Or(System.Func{`0})">
+  Or(Func&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L249"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns this <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> if it has a value; otherwise evaluates the factory and returns a Maybe containing its result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;T&gt; Or(Func&lt;T&gt; fallbackFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fallbackFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;T&gt;</dt>
+    <dd><p>The factory to evaluate when no value is present.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>This instance if it has a value; otherwise a Maybe containing the factory result.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">fallbackFactory</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Maybe_1_Or_" data-uid="Trellis.Maybe`1.Or*"></a>
+
+  <h3 id="Trellis_Maybe_1_Or_Trellis_Maybe__0__" data-uid="Trellis.Maybe`1.Or(Trellis.Maybe{`0})">
+  Or(Maybe&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L261"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns this <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> if it has a value; otherwise returns the specified fallback Maybe.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;T&gt; Or(Maybe&lt;T&gt; fallback)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fallback</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The fallback Maybe to return when no value is present.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>This instance if it has a value; otherwise <code class="paramref">fallback</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_Or_" data-uid="Trellis.Maybe`1.Or*"></a>
+
+  <h3 id="Trellis_Maybe_1_Or__0_" data-uid="Trellis.Maybe`1.Or(`0)">
+  Or(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L240"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns this <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> if it has a value; otherwise returns a Maybe containing the specified fallback value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;T&gt; Or(T fallback)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fallback</code> <span class="xref">T</span></dt>
+    <dd><p>The fallback value to use when no value is present.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>This instance if it has a value; otherwise a Maybe containing <code class="paramref">fallback</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_Tap_" data-uid="Trellis.Maybe`1.Tap*"></a>
+
+  <h3 id="Trellis_Maybe_1_Tap_System_Action__0__" data-uid="Trellis.Maybe`1.Tap(System.Action{`0})">
+  Tap(Action&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L300"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect on the value if present, then returns this <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> unchanged.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;T&gt; Tap(Action&lt;T&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;T&gt;</dt>
+    <dd><p>The action to execute on the value.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>This instance unchanged.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">action</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Maybe_1_ToString_" data-uid="Trellis.Maybe`1.ToString*"></a>
+
+  <h3 id="Trellis_Maybe_1_ToString" data-uid="Trellis.Maybe`1.ToString">
+  ToString()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L391"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the fully qualified type name of this instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The fully qualified type name.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_TryGetValue_" data-uid="Trellis.Maybe`1.TryGetValue*"></a>
+
+  <h3 id="Trellis_Maybe_1_TryGetValue__0__" data-uid="Trellis.Maybe`1.TryGetValue(`0@)">
+  TryGetValue(out T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L150"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Attempts to get the underlying value without throwing an exception.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool TryGetValue(out T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>When this method returns true, contains the underlying value; otherwise, the default value for type <code class="typeparamref">T</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if a value is present; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Maybe_1_TryGetValue__0___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Similar to the TryParse pattern in .NET, this provides a safe way to check for and retrieve values.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Maybe_1_Where_" data-uid="Trellis.Maybe`1.Where*"></a>
+
+  <h3 id="Trellis_Maybe_1_Where_System_Func__0_System_Boolean__" data-uid="Trellis.Maybe`1.Where(System.Func{`0,System.Boolean})">
+  Where(Func&lt;T, bool&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L284"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Filters this <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> by applying a predicate to the value.
+Returns None if the predicate fails or if this instance has no value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Maybe&lt;T&gt; Where(Func&lt;T, bool&gt; predicate)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p>The condition to test the value against.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>This instance if the predicate passes; otherwise None.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">predicate</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="Trellis_Maybe_1_op_Equality_" data-uid="Trellis.Maybe`1.op_Equality*"></a>
+
+  <h3 id="Trellis_Maybe_1_op_Equality_Trellis_Maybe__0__System_Object_" data-uid="Trellis.Maybe`1.op_Equality(Trellis.Maybe{`0},System.Object)">
+  operator ==(Maybe&lt;T&gt;, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L339"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> equals another object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(Maybe&lt;T&gt; maybe, object? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maybe</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The Maybe instance to compare.</p>
+</dd>
+    <dt><code>other</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare against.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if equal; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_op_Equality_" data-uid="Trellis.Maybe`1.op_Equality*"></a>
+
+  <h3 id="Trellis_Maybe_1_op_Equality_Trellis_Maybe__0__Trellis_Maybe__0__" data-uid="Trellis.Maybe`1.op_Equality(Trellis.Maybe{`0},Trellis.Maybe{`0})">
+  operator ==(Maybe&lt;T&gt;, Maybe&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L355"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> instances are equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(Maybe&lt;T&gt; first, Maybe&lt;T&gt; second)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>first</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The first Maybe instance.</p>
+</dd>
+    <dt><code>second</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The second Maybe instance.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if both have no value, or both have equal values; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_op_Equality_" data-uid="Trellis.Maybe`1.op_Equality*"></a>
+
+  <h3 id="Trellis_Maybe_1_op_Equality_Trellis_Maybe__0___0_" data-uid="Trellis.Maybe`1.op_Equality(Trellis.Maybe{`0},`0)">
+  operator ==(Maybe&lt;T&gt;, T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L323"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> equals a value of type <code class="typeparamref">T</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(Maybe&lt;T&gt; maybe, T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maybe</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The Maybe instance to compare.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to compare against.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the Maybe has a value equal to <code class="paramref">value</code>; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_op_Implicit_" data-uid="Trellis.Maybe`1.op_Implicit*"></a>
+
+  <h3 id="Trellis_Maybe_1_op_Implicit__0__Trellis_Maybe__0_" data-uid="Trellis.Maybe`1.op_Implicit(`0)~Trellis.Maybe{`0}">
+  implicit operator Maybe&lt;T&gt;(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L315"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Implicitly converts a value of type <code class="typeparamref">T</code> to a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator Maybe&lt;T&gt;(T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to wrap.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>A Maybe containing the value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_op_Inequality_" data-uid="Trellis.Maybe`1.op_Inequality*"></a>
+
+  <h3 id="Trellis_Maybe_1_op_Inequality_Trellis_Maybe__0__System_Object_" data-uid="Trellis.Maybe`1.op_Inequality(Trellis.Maybe{`0},System.Object)">
+  operator !=(Maybe&lt;T&gt;, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L347"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> does not equal another object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(Maybe&lt;T&gt; maybe, object? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maybe</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The Maybe instance to compare.</p>
+</dd>
+    <dt><code>other</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare against.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if not equal; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_op_Inequality_" data-uid="Trellis.Maybe`1.op_Inequality*"></a>
+
+  <h3 id="Trellis_Maybe_1_op_Inequality_Trellis_Maybe__0__Trellis_Maybe__0__" data-uid="Trellis.Maybe`1.op_Inequality(Trellis.Maybe{`0},Trellis.Maybe{`0})">
+  operator !=(Maybe&lt;T&gt;, Maybe&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L363"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> instances are not equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(Maybe&lt;T&gt; first, Maybe&lt;T&gt; second)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>first</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The first Maybe instance.</p>
+</dd>
+    <dt><code>second</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The second Maybe instance.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the instances are not equal; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Maybe_1_op_Inequality_" data-uid="Trellis.Maybe`1.op_Inequality*"></a>
+
+  <h3 id="Trellis_Maybe_1_op_Inequality_Trellis_Maybe__0___0_" data-uid="Trellis.Maybe`1.op_Inequality(Trellis.Maybe{`0},`0)">
+  operator !=(Maybe&lt;T&gt;, T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L331"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> does not equal a value of type <code class="typeparamref">T</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(Maybe&lt;T&gt; maybe, T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maybe</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The Maybe instance to compare.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to compare against.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the Maybe does not have a value equal to <code class="paramref">value</code>; otherwise false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 id="seealso">See Also</h2>
+  <div class="seealso">
+      <div><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</div>
+  </div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Maybe{T}.cs/#L67" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

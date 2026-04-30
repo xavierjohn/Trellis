@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ServiceCollectionExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ServiceCollectionExtensions | Trellis ">
+      
+      <meta name="description" content="Extension methods for registering Trellis.Mediator pipeline behaviors.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Mediator_ServiceCollectionExtensions.md&amp;value=---%0Auid%3A%20Trellis.Mediator.ServiceCollectionExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Mediator.ServiceCollectionExtensions">
+
+
+
+  <h1 id="Trellis_Mediator_ServiceCollectionExtensions" data-uid="Trellis.Mediator.ServiceCollectionExtensions" class="text-break">
+Class ServiceCollectionExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L13"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Mediator.html">Mediator</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Mediator.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Extension methods for registering Trellis.Mediator pipeline behaviors.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class ServiceCollectionExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ServiceCollectionExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Mediator_ServiceCollectionExtensions_PipelineBehaviors_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.PipelineBehaviors*"></a>
+
+  <h3 id="Trellis_Mediator_ServiceCollectionExtensions_PipelineBehaviors" data-uid="Trellis.Mediator.ServiceCollectionExtensions.PipelineBehaviors">
+  PipelineBehaviors
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L70"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the ordered array of Trellis Result-aware pipeline behavior types contributed by this
+package. Assign this to <code>MediatorOptions.PipelineBehaviors</code> in your <code>AddMediator</code>
+call when wiring the AOT-friendly source generator path.</p>
+<p>The canonical Trellis pipeline (outermost to innermost) is:</p>
+<ol><li><a class="xref" href="Trellis.Mediator.ExceptionBehavior-2.html">ExceptionBehavior&lt;TMessage, TResponse&gt;</a> — catches unhandled exceptions and converts to typed failures.</li><li><a class="xref" href="Trellis.Mediator.TracingBehavior-2.html">TracingBehavior&lt;TMessage, TResponse&gt;</a> — emits an OpenTelemetry activity span around the message.</li><li><a class="xref" href="Trellis.Mediator.LoggingBehavior-2.html">LoggingBehavior&lt;TMessage, TResponse&gt;</a> — structured logging with duration and outcome.</li><li><a class="xref" href="Trellis.Mediator.AuthorizationBehavior-2.html">AuthorizationBehavior&lt;TMessage, TResponse&gt;</a> — checks static permissions declared by <a class="xref" href="Trellis.Authorization.IAuthorize.html">IAuthorize</a>.</li><li><a class="xref" href="Trellis.Mediator.ResourceAuthorizationBehavior-3.html">ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</a> — checks resource-bound authorization for <a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a> commands. Inserted by <a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html#Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization__3_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;(IServiceCollection)</a> or <a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html#Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly___">AddResourceAuthorization(IServiceCollection, params Assembly[])</a> immediately before the validation behavior so the loaded resource is checked once per request.</li><li><a class="xref" href="Trellis.Mediator.ValidationBehavior-2.html">ValidationBehavior&lt;TMessage, TResponse&gt;</a> — unified
+  validation stage. Runs <a class="xref" href="Trellis.Mediator.IValidate.html#Trellis_Mediator_IValidate_Validate">Validate()</a> when the message implements it
+  AND every <a class="xref" href="Trellis.Mediator.IMessageValidator-1.html">IMessageValidator&lt;TMessage&gt;</a> registered in DI for the message,
+  aggregating <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a> failures into a single response.
+  External validation sources (e.g., the optional <code>Trellis.FluentValidation</code> package
+  contributes <code>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</code> via
+  <code>AddTrellisFluentValidation()</code>) plug in here without an extra pipeline behavior.</li><li><code>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</code>
+  (in the optional <code>Trellis.EntityFrameworkCore</code> package) — runs the handler then
+  calls <code>IUnitOfWork.CommitAsync</code> on success. Opt in via
+  <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> after all other behavior registrations
+  so it lands innermost (closest to the handler).</li></ol>
+<p>
+This array contains the always-on behaviors (<a class="xref" href="Trellis.Mediator.ExceptionBehavior-2.html">ExceptionBehavior&lt;TMessage, TResponse&gt;</a>,
+<a class="xref" href="Trellis.Mediator.TracingBehavior-2.html">TracingBehavior&lt;TMessage, TResponse&gt;</a>, <a class="xref" href="Trellis.Mediator.LoggingBehavior-2.html">LoggingBehavior&lt;TMessage, TResponse&gt;</a>,
+<a class="xref" href="Trellis.Mediator.AuthorizationBehavior-2.html">AuthorizationBehavior&lt;TMessage, TResponse&gt;</a>, and
+<a class="xref" href="Trellis.Mediator.ValidationBehavior-2.html">ValidationBehavior&lt;TMessage, TResponse&gt;</a>). The resource-authorization and
+transactional behaviors are opt-in and supplied by separate registration helpers.
+FluentValidation (and any other external validation source) participates inside
+the existing <a class="xref" href="Trellis.Mediator.ValidationBehavior-2.html">ValidationBehavior&lt;TMessage, TResponse&gt;</a> via the
+<a class="xref" href="Trellis.Mediator.IMessageValidator-1.html">IMessageValidator&lt;TMessage&gt;</a> abstraction, so it does not occupy its own
+pipeline slot.
+</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IReadOnlyList&lt;Type&gt; PipelineBehaviors { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.type">Type</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_PipelineBehaviors_examples">Examples</h4>
+  <pre><code class="lang-csharp">services.AddMediator(options =&gt;
+{
+    options.Assemblies = [typeof(MyCommand).Assembly];
+    options.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors.ToArray();
+});</code></pre>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization*"></a>
+
+  <h3 id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly___" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Reflection.Assembly[])">
+  AddResourceAuthorization(IServiceCollection, params Assembly[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L227"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Scans the specified assembly for types implementing
+<a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a> and automatically registers the
+<a class="xref" href="Trellis.Mediator.ResourceAuthorizationBehavior-3.html">ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</a> for each.
+Also scans and registers all <a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> implementations
+and <a class="xref" href="Trellis.Authorization.SharedResourceLoaderById-2.html">SharedResourceLoaderById&lt;TResource, TId&gt;</a> implementations as scoped services.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs closed generic types at runtime. Use explicit registration for AOT scenarios.&quot;)]
+public static IServiceCollection AddResourceAuthorization(this IServiceCollection services, params Assembly[] assemblies)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>assemblies</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a>[]</dt>
+    <dd><p>The assemblies to scan. Pass both the Application assembly
+(containing <a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a> commands) and the Acl assembly
+(containing <a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> implementations).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly____examples">Examples</h4>
+  <pre><code class="lang-csharp">// Scans both Application (commands) and Acl (loaders) assemblies
+services.AddResourceAuthorization(
+    typeof(CancelOrderCommand).Assembly,
+    typeof(CancelOrderResourceLoader).Assembly);</code></pre>
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+For each concrete type that implements <a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a>,
+the method extracts <code>TResource</code> and resolves <code>TResponse</code> from
+<code>ICommand&lt;TResponse&gt;</code>, <code>IQuery&lt;TResponse&gt;</code>, or
+<code>IRequest&lt;TResponse&gt;</code>. It then registers the closed-generic
+<code>ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</code>
+as <code>IPipelineBehavior&lt;TMessage, TResponse&gt;</code>.
+</p>
+<p>
+This method also scans for <a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a>
+implementations and registers them as scoped services, so you don't need to call
+<a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html#Trellis_Mediator_ServiceCollectionExtensions_AddResourceLoaders_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly_">AddResourceLoaders(IServiceCollection, Assembly)</a> separately.
+</p>
+<p>
+When a command implements <a class="xref" href="Trellis.Authorization.IIdentifyResource-2.html">IIdentifyResource&lt;TResource, TId&gt;</a> and no explicit
+<a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> is found, a
+<span class="xref">Trellis.Mediator.SharedResourceLoaderAdapter&lt;TMessage, TResource, TId&gt;</span> is automatically
+registered, bridging to the <a class="xref" href="Trellis.Authorization.SharedResourceLoaderById-2.html">SharedResourceLoaderById&lt;TResource, TId&gt;</a>.
+Explicit loaders always take priority.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization*"></a>
+
+  <h3 id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization__3_Microsoft_Extensions_DependencyInjection_IServiceCollection_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization``3(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+  AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;(IServiceCollection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L171"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the <a class="xref" href="Trellis.Mediator.ResourceAuthorizationBehavior-3.html">ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</a>
+for a specific command/resource pair. Call once per command that implements
+<a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;(this IServiceCollection services) where TMessage : IAuthorizeResource&lt;TResource&gt;, IMessage where TResponse : IResult, IFailureFactory&lt;TResponse&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TMessage</code></dt>
+    <dd><p>The command or query type that implements <a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a>.</p>
+</dd>
+    <dt><code>TResource</code></dt>
+    <dd><p>The resource type loaded for authorization.</p>
+</dd>
+    <dt><code>TResponse</code></dt>
+    <dd><p>The response type (e.g., <code>Result&lt;Order&gt;</code>).
+Must implement <a class="xref" href="Trellis.IResult.html">IResult</a> and <a class="xref" href="Trellis.IFailureFactory-1.html">IFailureFactory&lt;TSelf&gt;</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization__3_Microsoft_Extensions_DependencyInjection_IServiceCollection__examples">Examples</h4>
+  <pre><code class="lang-csharp">services.AddResourceAuthorization&lt;CancelOrderCommand, Order, Result&lt;Order&gt;&gt;();
+services.AddScoped&lt;IResourceLoader&lt;CancelOrderCommand, Order&gt;, CancelOrderResourceLoader&gt;();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization__3_Microsoft_Extensions_DependencyInjection_IServiceCollection__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Prefer <a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html#Trellis_Mediator_ServiceCollectionExtensions_AddResourceAuthorization_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly___">AddResourceAuthorization(IServiceCollection, params Assembly[])</a> for automatic
+discovery. Use this explicit overload for AOT/trimming scenarios where assembly scanning
+is not available.
+</p>
+<p>
+Also register the corresponding <a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> as scoped,
+either explicitly or via <a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html#Trellis_Mediator_ServiceCollectionExtensions_AddResourceLoaders_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly_">AddResourceLoaders(IServiceCollection, Assembly)</a>.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceLoaders_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddResourceLoaders*"></a>
+
+  <h3 id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceLoaders_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddResourceLoaders(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Reflection.Assembly)">
+  AddResourceLoaders(IServiceCollection, Assembly)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L379"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Scans the specified assembly for types implementing
+<a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> and registers them as scoped services.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.&quot;)]
+public static IServiceCollection AddResourceLoaders(this IServiceCollection services, Assembly assembly)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>assembly</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a></dt>
+    <dd><p>The assembly to scan for resource loader implementations.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddResourceLoaders_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Reflection_Assembly__examples">Examples</h4>
+  <pre><code class="lang-csharp">services.AddResourceLoaders(typeof(CancelOrderResourceLoader).Assembly);</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Mediator_ServiceCollectionExtensions_AddSharedResourceLoader_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddSharedResourceLoader*"></a>
+
+  <h3 id="Trellis_Mediator_ServiceCollectionExtensions_AddSharedResourceLoader__3_Microsoft_Extensions_DependencyInjection_IServiceCollection_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddSharedResourceLoader``3(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+  AddSharedResourceLoader&lt;TMessage, TResource, TId&gt;(IServiceCollection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L425"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a <span class="xref">Trellis.Mediator.SharedResourceLoaderAdapter&lt;TMessage, TResource, TId&gt;</span> for a specific
+command, bridging to a <a class="xref" href="Trellis.Authorization.SharedResourceLoaderById-2.html">SharedResourceLoaderById&lt;TResource, TId&gt;</a>.
+Use this for AOT/trimming scenarios where assembly scanning is not available.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddSharedResourceLoader&lt;TMessage, TResource, TId&gt;(this IServiceCollection services) where TMessage : IAuthorizeResource&lt;TResource&gt;, IIdentifyResource&lt;TResource, TId&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TMessage</code></dt>
+    <dd><p>The command type implementing <a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a>
+and <a class="xref" href="Trellis.Authorization.IIdentifyResource-2.html">IIdentifyResource&lt;TResource, TId&gt;</a>.</p>
+</dd>
+    <dt><code>TResource</code></dt>
+    <dd><p>The resource type.</p>
+</dd>
+    <dt><code>TId</code></dt>
+    <dd><p>The identifier type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddSharedResourceLoader__3_Microsoft_Extensions_DependencyInjection_IServiceCollection__examples">Examples</h4>
+  <pre><code class="lang-csharp">services.AddScoped&lt;SharedResourceLoaderById&lt;Order, OrderId&gt;, OrderResourceLoader&gt;();
+services.AddSharedResourceLoader&lt;CancelOrderCommand, Order, OrderId&gt;();
+services.AddSharedResourceLoader&lt;ReturnOrderCommand, Order, OrderId&gt;();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddSharedResourceLoader__3_Microsoft_Extensions_DependencyInjection_IServiceCollection__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+The <a class="xref" href="Trellis.Authorization.SharedResourceLoaderById-2.html">SharedResourceLoaderById&lt;TResource, TId&gt;</a> implementation must be registered
+separately (e.g., <code>services.AddScoped&lt;SharedResourceLoaderById&lt;Order, OrderId&gt;, OrderResourceLoader&gt;()</code>).
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Mediator_ServiceCollectionExtensions_AddTrellisBehaviors_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors*"></a>
+
+  <h3 id="Trellis_Mediator_ServiceCollectionExtensions_AddTrellisBehaviors_Microsoft_Extensions_DependencyInjection_IServiceCollection_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+  AddTrellisBehaviors(IServiceCollection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers Trellis Result-aware pipeline behaviors as open generic
+<span class="xref">Mediator.IPipelineBehavior&lt;TMessage, TResponse&gt;</span> implementations.
+Use this when NOT using <code>MediatorOptions.PipelineBehaviors</code> (non-AOT scenario).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Mediator_ServiceCollectionExtensions_AddTrellisBehaviors_Microsoft_Extensions_DependencyInjection_IServiceCollection__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Idempotent: calling this method more than once registers each behavior exactly once,
+so plug-in extension methods (e.g. <code>AddTrellisFluentValidation</code>, <code>AddTrellisAsp</code>)
+that defensively call it as a precondition will not produce duplicate pipeline entries
+when the consumer also calls it explicitly.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Mediator_ServiceCollectionExtensions_AddTrellisBehaviors_" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors*"></a>
+
+  <h3 id="Trellis_Mediator_ServiceCollectionExtensions_AddTrellisBehaviors_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__" data-uid="Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Trellis.Mediator.TrellisMediatorTelemetryOptions})">
+  AddTrellisBehaviors(IServiceCollection, Action&lt;TrellisMediatorTelemetryOptions&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L114"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers Trellis pipeline behaviors and configures
+<a class="xref" href="Trellis.Mediator.TrellisMediatorTelemetryOptions.html">TrellisMediatorTelemetryOptions</a> for logging/tracing redaction. Equivalent
+to calling <a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html#Trellis_Mediator_ServiceCollectionExtensions_AddTrellisBehaviors_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddTrellisBehaviors(IServiceCollection)</a> followed by mutating
+the resolved singleton via <code class="paramref">configure</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services, Action&lt;TrellisMediatorTelemetryOptions&gt; configure)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Mediator.TrellisMediatorTelemetryOptions.html">TrellisMediatorTelemetryOptions</a>&gt;</dt>
+    <dd><p>Callback invoked with the singleton telemetry options instance. Use this to opt in to
+including <a class="xref" href="Trellis.Error.html#Trellis_Error_Detail">Detail</a> in log messages and activity descriptions.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ServiceCollectionExtensions.cs/#L13" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

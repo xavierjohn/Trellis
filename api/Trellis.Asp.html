@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Namespace Trellis.Asp | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Namespace Trellis.Asp | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp">
+
+  <h1 id="Trellis_Asp" data-uid="Trellis.Asp" class="text-break">Namespace Trellis.Asp</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+
+    <h3 id="classes">
+Classes
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.ActionResultAdapterExtensions.html">ActionResultAdapterExtensions</a></dt>
+      <dd><p>MVC adapter that wraps an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a> in an
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.actionresult-1">ActionResult&lt;TValue&gt;</a> so MVC controllers can declare typed return signatures
+(e.g. <code>Task&lt;ActionResult&lt;TodoResponse&gt;&gt;</code>) for OpenAPI inference and
+<code>[ProducesResponseType&lt;T&gt;]</code> compatibility.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.AggregateRepresentationValidator-1.html">AggregateRepresentationValidator&lt;T&gt;</a></dt>
+      <dd><p>Default representation validator for aggregates. Uses the aggregate's built-in ETag.
+When a variant key is provided, combines it with the ETag using a hash.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.ETagHelper.html">ETagHelper</a></dt>
+      <dd><p>RFC 9110-compliant entity tag comparison helpers.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.HttpResponseExtensions.html">HttpResponseExtensions</a></dt>
+      <dd><p>The single Trellis verb for converting <a class="xref" href="Trellis.Result.html">Result</a> / <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> /
+<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome&lt;T&gt;</a> / <a class="xref" href="Trellis.Page-1.html">Page&lt;T&gt;</a> values to ASP.NET Core HTTP responses. Works
+in both Minimal API endpoints and MVC controllers (.NET 7+ executes
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a> natively in MVC). For typed
+<code>ActionResult&lt;T&gt;</code> signatures, chain
+<a class="xref" href="Trellis.Asp.ActionResultAdapterExtensions.html#Trellis_Asp_ActionResultAdapterExtensions_AsActionResult__1_Microsoft_AspNetCore_Http_IResult_">AsActionResult&lt;T&gt;(IResult)</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder.html">HttpResponseOptionsBuilder</a></dt>
+      <dd><p>Non-generic builder used for <a class="xref" href="Trellis.Result.html">Result</a> (no value).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder&lt;TDomain&gt;</a></dt>
+      <dd><p>Fluent options builder for <a class="xref" href="Trellis.Asp.HttpResponseExtensions.html#Trellis_Asp_HttpResponseExtensions_ToHttpResponse__1_Trellis_Result___0__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___">ToHttpResponse&lt;T&gt;(Result&lt;T&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)</a>.
+Selectors run against the <code class="typeparamref">TDomain</code> value (not the projected response body).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.IfNoneMatchExtensions.html">IfNoneMatchExtensions</a></dt>
+      <dd><p>Extension methods for If-None-Match validation on unsafe methods (create-if-absent patterns).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.PageLink.html">PageLink</a></dt>
+      <dd><p>A cursor + the absolute URL the client should follow to fetch the linked page.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.PagedResponse-1.html">PagedResponse&lt;TResponse&gt;</a></dt>
+      <dd><p>JSON envelope wrapping a single page of items and its cursor links.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.PartialContentHttpResult.html">PartialContentHttpResult</a></dt>
+      <dd><p>A Minimal API <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a> that returns HTTP 206 Partial Content with a <code>Content-Range</code> header.
+Used to indicate that the response contains a subset of the requested resource.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.PartialContentResult.html">PartialContentResult</a></dt>
+      <dd><p>Represents an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.objectresult">ObjectResult</a> that returns HTTP 206 Partial Content with a Content-Range header.
+Used to indicate that the response contains a subset of the requested resource.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.PreferHeader.html">PreferHeader</a></dt>
+      <dd><p>Parses the RFC 7240 <code>Prefer</code> request header and exposes standard preference tokens.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.RangeOutcome.html">RangeOutcome</a></dt>
+      <dd><p>Result of evaluating a Range request per RFC 9110 §14.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.RangeOutcome.FullRepresentation.html">RangeOutcome.FullRepresentation</a></dt>
+      <dd><p>No Range header or range not applicable — serve full representation.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.RangeOutcome.NotSatisfiable.html">RangeOutcome.NotSatisfiable</a></dt>
+      <dd><p>Range not satisfiable (416).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.RangeOutcome.PartialContent.html">RangeOutcome.PartialContent</a></dt>
+      <dd><p>Range satisfiable — serve partial content (206).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.RangeRequestEvaluator.html">RangeRequestEvaluator</a></dt>
+      <dd><p>Evaluates RFC 9110 §14 Range request headers.
+Only supports byte ranges. Non-GET requests are treated as Full (Range ignored).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.RuleViolationProblemDetail.html">RuleViolationProblemDetail</a></dt>
+      <dd><p>JSON shape used for rule violations in ProblemDetails extensions.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.ScalarValueValidationEndpointFilter.html">ScalarValueValidationEndpointFilter</a></dt>
+      <dd><p>An endpoint filter that checks for scalar value validation errors collected during JSON deserialization.
+For Minimal APIs, this filter returns validation problem results when validation errors are detected.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.ScalarValueValidationFilter.html">ScalarValueValidationFilter</a></dt>
+      <dd><p>An action filter that checks for validation errors collected during JSON deserialization
+and validates <a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a> route/query parameters.
+Returns a 400 Bad Request response with validation problem details when validation fails.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.ScalarValueValidationMiddleware.html">ScalarValueValidationMiddleware</a></dt>
+      <dd><p>Middleware that creates a validation error collection scope for each request.
+This enables ValidatingJsonConverter to collect validation errors
+across the entire request deserialization process.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.ServiceCollectionExtensions.html">ServiceCollectionExtensions</a></dt>
+      <dd><p>Extension methods for configuring automatic value object validation in ASP.NET Core.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.TrellisAspOptions.html">TrellisAspOptions</a></dt>
+      <dd><p>Configuration options for Trellis ASP.NET Core integration.
+Controls how domain error types are mapped to HTTP status codes.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.ValidationErrorsContext.html">ValidationErrorsContext</a></dt>
+      <dd><p>Provides a context for collecting validation errors during JSON deserialization.
+Uses AsyncLocal to maintain thread-safe, request-scoped error collection.</p>
+</dd>
+    </dl>
+    <h3 id="interfaces">
+Interfaces
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.IRepresentationValidator-1.html">IRepresentationValidator&lt;T&gt;</a></dt>
+      <dd><p>Strategy for generating representation-specific validators (ETags) that account for
+content negotiation variants per RFC 9110 §8.8.3.1/§8.8.3.3.</p>
+</dd>
+    </dl>
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

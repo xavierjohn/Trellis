@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Entity Framework Core Integration | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Entity Framework Core Integration | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-ef.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="entity-framework-core-integration">Entity Framework Core Integration</h1>
+
+<p><strong>Level:</strong> Intermediate 📚 | <strong>Time:</strong> 30-40 min | <strong>Prerequisites:</strong> <a href="basics.html">Basics</a></p>
+<p>Entity Framework Core is usually where clean domain code starts to feel messy: value objects need converters, queries return <code>null</code>, and database exceptions leak into application code. <code>Trellis.EntityFrameworkCore</code> exists to keep that plumbing predictable.</p>
+<p>This guide starts with the smallest useful setup, then builds up to query patterns, save patterns, and the conventions Trellis adds for you.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#quick-start">Quick start</a></li>
+<li><a href="#querying-without-null-checks-everywhere">Querying without null checks everywhere</a></li>
+<li><a href="#saving-without-exception-driven-flow">Saving without exception-driven flow</a></li>
+<li><a href="#what-applytrellisconventions-actually-does">What <code>ApplyTrellisConventions</code> actually does</a></li>
+<li><a href="#reflection-free-alternative-applytrellisconventionsfortcontext">Reflection-free alternative: <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code></a></li>
+<li><a href="#optimistic-concurrency-with-etags">Optimistic concurrency with ETags</a></li>
+<li><a href="#when-to-use-maybet-vs-resultt">When to use <code>Maybe&lt;T&gt;</code> vs <code>Result&lt;T&gt;</code></a></li>
+<li><a href="#manual-ef-core-setup-without-the-package">Manual EF Core setup without the package</a></li>
+</ul>
+<h2 id="quick-start">Quick start</h2>
+<p>If you want Trellis value objects, Trellis-friendly query helpers, and save helpers that return <code>Result&lt;T&gt;</code>, this is the minimum setup:</p>
+<pre><code class="lang-bash">dotnet add package Trellis.EntityFrameworkCore
+</code></pre>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+namespace MyApp.Data;
+
+public sealed class CustomerId : RequiredGuid&lt;CustomerId&gt;;
+public sealed class CustomerName : RequiredString&lt;CustomerName&gt;;
+
+public sealed class Customer : Aggregate&lt;CustomerId&gt;
+{
+    public CustomerName Name { get; private set; } = null!;
+    public EmailAddress Email { get; private set; } = null!;
+
+    private Customer()
+        : base(CustomerId.NewUniqueV7())
+    {
+    }
+
+    public static Result&lt;Customer&gt; Create(CustomerName name, EmailAddress email) =&gt;
+        Result.Ok(new Customer
+        {
+            Name = name,
+            Email = email
+        });
+}
+
+public sealed class AppDbContext(DbContextOptions&lt;AppDbContext&gt; options) : DbContext(options)
+{
+    public DbSet&lt;Customer&gt; Customers =&gt; Set&lt;Customer&gt;();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =&gt;
+        configurationBuilder.ApplyTrellisConventions(typeof(CustomerId).Assembly);
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity&lt;Customer&gt;(builder =&gt;
+        {
+            builder.HasKey(x =&gt; x.Id);
+            builder.Property(x =&gt; x.Name).HasMaxLength(100);
+            builder.Property(x =&gt; x.Email).HasMaxLength(254);
+        });
+    }
+}
+</code></pre>
+<p>Register EF Core and Trellis interceptors in DI:</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis.EntityFrameworkCore;
+
+services.AddDbContext&lt;AppDbContext&gt;(options =&gt;
+    options.UseSqlServer(connectionString)
+        .AddTrellisInterceptors());
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>ApplyTrellisConventions(...)</code> is the main entry point for model configuration. <code>AddTrellisInterceptors()</code> is the main entry point for runtime save behavior. You usually want both.</p>
+</div>
+<h2 id="querying-without-null-checks-everywhere">Querying without null checks everywhere</h2>
+<p>The main problem in repository code is not querying itself. It is answering the question, “What does absence mean here?”</p>
+<ul>
+<li>Use <code>Maybe&lt;T&gt;</code> when “not found” is normal and the caller should decide what it means.</li>
+<li>Use <code>Result&lt;T&gt;</code> when “not found” is already an error at the repository boundary.</li>
+</ul>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+namespace MyApp.Data;
+
+public sealed class CustomerRepository(AppDbContext db)
+{
+    public Task&lt;Maybe&lt;Customer&gt;&gt; GetByEmailAsync(EmailAddress email, CancellationToken ct) =&gt;
+        db.Customers.FirstOrDefaultMaybeAsync(x =&gt; x.Email == email, ct);
+
+    public Task&lt;Result&lt;Customer&gt;&gt; GetRequiredAsync(CustomerId id, CancellationToken ct) =&gt;
+        db.Customers.FirstOrDefaultResultAsync(
+            x =&gt; x.Id == id,
+            new Error.NotFound(ResourceRef.For&lt;Customer&gt;(id)) { Detail = $&quot;Customer {id} was not found.&quot; },
+            ct);
+}
+</code></pre>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p><code>FirstOrDefaultResultAsync(...)</code> returns <strong>the exact <code>Error</code> you pass in</strong>. It does not automatically create a <code>Error.NotFound</code>.</p>
+</div>
+<h3 id="query-flow-at-a-glance">Query flow at a glance</h3>
+<pre><code class="lang-mermaid">flowchart LR
+    A[Repository query] --&gt; B{Can absence be valid?}
+    B --&gt;|Yes| C[Return Maybe&lt;T&gt;]
+    B --&gt;|No| D[Return Result&lt;T&gt;]
+    C --&gt; E[Caller decides what no value means]
+    D --&gt; F[Repository supplies the exact Error]
+</code></pre>
+<h2 id="saving-without-exception-driven-flow">Saving without exception-driven flow</h2>
+<p>The next pain point is <code>SaveChangesAsync()</code>: it succeeds with a row count, but failures come back as exceptions. Trellis wraps that pattern so your repository can stay on the railway.</p>
+<p>Use:</p>
+<ul>
+<li><code>SaveChangesResultAsync(...)</code> when you care about the row count</li>
+<li><code>SaveChangesResultUnitAsync(...)</code> when success/failure is enough</li>
+</ul>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+
+namespace MyApp.Data;
+
+public sealed class CustomerRepository(AppDbContext db)
+{
+    public async Task&lt;Result&gt; AddAsync(Customer customer, CancellationToken ct)
+    {
+        db.Customers.Add(customer);
+        return await db.SaveChangesResultUnitAsync(ct);
+    }
+
+    public async Task&lt;Result&lt;int&gt;&gt; SaveAsync(CancellationToken ct) =&gt;
+        await db.SaveChangesResultAsync(ct);
+}
+</code></pre>
+<h3 id="how-save-failures-are-mapped">How save failures are mapped</h3>
+<table>
+<thead>
+<tr>
+<th>EF Core failure</th>
+<th>Trellis result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DbUpdateConcurrencyException</code></td>
+<td><code>Error.Conflict</code> (<code>conflict.error</code>)</td>
+</tr>
+<tr>
+<td>Duplicate key <code>DbUpdateException</code></td>
+<td><code>Error.Conflict</code> (<code>conflict.error</code>)</td>
+</tr>
+<tr>
+<td>Foreign key <code>DbUpdateException</code></td>
+<td><code>Error.Conflict</code> (<code>domain.error</code>)</td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The Trellis save helpers call EF Core’s <code>SaveChangesAsync(...)</code> internally. The public API you should use is <code>SaveChangesResultAsync(...)</code> or <code>SaveChangesResultUnitAsync(...)</code>.</p>
+</div>
+<h3 id="preferred-approach-repositorybase--iunitofwork">Preferred approach: RepositoryBase + IUnitOfWork</h3>
+<p>For CQRS applications using the Trellis Mediator pipeline, use <code>RepositoryBase&lt;TAggregate, TId&gt;</code> with <code>IUnitOfWork</code> instead of calling <code>SaveChangesResultAsync</code> directly. Repositories stage changes; the <code>TransactionalCommandBehavior</code> pipeline behavior auto-commits after successful command handlers.</p>
+<pre><code class="lang-csharp">// Repository — staging only, never calls SaveChanges
+public class OrderRepository(AppDbContext db) : RepositoryBase&lt;Order, OrderId&gt;(db)
+{
+    protected override IQueryable&lt;Order&gt; BuildFindByIdQuery() =&gt;
+        DbSet.Include(o =&gt; o.LineItems);
+}
+
+// Command handler — pure domain logic, no persistence concerns
+public async ValueTask&lt;Result&lt;Order&gt;&gt; Handle(ShipOrderCommand cmd, CancellationToken ct)
+{
+    var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
+    return maybe
+        .ToResult(new Error.NotFound(ResourceRef.For&lt;Order&gt;(cmd.OrderId)) { Detail = &quot;Order not found.&quot; })
+        .Bind(order =&gt; order.Ship());
+    // TransactionalCommandBehavior auto-commits the tracked changes on success.
+}
+
+// DI registration — call AddTrellisUnitOfWork after AddTrellisBehaviors
+// so the commit behavior runs innermost (closest to the handler).
+services.AddTrellisBehaviors();
+services.AddTrellisUnitOfWork&lt;AppDbContext&gt;();
+</code></pre>
+<h2 id="what-applytrellisconventions-actually-does">What <code>ApplyTrellisConventions</code> actually does</h2>
+<p>Most teams adopt the package for one reason: they do not want to hand-write <code>HasConversion(...)</code> for every value object. That is the first benefit, but not the only one.</p>
+<p>When you call <code>ApplyTrellisConventions(...)</code>, Trellis:</p>
+<ul>
+<li>scans the assemblies you pass in for Trellis value object types</li>
+<li>always includes built-in Trellis primitives for scalar value objects</li>
+<li>registers scalar converters up front so EF Core treats those types as scalar properties</li>
+<li>applies <code>Maybe&lt;T&gt;</code> conventions</li>
+<li>applies composite value object conventions</li>
+<li>applies <code>Money</code> conventions</li>
+<li>marks aggregate <code>ETag</code> as a concurrency token</li>
+<li>ignores transient aggregate properties such as <code>IsChanged</code></li>
+</ul>
+<h3 id="a-subtle-but-important-detail-about-composite-value-objects">A subtle but important detail about composite value objects</h3>
+<p>Composite value objects are not treated like scalar converters. They follow <strong>owned-type conventions</strong>.</p>
+<p>That matters because:</p>
+<ul>
+<li>a composite value object becomes structured EF Core mapping, not a single scalar column</li>
+<li><code>Maybe&lt;T&gt;</code> around an owned composite can stay inline <strong>only when EF Core can model it safely</strong></li>
+<li>when a <code>Maybe&lt;T&gt;</code> owned value has nested owned types or non-nullable value-type members, Trellis moves it to a separate owned table instead of generating invalid nullable inline mapping</li>
+</ul>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>ApplyTrellisConventions(...)</code> only discovers composite value objects in the assemblies you explicitly pass in. If a composite type lives in another assembly, include that assembly too.</p>
+</div>
+<h2 id="reflection-free-alternative-applytrellisconventionsfortcontext">Reflection-free alternative: <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code></h2>
+<p>For AOT-published or trim-sensitive applications, Trellis ships a Roslyn source generator that emits a compile-time-discovered alternative to the reflection-based path:</p>
+<pre><code class="lang-csharp">public class AppDbContext : DbContext
+{
+    public DbSet&lt;Customer&gt; Customers =&gt; Set&lt;Customer&gt;();
+    public DbSet&lt;Order&gt; Orders =&gt; Set&lt;Order&gt;();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =&gt;
+        configurationBuilder.ApplyTrellisConventionsFor&lt;AppDbContext&gt;();
+}
+</code></pre>
+<p>The generator walks every concrete <code>DbContext</code>-derived type in your project, follows each <code>DbSet&lt;T&gt;</code>'s reachable property graph (recursing into composite value objects, and unwrapping <code>Nullable&lt;T&gt;</code> and <code>Maybe&lt;T&gt;</code>), classifies the discovered Trellis value object types by their base-type chain, and emits explicit converter and convention registrations. The result is a <code>partial</code>-free, reflection-free dispatch:</p>
+<ul>
+<li>no runtime assembly scanning</li>
+<li>no calls to <code>Type.MakeGenericType</code>, <code>Assembly.GetTypes</code>, or <code>Activator.CreateInstance</code></li>
+<li>behaviorally equivalent to <code>ApplyTrellisConventions(typeof(SomethingInThisAssembly).Assembly)</code> for the entity types reachable from <code>TContext</code>'s <code>DbSet&lt;&gt;</code> properties</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The generator only discovers <code>DbContext</code> types defined in the <strong>current</strong> compilation. It does not scan referenced assemblies. If your <code>DbContext</code> lives in a separate project, define the call to <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code> from that project too.
+Composite and scalar value object types may live in any referenced assembly — the reachability walk crosses assembly boundaries through entity properties.</p>
+</div>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Calling <code>ApplyTrellisConventionsFor&lt;T&gt;()</code> for a <code>T</code> that has no generated body (e.g. a private nested <code>DbContext</code> excluded from generation) throws <code>InvalidOperationException</code> at runtime. Use the reflection-based <code>ApplyTrellisConventions(...)</code> for such cases.</p>
+</div>
+<h2 id="maybe-property-convention">Maybe property convention</h2>
+<p><code>Maybe&lt;T&gt;</code> solves a domain problem—optional values—while EF Core still needs a storage strategy.</p>
+<p>Trellis handles two common cases for you:</p>
+<ul>
+<li><code>Maybe&lt;T&gt;</code> over a scalar value object maps through scalar conversion rules</li>
+<li><code>Maybe&lt;T&gt;</code> over an owned composite value object follows owned-type rules</li>
+</ul>
+<p>For owned composites, Trellis prefers inline nullable columns when EF Core can represent them safely. If the owned value contains nested owned types or non-nullable value-type members, Trellis switches to a separate owned table instead.</p>
+<p>That keeps your domain model expressive without forcing you to hand-author the tricky nullability mapping yourself.</p>
+<h2 id="optimistic-concurrency-with-etags">Optimistic concurrency with ETags</h2>
+<p>Concurrency bugs are hard to reason about after the fact. Trellis gives aggregates an <code>ETag</code> story that works with EF Core instead of around it.</p>
+<p>You do <strong>not</strong> configure internal convention or interceptor types directly. The supported public API is:</p>
+<ul>
+<li><code>ApplyTrellisConventions(...)</code></li>
+<li><code>AddTrellisInterceptors()</code></li>
+</ul>
+<p>Once those are registered:</p>
+<ul>
+<li>aggregate <code>ETag</code> is configured as a concurrency token</li>
+<li>a new ETag is generated when an aggregate is <strong>Added</strong></li>
+<li>a new ETag is generated when an aggregate is <strong>Modified</strong></li>
+<li>aggregate roots can also be promoted when loaded dependents changed, so concurrency still works at the aggregate boundary</li>
+</ul>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+namespace MyApp.Data;
+
+public sealed class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public string Description { get; private set; } = string.Empty;
+
+    private Order()
+        : base(OrderId.NewUniqueV7())
+    {
+    }
+
+    public static Order Create(string description) =&gt;
+        new()
+        {
+            Description = description
+        };
+
+    public void Rename(string description) =&gt; Description = description;
+}
+</code></pre>
+<pre><code class="lang-csharp">public sealed class OrderRepository(AppDbContext db)
+{
+    public async Task&lt;Result&gt; UpdateAsync(Order order, CancellationToken ct)
+    {
+        db.Orders.Update(order);
+        return await db.SaveChangesResultUnitAsync(ct);
+    }
+}
+</code></pre>
+<p>If another writer changed the same aggregate first, EF Core throws <code>DbUpdateConcurrencyException</code> and Trellis converts that to <code>Error.Conflict</code> with the standard <code>conflict.error</code> code.</p>
+<h2 id="when-to-use-maybet-vs-resultt">When to use <code>Maybe&lt;T&gt;</code> vs <code>Result&lt;T&gt;</code></h2>
+<p>This is the repository design rule that keeps your application layer clear.</p>
+<table>
+<thead>
+<tr>
+<th>Return type</th>
+<th>Use it when</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td>absence is data, not failure</td>
+<td>“Find customer by email”</td>
+</tr>
+<tr>
+<td><code>Result&lt;T&gt;</code></td>
+<td>the repository should decide the failure</td>
+<td>“Load required customer”</td>
+</tr>
+<tr>
+<td><code>Result</code></td>
+<td>command succeeded or failed</td>
+<td>save, delete, update</td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td>you only need existence</td>
+<td>uniqueness checks</td>
+</tr>
+</tbody>
+</table>
+<h3 id="practical-rule-of-thumb">Practical rule of thumb</h3>
+<ul>
+<li>Query by optional business key? Start with <code>Maybe&lt;T&gt;</code>.</li>
+<li>Load a required resource for a command handler? Use <code>Result&lt;T&gt;</code>.</li>
+<li>Persist changes? Use <code>SaveChangesResultUnitAsync(...)</code>.</li>
+</ul>
+<h2 id="manual-ef-core-setup-without-the-package">Manual EF Core setup without the package</h2>
+<p>Some teams prefer to keep EF Core mapping explicit. That is fine—you just take on the wiring yourself.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis.Primitives;
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity&lt;Customer&gt;(builder =&gt;
+    {
+        builder.HasKey(x =&gt; x.Id);
+
+        builder.Property(x =&gt; x.Id)
+            .HasConversion(id =&gt; id.Value, value =&gt; CustomerId.Create(value));
+
+        builder.Property(x =&gt; x.Name)
+            .HasConversion(name =&gt; name.Value, value =&gt; CustomerName.Create(value))
+            .HasMaxLength(100);
+
+        builder.Property(x =&gt; x.Email)
+            .HasConversion(email =&gt; email.Value, value =&gt; EmailAddress.Create(value))
+            .HasMaxLength(254);
+    });
+}
+</code></pre>
+<p>That approach works, but you now own:</p>
+<ul>
+<li>converter registration for every scalar value object property</li>
+<li>structured mapping for composite value objects</li>
+<li>nullable/owned rules for <code>Maybe&lt;T&gt;</code></li>
+<li>concurrency token wiring for aggregate ETags</li>
+<li>exception-to-result translation on save</li>
+</ul>
+<div class="TIP">
+<h5>Tip</h5>
+<p>If your model uses more than a handful of Trellis types, the package usually pays for itself very quickly.</p>
+</div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-ef.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

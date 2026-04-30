@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ADR-002 — Trellis v2: Forward-Looking Architectural Redesign | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ADR-002 — Trellis v2: Forward-Looking Architectural Redesign | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-002-v2-redesign-plan.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="adr-002--trellis-v2-forward-looking-architectural-redesign">ADR-002 — Trellis v2: Forward-Looking Architectural Redesign</h1>
+
+<blockquote>
+<p><strong>Status:</strong> Accepted (in execution). Phase 1a shipped in PR #401 (Trellis.Results → Trellis.Core rename). Phase 2 is in flight in PR #403 (DDD merge into Core, Required* base-class moves, all three source generators bundled into their host packages, Trellis.Asp.Authorization project merge).</p>
+<p><strong>Source of truth.</strong> This document is the authoritative v2 plan. Anything in this repo (api_reference docs, csproj layout, package list in <code>README.md</code>, <code>.github/copilot-instructions.md</code>) that contradicts this doc is the bug. <strong>Read §2 (Proposed Package Map) and §15 (Phasing) before starting any v2 work.</strong></p>
+<p><strong>Discoverability.</strong> A copy of the original plan also lives at <code>C:\GitHub\Trellis\v2-redesign-plan.md</code> (workspace root, outside the framework repo). The in-repo copy here (ADR-002) is the canonical one — keep them in sync if both are edited.</p>
+</blockquote>
+<hr>
+<h1 id="trellis--forward-looking-architectural-redesign-v2">Trellis — Forward-Looking Architectural Redesign (v2)</h1>
+<blockquote>
+<p><strong>Lens:</strong> AI-first ergonomics. Every choice optimizes for an LLM producing correct code on the first attempt.
+<strong>Posture:</strong> Forward-looking only. No backward-compat constraint. Package map is on the table.
+<strong>Status:</strong> Proposal for review. Per-package implementation plans follow once this is approved.</p>
+<p><strong>Revision note (v2):</strong> Stress-tested against a GPT-5.4 critique. Removed overclaims (notably &quot;compiler-exhaustive <code>Error</code> union&quot;), resolved internal contradictions, restored capabilities silently dropped in v1 (resource authorization, tracing, <code>MaybeInvariant</code>, protocol-specific errors, EF persistence diagnostics, <code>Result.Try</code> boundary adapter), and demoted out-of-scope rewrites (own dispatcher, EF magic) to later phases.</p>
+</blockquote>
+<hr>
+<h2 id="0-the-one-page-mental-model">0. The One-Page Mental Model</h2>
+<p>An LLM (or human) building enterprise software with Trellis should hold this in working memory:</p>
+<pre><code>Domain values are constructed via `&lt;Type&gt;.TryCreate(...)`            → Result&lt;T&gt;
+Errors are a finite, well-known set; map to HTTP via Trellis.Asp     → Error (closed-by-convention, analyzer-enforced)
+Pipelines: 7 core verbs + BindZip + LINQ query syntax + Try (boundary) + Traverse (collections)
+            → Map / Bind / Tap / TapOnFailure / Ensure / Match / Recover  (+ BindZip; + Select/SelectMany/Where)
+Multi-field validation builds a single ValidationError               → Validate.Field(...).And(...).Build(...)
+Cross-Maybe invariants                                                → MaybeInvariant.AllOrNone / Requires / ExactlyOne ...
+Async is one rule: returns Task&lt;Result&lt;T&gt;&gt;, awaited normally         → no Left/Right/Both variants visible
+Optionality is one type: Maybe&lt;T&gt;; null and Maybe never coexist      → Maybe&lt;T&gt;
+Entities have identity; aggregates have ETags + events; VOs equal-by-components
+Persistence stages, the pipeline commits                              → Repo.Add(...), CommitAsync handled by host
+HTTP: result.ToHttpResponse(opts) (one verb; opts carry write-outcome, ETag, Location, Vary, ranges, etc.)
+Authorization: [Authorize(Permission = ...)] on the message; resource auth via IAuthorizeResource&lt;T&gt;
+</code></pre>
+<p>That fits in one screen. The redesign collapses today's surface to ~that screen without losing power. <strong>Honest claim:</strong> the <em>primary pipeline-verb</em> count drops to 7, but the <em>total canonical surface</em> the AI must know is roughly: 7 verbs + <code>BindZip</code> (value-preserving chain) + LINQ query syntax (<code>Select</code>/<code>SelectMany</code>/<code>Where</code>) + <code>Try</code>/<code>TryAsync</code> + <code>Traverse</code> + <code>Validate</code> builder + <code>MaybeInvariant</code> + <code>Maybe</code> operations + 1 HTTP verb + 1 authorization mechanism (layered: <code>[Authorize]</code> attribute for the simple case, <code>IAuthorize</code> + <code>IAuthorizeResource&lt;T&gt;</code> + <code>IIdentifyResource&lt;,&gt;</code> + <code>IResourceLoader&lt;,&gt;</code> for the resource-aware case) + the error catalog. The current <code>Trellis.Results/src/Result/Extensions/</code> folder exposes ≈200 public statics across <code>Map</code>/<code>Bind</code>/<code>Tap</code>/<code>Ensure</code>/<code>Match</code>/<code>Recover</code>/<code>Combine</code>/<code>When</code>/<code>Check</code>/<code>CheckIf</code>/<code>Discard</code>/<code>BindZip</code>/<code>MapIf</code>/<code>MapOnFailure</code>/<code>RecoverOnFailure</code>/etc.; §3.3 specifies ≈30–50 overloads in the new design (excluding the T4-generated <code>BindZip</code> 2..9-arity family and the LINQ query-syntax surface, which together add another ~30 overloads). That is approximately a <strong>~4–5× reduction</strong> in extension surface (not the &quot;10×&quot; of an earlier draft, and slightly less than the &quot;5–7×&quot; claimed before <code>BindZip</code>/LINQ were retained) — still the largest single AI-ergonomics win in this proposal.</p>
+<hr>
+<h2 id="05-the-template-anchors-the-design-but-is-not-frozen">0.5 The Template Anchors the Design (but is not frozen)</h2>
+<p>Every redesign decision is validated against <code>TrellisAspTemplate</code> (<code>C:\GitHub\Trellis\TrellisAspTemplate</code>) — the <code>dotnet new trellis-asp</code> scaffold that is the AI's actual entry point to a new project. <strong>The template is not frozen</strong> — if a redesign is genuinely better, the template is refactored to match. But the template is the integration test for every API decision: an API that makes the template uglier is a wrong API.</p>
+<p><strong>Template structure (Clean Architecture):</strong></p>
+<pre><code>template/
+  Domain/        — Aggregates (TodoItem), Value Objects (Title, DueDate, Tag, TodoId),
+                   Domain Events, Specifications, State Machines (LazyStateMachine + Stateless)
+  Application/   — ICommand/IQuery handlers (Mediator), ITodoRepository abstraction, IAuthorize
+  Acl/           — TodoRepository (EF), TodoItemResourceLoader, AppDbContext
+  Api/           — Controllers (MVC), api.http, Middleware, Program.cs (ASP.NET Core 10)
+  .github/       — copilot-instructions.md + 13 trellis-api-*.md files (ship in template)
+</code></pre>
+<p><strong>Patterns observed in the current template (each is either preserved or migrated explicitly):</strong></p>
+<ol>
+<li><strong>Commands are records implementing <code>ICommand&lt;Result&lt;T&gt;&gt;</code> + <code>IAuthorize</code></strong> with <code>RequiredPermissions</code> (per <code>CreateTodoCommand</code>, <code>UpdateTodoCommand</code>). → <strong>Preserved</strong> — confirms <code>IAuthorize</code> marker (Decision Q1) and the <code>IFailureFactory&lt;TSelf&gt;</code> pipeline-behavior constraint.</li>
+<li><strong>Handlers are <code>ICommandHandler&lt;TCommand, Result&lt;T&gt;&gt;</code> returning <code>ValueTask&lt;Result&lt;T&gt;&gt;</code></strong> (<code>martinothamar/Mediator</code> shape). → <strong>Preserved</strong> — confirms wrapping rather than owning the dispatcher.</li>
+<li><strong>Aggregates expose <code>TryCreate(...) → Result&lt;TAggregate&gt;</code></strong> + private constructors + <code>LazyStateMachine</code> for lifecycle. → <strong>Preserved</strong> — confirms scalar VO <code>TryCreate</code> pattern and thin Stateless wrapper.</li>
+<li><strong>Repositories return <code>Maybe&lt;T&gt;</code> for <code>FindByIdAsync</code> and <code>Result&lt;Unit&gt;</code> for <code>SaveAsync</code>/<code>DeleteAsync</code>.</strong> → <strong>Migrated:</strong> <code>Maybe&lt;T&gt;</code> retained; <code>Result&lt;Unit&gt;</code> becomes <code>Result</code> (no generic). Phase 1a updates <code>TodoRepository</code>.</li>
+<li><strong><code>UpdateTodoCommand.IfMatchETags : EntityTagValue[]?</code></strong> — Application layer carries transport-shaped preconditions through Mediator. → <strong>Preserved</strong> — keeps <code>EntityTagValue</code> in <code>Trellis.Core</code> (decided in Q3 revision; alternative would have forced refactoring command shape — the value type is genuinely framework-agnostic).</li>
+<li><strong>Controllers have at least seven response idioms</strong> (verified against <code>TodosController.cs</code> in the template):
+<ul>
+<li><code>ETagHelper.ParseIfMatch(Request)</code> → <code>EntityTagValue[]?</code> passed into the command.</li>
+<li><code>result.ToActionResult(this, todo =&gt; RepresentationMetadata.WithStrongETag(todo.ETag), TodoResponse.From)</code> for success-with-metadata.</li>
+<li><code>result.Error.ToActionResult&lt;TodoResponse&gt;(this)</code> for failure short-circuit, used 5 times in the template's controller alone.</li>
+<li><code>Response.Headers.ETag = EntityTagValue.Strong(todo.ETag).ToHeaderValue()</code> for explicit header writes (the <code>Create</code> action uses this <em>and</em> <code>CreatedAtAction</code>, which the unified verb must reconcile).</li>
+<li><code>BindAsync(command =&gt; _sender.Send(command, ct))</code> chaining sync command construction to async dispatch.</li>
+<li><code>ToActionResultAsync(this, todos =&gt; projection)</code> — async variant with projection, used on collection-returning queries.</li>
+<li>Parameterless <code>ToActionResultAsync(this)</code> on <code>Result&lt;Unit&gt;</code> returning <code>204 NoContent</code> — the <code>Delete</code> action's pattern, which depends on <code>Trellis.Unit</code> being an addressable type.
+→ <strong>Migrated</strong> in Phase 3: §6's single <code>ToHttpResponse</code> verb subsumes all seven for both MVC and Minimal. The seven-idiom pattern is exactly what the redesign aims to collapse, and the migrated controller is the concrete proof that §6 works (see Appendix A — included with the Phase 3 deliverable).</li>
+</ul>
+</li>
+<li><strong><code>[CustomerResourceId] TodoId id</code> action-parameter attribute</strong> binds + authorizes resource ids. → <strong>Preserved</strong>, namespace migrates to <code>Trellis.Asp</code> after Phase 3 absorbs <code>Trellis.Asp.Authorization</code>.</li>
+<li><strong><code>app.UseScalarValueValidation()</code> in Program.cs.</strong> → <strong>Preserved</strong>, with the auto-registration option from §6.5 making the explicit call optional.</li>
+<li><strong>Template ships its own <code>.github/copilot-instructions.md</code> + 13 <code>trellis-api-*.md</code> files.</strong> → <strong>Preserved as the canonical AI surface.</strong> The repo-level <code>docs/docfx_project/api_reference/</code> files are the source; the template's copies are kept in sync by Phase 5 tooling.</li>
+</ol>
+<p><strong>Process commitment — template is rewritten as a post-GA Phase 6 deliverable.</strong></p>
+<ul>
+<li>Phases 1a–5a do framework-only work. The v1 template stays on v1.x packages and is <strong>not</strong> kept green during the framework rewrite.</li>
+<li>The framework is validated against its own unit/integration test suite plus an internal &quot;v2-canary&quot; sample app (see §15 Phase 5a quality gates) before the v2.0.0 packages are cut.</li>
+<li>Once framework v2.0.0 ships, <strong>Phase 6</strong> rewrites <code>Trellis.AspTemplate</code> from a clean slate against the v2 surface, preserving the 4 Clean-Architecture layers (Domain/Application/ACL/API).</li>
+<li>Breaking changes are documented inline in each <code>trellis-api-*.md</code> &quot;Breaking changes from v1&quot; section. <strong>No standalone <code>MIGRATION_v&lt;N&gt;.md</code> document is published</strong> (see §12.4).</li>
+</ul>
+<hr>
+<h2 id="06-trellis-without-aspnet--non-web-consumers">0.6 Trellis Without ASP.NET — non-web consumers</h2>
+<p>The template anchors the API design, but Trellis is a general-purpose .NET library, <strong>not an ASP.NET framework</strong>. This section describes what using Trellis looks like when there is no HTTP layer: console apps, worker services / <code>IHostedService</code>s, queue consumers, gRPC services, Azure Functions, Hangfire jobs, and pure domain class libraries.</p>
+<h3 id="061-package-selection-by-host-type">0.6.1 Package selection by host type</h3>
+<table>
+<thead>
+<tr>
+<th>Host shape</th>
+<th>References</th>
+<th>Does NOT reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Pure domain library</strong> (no host)</td>
+<td><code>Trellis.Core</code> (includes Result/Maybe/Error + DDD primitives <code>Aggregate</code>/<code>Entity</code>/<code>ValueObject</code>/<code>Specification</code> + VO base classes), <code>Trellis.Primitives</code> (optional concrete VOs), <code>Trellis.StateMachine</code> (if needed)</td>
+<td><code>Trellis.Asp</code>, <code>Trellis.Mediator</code>, <code>Trellis.EntityFrameworkCore</code>, <code>Trellis.Http</code>, <code>Trellis.Authorization</code></td>
+</tr>
+<tr>
+<td><strong>Console app / CLI tool</strong></td>
+<td>Above + <code>Trellis.Mediator</code> (optional), <code>Trellis.EntityFrameworkCore</code> (if persisting), <code>Trellis.Http</code> (if calling APIs)</td>
+<td><code>Trellis.Asp</code>, <code>Trellis.Asp.Authorization</code> (gone — merged into Asp anyway), <code>Trellis.Testing.AspNetCore</code></td>
+</tr>
+<tr>
+<td><strong>Worker service / queue consumer</strong></td>
+<td>Same as console app + <code>Trellis.Authorization</code> if doing actor-based auth on messages</td>
+<td>Same exclusions as console app</td>
+</tr>
+<tr>
+<td><strong>gRPC service</strong> (no MVC)</td>
+<td>Same as worker + <code>Trellis.Authorization</code></td>
+<td><code>Trellis.Asp</code> (gRPC has its own status-mapping idioms; see §0.6.4)</td>
+</tr>
+<tr>
+<td><strong>Azure Functions / Lambda</strong></td>
+<td>Same as worker</td>
+<td><code>Trellis.Asp</code></td>
+</tr>
+<tr>
+<td><strong>Test project</strong></td>
+<td><code>Trellis.Testing</code> (always); <code>Trellis.Testing.AspNetCore</code> only if testing through <code>WebApplicationFactory</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>The dependency tree is <strong><code>Trellis.Asp</code>-optional</strong>. A worker service should never need to install <code>Trellis.Asp</code> &quot;just for <code>EntityTagValue</code>&quot; — the value type is in <code>Trellis.Core</code>. Likewise it should never need <code>Trellis.DomainDrivenDesign</code> as a separate install — DDD primitives ship inside <code>Trellis.Core</code>.</p>
+<p><strong>On the &quot;swap out DDD&quot; capability</strong> (the original reason <code>Trellis.DomainDrivenDesign</code> was a separate package): it survives the merge intact — <em>if you don't inherit from <code>Trellis.Aggregate</code> / <code>Trellis.Entity</code> / <code>Trellis.ValueObject</code>, you don't use them</em>. The base classes are inert metadata in your assembly; zero runtime cost. The honest constraint: features that presume Trellis's DDD types (EF integration's <code>IAggregate</code> interceptors, <code>IAuthorizeResource&lt;TResource&gt;</code>, the composite-VO source generator, ETag automation) are unavailable to a custom hierarchy. If you need those features, use Trellis's primitives. If you don't, write your own and ignore them. We chose to merge because preserving an unused capability behind a separate package was less valuable than (a) eliminating the post-Phase-2 backward-dependency between <code>Composite</code> and <code>ValueObject</code> and (b) presenting a single domain-modeling vocabulary under one <code>using Trellis;</code>.</p>
+<h3 id="062-canonical-patterns-for-non-asp-code">0.6.2 Canonical patterns for non-ASP code</h3>
+<p>The seven pipeline verbs (<code>Map</code>, <code>Bind</code>, <code>Tap</code>, <code>TapOnFailure</code>, <code>Ensure</code>, <code>Match</code>, <code>Recover</code>) plus <code>BindZip</code>, the LINQ query-syntax surface (<code>Select</code>/<code>SelectMany</code>/<code>Where</code>), <code>Try</code>, <code>TryAsync</code>, <code>Traverse</code>, <code>Validate.Field(...).Build(...)</code>, and <code>MaybeInvariant</code> are 100% applicable in non-ASP code. They are pure functional combinators with no host dependency. Same for <code>Result.Combine&lt;T1..T9&gt;</code>, <code>Result.ParallelAsync&lt;T1..T9&gt;</code>, error catalog factories, scalar/composite VO base classes, and <code>Maybe&lt;T&gt;</code>.</p>
+<p><strong>Console app — top-of-<code>Main</code> pattern (the non-ASP equivalent of <code>ToHttpResponse</code>):</strong></p>
+<pre><code class="lang-csharp">// Program.cs (console app)
+public static async Task&lt;int&gt; Main(string[] args)
+{
+    var host = Host.CreateApplicationBuilder(args)
+        .Services
+        .AddTrellisCore()           // tracing, debug settings
+        .AddTrellisMediator()        // pipeline behaviors
+        .AddDbContext&lt;AppDbContext&gt;(...)
+        .AddTrellisEntityFrameworkCore&lt;AppDbContext&gt;()
+        .BuildServiceProvider();
+
+    var mediator = host.GetRequiredService&lt;IMediator&gt;();
+    var result = await mediator.Send(new ImportFileCommand(args[0]));
+
+    return result.Match(
+        _ =&gt; 0,                                                  // success → exit 0
+        error =&gt; Trellis.ConsoleHost.ExitCode.For(error));       // catalog → POSIX exit code
+}
+</code></pre>
+<p><code>Trellis.ConsoleHost.ExitCode.For(Error)</code> is the <strong>non-ASP analog of <code>ErrorHttpMapping.ToStatusCode</code></strong> — a mapping function that lives in <code>Trellis.Core</code> (it's just a switch over the catalog). Suggested mapping:</p>
+<table>
+<thead>
+<tr>
+<th>Error case</th>
+<th>Exit code</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Success</td>
+<td>0</td>
+<td>POSIX convention</td>
+</tr>
+<tr>
+<td><code>ValidationError</code> / <code>BadRequestError</code></td>
+<td>64</td>
+<td>EX_USAGE (sysexits.h)</td>
+</tr>
+<tr>
+<td><code>NotFoundError</code></td>
+<td>66</td>
+<td>EX_NOINPUT</td>
+</tr>
+<tr>
+<td><code>UnauthorizedError</code> / <code>ForbiddenError</code></td>
+<td>77</td>
+<td>EX_NOPERM</td>
+</tr>
+<tr>
+<td><code>ConflictError</code></td>
+<td>75</td>
+<td>EX_TEMPFAIL</td>
+</tr>
+<tr>
+<td><code>DomainError</code></td>
+<td>65</td>
+<td>EX_DATAERR</td>
+</tr>
+<tr>
+<td><code>UnexpectedError</code></td>
+<td>70</td>
+<td>EX_SOFTWARE</td>
+</tr>
+<tr>
+<td>HTTP-flavored errors (<code>RateLimitError</code>, <code>ServiceUnavailableError</code>, etc.)</td>
+<td>75</td>
+<td>EX_TEMPFAIL (treated as transient — see §0.6.3)</td>
+</tr>
+<tr>
+<td>Anything else</td>
+<td>1</td>
+<td>Generic failure</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Worker service top-of-loop pattern:</strong></p>
+<pre><code class="lang-csharp">public class ImportWorker(IMediator mediator, ILogger&lt;ImportWorker&gt; log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            var msg = await queue.DequeueAsync(ct);
+            var result = await mediator.Send(new ProcessMessage(msg), ct);
+
+            // Log + continue, don't crash the loop.
+            result.Tap(_ =&gt; log.LogInformation(&quot;Processed {Id}&quot;, msg.Id))
+                  .TapOnFailure(error =&gt; log.LogError(&quot;Failed {Id}: {Code} {Detail}&quot;, msg.Id, error.Code, error.Detail));
+        }
+    }
+}
+</code></pre>
+<p>The <code>TapOnFailure(Action&lt;Error&gt;)</code> verb (§3.2) is the canonical &quot;log on failure, continue the pipeline&quot; verb — same in worker as in HTTP code. The success-side analog is <code>Tap(Action&lt;T&gt;)</code>. Keeping the two paths under distinct names (rather than overloading <code>Tap</code> on the parameter type) makes the call site read as what it does — <code>result.TapOnFailure(log)</code> is unambiguously the failure path, no squinting at the lambda parameter type required.</p>
+<h3 id="063-the-error-catalog-in-non-http-contexts">0.6.3 The error catalog in non-HTTP contexts</h3>
+<p>Non-ASP consumers see all 17 cases of the error catalog, but in practice use only the 8 transport-agnostic ones (<code>ValidationError</code>, <code>NotFoundError</code>, <code>ConflictError</code>, <code>DomainError</code>, <code>UnauthorizedError</code>, <code>ForbiddenError</code>, <code>BadRequestError</code>, <code>UnexpectedError</code>). The 9 HTTP-flavored cases (<code>PreconditionFailedError</code>, <code>RateLimitError</code>, …) are <strong>inert records</strong> — they sit in the assembly with zero behavior and zero startup cost. They appear in <code>Match</code> only if the consumer chooses to pattern-match on them.</p>
+<p><strong>Why we don't split them into a separate package:</strong></p>
+<ul>
+<li>They are records; they cost nothing.</li>
+<li>ACL layers in non-ASP apps (queue consumers, gRPC clients, outbound HttpClient calls) <strong>do</strong> produce them when translating upstream HTTP responses. A worker service that calls a downstream HTTP API needs <code>RateLimitError</code> and <code>RetryAfterValue</code> to implement retry logic.</li>
+<li>Splitting would create an awkward middle layer: pure-domain library doesn't need them, ACL does — and almost every real worker has an ACL layer.</li>
+<li><code>EntityTagValue</code> and <code>RetryAfterValue</code> are <strong>framework-agnostic value types</strong>. They serialize to ETag/Retry-After headers when an HTTP layer exists, but they're equally valid as cache-key components or queue-message metadata. Keeping them in <code>Trellis.Core</code> lets non-HTTP code use them without an apologetic dependency.</li>
+</ul>
+<p><strong>Analyzer note:</strong> <code>TRLS027</code> (missing-case in <code>Match</code>) only fires when the user opts into exhaustive matching. A console app that writes <code>result.Match(success, _ =&gt; 1)</code> is unaffected by HTTP-flavored cases.</p>
+<h3 id="064-mapping-for-other-transports">0.6.4 Mapping for other transports</h3>
+<p>The <code>ToHttpResponse</code> verb lives only in <code>Trellis.Asp</code>. Other transports follow the same pattern but in their own optional integration package:</p>
+<table>
+<thead>
+<tr>
+<th>Transport</th>
+<th>Mapping verb</th>
+<th>Package</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ASP.NET Core HTTP</td>
+<td><code>result.ToHttpResponse(opts)</code></td>
+<td><code>Trellis.Asp</code></td>
+<td>In v2 plan, §6</td>
+</tr>
+<tr>
+<td>CLI exit code</td>
+<td><code>Trellis.ConsoleHost.ExitCode.For(error)</code></td>
+<td><code>Trellis.Core</code> (just a switch — no host dependency)</td>
+<td>Add in Phase 1b</td>
+</tr>
+<tr>
+<td>gRPC status</td>
+<td><code>result.ToGrpcStatus()</code></td>
+<td><code>Trellis.Grpc</code> (future, post-2.0)</td>
+<td>Not in current scope</td>
+</tr>
+<tr>
+<td>Worker logging</td>
+<td><code>result.Tap(success).TapOnFailure(failure)</code> (no special verb)</td>
+<td><code>Trellis.Core</code></td>
+<td>Already covered by §3.2 verbs</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Future-package note:</strong> <code>Trellis.Grpc</code> is not in the v2 redesign scope and is not counted in the 12 packages. It is mentioned only to show the redesign is open to additional transport adapters following the same shape as <code>Trellis.Asp</code>.</p>
+<h3 id="065-what-this-implies-for-3-trelliscore">0.6.5 What this implies for §3 (<code>Trellis.Core</code>)</h3>
+<ul>
+<li>The error catalog stays at <strong>17 cases in <code>Trellis.Core</code></strong> (decision confirmed in this section's open question — no split into a <code>Trellis.Web</code> package).</li>
+<li><code>EntityTagValue</code> and <code>RetryAfterValue</code> stay in <code>Trellis.Core</code> (already decided in §12.2 for layering reasons; reconfirmed here for non-ASP usability reasons).</li>
+<li><code>Trellis.DomainDrivenDesign</code> merges into <code>Trellis.Core</code> in Phase 2 (see §15). Final <code>Trellis.Core</code> contents: Result/Maybe/Error + tracing + <code>EntityTagValue</code>/<code>RetryAfterValue</code> + scalar/composite VO base classes + <code>Aggregate</code>/<code>Entity</code>/<code>ValueObject</code>/<code>Specification</code> + domain events + <code>MaybeInvariant</code> + <code>Validate</code> builder. All within the <code>Trellis</code> namespace.</li>
+<li>Add <code>Trellis.ConsoleHost.ExitCode.For(Error) → int</code> in Phase 1b alongside the error catalog rewrite. It is a single static method with no dependencies; it lives in <code>Trellis.Core</code> so console apps don't need a separate &quot;console adapter&quot; package.</li>
+<li>Non-ASP migration guidance lives inline in <code>trellis-api-core.md</code> &quot;Breaking changes from v1&quot; — no standalone migration document is published (see §12.4).</li>
+</ul>
+<h3 id="066-implication-for-05-template-anchor">0.6.6 Implication for §0.5 (template anchor)</h3>
+<p>The ASP template remains the <strong>primary</strong> anchor for the redesign because it exercises the most surface area. <strong>A second anchor is added</strong> in Phase 5 (after the framework is stable): a minimal <strong>worker-service sample</strong> in <code>TrellisAspTemplate</code> (or a sibling <code>TrellisWorkerTemplate</code> repo if scoping demands it) that proves the non-ASP path is first-class. This sample is not a deliverable for Phases 1–4, but it is the acceptance gate for &quot;the redesign works for non-ASP consumers&quot; and is added to the v2.0.0 release criteria.</p>
+<hr>
+<h2 id="07-scope-boundary-with-aspnet-core">0.7 Scope Boundary with ASP.NET Core</h2>
+<blockquote>
+<p><strong>Trellis owns the <em>response shape</em> and the <em>error taxonomy</em>.
+ASP.NET Core owns the <em>protocol plumbing</em>.</strong></p>
+</blockquote>
+<p>This boundary settles every recurring &quot;should Trellis ship X?&quot; question. When a
+proposed feature falls on the ASP.NET Core side of the line, Trellis composes
+with it but does NOT reimplement it. When a feature is about how Trellis types
+(<code>Result&lt;T&gt;</code>, <code>WriteOutcome&lt;T&gt;</code>, <code>Error</code>, <code>RepresentationMetadata</code>,
+<code>AuthChallenge</code>, <code>EntityTagValue</code>, <code>Prefer</code>) project onto an HTTP response,
+Trellis owns it.</p>
+<h3 id="071-aspnet-cores-territory--trellis-must-not-reimplement">0.7.1 ASP.NET Core's territory — Trellis MUST NOT reimplement</h3>
+<p>The following are first-class in <code>Microsoft.AspNetCore.*</code> and Trellis adds zero
+value by reinventing them. Trellis MAY ship documentation/examples that show
+how to wire them, but no parallel implementation:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>ASP.NET Core surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JWT / Bearer / OIDC / OAuth</td>
+<td><code>Microsoft.AspNetCore.Authentication.{JwtBearer,OpenIdConnect,OAuth}</code></td>
+</tr>
+<tr>
+<td><code>/.well-known/openid-configuration</code>, JWKS fetch</td>
+<td>OIDC handler (auto-exposed)</td>
+</tr>
+<tr>
+<td>CORS</td>
+<td><code>services.AddCors()</code> + <code>app.UseCors()</code></td>
+</tr>
+<tr>
+<td>Rate-limit enforcement (429 + <code>Retry-After</code>)</td>
+<td><code>Microsoft.AspNetCore.RateLimiting</code> (.NET 7+)</td>
+</tr>
+<tr>
+<td>JSON Patch (RFC 6902)</td>
+<td><code>Microsoft.AspNetCore.JsonPatch</code></td>
+</tr>
+<tr>
+<td>Output caching / response caching</td>
+<td><code>app.UseOutputCache()</code> + <code>[OutputCache]</code></td>
+</tr>
+<tr>
+<td>OpenAPI document generation</td>
+<td><code>Microsoft.AspNetCore.OpenApi</code> (.NET 9+) or Swashbuckle</td>
+</tr>
+<tr>
+<td>Antiforgery, data protection, session, cookies</td>
+<td>built-in middleware</td>
+</tr>
+<tr>
+<td>Routing, model binding, content negotiation primitives</td>
+<td>MVC / Minimal APIs</td>
+</tr>
+<tr>
+<td>Kestrel-level concerns: HTTP/2, HTTP/3, TLS, compression</td>
+<td>Kestrel</td>
+</tr>
+</tbody>
+</table>
+<h3 id="072-trelliss-territory--composition-layer-on-top">0.7.2 Trellis's territory — composition layer on top</h3>
+<p>Trellis owns response-shape and error-taxonomy concerns that ASP.NET Core
+does NOT have an opinion on, and that benefit from being expressed in Trellis's
+own type system:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Trellis surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Result/Maybe railway, error catalog</td>
+<td><code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td><code>WriteOutcome&lt;T&gt;</code> → HTTP status mapping (per §6.2)</td>
+<td><code>Trellis.Asp.WriteOutcomeExtensions</code></td>
+</tr>
+<tr>
+<td>ETag / Last-Modified / Vary / Content-Language emission</td>
+<td><code>RepresentationMetadata</code> + <code>EntityTagValue</code></td>
+</tr>
+<tr>
+<td>Conditional request evaluation (If-Match / If-None-Match / If-Modified-Since)</td>
+<td><code>ConditionalRequestEvaluator</code></td>
+</tr>
+<tr>
+<td>Prefer header parsing + <code>return=minimal</code> honoring + <code>Preference-Applied</code> + <code>Vary: Prefer</code></td>
+<td><code>PreferHeader</code> + write mappers</td>
+</tr>
+<tr>
+<td>Range request evaluation (RFC 9110 §14, byte units)</td>
+<td><code>RangeRequestEvaluator</code></td>
+</tr>
+<tr>
+<td>Problem Details (<code>application/problem+json</code>) emission with extension members</td>
+<td><code>Error.ToHttpResult</code> + <code>HttpResultExtensions</code></td>
+</tr>
+<tr>
+<td><code>WWW-Authenticate</code> emission when an <code>Error.Unauthorized</code> short-circuits the auth pipeline</td>
+<td><code>AuthChallenge</code> (wiring is a Phase 2 gap)</td>
+</tr>
+<tr>
+<td>OpenAPI schema <em>contributions</em> (transformers/operation filters) for Trellis types</td>
+<td><code>Trellis.Asp.OpenApi</code> (proposed)</td>
+</tr>
+<tr>
+<td>Problem-type URI registry (canonical <code>type</code> URIs per error kind)</td>
+<td><code>Trellis.Core</code> error catalog</td>
+</tr>
+<tr>
+<td><code>Cache-Control</code> / <code>immutable</code> / <code>Age</code> directives paired with ETag</td>
+<td><code>RepresentationMetadata</code> (Phase 2)</td>
+</tr>
+<tr>
+<td><code>Link</code>-header pagination + cursor model</td>
+<td><code>Trellis.Asp</code> (Phase 2)</td>
+</tr>
+<tr>
+<td><code>Idempotency-Key</code> middleware + write-dedup primitives</td>
+<td><code>Trellis.Asp</code> (Phase 3)</td>
+</tr>
+<tr>
+<td><code>RateLimit-Limit/Remaining/Reset</code> draft headers (reading from middleware state)</td>
+<td><code>Trellis.Asp</code> filter (Phase 3)</td>
+</tr>
+<tr>
+<td>JSON Merge Patch (RFC 7396) glue</td>
+<td><code>Trellis.Asp</code> (Phase 3)</td>
+</tr>
+<tr>
+<td>Repository / aggregate / WriteOutcome plumbing</td>
+<td><code>Trellis.EntityFrameworkCore</code></td>
+</tr>
+<tr>
+<td>Mediator pipeline behaviors that surface <code>Result&lt;T&gt;</code> to the boundary</td>
+<td><code>Trellis.Mediator</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="073-the-decision-rule">0.7.3 The decision rule</h3>
+<p>When evaluating any future feature request, ask:</p>
+<ol>
+<li><strong>Is this protocol plumbing already in <code>Microsoft.AspNetCore.*</code>?</strong> → out of scope. Document the wiring; do not reimplement.</li>
+<li><strong>Does this feature interpret a Trellis type (<code>Result&lt;T&gt;</code>, <code>Error</code>, <code>WriteOutcome&lt;T&gt;</code>, <code>RepresentationMetadata</code>, <code>AuthChallenge</code>) as an HTTP construct?</strong> → in scope.</li>
+<li><strong>Is this an opinion ASP.NET Core deliberately leaves to the application (cursor pagination shape, idempotency-key semantics, problem-type URIs, response-shape cache directives)?</strong> → in scope IF Trellis's type system makes it cleaner; out of scope otherwise.</li>
+</ol>
+<p>This rule keeps the framework small, makes &quot;is it Trellis or ASP.NET Core?&quot;
+unambiguous for AI completions, and prevents scope creep into auth flows,
+edge caching, and protocol-stack work that the BCL already does well.</p>
+<h3 id="074-pagination-is-a-first-class-trellis-concern-business-apis--media-apis">0.7.4 Pagination is a first-class Trellis concern (business APIs ≠ media APIs)</h3>
+<blockquote>
+<p><strong>Spike status (PR #400, merged):</strong> the design below has been validated end-to-end in <code>Trellis.Results</code> + <code>Trellis.Asp</code> + Showcase. <code>Page&lt;T&gt;</code>, <code>Cursor</code>, the wire envelope, the <code>Link</code> header co-emission, and <strong>parity across Minimal API + MVC</strong> are shipped. The full PR-PAGE deliverable (rename to <code>Trellis.Core</code>, <code>[Obsolete]</code> the byte-range overloads, OpenAPI transformer, recipe doc) is still open — see &quot;Remaining work&quot; below.</p>
+</blockquote>
+<p>Trellis serves business APIs, not media-transfer APIs. <strong>Bytes / Range / 206 Partial Content</strong> are the wrong primitives for paging collections of business records — RFC 9110 §14 was designed for partial transfer of an octet stream (resume a download, request a video segment), and the only universally-understood range unit is <code>bytes</code>. Custom range units (<code>items</code>, <code>pages</code>) are <em>syntactically</em> allowed by the RFC but have zero ecosystem interoperability: CDNs, proxies, HTTP clients, and OpenAPI tooling do not understand them.</p>
+<p>The decision:</p>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Primitive</th>
+<th>RFC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Partial transfer of a binary resource (file download, blob, video segment)</td>
+<td><code>Range</code> request → <code>206 Partial Content</code> + <code>Content-Range</code> (bytes only)</td>
+<td>RFC 9110 §14</td>
+</tr>
+<tr>
+<td>Server-driven pagination of a business collection</td>
+<td><code>200 OK</code> + body envelope (<code>Page&lt;T&gt;</code>) + <code>Link</code> header (RFC 8288)</td>
+<td>RFC 8288</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trellis adopts a body-envelope-with-cursor model as primary, co-emits <code>Link</code> header for free.</strong> Rationale:</p>
+<ul>
+<li><strong>AI-first</strong>: the cursor sits in the JSON the LLM already parsed — no header inspection, no <code>Link: &lt;…&gt;; rel=&quot;next&quot;</code> regex. Follow-up calls trivially compose: <code>nextRequest.cursor = lastResponse.next.cursor</code>.</li>
+<li><strong>.NET / OData alignment</strong>: Microsoft Graph and OData v4 both use body-envelope <code>nextLink</code>. Generated clients and existing .NET tooling cooperate naturally.</li>
+<li><strong><code>Link</code> header is ~10 LOC of co-emission</strong>: serves crawlers, hypermedia clients, gateways, and RFC-8288-aware tooling at near-zero cost.</li>
+<li><strong>Industry split is ~70% envelope / ~30% Link-only / ~0% Range/206</strong> — the envelope is the dominant idiom; co-emitting Link covers the minority.</li>
+</ul>
+<p>Concrete shapes (shipped in <code>Trellis.Results</code> as a spike; will move to <code>Trellis.Core</code> post-rename):</p>
+<pre><code class="lang-csharp">public readonly record struct Page&lt;T&gt;
+{
+    public IReadOnlyList&lt;T&gt; Items { get; }
+    public Cursor? Next { get; }
+    public Cursor? Previous { get; }
+    public int RequestedLimit { get; }   // what the client asked for
+    public int AppliedLimit { get; }     // server cap actually used (&lt;= RequestedLimit)
+
+    public int DeliveredCount =&gt; Items?.Count ?? 0;
+    public bool WasCapped =&gt; AppliedLimit &lt; RequestedLimit;
+
+    public Page(IReadOnlyList&lt;T&gt; items, Cursor? next, Cursor? previous,
+                int requestedLimit, int appliedLimit) { /* validates invariants */ }
+}
+
+public readonly record struct Cursor(string Token);   // opaque, base64url
+</code></pre>
+<p>Wire format:</p>
+<pre><code class="lang-http">HTTP/1.1 200 OK
+Content-Type: application/json
+Link: &lt;https://api/widgets?limit=5&amp;cursor=eyJpZCI6IjQyIn0%3D&gt;; rel=&quot;next&quot;
+Vary: Prefer
+Preference-Applied: handling=lenient
+
+{
+  &quot;items&quot;: [ ... ],
+  &quot;next&quot;: { &quot;cursor&quot;: &quot;eyJpZCI6IjQyIn0=&quot;, &quot;href&quot;: &quot;https://api/widgets?limit=5&amp;cursor=eyJpZCI6IjQyIn0%3D&quot; },
+  &quot;previous&quot;: null,
+  &quot;requestedLimit&quot;: 10,
+  &quot;appliedLimit&quot;: 5,
+  &quot;deliveredCount&quot;: 5,
+  &quot;wasCapped&quot;: true
+}
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li><code>requestedLimit</code> vs <code>appliedLimit</code> makes server-side caps observable to the client; <code>wasCapped</code> is a derived convenience flag. RFC 7240 <code>Preference-Applied: handling=lenient</code> may co-emit when the server clamped the request.</li>
+<li>Cursor stays opaque — server-internal serialization (signed/encrypted JSON, base64url). Clients MUST treat it as a black box.</li>
+<li><code>Page&lt;T&gt;</code> is a struct (allocation-cheap) but <code>Items</code> is a heap list — that is fine; the envelope is allocated once per response.</li>
+<li>The existing <code>PartialContentResult</code> / <code>PartialContentHttpResult</code> is <strong>demoted to byte-range only</strong> in PR-PAGE; the collection-pagination overloads will receive <code>[Obsolete]</code> pointing to <code>Page&lt;T&gt;</code>. RFC 7233/9110 byte semantics remain fully supported for media endpoints.</li>
+</ul>
+<p>Phase 2 deliverable PR (<code>PR-PAGE</code>) — status:</p>
+<ol>
+<li>✅ <code>Page&lt;T&gt;</code>, <code>Cursor</code> shipped (in <code>Trellis.Results</code>; move to <code>Trellis.Core</code> lands with PR-A rename).</li>
+<li>✅ <code>Trellis.Asp.PageHttpResultExtensions.ToPagedHttpResult</code> (Minimal API) and <code>Trellis.Asp.PageActionResultExtensions.ToPagedActionResult</code> (MVC) — both delegate to a single internal <code>PagedResponseBuilder</code> for byte-identical envelope + <code>Link</code> header across hosting styles. Verb names follow §3.3 / Axiom B.</li>
+<li>⬜ Demote <code>PartialContentResult</code> collection overloads to <code>[Obsolete]</code>.</li>
+<li>✅ Showcase paginates <code>GET /api/accounts/</code> end-to-end on both Minimal API and MVC hosts (server cap of 5; client requests 10; follow <code>Link rel=&quot;next&quot;</code> / body cursor to drain). Integration tests cover both hosts.</li>
+<li>⬜ OpenAPI schema transformer that surfaces the <code>Link</code> response header for any operation returning <code>Page&lt;T&gt;</code>.</li>
+<li>⬜ Recipe doc: <code>docs/docfx_project/articles/pagination.md</code>.</li>
+</ol>
+<h3 id="075-implication-for-06-non-web-consumers">0.7.5 Implication for §0.6 (non-web consumers)</h3>
+<p>The boundary in §0.7 applies <em>only</em> to <code>Trellis.Asp</code> and <code>Trellis.Asp.*</code>. Core
+and downstream packages remain framework-agnostic per §0.6 — they have no
+ASP.NET Core dependency and no opinion about HTTP at all. <code>Page&lt;T&gt;</code> and
+<code>Cursor</code> live in <code>Trellis.Core</code> because they are pure data; the HTTP
+projection (Link header, envelope) lives in <code>Trellis.Asp</code>.</p>
+<hr>
+<h2 id="1-design-principles-ai-first-axioms">1. Design Principles (AI-First Axioms)</h2>
+<p>These are the rules every package must obey. When a current API violates one, it gets redesigned.</p>
+<h3 id="a-one-verb-per-concept-aliases-are-bugs">A. <strong>One verb per concept. Aliases are bugs.</strong></h3>
+<p>If two methods do the same thing under different names (<code>SuccessIf</code> ≈ <code>Ensure</code>; <code>Recover</code> ≈ <code>RecoverOnFailure</code>; <code>Check</code> ≈ <code>Tap</code> returning <code>Result</code>), the LLM has to gamble. We pick one and delete the rest.</p>
+<h3 id="b-async-methods-carry-the-async-suffix--bcl-convention-wins">B. <strong>Async methods carry the <code>Async</code> suffix — BCL convention wins.</strong></h3>
+<p><strong>Decision (2026-04-20):</strong> every async-returning extension is named <code>…Async</code> (<code>MapAsync</code>, <code>BindAsync</code>, <code>TapAsync</code>, <code>TapOnFailureAsync</code>, <code>EnsureAsync</code>, <code>MatchAsync</code>, <code>RecoverAsync</code>). This follows the BCL guideline for <code>Task</code>/<code>ValueTask</code>-returning methods and matches every async API the user already reads (<code>Task.WhenAllAsync</code>, <code>HttpClient.SendAsync</code>, <code>DbContext.SaveChangesAsync</code>). The earlier &quot;async invisible&quot; framing has been <strong>rescinded</strong> because it created two avoidable problems: (1) overload ambiguity between sync <code>Map</code> and <code>Task&lt;Result&lt;T&gt;&gt;.Map</code>, and (2) no visible signal at the call site that an <code>await</code> is required. The §3.3 overload matrix is updated accordingly: <code>Map</code> is one overload (sync × sync), <code>MapAsync</code> covers the five async permutations.</p>
+<h3 id="c-no-tuple-arity-ceilings-in-user-facing-validation-apis">C. <strong>No tuple-arity ceilings in user-facing validation APIs.</strong></h3>
+<p>A builder pattern (<code>Validate.Field(a).And(b).And(c)…</code>) replaces fixed-arity <code>Combine</code> for <strong>validation aggregation</strong> (no ceiling). For heterogeneous value combination (different value types, first-failure-wins semantics), <code>Result.Combine&lt;T1..T9&gt;</code> stays — it's already T4-generated, costs nothing, and is genuinely cleaner than chained <code>Bind</code>s. <code>TRLS014</code> (max 9 hard-error) stays for <code>Combine</code> with a clearer message: &quot;Group into a record or use <code>Validate.Field(...).Build()</code> if these are validation results.&quot;</p>
+<h3 id="d-errors-are-a-closed-by-convention-catalog-not-an-open-hierarchy">D. <strong>Errors are a closed-by-convention catalog, not an open hierarchy.</strong></h3>
+<p>We <strong>do not</strong> claim compiler exhaustiveness — C# does not provide it for record hierarchies. Instead:</p>
+<ul>
+<li>The catalog is fixed by Trellis. Adding a case is a Trellis-level breaking change.</li>
+<li>An analyzer (<code>TRLS026</code>, new) flags any user code that derives from <code>Error</code> outside the Trellis assembly.</li>
+<li><code>Match</code>/<code>MatchError</code> accept a typed dictionary of handlers; the analyzer warns when a known case is missing. This is &quot;closed by convention + diagnostics,&quot; which is what C# can actually deliver.</li>
+</ul>
+<h3 id="e-one-way-to-construct-a-value-object">E. <strong>One way to construct a value object.</strong></h3>
+<p><code>TryCreate(...) → Result&lt;T&gt;</code> is the only validating path. <code>Create(...)</code> (throwing) is also generated by default — but <code>TRLS007</code> already steers users to the right one. We are honest: both exist and are documented.</p>
+<h3 id="f-no-iconvertible-no-toint32iformatprovider-on-an-emailaddress">F. <strong>No <code>IConvertible</code>. No <code>ToInt32(IFormatProvider?)</code> on an <code>EmailAddress</code>.</strong></h3>
+<p>Scalar VOs expose <code>Value</code>, <code>ToString()</code>, and (for numerics/dates only) <code>ToString(format, provider)</code>. Removing <code>IConvertible</code> is a real simplification.</p>
+<h3 id="g-the-package-you-install-names-the-api-you-write">G. <strong>The package you install names the API you write.</strong></h3>
+<p>If <code>Trellis.Asp</code> is installed, HTTP mapping is <code>Trellis.Asp</code>-prefixed. Each package's surface is self-describing.</p>
+<h3 id="h-the-doc-is-the-api">H. <strong>The doc is the API.</strong></h3>
+<p>The per-package <code>docs/docfx_project/api_reference/trellis-api-*.md</code> is the canonical surface; it ships in every NuGet package and is generated from source where possible.</p>
+<h3 id="i-diagnostics-complement--not-replace--boundary-adapters">I. <strong>Diagnostics complement — not replace — boundary adapters.</strong></h3>
+<p>We keep <code>Result.Try(Func&lt;T&gt;, Func&lt;Exception, Error&gt;?)</code> and <code>Result.TryAsync</code> as explicit boundary adapters for foreign code (EF, HttpClient, BCL parsing, third-party). Analyzers (<code>TRLS015</code>) catch unguarded <code>throw</code> <em>inside</em> a chain — but they cannot catch exceptions from foreign code, which is exactly what <code>Try</code> exists for. Removing <code>Try</code> would force the AI to reinvent it badly.</p>
+<h3 id="j-aot-clean-where-supported-no-reflection-in-hot-paths">J. <strong>AOT-clean where supported. No reflection in hot paths.</strong></h3>
+<p>Source generators do the work. The redesign treats AOT as a target, not a bonus.</p>
+<hr>
+<h2 id="2-proposed-package-map">2. Proposed Package Map</h2>
+<h3 id="before--after-current-packages--proposed-packages">Before / After: current packages → proposed packages</h3>
+<p>There are <strong>17</strong> publishable NuGet packages today in <code>TrellisFramework</code>. The redesign produces <strong>12</strong> (11 runtime + 1 tooling). Five existing packages are removed (3 absorbed via NuGet bundling, 2 merged into siblings) and one is renamed.</p>
+<blockquote>
+<p><strong>Out of scope: <code>Trellis.AspTemplate</code>.</strong> The <code>dotnet new trellis-asp</code> template package lives in a <strong>separate repository</strong> (<code>C:\GitHub\Trellis\TrellisAspTemplate</code>) and is published independently as <code>Trellis.AspTemplate</code>. The redesign does not change its packaging or relocate it. Per §0.5 and §15 Phase 6, the template is <strong>rewritten from scratch on v2 only after framework v2.0.0 ships</strong> — Phases 1a–5a do not touch it.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Current package (17)</th>
+<th>Future package</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>Trellis.Analyzers</code></td>
+<td><code>Trellis.Analyzers</code></td>
+<td>✅ Kept; analyzer rules consolidate; diagnostic IDs renumbered to <code>TRLS001…</code> (no <code>TRLSGEN</code> range)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>Trellis.Asp</code></td>
+<td><code>Trellis.Asp</code></td>
+<td>✅ Kept; absorbs <code>Trellis.Asp.Authorization</code> (project merge) and bundles <code>Trellis.AspSourceGenerator</code> (inside the <code>.nupkg</code>)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>Trellis.Asp.Authorization</code></td>
+<td>— (merged into <code>Trellis.Asp</code>)</td>
+<td>❌ Removed; no separate NuGet — content moves into <code>Trellis.Asp</code> <code>.csproj</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>Trellis.AspSourceGenerator</code></td>
+<td>— (bundled inside <code>Trellis.Asp.nupkg</code>)</td>
+<td>❌ Removed as a standalone package; the <code>netstandard2.0</code> <code>.csproj</code> stays in the source tree under <code>Trellis.Asp/generator/</code> and ships as <code>analyzers/dotnet/cs/...</code> inside <code>Trellis.Asp.nupkg</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>Trellis.Authorization</code></td>
+<td><code>Trellis.Authorization</code></td>
+<td>✅ Kept unchanged; <strong>does NOT absorb <code>Trellis.FluentValidation</code></strong> (would force a third-party transitive dep)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>Trellis.DomainDrivenDesign</code></td>
+<td>— (merged into <code>Trellis.Core</code> in Phase 2)</td>
+<td>❌ Removed; all <strong>12 source files</strong> (<code>Aggregate</code>, <code>Entity</code>, <code>ValueObject</code>, <strong><code>ScalarValueObject</code></strong>, <code>IAggregate</code>, <code>IEntity</code>, <code>IDomainEvent</code>, <code>Specification</code>, <code>AndSpecification</code>, <code>OrSpecification</code>, <code>NotSpecification</code>, <code>AggregateETagExtensions</code>) move into <code>Trellis.Core</code>. All types are already in the <code>Trellis</code> namespace, so user code is unaffected. <strong><code>ScalarValueObject</code> reconciliation:</strong> the existing DDD <code>ScalarValueObject</code> and the proposed <code>Scalar&lt;T,V&gt;</code> (§4.1) are the same concept — Phase 2 unifies them as <code>Scalar&lt;T,V&gt;</code> in <code>Trellis.Core</code>. The DDD <code>ScalarValueObject</code> is <strong>deleted outright</strong> at v2.0.0 (no <code>[Obsolete]</code> alias; the template is being rewritten on v2 and there are no external consumers requiring a runway). Resolves the post-Phase-2 backward-dep tension where <code>Composite : ValueObject</code> would otherwise force <code>Trellis.Core</code> to reference <code>Trellis.DomainDrivenDesign</code>. The &quot;swap out Trellis DDD for your own&quot; capability is preserved (just don't inherit from <code>Trellis.Aggregate</code>); see §0.6 for the honest trade-off discussion.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>Trellis.EntityFrameworkCore</code></td>
+<td><code>Trellis.EntityFrameworkCore</code></td>
+<td>✅ Kept; bundles <code>Trellis.EntityFrameworkCore.Generator</code> inside the <code>.nupkg</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>Trellis.EntityFrameworkCore.Generator</code></td>
+<td>— (bundled inside <code>Trellis.EntityFrameworkCore.nupkg</code>)</td>
+<td>❌ Removed as a standalone package; the <code>netstandard2.0</code> <code>.csproj</code> stays in the source tree under <code>Trellis.EntityFrameworkCore/generator/</code> and ships inside the runtime <code>.nupkg</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>Trellis.FluentValidation</code></td>
+<td><code>Trellis.FluentValidation</code></td>
+<td>✅ <strong>Kept separate and opt-in</strong> — only consumers who want FluentValidation install it</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>Trellis.Http</code></td>
+<td><code>Trellis.Http</code></td>
+<td>✅ Kept; surface slimmed (see §7)</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>Trellis.Mediator</code></td>
+<td><code>Trellis.Mediator</code></td>
+<td>✅ Kept; remains a wrapper over <code>martinothamar/Mediator</code>; owned dispatcher deferred to optional Phase 7</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>Trellis.Primitives</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>✅ Kept; <strong>scope reduced</strong> — contains only the 13 concrete opinionated VOs (<code>EmailAddress</code>, <code>Money</code>, <code>PhoneNumber</code>, <code>CountryCode</code>, <code>CurrencyCode</code>, <code>LanguageCode</code>, <code>Hostname</code>, <code>IpAddress</code>, <code>Url</code>, <code>Slug</code>, <code>Percentage</code>, <code>Age</code>, <code>MonetaryAmount</code>) after Phase 2; base classes move to <code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>Trellis.Primitives.Generator</code></td>
+<td>— (bundled inside <code>Trellis.Core.nupkg</code>)</td>
+<td>❌ Removed as a standalone package; the <code>netstandard2.0</code> <code>.csproj</code> stays in the source tree (likely moved under <code>Trellis.Core/generator/</code>) and ships inside <code>Trellis.Core.nupkg</code>. Rationale: the generator targets the <code>Scalar&lt;T,V&gt;</code> / <code>Composite</code> / <code>RequiredString</code> base classes which live in <code>Trellis.Core</code> post-Phase 2; bundling there means every consumer who derives from a base class gets the generator automatically. The generator is inert for code that doesn't use the base classes.</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>Trellis.Results</code></td>
+<td><strong><code>Trellis.Core</code></strong></td>
+<td>🔄 <strong>Renamed</strong> from <code>Trellis.Results</code> to <code>Trellis.Core</code>. <strong>Scope expanded</strong> — Phase 1a rewrites Result/Maybe/Error in place; Phase 2 absorbs (a) scalar/composite VO base classes from <code>Trellis.Primitives</code> and (b) the entire <code>Trellis.DomainDrivenDesign</code> package; Phase 2 also bundles the Primitives generator. After Phase 2, <code>Trellis.Core</code> contains Result + Maybe + Error + tracing + VO base classes + DDD primitives (<code>Aggregate</code>, <code>Entity</code>, <code>ValueObject</code>, <code>Specification</code>, domain events). The new name reflects the package's role as the foundational core; api_reference filename becomes <code>trellis-api-core.md</code>.</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>Trellis.Stateless</code></td>
+<td><strong><code>Trellis.StateMachine</code></strong></td>
+<td>🔄 Renamed (vendor-neutral name). Stateless types remain visible; thin wrapper unchanged. <code>LazyStateMachine</code> pattern included.</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>Trellis.Testing</code></td>
+<td><code>Trellis.Testing</code></td>
+<td>✅ Kept unchanged; <strong>does NOT absorb <code>Trellis.Testing.AspNetCore</code></strong> (would force ASP.NET Core test packages on console-app test projects)</td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td>✅ <strong>Kept separate and opt-in</strong> — only ASP test projects install it</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Summary:</strong></p>
+<ul>
+<li><strong>17 → 12 packages</strong> in <code>TrellisFramework</code>.</li>
+<li><strong>3 NuGet packages removed via generator bundling:</strong> <code>Trellis.AspSourceGenerator</code>, <code>Trellis.EntityFrameworkCore.Generator</code>, <code>Trellis.Primitives.Generator</code> (all stay as separate <code>netstandard2.0</code> <code>.csproj</code> projects in the source tree).</li>
+<li><strong>2 NuGet packages removed via project merge:</strong> <code>Trellis.Asp.Authorization</code> (content moves into <code>Trellis.Asp</code>); <code>Trellis.DomainDrivenDesign</code> (content moves into <code>Trellis.Core</code> in Phase 2).</li>
+<li><strong>2 packages renamed:</strong> <code>Trellis.Results</code> → <code>Trellis.Core</code>; <code>Trellis.Stateless</code> → <code>Trellis.StateMachine</code>.</li>
+<li><strong>2 packages explicitly NOT merged</strong> to avoid forcing third-party transitive deps: <code>Trellis.FluentValidation</code>, <code>Trellis.Testing.AspNetCore</code>.</li>
+<li><strong>0 new packages</strong> added in <code>TrellisFramework</code>. (<code>Trellis.AspTemplate</code> continues to be published from its own repo; not counted here.)</li>
+</ul>
+<h3 id="guiding-principles">Guiding principles</h3>
+<blockquote>
+<p><strong>Principle: no forced third-party transitive dependencies.</strong> Where a merger would push a third-party package (e.g., FluentValidation, ASP.NET Core test infrastructure) onto consumers who don't want it, the merger is rejected and the package stays separate and opt-in.</p>
+<p><strong>Source-generator packaging convention.</strong> Roslyn source generators must target <code>netstandard2.0</code> (Visual Studio's Roslyn host runs on .NET Framework). Where a runtime package &quot;absorbs&quot; a generator, the generator's <code>.csproj</code> stays as a separate <code>netstandard2.0</code> project but ships <strong>inside</strong> the runtime package's <code>.nupkg</code> as an analyzer asset (<code>analyzers/dotnet/cs/...</code>). At the source-tree level there are still two <code>.csproj</code> files; at the NuGet level the user installs one package. This is the same convention <code>Microsoft.Extensions.Logging.Abstractions</code> uses for <code>LoggerMessageGenerator</code>.</p>
+<p><strong>Cross-repo coordination.</strong> <code>TrellisAspTemplate</code> (separate repo, publishes <code>Trellis.AspTemplate</code>) is the AI's day-1 entry point. It is <strong>not</strong> kept green during Phases 1a–5a. The framework v2.0.0 ships against its own unit/integration tests and an internal v2-canary sample app (see §15 Phase 5a). Once framework v2.0.0 GA cuts, Phase 6 rewrites the template from a clean slate; this is a separate cross-repo PR with no shared migration document.</p>
+</blockquote>
+<h3 id="final-12-packages-in-trellisframework--purpose-summary">Final 12 packages in TrellisFramework — purpose summary</h3>
+<table>
+<thead>
+<tr>
+<th>Runtime Package (11)</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trellis.Core</code></td>
+<td>Core ROP types (Result, Maybe, Error) + VO base classes + DDD primitives (<code>Aggregate</code>, <code>Entity</code>, <code>ValueObject</code>, <code>Specification</code>, domain events) + tracing. Zero third-party deps. (Was: <code>Trellis.Results</code> + <code>Trellis.DomainDrivenDesign</code> + Primitives base classes.)</td>
+</tr>
+<tr>
+<td><code>Trellis.Primitives</code></td>
+<td>13 concrete opinionated VOs (<code>EmailAddress</code>, <code>Money</code>, <code>PhoneNumber</code>, <code>CountryCode</code>, <code>CurrencyCode</code>, <code>LanguageCode</code>, <code>Hostname</code>, <code>IpAddress</code>, <code>Url</code>, <code>Slug</code>, <code>Percentage</code>, <code>Age</code>, <code>MonetaryAmount</code>).</td>
+</tr>
+<tr>
+<td><code>Trellis.Asp</code></td>
+<td>ASP.NET Core integration (HTTP mapping, model binding, scalar validation, authorization providers, JSON gen).</td>
+</tr>
+<tr>
+<td><code>Trellis.EntityFrameworkCore</code></td>
+<td>EF Core integration (repository base, conventions, interceptors, generator).</td>
+</tr>
+<tr>
+<td><code>Trellis.Http</code></td>
+<td><code>HttpClient</code> → <code>Result</code> extensions for ACL layer.</td>
+</tr>
+<tr>
+<td><code>Trellis.Mediator</code></td>
+<td>Mediator pipeline behaviors over <code>martinothamar/Mediator</code>.</td>
+</tr>
+<tr>
+<td><code>Trellis.Authorization</code></td>
+<td>Actor + resource authorization model.</td>
+</tr>
+<tr>
+<td><code>Trellis.FluentValidation</code></td>
+<td>Opt-in FluentValidation pipeline behavior.</td>
+</tr>
+<tr>
+<td><code>Trellis.StateMachine</code></td>
+<td>Thin wrapper over Stateless. (Was: <code>Trellis.Stateless</code>.)</td>
+</tr>
+<tr>
+<td><code>Trellis.Testing</code></td>
+<td>Result/Maybe/EF/actor/time/token test helpers.</td>
+</tr>
+<tr>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td>Opt-in ASP.NET Core test client + <code>WebApplicationFactory</code> helpers.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Tooling Package (1)</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trellis.Analyzers</code></td>
+<td>Diagnostic rules (<code>TRLS001…099</code>). Source generators ship inside their respective runtime packages, not here.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Out-of-repo (separate repo, separate publishing):</strong></p>
+<ul>
+<li><code>Trellis.AspTemplate</code> — <code>dotnet new trellis-asp</code> template package; published from <code>TrellisAspTemplate</code> repo.</li>
+</ul>
+<hr>
+<h2 id="3-core-package--trelliscore">3. Core Package — <code>Trellis.Core</code></h2>
+<blockquote>
+<p><strong>Naming note:</strong> This package is renamed from <code>Trellis.Results</code> to <code>Trellis.Core</code> as part of the redesign. Rationale: after Phase 2 absorbs the scalar/composite VO base classes, the package is no longer &quot;just Results&quot; — it's the foundational core (Result + Maybe + Error + base classes + <code>EntityTagValue</code> + <code>RetryAfterValue</code> + tracing + <code>MaybeInvariant</code> + <code>Validate</code> builder). The <code>Trellis.Core</code> name reflects that role accurately, and avoids the misleading &quot;Results&quot; label. The api_reference filename also becomes <code>trellis-api-core.md</code>. The rename happens at the start of Phase 1a (the package contents are being rewritten anyway, so a NuGet-id change is paid in the same breaking-version bump to 2.0.0).</p>
+<p><strong>Scope expansion in Phase 2:</strong> Phase 1a (this section) covers the Result/Maybe/Error rewrite. Phase 2 absorbs (a) the scalar/composite VO <strong>base classes</strong> (<code>Scalar&lt;T,V&gt;</code>, <code>Composite</code>, <code>RequiredString</code>, <code>RequiredGuid</code>, <code>RequiredInt</code>, <code>RequiredDecimal</code>, <code>RequiredEnum</code>) from <code>Trellis.Primitives</code> and (b) the entire <code>Trellis.DomainDrivenDesign</code> package (<code>Aggregate</code>, <code>Entity</code>, <code>ValueObject</code>, <code>Specification</code> family, <code>IDomainEvent</code>, <code>IAggregate</code>, <code>IEntity</code>, <code>AggregateETagExtensions</code>) into <code>Trellis.Core</code>, alongside the source-generator rewrite. Rationale: all absorbed types have zero third-party dependencies (same as Result/Maybe), are already in the <code>Trellis</code> namespace, and form a cohesive domain-modeling vocabulary. The DDD merge specifically resolves the otherwise-awkward backward-dependency where <code>Composite : ValueObject</code> would force <code>Trellis.Core</code> to reference <code>Trellis.DomainDrivenDesign</code>. After Phase 2, <code>Trellis.Primitives</code> contains only the opt-in concrete VOs, and the <code>Trellis.DomainDrivenDesign</code> package no longer exists.</p>
+</blockquote>
+<h3 id="31-resultt--minimal-terminal-api">3.1 <code>Result&lt;T&gt;</code> — minimal terminal API</h3>
+<pre><code class="lang-csharp">public readonly struct Result&lt;T&gt;
+{
+    public bool IsSuccess { get; }
+    public bool IsFailure =&gt; !IsSuccess;
+
+    // Non-throwing nullable accessor — retained because it powers clean pattern-match idioms
+    // (`if (r.Error is { } e)`, `r.Error switch { Error.NotFound =&gt; ..., ... }`) that have no
+    // safety downside (it never throws). Removing it for symmetry with the throwing `Value`
+    // would have been a usability regression with no safety win.
+    public Error? Error { get; }
+
+    public bool TryGetValue([MaybeNullWhen(false)] out T value);
+    public bool TryGetError([MaybeNullWhen(false)] out Error error);
+
+    // Deconstruction is the only &quot;extract both&quot; path
+    public void Deconstruct(out bool isSuccess, out T? value, out Error? error);
+}
+</code></pre>
+<p><strong>Removed from the type itself:</strong></p>
+<ul>
+<li><code>Value</code> property — it threw <code>InvalidOperationException</code> on failure and was the primary cause of <code>TRLS003</code>. Removed in v2 (ga-03). Use <code>TryGetValue</code>, <code>Match</code>, or <code>Deconstruct</code>.</li>
+<li>All implicit conversions from <code>T</code> and from <code>Error</code>. They look magical and AI gets the direction wrong.</li>
+<li><code>IFailureFactory&lt;TSelf&gt;</code> static interface — <strong>retained</strong>. It is necessary for pipeline behaviors to construct typed failure responses without reflection while wrapping <code>martinothamar/Mediator</code>. The v1 plan's removal was conditioned on owning the dispatcher (deferred to optional Phase 7); under the wrapper model, the constraint stays. See §5.1 line 612 and the §16 score-table caveat.</li>
+</ul>
+<p><strong>Retained (revised from earlier ADR drafts):</strong></p>
+<ul>
+<li><code>Error</code> property is <strong>kept</strong>. It is nullable and never throws, so the original &quot;they throw → primary cause of TRLS004&quot; rationale only applies to <code>Value</code>. Removing <code>Error</code> would force <code>if (r.TryGetError(out var e))</code> everywhere a clean <code>if (r.Error is { } e) ...</code> pattern-match works today, breaking switch expressions (<code>r.Error switch { ... }</code>) and LINQ projections (<code>xs.Select(r =&gt; r.Error?.Code)</code>). The <code>TRLS004</code> analyzer continues to flag genuine misuse of <code>Error</code> (e.g., dereferencing without a null check or guard).</li>
+</ul>
+<p><strong>Construction is one path:</strong></p>
+<pre><code class="lang-csharp">Result.Ok(value);             // success: Result&lt;T&gt;
+Result.Fail&lt;T&gt;(error);        // failure: Result&lt;T&gt;
+Result.Ok();                  // success: Result (unit, no payload) — replaces Result&lt;Unit&gt;
+Result.Fail(error);           // failure: Result (unit, no payload)
+</code></pre>
+<p><strong>Non-generic <code>Result</code> — surface parity with <code>Result&lt;T&gt;</code>.</strong> <code>Result</code> (no generic) replaces <code>Result&lt;Unit&gt;</code> for &quot;success-or-failure-without-payload&quot;. Its surface mirrors <code>Result&lt;T&gt;</code> minus the value-bearing pieces:</p>
+<pre><code class="lang-csharp">public readonly struct Result
+{
+    public bool IsSuccess { get; }
+    public bool IsFailure =&gt; !IsSuccess;
+
+    public bool TryGetError([MaybeNullWhen(false)] out Error error);
+
+    public void Deconstruct(out bool isSuccess, out Error? error);
+}
+</code></pre>
+<p>Pipeline-verb shapes for the non-generic case:</p>
+<ul>
+<li><code>Result&lt;U&gt; Map&lt;U&gt;(Func&lt;U&gt; projector)</code> — unit-success → value-success projection. (<code>Map(Action)</code> is <strong>not</strong> provided; that would duplicate <code>Tap(Action)</code> and violate &quot;one verb per concept&quot;.)</li>
+<li><code>Result Bind(Func&lt;Result&gt; next)</code> — sequence another unit-returning step.</li>
+<li><code>Result&lt;U&gt; Bind&lt;U&gt;(Func&lt;Result&lt;U&gt;&gt; next)</code> — sequence a value-returning step from a unit <code>Result</code>.</li>
+<li><code>Result Tap(Action onSuccess)</code> — side-effect on success; no value to pass to the lambda.</li>
+<li><code>Result TapOnFailure(Action&lt;Error&gt; onFailure)</code> — symmetric with <code>Result&lt;T&gt;</code>.</li>
+<li><code>Result Ensure(Func&lt;bool&gt; predicate, Error error)</code> — guard with no value to inspect.</li>
+<li><code>U Match&lt;U&gt;(Func&lt;U&gt; onSuccess, Func&lt;Error, U&gt; onFailure)</code> — branch projection without a value parameter on the success arm.</li>
+<li><code>Result Recover(Func&lt;Error, Result&gt; next)</code> — recover from failure into another unit <code>Result</code>.</li>
+<li><code>Result.Try(Action work, Func&lt;Exception, Error&gt;? map = null)</code> and <code>Result.TryAsync(Func&lt;Task&gt; work, ...)</code>.</li>
+</ul>
+<p>Cross-shape <code>Result&lt;T&gt; → Result</code> is provided on <code>Bind</code> only: <code>Result&lt;T&gt;.Bind(Func&lt;T, Result&gt; next)</code> for &quot;I have a value but the next step is unit-returning&quot;. The reverse (<code>Result.Bind&lt;U&gt;(Func&lt;Result&lt;U&gt;&gt;)</code>) is the unit→value cross-shape listed above.</p>
+<p>Implicit conversion <code>Result&lt;T&gt; → Result</code> is <strong>not</strong> provided (consistent with §3.1's &quot;no implicit operators&quot; rule); explicit <code>result.AsUnit()</code> is provided for the legitimate need (&quot;I called something value-bearing but only care about success/failure&quot;). The <code>default(Result)</code> invariant is in §3.5.1.</p>
+<p><strong>Honest cost — overload doubling.</strong> Introducing a distinct non-generic <code>Result</code> rather than reusing <code>Result&lt;Unit&gt;</code> roughly doubles the verb overload count. The corrected per-verb matrix:</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th><code>Result&lt;T&gt;</code> shapes</th>
+<th>Unit/cross shapes added</th>
+<th>Total shapes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Map</code></td>
+<td>1 (<code>T → U</code>)</td>
+<td>1 (<code>Result → Result&lt;U&gt;</code>)</td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>Bind</code></td>
+<td>1 (<code>T → Result&lt;U&gt;</code>)</td>
+<td>3 (<code>Result → Result</code>, <code>Result → Result&lt;U&gt;</code>, <code>Result&lt;T&gt; → Result</code>)</td>
+<td>4</td>
+</tr>
+<tr>
+<td><code>Tap</code></td>
+<td>1 (<code>Action&lt;T&gt;</code>)</td>
+<td>1 (<code>Action</code>)</td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>TapOnFailure</code></td>
+<td>1 (<code>Action&lt;Error&gt;</code>)</td>
+<td>1 (<code>Action&lt;Error&gt;</code> on <code>Result</code>)</td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>Ensure</code></td>
+<td>1 (<code>Func&lt;T,bool&gt;</code>)</td>
+<td>1 (<code>Func&lt;bool&gt;</code>)</td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>Match</code></td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>Recover</code></td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>7</strong></td>
+<td><strong>9</strong></td>
+<td><strong>16</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Each shape × 6 async forms (§3.3) = <strong>96 verb overloads</strong> (vs ~42 if we kept <code>Result&lt;Unit&gt;</code>). <code>BindZip</code> (T4-generated 1..9 arity) and the LINQ surface get similar treatment for the unit cross-shapes, adding roughly another 30 overloads. We accept this cost because (a) every additional overload is T4-generated — write-once, regenerate-forever — so maintenance cost is near-zero; (b) at the call site the receiver type (<code>Result</code> vs <code>Result&lt;T&gt;</code>) filters the visible overloads to ≈12 per verb, so AI/IntelliSense never has to choose between unit and value shapes; (c) trim/AOT removes unused overloads from consumer apps; (d) the call-site ergonomics win (<code>Tap(() =&gt; log(&quot;done&quot;))</code> instead of <code>Tap(_ =&gt; log(&quot;done&quot;))</code>) and the elimination of the <code>Trellis.Unit</code> vs <code>Mediator.Unit</code> namespace collision are paid every day, while the &quot;two types to learn&quot; cost is paid once. The design's headline &quot;small surface for AI ergonomics&quot; is about <em>what the AI sees at a call site</em>, not about the absolute overload count in the assembly — and the call-site count goes <em>down</em>, not up.</p>
+<p><strong>Naming decision: rename <code>Success</code>/<code>Failure</code> → <code>Ok</code>/<code>Fail</code>.</strong> The current code uses <code>Result.Success(...)</code> and <code>Result.Failure&lt;T&gt;(...)</code>. v2 renames these to <code>Result.Ok(...)</code> and <code>Result.Fail&lt;T&gt;(...)</code>. Rationale:</p>
+<ul>
+<li><strong>Shorter at the call site.</strong> Factory verbs are written and read constantly; the saved characters compound.</li>
+<li><strong>Matches the dominant modern functional tradition</strong> (Rust <code>Ok</code>/<code>Err</code>, F# <code>Ok</code>/<code>Error</code>, <code>FluentResults</code> <code>Ok</code>/<code>Fail</code>). AI models trained on cross-language corpora produce <code>Ok</code>/<code>Fail</code> more readily, which directly serves the &quot;AI-correctness&quot; lens of this proposal.</li>
+<li><strong>Cleaner pairing with predicate properties.</strong> <code>IsSuccess</code>/<code>IsFailure</code> read as questions; <code>Ok</code>/<code>Fail</code> read as commands. Keeping the <em>predicate</em> names long-form (they already exist; not renamed) and the <em>factory</em> names short is the right ergonomic split.</li>
+<li><strong>Cost is paid once.</strong> Every call site in the framework, template, and consumer codebases changes — but the change is mechanical (Find &amp; Replace <code>Result.Success</code> → <code>Result.Ok</code>, <code>Result.Failure</code> → <code>Result.Fail</code>), is the kind of thing a codemod does perfectly, and is paid in the same v2.0.0 breaking-version bump that already removes <code>.Value</code>/<code>.Error</code>, removes implicit operators, and replaces <code>Result&lt;Unit&gt;</code> with non-generic <code>Result</code>. Adding the rename to that list does not change the upgrade <em>shape</em>, only its scope.</li>
+</ul>
+<p>The factory-method count drops from ~14 to ~3 <em>and</em> the survivors get shorter names. The drop comes from removing variants (<code>SuccessIf</code>, <code>FailureIf</code>, <code>SuccessIfAsync</code>, <code>FailureIfAsync</code>, <code>Success(Func&lt;T&gt;)</code>, <code>FromException</code>, <code>FromException&lt;T&gt;</code>, etc.), not from the rename. <strong>No automated migration tool is shipped, and no <code>MIGRATION_v2.md</code> document is published</strong> — the template is being rewritten on v2 and there are no external consumers. Rename mappings (<code>Success</code> → <code>Ok</code>, <code>Failure</code> → <code>Fail</code>) are documented in the relevant <code>trellis-api-*.md</code> &quot;Breaking changes from v1&quot; sections; the renames are mechanical enough that a 30-line <code>sed</code>/find-replace handles them.</p>
+<p><code>Unit</code> is removed from the public API. <code>Result</code> (no generic) represents &quot;success or failure without payload&quot;. This eliminates the <code>Trellis.Unit</code> vs <code>Mediator.Unit</code> collision. <strong>Consumer-visible impact:</strong> every command/query handler returning <code>Task&lt;Result&lt;Unit&gt;&gt;</code> becomes <code>Task&lt;Result&gt;</code>; every controller action signature <code>ActionResult&lt;Trellis.Unit&gt;</code> (e.g., the template's <code>Delete</code> action) becomes <code>ActionResult</code> (or <code>IActionResult</code> where the projection is non-trivial). OpenAPI documents regenerate; client SDKs generated from the OpenAPI doc see a return-shape change. The Phase 6 template rewrite (§15) regenerates the OpenAPI document from the v2 surface — no v1 client-shape compatibility is offered.</p>
+<p><strong>Important — <code>WriteOutcome&lt;T&gt;</code> is a first-class wrapper, not metadata.</strong> Repositories that perform writes return <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> where <code>WriteOutcome&lt;T&gt;</code> is a closed <code>record</code> hierarchy modeling RFC 9110 §9.3.4 write outcomes. The cases are:</p>
+<pre><code class="lang-csharp">public abstract record WriteOutcome&lt;T&gt;
+{
+    private WriteOutcome() { }
+    public sealed record Created(T Value, string Location, RepresentationMetadata? Metadata = null)             : WriteOutcome&lt;T&gt;;
+    public sealed record Updated(T Value, RepresentationMetadata? Metadata = null)                              : WriteOutcome&lt;T&gt;;
+    public sealed record UpdatedNoContent(RepresentationMetadata? Metadata = null)                              : WriteOutcome&lt;T&gt;;
+    public sealed record Unchanged(T Value, RepresentationMetadata? Metadata = null)                            : WriteOutcome&lt;T&gt;; // NEW in v2 — see §6.2 for status mapping
+    public sealed record Accepted(T StatusBody, string? MonitorUri = null, RetryAfterValue? RetryAfter = null)  : WriteOutcome&lt;T&gt;;
+    public sealed record AcceptedNoContent(string? MonitorUri = null, RetryAfterValue? RetryAfter = null)       : WriteOutcome&lt;T&gt;;
+}
+</code></pre>
+<p>The ASP layer reads the case to choose 200/201/202/204 (mapping table in §6.2). <strong><code>WriteOutcome&lt;T&gt;</code> moves from <code>Trellis.Asp</code> (its current location, see <code>Trellis.Asp/src/WriteOutcome.cs</code>) to <code>Trellis.Core</code></strong> as part of Phase 1a, because the Application layer's repository interfaces need to declare it as a return type — and Application cannot reference <code>Trellis.Asp</code> under Clean Architecture. The <code>Unchanged</code> case is the <strong>only</strong> addition vs v1 (everything else preserves the existing case set including the v1 202/Accepted support); <code>RepresentationMetadata</code> is moved alongside <code>WriteOutcome&lt;T&gt;</code> to <code>Trellis.Core</code> (it is referenced by every value-bearing case). This is a real cross-layer migration: every <code>IRepository</code> signature in every consumer codebase that today returns <code>Result&lt;T&gt;</code> for a write changes to <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>. This was an error in v1 — there is nowhere on the bare <code>Result&lt;T&gt;</code> to store outcome metadata; we keep <code>WriteOutcome&lt;T&gt;</code> explicit <em>and</em> we move it to the layer that actually originates it.</p>
+<h3 id="32-the-seven-pipeline-verbs">3.2 The Seven Pipeline Verbs</h3>
+<p>The pipeline surface is seven verbs plus three retained companion forms (<code>BindZip</code> for value-preserving chains, LINQ query syntax for monadic composition, <code>Try</code>/<code>Traverse</code> for boundaries and collections). Every other current pipeline verb either is a special case of one of these or is moved to a builder/helper.</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Replaces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Map</code></td>
+<td><code>Result&lt;U&gt; Map&lt;U&gt;(Func&lt;T, U&gt;)</code></td>
+<td><code>Map</code></td>
+</tr>
+<tr>
+<td><code>Bind</code></td>
+<td><code>Result&lt;U&gt; Bind&lt;U&gt;(Func&lt;T, Result&lt;U&gt;&gt;)</code></td>
+<td><code>Bind</code></td>
+</tr>
+<tr>
+<td><code>Tap</code></td>
+<td><code>Result&lt;T&gt; Tap(Action&lt;T&gt;)</code> — runs only on success</td>
+<td><code>Tap</code>, <code>Check</code> (when used for success-side side effects)</td>
+</tr>
+<tr>
+<td><code>TapOnFailure</code></td>
+<td><code>Result&lt;T&gt; TapOnFailure(Action&lt;Error&gt;)</code> — runs only on failure</td>
+<td><code>TapError</code> (FP tradition), <code>Check</code> (when used for failure-side side effects)</td>
+</tr>
+<tr>
+<td><code>Ensure</code></td>
+<td><code>Result&lt;T&gt; Ensure(Func&lt;T, bool&gt;, Error)</code></td>
+<td><code>Ensure</code>, <code>Check</code> (validation), <code>SuccessIf</code>, <code>FailureIf</code>, <code>EnsureAll</code> (via Validate builder)</td>
+</tr>
+<tr>
+<td><code>Match</code></td>
+<td><code>U Match&lt;U&gt;(Func&lt;T, U&gt;, Func&lt;Error, U&gt;)</code></td>
+<td><code>Match</code>, <code>MatchError</code>, <code>Switch</code>, <code>SwitchError</code></td>
+</tr>
+<tr>
+<td><code>Recover</code></td>
+<td><code>Result&lt;T&gt; Recover(Func&lt;Error, Result&lt;T&gt;&gt;)</code></td>
+<td><code>Recover</code>, <code>RecoverOnFailure</code>, <code>MapOnFailure</code> (via <code>.Recover(e =&gt; Fail(map(e)))</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Retained companion verbs (distinct surface, not aliases of <code>Bind</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Why kept (not folded into <code>Bind</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BindZip</code></td>
+<td><code>Result&lt;(T,U)&gt; BindZip&lt;U&gt;(Func&lt;T, Result&lt;U&gt;&gt;)</code> (and the T4-generated 2..9-arity overloads <code>Result&lt;(T1,…,Tn,U)&gt; BindZip(...)</code>)</td>
+<td>Preserves prior pipeline values into a tuple. The &quot;absorbed&quot; alternative — <code>result.Bind(t =&gt; GetU(t).Map(u =&gt; (t, u)))</code> at every step — is genuinely uglier and fights AI generation. The tuple-accumulating chain <code>r.BindZip(GetCustomer).BindZip((order, customer) =&gt; GetInventory(...))</code> is the most readable shape for &quot;I need all of these values to compute the next step&quot; without inventing a record type per intermediate state.</td>
+</tr>
+<tr>
+<td><code>Select</code> / <code>SelectMany</code> / <code>Where</code></td>
+<td>LINQ query-syntax surface (T4-generated). <code>SelectMany</code> is the 3-arg projection-collector form <code>(this Result&lt;T&gt;, Func&lt;T, Result&lt;U&gt;&gt;, Func&lt;T, U, V&gt;) → Result&lt;V&gt;</code> — the form that actually enables <code>from x in r1 from y in r2(x) select combine(x,y)</code>.</td>
+<td>Lets users compose <code>Result</code>-returning operations in C# query syntax. A real subset of the .NET community prefers query syntax for multi-step monadic composition (<code>from a in r1 from b in r2(a) from c in r3(a, b) select build(a, b, c)</code>), and the surface is cheap to maintain (Select is one line over Map; SelectMany is one line over Bind+Map; Where is one line over Ensure). Removing it forces those users back to <code>.Bind(...).Bind(...)</code> chains, which is a usability regression for no maintenance saving.</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>Where</code> policy — error is generic by construction.</strong> C# query syntax <code>where p</code> cannot supply a domain-meaningful <code>Error</code> because the language pins the lambda shape to <code>Func&lt;T, bool&gt;</code>. <code>Where</code> therefore returns a generic <code>Error.Unexpected(&quot;Result filtered out by predicate.&quot;)</code> failure when the predicate is false. This is documented as a deliberate trade-off (LINQ syntax convenience vs domain-meaningful errors), and a new analyzer <strong><code>TRLS030</code></strong> flags <code>Where</code> calls in production code with the message: &quot;<code>Where</code> produces a generic <code>Unexpected</code> error. Use <code>.Ensure(predicate, domainError)</code> for production code; <code>Where</code> is intended for ad-hoc query syntax and tests.&quot; The analyzer is <strong>info-severity by default</strong> and can be promoted to warning per consumer policy. <code>Where</code> is retained because removing it breaks the LINQ query-syntax surface (no <code>where</code> clause) — the analyzer is the right tool for &quot;available but discouraged&quot;.</p>
+<p><strong>No <code>Tap</code>/<code>TapOnFailure</code> ambiguity by construction.</strong> The two verbs have distinct names, so <code>result.Tap(x =&gt; ...)</code> is always success-side and <code>result.TapOnFailure(e =&gt; ...)</code> is always failure-side — no overload-resolution gamble at the call site, and <code>Result&lt;Error&gt;</code> (rare in practice) is unambiguous too. This is a deliberate <em>split</em> of what would otherwise be a single overloaded <code>Tap</code>: the AI-ergonomics cost of &quot;one name does two things based on lambda parameter type&quot; outweighs the verb-count saving. The naming follows the same logic that drives <code>Result.Ok</code>/<code>Fail</code> (§3.1): one verb, one effect, no inference required.</p>
+<p><strong>Why not <code>OnSuccess</code>/<code>OnFailure</code> / <code>BindAlso</code> / <code>Peek</code> etc.?</strong> A pure English-readability lens would prefer event-style names (<code>OnSuccess</code>, <code>OnFailure</code>) and self-documenting compounds (<code>BindAlso</code> for <code>BindZip</code>). We deliberately keep the FP-tradition names because <strong>CSharpFunctionalExtensions migrants are an explicit audience for v2</strong> (§0 — Trellis is a fork of CFE). <code>Tap</code>/<code>Bind</code>/<code>BindZip</code>/<code>Map</code>/<code>Ensure</code>/<code>Match</code>/<code>Recover</code> are the names CFE users already read fluently, the names every existing CFE code sample on the internet uses, and the names the FluentResults / F# / Rust ecosystems converge on. The one deliberate departure is <code>TapOnFailure</code> (rather than the FP-tradition <code>TapError</code>): the <code>OnFailure</code> suffix names the <em>condition</em> under which the side-effect runs, mirroring <code>IsFailure</code>/<code>IsSuccess</code> and the analyzer terminology used throughout this document, and removes any doubt at the call site about which side of the rail the lambda fires on. Renaming the rest for English-readability would force every migrating user (and every AI model trained on CFE-flavored corpora) through a translation layer for no functional gain. The readability cost is real but accepted: we pay it once via documentation (the public API docs explicitly gloss <code>Tap</code> as &quot;side-effect on the success value&quot;, <code>TapOnFailure</code> as &quot;side-effect on the error&quot;, <code>BindZip</code> as &quot;bind and preserve the prior value into a tuple&quot;) rather than paying it forever via name churn.</p>
+<p><strong>Recover signature:</strong> the proposal keeps only <code>Recover(Func&lt;Error, Result&lt;T&gt;&gt;)</code>. The current code's simpler <code>Recover(Func&lt;Error, T&gt;)</code> (re-rail to success) is dropped; equivalent is <code>result.Recover(e =&gt; Result.Ok(map(e)))</code>. Documented in the migration notes.</p>
+<p><strong>Boundary adapters retained, not collapsed into the seven:</strong></p>
+<ul>
+<li><code>Result.Try(Func&lt;T&gt;, Func&lt;Exception, Error&gt;? map = null)</code> — exception → failure for foreign code.</li>
+<li><code>Result.TryAsync(Func&lt;Task&lt;T&gt;&gt;, Func&lt;Exception, Error&gt;? map = null)</code> — async variant.</li>
+</ul>
+<p><strong>Collection traversal retained, not collapsed:</strong></p>
+<ul>
+<li><code>IEnumerable&lt;T&gt;.Traverse(Func&lt;T, Result&lt;U&gt;&gt;)</code> → <code>Result&lt;IReadOnlyList&lt;U&gt;&gt;</code>. Stops at first failure or accumulates field errors when the inner result is a <code>ValidationError</code> (configurable via overload).</li>
+</ul>
+<p><strong>Deleted entirely:</strong> <code>When</code>, <code>WhenAll</code>, <code>If</code>, <code>MapIf</code>, <code>CheckIf</code>, <code>Discard</code>, <code>Then</code>. (<code>Combine</code> becomes the <code>Validate</code> builder for &gt;2 fields and a tuple helper for 2 fields.)</p>
+<h3 id="33-async-overload-model--explicit-specification">3.3 Async overload model — explicit specification</h3>
+<p><strong>Naming (decided 2026-04-20, see Axiom B):</strong> sync verb is <code>Foo</code>; every Task/ValueTask-returning overload is <code>FooAsync</code>. There is no overload between <code>Foo</code> and <code>FooAsync</code>; resolution is by suffix, not by argument shape. This mirrors BCL convention, eliminates the sync/async overload-ambiguity trap, and gives the call site a visible <code>await</code> cue.</p>
+<p>For each pipeline verb V, the user-facing API consists of one sync overload and five async overloads (taking <code>Map</code> as the example; others mirror):</p>
+<pre><code class="lang-csharp">// Sync source × sync function
+public static Result&lt;U&gt; Map&lt;T,U&gt;(this Result&lt;T&gt; r, Func&lt;T,U&gt; f);
+
+// Async source (Task) × sync function
+public static Task&lt;Result&lt;U&gt;&gt; MapAsync&lt;T,U&gt;(this Task&lt;Result&lt;T&gt;&gt; r, Func&lt;T,U&gt; f);
+
+// Async source (ValueTask) × sync function
+public static ValueTask&lt;Result&lt;U&gt;&gt; MapAsync&lt;T,U&gt;(this ValueTask&lt;Result&lt;T&gt;&gt; r, Func&lt;T,U&gt; f);
+
+// Sync source × async function (Task)
+public static Task&lt;Result&lt;U&gt;&gt; MapAsync&lt;T,U&gt;(this Result&lt;T&gt; r, Func&lt;T, Task&lt;U&gt;&gt; f);
+
+// Async source × async function (Task)
+public static Task&lt;Result&lt;U&gt;&gt; MapAsync&lt;T,U&gt;(this Task&lt;Result&lt;T&gt;&gt; r, Func&lt;T, Task&lt;U&gt;&gt; f);
+
+// Async source (ValueTask) × async function (ValueTask)
+public static ValueTask&lt;Result&lt;U&gt;&gt; MapAsync&lt;T,U&gt;(this ValueTask&lt;Result&lt;T&gt;&gt; r, Func&lt;T, ValueTask&lt;U&gt;&gt; f);
+</code></pre>
+<p>That is <strong>1 sync + 5 async = 6 overloads per verb</strong> (<code>Map</code>/<code>MapAsync</code>, <code>Bind</code>/<code>BindAsync</code>, <code>Tap</code>/<code>TapAsync</code>, <code>TapOnFailure</code>/<code>TapOnFailureAsync</code>, <code>Ensure</code>/<code>EnsureAsync</code>, <code>Recover</code>/<code>RecoverAsync</code>) and a slightly different shape for <code>Match</code>/<code>MatchAsync</code> (2 result-typed funcs). Total async-handling overloads ≈ <strong>30 minimum, likely 40–50 in practice</strong> once any deferred-error-factory variants of <code>EnsureAsync</code> (<code>Func&lt;Error&gt;</code> overloads) are included. The exact count is fixed in Phase 1a; the upper bound is expected to be ≤ 60 overloads across all seven verbs combined. <strong>Trade-offs we accept:</strong></p>
+<ul>
+<li>Mixing <code>Task</code> and <code>ValueTask</code> on the same call (e.g., <code>ValueTask&lt;Result&lt;T&gt;&gt;</code> source + <code>Task&lt;U&gt;</code> function) requires an explicit conversion. This is a deliberate constraint — the alternative (cross-product = 12+ overloads per verb) creates resolution ambiguity.</li>
+<li>The library does not implicitly lift <code>Task&lt;T&gt;</code> (without <code>Result</code>) into a Result chain; users use <code>.MapAsync(_ =&gt; fooAsync())</code> or call <code>TryAsync</code> for exception-bearing async work.</li>
+</ul>
+<p>Internal file layout follows the same suffix split: <code>Map.cs</code> holds the sync overload; <code>MapAsync.cs</code> holds the five async overloads. The Left/Right/Both file-naming sub-convention disappears.</p>
+<h3 id="34-combining-results--two-distinct-operations">3.4 Combining results — two distinct operations</h3>
+<p>Two operations with <strong>different semantics</strong>. Both exist; the choice is semantic, not ergonomic.</p>
+<h4 id="validatefieldandbuild--validation-aggregation"><code>Validate.Field(...).And(...).Build(...)</code> — validation aggregation</h4>
+<pre><code class="lang-csharp">// FirstName, LastName are user-authored scalars (not shipped by Trellis.Primitives).
+Result&lt;User&gt; user = Validate
+    .Field(&quot;firstName&quot;, FirstName.TryCreate(req.FirstName))
+    .Field(&quot;lastName&quot;,  LastName.TryCreate(req.LastName))
+    .Field(&quot;email&quot;,     EmailAddress.TryCreate(req.Email))
+    .Field(&quot;age&quot;,       Age.TryCreate(req.Age))
+    .Build((first, last, email, age) =&gt; User.Create(first, last, email, age));
+</code></pre>
+<ul>
+<li>All field errors accumulated into a single <code>ValidationError</code> with <code>FieldErrors[]</code>.</li>
+<li>Tuple arities 2–4 keep lambda destructuring on <code>Build</code>.</li>
+<li>For arities ≥ 5, <code>Build</code> requires a record type or positional callback.</li>
+<li><strong>No arity ceiling.</strong></li>
+<li>Inputs assumed to be validation-shaped (<code>ValidationError</code> failures). Mixing in a <code>NotFoundError</code> would be a type/semantic mismatch.</li>
+</ul>
+<h4 id="resultcombinet1t9r1-r2---heterogeneous-value-combination"><code>Result.Combine&lt;T1..T9&gt;(r1, r2, ...)</code> — heterogeneous value combination</h4>
+<pre><code class="lang-csharp">var result = Result.Combine(orderResult, customerResult, productResult)
+    .Bind((order, customer, product) =&gt; CreateLineItem(order, customer, product));
+</code></pre>
+<ul>
+<li>Combines <code>Result&lt;T1&gt;..&lt;T9&gt;</code> of any value types into <code>Result&lt;(T1,..,T9)&gt;</code>.</li>
+<li><strong>First-failure-wins semantics.</strong> No aggregation across heterogeneous error types — a <code>NotFoundError</code> and a <code>ConflictError</code> have no useful combined HTTP/UX mapping.</li>
+<li>Error position is deterministic (first argument's failure wins).</li>
+<li>Subsequent results not evaluated for error aggregation; their value is observed only for parallel async via <code>Result.ParallelAsync</code>.</li>
+<li>T1..T9 surface kept (T4-generated, zero cost).</li>
+<li><code>TRLS014</code> (T10 hard-error) <strong>stays</strong> with a clearer message steering users to record-grouping or <code>Validate</code>.</li>
+</ul>
+<h4 id="resultparallelasynct1t9--parallel-async-fan-in"><code>Result.ParallelAsync&lt;T1..T9&gt;</code> — parallel async fan-in</h4>
+<p>Retained for parallel async work where you want both branches to execute even if one fails (for OpenTelemetry, logging, or compensating actions). Returns <code>Result&lt;(T1..T9)&gt;</code> with first-failure-wins on the <em>result</em>, but both/all branches run to completion.</p>
+<h4 id="traverse--collection-traversal"><code>Traverse</code> — collection traversal</h4>
+<pre><code class="lang-csharp">Result&lt;IReadOnlyList&lt;Order&gt;&gt; = orders.Traverse(o =&gt; Order.TryCreate(o));
+</code></pre>
+<p>Stops at first failure (or accumulates field errors when the inner failure is a <code>ValidationError</code>, configurable via overload).</p>
+<p><strong>Deleted entirely:</strong> <code>When</code>, <code>WhenAll</code> (use <code>ParallelAsync</code>), <code>If</code>, <code>MapIf</code>, <code>CheckIf</code>, <code>Discard</code>. <code>AggregateError</code> is removed — <code>ValidationError</code> already aggregates field errors; for non-validation cases, first-failure-wins.</p>
+<h3 id="35-maybet--keep-trim-retain-maybeinvariant">3.5 <code>Maybe&lt;T&gt;</code> — keep, trim, retain <code>MaybeInvariant</code></h3>
+<h4 id="350-why-maybet-survives-alongside-nullable-reference-types">3.5.0 Why <code>Maybe&lt;T&gt;</code> survives alongside nullable reference types</h4>
+<p>The first question a v2 reader asks is &quot;isn't <code>T?</code> plus NRT enough?&quot; Answer: not quite, and the gap is what <code>Maybe&lt;T&gt;</code> earns its keep on:</p>
+<ol>
+<li><strong>Value-type semantics with chaining.</strong> <code>Maybe&lt;int&gt;</code> distinguishes &quot;no value&quot; from <code>0</code> cleanly, with <code>.Bind</code>/<code>.Map</code> chains. <code>int?</code> does too, but the moment the chain involves a reference type, <code>T?</code>-vs-<code>Maybe&lt;T&gt;</code> mixing breaks fluent composition. <code>Maybe&lt;T&gt;</code> is uniform across reference and value types.</li>
+<li><strong>Explicit <code>None</code> in collection elements.</strong> <code>IReadOnlyList&lt;Maybe&lt;TItem&gt;&gt;</code> says &quot;every slot is present, but each slot may be empty&quot; — the only alternative is <code>IReadOnlyList&lt;TItem?&gt;</code> which conflates &quot;absent&quot; with &quot;default&quot;. Repository batch results legitimately need this.</li>
+<li><strong>IL-level distinction from <code>null</code>-as-absence.</strong> Application-layer repository signatures <code>Task&lt;Maybe&lt;TodoItem&gt;&gt; FindAsync(TodoId id)</code> document &quot;this lookup may legitimately find nothing, and that is not an error&quot;. <code>Task&lt;TodoItem?&gt;</code> says the same thing in C# but doesn't survive reflection / serialization / logging boundaries the way a struct does.</li>
+<li><strong>Pattern-match composition with <code>Result&lt;T&gt;</code>.</strong> <code>result.Bind(t =&gt; repository.FindAsync(t.OwnerId))</code> works uniformly when <code>FindAsync</code> returns <code>Maybe&lt;Owner&gt;</code> and there's a <code>Result&lt;Maybe&lt;T&gt;&gt;</code> extension surface. Mixing <code>T?</code> into a Result chain forces null-checks back into user code.</li>
+</ol>
+<p><code>Maybe&lt;T&gt;</code> is <strong>not</strong> for &quot;I might forget to handle null&quot;. That is what NRT + the compiler is for. It is for situations where absence is a first-class domain outcome that participates in further composition.</p>
+<h4 id="351-default-invariants-for-result-and-maybe-structs">3.5.1 <code>default(...)</code> invariants for Result and Maybe structs</h4>
+<p>Both <code>Result&lt;T&gt;</code> and <code>Maybe&lt;T&gt;</code> are <code>readonly struct</code>s. C# guarantees <code>default(SomeStruct)</code> will appear (uninitialized fields, generic instantiations, deserialization of older payloads). v2 specifies the invariants explicitly so an unintentional <code>default(...)</code> is well-defined, not a hidden failure mode:</p>
+<ul>
+<li><strong><code>default(Result&lt;T&gt;)</code></strong> equals <code>Result.Fail&lt;T&gt;(Error.Unexpected(&quot;Result was default-initialized; use Result.Ok or Result.Fail.&quot;))</code>. <code>IsSuccess</code> is <code>false</code>; <code>IsFailure</code> is <code>true</code>; <code>TryGetValue</code> returns <code>false</code>; <code>TryGetError</code> yields the sentinel <code>UnexpectedError</code>. Rationale: silently defaulting to &quot;success&quot; would propagate uninitialized state through pipelines; defaulting to a typed failure makes the bug surface immediately on first <code>Match</code>/<code>TryGet</code>.</li>
+<li><strong><code>default(Maybe&lt;T&gt;)</code></strong> equals <code>Maybe&lt;T&gt;.None</code>. <code>HasValue</code> is <code>false</code>; <code>TryGetValue</code> returns <code>false</code>; equality with <code>Maybe&lt;T&gt;.None</code> is <code>true</code>. Rationale: this matches user intuition — an uninitialized optional is empty — and is consistent with how <code>Nullable&lt;T&gt;</code> behaves.</li>
+<li><strong><code>default(Result)</code></strong> (non-generic) equals <code>Result.Fail(Error.Unexpected(&quot;Result was default-initialized.&quot;))</code>. Same rationale as <code>Result&lt;T&gt;</code>.</li>
+</ul>
+<p>A new analyzer <code>TRLS029</code> flags expressions that rely on <code>default(Result)</code>, <code>default(Result&lt;T&gt;)</code>, or <code>default(Maybe&lt;T&gt;)</code> outside of (a) framework-internal struct initialization paths and (b) test fixtures where defaulting is intentional. The analyzer message is &quot;Did you mean: <code>Result.Ok(...)</code>, <code>Result.Fail(...)</code>, or <code>Maybe&lt;T&gt;.None</code>?&quot;.</p>
+<p>Keep the type. Remove:</p>
+<ul>
+<li>Equality with raw <code>T</code> (currently implemented via <code>IEquatable&lt;T&gt;</code> in <code>Maybe{T}.cs</code> line 32 — removal breaks <code>someMaybe.Equals(rawValue)</code> call sites; documented in the <code>trellis-api-core.md</code> &quot;Breaking changes from v1&quot; section) and with <code>object</code>.</li>
+<li>Redundant <code>Or</code> overloads (collapsed to <code>Or(T fallback)</code> and <code>Or(Func&lt;T&gt; factory)</code>).</li>
+<li>Implicit <code>Maybe&lt;T&gt;(T value)</code>.</li>
+</ul>
+<p>Retain (already in current code, no work in Phase 1a beyond confirming the surface):</p>
+<ul>
+<li><code>Maybe.From&lt;T&gt;(T?)</code> — already exists for <code>T : notnull</code> with both class and struct constraint coverage; retained as-is.</li>
+<li><code>IEquatable&lt;Maybe&lt;T&gt;&gt;</code> — already implemented.</li>
+</ul>
+<p><strong>Retain</strong> the entire <code>MaybeInvariant</code> family (<code>AllOrNone</code>, <code>Requires</code>, <code>MutuallyExclusive</code>, <code>ExactlyOne</code>, <code>AtLeastOne</code>). These encode cross-field rules that the <code>Validate</code> builder does not — they are domain-meaningful and AI-assistive. They live in <code>Trellis.Core</code>.</p>
+<h3 id="36-error--closed-by-convention-catalog-transport-agnostic">3.6 <code>Error</code> — closed-by-convention catalog (transport-agnostic)</h3>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>This section was speculative when written. The shipped V2 design diverged in several ways. The text below has been <strong>replaced with the locked design</strong>; the original speculative notes are preserved in PR7's checkpoint history (<code>session-state/checkpoints/015-pr7-error-redesign-locked-star.md</code>) for archeology.</p>
+</div>
+<p><strong>Final shipped design (V6):</strong></p>
+<pre><code class="lang-csharp">public abstract record Error
+{
+    private Error() { }                                              // truly closed: only nested cases
+
+    public abstract string Kind { get; }                             // IANA-aligned slug
+    public virtual  string Code =&gt; Kind;                             // overridden when payload carries a ReasonCode/FaultId
+
+    public string? Detail { get; init; }                             // free-form override
+    public Error?  Cause  { get; init; }                             // structured chain; cycle-checked at init
+
+    // Equality compares Kind + payload + Detail. Cause excluded (mirrors System.Exception precedent).
+}
+
+// 18 nested sealed records — full catalog:
+//   BadRequest(ReasonCode, At?), Unauthorized(Challenges), Forbidden(PolicyId, Resource?),
+//   NotFound(Resource), MethodNotAllowed(Allow), NotAcceptable(Available),
+//   Conflict(Resource?, ReasonCode), Gone(Resource), PreconditionFailed(Resource, Condition),
+//   ContentTooLarge(MaxBytes?), UnsupportedMediaType(Supported), RangeNotSatisfiable(CompleteLength, Unit),
+//   UnprocessableContent(Fields, Rules), PreconditionRequired(Condition), TooManyRequests(RetryAfter?),
+//   InternalServerError(FaultId), NotImplemented(Feature), ServiceUnavailable(RetryAfter?),
+//   Aggregate(Errors)  // auto-flattens; disallows Cause
+</code></pre>
+<p>Key decisions vs the original speculation:</p>
+<ul>
+<li><strong>Catalog is truly closed at the language level</strong> (private base ctor) — not &quot;closed-by-convention enforced by analyzer&quot;. The C# compiler verifies exhaustive <code>switch</code> over <code>Error</code> for free; no <code>TRLS026</code>/<code>TRLS027</code> analyzers are needed.</li>
+<li><strong>No static factory methods.</strong> Every call site writes <code>new Error.X(payload) { Detail = &quot;...&quot; }</code>. This eliminates a parallel API surface and forces typed-payload discipline.</li>
+<li><strong>Naming aligned to RFC 9110 / IANA slugs</strong>: <code>Error.UnprocessableContent</code> (not &quot;ValidationError&quot;), <code>Error.ContentTooLarge</code> (not &quot;PayloadTooLarge&quot;), <code>Error.InternalServerError</code> (not &quot;UnexpectedError&quot;), <code>Error.TooManyRequests</code> (not &quot;RateLimitError&quot;). One vocabulary across domain → application → API.</li>
+<li><strong><code>Aggregate</code> is a first-class case</strong> (the original plan removed it) — auto-flattens nested aggregates at construction; disallows <code>Cause</code> (composition node, not a chain link).</li>
+<li><strong><code>UnprocessableContent</code> carries both <code>Fields</code> (per-field violations) and <code>Rules</code> (cross-field invariants).</strong> <code>FieldViolation</code> and <code>RuleViolation</code> use <code>ImmutableDictionary&lt;string, string&gt;? Args</code> for parameterized i18n messages — wire-stable strings, no <code>object?</code> bags.</li>
+<li><strong><code>ResourceRef</code>, <code>InputPointer</code>, <code>EquatableArray&lt;T&gt;</code> ship in <code>Trellis.Results</code>.</strong> <code>EquatableArray&lt;T&gt;</code> wraps <code>ImmutableArray&lt;T&gt;</code> to give records <code>SequenceEqual</code> semantics (arrays use reference equality by default in record <code>Equals</code>).</li>
+<li><strong>HTTP status mapping lives in <code>Trellis.Asp</code></strong> as a <code>TrellisAspOptions</code> dictionary (<code>MapError&lt;TError&gt;(int status)</code>). Core stays transport-agnostic; the wire renderer also synthesizes <code>ProblemDetails.Instance</code> from request URL + the typed payload's <code>ResourceRef</code>.</li>
+<li><strong>No live <code>Exception</code> on errors.</strong> <code>Error.InternalServerError(string FaultId)</code> carries an opaque ID; rich diagnostics live in your log/telemetry indexed by <code>FaultId</code>. On 5xx responses, <code>Detail</code> is redacted at the wire boundary.</li>
+<li><strong><code>Result.Error</code> became <code>public Error?</code></strong> (nullable, never throws) and <code>Result&lt;Unit&gt;</code> collapsed to non-generic <code>Result</code>. Full rationale: <a href="ADR-001-result-api-surface.html"><code>docs/docfx_project/adr/ADR-001-result-api-surface.md</code></a>.</li>
+<li><strong>SemVer policy:</strong> adding a new case to the closed catalog is a major-version change (since <code>switch</code> is exhaustive at the language level — every consumer would need a new arm). The full catalog-evolution policy is documented in <a href="../api_reference/trellis-api-core.html"><code>docs/docfx_project/api_reference/trellis-api-core.md</code></a> under &quot;Catalog evolution&quot;.</li>
+</ul>
+<h3 id="37-opentelemetry--tracing-retained">3.7 OpenTelemetry / tracing retained</h3>
+<p><code>Trellis.Core</code> keeps the result-tracing surface intact:</p>
+<ul>
+<li><code>ResultDebugSettings.EnableDebugTracing</code> — kept (note: thread-safe writes, not isolated; tests that need isolation use <code>AsyncLocal</code>).</li>
+<li><code>ResultsTraceProviderBuilderExtensions.AddResultsInstrumentation</code> — kept.</li>
+<li>The <code>Result&lt;T&gt;</code> constructor's auto-<code>Activity.Current.SetStatus</code> behavior — kept.</li>
+<li><code>RailwayTrackAttribute</code> / <code>TrackBehavior</code> for marking helpers as success-track or failure-track — kept.</li>
+<li>The pattern <code>using var activity = ...; result.LogActivityStatus();</code> for child activities — kept and documented.</li>
+</ul>
+<p><code>Trellis.Primitives</code> keeps <code>PrimitiveValueObjectTrace</code> (and the <code>AsyncLocal&lt;ActivitySource&gt;</code> test-isolation pattern).</p>
+<hr>
+<h2 id="4-trellisprimitives--opinionated-vos">4. <code>Trellis.Primitives</code> — opinionated VOs</h2>
+<h3 id="41-the-base-classes">4.1 The base classes</h3>
+<p>A scalar VO is declared by partial class + attribute; the generator produces everything:</p>
+<pre><code class="lang-csharp">// User-authored scalar — `FirstName` is not shipped by Trellis.Primitives;
+// it's an example of what a consumer writes against the Trellis.Core base classes.
+[Trellis.Primitives.Scalar(Of = typeof(string))]
+[Trellis.Primitives.StringLength(50, MinimumLength = 1)]
+public partial class FirstName : Scalar&lt;FirstName, string&gt;;
+</code></pre>
+<p>The generator emits, <strong>by default and consistently</strong>:</p>
+<ul>
+<li><code>static Result&lt;FirstName&gt; TryCreate(string?)</code></li>
+<li><code>static FirstName Create(string)</code> (throws on validation failure)</li>
+<li><code>string Value { get; }</code></li>
+<li>JSON converter</li>
+<li>EF converter</li>
+<li><code>ToString()</code>, <code>Equals</code>, <code>GetHashCode</code></li>
+</ul>
+<p>The generator emits <strong>opt-in via additional attributes</strong>:</p>
+<ul>
+<li><code>IComparable&lt;FirstName&gt;</code> (<code>[Comparable]</code>)</li>
+<li><code>IFormattable.ToString(format, provider)</code> (<code>[Formattable]</code>, only valid for numeric/date <code>T</code>)</li>
+</ul>
+<p><strong>No <code>IConvertible</code> ever. No implicit operator to primitive ever.</strong></p>
+<h3 id="42-the-13-built-in-vos">4.2 The 13 built-in VOs</h3>
+<p><code>Trellis.Primitives</code> ships <strong>13 concrete opinionated VOs</strong> covering common standards-based values: <code>EmailAddress</code> (RFC 5321), <code>Money</code> (composite of <code>MonetaryAmount</code> + <code>CurrencyCode</code>), <code>MonetaryAmount</code>, <code>CurrencyCode</code> (ISO 4217), <code>CountryCode</code> (ISO 3166-1 alpha-2), <code>LanguageCode</code> (BCP 47 / ISO 639), <code>PhoneNumber</code> (E.164), <code>Hostname</code> (RFC 1123), <code>IpAddress</code>, <code>Url</code>, <code>Slug</code>, <code>Percentage</code>, <code>Age</code>. Each is a <code>partial</code> declaration with attributes — the generator does the work, and these double as documentation for users writing their own primitives against the <code>Trellis.Core</code> base classes.</p>
+<h3 id="43-structured-vos-eg-money">4.3 Structured VOs (e.g., <code>Money</code>)</h3>
+<p><code>Money</code> is <strong>not</strong> a scalar — it has <code>Amount</code> and <code>Currency</code>. Structured VOs use a separate attribute:</p>
+<pre><code class="lang-csharp">[Trellis.Primitives.Composite]
+public partial class Money : ValueObject
+{
+    public decimal Amount { get; }
+    public Currency Currency { get; }
+    public static Result&lt;Money&gt; TryCreate(decimal amount, Currency currency) { ... }
+}
+</code></pre>
+<p>Generator emits JSON shape, EF owned-type config, equality. No fake <code>Value</code> property.</p>
+<hr>
+<h2 id="5-trellismediator-and-trellisauthorization-revised-scope">5. <code>Trellis.Mediator</code> and <code>Trellis.Authorization</code> (revised scope)</h2>
+<p>The v1 plan to consolidate Mediator + Authorization + FluentValidation into a single <code>Trellis.Cqrs</code> package with an owned source-generated dispatcher is <strong>demoted</strong>. Reasons:</p>
+<ol>
+<li>Owning a dispatcher is a multi-month project that does not unblock anything else.</li>
+<li>The <code>martinothamar/Mediator</code> library is AOT-friendly and philosophically aligned (per the vision doc).</li>
+<li>The bigger AI-correctness wins are in <code>Trellis.Core</code> and <code>Trellis.Asp</code>.</li>
+</ol>
+<h3 id="51-trellismediator--pipeline-behaviors-only">5.1 <code>Trellis.Mediator</code> — pipeline behaviors only</h3>
+<p>Keep as a thin package providing pipeline behaviors. The canonical pipeline (outermost → innermost) is <strong>six Mediator-first-party behaviors plus one opt-in EF-Core behavior</strong>:</p>
+<ol>
+<li><code>ExceptionBehavior</code> — catches unhandled exceptions, returns <code>UnexpectedError</code>.</li>
+<li><code>TracingBehavior</code> — OpenTelemetry spans.</li>
+<li><code>LoggingBehavior</code> — structured logs with duration and outcome.</li>
+<li><code>AuthorizationBehavior</code> — checks <code>[Authorize]</code> permissions via <code>IActorProvider</code>.</li>
+<li><code>ResourceAuthorizationBehavior</code> — <em>opt-in</em>; checks <code>IAuthorizeResource&lt;T&gt;</code> with loader caching (see §5.3). Inserted by <code>AddResourceAuthorization(...)</code> immediately before <code>ValidationBehavior</code> so the loaded resource is checked once per request.</li>
+<li><code>ValidationBehavior</code> — <strong>unified validation stage</strong>. Runs <code>IValidate.Validate()</code> when the message implements it AND every <code>IMessageValidator&lt;TMessage&gt;</code> registered in DI for the message, aggregating <code>Error.UnprocessableContent</code> failures (both <code>Fields</code> and <code>Rules</code>) into a single response. <strong>External validation sources plug in here through <code>IMessageValidator&lt;TMessage&gt;</code> instead of occupying their own pipeline slot</strong> — in particular, <code>Trellis.FluentValidation</code> contributes a <code>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</code> registered by <code>AddTrellisFluentValidation()</code>. Empty <code>UnprocessableContent</code> failures still short-circuit; calling <code>AddTrellisFluentValidation()</code> is idempotent.</li>
+<li><code>TransactionalCommandBehavior</code> — <em>opt-in</em>; lives in <code>Trellis.EntityFrameworkCore</code>. Wraps commands in <code>IUnitOfWork.CommitAsync</code>. Opt in via <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> after all other behavior registrations so it lands innermost (closest to the handler).</li>
+</ol>
+<p><code>AddTrellisMediator(...)</code> (or <code>MediatorOptions.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors.ToArray()</code> in the AOT path) registers the always-on behaviors (1–4 + 6) in this fixed canonical order. Users add their own behaviors but cannot reorder the built-ins (most production CQRS bugs come from reordering).</p>
+<p>The <code>IFailureFactory&lt;TSelf&gt;</code> constraint stays — it is necessary to let pipeline behaviors construct a typed failure response without reflection. (v1 proposed removing it; that removal was conditioned on owning the dispatcher, which we are no longer doing.)</p>
+<p>The Trellis-owned dispatcher is a <strong>Phase 7</strong> opt-in (see §15), behind a separate <code>Trellis.Mediator.Dispatcher</code> package. We will only build it if AI-eval data shows the foreign mediator's quirks meaningfully hurt code-generation correctness.</p>
+<h3 id="52-trellisauthorization--actor--resource-auth-retained-explicitly">5.2 <code>Trellis.Authorization</code> — actor + resource auth retained explicitly</h3>
+<p>The current explicit resource-authorization model is load-bearing and AI-correctness-positive. <strong>Keep</strong> the contracts:</p>
+<ul>
+<li><code>IActor</code> / <code>Actor</code> record (already good).</li>
+<li><code>IActorProvider</code> — single abstraction users implement.</li>
+<li><code>IAuthorize</code> marker interface on messages — kept (rejecting v1's &quot;delete it; attributes are sufficient&quot;). The marker is what the pipeline behavior dispatches on.</li>
+<li><code>IAuthorizeResource&lt;TResource&gt;</code> — declares &quot;this message authorizes against a resource of type T&quot;.</li>
+<li><code>IIdentifyResource&lt;TMessage, TId&gt;</code> — extracts the resource id from the message.</li>
+<li><code>IResourceLoader&lt;TId, TResource&gt;</code> — loads the resource (with caching).</li>
+<li><code>[Authorize(Permissions = ...)]</code> attribute as syntactic sugar over <code>IAuthorize</code> for the simple permission-check case.</li>
+</ul>
+<p><strong>Layering is the right framing</strong> (per critique): attributes provide the simple ergonomic path; the explicit interfaces remain for resource-aware auth. We do not delete the explicit model.</p>
+<p><strong><code>Trellis.FluentValidation</code> stays as a separate, opt-in package</strong> (consistent with §2 row 9 and the &quot;no forced third-party transitive dependencies&quot; principle). The <code>ValidationBehavior</code> in <code>Trellis.Mediator</code> discovers FluentValidation validators <em>only when</em> <code>Trellis.FluentValidation</code> is referenced — the discovery happens via a typed extension method on <code>IServiceCollection</code> that the FluentValidation package contributes (<code>AddTrellisFluentValidation()</code>). Consumers who do not install <code>Trellis.FluentValidation</code> get the <code>IValidate.Validate()</code> path only. The 3 standalone extension methods (<code>ToResult</code>, <code>ValidateToResult</code>, <code>ValidateToResultAsync</code>) remain in <code>Trellis.FluentValidation</code> for use outside the pipeline. <strong>No folding.</strong></p>
+<hr>
+<h2 id="6-trellisasp--one-entry-point-protocol-semantics-preserved">6. <code>Trellis.Asp</code> — one entry point, protocol semantics preserved</h2>
+<h3 id="61-the-verb">6.1 The verb</h3>
+<pre><code class="lang-csharp">return result.ToHttpResponse();           // success → 200 with body, failure → status from Error
+return result.ToHttpResponse(opts);       // with metadata (ETag, Location, Vary, Last-Modified, ranges, Prefer)
+</code></pre>
+<p>Renamed from v1's <code>ToHttpResult</code> to <code>ToHttpResponse</code> to avoid collision with ASP.NET Core's <code>IResult</code> mental model.</p>
+<p>This is <strong>the</strong> API for both Minimal and MVC. The MVC adapter wraps the returned <code>IResult</code> into an <code>ActionResult</code> for Controllers. No more parallel <code>ActionResultExtensions</code> / <code>HttpResultExtensions</code> / <code>…Async</code> quartets.</p>
+<h3 id="62-whats-in-opts">6.2 What's in <code>opts</code></h3>
+<p>The options carry the protocol semantics — they are not generic metadata. (Correcting a v1 oversimplification.)</p>
+<pre><code class="lang-csharp">result.ToHttpResponse(opts =&gt; opts
+    .Created(&quot;/orders/123&quot;)              // 201 + Location
+    .WithETag(o =&gt; o.ETag)               // strong ETag
+    .WithLastModified(o =&gt; o.UpdatedAt)
+    .Vary(&quot;Accept&quot;, &quot;Accept-Language&quot;)
+    .EvaluatePreconditions()             // honors If-Match / If-None-Match / If-Modified-Since
+    .HonorPrefer());                     // honors Prefer: return=minimal/representation
+</code></pre>
+<p>For write operations, <code>WriteOutcome&lt;T&gt;</code> (defined in core, §3.1) drives status selection automatically (per RFC 9110, <code>304 Not Modified</code> is <strong>only</strong> valid for GET/HEAD; conditional writes use <code>200</code>/<code>204</code>/<code>412</code>):</p>
+<ul>
+<li><code>Created</code> → 201 with <code>Location</code> header</li>
+<li><code>Updated</code> → 200 (or 204 if <code>Prefer: return=minimal</code>)</li>
+<li><code>UpdatedNoContent</code> → 204 (explicit &quot;I have no body to return&quot;) — distinct from <code>Updated</code> + <code>Prefer: return=minimal</code></li>
+<li><code>Unchanged</code> → 200 with <code>Content-Location</code> (or 204 if <code>Prefer: return=minimal</code>) — <code>304</code> is <strong>not</strong> used for write methods</li>
+<li><code>Accepted</code> → 202 with status body, <code>Location: &lt;MonitorUri&gt;</code> (when present), <code>Retry-After</code> (when present)</li>
+<li><code>AcceptedNoContent</code> → 202 with no body, <code>Location: &lt;MonitorUri&gt;</code> (when present), <code>Retry-After</code> (when present)</li>
+<li><code>PreconditionFailed</code> (returned when <code>If-Match</code> evaluation fails before mutation) → 412</li>
+</ul>
+<p><code>PartialContentHttpResult</code>, <code>Page&lt;T&gt;</code>, and <code>RepresentationMetadata</code> <strong>stay as public types</strong> in <code>Trellis.Asp</code> (constructed only in controllers per template usage — see §12.2). <code>EntityTagValue</code> and <code>RetryAfterValue</code> <strong>stay in <code>Trellis.Core</code></strong> because the template's commands carry them as properties (<code>UpdateTodoCommand.IfMatchETags : EntityTagValue[]?</code>); <code>Trellis.Asp</code> provides only the HTTP-binding extensions (<code>ETagHelper.ParseIfMatch</code>, <code>RetryAfterValue.ToHttpHeaderValue()</code>).</p>
+<h3 id="63-what-disappears">6.3 What disappears</h3>
+<ul>
+<li><code>ActionResultExtensionsAsync</code> / <code>HttpResultExtensionsAsync</code> — async variants are absorbed via §3.3.</li>
+<li><code>ToCreatedHttpResult</code> / <code>ToUpdatedHttpResult</code> — replaced by <code>opts.Created(...)</code> / driven by <code>WriteOutcome&lt;T&gt;</code>.</li>
+<li><code>WriteOutcomeExtensions.ToHttpResult</code> — folded into <code>Result&lt;WriteOutcome&lt;T&gt;&gt;.ToHttpResponse()</code>.</li>
+</ul>
+<h3 id="64-conditional-requests">6.4 Conditional requests</h3>
+<p><code>ConditionalRequestEvaluator</code> becomes internal. <code>ETagHelper</code> and <code>If-*</code> parsing helpers stay public for advanced users who do not use the standard pipeline.</p>
+<h3 id="65-scalar-value-validation">6.5 Scalar value validation</h3>
+<p><code>AddTrellisAspValidation()</code> registers an MVC filter and a Minimal API endpoint filter via an <code>IStartupFilter</code>. Users do not call <code>app.UseScalarValueValidation()</code> or <code>.WithScalarValueValidation()</code> per-route — but those calls remain available for opt-out scenarios.</p>
+<hr>
+<h2 id="7-trellishttp--slim-but-keep-useful-structure">7. <code>Trellis.Http</code> — slim, but keep useful structure</h2>
+<p>Today's 60+ overloads collapse, but not as aggressively as v1 proposed:</p>
+<pre><code class="lang-csharp">// Bridge: HttpResponseMessage -&gt; Result&lt;HttpResponseMessage&gt;
+public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; ToResult(
+    this Task&lt;HttpResponseMessage&gt; response,
+    Func&lt;HttpStatusCode, Error&gt;? statusMap = null);
+
+// JSON deserialization
+public static Task&lt;Result&lt;T&gt;&gt; ReadJsonAsync&lt;T&gt;(
+    this Task&lt;Result&lt;HttpResponseMessage&gt;&gt; response,
+    JsonTypeInfo&lt;T&gt; type,
+    CancellationToken ct = default);
+
+public static Task&lt;Result&lt;Maybe&lt;T&gt;&gt;&gt; ReadJsonMaybeAsync&lt;T&gt;(...);
+
+// Convenience for the most common single-status checks (kept):
+public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; HandleNotFound(this Task&lt;HttpResponseMessage&gt; r, NotFoundError e);
+public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; HandleConflict(this Task&lt;HttpResponseMessage&gt; r, ConflictError e);
+public static Task&lt;Result&lt;HttpResponseMessage&gt;&gt; HandleUnauthorized(this Task&lt;HttpResponseMessage&gt; r, UnauthorizedError e);
+</code></pre>
+<p>Reasoning: a <em>fully</em> generic <code>statusMap</code> function is the right primitive, but the 3-4 most-common single-status helpers stay because they make AI code more readable and less error-prone for the obvious cases.</p>
+<p>The <code>HandleFailureAsync&lt;TContext&gt;(...)</code> overloads with their <code>(response, ctx, ct) → Task&lt;Error&gt;</code> callback are removed (the <code>TContext</code> channel is anti-pattern; closures are fine).</p>
+<hr>
+<h2 id="8-trellisentityframeworkcore--pragmatic-improvements-no-magic">8. <code>Trellis.EntityFrameworkCore</code> — pragmatic improvements, no magic</h2>
+<h3 id="81-convention-registration">8.1 Convention registration</h3>
+<p><code>ApplyTrellisConventions(params Assembly[])</code> stays as the runtime API (it works, it's well-understood, and EF model building is already reflection-heavy so the AOT cost is unchanged).</p>
+<p>A <strong>new</strong> source generator emits <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code> that walks the <code>DbContext</code>'s <code>DbSet&lt;&gt;</code> properties at compile time and emits explicit converter registrations. Users can pick either:</p>
+<ul>
+<li><code>ApplyTrellisConventions(typeof(MyDbContext).Assembly)</code> — runtime scan (works today; ergonomic; reflection cost at startup only)</li>
+<li><code>ApplyTrellisConventionsFor&lt;MyDbContext&gt;()</code> — generated, reflection-free convention registration; EF Core itself remains outside Trellis' NativeAOT support promise</li>
+</ul>
+<p>The v1 promise of &quot;no assembly scanning ever&quot; is dropped — it's a 6-month project to do it well across all real EF scenarios. This dual-path is honest.</p>
+<h3 id="82-repository">8.2 Repository</h3>
+<p><code>RepositoryBase&lt;TAggregate, TId&gt;</code> keeps its current shape — it's good. Changes:</p>
+<ul>
+<li><code>SaveChangesResultAsync</code> and <code>SaveChangesResultUnitAsync</code> stay as <code>DbContext</code> extensions for non-pipeline scenarios.</li>
+<li><code>IUnitOfWork.CommitAsync()</code> is the canonical commit for pipeline scenarios.</li>
+<li><code>TRLS015</code> (warning today: prefer <code>SaveChangesResultAsync</code> over <code>SaveChangesAsync</code>) is <strong>kept as warning</strong>, not escalated to error. Some scenarios legitimately call <code>SaveChangesAsync</code>.</li>
+</ul>
+<h3 id="83-maybe-properties--indexes">8.3 Maybe properties + indexes</h3>
+<p><code>HasIndex(x =&gt; x.MaybeProp)</code> magic rewriting is <strong>dropped</strong> (per critique: low ROI, high fragility). Instead:</p>
+<ul>
+<li><code>TRLS016</code> (current warning) stays, telling users to use <code>HasTrellisIndex</code> or string-based <code>HasIndex</code>.</li>
+<li>The <code>HasTrellisIndex</code> extension is the recommended path, documented prominently.</li>
+</ul>
+<h3 id="84-diagnostics-retained">8.4 Diagnostics retained</h3>
+<p><code>TrellisPersistenceMappingException</code>, <code>MaybePropertyMapping</code> (debug helper), and EF debug-string helpers all stay public. They are the operational story for diagnosing EF mapping issues — dropping them would worsen the AI's ability to help users debug.</p>
+<h3 id="85-etag">8.5 ETag</h3>
+<p>Aggregate ETag generation stays in the EF interceptor (<code>AggregateETagInterceptor</code>). <code>IAggregate.ETag</code> exposes a <code>string</code>. The richer <code>EntityTagValue</code> type lives in <strong><code>Trellis.Core</code></strong> (per §12.2 and §3.6) — the Application layer needs it for command preconditions like <code>UpdateTodoCommand.IfMatchETags : EntityTagValue[]?</code> and cannot reference <code>Trellis.Asp</code>. <code>Trellis.Asp</code> provides only the HTTP-binding extensions (<code>ETagHelper.ParseIfMatch</code> for inbound headers; <code>EntityTagValue.ToHttpHeaderValue()</code> for outbound).</p>
+<hr>
+<h2 id="9-trellisstatemachine--thin-wrapper-renamed-only">9. <code>Trellis.StateMachine</code> — thin wrapper, renamed only</h2>
+<p>Per critique: the v1 plan to &quot;hide Stateless behind <code>IStateMachine&lt;TState, TTrigger&gt;</code>&quot; is a trap. We either reimplement Stateless (huge) or ship a crippled abstraction users escape (worse than today).</p>
+<p><strong>Revised plan:</strong></p>
+<ul>
+<li>Rename <code>Trellis.Stateless</code> → <code>Trellis.StateMachine</code> for vendor independence in the <em>name</em>, not the <em>implementation</em>.</li>
+<li>Keep the public surface essentially identical:
+<ul>
+<li><code>StateMachine&lt;TState, TTrigger&gt;.FireResult(...)</code> extension.</li>
+<li><code>LazyStateMachine&lt;TState, TTrigger&gt;</code> for aggregate-materialization scenarios.</li>
+</ul>
+</li>
+<li>The Stateless types remain visible in user code. We document them.</li>
+<li>Future work (post-redesign) may add a thin <code>IStateMachine&lt;TState, TTrigger&gt;</code> interface for testing seams, but only after evidence of demand.</li>
+</ul>
+<hr>
+<h2 id="10-trellistesting--keep-two-packages-expand-surface">10. <code>Trellis.Testing</code> — keep two packages, expand surface</h2>
+<p><code>Trellis.Testing</code> and <code>Trellis.Testing.AspNetCore</code> <strong>stay as two packages</strong> (consistent with §2 rows 16–17 and §0.6.1's test-project guidance). An earlier draft proposed merging them with &quot;conditional compilation activated when the consumer references <code>Trellis.Asp</code>&quot;; that mechanism is not actually supported by NuGet/MSBuild — a package's compiled assembly is fixed at pack time and cannot have methods that exist or don't based on the consumer's other package references. Forcing <code>Microsoft.AspNetCore.Mvc.Testing</code> onto every test project (including console-app and worker-service tests) is the only way a merged package would compile, and that is precisely the third-party-transitive-dependency problem §2 rules out.</p>
+<p><strong>Retain in full</strong> in <code>Trellis.Testing</code>:</p>
+<ul>
+<li>FluentAssertions extensions for <code>Result&lt;T&gt;</code> and <code>Maybe&lt;T&gt;</code>.</li>
+<li><code>FakeRepository&lt;TAggregate, TId&gt;</code> and in-memory test doubles.</li>
+<li><code>ActorScope</code> / actor-substitution helpers.</li>
+<li><code>FakeTimeProvider</code> integration.</li>
+<li>EF DB-provider replacement helpers.</li>
+<li>Entra / MSAL test-token providers.</li>
+</ul>
+<p><strong>Retain in full</strong> in <code>Trellis.Testing.AspNetCore</code>:</p>
+<ul>
+<li>ASP test client helpers.</li>
+<li><code>WebApplicationFactory&lt;TEntry&gt;</code>-based fixtures.</li>
+</ul>
+<p><strong>Add</strong> (to <code>Trellis.Testing</code>):</p>
+<ul>
+<li><code>result.ShouldBeFailureOf&lt;ValidationError&gt;()</code>.</li>
+<li><code>result.ShouldHaveFieldError(&quot;email&quot;)</code>.</li>
+<li><code>aggregate.ShouldHaveRaised&lt;OrderPlaced&gt;()</code>.</li>
+</ul>
+<hr>
+<h2 id="11-trellisanalyzers--generators--unified">11. <code>Trellis.Analyzers</code> + Generators — unified</h2>
+<p>All compile-time tools ship as a single analyzer package. Diagnostic IDs are renumbered into one range (<code>TRLS001</code>–<code>TRLS099</code>). The <code>TRLSGEN</code> namespace disappears.</p>
+<p><strong>Diagnostic IDs are public constants.</strong> The analyzer package ships a <code>public static class TrellisDiagnosticIds</code> with <code>public const string</code> fields per rule (e.g., <code>UnusedResult = &quot;TRLS024&quot;</code>, <code>OutOfOrderBehavior = &quot;TRLS025&quot;</code>, <code>OpenErrorHierarchy = &quot;TRLS026&quot;</code>, <code>MatchMissingCases = &quot;TRLS027&quot;</code>). User code (and AI codegen) references them in <code>[SuppressMessage(&quot;Trellis&quot;, TrellisDiagnosticIds.UnusedResult)]</code> instead of typo-prone string literals. The <code>trellis-api-analyzers.md</code> documents both the constant and the ID side-by-side.</p>
+<p><strong>Analyzer messages are codefix-ready.</strong> Every diagnostic with a fixable cause is phrased as <code>&lt;problem&gt;. Did you mean: '&lt;corrected snippet&gt;'?</code> (e.g., <code>TRLS024</code>: &quot;<code>Result&lt;T&gt;</code> returned by <code>GetTodoAsync</code> is unused. Did you mean: <code>var result = await GetTodoAsync(...); if (result.IsFailure) return result;</code>?&quot;). This optimizes the diagnostic stream that AI assistants ingest — the model gets the fix in the message, not just a problem statement. Where a Roslyn <code>CodeFixProvider</code> is feasible, ship one; the message form applies regardless.</p>
+<p><strong>Renumbering is a real consumer-facing break.</strong> In v1 the <code>TRLSGEN</code> namespace contained 8 in-use IDs: <code>TRLSGEN001</code>–<code>TRLSGEN004</code> (Primitives generator) and <code>TRLSGEN100</code>–<code>TRLSGEN103</code> (EFCore generator). Phase 5a unified them into the analyzer <code>TRLS###</code> range (now done in commit <code>ga-06</code>):</p>
+<ol>
+<li>Reserved ID assignments at v2.0.0: <code>TRLS001</code>–<code>TRLS029</code> (analyzers, with <code>TRLS003</code>/<code>TRLS004</code>/<code>TRLS005</code>/<code>TRLS007</code>/<code>TRLS013</code>/<code>TRLS025</code> retired as documentation tombstones — see ga-05), <code>TRLS031</code>–<code>TRLS038</code> (renumbered generator IDs). Final mapping: <code>TRLSGEN001</code>→<code>TRLS031</code>, <code>TRLSGEN002</code>→<code>TRLS032</code>, <code>TRLSGEN003</code>→<code>TRLS033</code>, <code>TRLSGEN004</code>→<code>TRLS034</code>, <code>TRLSGEN100</code>→<code>TRLS035</code>, <code>TRLSGEN101</code>→<code>TRLS036</code>, <code>TRLSGEN102</code>→<code>TRLS037</code>, <code>TRLSGEN103</code>→<code>TRLS038</code>. A new public <code>Trellis.TrellisDiagnosticIds</code> constants class (in <code>Trellis.Analyzers</code>) is the canonical reference; consumers should use <code>[SuppressMessage(&quot;Trellis&quot;, TrellisDiagnosticIds.X)]</code> rather than magic strings.</li>
+<li>The old→new mapping is documented in <code>trellis-api-analyzers.md</code> and <code>trellis-api-efcore.md</code>. <strong>No codemod, no suppression-alias retention, no separate <code>MIGRATION_v2.md</code></strong> — the template is being rewritten on v2 and there are no external consumers whose <code>.editorconfig</code> / <code>#pragma warning disable</code> / <code>[SuppressMessage]</code> need to keep working. Clean cut at v2.0.0.</li>
+</ol>
+<p>New analyzers the redesign enables:</p>
+<ul>
+<li><code>TRLS023</code>: <code>Create(value)</code> is called outside a constructor / static initializer / test (signals likely missed <code>TryCreate</code>).</li>
+<li><code>TRLS024</code>: A <code>Result&lt;T&gt;</code> is returned by reference (likely to be ignored).</li>
+<li><code>TRLS025</code>: A pipeline behavior is registered out of the canonical order.</li>
+<li><code>TRLS026</code>: A user type derives from <code>Trellis.Error</code> outside the Trellis assembly (closed-by-convention enforcement).</li>
+<li><code>TRLS027</code>: A <code>Match</code>/<code>MatchError</code> call is missing handlers for known error catalog cases.</li>
+</ul>
+<hr>
+<h2 id="12-cross-cutting-decisions-resolved">12. Cross-Cutting Decisions (resolved)</h2>
+<h3 id="121-namespace-strategy">12.1 Namespace strategy</h3>
+<ul>
+<li><strong><code>Trellis</code></strong> for everything in <code>Trellis.Core</code> (which after Phase 2 includes Result/Maybe/Error + scalar/composite VO base classes from former Primitives + DDD primitives <code>Aggregate</code>/<code>Entity</code>/<code>ValueObject</code>/<code>Specification</code> from former DomainDrivenDesign).</li>
+<li><strong><code>Trellis.Primitives</code></strong> for opt-in concrete VOs only (so users can shadow with their own).</li>
+<li><strong>One namespace per integration package</strong>, matching the package name.</li>
+<li>Sub-namespaces (<code>Trellis.Asp.ModelBinding</code>, <code>Trellis.Asp.Validation</code>, <code>Trellis.Authorization.Resources</code>) are flattened. Flat is more discoverable for AI.</li>
+</ul>
+<h3 id="122-http-related-value-types--resolved-with-layer-analysis-grounded-in-trellisasptemplate">12.2 HTTP-related value types — RESOLVED with layer analysis grounded in <code>TrellisAspTemplate</code></h3>
+<p>The template (<code>C:\GitHub\Trellis\TrellisAspTemplate</code>) demonstrates how these types flow through real Clean Architecture layers. The decision is grounded in observed usage, not abstract preference.</p>
+<p><strong>Observed usage in the template:</strong></p>
+<ul>
+<li><code>UpdateTodoCommand</code> (Application layer) declares <code>public EntityTagValue[]? IfMatchETags { get; }</code> as a <em>command property</em>. The command carries the optional preconditions through Mediator from API → Application.</li>
+<li><code>UpdateTodoCommandHandler</code> (Application layer) calls <code>.OptionalETag(command.IfMatchETags)</code> to evaluate the precondition — Application owns the comparison, not just the API.</li>
+<li><code>TodosController</code> (API layer) parses headers via <code>ETagHelper.ParseIfMatch(Request)</code> (HTTP-specific) and formats output via <code>EntityTagValue.Strong(todo.ETag).ToHeaderValue()</code>.</li>
+<li><code>RepresentationMetadata.WithStrongETag(todo.ETag)</code> is only ever constructed in the controller.</li>
+</ul>
+<p>This rules out my v2 decision to move <code>EntityTagValue</code> to <code>Trellis.Asp</code>: the Application layer cannot reference <code>Trellis.Asp</code> under Clean Architecture, and the template's command shape is the right pattern (commands declare their preconditions explicitly).</p>
+<p><strong>Revised split by layer affinity:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Constructed by</th>
+<th>Used by</th>
+<th>Layer</th>
+<th>Package</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RetryAfterValue</code></td>
+<td>ACL (translating upstream 429/503), Application (quota decisions)</td>
+<td>API (response header), Application (retry/fallback policies)</td>
+<td>All layers</td>
+<td><strong><code>Trellis.Core</code></strong></td>
+</tr>
+<tr>
+<td><code>EntityTagValue</code></td>
+<td>API (parsing <code>If-Match</code> headers; wrapping <code>IAggregate.ETag</code> for responses); Application (carried as command/query property for conditional ops)</td>
+<td>API (response headers, conditional request evaluation); Application (precondition checks via <code>OptionalETag(...)</code>)</td>
+<td>API + Application</td>
+<td><strong><code>Trellis.Core</code></strong></td>
+</tr>
+<tr>
+<td><code>RepresentationMetadata</code></td>
+<td>API only (assembling <code>Vary</code>, <code>Last-Modified</code>, <code>ETag</code> for response shape)</td>
+<td>API only</td>
+<td>API only</td>
+<td><strong><code>Trellis.Asp</code></strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why <code>EntityTagValue</code> is in <code>Trellis.Core</code>:</strong> Per the template, commands carry <code>EntityTagValue[]?</code> properties for conditional updates and handlers compare ETags via <code>OptionalETag(...)</code>. Application code therefore needs the type, but Application cannot reference <code>Trellis.Asp</code>. The pure value type (parsing/formatting per RFC 9110 weak/strong ETags) is framework-agnostic — only the HTTP <code>If-Match</code>/<code>If-None-Match</code> <em>header parsing</em> and <code>ETag</code> <em>response header writing</em> are API-only.</p>
+<pre><code class="lang-csharp">namespace Trellis;
+
+public readonly record struct EntityTagValue
+{
+    public string Value { get; }
+    public bool IsWeak { get; }
+    public static EntityTagValue Strong(string value);
+    public static EntityTagValue Weak(string value);
+    public static bool TryParse(string headerToken, out EntityTagValue tag); // RFC 9110 token form
+    public string ToHeaderValue();   // serialization is framework-agnostic; the *header name* is HTTP-specific
+}
+</code></pre>
+<p>API-layer extensions in <code>Trellis.Asp</code> provide the HTTP-binding helpers:</p>
+<pre><code class="lang-csharp">namespace Trellis.Asp;
+public static class ETagHelper
+{
+    public static EntityTagValue[]? ParseIfMatch(HttpRequest request);
+    public static EntityTagValue[]? ParseIfNoneMatch(HttpRequest request);
+}
+</code></pre>
+<p>The Application-layer <code>OptionalETag(...)</code> extension ships in <code>Trellis.Core</code> (it operates on <code>Result&lt;T&gt;</code> where <code>T : IAggregate</code>).</p>
+<p><strong>Why <code>RetryAfterValue</code> is in <code>Trellis.Core</code>:</strong> Same reasoning as v2 — it is a property of <code>RateLimitError</code> / <code>ServiceUnavailableError</code> / <code>ContentTooLargeError</code> constructed by ACL/Application. RFC 7231 header serialization is an extension in <code>Trellis.Asp</code>:</p>
+<pre><code class="lang-csharp">namespace Trellis.Asp;
+public static class RetryAfterValueHttpExtensions
+{
+    public static string ToHttpHeaderValue(this RetryAfterValue v);
+}
+</code></pre>
+<p><strong>Why <code>RepresentationMetadata</code> stays in <code>Trellis.Asp</code>:</strong> Per the template, it is <em>only</em> constructed inside controllers (<code>RepresentationMetadata.WithStrongETag(...)</code>) when the API decides what to put in the response. It bundles HTTP-specific concepts (<code>Vary</code> headers, <code>Last-Modified</code>, conditional-eval policies) — there is no Application-layer use case in the template.</p>
+<p><strong>Layer reference rules</strong> (canonical, documented in template's <code>.github/copilot-instructions.md</code>):</p>
+<ul>
+<li><strong>Domain</strong> → references <code>Trellis.Core</code> (Result + Maybe + Error + DDD primitives + VO base classes — single package after Phase 2), <code>Trellis.Primitives</code> (optional concrete VOs), <code>Trellis.StateMachine</code> (optional). Never references <code>Trellis.Asp</code>, <code>Trellis.Http</code>, <code>Trellis.EntityFrameworkCore</code>, <code>Trellis.Mediator</code>.</li>
+<li><strong>Application</strong> → references everything Domain references + <code>Trellis.Mediator</code>, <code>Trellis.Authorization</code>. May use <code>EntityTagValue</code> and <code>RetryAfterValue</code> (both in <code>Trellis.Core</code>). Never references <code>Trellis.Asp</code> or <code>Trellis.EntityFrameworkCore</code>.</li>
+<li><strong>ACL</strong> → references everything Application references + <code>Trellis.Http</code>, <code>Trellis.EntityFrameworkCore</code>. Never references <code>Trellis.Asp</code>. Constructs <code>RateLimitError(..., RetryAfter: ...)</code> from upstream HTTP responses.</li>
+<li><strong>API</strong> → references everything. Owns <code>Trellis.Asp</code> consumption. Parses <code>If-Match</code> via <code>ETagHelper.ParseIfMatch(Request)</code> into <code>EntityTagValue[]?</code> and passes it into commands; writes ETag/RetryAfter response headers via the <code>Trellis.Asp</code> extensions.</li>
+</ul>
+<h3 id="123-documentation-contract">12.3 Documentation contract</h3>
+<ul>
+<li><code>docs/docfx_project/api_reference/trellis-api-*.md</code> is generated from source by an analyzer-time tool (Roslyn-driven).</li>
+<li>Each NuGet package ships its own <code>trellis-api-*.md</code> file as content (already done via <code>Trellis.ApiReference.targets</code> — keep that).</li>
+<li>The <code>copilot-instructions.md</code> for the template package references the generated docs by relative path — they always match the installed version.</li>
+</ul>
+<h3 id="124-versioning-deprecation-target-framework-and-library-defaults">12.4 Versioning, deprecation, target framework, and library defaults</h3>
+<ul>
+<li>All packages versioned together (already done via Nerdbank.GitVersioning).</li>
+<li><strong>No <code>MIGRATION_v&lt;N&gt;.md</code> document.</strong> The &quot;major version bumps require a migration doc&quot; CI gate is removed. Breaking changes are documented inline in the affected <code>trellis-api-*.md</code> files under a &quot;Breaking changes from v<n-1>&quot; section. Rationale: a single mega-doc rots; per-area docs stay accurate because they live next to the API they describe.</n-1></li>
+<li><strong>Deprecation policy for v1→v2.</strong> The &quot;no backward-compat constraint&quot; framing (line 4) is taken literally: v2.0.0 is a <strong>hard, clean breaking release</strong>. Removed APIs are <em>not</em> retained as <code>[Obsolete]</code> shims, type-aliases, or suppression-aliases at the v2.0.0 line — they are gone. This includes <code>ScalarValueObject</code> (deleted, not aliased to <code>Scalar&lt;T,V&gt;</code>), <code>AggregateError</code> (deleted), the <code>TRLSGEN###</code> analyzer IDs (renumbered with no suppression-alias retention), and the old <code>Result.Success</code>/<code>Failure</code> factories. The template is being rewritten on v2 in <code>TrellisAspTemplate</code>, and there are no external consumers requiring a migration runway.</li>
+<li><strong>Parallel shipping.</strong> v1.x packages remain available (not deleted) on NuGet for archival/pinning purposes, but are unlisted at the v2.0.0 release with a redirect notice. There is no overlapping support window.</li>
+<li><strong>NuGet listing fates</strong> at v2.0.0:
+<ul>
+<li><code>Trellis.Results</code> → unlisted with redirect notice to <code>Trellis.Core</code>.</li>
+<li><code>Trellis.Stateless</code> → unlisted with redirect notice to <code>Trellis.StateMachine</code>. <strong>No metapackage redirect</strong> — clean cut, consistent with the rest of the deprecation policy.</li>
+<li><code>Trellis.DomainDrivenDesign</code> → unlisted with &quot;moved into <code>Trellis.Core</code>&quot; notice.</li>
+<li><code>Trellis.Asp.Authorization</code> → unlisted with &quot;merged into <code>Trellis.Asp</code>&quot; notice.</li>
+<li><code>Trellis.AspSourceGenerator</code>, <code>Trellis.EntityFrameworkCore.Generator</code>, <code>Trellis.Primitives.Generator</code> → unlisted with &quot;now bundled inside the runtime package&quot; notice.</li>
+</ul>
+</li>
+</ul>
+<h3 id="125-target-framework-and-language-commitments">12.5 Target framework and language commitments</h3>
+<p>Stated once for the whole framework so individual packages don't re-decide:</p>
+<ul>
+<li><strong>Target framework:</strong> <strong><code>.NET 10</code> only</strong> (latest LTS, GA November 2025). No multi-targeting. Source-generator packages target <code>netstandard2.0</code> per Roslyn requirements; everything else is single-TFM.</li>
+<li><strong>Language version:</strong> <code>&lt;LangVersion&gt;latest&lt;/LangVersion&gt;</code>. Every Trellis package compiles with the most recent C# the target framework supports. v2 commits to using C# 11+ <code>required</code> members, C# 12 collection expressions and primary constructors, C# 13 features as appropriate. AI codegen targeting Trellis can assume modern C# throughout.</li>
+<li><strong>Project defaults across the framework solution</strong> (enforced via <code>Directory.Build.props</code>):
+<ul>
+<li><code>&lt;Nullable&gt;enable&lt;/Nullable&gt;</code></li>
+<li><code>&lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;</code></li>
+<li><code>&lt;ImplicitUsings&gt;disable&lt;/ImplicitUsings&gt;</code> — <code>using</code> directives are explicit; AI codegen and human readers see all dependencies at the top of the file.</li>
+<li><code>&lt;AnalysisLevel&gt;latest-recommended&lt;/AnalysisLevel&gt;</code></li>
+<li><code>&lt;EnforceCodeStyleInBuild&gt;true&lt;/EnforceCodeStyleInBuild&gt;</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="126-aot--trim--reflection-stance">12.6 AOT / trim / reflection stance</h3>
+<p>v2 framework code is <strong>AOT-friendly and trim-safe</strong>. No runtime reflection in hot paths — Mediator pipeline behaviors, the <code>Result</code> pipeline, EFCore conventions, and analyzer/generator outputs all rely on source-generators or compile-time wiring. Specifically:</p>
+<ul>
+<li><strong>No <code>Activator.CreateInstance</code>, no <code>Type.GetMethod(...).Invoke</code> in request paths.</strong> If a future feature appears to need it, the answer is &quot;ship a source-generator instead&quot;, which is also the rationale for the optional Phase 7 <code>Trellis.Mediator.Dispatcher</code>.</li>
+<li><strong>Every non-EF runtime package declares <code>&lt;IsTrimmable&gt;true&lt;/IsTrimmable&gt;</code> and <code>&lt;IsAotCompatible&gt;true&lt;/IsAotCompatible&gt;</code>.</strong> <code>Trellis.EntityFrameworkCore</code> explicitly opts out because EF Core NativeAOT support is still experimental. CI fails if an AOT-supported package emits IL2026/IL2070/IL3050 trim/AOT warnings.</li>
+<li><strong>Ban on <code>dynamic</code>, <code>[Obsolete]</code>-after-v2.0, and unconstrained generic reflection in hot paths.</strong> Tested via a custom analyzer in Phase 5a (<code>TRLS028</code>).</li>
+</ul>
+<p>This is an AI-correctness positive: the model has fewer &quot;does this method exist at runtime?&quot; mysteries to model. It is also a future-proofing positive: modern .NET hosting (Native AOT, single-file, container slimming) is fully supported without per-package retrofits.</p>
+<h3 id="127-ecosystem-defaults">12.7 Ecosystem defaults</h3>
+<p>Three perennial debates closed off so the template (Phase 6) and framework (Phases 1a–5a) don't re-decide:</p>
+<ul>
+<li><strong>JSON:</strong> <code>System.Text.Json</code> only, with source-generation (<code>JsonSerializerContext</code>) for any framework type that crosses a serialization boundary. No Newtonsoft. AI codegen and the controllers default to <code>STJ</code>-attributed types.</li>
+<li><strong>Logging:</strong> <code>Microsoft.Extensions.Logging.ILogger&lt;T&gt;</code> only. <strong>No owned <code>ITrellisLogger</code> abstraction.</strong> Source-generated logger methods (<code>[LoggerMessage]</code>) are the convention for hot paths.</li>
+<li><strong>Configuration:</strong> <code>Microsoft.Extensions.Options.IOptions&lt;T&gt;</code> / <code>IOptionsSnapshot&lt;T&gt;</code> / <code>IOptionsMonitor&lt;T&gt;</code> for strongly-typed config. <strong>No owned <code>ITrellisConfig</code>.</strong> Validators use FluentValidation's <code>IValidator&lt;T&gt;</code> registered alongside <code>Configure&lt;T&gt;(...)</code> (consistent with §5.2's &quot;FluentValidation stays opt-in&quot;).</li>
+</ul>
+<hr>
+<h2 id="13-what-this-buys-an-llm-honest-accounting">13. What This Buys an LLM (honest accounting)</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Today</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pipeline verbs to choose from</td>
+<td>~25 (Map/Bind/Tap/Ensure/Check/CheckIf/Match/MatchError/Recover/RecoverOnFailure/MapIf/MapOnFailure/When/WhenAll/SuccessIf/FailureIf/Discard/Combine/BindZip/Traverse/Switch/SwitchError/…)</td>
+<td><strong>7 verbs + BindZip + LINQ query syntax + Try + Traverse + Validate builder</strong> (~12 distinct concepts)</td>
+</tr>
+<tr>
+<td>Async file naming variants visible to user</td>
+<td><code>Base / Left / Right</code> per verb</td>
+<td><strong>none visible</strong> (exact internal overload model: §3.3)</td>
+</tr>
+<tr>
+<td><code>Result.*</code> factory methods</td>
+<td>~14</td>
+<td><strong>3</strong> (<code>Ok</code>, <code>Fail&lt;T&gt;</code>, <code>Ok()</code>) + <code>Try</code>, <code>TryAsync</code> for boundary code</td>
+</tr>
+<tr>
+<td>Error catalog</td>
+<td>19 types (open hierarchy)</td>
+<td><strong>17 cases</strong> (closed-by-convention; analyzer-enforced; no compiler-exhaustiveness overclaim — <code>AggregateError</code> removed, see §3.6)</td>
+</tr>
+<tr>
+<td>Packages</td>
+<td>17</td>
+<td><strong>12</strong> (11 runtime + 1 tooling) — <code>Trellis.AspTemplate</code> continues to ship from its own repo</td>
+</tr>
+<tr>
+<td>ASP entry points for happy-path response</td>
+<td><code>ToActionResult</code> / <code>ToHttpResult</code> / <code>ToCreatedHttpResult</code> / <code>ToUpdatedHttpResult</code> / <code>WriteOutcome.ToHttpResult</code> / <code>PartialContentHttpResult</code> × sync/async</td>
+<td><strong>1</strong> (<code>ToHttpResponse</code> with options)</td>
+</tr>
+<tr>
+<td>HTTP-client status helpers</td>
+<td>~16 method names × 4 input shapes (~60 overloads)</td>
+<td><strong>5 named methods</strong>, single <code>statusMap</code> parameter on the generic one</td>
+</tr>
+<tr>
+<td>Combine arity ceiling</td>
+<td>9 (hard error TRLS014)</td>
+<td><strong><code>Validate</code> builder: no ceiling</strong> for validation aggregation; <strong><code>Combine&lt;T1..T9&gt;</code>: T1..T9 retained</strong> for heterogeneous combination (first-failure-wins); TRLS014 stays at T10 with clearer message</td>
+</tr>
+<tr>
+<td>VO base classes the AI must distinguish</td>
+<td>scalar / symbolic / composite / optionality wrapper</td>
+<td><strong>2</strong> (<code>Scalar</code>, <code>Composite</code>) — symbolic is <code>Scalar&lt;T,Enum&gt;</code>; optionality is <code>Maybe&lt;T&gt;</code></td>
+</tr>
+<tr>
+<td>Tracing / OTel surface</td>
+<td>rich, dispersed</td>
+<td><strong>same surface</strong>, documented as canonical (no loss)</td>
+</tr>
+<tr>
+<td>Resource authorization</td>
+<td><code>IAuthorize</code> + <code>IAuthorizeResource&lt;T&gt;</code> + <code>IIdentifyResource&lt;,&gt;</code> + <code>IResourceLoader&lt;,&gt;</code></td>
+<td><strong>same model</strong> + attribute sugar for the simple case (no loss)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="14-decisions-was-open-questions--resolved">14. Decisions (was: Open Questions) — RESOLVED</h2>
+<p>All six questions in v2 are now decided. The per-package implementation plans build on these answers.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Question</th>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>Trellis.Mediator</code>: own the dispatcher now, or wrap <code>martinothamar/Mediator</code>?</td>
+<td><strong>Wrap now; defer owned dispatcher to optional Phase 7</strong></td>
+<td>Owning dispatch is 3–6 months of foundational work that buys only ~2 small AI-correctness wins (drop <code>IFailureFactory&lt;TSelf&gt;</code> constraint; first-class <code>Result&lt;T&gt;</code> handler shape). Both are nice but not transformative. The bigger AI wins are in Core/Error/Asp/Http. Phase 7 revisits this <em>only if</em> AI-eval data justifies it.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Remove <code>Result&lt;T&gt;.Value</code> and <code>Result&lt;T&gt;.Error</code> properties entirely?</td>
+<td><strong>Yes — remove entirely</strong></td>
+<td>They are the single biggest source of <code>TRLS003</code>/<code>TRLS004</code> warnings. <code>TryGetValue</code> / <code>TryGetError</code> / <code>Deconstruct</code> / <code>Match</code> cover every legitimate use. AI generates safer code by default when the unsafe path doesn't exist.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Move HTTP-protocol value types out of core?</td>
+<td><strong>Split by observed usage in <code>TrellisAspTemplate</code>:</strong> <code>RepresentationMetadata</code> moves to <code>Trellis.Asp</code> (constructed only in controllers). <strong><code>EntityTagValue</code> and <code>RetryAfterValue</code> stay in <code>Trellis.Core</code></strong> — the template's <code>UpdateTodoCommand.IfMatchETags : EntityTagValue[]?</code> and <code>OptionalETag(...)</code> handler call show <code>EntityTagValue</code> flowing through the Application layer; <code>RetryAfterValue</code> is a property of error records the ACL constructs. HTTP-specific <em>parsing</em> (<code>ETagHelper.ParseIfMatch</code>) and <em>header formatting</em> (<code>RetryAfterValue.ToHttpHeaderValue</code>) are extensions in <code>Trellis.Asp</code>. <code>IAggregate.ETag</code> stays as <code>string</code> in <code>Trellis.Core</code> (after the Phase 2 DDD merge).</td>
+<td>The template is the canonical AI starting point — its layer usage is the design constraint. Conditional preconditions are an Application-layer concern (commands declare their own preconditions); response shape is an API concern. See §12.2 for the full layer rules.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>Trellis.StateMachine</code> — wrap or abstract Stateless?</td>
+<td><strong>Thin wrapper, rename only. No <code>IStateMachine&lt;TState, TTrigger&gt;</code> abstraction.</strong></td>
+<td>Reimplementing state machines is a trap. Abstracting Stateless either becomes a giant reimplementation or a crippled abstraction users escape. Document the Stateless types in user code.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Keep <code>Result.Combine</code> arity?</td>
+<td><strong>Keep T1..T9 with first-failure-wins semantics. <code>Validate</code> builder for validation aggregation (no ceiling). <code>TRLS014</code> (T10 hard-error) stays with a clearer message.</strong></td>
+<td>The two operations have <strong>different semantics</strong>: <code>Validate</code> accumulates field errors into a single <code>ValidationError</code> (validation-shaped failures only); <code>Combine</code> combines heterogeneous <code>Result&lt;T1&gt;..&lt;T9&gt;</code> with first-failure-wins (any error type). T1..T9 is already T4-generated, costs nothing, and <code>Combine(a,b,c,d).Bind((a,b,c,d) =&gt; ...)</code> is genuinely cleaner than chained <code>Bind</code>s. No <code>AggregateError</code> — there is no useful HTTP/UX mapping for &quot;multiple unrelated errors at once&quot;. <code>Result.ParallelAsync</code> retained for parallel async with first-failure-wins (and OpenTelemetry on both branches).</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>MaybeInvariant</code> location?</td>
+<td><strong>Keep separate from <code>Validate</code> builder, in <code>Trellis.Core</code></strong></td>
+<td>Different semantics. <code>Validate</code> accumulates field errors per source field. <code>MaybeInvariant</code> enforces <em>cross-field</em> rules between optionals (<code>AllOrNone</code>, <code>Requires</code>, <code>MutuallyExclusive</code>, <code>ExactlyOne</code>, <code>AtLeastOne</code>). Folding them together would conflate two distinct concepts and harm AI clarity.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="decision-implications-for-the-redesign">Decision implications for the redesign</h3>
+<ul>
+<li><strong><code>Result&lt;T&gt;</code> shape (§3.1):</strong> confirmed — <code>IsSuccess</code>, <code>IsFailure</code>, <code>TryGetValue</code>, <code>TryGetError</code>, <code>Deconstruct</code>. No <code>Value</code>/<code>Error</code> properties.</li>
+<li><strong><code>Result.Combine</code> (§3.4):</strong> confirmed surface = T1..T9, first-failure-wins, no aggregation.</li>
+<li><strong><code>Trellis.Asp</code> (§6, §12.2):</strong> owns <code>RepresentationMetadata</code>, <code>ErrorHttpMapping</code>, the <code>ETagHelper.ParseIfMatch/ParseIfNoneMatch</code> HTTP parsers, and the <code>RetryAfterValue.ToHttpHeaderValue()</code> formatter extension. <strong><code>EntityTagValue</code> and <code>RetryAfterValue</code> stay in <code>Trellis.Core</code></strong> so Application/ACL can use them without referencing Asp (per template usage). Core stays transport-agnostic in <em>concepts</em> — these two types are framework-agnostic value types, just commonly used at the HTTP boundary.</li>
+<li><strong><code>Trellis.Mediator</code> (§5):</strong> thin wrapper, retains <code>IFailureFactory&lt;TSelf&gt;</code> constraint and the <code>IAuthorize</code> marker interface (both are necessary for the wrapper model).</li>
+<li><strong><code>Trellis.StateMachine</code> (§9):</strong> name change only; Stateless types remain visible.</li>
+<li><strong><code>MaybeInvariant</code> (§3.5):</strong> stays in <code>Trellis.Core</code> as a separate static API.</li>
+</ul>
+<p>There are now <strong>no open questions blocking Phase 1a</strong>. The next deliverable is a per-package implementation plan for <strong>Phase 1a — <code>Trellis.Core</code> Result/Maybe rewrite</strong>.</p>
+<hr>
+<h2 id="15-phasing-framework-first-template-rewritten-post-ga">15. Phasing (framework-first; template rewritten post-GA)</h2>
+<p>Once approved, work splits into <strong>8 phases</strong> (Phases 1a–7) preceded by a small set of cross-cutting commitments. <strong>Phase 1 is much narrower than v1's &quot;core rewrite&quot;</strong> — per critique, a single phase that combines new Result + new Error + new async model + validation DSL + doc generator is too big. Splitting unblocks parallel work. <strong>The v1 template is NOT kept green during Phases 1a–5a</strong> — it stays on v1.x packages until the post-GA Phase 6 rewrite (per §0.5).</p>
+<p><strong>Cross-cutting commitments (apply to every phase, no separate phase number):</strong></p>
+<ul>
+<li>All framework packages stay green: <code>dotnet build</code> + <code>dotnet test</code> succeed across the entire framework solution after each merged PR.</li>
+<li>Apply §12.5 target/language and §12.6 AOT/trim flags from day one to every package they touch.</li>
+<li>Apply §15.1 release/quality gates to every package boundary.</li>
+<li>Breaking changes documented inline in the corresponding <code>trellis-api-*.md</code> &quot;Breaking changes from v1&quot; section. <strong>No standalone <code>MIGRATION_v&lt;N&gt;.md</code> document is published</strong> (§12.4).</li>
+<li><strong>TDD is mandatory</strong> per <code>TrellisFramework/.github/copilot-instructions.md</code>. Every Phase 1a–7 PR follows red→green→refactor: failing test(s) committed first (or in the same PR with a clear &quot;test first&quot; commit ordering), then the implementation that satisfies them, then the refactor. The pre-submission checklist in <code>copilot-instructions.md</code> (build clean, all tests green, public API surface reviewed, analyzers clean, docs updated) is enforced on every PR — no &quot;we'll backfill tests later&quot; exceptions during the rewrite.</li>
+<li><strong>v2-canary grows alongside the rewrite, not after it.</strong> A minimal <code>samples/v2-canary/</code> worker app is created in Phase 1a and grows with each later phase (see Phase 1a deliverable below and §15.1). This makes the canary a continuous design feedback loop instead of a post-hoc validation, and surfaces awkward surface decisions while course-correction is still cheap.</li>
+</ul>
+<ol>
+<li><strong>Phase 1a — <code>Trellis.Core</code> Result/Maybe + <code>WriteOutcome&lt;T&gt;</code> rewrite + sourcegen rename + minimal canary.</strong> New <code>Result&lt;T&gt;</code> shape (§3.1) including non-generic <code>Result</code> (replaces <code>Result&lt;Unit&gt;</code>) with full surface parity per §3.1, <strong>factory rename <code>Success</code>/<code>Failure</code> → <code>Ok</code>/<code>Fail</code></strong>, removed <code>.Value</code>/<code>.Error</code> properties, removed implicit operators, seven pipeline verbs (§3.2), <code>BindZip</code> (T4-generated 1..9 arity) and LINQ query-syntax surface (<code>Select</code>/<code>SelectMany</code>/<code>Where</code>) retained, explicit async overload model (§3.3), <code>Maybe&lt;T&gt;</code> trim (§3.5) including the <code>default(...)</code> invariants of §3.5.1, <code>WriteOutcome&lt;T&gt;</code> (§3.1 — full 6-case hierarchy including <code>Accepted</code>/<code>AcceptedNoContent</code>) moved from <code>Trellis.Asp</code> to <code>Trellis.Core</code> along with <code>RepresentationMetadata</code>. Keep <code>Try</code>/<code>TryAsync</code>/<code>Traverse</code>. Tracing surface unchanged. <strong>The <code>Error</code> <em>type-shape</em> commitments</strong> (errors are <code>record</code>s, fields are <code>required</code> or positional, collections are <code>IReadOnlyList&lt;T&gt;</code>) are introduced here as the abstract <code>Error</code> base record so <code>Result&lt;T&gt;.TryGetError</code> and <code>Match</code> have a typed return — but <strong>the concrete catalog cases are deferred to Phase 1b</strong>. Phase 1a ships only the <code>Error</code> base record + a single <code>UnexpectedError</code> case (needed for <code>default(Result&lt;T&gt;)</code> per §3.5.1 and for <code>Where</code> per §3.2). <strong>Source-generator coupling — explicit dependency:</strong> today's <code>Trellis.Primitives.Generator</code>, <code>Trellis.EntityFrameworkCore.Generator</code>, and <code>Trellis.AspSourceGenerator</code> projects all emit <code>Result.Success</code>/<code>Result.Failure</code> calls. Phase 1a includes the generator-template update so all three emit <code>Result.Ok</code>/<code>Result.Fail</code>; the three generator packages cut matching pre-releases in lockstep with Phase 1a's <code>Trellis.Core</code> pre-release. <strong>Canary deliverable for Phase 1a:</strong> create <code>samples/v2-canary/</code> as a 100–200-line worker app that exercises <code>Result.Ok</code>/<code>Fail</code>, <code>Maybe&lt;T&gt;</code>, the seven pipeline verbs, <code>BindZip</code>, <code>Try</code>, and <code>WriteOutcome&lt;T&gt;</code> end-to-end against the Phase 1a <code>Trellis.Core</code> pre-release. (The canary does <strong>not</strong> exercise the error catalog — that is added in Phase 1b's canary growth.) The canary builds and all its tests pass before Phase 1a merges; later phases extend it. <strong>No migration tooling and no template work</strong> — the template is rewritten as a post-GA Phase 6, after the framework is feature-complete.</li>
+<li><strong>Phase 1b — Error catalog rewrite + canary growth.</strong> Closed-by-convention catalog (§3.6) — the 17 concrete <code>Error</code> subtypes including <code>EntityTagValue</code>/<code>RetryAfterValue</code> value types in core (§12.2), <code>Validate</code> builder (§3.4), <code>MaybeInvariant</code> retention. New analyzers <code>TRLS026</code> (closed catalog) / <code>TRLS027</code> (exhaustive <code>Match</code>) / <code>TRLS030</code> (<code>Where</code>-uses-generic-error). The catalog evolution policy of §3.6 is published as binding from this phase. <strong>Canary growth:</strong> add a validation step that uses the <code>Validate.Field(...).Build(...)</code> builder and a <code>Match</code> over 3+ catalog cases.</li>
+<li><strong>Phase 2 — Primitives + Generators + DDD-merge into <code>Trellis.Core</code> + canary growth.</strong> Attribute-driven scalar + composite VO generators (§4); rewrite the 13 built-ins as partials. Drop <code>IConvertible</code>. <strong>Move the scalar/composite base classes</strong> (<code>Scalar&lt;T,V&gt;</code>, <code>Composite</code>, <code>RequiredString</code>, <code>RequiredGuid</code>, <code>RequiredInt</code>, <code>RequiredDecimal</code>, <code>RequiredEnum</code>) from <code>Trellis.Primitives</code> into <code>Trellis.Core</code> — <code>Trellis.Primitives</code> keeps only the 13 concrete VOs. <strong>Merge <code>Trellis.DomainDrivenDesign</code> into <code>Trellis.Core</code></strong> — all 12 source files (<code>Aggregate</code>, <code>Entity</code>, <code>ValueObject</code>, <code>ScalarValueObject</code>, <code>IAggregate</code>, <code>IEntity</code>, <code>IDomainEvent</code>, <code>Specification</code>, <code>AndSpecification</code>, <code>OrSpecification</code>, <code>NotSpecification</code>, <code>AggregateETagExtensions</code>) move into <code>Trellis.Core</code>. The DDD <code>ScalarValueObject</code> and the new <code>Scalar&lt;T,V&gt;</code> are unified as a single <code>Scalar&lt;T,V&gt;</code> in <code>Trellis.Core</code>; the old <code>ScalarValueObject</code> is <strong>deleted outright at v2.0.0</strong> (no <code>[Obsolete]</code> alias). Types are already in the <code>Trellis</code> namespace, so future-adopter <code>using</code> directives remain valid. <strong>Intra-phase sequencing (two PRs):</strong> (i) introduce the new types in <code>Trellis.Core</code>, repoint every downstream <code>.csproj</code> (Mediator, EFCore, Authorization, Asp, Primitives, Testing) to the new types, and confirm the entire framework solution builds and all tests pass; (ii) only then delete the <code>Trellis.DomainDrivenDesign</code> source tree. The <code>Trellis.DomainDrivenDesign</code> NuGet package is unlisted at the v2.0.0 release with a &quot;moved into Trellis.Core&quot; notice; <code>trellis-api-ddd.md</code> content folds into <code>trellis-api-core.md</code>. <strong>Canary growth:</strong> introduce one aggregate, one VO, one repository interface returning <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>.</li>
+<li><strong>Phase 3 — <code>Trellis.Asp</code> collapse + canary growth.</strong> Single <code>ToHttpResponse</code> verb, options-driven (§6). Add <code>EntityTagValue.ToHttpHeaderValue()</code> and <code>RetryAfterValue.ToHttpHeaderValue()</code> extensions on the Asp side. Auto-register scalar value validation. Absorb <code>Trellis.Asp.Authorization</code> (so <code>[CustomerResourceId]</code> lives in <code>Trellis.Asp</code> namespace). (<code>RepresentationMetadata</code> already lives in <code>Trellis.Results</code>/Core alongside <code>WriteOutcome&lt;T&gt;</code> per Phase 1a — it stays there because the Application layer references it on <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> return types.) <strong>Canary growth:</strong> add a one-controller × one-handler ASP slice with one ETag-conditional update, exercising <code>WriteOutcome&lt;T&gt;</code> → 200/201/204 mapping and <code>ToHttpResponse</code> over 3+ error cases.</li>
+<li><strong>Phase 4 — Integration cleanup + canary growth.</strong> <code>Trellis.Http</code> slim (§7); <code>Trellis.EntityFrameworkCore</code> dual-path conventions + retained diagnostics (§8); <code>Trellis.StateMachine</code> rename (§9); <code>Trellis.Mediator</code>/<code>Trellis.Authorization</code> per §5 (FluentValidation <strong>stays separate</strong>, not absorbed — see §5.2 and §2 row 9). <code>Trellis.Testing</code> and <code>Trellis.Testing.AspNetCore</code> <strong>stay as two packages</strong> (see §10). <code>Trellis.Stateless</code> → <code>Trellis.StateMachine</code> with <strong>no metapackage redirect</strong> — clean cut, consistent with §12.4. <strong>Canary growth:</strong> wire the canary's repository to EF Core in-memory, the dispatch through <code>Trellis.Mediator</code>, and one <code>[Authorize]</code> resource-aware authorization check.</li>
+<li><strong>Phase 5a — Tooling consolidation + v2.0.0 cut (mandatory; last framework-side phase).</strong> Unify analyzer rules + renumber diagnostic IDs (§11), including the <code>TRLSGEN###</code> → <code>TRLS031</code>+ migration. Ship <code>TrellisDiagnosticIds</code> constants (§11) and the &quot;Did you mean: …&quot; message convention. Add <code>TRLS028</code> enforcing the §12.6 AOT/reflection ban. <strong>v2-canary final gate (per §15.1):</strong> the canary that has been growing since Phase 1a must compile against the assembled v2 surface, exercise <code>WriteOutcome&lt;T&gt;</code> end-to-end, and pass <code>dotnet publish /p:PublishAot=true</code> with no warnings. The canary is a private sample, not a published template. At the end of Phase 5a, the framework is feature-complete and the v2.0.0 NuGet packages are cut. <strong>No template work happens in Phases 1a–5a</strong> — the v1 template stays on v1.x packages, and the v2 framework ships <em>without</em> an accompanying public starter template.</li>
+<li><strong>Phase 6 — Template rewrite (cross-repo, post-framework-GA).</strong> Begins <strong>only after Phase 5a ships v2.0.0 of the framework packages</strong>. In <code>TrellisAspTemplate</code> (separate repo), rewrite the <code>Trellis.AspTemplate</code> package against v2 from a clean slate. <strong>The 4 Clean-Architecture layers are preserved</strong> (Domain / Application / ACL / API), but every file is regenerated against the v2 surface — <code>Result.Ok</code>/<code>Fail</code>, <code>Result</code> (no <code>Unit</code>), seven-verb primary pipeline (with <code>BindZip</code>/LINQ query syntax available where they read more clearly), <code>WriteOutcome&lt;TodoItem&gt;</code> from <code>Trellis.Core</code>, attribute-driven primitives, <code>Trellis.StateMachine</code> references, FluentValidation as a separately-imported package. Add <code>dotnet new</code> parameters (e.g., <code>--no-state-machine</code>, <code>--minimal-api</code>). Re-sync embedded <code>.github/copilot-instructions.md</code> + <code>trellis-api-*.md</code> to the v2 surface, lock these in as the canonical AI surface, and tag a 2.0.0 release of <code>Trellis.AspTemplate</code>. The OpenAPI document regenerates from the rewrite — no v1→v2 client-shape compatibility is offered. <strong>Implication of this phasing:</strong> there is a window — between framework v2.0.0 GA and template v2.0.0 GA — when a new project trying to adopt v2 has no public starter. This is acceptable because (a) Trellis is not yet broadly externally adopted, (b) the v2-canary sample (Phase 5a) and framework integration tests cover the cross-package flow, and (c) keeping the template out of Phases 1a–5a removes coordination cost from the framework rewrite. Phase 6 also serves as the final shake-down of the v2 framework surface — awkwardness discovered while rewriting the template feeds back as v2.0.1/v2.1 framework adjustments.</li>
+<li><strong>Phase 7 — Owned dispatcher (optional, conditional on AI-eval data).</strong> Build the source-generated dispatcher in <code>Trellis.Mediator.Dispatcher</code> <strong>only if</strong> Phase 6's template rewrite + AI-eval data shows the foreign mediator's quirks measurably hurt code-generation correctness. Phase 7 is independent of Phases 1a–6 and may be deferred indefinitely.</li>
+</ol>
+<p>Each phase delivers a working, tested, documented slice. Because backward compat isn't required, each phase is a whole-package replacement.</p>
+<h3 id="151-release--quality-gates-apply-to-every-phase-1a5a-nuget">15.1 Release &amp; quality gates (apply to every Phase 1a–5a NuGet)</h3>
+<p>Every framework <code>.nupkg</code> produced by Phases 1a–5a satisfies the following before merge to <code>main</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Requirement</th>
+<th>Enforcement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Determinism</strong></td>
+<td><code>&lt;Deterministic&gt;true&lt;/Deterministic&gt;</code> + <code>&lt;ContinuousIntegrationBuild&gt;true&lt;/ContinuousIntegrationBuild&gt;</code> set in <code>Directory.Build.props</code></td>
+<td>CI verifies bit-identical <code>.nupkg</code> across two clean builds of the same SHA</td>
+</tr>
+<tr>
+<td><strong>SourceLink</strong></td>
+<td><code>Microsoft.SourceLink.GitHub</code> referenced; <code>&lt;PublishRepositoryUrl&gt;true&lt;/PublishRepositoryUrl&gt;</code>, <code>&lt;EmbedUntrackedSources&gt;true&lt;/EmbedUntrackedSources&gt;</code></td>
+<td>CI fails if any package lacks SourceLink metadata</td>
+</tr>
+<tr>
+<td><strong>Symbols</strong></td>
+<td><code>&lt;IncludeSymbols&gt;true&lt;/IncludeSymbols&gt;</code> + <code>&lt;SymbolPackageFormat&gt;snupkg&lt;/SymbolPackageFormat&gt;</code></td>
+<td><code>.snupkg</code> published to symbol server alongside <code>.nupkg</code></td>
+</tr>
+<tr>
+<td><strong>Strong naming</strong></td>
+<td>All runtime assemblies signed with the <code>Trellis.snk</code> key (already in repo for v1)</td>
+<td>CI fails if any output assembly is unsigned</td>
+</tr>
+<tr>
+<td><strong>AOT / trim</strong></td>
+<td><code>&lt;IsAotCompatible&gt;true&lt;/IsAotCompatible&gt;</code> + <code>&lt;IsTrimmable&gt;true&lt;/IsTrimmable&gt;</code> per §12.6</td>
+<td>CI builds a trimmed/AOT test harness and fails on any IL2026/IL2070/IL3050 warning</td>
+</tr>
+<tr>
+<td><strong>Public API tracking</strong></td>
+<td><code>Microsoft.CodeAnalysis.PublicApiAnalyzers</code> with <code>PublicAPI.Shipped.txt</code> / <code>PublicAPI.Unshipped.txt</code> per package</td>
+<td>CI fails on undocumented public-API additions/removals</td>
+</tr>
+<tr>
+<td><strong>Per-package docs</strong></td>
+<td>Each package ships its own <code>trellis-api-&lt;package&gt;.md</code> as content (<code>Trellis.ApiReference.targets</code> already does this)</td>
+<td>CI verifies the file exists and the &quot;Breaking changes from v1&quot; section is non-empty for v2.0.0</td>
+</tr>
+<tr>
+<td><strong>Pre-release feed</strong></td>
+<td>Each merged PR publishes <code>*-alpha.&lt;sha&gt;</code> packages to the framework's CI feed</td>
+<td>Used by the v2-canary sample (Phase 5a) and any internal early adopters</td>
+</tr>
+<tr>
+<td><strong>v2-canary</strong></td>
+<td>A <code>samples/v2-canary/</code> sample app compiles against the latest pre-release packages and passes <code>dotnet publish /p:PublishAot=true</code> with zero trim warnings</td>
+<td>Required gate before the v2.0.0 GA cut at the end of Phase 5a</td>
+</tr>
+<tr>
+<td><strong>Pre-release strategy</strong></td>
+<td>v2.0.0 packages publish through <code>2.0.0-preview.N</code> → <code>2.0.0-rc.N</code> → <code>2.0.0</code> per standard NuGet semver</td>
+<td>First public <code>2.0.0-preview.1</code> cut at end of Phase 1a; <code>2.0.0-rc.1</code> at end of Phase 5a; <code>2.0.0</code> final after the v2-canary passes</td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td>Microbench suite (<code>Trellis.Benchmarks/</code>) covers Result allocation, pipeline-verb cost, EFCore convention startup; CI fails if any tracked benchmark regresses &gt;15% from the previous main</td>
+<td>Phase 1a establishes baselines; subsequent phases must not regress</td>
+</tr>
+<tr>
+<td><strong>Security defaults</strong></td>
+<td><code>Trellis.Asp</code> registers no auth scheme by default; the template (Phase 6) opts in to specific schemes. <code>Trellis.Asp</code> does not enable HSTS / HTTPS redirect by default (host responsibility)</td>
+<td>Documented in <code>trellis-api-asp.md</code> &quot;Security defaults&quot; section</td>
+</tr>
+<tr>
+<td><strong>Telemetry baseline</strong></td>
+<td><code>OpenTelemetry</code> is an opt-in dependency (already true in v1). Trellis types emit <code>ActivitySource(&quot;Trellis.&lt;Area&gt;&quot;)</code> and <code>Meter(&quot;Trellis.&lt;Area&gt;&quot;)</code> with names documented per package; no <code>OTel</code> SDK references in framework runtime packages</td>
+<td>CI verifies framework packages have no transitive <code>OpenTelemetry.*</code> dependency</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="16-scoring--honest-self-assessment">16. Scoring — honest self-assessment</h2>
+<p><strong>Caveat upfront:</strong> scoring my own proposal is biased — I am the one defending it. I'll be deliberately conservative on the proposed-design column to compensate. The current design is <em>not</em> in poor shape — it's a thoughtful, layered, well-documented framework with real strengths. The redesign is mostly <em>AI-correctness</em> wins, not a rescue from a broken foundation.</p>
+<h3 id="per-dimension-scores-0--unusable-10--best-in-class-for-the-goal">Per-dimension scores (0 = unusable, 10 = best in class for the goal)</h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Current</th>
+<th>Proposed</th>
+<th>Δ</th>
+<th>Honest note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AI-correctness (first-try generation)</strong></td>
+<td>6</td>
+<td>8</td>
+<td>+2</td>
+<td>Biggest single win. 7 primary verbs (+ <code>BindZip</code> + LINQ query syntax retained for value-preserving and query-style composition); no <code>Value</code>/<code>Error</code> properties (TRLS003/004 gone); closed-by-convention catalog; <code>Tap</code>/<code>TapOnFailure</code> split avoids overload-resolution gambling at the call site. Still capped by analyzer-not-compiler enforcement and async overload combinatorics.</td>
+</tr>
+<tr>
+<td><strong>Surface discoverability</strong></td>
+<td>5</td>
+<td>8</td>
+<td>+3</td>
+<td>Aliases removed; flat namespaces; per-package API references mirror package map 1:1.</td>
+</tr>
+<tr>
+<td><strong>Layering clarity (Clean Arch)</strong></td>
+<td>7</td>
+<td>8</td>
+<td>+1</td>
+<td>Already strong (template proves it). New: explicit layer-reference rules canonized in <code>copilot-instructions.md</code>.</td>
+</tr>
+<tr>
+<td><strong>Type safety</strong></td>
+<td>7</td>
+<td>8</td>
+<td>+1</td>
+<td>Removing <code>.Value</code>/<code>.Error</code> is real. <code>TryGetValue</code> out-pattern is safer. Catalog still closed-by-convention, not compiler-exhaustive — honest cap.</td>
+</tr>
+<tr>
+<td><strong>Error model</strong></td>
+<td>6</td>
+<td>8</td>
+<td>+2</td>
+<td>Concrete-subtype factory returns; protocol-bearing payloads kept; aggregation via <code>Validate</code> not <code>AggregateError</code>. <code>RetryAfterValue</code>/<code>EntityTagValue</code> placement now justified by layer usage.</td>
+</tr>
+<tr>
+<td><strong>Async ergonomics</strong></td>
+<td>5</td>
+<td>7</td>
+<td>+2</td>
+<td>Left/Right/Both file-naming noise gone from user surface; ~6 overloads per verb internal. Cap: <code>Task</code>↔<code>ValueTask</code> mixing still needs explicit conversion.</td>
+</tr>
+<tr>
+<td><strong>ASP integration</strong></td>
+<td>6</td>
+<td>8</td>
+<td>+2</td>
+<td>One <code>ToHttpResponse</code> verb collapses today's 4 quartets. Protocol semantics (Vary, conditional, Prefer, Range, RetryAfter) preserved via opts. Cap: opts-builder discoverability is unproven.</td>
+</tr>
+<tr>
+<td><strong>EF integration</strong></td>
+<td>7</td>
+<td>7</td>
+<td>0</td>
+<td>Already solid. New: reflection-free generated convention path is additive, not replacement. Honest: <code>RepositoryBase</code> shape unchanged; magic index rewriting <em>not</em> added.</td>
+</tr>
+<tr>
+<td><strong>Tooling (analyzers + generators)</strong></td>
+<td>6</td>
+<td>8</td>
+<td>+2</td>
+<td>Unified <code>TRLS001…099</code>; new <code>TRLS023/024/025/026/027</code>; analyzer + generator co-shipped.</td>
+</tr>
+<tr>
+<td><strong>Documentation</strong></td>
+<td>7</td>
+<td>8</td>
+<td>+1</td>
+<td>Per-package <code>trellis-api-*.md</code> shipping in nupkg today (already good). New: template-anchored docs as canonical AI surface; reduces drift.</td>
+</tr>
+<tr>
+<td><strong>Testability</strong></td>
+<td>8</td>
+<td>8</td>
+<td>0</td>
+<td>Already strong. New helpers (<code>ShouldHaveFieldError</code>, <code>ShouldHaveRaised&lt;T&gt;</code>) are additive.</td>
+</tr>
+<tr>
+<td><strong>AOT readiness</strong></td>
+<td>6</td>
+<td>7</td>
+<td>+1</td>
+<td>Source-gen-first culture for AOT-supported packages; explicit EF opt-out; Mediator wrapping caps gains.</td>
+</tr>
+<tr>
+<td><strong>Internal consistency / &quot;one way&quot;</strong></td>
+<td>5</td>
+<td>8</td>
+<td>+3</td>
+<td>The most-violated current axis (aliases everywhere). New: aliases banned by analyzer; <code>Result.Ok</code>/<code>Fail</code>/<code>Try</code> is the entire factory surface.</td>
+</tr>
+<tr>
+<td><strong>Combinator power</strong></td>
+<td>6</td>
+<td>7</td>
+<td>+1</td>
+<td><code>Validate</code> builder removes arity ceiling for validation; <code>Combine T1..T9</code> + <code>ParallelAsync</code> retained for heterogeneous combination.</td>
+</tr>
+<tr>
+<td><strong>Migration cost / risk</strong></td>
+<td>n/a</td>
+<td>n/a</td>
+<td>—</td>
+<td>The redesign is whole-package replacement across 8 phases (1a–7) — real cost. The v2-canary sample in Phase 5a (§15.1) mitigates &quot;no consumer before GA&quot; risk but does not eliminate it. Counted as a risk, not a score.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="headline-scores">Headline scores</h3>
+<table>
+<thead>
+<tr>
+<th>Design</th>
+<th>Score</th>
+<th>One-line characterization</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Current Trellis</strong></td>
+<td><strong>6.0 / 10</strong></td>
+<td>Solid, layered, well-documented framework. Real strengths in DDD primitives, EF integration, tracing, and per-package docs shipped in NuGet. Drag from accumulated alias surface, hidden <code>.Value</code>/<code>.Error</code> pitfalls, async file-naming noise, contradictory HTTP-type placement, and a 25-verb pipeline an LLM can't keep in working memory. <strong>Production-grade but AI-noisy.</strong></td>
+</tr>
+<tr>
+<td><strong>Proposed Trellis (paper)</strong></td>
+<td><strong>7.5 / 10</strong></td>
+<td>Materially better AI ergonomics across the board. Single biggest wins: the 7-verb primary pipeline (with <code>Tap</code>/<code>TapOnFailure</code> split for unambiguous read-at-call-site semantics), <code>BindZip</code> retained for value-preserving chains, LINQ query syntax retained for monadic composition, removed <code>.Value</code>/<code>.Error</code>, closed-by-convention error catalog, single <code>ToHttpResponse</code> verb. Honest caps: (a) &quot;closed by analyzer ≠ closed by compiler&quot;, (b) async overload combinatorics still real internally (the BindZip 2..9-arity T4 family and LINQ surface together add ~30 overloads to the count in §3.3), (c) <strong>paper score</strong> — until shipped through Phases 1a–5a and validated against the v2-canary + the Phase 6 template rewrite, the +1.5 delta is theoretical, (d) migration cost across 8 phases is real engineering, (e) Mediator wrapper retention caps some AOT/dispatch wins (deliberately deferred to optional Phase 7).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="honest-delta-interpretation">Honest delta interpretation</h3>
+<p>A <strong>+1.5 paper delta</strong> means: this redesign meaningfully improves the AI-correctness story without breaking the architectural strengths the current design has. It is <strong>not</strong> a &quot;rewrite to fix a broken foundation&quot; — it is a &quot;tighten an already-good foundation for a specific goal (LLM code generation).&quot;</p>
+<p>If the proposal scored 9.0+ I would distrust my own analysis. <strong>+1.5 is the realistic upside</strong>; the lower bound (if Phase 1a reveals async-overload usability problems or the closed-catalog analyzer is too noisy) is closer to <strong>+0.5</strong>. The phasing (§15) is designed so that each phase's value can be reassessed before committing to the next.</p>
+<h3 id="what-would-push-the-proposed-score-to-85">What would push the proposed score to 8.5+?</h3>
+<ul>
+<li>A working <strong>Trellis-owned dispatcher</strong> (Phase 7 stretch) that lets handlers return <code>Result&lt;T&gt;</code> natively without <code>IFailureFactory&lt;TSelf&gt;</code> — buys ~+0.3 on AI-correctness.</li>
+<li><strong>Roslyn-driven generation of <code>trellis-api-*.md</code> from source</strong> so docs cannot drift — buys ~+0.3 on documentation.</li>
+<li>An <strong>AI eval harness</strong> (Phase 5) that measures actual first-try generation success rates against real prompts — would <em>prove</em> the +1.5 rather than estimate it.</li>
+<li><strong>F#-style discriminated union</strong> for <code>Error</code> once C# ships union types — would convert the closed-by-convention into closed-by-compiler — ~+0.4.</li>
+</ul>
+<p>These are explicitly <em>future work</em>, not part of the proposal.</p>
+<hr>
+<h2 id="end">End</h2>
+<p>This v2 proposal is grounded in what C# can actually deliver, retains the load-bearing capabilities the v1 silently dropped (resource auth, tracing, <code>MaybeInvariant</code>, protocol-specific errors, EF persistence diagnostics, <code>Result.Try</code>, <code>WriteOutcome&lt;T&gt;</code>), and right-sizes the foundational work. The aggressive AI-correctness wins (seven verbs, removed <code>Value</code>/<code>Error</code> properties, deleted <code>IConvertible</code>, single <code>ToHttpResponse</code>) survive intact.</p>
+<p>If approved, the next deliverable is a per-package implementation plan starting with <strong>Phase 1a</strong> (Result/Maybe rewrite), because every other phase depends on it.</p>
+<hr>
+<h2 id="post-phase-3-cleanup-v3-release">Post-Phase 3 cleanup (v3 release)</h2>
+<p><strong>Status:</strong> the Phase 3 obsolete-verb cleanup has landed. The seven legacy Trellis.Asp extension classes (<code>ActionResultExtensions</code>, <code>ActionResultExtensionsAsync</code>, <code>HttpResultExtensions</code>, <code>HttpResultExtensionsAsync</code>, <code>PageActionResultExtensions</code>, <code>PageHttpResultExtensions</code>, <code>WriteOutcomeExtensions</code>) and their verbs (<code>ToActionResult</code>, <code>ToHttpResult</code>, <code>ToCreatedAtActionResult</code>, <code>ToCreatedAtRouteHttpResult</code>, <code>ToCreatedHttpResult</code>, <code>ToUpdatedActionResult</code>, <code>ToUpdatedHttpResult</code>, <code>ToPagedActionResult</code>, <code>ToPagedHttpResult</code>) have been deleted outright. The single supported verb is <code>result.ToHttpResponse(...)</code> / <code>result.ToHttpResponseAsync(...)</code>, with <code>.AsActionResult&lt;T&gt;()</code> / <code>.AsActionResultAsync&lt;T&gt;()</code> as the MVC typed-signature adapter. All in-tree examples (<code>Showcase.MinimalApi</code>, <code>Showcase.Mvc</code>, <code>ConditionalRequestExample</code>) use the new API exclusively. See <a href="https://github.com/microsoft/Trellis/blob/main/MIGRATION_v3.md"><code>MIGRATION_v3.md</code></a> for the per-verb replacement table and <a href="../articles/asp-tohttpresponse.html"><code>asp-tohttpresponse.md</code></a> for canonical patterns.</p>
+<hr>
+<h2 id="decision-log">Decision log</h2>
+<p>Append-only record of design decisions taken during phased v2 implementation that diverged from, refined, or extended the literal text of the sections above. The original sections are preserved unchanged for historical context.</p>
+<h3 id="phase-4b--trellishttp-slim-refines-7">Phase 4b — <code>Trellis.Http</code> slim (refines §7)</h3>
+<p>Section 7 sketched the canonical surface but deferred several details to implementation. Phase 4b resolves them as follows:</p>
+<ol>
+<li><p><strong><code>Async</code> suffix on every method.</strong> §7's example used bare <code>ToResult</code> / <code>HandleNotFound</code> etc. The repo's pervasive convention is that any method whose return type is <code>Task&lt;...&gt;</code> carries an <code>Async</code> suffix. The implemented surface therefore uses <code>ToResultAsync</code>, <code>HandleNotFoundAsync</code>, <code>HandleConflictAsync</code>, <code>HandleUnauthorizedAsync</code>, <code>ReadJsonAsync</code>, <code>ReadJsonMaybeAsync</code>. Repo convention wins over the ADR's example.</p>
+</li>
+<li><p><strong>Body-aware <code>ToResultAsync</code> overload added.</strong> §7 deletes <code>HandleFailureAsync&lt;TContext&gt;</code> (&quot;the <code>TContext</code> channel is anti-pattern; closures are fine&quot;). To preserve the load-bearing capability of synthesizing an <code>Error</code> from the response body (for example, decoding RFC 9457 problem-details), Phase 4b ships a second <code>ToResultAsync</code> overload taking <code>Func&lt;HttpResponseMessage, CancellationToken, Task&lt;Error?&gt;&gt;</code>. The mapper is invoked <strong>only</strong> for non-success status codes, returning <code>null</code> to pass through or an <code>Error</code> to fail. State that the v1 <code>TContext</code> channel carried is now captured by closure.</p>
+</li>
+<li><p><strong>Explicit disposal contract.</strong> §7 did not specify ownership of the underlying <code>HttpResponseMessage</code>. Phase 4b commits the library to the following contract, reflected in the type-level XML remarks and tested via a dispose-tracking subclass:</p>
+<ul>
+<li><code>ToResultAsync</code> (both overloads): dispose on the <code>Fail</code> path; pass-through on <code>Ok</code>.</li>
+<li><code>HandleNotFoundAsync</code> / <code>HandleConflictAsync</code> / <code>HandleUnauthorizedAsync</code>: dispose on the matched-status <code>Fail</code> path; pass-through otherwise.</li>
+<li><code>ReadJsonAsync</code> / <code>ReadJsonMaybeAsync</code>: <strong>always</strong> dispose after reading (success, structured failure, or thrown <code>JsonException</code> from the <code>Maybe</code> overload).</li>
+<li>Already-failed <code>Result&lt;HttpResponseMessage&gt;</code> short-circuits <code>ReadJson*</code> with the upstream error preserved (no response to dispose; caller never owned one).</li>
+</ul>
+</li>
+<li><p><strong>Single canonical shape for the post-bridge chain.</strong> §7's example showed <code>HandleNotFound(this Task&lt;HttpResponseMessage&gt; r, ...)</code> (singular). Phase 4b implements <code>Handle*Async</code> strictly on <code>Task&lt;HttpResponseMessage&gt;</code> — they are <em>entry points</em>, not composable mid-chain operators. Multi-status mapping after the bridge is expressed via <code>ToResultAsync(statusMap)</code>. This avoids the v1 trap of having both <code>Task&lt;HRM&gt;</code> and <code>Task&lt;Result&lt;HRM&gt;&gt;</code> overloads for every verb.</p>
+</li>
+<li><p><strong>Clean cut, no shims.</strong> Pre-GA, every removed/renamed verb is deleted outright; there are no <code>[Obsolete]</code> redirects. Migration is mechanical (per the table in <code>docs/docfx_project/api_reference/trellis-api-http.md</code>) and tightly scoped — the framework had zero in-tree production callers of the removed verbs.</p>
+</li>
+</ol>
+<p>These decisions are implemented in PR for branch <code>dev/xavier/v2-phase4b-http-slim</code> and codified in tests under <code>Trellis.Http/tests/HttpResponseExtensionsTests/</code>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-002-v2-redesign-plan.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

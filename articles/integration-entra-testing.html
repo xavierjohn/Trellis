@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Testing with Azure Entra ID Tokens | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Testing with Azure Entra ID Tokens | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-entra-testing.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="testing-with-azure-entra-id-tokens">Testing with Azure Entra ID Tokens</h1>
+
+<p><strong>Level:</strong> Advanced 📙 | <strong>Time:</strong> 20-30 min | <strong>Prerequisites:</strong> <a href="integration-testing.html">Testing</a>, <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a></p>
+<p>Most Trellis integration tests should use <code>CreateClientWithActor(...)</code>. It is fast and perfect when you only want to test authorization behavior inside your app.</p>
+<p>But sometimes that is not enough.</p>
+<p>If you need to verify the <strong>real authentication path</strong>—token issuance, JWT validation, claim mapping, and <code>EntraActorProvider</code>—you need real Entra tokens. That is what <code>MsalTestTokenProvider</code> is for.</p>
+<h2 id="when-should-you-use-this">When should you use this?</h2>
+<p>Use real Entra tokens when you want confidence in:</p>
+<ul>
+<li>Azure Entra ID issuing the token you expect</li>
+<li>ASP.NET Core JWT validation</li>
+<li>your claim-to-permission mapping</li>
+<li><code>EntraActorProvider</code> behavior in production-like conditions</li>
+</ul>
+<p>Use <code>CreateClientWithActor(...)</code> when you only need to test:</p>
+<ul>
+<li>application authorization rules</li>
+<li>handler behavior</li>
+<li>endpoint behavior</li>
+</ul>
+<pre><code class="lang-mermaid">flowchart LR
+    A[Fast integration tests] --&gt; B[X-Test-Actor header]
+    C[Full auth pipeline tests] --&gt; D[MsalTestTokenProvider]
+    D --&gt; E[Bearer token]
+    E --&gt; F[JWT validation]
+    F --&gt; G[EntraActorProvider]
+</code></pre>
+<h2 id="install-the-package">Install the package</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Testing
+</code></pre>
+<h2 id="how-it-works">How it works</h2>
+<p><code>MsalTestTokenProvider</code> uses the MSAL ROPC flow against a dedicated test tenant:</p>
+<ul>
+<li>one Entra test tenant</li>
+<li>one public client app registration</li>
+<li>test users with known passwords</li>
+<li>MFA disabled for those test users</li>
+</ul>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>ROPC is acceptable for automated test tenants. It is not a production authentication pattern.</p>
+</div>
+<h2 id="tenant-setup-checklist">Tenant setup checklist</h2>
+<h3 id="1-create-a-dedicated-test-tenant">1. Create a dedicated test tenant</h3>
+<p>Never reuse a production tenant for automated tests.</p>
+<h3 id="2-register-a-public-client-app">2. Register a public client app</h3>
+<p>In the app registration:</p>
+<ul>
+<li>supported account type: single tenant</li>
+<li>allow public client flows: <strong>Yes</strong></li>
+</ul>
+<h3 id="3-assign-app-roles-to-test-users">3. Assign app roles to test users</h3>
+<p>Create users that match the permission profiles you want to test, then assign roles through the Enterprise Application.</p>
+<h3 id="4-disable-mfa-for-those-test-users">4. Disable MFA for those test users</h3>
+<p>ROPC does not support interactive MFA.</p>
+<h2 id="store-configuration-safely">Store configuration safely</h2>
+<p>Local development should use <code>dotnet user-secrets</code>. CI should use environment variables.</p>
+<h3 id="local-secrets">Local secrets</h3>
+<pre><code class="lang-bash">dotnet user-secrets set &quot;EntraTest:TenantId&quot; &quot;&lt;tenant-id&gt;&quot;
+dotnet user-secrets set &quot;EntraTest:ClientId&quot; &quot;&lt;client-id&gt;&quot;
+dotnet user-secrets set &quot;EntraTest:Scopes:0&quot; &quot;api://&lt;client-id&gt;/.default&quot;
+
+dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:Username&quot; &quot;salesrep@contoso-test.onmicrosoft.com&quot;
+dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:Password&quot; &quot;&lt;password&gt;&quot;
+dotnet user-secrets set &quot;EntraTest:TestUsers:admin:Username&quot; &quot;admin@contoso-test.onmicrosoft.com&quot;
+dotnet user-secrets set &quot;EntraTest:TestUsers:admin:Password&quot; &quot;&lt;password&gt;&quot;
+</code></pre>
+<h3 id="ci-environment-variables">CI environment variables</h3>
+<p>Configuration binding uses the <code>EntraTest__</code> prefix and double underscores for nesting.</p>
+<pre><code class="lang-yaml">env:
+  EntraTest__TenantId: ${{ secrets.ENTRA_TEST_TENANT_ID }}
+  EntraTest__ClientId: ${{ secrets.ENTRA_TEST_CLIENT_ID }}
+  EntraTest__Scopes__0: api://${{ secrets.ENTRA_TEST_CLIENT_ID }}/.default
+  EntraTest__TestUsers__salesRep__Username: ${{ secrets.ENTRA_TEST_SALESREP_USERNAME }}
+  EntraTest__TestUsers__salesRep__Password: ${{ secrets.ENTRA_TEST_SALESREP_PASSWORD }}
+</code></pre>
+<h2 id="bind-configuration-into-msaltestoptions">Bind configuration into <code>MsalTestOptions</code></h2>
+<p><code>MsalTestTokenProvider</code> takes <code>MsalTestOptions</code>, so keep the test setup boring and explicit.</p>
+<pre><code class="lang-csharp">using Microsoft.Extensions.Configuration;
+using Trellis.Testing.AspNetCore;
+
+var configuration = new ConfigurationBuilder()
+    .AddUserSecrets&lt;Program&gt;(optional: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+var options = new MsalTestOptions();
+configuration.GetSection(&quot;EntraTest&quot;).Bind(options);
+
+var tokenProvider = new MsalTestTokenProvider(options);
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Keep one <code>MsalTestTokenProvider</code> instance per fixture or test class. MSAL caches tokens per provider instance.</p>
+</div>
+<h2 id="first-working-test">First working test</h2>
+<p>The simplest happy path is: create the token provider once, create a client for a named test user, then call the real API.</p>
+<pre><code class="lang-csharp">using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Trellis.Testing.AspNetCore;
+using Xunit;
+
+[JsonSerializable(typeof(CreateOrderRequest))]
+internal partial class ApiJsonContext : JsonSerializerContext
+{
+}
+
+public sealed class Program
+{
+}
+
+public sealed record CreateOrderRequest(string CustomerId, int Quantity);
+
+public sealed class EntraTestFixture
+{
+    public EntraTestFixture(WebApplicationFactory&lt;Program&gt; factory)
+    {
+        Factory = factory;
+
+        var configuration = new ConfigurationBuilder()
+            .AddUserSecrets&lt;EntraTestFixture&gt;(optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        var options = new MsalTestOptions();
+        configuration.GetSection(&quot;EntraTest&quot;).Bind(options);
+
+        if (string.IsNullOrWhiteSpace(options.TenantId) ||
+            string.IsNullOrWhiteSpace(options.ClientId))
+        {
+            throw new InvalidOperationException(&quot;Configure EntraTest before running Entra token tests.&quot;);
+        }
+
+        TokenProvider = new MsalTestTokenProvider(options);
+    }
+
+    public WebApplicationFactory&lt;Program&gt; Factory { get; }
+
+    public MsalTestTokenProvider TokenProvider { get; }
+}
+
+public sealed class OrdersEntraTests : IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;
+{
+    private readonly EntraTestFixture _fixture;
+
+    public OrdersEntraTests(WebApplicationFactory&lt;Program&gt; factory)
+    {
+        _fixture = new EntraTestFixture(factory);
+    }
+
+    [Fact]
+    public async Task Sales_rep_can_create_orders()
+    {
+        var client = await _fixture.Factory.CreateClientWithEntraTokenAsync(
+            _fixture.TokenProvider,
+            &quot;salesRep&quot;);
+
+        var response = await client.PostAsJsonAsync(
+            &quot;/api/orders&quot;,
+            new CreateOrderRequest(&quot;customer-1&quot;, 2),
+            ApiJsonContext.Default.CreateOrderRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+}
+</code></pre>
+<h2 id="verifying-roles-and-permissions">Verifying roles and permissions</h2>
+<p>If you store the expected permissions in configuration, you can use them for sanity checks in your test setup.</p>
+<pre><code class="lang-bash">dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:ExpectedPermissions:0&quot; &quot;orders:create&quot;
+dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:ExpectedPermissions:1&quot; &quot;orders:read&quot;
+</code></pre>
+<p>That is useful when you want the test fixture to verify the tenant still matches the documented role model.</p>
+<h2 id="common-failure-modes">Common failure modes</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Usually means</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AADSTS50126</code></td>
+<td>username or password is wrong</td>
+<td>reset the test user password</td>
+</tr>
+<tr>
+<td><code>AADSTS50076</code></td>
+<td>MFA is required</td>
+<td>exclude test users from MFA</td>
+</tr>
+<tr>
+<td><code>AADSTS7000218</code></td>
+<td>app is not configured as public client</td>
+<td>enable public client flows</td>
+</tr>
+<tr>
+<td><code>AADSTS650057</code></td>
+<td>wrong scope</td>
+<td>use <code>api://{clientId}/.default</code></td>
+</tr>
+<tr>
+<td>token authenticates but app sees no permissions</td>
+<td>app roles were not assigned</td>
+<td>assign users/groups in Enterprise Applications</td>
+</tr>
+</tbody>
+</table>
+<h2 id="practical-guidance">Practical guidance</h2>
+<h3 id="keep-these-tests-small-in-number">Keep these tests small in number</h3>
+<p>They validate the real auth pipeline, so they are slower and more environment-dependent than header-based integration tests.</p>
+<h3 id="use-them-as-confidence-tests-not-as-your-entire-suite">Use them as confidence tests, not as your entire suite</h3>
+<p>A few targeted scenarios usually go much further than duplicating every authorization test with real tokens.</p>
+<h3 id="isolate-the-tenant">Isolate the tenant</h3>
+<p>Treat the test tenant as disposable infrastructure, not as a shared long-lived environment with manual changes.</p>
+<h2 id="next-steps">Next steps</h2>
+<ul>
+<li><a href="integration-testing.html">Testing</a></li>
+<li><a href="integration-mediator.html">Mediator Pipeline</a></li>
+<li><a href="../api_reference/trellis-api-testing-reference.html">trellis-api-testing-reference.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-entra-testing.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

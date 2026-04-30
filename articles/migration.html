@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Migrating from FunctionalDDD | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Migrating from FunctionalDDD | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="migrating-from-functionalddd">Migrating from FunctionalDDD</h1>
+
+<p>Migrating from <code>FunctionalDdd.*</code> to <code>Trellis.*</code> is mostly a <strong>rename exercise</strong>, not a redesign.</p>
+<p>That is good news: you usually do <strong>not</strong> need to rethink your domain model or rewrite your pipelines. You need to update package names, namespaces, and a few integration method names.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Start with a mechanical rename, then let the compiler and analyzers show you the handful of places that still need attention.</p>
+</div>
+<h2 id="what-changes-and-what-does-not">What changes and what does not</h2>
+<h3 id="what-changes">What changes</h3>
+<ul>
+<li>NuGet package names</li>
+<li>namespaces</li>
+<li>a few instrumentation method names</li>
+<li>references to the old Ardalis specification package</li>
+</ul>
+<h3 id="what-does-not">What does not</h3>
+<ul>
+<li>core <code>Result&lt;T&gt;</code> / <code>Maybe&lt;T&gt;</code> usage</li>
+<li><code>Bind</code>, <code>Map</code>, <code>Tap</code>, <code>Ensure</code>, <code>Combine</code>, <code>Match</code></li>
+<li>aggregate and entity patterns</li>
+<li>most application-layer code shape</li>
+</ul>
+<h2 id="package-mapping">Package mapping</h2>
+<table>
+<thead>
+<tr>
+<th>Old package</th>
+<th>New package</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FunctionalDdd.RailwayOrientedProgramming</code></td>
+<td><code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.DomainDrivenDesign</code></td>
+<td><code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.PrimitiveValueObjects</code></td>
+<td><code>Trellis.Primitives</code></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.PrimitiveValueObjectGenerator</code></td>
+<td><em>bundled inside <code>Trellis.Core</code> (no separate package)</em></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.Asp</code></td>
+<td><code>Trellis.Asp</code></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.Http</code></td>
+<td><code>Trellis.Http</code></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.FluentValidation</code></td>
+<td><code>Trellis.FluentValidation</code></td>
+</tr>
+</tbody>
+</table>
+<p>Optional new packages with no direct one-to-one predecessor include:</p>
+<ul>
+<li><code>Trellis.Analyzers</code></li>
+<li><code>Trellis.Testing</code></li>
+<li><code>Trellis.StateMachine</code></li>
+</ul>
+<h2 id="step-1-update-package-references">Step 1: update package references</h2>
+<p>If you centralize package versions in <code>Directory.Packages.props</code>, this is the fastest path.</p>
+<h3 id="before">Before</h3>
+<pre><code class="lang-xml">&lt;ItemGroup&gt;
+  &lt;PackageVersion Include=&quot;FunctionalDdd.RailwayOrientedProgramming&quot; Version=&quot;2.x.x&quot; /&gt;
+  &lt;PackageVersion Include=&quot;FunctionalDdd.DomainDrivenDesign&quot; Version=&quot;2.x.x&quot; /&gt;
+  &lt;PackageVersion Include=&quot;FunctionalDdd.Asp&quot; Version=&quot;2.x.x&quot; /&gt;
+  &lt;PackageVersion Include=&quot;FunctionalDdd.PrimitiveValueObjects&quot; Version=&quot;2.x.x&quot; /&gt;
+  &lt;PackageVersion Include=&quot;FunctionalDdd.PrimitiveValueObjectGenerator&quot; Version=&quot;2.x.x&quot; /&gt;
+&lt;/ItemGroup&gt;
+</code></pre>
+<h3 id="after">After</h3>
+<pre><code class="lang-xml">&lt;ItemGroup&gt;
+  &lt;PackageVersion Include=&quot;Trellis.Core&quot; Version=&quot;3.x.x&quot; /&gt;
+  &lt;PackageVersion Include=&quot;Trellis.Asp&quot; Version=&quot;3.x.x&quot; /&gt;
+  &lt;PackageVersion Include=&quot;Trellis.Primitives&quot; Version=&quot;3.x.x&quot; /&gt;
+  &lt;!-- Trellis.Core.Generator is bundled inside Trellis.Core; no separate package --&gt;
+  &lt;PackageVersion Include=&quot;Trellis.Analyzers&quot; Version=&quot;3.x.x&quot; /&gt;
+&lt;/ItemGroup&gt;
+</code></pre>
+<p>If you do not use central package management, update each project file directly.</p>
+<h2 id="step-2-update-namespaces">Step 2: update namespaces</h2>
+<p>The most important namespace change is this:</p>
+<table>
+<thead>
+<tr>
+<th>Old</th>
+<th>New</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>using FunctionalDdd;</code></td>
+<td><code>using Trellis;</code></td>
+</tr>
+<tr>
+<td><code>using FunctionalDdd.PrimitiveValueObjects;</code></td>
+<td><code>using Trellis.Primitives;</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-this-matters">Why this matters</h3>
+<p>Core result and DDD primitives live in <code>Trellis</code>.</p>
+<p>Ready-to-use value objects such as <code>EmailAddress</code>, <code>FirstName</code>, and <code>Money</code> live in <code>Trellis.Primitives</code>.</p>
+<p>A common migration pattern is therefore:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+</code></pre>
+<h2 id="step-3-update-instrumentation-names">Step 3: update instrumentation names</h2>
+<p>If you enabled OpenTelemetry integration, rename these extension methods:</p>
+<table>
+<thead>
+<tr>
+<th>Old</th>
+<th>New</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.AddFunctionalDddRopInstrumentation()</code></td>
+<td><code>.AddResultsInstrumentation()</code></td>
+</tr>
+<tr>
+<td><code>.AddFunctionalDddCvoInstrumentation()</code></td>
+<td><code>.AddPrimitiveValueObjectInstrumentation()</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="step-4-use-native-trellis-specifications">Step 4: use native Trellis specifications</h2>
+<p>Use native Trellis specifications from <code>Trellis.Core</code>.</p>
+<pre><code class="lang-csharp">using System.Linq.Expressions;
+using Trellis;
+
+public sealed class Customer
+{
+    public bool IsActive { get; init; }
+}
+
+public sealed class ActiveCustomerSpecification : Specification&lt;Customer&gt;
+{
+    public override Expression&lt;Func&lt;Customer, bool&gt;&gt; ToExpression() =&gt;
+        customer =&gt; customer.IsActive;
+}
+</code></pre>
+<h2 id="step-5-fix-the-small-but-important-gotchas">Step 5: fix the small but important gotchas</h2>
+<h3 id="use-resultok-for-no-payload-success">Use <code>Result.Ok()</code> for no-payload success</h3>
+<p>If older no-payload snippets use a dedicated sentinel value, replace that usage with non-generic <code>Result</code>:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+var success = Result.Ok();
+</code></pre>
+<h3 id="error-code-comparisons-should-use-the-current-trellis-codes">Error-code comparisons should use the current Trellis codes</h3>
+<p>Trellis error codes use the standard <code>.error</code> suffix for the built-in error families, for example:</p>
+<ul>
+<li><code>validation.error</code></li>
+<li><code>not.found.error</code></li>
+<li><code>forbidden.error</code></li>
+<li><code>unexpected.error</code></li>
+</ul>
+<h3 id="built-in-value-objects-belong-in-trellisprimitives">Built-in value objects belong in <code>Trellis.Primitives</code></h3>
+<p>If migration leaves you with missing type errors for <code>EmailAddress</code>, <code>FirstName</code>, <code>Money</code>, and similar types, add the correct namespace import rather than forcing everything into <code>Trellis</code>.</p>
+<h2 id="a-simple-beforeafter-example">A simple before/after example</h2>
+<h3 id="before-1">Before</h3>
+<pre><code class="lang-csharp">using FunctionalDdd;
+using FunctionalDdd.PrimitiveValueObjects;
+
+var result = FirstName.TryCreate(firstName)
+    .Combine(EmailAddress.TryCreate(email));
+</code></pre>
+<h3 id="after-1">After</h3>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+var result = FirstName.TryCreate(firstName)
+    .Combine(EmailAddress.TryCreate(email));
+</code></pre>
+<p>The code shape stays the same. That is the pattern you should expect throughout the migration.</p>
+<h2 id="recommended-migration-workflow">Recommended migration workflow</h2>
+<ol>
+<li>Update package references.</li>
+<li>Replace namespaces.</li>
+<li>Fix instrumentation names.</li>
+<li>Replace any old specification package usage.</li>
+<li>Build.</li>
+<li>Run tests.</li>
+<li>Add <code>Trellis.Analyzers</code> if you want the compiler to help enforce current patterns.</li>
+</ol>
+<h2 id="verification">Verification</h2>
+<p>After the rename, run your normal verification commands:</p>
+<pre><code class="lang-bash">dotnet build
+dotnet test
+</code></pre>
+<h2 id="bottom-line">Bottom line</h2>
+<p>For most codebases, the migration is intentionally boring:</p>
+<ul>
+<li>rename packages</li>
+<li>rename namespaces</li>
+<li>fix a few integration points</li>
+<li>keep your domain logic largely unchanged</li>
+</ul>
+<p>That is exactly what you want from a rebrand-style migration.</p>
+<h2 id="framework-changes-after-the-rename">Framework changes after the rename</h2>
+<p>Beyond the rename, Trellis also ships package-level API changes. Each is described in detail in the relevant API reference; this section is the scannable index.</p>
+<h3 id="trellishttp-slim-package"><code>Trellis.Http</code> slim package</h3>
+<p><code>Trellis.Http</code> collapsed from 60+ overloads to a single seven-method static class. The full migration table lives in <a href="../api_reference/trellis-api-http.html#breaking-changes-from-v1"><code>docs/docfx_project/api_reference/trellis-api-http.md</code></a>; the headlines:</p>
+<ul>
+<li><strong>Renamed:</strong> <code>ReadResultFromJsonAsync</code> → <code>ReadJsonAsync</code>, <code>ReadResultMaybeFromJsonAsync</code> → <code>ReadJsonMaybeAsync</code> (single canonical shape on <code>Task&lt;Result&lt;HttpResponseMessage&gt;&gt;</code>).</li>
+<li><strong>Removed verbs:</strong> <code>HandleForbidden*</code>, <code>HandleClientError*</code>, <code>HandleServerError*</code>, <code>EnsureSuccess</code> / <code>EnsureSuccessAsync</code>, <code>HandleFailureAsync&lt;TContext&gt;</code>. All are expressible via the new <code>ToResultAsync(statusMap)</code> (status-only map) or body-aware <code>ToResultAsync(mapper, ct)</code> overload.</li>
+<li><strong>Removed shapes:</strong> every sync overload, every <code>HttpResponseMessage</code>-receiver overload, every <code>Result&lt;HttpResponseMessage&gt;</code>-receiver overload. The canonical chain is <code>Task&lt;HttpResponseMessage&gt;</code> → <code>ToResultAsync</code> / <code>Handle*Async</code> → <code>ReadJson*Async</code>.</li>
+<li><strong>New disposal contract:</strong> <code>Trellis.Http</code> now disposes the underlying <code>HttpResponseMessage</code> on terminal/transformative paths. Pass-through paths still leave disposal to the caller until the chain reaches <code>ReadJson*</code>.</li>
+</ul>
+<p>There are no shims or compatibility redirects: this is a clean, pre-GA cut.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Analyzers — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Analyzers — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-analyzers.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisanalyzers--api-reference">Trellis.Analyzers — API Reference</h1>
+
+<ul>
+<li><strong>Package:</strong> <code>Trellis.Analyzers</code></li>
+<li><strong>Namespace:</strong> <code>Trellis.Analyzers</code></li>
+<li><strong>Purpose:</strong> Roslyn analyzers and code fixes that enforce correct Trellis <code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, EF Core, and value-object usage.</li>
+</ul>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="diagnostics">Diagnostics</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Severity</th>
+<th>Title</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRLS001</code></td>
+<td>Warning</td>
+<td>Result return value is not handled</td>
+<td>Result<t> return values should be handled to ensure errors are not silently ignored. Use Bind, Map, Match, or assign to a variable.</t></td>
+</tr>
+<tr>
+<td><code>TRLS002</code></td>
+<td>Info</td>
+<td>Use Bind instead of Map when lambda returns Result</td>
+<td>When the transformation function returns a Result<t>, use Bind (flatMap) instead of Map. Map will produce Result&lt;Result<t>&gt; which is likely not intended.</t></t></td>
+</tr>
+<tr>
+<td><code>TRLS003</code></td>
+<td>Error</td>
+<td>Unsafe access to Maybe.Value</td>
+<td>Maybe.Value throws an InvalidOperationException if the Maybe has no value. Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult. <code>Maybe&lt;T&gt;.Value</code> is hidden from IntelliSense as polish; this analyzer is the enforcement mechanism.</td>
+</tr>
+<tr>
+<td><code>TRLS004</code></td>
+<td>Warning</td>
+<td>Result is double-wrapped</td>
+<td>Result should not be wrapped inside another Result. This creates Result&lt;Result<t>&gt; which is almost always unintended. If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result.</t></td>
+</tr>
+<tr>
+<td><code>TRLS005</code></td>
+<td>Warning</td>
+<td>Incorrect async Result usage</td>
+<td>Task&lt;Result<t>&gt; should be awaited, not blocked with .Result or .Wait(). Blocking can cause deadlocks and prevents proper async execution. Use await instead.</t></td>
+</tr>
+<tr>
+<td><code>TRLS007</code></td>
+<td>Warning</td>
+<td>Maybe is double-wrapped</td>
+<td>Maybe should not be wrapped inside another Maybe. This creates Maybe&lt;Maybe<t>&gt; which is almost always unintended. Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. Consider converting to Result with ToResult() for better composability.</t></td>
+</tr>
+<tr>
+<td><code>TRLS008</code></td>
+<td>Info</td>
+<td>Consider using Result.Combine</td>
+<td>When combining multiple Result<t> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result.</t></td>
+</tr>
+<tr>
+<td><code>TRLS009</code></td>
+<td>Warning</td>
+<td>Use async method variant for async lambda</td>
+<td>When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited.</td>
+</tr>
+<tr>
+<td><code>TRLS010</code></td>
+<td>Warning</td>
+<td>Don't throw exceptions in Result chains</td>
+<td>Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. Return Result.Fail<t>() to signal errors and keep the error on the failure track.</t></td>
+</tr>
+<tr>
+<td><code>TRLS012</code></td>
+<td>Warning</td>
+<td>Don't compare Result or Maybe to null</td>
+<td>Result<t> and Maybe<t> are structs and cannot be null. Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe.</t></t></td>
+</tr>
+<tr>
+<td><code>TRLS013</code></td>
+<td>Warning</td>
+<td>Unsafe access to Maybe.Value in LINQ projection</td>
+<td><code>.Value</code> on <code>Maybe&lt;T&gt;</code> inside Select-family LINQ projections (<code>Select</code>/<code>SelectMany</code>/<code>OrderBy*</code>/<code>ThenBy*</code>/<code>GroupBy</code>/<code>ToDictionary</code>/<code>ToLookup</code>) throws for None elements unless an earlier <code>.Where(x =&gt; x.HasValue)</code> makes the access safe. For EF Core IQueryable predicates over a <code>Maybe&lt;T&gt;</code> property, either register <code>AddTrellisInterceptors()</code> (which rewrites <code>.HasValue</code>/<code>.Value</code>/<code>GetValueOrDefault(d)</code> into <code>EF.Property</code>/null-checks/<code>COALESCE</code>) or use <code>Trellis.EntityFrameworkCore.MaybeQueryableExtensions</code> (<code>WhereHasValue</code>/<code>WhereNone</code>/<code>WhereEquals</code>/<code>WhereLessThan</code>/<code>WhereLessThanOrEqual</code>/<code>WhereGreaterThan</code>/<code>WhereGreaterThanOrEqual</code>) explicitly.</td>
+</tr>
+<tr>
+<td><code>TRLS014</code></td>
+<td>Error</td>
+<td>Combine chain exceeds maximum supported tuple size</td>
+<td>Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. Group related fields into intermediate value objects or sub-results, then combine those groups.</td>
+</tr>
+<tr>
+<td><code>TRLS015</code></td>
+<td>Warning</td>
+<td>Use SaveChangesResultAsync instead of SaveChangesAsync</td>
+<td>In non-UoW contexts, direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions; use <code>SaveChangesResultAsync</code> (returns <code>Result&lt;int&gt;</code>) or <code>SaveChangesResultUnitAsync</code> (returns the non-generic <code>Result</code>). Under <code>AddTrellisUnitOfWork&lt;TContext&gt;</code> the <code>TransactionalCommandBehavior</code> owns commit — repositories should stage changes via DbContext APIs (Add/Update/Remove) and not invoke SaveChanges at all.</td>
+</tr>
+<tr>
+<td><code>TRLS016</code></td>
+<td>Warning</td>
+<td>HasIndex references a Maybe<t> property</t></td>
+<td>HasIndex with a Maybe<t> property silently fails to create the index because MaybeConvention maps Maybe<t> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<t> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e =&gt; new { e.Status, e.SubmittedAt }); or builder.HasIndex(&quot;Status&quot;, &quot;_submittedAt&quot;).</t></t></t></td>
+</tr>
+<tr>
+<td><code>TRLS017</code></td>
+<td>Warning</td>
+<td>Wrong [StringLength] or [Range] attribute namespace</td>
+<td>Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead.</td>
+</tr>
+<tr>
+<td><code>TRLS018</code></td>
+<td>Warning</td>
+<td>Result<t> deconstruction reads value without success gate</t></td>
+<td>Reading the value position of a <code>Result&lt;T&gt;</code> deconstruction (<code>var (success, value, error) = result;</code>) without first checking <code>success</code>/<code>error</code> returns the default value when the result is in failure. Gate the read with the success bool, an <code>error is null</code> check, or an early return on failure.</td>
+</tr>
+<tr>
+<td><code>TRLS019</code></td>
+<td>Warning</td>
+<td>Avoid <code>default(Result)</code>, <code>default(Result&lt;T&gt;)</code>, and <code>default(Maybe&lt;T&gt;)</code></td>
+<td><code>default(Result)</code> and <code>default(Result&lt;T&gt;)</code> are typed failures carrying the <code>new Error.Unexpected(&quot;default_initialized&quot;)</code> sentinel — never silent successes. <code>default(Maybe&lt;T&gt;)</code> equals <code>Maybe&lt;T&gt;.None</code> but the explicit literal obscures intent. Construct via <code>Result.Ok(...)</code> / <code>Result.Fail(...)</code> or <code>Maybe&lt;T&gt;.None</code> / <code>Maybe.From(...)</code>. Suppress with <code>[SuppressMessage(&quot;Trellis&quot;, TrellisDiagnosticIds.DefaultResultOrMaybe)]</code> or <code>#pragma warning disable TRLS019</code> for sanctioned sentinel/test-helper sites.</td>
+</tr>
+<tr>
+<td><code>TRLS020</code></td>
+<td>Warning</td>
+<td>Composite value object DTO property is missing JSON converter</td>
+<td>Composite <code>[OwnedEntity]</code> value objects exposed through request/response DTO surfaces must carry <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;T&gt;))]</code> so JSON binding round-trips through <code>TryCreate</code>.</td>
+</tr>
+<tr>
+<td><code>TRLS021</code></td>
+<td>Warning</td>
+<td>EF configuration duplicates Trellis conventions</td>
+<td>Flags <code>HasConversion</code>, <code>OwnsOne</code>, and <code>Ignore</code> calls on <code>Maybe&lt;T&gt;</code> or <code>[OwnedEntity]</code> properties when <code>ApplyTrellisConventions(...)</code> / <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code> is wired. Remove the manual mapping and let Trellis conventions own the property.</td>
+</tr>
+<tr>
+<td><code>TRLS022</code></td>
+<td>Warning</td>
+<td><code>[OwnedEntity]</code> property uses init-only setter</td>
+<td>Flags <code>{ get; init; }</code> properties on classes annotated with <code>[OwnedEntity]</code>. EF Core materializes owned entities through a generator-emitted private parameterless constructor; init-only setters are not covered by Trellis tests today and round-trip behavior is not guaranteed. Use <code>{ get; private set; }</code>.</td>
+</tr>
+<tr>
+<td><code>TRLS031</code></td>
+<td>Warning</td>
+<td>Unsupported base type for <code>RequiredPartialClassGenerator</code></td>
+<td>Emitted by the Primitives source generator when a <code>Required*</code>-derived value object inherits from an unsupported base. Supported bases: <code>RequiredGuid</code>, <code>RequiredString</code>, <code>RequiredInt</code>, <code>RequiredDecimal</code>, <code>RequiredLong</code>, <code>RequiredBool</code>, <code>RequiredDateTime</code>, <code>RequiredEnum</code>. <em>(formerly <code>TRLSGEN001</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS032</code></td>
+<td>Error</td>
+<td><code>MinimumLength</code> exceeds <code>MaximumLength</code></td>
+<td>Emitted by the Primitives source generator when a <code>[StringLength]</code> attribute has <code>MinimumLength &gt; MaximumLength</code>. Adjust the attribute values so the range is non-empty. <em>(formerly <code>TRLSGEN002</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS033</code></td>
+<td>Error</td>
+<td><code>Range</code> minimum exceeds maximum</td>
+<td>Emitted by the Primitives source generator when a <code>[Range]</code> attribute on <code>int</code>/<code>long</code>/<code>decimal</code> has <code>Min &gt; Max</code>. Adjust the attribute values so the range is non-empty. <em>(formerly <code>TRLSGEN003</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS034</code></td>
+<td>Error</td>
+<td>Decimal range exceeds <code>decimal</code> bounds</td>
+<td>Emitted by the Primitives source generator when a <code>[Range]</code> attribute on <code>decimal</code> exceeds the CLR <code>decimal</code> value range. Use a tighter range. <em>(formerly <code>TRLSGEN004</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS035</code></td>
+<td>Warning</td>
+<td><code>Maybe&lt;T&gt;</code> property should be <code>partial</code></td>
+<td>Emitted by the EF Core generator (<code>MaybePartialPropertyGenerator</code>) for non-partial auto-properties of type <code>Maybe&lt;T&gt;</code> whose containing type is <code>partial</code>. Declare the property <code>partial</code> so the generator can emit the backing field and storage member. <em>(formerly <code>TRLSGEN100</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS036</code></td>
+<td>Error</td>
+<td><code>[OwnedEntity]</code> type should be <code>partial</code></td>
+<td>Emitted by the EF Core generator (<code>OwnedEntityGenerator</code>) when <code>[OwnedEntity]</code> is applied to a non-partial type. Declare the type <code>partial</code> so the generator can emit the private parameterless constructor. <em>(formerly <code>TRLSGEN101</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS037</code></td>
+<td>Warning</td>
+<td><code>[OwnedEntity]</code> type already has a parameterless constructor</td>
+<td>Emitted by the EF Core generator when <code>[OwnedEntity]</code> is applied to a type that already has a parameterless constructor. Remove the existing constructor or remove <code>[OwnedEntity]</code>. <em>(formerly <code>TRLSGEN102</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS038</code></td>
+<td>Error</td>
+<td><code>[OwnedEntity]</code> type must inherit from <code>ValueObject</code></td>
+<td>Emitted by the EF Core generator when <code>[OwnedEntity]</code> is applied to a type that does not inherit from <code>Trellis.ValueObject</code>. <em>(formerly <code>TRLSGEN103</code>)</em></td>
+</tr>
+<tr>
+<td><code>TRLS039</code></td>
+<td>Warning</td>
+<td>Unsupported scalar value primitive for AOT-safe JSON converter</td>
+<td>Emitted by <code>ScalarValueJsonConverterGenerator</code> (Trellis.AspSourceGenerator) when a value object inherits from <code>ScalarValueObject&lt;TSelf, TPrimitive&gt;</code> with a <code>TPrimitive</code> outside the AOT-safe set (<code>string</code>, <code>int</code>, <code>long</code>, <code>short</code>, <code>byte</code>, <code>bool</code>, <code>float</code>, <code>double</code>, <code>decimal</code>, <code>Guid</code>, <code>DateTime</code>, <code>DateTimeOffset</code>). The generator skips the converter for that type to avoid emitting reflection-based <code>JsonSerializer.Deserialize</code>/<code>Serialize</code> calls (IL2026/IL3050 under <code>PublishAot=true</code>); provide a custom <code>JsonConverter&lt;TSelf&gt;</code> or pick a supported primitive.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="constants--trellisdiagnosticids">Constants — <code>TrellisDiagnosticIds</code></h2>
+<p>The public static class <code>Trellis.TrellisDiagnosticIds</code> (in the <code>Trellis.Analyzers</code> assembly) exposes every diagnostic ID above as a <code>public const string</code>. Use it from <code>[SuppressMessage]</code> attributes and rule sets to avoid magic strings:</p>
+<pre><code class="lang-csharp">[SuppressMessage(&quot;Trellis&quot;, TrellisDiagnosticIds.UnsafeMaybeValueAccess,
+    Justification = &quot;guarded by HasValue check earlier in the pipeline&quot;)]
+public string GetCity(Maybe&lt;Address&gt; address) =&gt; address.Value.City;
+</code></pre>
+<p>Generator IDs (<code>TRLS031</code>–<code>TRLS039</code>) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.</p>
+<h3 id="constant--diagnostic-id--emitter">Constant → diagnostic ID → emitter</h3>
+<p>Every <code>public const string</code> field on <code>TrellisDiagnosticIds</code>, the diagnostic ID it carries, and the analyzer (or generator) that emits it. Use the constant name in <code>[SuppressMessage]</code> and the diagnostic ID in <code>#pragma warning disable</code>.</p>
+<table>
+<thead>
+<tr>
+<th>C# constant</th>
+<th>Diagnostic ID</th>
+<th>Emitted by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ResultNotHandled</code></td>
+<td><code>TRLS001</code></td>
+<td><code>ResultNotHandledAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UseBindInsteadOfMap</code></td>
+<td><code>TRLS002</code></td>
+<td><code>UseBindInsteadOfMapAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UnsafeMaybeValueAccess</code></td>
+<td><code>TRLS003</code></td>
+<td><code>UnsafeValueAccessAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>ResultDoubleWrapping</code></td>
+<td><code>TRLS004</code></td>
+<td><code>ResultDoubleWrappingAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>AsyncResultMisuse</code></td>
+<td><code>TRLS005</code></td>
+<td><code>AsyncResultMisuseAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>MaybeDoubleWrapping</code></td>
+<td><code>TRLS007</code></td>
+<td><code>MaybeDoubleWrappingAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UseResultCombine</code></td>
+<td><code>TRLS008</code></td>
+<td><code>UseResultCombineAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UseAsyncMethodVariant</code></td>
+<td><code>TRLS009</code></td>
+<td><code>AsyncLambdaWithSyncMethodAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>ThrowInResultChain</code></td>
+<td><code>TRLS010</code></td>
+<td><code>ThrowInResultChainAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>ComparingToNull</code></td>
+<td><code>TRLS012</code></td>
+<td><code>ComparingToNullAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UnsafeMaybeValueInLinq</code></td>
+<td><code>TRLS013</code></td>
+<td><code>UnsafeValueInLinqAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>CombineChainTooLong</code></td>
+<td><code>TRLS014</code></td>
+<td><code>CombineLimitAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UseSaveChangesResult</code></td>
+<td><code>TRLS015</code></td>
+<td><code>UseSaveChangesResultAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>HasIndexMaybeProperty</code></td>
+<td><code>TRLS016</code></td>
+<td><code>HasIndexMaybePropertyAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>WrongAttributeNamespace</code></td>
+<td><code>TRLS017</code></td>
+<td><code>WrongAttributeNamespaceAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UnsafeResultDeconstruction</code></td>
+<td><code>TRLS018</code></td>
+<td><code>UnsafeResultDeconstructionAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>DefaultResultOrMaybe</code></td>
+<td><code>TRLS019</code></td>
+<td><code>DefaultResultOrMaybeAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>CompositeValueObjectDtoMissingJsonConverter</code></td>
+<td><code>TRLS020</code></td>
+<td><code>CompositeValueObjectDtoConverterAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>RedundantEfConfiguration</code></td>
+<td><code>TRLS021</code></td>
+<td><code>RedundantEfConfigurationAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>OwnedEntityInitOnlyProperty</code></td>
+<td><code>TRLS022</code></td>
+<td><code>OwnedEntityInitOnlyPropertyAnalyzer</code></td>
+</tr>
+<tr>
+<td><code>UnsupportedRequiredBaseType</code></td>
+<td><code>TRLS031</code></td>
+<td><code>RequiredPartialClassGenerator</code> (Trellis.Core.Generator)</td>
+</tr>
+<tr>
+<td><code>InvalidStringLengthRange</code></td>
+<td><code>TRLS032</code></td>
+<td><code>RequiredPartialClassGenerator</code> (Trellis.Core.Generator)</td>
+</tr>
+<tr>
+<td><code>InvalidRangeMinExceedsMax</code></td>
+<td><code>TRLS033</code></td>
+<td><code>RequiredPartialClassGenerator</code> (Trellis.Core.Generator)</td>
+</tr>
+<tr>
+<td><code>DecimalRangeExceedsDecimalRange</code></td>
+<td><code>TRLS034</code></td>
+<td><code>RequiredPartialClassGenerator</code> (Trellis.Core.Generator)</td>
+</tr>
+<tr>
+<td><code>MaybePropertyShouldBePartial</code></td>
+<td><code>TRLS035</code></td>
+<td><code>MaybePartialPropertyGenerator</code> (Trellis.EntityFrameworkCore.Generator)</td>
+</tr>
+<tr>
+<td><code>OwnedEntityShouldBePartial</code></td>
+<td><code>TRLS036</code></td>
+<td><code>OwnedEntityGenerator</code> (Trellis.EntityFrameworkCore.Generator)</td>
+</tr>
+<tr>
+<td><code>OwnedEntityAlreadyHasParameterlessCtor</code></td>
+<td><code>TRLS037</code></td>
+<td><code>OwnedEntityGenerator</code> (Trellis.EntityFrameworkCore.Generator)</td>
+</tr>
+<tr>
+<td><code>OwnedEntityMustInheritValueObject</code></td>
+<td><code>TRLS038</code></td>
+<td><code>OwnedEntityGenerator</code> (Trellis.EntityFrameworkCore.Generator)</td>
+</tr>
+<tr>
+<td><code>UnsupportedScalarValuePrimitiveForAotJson</code></td>
+<td><code>TRLS039</code></td>
+<td><code>ScalarValueJsonConverterGenerator</code> (Trellis.AspSourceGenerator)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="descriptors--diagnosticdescriptors">Descriptors — <code>DiagnosticDescriptors</code></h2>
+<p>The public static class <code>Trellis.Analyzers.DiagnosticDescriptors</code> exposes one <code>public static readonly DiagnosticDescriptor</code> field per analyzer-emitted diagnostic. Analyzer implementations register these via <code>SupportedDiagnostics</code>; consumers normally don't reference them directly, but the field names are stable API and can be used in tests or in custom Roslyn tooling that re-exports the rules.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Backing ID</th>
+<th>Default severity</th>
+<th>Category</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ResultNotHandled</code></td>
+<td><code>TRLS001</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>UseBindInsteadOfMap</code></td>
+<td><code>TRLS002</code></td>
+<td>Info</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>UnsafeMaybeValueAccess</code></td>
+<td><code>TRLS003</code></td>
+<td>Error</td>
+<td>Trellis.Maybe</td>
+</tr>
+<tr>
+<td><code>ResultDoubleWrapping</code></td>
+<td><code>TRLS004</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>AsyncResultMisuse</code></td>
+<td><code>TRLS005</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>MaybeDoubleWrapping</code></td>
+<td><code>TRLS007</code></td>
+<td>Warning</td>
+<td>Trellis.Maybe</td>
+</tr>
+<tr>
+<td><code>UseResultCombine</code></td>
+<td><code>TRLS008</code></td>
+<td>Info</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>UseAsyncMethodVariant</code></td>
+<td><code>TRLS009</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>ThrowInResultChain</code></td>
+<td><code>TRLS010</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>ComparingToNull</code></td>
+<td><code>TRLS012</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>UnsafeValueInLinq</code></td>
+<td><code>TRLS013</code></td>
+<td>Warning</td>
+<td>Trellis.Maybe</td>
+</tr>
+<tr>
+<td><code>CombineChainTooLong</code></td>
+<td><code>TRLS014</code></td>
+<td>Error</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>UseSaveChangesResult</code></td>
+<td><code>TRLS015</code></td>
+<td>Warning</td>
+<td>Trellis.EntityFrameworkCore</td>
+</tr>
+<tr>
+<td><code>HasIndexMaybeProperty</code></td>
+<td><code>TRLS016</code></td>
+<td>Warning</td>
+<td>Trellis.EntityFrameworkCore</td>
+</tr>
+<tr>
+<td><code>WrongAttributeNamespace</code></td>
+<td><code>TRLS017</code></td>
+<td>Warning</td>
+<td>Trellis.Primitives</td>
+</tr>
+<tr>
+<td><code>UnsafeResultDeconstruction</code></td>
+<td><code>TRLS018</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>DefaultResultOrMaybe</code></td>
+<td><code>TRLS019</code></td>
+<td>Warning</td>
+<td>Trellis.Result</td>
+</tr>
+<tr>
+<td><code>CompositeValueObjectDtoMissingJsonConverter</code></td>
+<td><code>TRLS020</code></td>
+<td>Warning</td>
+<td>Trellis.Asp</td>
+</tr>
+<tr>
+<td><code>RedundantEfConfiguration</code></td>
+<td><code>TRLS021</code></td>
+<td>Warning</td>
+<td>Trellis.EntityFrameworkCore</td>
+</tr>
+<tr>
+<td><code>OwnedEntityInitOnlyProperty</code></td>
+<td><code>TRLS022</code></td>
+<td>Warning</td>
+<td>Trellis.EntityFrameworkCore</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> Generator-emitted diagnostics (<code>TRLS031</code>–<code>TRLS039</code>) are constructed inline by the source generators and are <em>not</em> exposed as fields on <code>DiagnosticDescriptors</code>. Use the <code>TrellisDiagnosticIds</code> constants instead for those IDs.</p>
+</blockquote>
+<pre><code class="lang-csharp">// Re-exporting an analyzer rule in a custom analyzer:
+public override ImmutableArray&lt;DiagnosticDescriptor&gt; SupportedDiagnostics =&gt;
+    ImmutableArray.Create(Trellis.Analyzers.DiagnosticDescriptors.ResultNotHandled);
+</code></pre>
+<h2 id="analyzer-classes">Analyzer classes</h2>
+<h3 id="result-and-maybe-flow">Result and Maybe flow</h3>
+<h4 id="resultnothandledanalyzer--trls001"><code>ResultNotHandledAnalyzer</code> — <code>TRLS001</code></h4>
+<ul>
+<li>Flags expression statements that discard a <code>Result&lt;T&gt;</code>.</li>
+<li>Also flags discarded <code>await</code> expressions when the awaited type is <code>Task&lt;Result&lt;T&gt;&gt;</code> or <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>.</li>
+<li>Unwraps <code>await someCall.ConfigureAwait(false)</code> before checking the awaited type.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="usebindinsteadofmapanalyzer--trls002"><code>UseBindInsteadOfMapAnalyzer</code> — <code>TRLS002</code></h4>
+<ul>
+<li>Flags Trellis <code>Map</code> and <code>MapAsync</code> invocations when the first argument returns:
+<ul>
+<li><code>Result&lt;T&gt;</code></li>
+<li><code>Task&lt;Result&lt;T&gt;&gt;</code></li>
+<li><code>ValueTask&lt;Result&lt;T&gt;&gt;</code></li>
+</ul>
+</li>
+<li>Covers lambda expressions, method groups, and member-access method groups.</li>
+<li>Purpose: prevent <code>Result&lt;Result&lt;T&gt;&gt;</code>.</li>
+<li>Code fix: <code>UseBindInsteadOfMapCodeFixProvider</code>.</li>
+</ul>
+<h4 id="unsafevalueaccessanalyzer--trls003"><code>UnsafeValueAccessAnalyzer</code> — <code>TRLS003</code></h4>
+<ul>
+<li><code>TRLS003</code>: flags <code>maybe.Value</code> when the analyzer cannot prove the access is guarded by presence checks.</li>
+<li>Recognized safe patterns include:
+<ul>
+<li><code>if</code> / ternary checks on <code>HasValue</code> / <code>HasNoValue</code></li>
+<li><code>TryGetValue</code> branches, including negated forms</li>
+<li><code>maybe.HasValue &amp;&amp; maybe.Value ...</code> short-circuit</li>
+<li>safe lambda parameters inside Trellis Maybe APIs such as <code>Bind</code>, <code>Map</code>, <code>Tap</code>, <code>Ensure</code>, <code>Match</code></li>
+<li>prior assignment from <code>Maybe.From(...)</code> when <code>T</code> is a non-nullable value type and the variable is not reassigned</li>
+</ul>
+</li>
+<li><strong>Inside <code>Expression&lt;Func&lt;...&gt;&gt;</code> lambdas (EF Core, Specifications, FluentValidation):</strong> the rule is <em>not</em> relaxed. Use the <code>HasValue &amp;&amp; Value</code> short-circuit idiom — e.g. <code>e =&gt; e.SubmittedAt.HasValue &amp;&amp; e.SubmittedAt.Value &lt; cutoff</code>. EF Core needs the <code>HasValue</code> predicate to translate to <code>IS NOT NULL</code>, and the short-circuit form keeps the analyzer satisfied without <code>#pragma</code> suppressions.</li>
+<li>Code fix: <code>AddResultGuardCodeFixProvider</code>.</li>
+</ul>
+<blockquote>
+<p><strong>Result accessors:</strong> The <code>UnsafeValueAccessAnalyzer</code> previously also covered <code>Result&lt;T&gt;.Value</code> and <code>Result&lt;T&gt;.Error</code>. Both branches were deleted because (a) <code>Result&lt;T&gt;.Value</code> no longer exists, and (b) <code>Result&lt;T&gt;.Error</code> is now <code>Error?</code>, so unsafe access is caught natively by C# nullable-reference-type analysis.</p>
+</blockquote>
+<h4 id="usematcherroranalyzer--trls005-removed-from-the-current-api"><code>UseMatchErrorAnalyzer</code> — <code>TRLS005</code> <em>(removed from the current API)</em></h4>
+<p>This analyzer was deleted from the current API. With the closed-ADT <code>Error</code>, <code>switch</code> over an <code>Error</code> reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled — so manual error-type discrimination is the recommended pattern. Replace any remaining <code>result.MatchError(onValidation: ..., onNotFound: ..., ...)</code> calls with:</p>
+<pre><code class="lang-csharp">result.Match(
+    onSuccess: value =&gt; ...,
+    onFailure: error =&gt; error switch
+    {
+        Error.NotFound nf            =&gt; ...,
+        Error.UnprocessableContent uc =&gt; ...,
+        Error.Conflict c             =&gt; ...,
+        _                            =&gt; ...,
+    });
+</code></pre>
+<h4 id="trycreatevalueaccessanalyzer--trls007-removed-from-the-current-api"><code>TryCreateValueAccessAnalyzer</code> — <code>TRLS007</code> <em>(removed from the current API)</em></h4>
+<p>This analyzer was deleted from the current API. The pattern <code>TryCreate(...).Value</code> no longer compiles because <code>Result&lt;T&gt;.Value</code> was removed (see TRLS003). Call <code>Create(...)</code> directly when the input is known-good, or handle the <code>Result</code> returned by <code>TryCreate(...)</code> explicitly via <code>TryGetValue</code> / <code>Match</code> / <code>Bind</code>.</p>
+<h4 id="resultdoublewrappinganalyzer--trls004"><code>ResultDoubleWrappingAnalyzer</code> — <code>TRLS004</code></h4>
+<ul>
+<li>Flags declared or inferred <code>Result&lt;Result&lt;T&gt;&gt;</code> in:
+<ul>
+<li>variable declarations</li>
+<li>properties</li>
+<li>method return types</li>
+<li>parameters</li>
+</ul>
+</li>
+<li>Also flags <code>Result.Ok(existingResult)</code> and <code>Result.Fail(existingResult)</code> when the argument is already a <code>Result&lt;T&gt;</code>.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="asyncresultmisuseanalyzer--trls005"><code>AsyncResultMisuseAnalyzer</code> — <code>TRLS005</code></h4>
+<ul>
+<li>Flags blocking access on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>:
+<ul>
+<li><code>.Result</code></li>
+<li><code>.Wait()</code></li>
+<li><code>.GetAwaiter().GetResult()</code></li>
+</ul>
+</li>
+<li>Handles both <code>Task</code> and <code>ValueTask</code>.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="maybedoublewrappinganalyzer--trls007"><code>MaybeDoubleWrappingAnalyzer</code> — <code>TRLS007</code></h4>
+<ul>
+<li>Flags declared <code>Maybe&lt;Maybe&lt;T&gt;&gt;</code> in variable declarations, properties, method return types, and parameters.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="useresultcombineanalyzer--trls008"><code>UseResultCombineAnalyzer</code> — <code>TRLS008</code></h4>
+<ul>
+<li>Flags conditional logic that manually combines two or more Result-state checks:
+<ul>
+<li><code>&amp;&amp;</code> chains over <code>.IsSuccess</code></li>
+<li><code>||</code> chains over <code>.IsFailure</code></li>
+</ul>
+</li>
+<li>Uses operation analysis, so it looks at semantic property access rather than raw text.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="ternaryvalueordefaultanalyzer--trls013-removed-from-the-current-api"><code>TernaryValueOrDefaultAnalyzer</code> — <code>TRLS013</code> <em>(removed from the current API)</em></h4>
+<p>This analyzer was deleted from the current API. The <code>result.IsSuccess ? result.Value : fallback</code> shape no longer compiles because <code>Result&lt;T&gt;.Value</code> was removed. Use <code>result.GetValueOrDefault(fallback)</code> or <code>result.Match(onSuccess: v =&gt; v, onFailure: _ =&gt; fallback)</code>. <!-- stale-doc-ok: analyzer migration note intentionally cites removed value accessor --></p>
+<h4 id="asynclambdawithsyncmethodanalyzer--trls009"><code>AsyncLambdaWithSyncMethodAnalyzer</code> — <code>TRLS009</code></h4>
+<ul>
+<li>Flags synchronous Trellis methods called with async work:
+<ul>
+<li><code>Map</code></li>
+<li><code>Bind</code></li>
+<li><code>Tap</code></li>
+<li><code>Ensure</code></li>
+<li><code>TapOnFailure</code></li>
+</ul>
+</li>
+<li>Reports when any argument is:
+<ul>
+<li>an <code>async</code> lambda</li>
+<li>a non-async lambda whose converted return type is <code>Task</code> or <code>ValueTask</code></li>
+<li>a method group returning <code>Task</code> or <code>ValueTask</code></li>
+</ul>
+</li>
+<li>Verifies the receiver is a Trellis <code>Result</code>, <code>Maybe</code>, or async-result receiver.</li>
+<li>Code fix: <code>UseAsyncMethodVariantCodeFixProvider</code>.</li>
+</ul>
+<h4 id="throwinresultchainanalyzer--trls010"><code>ThrowInResultChainAnalyzer</code> — <code>TRLS010</code></h4>
+<ul>
+<li>Flags <code>throw</code> statements and <code>throw</code> expressions inside lambdas passed to Trellis result-chain APIs:
+<ul>
+<li><code>Bind</code>, <code>BindAsync</code></li>
+<li><code>Map</code>, <code>MapAsync</code></li>
+<li><code>Tap</code>, <code>TapAsync</code></li>
+<li><code>Ensure</code>, <code>EnsureAsync</code></li>
+<li><code>TapOnFailure</code>, <code>TapOnFailureAsync</code></li>
+<li><code>MapOnFailure</code>, <code>MapOnFailureAsync</code></li>
+<li><code>RecoverOnFailure</code>, <code>RecoverOnFailureAsync</code></li>
+<li><code>DebugOnFailure</code>, <code>DebugOnFailureAsync</code></li>
+</ul>
+</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="comparingtonullanalyzer--trls012"><code>ComparingToNullAnalyzer</code> — <code>TRLS012</code></h4>
+<ul>
+<li>Flags <code>== null</code>, <code>!= null</code>, <code>is null</code>, and <code>is not null</code> when the non-null side is a Trellis <code>Result&lt;T&gt;</code> or <code>Maybe&lt;T&gt;</code>.</li>
+<li>Suggests <code>IsSuccess</code> / <code>IsFailure</code> for <code>Result&lt;T&gt;</code> and <code>HasValue</code> / <code>HasNoValue</code> for <code>Maybe&lt;T&gt;</code>.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="unsafevalueinlinqanalyzer--trls013"><code>UnsafeValueInLinqAnalyzer</code> — <code>TRLS013</code></h4>
+<ul>
+<li>Flags <code>.Value</code> inside LINQ projection/order/grouping lambdas for:
+<ul>
+<li><code>Select</code></li>
+<li><code>SelectMany</code></li>
+<li><code>ToDictionary</code></li>
+<li><code>ToLookup</code></li>
+<li><code>GroupBy</code></li>
+<li><code>OrderBy</code></li>
+<li><code>OrderByDescending</code></li>
+<li><code>ThenBy</code></li>
+<li><code>ThenByDescending</code></li>
+</ul>
+</li>
+<li>Reports only when <code>.Value</code> is accessed on a <code>Maybe&lt;T&gt;</code> lambda parameter. The Result-side branch was removed along with <code>Result&lt;T&gt;.Value</code>.</li>
+<li>Suppresses the diagnostic when an earlier <code>.Where(maybe =&gt; maybe.HasValue)</code> in the same chain proves the access is safe.</li>
+<li>For EF Core IQueryable predicates over a <code>Maybe&lt;T&gt;</code> property, either register <code>AddTrellisInterceptors()</code> (which rewrites <code>.HasValue</code>/<code>.Value</code>/<code>GetValueOrDefault(d)</code> into <code>EF.Property</code>/null-checks/<code>COALESCE</code>) or use <code>Trellis.EntityFrameworkCore.MaybeQueryableExtensions</code> (<code>WhereHasValue</code>/<code>WhereNone</code>/<code>WhereEquals</code>/<code>WhereLessThan</code>/<code>WhereLessThanOrEqual</code>/<code>WhereGreaterThan</code>/<code>WhereGreaterThanOrEqual</code>) explicitly. Note: this analyzer only fires on Select-family methods today; coverage of <code>.Where</code>/<code>.Any</code>/<code>.First</code> etc. is tracked as a follow-up.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="combinelimitanalyzer--trls014"><code>CombineLimitAnalyzer</code> — <code>TRLS014</code></h4>
+<ul>
+<li>Flags the outermost <code>.Combine(...)</code> or <code>.CombineAsync(...)</code> chain when the resulting tuple would exceed 9 elements.</li>
+<li>Counts tuple width semantically, so chains continued through intermediate variables are still measured correctly.</li>
+<li>No code fix.</li>
+</ul>
+<h3 id="error-ef-core-and-value-object-rules">Error, EF Core, and value-object rules</h3>
+<h4 id="usesavechangesresultanalyzer--trls015"><code>UseSaveChangesResultAnalyzer</code> — <code>TRLS015</code></h4>
+<ul>
+<li>Activates only when the compilation references <code>Trellis.EntityFrameworkCore.DbContextExtensions</code>.</li>
+<li>Flags direct <code>DbContext.SaveChangesAsync(...)</code> and <code>DbContext.SaveChanges(...)</code> calls, including unqualified calls inside a <code>DbContext</code> subclass.</li>
+<li>Recommends (non-UoW contexts):
+<ul>
+<li><code>SaveChangesResultAsync</code> when the return value is used</li>
+<li><code>SaveChangesResultUnitAsync</code> when the value is discarded</li>
+</ul>
+</li>
+<li>Under <code>AddTrellisUnitOfWork&lt;TContext&gt;</code> the <code>TransactionalCommandBehavior</code> owns commit; repositories should stage changes via DbContext APIs (<code>Add</code>/<code>Update</code>/<code>Remove</code>) and not invoke <code>SaveChanges</code>/<code>SaveChangesAsync</code> at all.</li>
+<li>Code fix: <code>UseSaveChangesResultCodeFixProvider</code>.</li>
+</ul>
+<h4 id="hasindexmaybepropertyanalyzer--trls016"><code>HasIndexMaybePropertyAnalyzer</code> — <code>TRLS016</code></h4>
+<ul>
+<li>Activates only when the compilation references <code>Trellis.EntityFrameworkCore.MaybeConvention</code>.</li>
+<li>Flags <code>EntityTypeBuilder.HasIndex(...)</code> lambda members that reference <code>Maybe&lt;T&gt;</code> properties.</li>
+<li>Reports both the CLR property name and the generated storage-member fallback name (for example <code>_submittedAt</code>).</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="wrongattributenamespaceanalyzer--trls017"><code>WrongAttributeNamespaceAnalyzer</code> — <code>TRLS017</code></h4>
+<ul>
+<li>Flags <code>System.ComponentModel.DataAnnotations.StringLengthAttribute</code> and <code>System.ComponentModel.DataAnnotations.RangeAttribute</code> applied to types that inherit from Trellis value-object base types:
+<ul>
+<li><code>ScalarValueObject</code></li>
+<li><code>RequiredString</code></li>
+<li><code>RequiredInt</code></li>
+<li><code>RequiredDecimal</code></li>
+<li><code>RequiredLong</code></li>
+<li><code>RequiredGuid</code></li>
+<li><code>RequiredBool</code></li>
+<li><code>RequiredDateTime</code></li>
+<li><code>RequiredEnum</code></li>
+</ul>
+</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="unsaferesultdeconstructionanalyzer--trls018"><code>UnsafeResultDeconstructionAnalyzer</code> — <code>TRLS018</code></h4>
+<ul>
+<li>Flags reads of the value position of a <code>Result&lt;T&gt;</code> deconstruction (<code>var (success, value, error) = result;</code>) when the read is not guarded by:
+<ul>
+<li>an <code>if</code>/<code>while</code>/conditional on the success bool,</li>
+<li>an early-return on failure (<code>if (!success) return ...</code>),</li>
+<li>a check that the error is <code>null</code>, or</li>
+<li>the value being assigned to <code>_</code> (discard).</li>
+</ul>
+</li>
+<li>Skips deconstructions where the value identifier is never read.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="defaultresultormaybeanalyzer--trls019"><code>DefaultResultOrMaybeAnalyzer</code> — <code>TRLS019</code></h4>
+<ul>
+<li>Flags explicit <code>default(Result)</code>, <code>default(Result&lt;T&gt;)</code>, and <code>default(Maybe&lt;T&gt;)</code> expressions at use sites.</li>
+<li>Uses <code>IDefaultValueOperation</code> (operation-based, not syntax-based) so it covers all surface forms equivalently:
+<ul>
+<li><code>default(T)</code> typeof-style: <code>return default(Result&lt;int&gt;);</code></li>
+<li>Target-typed <code>default</code>: <code>return default;</code> in a <code>Result&lt;T&gt;</code>-returning method, parameter defaults, etc.</li>
+<li>Null-suppressed <code>default!</code>: <code>return default!;</code> is treated identically — the null-suppressing operator does not change the underlying value.</li>
+</ul>
+</li>
+<li><code>default(Result)</code>/<code>default(Result&lt;T&gt;)</code> represent typed failures carrying the shared <code>new Error.Unexpected(&quot;default_initialized&quot;)</code> sentinel — <em>never</em> silent successes. <code>default(Maybe&lt;T&gt;)</code> equals <code>Maybe&lt;T&gt;.None</code> (semantically correct) but the explicit literal obscures intent.</li>
+<li>Suggested replacements:
+<ul>
+<li><code>Result</code> → <code>Result.Ok()</code> or <code>Result.Fail(error)</code></li>
+<li><code>Result&lt;T&gt;</code> → <code>Result.Ok(value)</code> or <code>Result.Fail&lt;T&gt;(error)</code></li>
+<li><code>Maybe&lt;T&gt;</code> → <code>Maybe&lt;T&gt;.None</code> or <code>Maybe.From(value)</code></li>
+</ul>
+</li>
+<li>For sanctioned sentinel/test-helper sites, suppress with <code>[SuppressMessage(&quot;Trellis&quot;, &quot;TRLS019&quot;, Justification = &quot;...&quot;)]</code> on the enclosing member or <code>#pragma warning disable TRLS019</code> around the offending span.</li>
+<li>No code fix (the appropriate replacement depends on intent — success vs. failure for <code>Result</code>, value vs. None for <code>Maybe</code>).</li>
+</ul>
+<h4 id="compositevalueobjectdtoconverteranalyzer--trls020"><code>CompositeValueObjectDtoConverterAnalyzer</code> — <code>TRLS020</code></h4>
+<ul>
+<li>Flags ASP.NET controller request/response DTOs, Minimal API handler request DTOs, and Mediator <code>IRequest&lt;T&gt;</code>/<code>ICommand&lt;T&gt;</code>/<code>IQuery&lt;T&gt;</code> message DTOs with properties whose type is an <code>[OwnedEntity]</code> Trellis <code>ValueObject</code> missing <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;T&gt;))]</code>.</li>
+<li>This catches the silent JSON-binding failure where System.Text.Json can default-construct the composite value object and bypass <code>TryCreate</code> validation.</li>
+<li>Does not flag domain model properties that are not exposed through DTO surfaces.</li>
+<li>Does not flag composite value-object types that carry the matching <code>CompositeValueObjectJsonConverter&lt;T&gt;</code> attribute.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="redundantefconfigurationanalyzer--trls021"><code>RedundantEfConfigurationAnalyzer</code> — <code>TRLS021</code></h4>
+<ul>
+<li>Activates only when the compilation references <code>Trellis.EntityFrameworkCore.MaybeConvention</code>.</li>
+<li>Reports only when the source also wires Trellis conventions via <code>ApplyTrellisConventions(...)</code> or generated <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code>.</li>
+<li>Flags manual EF configuration for convention-owned properties:
+<ul>
+<li><code>builder.Property(e =&gt; e.MaybeProperty).HasConversion(...)</code></li>
+<li><code>builder.OwnsOne(e =&gt; e.OwnedEntityValueObject)</code></li>
+<li><code>builder.Ignore(e =&gt; e.MaybeOrOwnedEntityProperty)</code></li>
+</ul>
+</li>
+<li>Targets <code>Maybe&lt;T&gt;</code> and types annotated with <code>Trellis.EntityFrameworkCore.OwnedEntityAttribute</code>.</li>
+<li>No code fix.</li>
+</ul>
+<h4 id="ownedentityinitonlypropertyanalyzer--trls022"><code>OwnedEntityInitOnlyPropertyAnalyzer</code> — <code>TRLS022</code></h4>
+<ul>
+<li>Activates only when the compilation references <code>Trellis.EntityFrameworkCore.OwnedEntityAttribute</code>.</li>
+<li>Flags property declarations with an <code>init</code> accessor whose containing class is annotated with <code>[OwnedEntity]</code>.</li>
+<li>Diagnostic anchors at the <code>init</code> keyword and includes the property name and class name.</li>
+<li>Recommends <code>{ get; private set; }</code>, the supported and tested shape for owned-entity properties materialized through the generator-emitted parameterless constructor.</li>
+<li>No code fix.</li>
+</ul>
+<h2 id="code-fix-providers">Code fix providers</h2>
+<table>
+<thead>
+<tr>
+<th>Code fix provider</th>
+<th>Fixes</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddResultGuardCodeFixProvider</code></td>
+<td><code>TRLS003</code></td>
+<td>Wraps the current statement block in <code>if (maybe.HasValue)</code> and tracks consecutive statements that keep using the guarded value.</td>
+</tr>
+<tr>
+<td><code>UseBindInsteadOfMapCodeFixProvider</code></td>
+<td><code>TRLS002</code></td>
+<td>Replaces <code>Map</code> with <code>Bind</code> and <code>MapAsync</code> with <code>BindAsync</code>.</td>
+</tr>
+<tr>
+<td><code>UseAsyncMethodVariantCodeFixProvider</code></td>
+<td><code>TRLS009</code></td>
+<td>Replaces sync method names with async variants: <code>MapAsync</code>, <code>BindAsync</code>, <code>TapAsync</code>, <code>EnsureAsync</code>, <code>TapOnFailureAsync</code>.</td>
+</tr>
+<tr>
+<td><code>UseSaveChangesResultCodeFixProvider</code></td>
+<td><code>TRLS015</code></td>
+<td>Replaces <code>SaveChangesAsync</code> / <code>SaveChanges</code> with <code>SaveChangesResultAsync</code> or <code>SaveChangesResultUnitAsync</code>, adds <code>await</code>/<code>async</code> for sync <code>SaveChanges</code>, and adds <code>using Trellis.EntityFrameworkCore;</code> when needed.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="compilable-examples">Compilable examples</h2>
+<pre><code class="lang-csharp">using System.Threading.Tasks;
+using Trellis;
+
+public static class AnalyzerExamples
+{
+    public static Result&lt;int&gt; Parse(string text) =&gt; Result.Ok(text.Length);
+
+    public static Result&lt;int&gt; Valid()
+    {
+        var result = Parse(&quot;abc&quot;);
+        return result.Map(length =&gt; Result.Ok(length + 1)); // TRLS002
+    }
+
+    public static async Task&lt;Result&lt;int&gt;&gt; ValidAsync()
+    {
+        Task&lt;Result&lt;int&gt;&gt; task = Task.FromResult(Result.Ok(42));
+        var result = await task; // preferred over task.Result / task.Wait() / task.GetAwaiter().GetResult()
+        return result;
+    }
+}
+</code></pre>
+<pre><code class="lang-csharp">using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+
+public sealed class AppDbContext : DbContext
+{
+}
+
+public static class EfExample
+{
+    public static async Task SaveAsync(AppDbContext dbContext)
+    {
+        await dbContext.SaveChangesAsync(); // TRLS015
+    }
+}
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a> — <code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, <code>Bind</code>, <code>Map</code>, <code>Match</code>, <code>Combine</code></li>
+<li><a href="trellis-api-efcore.html">trellis-api-efcore.md</a> — <code>SaveChangesResultAsync</code>, <code>SaveChangesResultUnitAsync</code>, <code>HasTrellisIndex</code></li>
+<li><a href="trellis-api-primitives.html">trellis-api-primitives.md</a> — Trellis <code>[StringLength]</code> and <code>[Range]</code></li>
+<li><a href="trellis-api-testing-reference.html">trellis-api-testing-reference.md</a> — testing helpers that intentionally work with analyzer rules</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-analyzers.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

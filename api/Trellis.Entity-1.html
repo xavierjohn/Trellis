@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Entity&lt;TId&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Entity&lt;TId&gt; | Trellis ">
+      
+      <meta name="description" content="Base class for entities in Domain-Driven Design. An entity is a domain object defined by its identity rather than its attributes. Two entities with different attributes but the same ID are considered equal.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Entity_1.md&amp;value=---%0Auid%3A%20Trellis.Entity%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Entity`1">
+
+
+
+  <h1 id="Trellis_Entity_1" data-uid="Trellis.Entity`1" class="text-break">
+Class Entity&lt;TId&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for entities in Domain-Driven Design.
+An entity is a domain object defined by its identity rather than its attributes.
+Two entities with different attributes but the same ID are considered equal.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class Entity&lt;TId&gt; : IEntity where TId : notnull</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TId</code></dt>
+    <dd><p>The type of the entity's unique identifier. Must be non-nullable.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">Entity&lt;TId&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.IEntity.html">IEntity</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.Aggregate-1.html">Aggregate&lt;TId&gt;</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_Entity_1_examples">Examples</h2>
+  <pre><code class="lang-csharp">// Define a strongly-typed ID
+public class CustomerId : ScalarValueObject&lt;Guid&gt;
+{
+    private CustomerId(Guid value) : base(value) { }
+    public static CustomerId NewUnique() =&gt; new(Guid.NewGuid());
+}
+
+// Define an entity
+public class Customer : Entity&lt;CustomerId&gt;
+{
+    public string Name { get; private set; }
+    public EmailAddress Email { get; private set; }
+
+    // CreatedAt and LastModified are inherited from Entity&lt;TId&gt;
+    // and automatically managed by EntityTimestampInterceptor.
+
+    private Customer(CustomerId id, string name, EmailAddress email)
+        : base(id)
+    {
+        Name = name;
+        Email = email;
+    }
+
+    public static Result&lt;Customer&gt; TryCreate(string name, EmailAddress email) =&gt;
+        name.ToResult()
+            .Ensure(n =&gt; !string.IsNullOrWhiteSpace(n), Error.UnprocessableContent.ForField("name", "invalid", "Name required"))
+            .Map(n =&gt; new Customer(CustomerId.NewUnique(), n, email));
+
+    public Result&lt;Customer&gt; UpdateEmail(EmailAddress newEmail) =&gt;
+        newEmail.ToResult()
+            .Tap(e =&gt; Email = e)
+            .Map(_ =&gt; this);
+}
+
+// Usage - identity-based equality
+var customer1 = Customer.Create("John", email);
+var customer2 = Customer.Create("John", email);
+
+// Different instances with same data but different IDs
+customer1 != customer2; // true - different identities
+
+// Same instance
+var sameCustomer = customer1;
+customer1 == sameCustomer; // true - same identity</code></pre>
+
+
+  <h2 id="Trellis_Entity_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Entities are one of the three main building blocks in DDD (along with Value Objects and Aggregates).
+Key characteristics:
+<ul><li>Identity: Each entity has a unique identifier that remains constant throughout its lifetime</li><li>Mutability: Entity state can change over time, but identity remains the same</li><li>Equality: Two entities are equal if they have the same ID, regardless of attribute values</li><li>Lifecycle: Entities have a continuous identity thread through state changes</li></ul>
+
+<p>
+Entities vs. Value Objects:
+<ul><li><strong>Entity</strong>: Defined by identity (e.g., Customer, Order, Product)</li><li><strong>Value Object</strong>: Defined by attributes (e.g., Address, Money, EmailAddress)</li></ul>
+
+<p>
+Identity best practices:
+<ul><li>Use strongly-typed IDs (e.g., CustomerId, OrderId) instead of primitives</li><li>Generate IDs at creation time, typically using NewUnique() or from external source</li><li>Make ID immutable using init-only setter</li><li>Never expose ID setters or allow ID changes after creation</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Entity_1__ctor_" data-uid="Trellis.Entity`1.#ctor*"></a>
+
+  <h3 id="Trellis_Entity_1__ctor__0_" data-uid="Trellis.Entity`1.#ctor(`0)">
+  Entity(TId)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Entity-1.html">Entity&lt;TId&gt;</a> class with the specified identifier.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Entity(TId id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The unique identifier for this entity. Must not be null or default.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Entity_1__ctor__0__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This constructor should be called by derived classes to set the entity's identity.
+The ID should typically be generated using a NewUnique() method or provided from an external source.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Entity_1_CreatedAt_" data-uid="Trellis.Entity`1.CreatedAt*"></a>
+
+  <h3 id="Trellis_Entity_1_CreatedAt" data-uid="Trellis.Entity`1.CreatedAt">
+  CreatedAt
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L114"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the UTC timestamp when this entity was first persisted.
+Automatically managed by <code>EntityTimestampInterceptor</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DateTimeOffset CreatedAt { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a></dt>
+    <dd><p>Defaults to <code>default(DateTimeOffset)</code> for unsaved entities.
+Set once on first save; not updated on subsequent modifications.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Entity_1_Id_" data-uid="Trellis.Entity`1.Id*"></a>
+
+  <h3 id="Trellis_Entity_1_Id" data-uid="Trellis.Entity`1.Id">
+  Id
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L104"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the unique identifier of this entity.
+The identifier is immutable and defines the entity's identity.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TId Id { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TId</span></dt>
+    <dd><p>The unique identifier that distinguishes this entity from all others of the same type.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_Entity_1_Id_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The ID should be:</p>
+<ul><li>Set at construction time and never changed</li><li>Non-null and not equal to default(TId)</li><li>Unique within the entity type's scope</li><li>Preferably a strongly-typed value object (e.g., CustomerId, OrderId)</li></ul>
+</div>
+
+
+
+
+  <a id="Trellis_Entity_1_LastModified_" data-uid="Trellis.Entity`1.LastModified*"></a>
+
+  <h3 id="Trellis_Entity_1_LastModified" data-uid="Trellis.Entity`1.LastModified">
+  LastModified
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L124"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the UTC timestamp of the most recent modification.
+Automatically managed by <code>EntityTimestampInterceptor</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DateTimeOffset LastModified { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a></dt>
+    <dd><p>Defaults to <code>default(DateTimeOffset)</code> for unsaved entities.
+Updated on every save (add or modify).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Entity_1_Equals_" data-uid="Trellis.Entity`1.Equals*"></a>
+
+  <h3 id="Trellis_Entity_1_Equals_System_Object_" data-uid="Trellis.Entity`1.Equals(System.Object)">
+  Equals(object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L160"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the specified object is equal to the current entity.
+Two entities are equal if they have the same type and the same non-default ID.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Equals(object? obj)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>obj</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare with the current entity.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the specified object is an entity of the same type with the same non-default ID;
+otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Entity_1_Equals_System_Object__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method implements identity-based equality, which is fundamental to entities in DDD.
+The method returns <code>false</code> if:
+<ul><li>The compared object is not an entity of the same type</li><li>Either entity has a null or default ID (transient entities)</li><li>The IDs are different</li></ul>
+
+<p>
+Transient entities (those with null or default IDs) are never equal to other entities,
+unless they are the same instance (reference equality).
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Entity_1_GetHashCode_" data-uid="Trellis.Entity`1.GetHashCode*"></a>
+
+  <h3 id="Trellis_Entity_1_GetHashCode" data-uid="Trellis.Entity`1.GetHashCode">
+  GetHashCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a hash code for this entity based on its type and ID.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A hash code combining the entity type and its identifier.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Entity_1_GetHashCode_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The hash code is based on both the entity type and its ID to ensure proper behavior in collections.
+Entities with the same ID but different types will have different hash codes.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="Trellis_Entity_1_op_Equality_" data-uid="Trellis.Entity`1.op_Equality*"></a>
+
+  <h3 id="Trellis_Entity_1_op_Equality_Trellis_Entity__0__Trellis_Entity__0__" data-uid="Trellis.Entity`1.op_Equality(Trellis.Entity{`0},Trellis.Entity{`0})">
+  operator ==(Entity&lt;TId&gt;?, Entity&lt;TId&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L184"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two entities are equal using identity-based comparison.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(Entity&lt;TId&gt;? a, Entity&lt;TId&gt;? b)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>a</code> <a class="xref" href="Trellis.Entity-1.html">Entity</a>&lt;TId&gt;</dt>
+    <dd><p>The first entity to compare.</p>
+</dd>
+    <dt><code>b</code> <a class="xref" href="Trellis.Entity-1.html">Entity</a>&lt;TId&gt;</dt>
+    <dd><p>The second entity to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if both entities are null, or if both have the same non-default ID; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Entity_1_op_Inequality_" data-uid="Trellis.Entity`1.op_Inequality*"></a>
+
+  <h3 id="Trellis_Entity_1_op_Inequality_Trellis_Entity__0__Trellis_Entity__0__" data-uid="Trellis.Entity`1.op_Inequality(Trellis.Entity{`0},Trellis.Entity{`0})">
+  operator !=(Entity&lt;TId&gt;?, Entity&lt;TId&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L201"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two entities are not equal using identity-based comparison.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(Entity&lt;TId&gt;? a, Entity&lt;TId&gt;? b)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>a</code> <a class="xref" href="Trellis.Entity-1.html">Entity</a>&lt;TId&gt;</dt>
+    <dd><p>The first entity to compare.</p>
+</dd>
+    <dt><code>b</code> <a class="xref" href="Trellis.Entity-1.html">Entity</a>&lt;TId&gt;</dt>
+    <dd><p>The second entity to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the entities have different IDs or one is null; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Entity.cs/#L85" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

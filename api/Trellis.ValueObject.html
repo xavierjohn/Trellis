@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ValueObject | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ValueObject | Trellis ">
+      
+      <meta name="description" content="Base class for value objects in Domain-Driven Design. A value object represents a descriptive aspect of the domain with no conceptual identity. Value objects are immutable, defined by their attributes, and support structural equality.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_ValueObject.md&amp;value=---%0Auid%3A%20Trellis.ValueObject%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.ValueObject">
+
+
+
+  <h1 id="Trellis_ValueObject" data-uid="Trellis.ValueObject" class="text-break">
+Class ValueObject  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L161"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for value objects in Domain-Driven Design.
+A value object represents a descriptive aspect of the domain with no conceptual identity.
+Value objects are immutable, defined by their attributes, and support structural equality.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class ValueObject : IComparable&lt;ValueObject&gt;, IComparable, IEquatable&lt;ValueObject&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ValueObject</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable-1">IComparable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+    </dd>
+  </dl>
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.Primitives.Money.html">Money</a></div>
+      <div><a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject&lt;TSelf, T&gt;</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_ValueObject_examples">Examples</h2>
+  <p>Simple value object example:</p>
+<pre><code class="lang-csharp">public class Address : ValueObject
+{
+    public string Street { get; }
+    public string City { get; }
+    public string State { get; }
+    public string PostalCode { get; }
+
+    private Address(string street, string city, string state, string postalCode)
+    {
+        Street = street;
+        City = city;
+        State = state;
+        PostalCode = postalCode;
+    }
+
+    // Factory method with validation
+    public static Result&lt;Address&gt; TryCreate(
+        string street, string city, string state, string postalCode) =&gt;
+        (street, city, state, postalCode).ToResult()
+            .Ensure(x =&gt; !string.IsNullOrWhiteSpace(x.street), 
+                   Error.UnprocessableContent.ForField("street", "invalid", "Street is required"))
+            .Ensure(x =&gt; !string.IsNullOrWhiteSpace(x.city),
+                   Error.UnprocessableContent.ForField("city", "invalid", "City is required"))
+            .Map(x =&gt; new Address(x.street, x.city, x.state, x.postalCode));
+
+    // Define what makes two addresses equal
+    protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    {
+        yield return Street;
+        yield return City;
+        yield return State;
+        yield return PostalCode;
+    }
+
+    // Domain behavior
+    public string GetFullAddress() =&gt; 
+        $"{Street}, {City}, {State} {PostalCode}";
+}
+
+// Usage
+var address1 = Address.TryCreate("123 Main St", "Springfield", "IL", "62701");
+var address2 = Address.TryCreate("123 Main St", "Springfield", "IL", "62701");
+
+// Structural equality
+address1.Value == address2.Value; // true - same attributes</code></pre>
+
+  <p>Value object with rich behavior:</p>
+<pre><code class="lang-csharp">public class Money : ValueObject
+{
+    public decimal Amount { get; }
+    public string Currency { get; }
+
+    private Money(decimal amount, string currency)
+    {
+        Amount = amount;
+        Currency = currency;
+    }
+
+    public static Result&lt;Money&gt; TryCreate(decimal amount, string currency = "USD") =&gt;
+        (amount, currency).ToResult()
+            .Ensure(x =&gt; x.amount &gt;= 0, Error.UnprocessableContent.ForField("amount", "invalid", "Amount cannot be negative"))
+            .Ensure(x =&gt; x.currency.Length == 3, 
+                   Error.UnprocessableContent.ForField("currency", "invalid", "Currency must be 3-letter ISO code"))
+            .Map(x =&gt; new Money(x.amount, x.currency.ToUpperInvariant()));
+
+    protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    {
+        yield return Amount;
+        yield return Currency;
+    }
+
+    // Domain operations return new instances (immutability)
+    public Result&lt;Money&gt; Add(Money other) =&gt;
+        Currency != other.Currency
+            ? Error.UnprocessableContent.ForRule("currency_mismatch", $"Cannot add {other.Currency} to {Currency}")
+            : new Money(Amount + other.Amount, Currency).ToResult();
+
+    public Money Multiply(decimal factor) =&gt;
+        new Money(Amount * factor, Currency);
+}</code></pre>
+
+  <p>Derived value object example:</p>
+<pre><code class="lang-csharp">public class InternationalAddress : Address
+{
+    public string Country { get; }
+
+    private InternationalAddress(
+        string street, string city, string state, 
+        string postalCode, string country) 
+        : base(street, city, state, postalCode)
+    {
+        Country = country;
+    }
+
+    // Include base components plus additional ones
+    protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    {
+        foreach (var component in base.GetEqualityComponents())
+            yield return component;
+        yield return Country;
+    }
+}</code></pre>
+
+
+  <h2 id="Trellis_ValueObject_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Value objects are one of the three main building blocks in DDD (along with Entities and Aggregates).
+Key characteristics:
+<ul><li>Identity: Defined by attribute values, not by a unique identifier</li><li>Immutability: Once created, a value object's state cannot change</li><li>Equality: Two value objects with the same attributes are considered equal</li><li>Interchangeability: Value objects with equal attributes can be freely substituted</li><li>Side-effect free: Methods on value objects don't modify state, they return new instances</li></ul>
+
+<p>
+Value Objects vs. Entities:
+<ul><li><strong>Value Object</strong>: Defined by attributes (e.g., Address, Money, EmailAddress)</li><li><strong>Entity</strong>: Defined by identity (e.g., Customer, Order, Product)</li></ul>
+
+<p>
+Benefits of using value objects:
+<ul><li>Type safety: EmailAddress is more expressive than string</li><li>Validation: Encapsulate validation logic in the value object</li><li>Rich behavior: Add domain-specific methods (e.g., Money.Add, Temperature.ToFahrenheit)</li><li>Immutability: Prevents accidental state changes</li><li>Testability: Pure functions are easy to test</li></ul>
+
+<p>
+When to use value objects:
+<ul><li>The concept measures, quantifies, or describes something in the domain</li><li>It can be modeled as immutable</li><li>It models a conceptual whole by grouping related attributes</li><li>Equality should be based on the whole set of attributes</li><li>There's domain behavior associated with the concept</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_ValueObject_CompareTo_" data-uid="Trellis.ValueObject.CompareTo*"></a>
+
+  <h3 id="Trellis_ValueObject_CompareTo_Trellis_ValueObject_" data-uid="Trellis.ValueObject.CompareTo(Trellis.ValueObject)">
+  CompareTo(ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L290"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Compares the current value object with another value object of the same type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual int CompareTo(ValueObject? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The value object to compare with this instance.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A value less than zero if this instance is less than <code class="paramref">other</code>;
+zero if they are equal; or greater than zero if this instance is greater than <code class="paramref">other</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ValueObject_CompareTo_Trellis_ValueObject__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Components are compared in order. The first non-equal component determines the result.
+This enables value objects to be sorted and used in ordered collections.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">other</code> is null.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown when <code class="paramref">other</code> is not of the same type as this instance.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_ValueObject_Equals_" data-uid="Trellis.ValueObject.Equals*"></a>
+
+  <h3 id="Trellis_ValueObject_Equals_System_Object_" data-uid="Trellis.ValueObject.Equals(System.Object)">
+  Equals(object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L231"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the specified object is equal to the current value object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Equals(object? obj)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>obj</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare with the current value object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the specified object is a value object of the same type with equal components;
+otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValueObject_Equals_" data-uid="Trellis.ValueObject.Equals*"></a>
+
+  <h3 id="Trellis_ValueObject_Equals_Trellis_ValueObject_" data-uid="Trellis.ValueObject.Equals(Trellis.ValueObject)">
+  Equals(ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L245"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the specified value object is equal to the current value object.
+Two value objects are equal if they have the same type and all equality components are equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Equals(ValueObject? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The value object to compare with the current value object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the value objects have the same type and equal components; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ValueObject_Equals_Trellis_ValueObject__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This implements structural equality based on the components returned by <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetEqualityComponents">GetEqualityComponents()</a>.
+Value objects of different types are never equal, even if they have the same component values.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ValueObject_GetEqualityComponents_" data-uid="Trellis.ValueObject.GetEqualityComponents*"></a>
+
+  <h3 id="Trellis_ValueObject_GetEqualityComponents" data-uid="Trellis.ValueObject.GetEqualityComponents">
+  GetEqualityComponents()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L202"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, returns the components that define equality for this value object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract IEnumerable&lt;IComparable?&gt; GetEqualityComponents()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a>&gt;</dt>
+    <dd><p>An enumerable of comparable objects that represent the value object's attributes.
+Two value objects are equal if their equality components are equal in the same order.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ValueObject_GetEqualityComponents_examples">Examples</h4>
+  <pre><code class="lang-csharp">protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+{
+    yield return Street;
+    yield return City;
+    yield return PostalCode;
+}</code></pre>
+
+
+  <h4 class="section" id="Trellis_ValueObject_GetEqualityComponents_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method is used by <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_Trellis_ValueObject_">Equals(ValueObject?)</a> and <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetHashCode">GetHashCode()</a> to determine equality.
+Components should be returned in a consistent order.
+</p>
+<p>
+Guidelines:
+<ul><li>Return all properties that define the value object's identity</li><li>Use yield return for lazy evaluation</li><li>For derived classes, include base.GetEqualityComponents() first</li><li>Return components in a consistent, deterministic order</li><li>Include all properties that should affect equality comparison</li></ul>
+
+</div>
+
+
+
+
+  <a id="Trellis_ValueObject_GetHashCode_" data-uid="Trellis.ValueObject.GetHashCode*"></a>
+
+  <h3 id="Trellis_ValueObject_GetHashCode" data-uid="Trellis.ValueObject.GetHashCode">
+  GetHashCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L263"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a hash code for this value object based on its equality components.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A hash code combining all equality components.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ValueObject_GetHashCode_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The hash code is cached for performance since value objects are immutable.
+This ensures consistent hash codes for the lifetime of the object and improves
+performance when used as dictionary keys or in hash-based collections.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ValueObject_MaybeComponent_" data-uid="Trellis.ValueObject.MaybeComponent*"></a>
+
+  <h3 id="Trellis_ValueObject_MaybeComponent__1_Trellis_Maybe___0__" data-uid="Trellis.ValueObject.MaybeComponent``1(Trellis.Maybe{``0})">
+  MaybeComponent&lt;T&gt;(Maybe&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L220"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> to an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a> for use in
+<a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetEqualityComponents">GetEqualityComponents()</a>. Returns the value if present, or <code>null</code> if empty.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected static IComparable? MaybeComponent&lt;T&gt;(Maybe&lt;T&gt; maybe) where T : notnull, IComparable</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maybe</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;T&gt;</dt>
+    <dd><p>The optional value to convert.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a></dt>
+    <dd><p>The underlying value as <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a>, or <code>null</code> if the Maybe is empty.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of the optional value. Must implement <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_ValueObject_MaybeComponent__1_Trellis_Maybe___0___examples">Examples</h4>
+  <pre><code class="lang-csharp">protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+{
+    yield return Street;
+    yield return MaybeComponent(Apartment);
+}</code></pre>
+
+
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="Trellis_ValueObject_op_Equality_" data-uid="Trellis.ValueObject.op_Equality*"></a>
+
+  <h3 id="Trellis_ValueObject_op_Equality_Trellis_ValueObject_Trellis_ValueObject_" data-uid="Trellis.ValueObject.op_Equality(Trellis.ValueObject,Trellis.ValueObject)">
+  operator ==(ValueObject?, ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L354"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two value objects are equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(ValueObject? a, ValueObject? b)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>a</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The first value object to compare.</p>
+</dd>
+    <dt><code>b</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The second value object to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if both are null or have equal components; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValueObject_op_GreaterThan_" data-uid="Trellis.ValueObject.op_GreaterThan*"></a>
+
+  <h3 id="Trellis_ValueObject_op_GreaterThan_Trellis_ValueObject_Trellis_ValueObject_" data-uid="Trellis.ValueObject.op_GreaterThan(Trellis.ValueObject,Trellis.ValueObject)">
+  operator &gt;(ValueObject?, ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L405"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the first value object is greater than the second.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &gt;(ValueObject? left, ValueObject? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The first value object to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The second value object to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if <code class="paramref">left</code> is greater than <code class="paramref">right</code>; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValueObject_op_GreaterThanOrEqual_" data-uid="Trellis.ValueObject.op_GreaterThanOrEqual*"></a>
+
+  <h3 id="Trellis_ValueObject_op_GreaterThanOrEqual_Trellis_ValueObject_Trellis_ValueObject_" data-uid="Trellis.ValueObject.op_GreaterThanOrEqual(Trellis.ValueObject,Trellis.ValueObject)">
+  operator &gt;=(ValueObject?, ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L418"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the first value object is greater than or equal to the second.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &gt;=(ValueObject? left, ValueObject? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The first value object to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The second value object to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if <code class="paramref">left</code> is greater than or equal to <code class="paramref">right</code>; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValueObject_op_Inequality_" data-uid="Trellis.ValueObject.op_Inequality*"></a>
+
+  <h3 id="Trellis_ValueObject_op_Inequality_Trellis_ValueObject_Trellis_ValueObject_" data-uid="Trellis.ValueObject.op_Inequality(Trellis.ValueObject,Trellis.ValueObject)">
+  operator !=(ValueObject?, ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L371"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two value objects are not equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(ValueObject? a, ValueObject? b)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>a</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The first value object to compare.</p>
+</dd>
+    <dt><code>b</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The second value object to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the value objects have different components; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValueObject_op_LessThan_" data-uid="Trellis.ValueObject.op_LessThan*"></a>
+
+  <h3 id="Trellis_ValueObject_op_LessThan_Trellis_ValueObject_Trellis_ValueObject_" data-uid="Trellis.ValueObject.op_LessThan(Trellis.ValueObject,Trellis.ValueObject)">
+  operator &lt;(ValueObject?, ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L379"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the first value object is less than the second.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &lt;(ValueObject? left, ValueObject? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The first value object to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The second value object to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if <code class="paramref">left</code> is less than <code class="paramref">right</code>; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValueObject_op_LessThanOrEqual_" data-uid="Trellis.ValueObject.op_LessThanOrEqual*"></a>
+
+  <h3 id="Trellis_ValueObject_op_LessThanOrEqual_Trellis_ValueObject_Trellis_ValueObject_" data-uid="Trellis.ValueObject.op_LessThanOrEqual(Trellis.ValueObject,Trellis.ValueObject)">
+  operator &lt;=(ValueObject?, ValueObject?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L392"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the first value object is less than or equal to the second.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &lt;=(ValueObject? left, ValueObject? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The first value object to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+    <dd><p>The second value object to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if <code class="paramref">left</code> is less than or equal to <code class="paramref">right</code>; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ValueObject.cs/#L161" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

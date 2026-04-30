@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Testing.AspNetCore — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Testing.AspNetCore — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-aspnetcore.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellistestingaspnetcore--api-reference">Trellis.Testing.AspNetCore — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Testing.AspNetCore</code><br>
+<strong>Namespaces:</strong> <code>Trellis.Testing.AspNetCore</code>, <code>Trellis.Testing.AspNetCore.Http</code><br>
+<strong>Purpose:</strong> ASP.NET Core integration-test utilities for <code>WebApplicationFactory&lt;TEntryPoint&gt;</code>, dependency replacement, fake time, MSAL-backed Entra E2E tokens, and replaying <code>.http</code> files.</p>
+<p>Use this package from test projects only. It depends on <code>Microsoft.AspNetCore.Mvc.Testing</code>, EF Core, MSAL, <code>Trellis.Authorization</code>, and <code>Trellis.Testing</code>.</p>
+<h2 id="webapplicationfactory-helpers">WebApplicationFactory helpers</h2>
+<h3 id="webapplicationfactoryextensions"><code>WebApplicationFactoryExtensions</code></h3>
+<pre><code class="lang-csharp">public static class WebApplicationFactoryExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static HttpClient CreateClientWithActor&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, string actorId, params string[] permissions) where TEntryPoint : class</code></td>
+<td><code>HttpClient</code></td>
+<td>Creates a client and writes an <code>X-Test-Actor</code> header containing the actor id, permissions, empty forbidden-permissions list, and empty attributes object. Use with the ASP development/test actor provider.</td>
+</tr>
+<tr>
+<td><code>public static HttpClient CreateClientWithActor&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, Actor actor) where TEntryPoint : class</code></td>
+<td><code>HttpClient</code></td>
+<td>Creates a client and serializes the full <code>Actor</code> into <code>X-Test-Actor</code>, including forbidden permissions and attributes.</td>
+</tr>
+<tr>
+<td><code>[RequiresUnreferencedCode] public static Task&lt;HttpClient&gt; CreateClientWithEntraTokenAsync&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, MsalTestTokenProvider tokenProvider, string testUserName, CancellationToken cancellationToken = default) where TEntryPoint : class</code></td>
+<td><code>Task&lt;HttpClient&gt;</code></td>
+<td>Acquires a real Entra ID token with <code>MsalTestTokenProvider</code>, creates a client, and sets the <code>Authorization: Bearer &lt;token&gt;</code> header. Use only in E2E tests against a dedicated test tenant.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="webapplicationfactorytimeextensions"><code>WebApplicationFactoryTimeExtensions</code></h3>
+<pre><code class="lang-csharp">public static class WebApplicationFactoryTimeExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static readonly DateTimeOffset DefaultTestStartInstant</code></td>
+<td><code>DateTimeOffset</code></td>
+<td>Deterministic default fake-clock baseline: <code>2024-01-01T00:00:00Z</code>.</td>
+</tr>
+<tr>
+<td><code>public static WebApplicationFactory&lt;TEntryPoint&gt; WithFakeTimeProvider&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, FakeTimeProvider fakeTimeProvider) where TEntryPoint : class</code></td>
+<td><code>WebApplicationFactory&lt;TEntryPoint&gt;</code></td>
+<td>Returns a factory configured with the supplied <code>FakeTimeProvider</code> as the singleton <code>TimeProvider</code>.</td>
+</tr>
+<tr>
+<td><code>public static WebApplicationFactory&lt;TEntryPoint&gt; WithFakeTimeProvider&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, out FakeTimeProvider fakeTimeProvider) where TEntryPoint : class</code></td>
+<td><code>WebApplicationFactory&lt;TEntryPoint&gt;</code></td>
+<td>Creates a <code>FakeTimeProvider</code> at <code>DefaultTestStartInstant</code>, registers it, and returns it through the <code>out</code> parameter.</td>
+</tr>
+<tr>
+<td><code>public static WebApplicationFactory&lt;TEntryPoint&gt; WithFakeTimeProvider&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, DateTimeOffset startInstant, out FakeTimeProvider fakeTimeProvider) where TEntryPoint : class</code></td>
+<td><code>WebApplicationFactory&lt;TEntryPoint&gt;</code></td>
+<td>Creates a <code>FakeTimeProvider</code> at the supplied instant, registers it, and returns it through the <code>out</code> parameter.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dependency-replacement-helpers">Dependency replacement helpers</h2>
+<h3 id="servicecollectionextensions"><code>ServiceCollectionExtensions</code></h3>
+<pre><code class="lang-csharp">public static class ServiceCollectionExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IServiceCollection ReplaceResourceLoader&lt;TMessage, TResource&gt;(this IServiceCollection services, Func&lt;IServiceProvider, IResourceLoader&lt;TMessage, TResource&gt;&gt; factory)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Removes existing <code>IResourceLoader&lt;TMessage,TResource&gt;</code> registrations and adds the supplied scoped factory.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection ReplaceSingleton&lt;TService&gt;(this IServiceCollection services, TService instance) where TService : class</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Removes all registrations of <code>TService</code> and registers the supplied singleton instance.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="servicecollectiondbproviderextensions"><code>ServiceCollectionDbProviderExtensions</code></h3>
+<pre><code class="lang-csharp">public static class ServiceCollectionDbProviderExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IServiceCollection ReplaceDbProvider&lt;TContext&gt;(this IServiceCollection services, Action&lt;DbContextOptionsBuilder&gt; configureOptions) where TContext : DbContext</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Removes the existing <code>TContext</code>, <code>DbContextOptions&lt;TContext&gt;</code>, and EF Core provider-scoped services for that context, then re-registers <code>TContext</code> with <code>AddDbContext&lt;TContext&gt;(configureOptions)</code>. Use for swapping production providers to SQLite/in-memory providers in integration tests.</td>
+</tr>
+</tbody>
+</table>
+<p><code>TContext</code> carries <code>[DynamicallyAccessedMembers(PublicConstructors | NonPublicConstructors | PublicProperties)]</code> for EF Core compatibility.</p>
+<h2 id="msal--entra-e2e-token-helpers">MSAL / Entra E2E token helpers</h2>
+<h3 id="msaltestoptions"><code>MsalTestOptions</code></h3>
+<pre><code class="lang-csharp">public sealed class MsalTestOptions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TenantId</code></td>
+<td><code>string</code></td>
+<td>Azure Entra tenant id or domain.</td>
+</tr>
+<tr>
+<td><code>ClientId</code></td>
+<td><code>string</code></td>
+<td>Public-client app registration id. The app must allow public client flows for ROPC.</td>
+</tr>
+<tr>
+<td><code>Scopes</code></td>
+<td><code>string[]</code></td>
+<td>Scopes requested when acquiring tokens.</td>
+</tr>
+<tr>
+<td><code>TestUsers</code></td>
+<td><code>Dictionary&lt;string, TestUserCredentials&gt;</code></td>
+<td>Named test users keyed by logical role name, e.g. <code>&quot;salesRep&quot;</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="testusercredentials"><code>TestUserCredentials</code></h3>
+<pre><code class="lang-csharp">public sealed class TestUserCredentials
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Username</code></td>
+<td><code>string</code></td>
+<td>User principal name or email.</td>
+</tr>
+<tr>
+<td><code>Password</code></td>
+<td><code>string</code></td>
+<td>Test-user password. Store outside source control.</td>
+</tr>
+<tr>
+<td><code>ExpectedPermissions</code></td>
+<td><code>string[]</code></td>
+<td>Permissions the test user is expected to have after authentication.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="msaltesttokenprovider"><code>MsalTestTokenProvider</code></h3>
+<pre><code class="lang-csharp">[RequiresUnreferencedCode(&quot;MSAL uses reflection for token serialization and is not AOT-compatible.&quot;)]
+public sealed class MsalTestTokenProvider
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public MsalTestTokenProvider(MsalTestOptions options)</code></td>
+<td>—</td>
+<td>Creates a public MSAL client for <code>options.ClientId</code> and <code>options.TenantId</code>.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;string&gt; AcquireTokenAsync(string testUserName, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;string&gt;</code></td>
+<td>Acquires an access token for the named user via MSAL ROPC. Throws <code>KeyNotFoundException</code> if <code>testUserName</code> is not configured and <code>MsalException</code> when token acquisition fails.</td>
+</tr>
+</tbody>
+</table>
+<p>ROPC is deprecated for production use. Use this helper only for gated E2E tests against a dedicated test tenant with MFA disabled for test users.</p>
+<h2 id="http-file-replay-helpers"><code>.http</code> file replay helpers</h2>
+<p>These types live in <code>namespace Trellis.Testing.AspNetCore.Http</code>.</p>
+<h3 id="httpfileparser"><code>HttpFileParser</code></h3>
+<pre><code class="lang-csharp">public static class HttpFileParser
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IReadOnlyList&lt;HttpFileRequest&gt; Parse(string content, IReadOnlyDictionary&lt;string, string&gt;? vars = null)</code></td>
+<td><code>IReadOnlyList&lt;HttpFileRequest&gt;</code></td>
+<td>Parses raw <code>.http</code> content. File-level <code>@var = value</code> entries and supplied <code>vars</code> are substituted immediately; response placeholders are left for the runner.</td>
+</tr>
+<tr>
+<td><code>public static IReadOnlyList&lt;HttpFileRequest&gt; ParseFile(string path, IReadOnlyDictionary&lt;string, string&gt;? vars = null)</code></td>
+<td><code>IReadOnlyList&lt;HttpFileRequest&gt;</code></td>
+<td>Reads and parses a <code>.http</code> file from disk.</td>
+</tr>
+</tbody>
+</table>
+<p>Supported syntax: <code>###</code> request separators, <code># @name</code>, <code># @expect status: 201</code>, <code># @expect status: 2xx</code>, <code># @expect status: 200-299</code>, <code># @expect header: ETag</code>, <code># @parity: status-only</code>, file variables, <code>{{var}}</code>, <code>{{name.response.body.path}}</code>, <code>{{name.response.headers.Header-Name}}</code>, and <code>{{name.response.status}}</code>.</p>
+<h3 id="httpfilerunner"><code>HttpFileRunner</code></h3>
+<pre><code class="lang-csharp">public static class HttpFileRunner
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Task&lt;IReadOnlyList&lt;HttpFileResult&gt;&gt; RunAsync(HttpClient client, IReadOnlyList&lt;HttpFileRequest&gt; requests, CancellationToken ct = default)</code></td>
+<td><code>Task&lt;IReadOnlyList&lt;HttpFileResult&gt;&gt;</code></td>
+<td>Executes parsed requests in order, sharing a <code>ScenarioContext</code> so named responses can feed later substitutions.</td>
+</tr>
+<tr>
+<td><code>public static Task&lt;HttpFileResult&gt; RunSingleAsync(HttpClient client, HttpFileRequest request, ScenarioContext context, CancellationToken ct = default)</code></td>
+<td><code>Task&lt;HttpFileResult&gt;</code></td>
+<td>Executes one request after resolving deferred response placeholders, records named responses, reads the response body as text, and returns the result.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="httpfileassertions"><code>HttpFileAssertions</code></h3>
+<pre><code class="lang-csharp">public static class HttpFileAssertions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static void AssertExpectationsMet(HttpFileResult result)</code></td>
+<td><code>void</code></td>
+<td>Enforces the request's <code>ExpectedOutcome</code>. If no expectations were declared, asserts the status is in the non-error range <code>100</code>-<code>399</code>. Throws <code>HttpFileAssertionException</code> on failure.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="data-records-and-support-types">Data records and support types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Declaration</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExpectedOutcome</code></td>
+<td><code>public sealed record ExpectedOutcome(int? StatusMin, int? StatusMax, IReadOnlyList&lt;string&gt; RequiredHeaders)</code></td>
+<td>Parsed <code># @expect</code> status/header assertions.</td>
+</tr>
+<tr>
+<td><code>HttpFileRequest</code></td>
+<td><code>public sealed record HttpFileRequest(string Title, string Method, string Url, IReadOnlyDictionary&lt;string, string&gt; Headers, string? Body, string? Name, ExpectedOutcome? Expected, string? ParityMode = null)</code></td>
+<td>One parsed request. <code>Url</code> and <code>Body</code> may contain deferred response placeholders.</td>
+</tr>
+<tr>
+<td><code>HttpFileResult</code></td>
+<td><code>public sealed record HttpFileResult(HttpFileRequest Request, HttpResponseMessage Response, string? Body, ExpectedOutcome? Expected)</code></td>
+<td>One executed request and response. Caller owns <code>Response</code> disposal.</td>
+</tr>
+<tr>
+<td><code>HttpFileTheoryData</code></td>
+<td><code>public static class HttpFileTheoryData</code></td>
+<td>Provides <code>FromFile(string path, IReadOnlyDictionary&lt;string,string&gt;? vars = null) : IEnumerable&lt;object[]&gt;</code> for xUnit-style member data without taking an xUnit dependency.</td>
+</tr>
+<tr>
+<td><code>ScenarioContext</code></td>
+<td><code>public sealed class ScenarioContext</code></td>
+<td>Records named responses and resolves <code>{{name.response.*}}</code> tokens. Public members: <code>Record(...)</code> and <code>TryResolve(...)</code>.</td>
+</tr>
+<tr>
+<td><code>HttpFileAssertionException</code></td>
+<td><code>public sealed class HttpFileAssertionException : Exception</code></td>
+<td>Thrown by <code>HttpFileAssertions</code> with constructors <code>()</code>, <code>(string message)</code>, and <code>(string message, Exception inner)</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-examples">Common examples</h2>
+<h3 id="authenticated-in-process-client">Authenticated in-process client</h3>
+<pre><code class="lang-csharp">using Trellis.Testing.AspNetCore;
+
+var client = factory.CreateClientWithActor(&quot;user-1&quot;, &quot;orders:read&quot;, &quot;orders:write&quot;);
+</code></pre>
+<h3 id="replace-ef-provider-and-fake-time">Replace EF provider and fake time</h3>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis.Testing.AspNetCore;
+
+factory = factory.WithFakeTimeProvider(out var fakeTime);
+fakeTime.SetUtcNow(WebApplicationFactoryTimeExtensions.DefaultTestStartInstant.AddDays(3));
+
+builder.ConfigureServices(services =&gt;
+    services.ReplaceDbProvider&lt;AppDbContext&gt;(options =&gt;
+        options.UseSqlite(connection)));
+</code></pre>
+<h3 id="replay-a-http-file">Replay a <code>.http</code> file</h3>
+<pre><code class="lang-csharp">using Trellis.Testing.AspNetCore.Http;
+
+var requests = HttpFileParser.ParseFile(&quot;Scenarios/orders.http&quot;, new Dictionary&lt;string, string&gt;
+{
+    [&quot;baseUrl&quot;] = factory.Server.BaseAddress!.ToString().TrimEnd('/')
+});
+
+var results = await HttpFileRunner.RunAsync(client, requests, cancellationToken);
+
+foreach (var result in results)
+    HttpFileAssertions.AssertExpectationsMet(result);
+</code></pre>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="trellis-api-testing-reference.html">trellis-api-testing-reference.md</a> — core Trellis testing assertions, fake repositories, and test actors.</li>
+<li><a href="trellis-api-authorization.html">trellis-api-authorization.md</a> — <code>Actor</code>, <code>IActorProvider</code>, resource authorization contracts.</li>
+<li><a href="trellis-api-asp.html">trellis-api-asp.md</a> — ASP.NET Core response mapping and actor providers.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-aspnetcore.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

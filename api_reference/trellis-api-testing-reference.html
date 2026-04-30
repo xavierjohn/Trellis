@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Testing — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Testing — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-reference.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellistesting--api-reference">Trellis.Testing — API Reference</h1>
+
+<ul>
+<li><strong>Package:</strong> <code>Trellis.Testing</code></li>
+<li><strong>Namespace:</strong> <code>Trellis.Testing</code></li>
+<li><strong>Purpose:</strong> FluentAssertions extensions, unwrap helpers, and test doubles (FakeRepository, TestActorProvider) for Trellis applications.</li>
+</ul>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<blockquote>
+<p><strong>ASP.NET Core integration test helpers</strong> (WebApplicationFactory, DI replacement, fake time, MSAL tokens, and <code>.http</code> replay) are in a separate package: <a href="trellis-api-testing-aspnetcore.html"><code>Trellis.Testing.AspNetCore</code></a>.</p>
+</blockquote>
+<h2 id="types">Types</h2>
+<h3 id="namespace-trellistesting">Namespace <code>Trellis.Testing</code></h3>
+<h4 id="resultassertionsextensions"><code>ResultAssertionsExtensions</code></h4>
+<pre><code class="lang-csharp">public static class ResultAssertionsExtensions
+{
+    public static ResultAssertions&lt;TValue&gt; Should&lt;TValue&gt;(this Result&lt;TValue&gt; result);
+}
+</code></pre>
+<h4 id="resultassertionstvalue"><code>ResultAssertions&lt;TValue&gt;</code></h4>
+<pre><code class="lang-csharp">public class ResultAssertions&lt;TValue&gt; : ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;
+{
+    public ResultAssertions(Result&lt;TValue&gt; result);
+
+    public AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TValue&gt; BeSuccess(
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, Error&gt; BeFailure(
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TError&gt; BeFailureOfType&lt;TError&gt;(
+        string because = &quot;&quot;,
+        params object[] becauseArgs)
+        where TError : Error;
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveValue(
+        TValue expectedValue,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveValueMatching(
+        Func&lt;TValue, bool&gt; predicate,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveValueEquivalentTo(
+        TValue expectedValue,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveErrorCode(
+        string expectedCode,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveErrorDetail(
+        string expectedDetail,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveErrorDetailContaining(
+        string substring,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; Be(
+        Result&lt;TValue&gt; expected,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; NotBe(
+        Result&lt;TValue&gt; unexpected,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+}
+</code></pre>
+<h4 id="nongenericresultassertionsextensions"><code>NonGenericResultAssertionsExtensions</code></h4>
+<pre><code class="lang-csharp">public static class NonGenericResultAssertionsExtensions
+{
+    public static NonGenericResultAssertions Should(this Result result);
+}
+</code></pre>
+<h4 id="nongenericresultassertions"><code>NonGenericResultAssertions</code></h4>
+<pre><code class="lang-csharp">public class NonGenericResultAssertions : ReferenceTypeAssertions&lt;Result, NonGenericResultAssertions&gt;
+{
+    public NonGenericResultAssertions(Result result);
+
+    public AndConstraint&lt;NonGenericResultAssertions&gt; BeSuccess(
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndWhichConstraint&lt;NonGenericResultAssertions, Error&gt; BeFailure(
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndWhichConstraint&lt;NonGenericResultAssertions, TError&gt; BeFailureOfType&lt;TError&gt;(
+        string because = &quot;&quot;,
+        params object[] becauseArgs)
+        where TError : Error;
+
+    public AndConstraint&lt;NonGenericResultAssertions&gt; HaveErrorCode(
+        string expectedCode,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;NonGenericResultAssertions&gt; HaveErrorDetail(
+        string expectedDetail,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;NonGenericResultAssertions&gt; HaveErrorDetailContaining(
+        string substring,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+}
+</code></pre>
+<h4 id="resultassertionsasyncextensions"><code>ResultAssertionsAsyncExtensions</code></h4>
+<pre><code class="lang-csharp">public static class ResultAssertionsAsyncExtensions
+{
+    public static Task&lt;AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TValue&gt;&gt; BeSuccessAsync&lt;TValue&gt;(
+        this Task&lt;Result&lt;TValue&gt;&gt; resultTask,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public static Task&lt;AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, Error&gt;&gt; BeFailureAsync&lt;TValue&gt;(
+        this Task&lt;Result&lt;TValue&gt;&gt; resultTask,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public static Task&lt;AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TError&gt;&gt; BeFailureOfTypeAsync&lt;TValue, TError&gt;(
+        this Task&lt;Result&lt;TValue&gt;&gt; resultTask,
+        string because = &quot;&quot;,
+        params object[] becauseArgs)
+        where TError : Error;
+
+    public static ValueTask&lt;AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TValue&gt;&gt; BeSuccessAsync&lt;TValue&gt;(
+        this ValueTask&lt;Result&lt;TValue&gt;&gt; resultTask,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public static ValueTask&lt;AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, Error&gt;&gt; BeFailureAsync&lt;TValue&gt;(
+        this ValueTask&lt;Result&lt;TValue&gt;&gt; resultTask,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public static ValueTask&lt;AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TError&gt;&gt; BeFailureOfTypeAsync&lt;TValue, TError&gt;(
+        this ValueTask&lt;Result&lt;TValue&gt;&gt; resultTask,
+        string because = &quot;&quot;,
+        params object[] becauseArgs)
+        where TError : Error;
+}
+</code></pre>
+<h4 id="maybeassertionsextensions"><code>MaybeAssertionsExtensions</code></h4>
+<pre><code class="lang-csharp">public static class MaybeAssertionsExtensions
+{
+    public static MaybeAssertions&lt;T&gt; Should&lt;T&gt;(this Maybe&lt;T&gt; maybe)
+        where T : notnull;
+}
+</code></pre>
+<h4 id="maybeassertionst"><code>MaybeAssertions&lt;T&gt;</code></h4>
+<pre><code class="lang-csharp">public class MaybeAssertions&lt;T&gt; : ReferenceTypeAssertions&lt;Maybe&lt;T&gt;, MaybeAssertions&lt;T&gt;&gt;
+    where T : notnull
+{
+    public MaybeAssertions(Maybe&lt;T&gt; maybe);
+
+    public AndWhichConstraint&lt;MaybeAssertions&lt;T&gt;, T&gt; HaveValue(
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;MaybeAssertions&lt;T&gt;&gt; BeNone(
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;MaybeAssertions&lt;T&gt;&gt; HaveValueEqualTo(
+        T expectedValue,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;MaybeAssertions&lt;T&gt;&gt; HaveValueMatching(
+        Func&lt;T, bool&gt; predicate,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;MaybeAssertions&lt;T&gt;&gt; HaveValueEquivalentTo(
+        T expectedValue,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+}
+</code></pre>
+<h4 id="errorassertionsextensions"><code>ErrorAssertionsExtensions</code></h4>
+<pre><code class="lang-csharp">public static class ErrorAssertionsExtensions
+{
+    public static ErrorAssertions Should(this Error? error);
+}
+</code></pre>
+<h4 id="errorassertions"><code>ErrorAssertions</code></h4>
+<pre><code class="lang-csharp">public class ErrorAssertions : ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;
+{
+    public ErrorAssertions(Error error);
+
+    public AndConstraint&lt;ErrorAssertions&gt; Be(
+        Error expected,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ErrorAssertions&gt; HaveCode(
+        string expectedCode,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ErrorAssertions&gt; HaveDetail(
+        string expectedDetail,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ErrorAssertions&gt; HaveDetailContaining(
+        string substring,
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public new AndWhichConstraint&lt;ErrorAssertions, TError&gt; BeOfType&lt;TError&gt;(
+        string because = &quot;&quot;,
+        params object[] becauseArgs)
+        where TError : Error;
+}
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> The <code>HaveInstance(...)</code> assertion was removed. <code>Error.Instance</code> is no longer part of the closed-ADT base — the ASP wire layer synthesizes <code>ProblemDetails.Instance</code> from the request URL plus any <code>ResourceRef</code> carried by the typed payload (e.g. <code>Error.NotFound.Resource</code>). Assert against <code>ResourceRef</code> directly via <code>BeOfType&lt;Error.NotFound&gt;().Which.Resource</code>.</p>
+</blockquote>
+<h4 id="validationerrorassertionsextensions"><code>ValidationErrorAssertionsExtensions</code></h4>
+<pre><code class="lang-csharp">public static class ValidationErrorAssertionsExtensions
+{
+    // Bound to Error.UnprocessableContent (the replacement for the previous validation error class).
+    // Method names preserved for source-compat at test sites.
+    public static ValidationErrorAssertions Should(this Error.UnprocessableContent error);
+}
+</code></pre>
+<h4 id="validationerrorassertions"><code>ValidationErrorAssertions</code></h4>
+<pre><code class="lang-csharp">public class ValidationErrorAssertions : ReferenceTypeAssertions&lt;Error.UnprocessableContent, ValidationErrorAssertions&gt;
+{
+    public ValidationErrorAssertions(Error.UnprocessableContent error);
+
+    public AndConstraint&lt;ValidationErrorAssertions&gt; HaveFieldError(
+        string fieldName,                              // accepted as either &quot;email&quot; or &quot;/email&quot; — normalized via InputPointer.ForProperty
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ValidationErrorAssertions&gt; HaveFieldErrorWithDetail(
+        string fieldName,
+        string expectedDetail,                         // matches FieldViolation.Detail exactly
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+
+    public AndConstraint&lt;ValidationErrorAssertions&gt; HaveFieldCount(
+        int expectedCount,                             // counts distinct field paths
+        string because = &quot;&quot;,
+        params object[] becauseArgs);
+}
+</code></pre>
+<h4 id="unwrapextensions"><code>UnwrapExtensions</code></h4>
+<pre><code class="lang-csharp">public static class UnwrapExtensions
+{
+    public static T Unwrap&lt;T&gt;(this Result&lt;T&gt; result);
+
+    public static Error UnwrapError&lt;T&gt;(this Result&lt;T&gt; result);
+
+    public static Error UnwrapError(this Result result);
+
+    public static T Unwrap&lt;T&gt;(this Maybe&lt;T&gt; maybe)
+        where T : notnull;
+
+    public static Task&lt;T&gt; UnwrapAsync&lt;T&gt;(this Task&lt;Result&lt;T&gt;&gt; resultTask);
+
+    public static ValueTask&lt;T&gt; UnwrapAsync&lt;T&gt;(this ValueTask&lt;Result&lt;T&gt;&gt; resultTask);
+}
+</code></pre>
+<h4 id="unwrapfailedexception"><code>UnwrapFailedException</code></h4>
+<pre><code class="lang-csharp">public sealed class UnwrapFailedException : Exception
+{
+    public UnwrapFailedException();
+    public UnwrapFailedException(string message);
+    public UnwrapFailedException(string message, Exception innerException);
+}
+</code></pre>
+<h4 id="aggregatetestmutator"><code>AggregateTestMutator</code></h4>
+<pre><code class="lang-csharp">public static class AggregateTestMutator
+{
+    public static TEntity SetMaybeField&lt;TEntity, TValue&gt;(
+        this TEntity entity,
+        Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt; propertySelector,
+        TValue? value)
+        where TEntity : class
+        where TValue : notnull;
+
+    public static TEntity ClearMaybeField&lt;TEntity, TValue&gt;(
+        this TEntity entity,
+        Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt; propertySelector)
+        where TEntity : class
+        where TValue : notnull;
+}
+</code></pre>
+<h4 id="fakerepositorytaggregate-tid"><code>FakeRepository&lt;TAggregate, TId&gt;</code></h4>
+<pre><code class="lang-csharp">public class FakeRepository&lt;TAggregate, TId&gt;
+    where TAggregate : Aggregate&lt;TId&gt;
+    where TId : notnull
+{
+    public IReadOnlyList&lt;IDomainEvent&gt; PublishedEvents { get; }
+    public int Count { get; }
+
+    public FakeRepository&lt;TAggregate, TId&gt; WithUniqueConstraint(Func&lt;TAggregate, object?&gt; propertySelector);
+
+    public Task&lt;Result&lt;TAggregate&gt;&gt; GetByIdAsync(TId id, CancellationToken cancellationToken = default);
+    public Task&lt;Maybe&lt;TAggregate&gt;&gt; FindByIdAsync(TId id, CancellationToken cancellationToken = default);
+
+    // Setup surface — mirrors RepositoryBase&lt;TAggregate, TId&gt;. Use these in handlers and
+    // in test setup so the same IRepository contract works in both the EF and fake paths.
+    public void Add(TAggregate aggregate);
+    public void Remove(TAggregate aggregate);
+    public Task&lt;Result&gt; RemoveByIdAsync(TId id, CancellationToken cancellationToken = default);
+
+    // Result-shape surface — only on the fake. Reserve for tests that explicitly assert
+    // on Result-of-save shape (e.g., conflict-result handling). NOT part of RepositoryBase.
+    public Task&lt;Result&gt; SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
+    public Task&lt;Result&gt; DeleteAsync(TId id, CancellationToken cancellationToken = default);
+
+    public void Clear();
+    public bool Exists(TId id);
+    public TAggregate? Get(TId id);
+    public IEnumerable&lt;TAggregate&gt; GetAll();
+
+    public Task&lt;Maybe&lt;TAggregate&gt;&gt; FindAsync(Func&lt;TAggregate, bool&gt; predicate);
+    public Task&lt;IReadOnlyList&lt;TAggregate&gt;&gt; WhereAsync(Func&lt;TAggregate, bool&gt; predicate);
+    public Task&lt;IReadOnlyList&lt;TAggregate&gt;&gt; WhereAsync(Specification&lt;TAggregate&gt; specification);
+}
+</code></pre>
+<h4 id="fakesharedresourceloadertresource-tid"><code>FakeSharedResourceLoader&lt;TResource, TId&gt;</code></h4>
+<pre><code class="lang-csharp">public class FakeSharedResourceLoader&lt;TResource, TId&gt; : SharedResourceLoaderById&lt;TResource, TId&gt;
+    where TResource : Aggregate&lt;TId&gt;
+    where TId : notnull
+{
+    public FakeSharedResourceLoader(FakeRepository&lt;TResource, TId&gt; repository);
+
+    public override Task&lt;Result&lt;TResource&gt;&gt; GetByIdAsync(TId id, CancellationToken cancellationToken);
+}
+</code></pre>
+<h4 id="testactorprovider"><code>TestActorProvider</code></h4>
+<pre><code class="lang-csharp">public sealed class TestActorProvider : IActorProvider
+{
+    public TestActorProvider(Actor actor);
+    public TestActorProvider(string userId, params string[] permissions);
+
+    public Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default);
+
+    public TestActorScope WithActor(Actor actor);
+    public TestActorScope WithActor(string userId, params string[] permissions);
+}
+</code></pre>
+<h4 id="testactorscope"><code>TestActorScope</code></h4>
+<pre><code class="lang-csharp">public sealed class TestActorScope : IAsyncDisposable, IDisposable
+{
+    public ValueTask DisposeAsync();
+    public void Dispose();
+}
+</code></pre>
+<h2 id="usage-notes">Usage notes</h2>
+<h3 id="assertions">Assertions</h3>
+<ul>
+<li>Synchronous assertions start from <code>Result&lt;T&gt;</code> or <code>Maybe&lt;T&gt;</code>:
+<ul>
+<li><code>result.Should().BeSuccess()</code></li>
+<li><code>result.Should().BeFailureOfType&lt;Error.UnprocessableContent&gt;()</code></li>
+<li><code>maybe.Should().HaveValue()</code></li>
+</ul>
+</li>
+<li><strong>Async assertions are extension methods on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>, not on <code>ResultAssertions&lt;T&gt;</code>.</strong>
+<ul>
+<li>Correct: <code>await resultTask.BeSuccessAsync();</code></li>
+<li>Correct: <code>await valueTaskResult.BeFailureAsync();</code></li>
+<li>Wrong: <code>await result.Should().BeSuccessAsync();</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="fakerepository">FakeRepository</h3>
+<ul>
+<li><strong>Setup surface</strong> (mirrors <code>RepositoryBase&lt;TAggregate, TId&gt;</code> in <code>Trellis.EntityFrameworkCore</code>) — use these from handlers and test setup so the same <code>IRepository</code> contract works in both worlds:
+<ul>
+<li><code>void Add(TAggregate)</code> — stages an insert; in the fake, immediately visible. Throws <code>InvalidOperationException</code> on unique-constraint violation (setup mistakes should fail loud at the call site).</li>
+<li><code>void Remove(TAggregate)</code> — stages a delete; no-op if the aggregate is not in the store.</li>
+<li><code>Task&lt;Result&gt; RemoveByIdAsync(TId)</code> — looks up by ID and removes; returns <code>Error.NotFound</code> if missing.</li>
+</ul>
+</li>
+<li><strong>Result-shape surface</strong> (only on the fake — <code>RepositoryBase</code> does not expose these) — use only when the test specifically asserts on the <code>Result</code> of the persistence call:
+<ul>
+<li><code>Task&lt;Result&gt; SaveAsync(TAggregate)</code> — returns <code>Error.Conflict</code> on unique-constraint violation. Use to test conflict-handling code paths.</li>
+<li><code>Task&lt;Result&gt; DeleteAsync(TId)</code> — returns <code>Error.NotFound</code> on missing. Use to test not-found handling. (<code>RemoveByIdAsync</code> is the staging-API-named alias.)</li>
+</ul>
+</li>
+<li><code>WithUniqueConstraint(Func&lt;TAggregate, object?&gt; propertySelector)</code> — fluent constraint registration; checked eagerly by <code>Add</code> (throws) and at-call by <code>SaveAsync</code> (returns <code>Result</code>).</li>
+<li><code>Clear()</code>, <code>Exists(TId id)</code>, <code>Get(TId id)</code>, <code>GetAll()</code>, <code>Count</code> — direct inspection helpers</li>
+<li><code>GetByIdAsync</code> / <code>DeleteAsync</code> / <code>RemoveByIdAsync</code> return <code>Error.NotFound</code> details in the format:
+<ul>
+<li><code>&quot;{AggregateTypeName} with ID {id} not found&quot;</code></li>
+</ul>
+</li>
+<li>Unique-constraint conflicts return:
+<ul>
+<li><code>&quot;A {AggregateTypeName} with the same value already exists.&quot;</code></li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>See cookbook <strong>Recipe 16 — Unit of work in handlers</strong> for guidance on which surface to use from where, and the pitfall of accidentally calling <code>SaveAsync</code> from a production-shaped repository contract.</p>
+</blockquote>
+<h2 id="compilable-examples">Compilable examples</h2>
+<h3 id="result-assertions">Result assertions</h3>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var success = Result.Ok(42);
+success.Should().BeSuccess().Which.Should().Be(42);
+
+var notFound = Result.Fail&lt;int&gt;(new Error.NotFound(ResourceRef.For(&quot;Order&quot;, &quot;123&quot;)) { Detail = &quot;Order 123 not found&quot; });
+notFound.Should().BeFailure()
+    .Which.Detail.Should().Be(&quot;Order 123 not found&quot;);
+</code></pre>
+<h3 id="async-assertions">Async assertions</h3>
+<pre><code class="lang-csharp">using System.Threading.Tasks;
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+Task&lt;Result&lt;int&gt;&gt; resultTask = Task.FromResult(Result.Ok(42));
+ValueTask&lt;Result&lt;int&gt;&gt; valueTaskResult = ValueTask.FromResult(Result.Ok(7));
+
+(await resultTask.BeSuccessAsync()).Which.Should().Be(42);
+(await valueTaskResult.BeSuccessAsync()).Which.Should().Be(7);
+</code></pre>
+<h3 id="fakerepository-1">FakeRepository</h3>
+<pre><code class="lang-csharp">using System;
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+public sealed record OrderId(Guid Value);
+
+public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public Order(OrderId id) : base(id) { }
+}
+
+var repo = new FakeRepository&lt;Order, OrderId&gt;()
+    .WithUniqueConstraint(order =&gt; order.Id);
+
+var order = new Order(new OrderId(Guid.NewGuid()));
+
+await repo.SaveAsync(order).BeSuccessAsync();
+(await repo.GetByIdAsync(order.Id)).Should().BeSuccess().Which.Should().BeSameAs(order);
+repo.Exists(order.Id).Should().BeTrue();
+repo.Count.Should().Be(1);
+</code></pre>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-reference.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

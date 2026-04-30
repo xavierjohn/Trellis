@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class TraverseExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class TraverseExtensions | Trellis ">
+      
+      <meta name="description" content="Transforms a collection of items into a Result containing a collection, short-circuiting on the first failure. Useful for processing collections where each item can fail independently.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_TraverseExtensions.md&amp;value=---%0Auid%3A%20Trellis.TraverseExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.TraverseExtensions">
+
+
+
+  <h1 id="Trellis_TraverseExtensions" data-uid="Trellis.TraverseExtensions" class="text-break">
+Class TraverseExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L27"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Transforms a collection of items into a Result containing a collection,
+short-circuiting on the first failure.
+Useful for processing collections where each item can fail independently.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class TraverseExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">TraverseExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_TraverseExtensions_examples">Examples</h2>
+  <pre><code class="lang-csharp">// Validate all items in a collection
+var items = new[] { "item1", "item2", "item3" };
+var result = items.Traverse(item =&gt; ValidateItem(item));
+
+// Process collection asynchronously with cancellation
+var orderIds = new[] { "order1", "order2", "order3" };
+var orders = await orderIds.TraverseAsync(
+    async (id, ct) =&gt; await FetchOrderAsync(id, ct),
+    cancellationToken
+);
+
+// If any item fails, the entire operation fails with that error
+// If all succeed, returns Success with IReadOnlyList of all results</code></pre>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_TraverseExtensions_Sequence_" data-uid="Trellis.TraverseExtensions.Sequence*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_Sequence_System_Collections_Generic_IEnumerable_Trellis_Result__" data-uid="Trellis.TraverseExtensions.Sequence(System.Collections.Generic.IEnumerable{Trellis.Result})">
+  Sequence(IEnumerable&lt;Result&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L302"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sequences a collection of no-payload <a class="xref" href="Trellis.Result.html">Result</a> values into a single
+<a class="xref" href="Trellis.Result.html">Result</a>. Short-circuits on the first failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result Sequence(this IEnumerable&lt;Result&gt; source)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="Trellis.Result.html">Result</a>&gt;</dt>
+    <dd><p>Source collection of results.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result.html">Result</a></dt>
+    <dd><p>Success if every item succeeds; otherwise the first failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_TraverseExtensions_Sequence_System_Collections_Generic_IEnumerable_Trellis_Result___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>First-failure-wins semantics, matching <a class="xref" href="Trellis.TraverseExtensions.html#Trellis_TraverseExtensions_Traverse__2_System_Collections_Generic_IEnumerable___0__System_Func___0_Trellis_Result___1___">Traverse&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, Result&lt;TOut&gt;&gt;)</a>.
+For per-field validation aggregation, use the <code>Validate</code> builder.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">source</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_TraverseExtensions_Sequence_" data-uid="Trellis.TraverseExtensions.Sequence*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_Sequence__1_System_Collections_Generic_IEnumerable_Trellis_Result___0___" data-uid="Trellis.TraverseExtensions.Sequence``1(System.Collections.Generic.IEnumerable{Trellis.Result{``0}})">
+  Sequence&lt;T&gt;(IEnumerable&lt;Result&lt;T&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L270"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sequences a collection of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> into a single Result containing
+all values in source order. Short-circuits on the first failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;IReadOnlyList&lt;T&gt;&gt; Sequence&lt;T&gt;(this IEnumerable&lt;Result&lt;T&gt;&gt; source)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;&gt;</dt>
+    <dd><p>Source collection of results.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;T&gt;&gt;</dt>
+    <dd><p>Success carrying all values in order if every item succeeds; otherwise the first failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>Type of value carried by each result.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TraverseExtensions_Sequence__1_System_Collections_Generic_IEnumerable_Trellis_Result___0____examples">Examples</h4>
+  <pre><code class="lang-csharp">// Aggregate per-item Result&lt;Money&gt; subtotals, then sum the values.
+var subtotalsResult = lineItems
+    .Select(item =&gt; item.ComputeSubtotal())   // IEnumerable&lt;Result&lt;Money&gt;&gt;
+    .Sequence();                                // Result&lt;IReadOnlyList&lt;Money&gt;&gt;
+
+var totalResult = subtotalsResult.Bind(Money.Sum);</code></pre>
+
+
+  <h4 class="section" id="Trellis_TraverseExtensions_Sequence__1_System_Collections_Generic_IEnumerable_Trellis_Result___0____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<code>Sequence</code> is the identity-selector form of <a class="xref" href="Trellis.TraverseExtensions.html#Trellis_TraverseExtensions_Traverse__2_System_Collections_Generic_IEnumerable___0__System_Func___0_Trellis_Result___1___">Traverse&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, Result&lt;TOut&gt;&gt;)</a>:
+<code>source.Sequence()</code> ≡ <code>source.Traverse(x =&gt; x)</code>. Use it when you already
+have an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable&lt;T&gt;</a> of Results — typically the output of a
+<code>Select</code> over a function that returns <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.
+</p>
+<p>
+Failure semantics are first-failure-wins (matching <a class="xref" href="Trellis.TraverseExtensions.html#Trellis_TraverseExtensions_Traverse__2_System_Collections_Generic_IEnumerable___0__System_Func___0_Trellis_Result___1___">Traverse&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, Result&lt;TOut&gt;&gt;)</a>
+and the current first-failure-wins design). For per-field validation aggregation,
+use the <code>Validate</code> builder which accumulates into a single <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a>.
+</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">source</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_TraverseExtensions_TraverseAsync_" data-uid="Trellis.TraverseExtensions.TraverseAsync*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_TraverseAsync__1_System_Collections_Generic_IEnumerable___0__System_Func___0_System_Threading_CancellationToken_System_Threading_Tasks_Task_Trellis_Result___System_Threading_CancellationToken_" data-uid="Trellis.TraverseExtensions.TraverseAsync``1(System.Collections.Generic.IEnumerable{``0},System.Func{``0,System.Threading.CancellationToken,System.Threading.Tasks.Task{Trellis.Result}},System.Threading.CancellationToken)">
+  TraverseAsync&lt;TIn&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, CancellationToken, Task&lt;Result&gt;&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L215"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously transforms a collection of items using a non-generic Result selector.
+Short-circuits on the first failure. Returns a non-generic Result (no collected values).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&gt; TraverseAsync&lt;TIn&gt;(this IEnumerable&lt;TIn&gt; source, Func&lt;TIn, CancellationToken, Task&lt;Result&gt;&gt; selector, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;TIn&gt;</dt>
+    <dd></dd>
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result.html">Result</a>&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result.html">Result</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_TraverseExtensions_TraverseAsync_" data-uid="Trellis.TraverseExtensions.TraverseAsync*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_TraverseAsync__2_System_Collections_Generic_IEnumerable___0__System_Func___0_System_Threading_CancellationToken_System_Threading_Tasks_Task_Trellis_Result___1____System_Threading_CancellationToken_" data-uid="Trellis.TraverseExtensions.TraverseAsync``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,System.Threading.CancellationToken,System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Threading.CancellationToken)">
+  TraverseAsync&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, CancellationToken, Task&lt;Result&lt;TOut&gt;&gt;&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L111"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously transforms a collection of items into a Result containing all transformed items.
+Short-circuits on the first failure. Supports cancellation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;IReadOnlyList&lt;TOut&gt;&gt;&gt; TraverseAsync&lt;TIn, TOut&gt;(this IEnumerable&lt;TIn&gt; source, Func&lt;TIn, CancellationToken, Task&lt;Result&lt;TOut&gt;&gt;&gt; selector, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;TIn&gt;</dt>
+    <dd><p>Source collection to transform.</p>
+</dd>
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>Async transformation function with cancellation support.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token to observe.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>Task producing Success with all items if all succeed; otherwise the first failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of input items.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of output items.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">source</code> or <code class="paramref">selector</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_TraverseExtensions_TraverseAsync_" data-uid="Trellis.TraverseExtensions.TraverseAsync*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_TraverseAsync__2_System_Collections_Generic_IEnumerable___0__System_Func___0_System_Threading_CancellationToken_System_Threading_Tasks_ValueTask_Trellis_Result___1____System_Threading_CancellationToken_" data-uid="Trellis.TraverseExtensions.TraverseAsync``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,System.Threading.CancellationToken,System.Threading.Tasks.ValueTask{Trellis.Result{``1}}},System.Threading.CancellationToken)">
+  TraverseAsync&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, CancellationToken, ValueTask&lt;Result&lt;TOut&gt;&gt;&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L184"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously transforms a collection of items using ValueTask with cancellation support.
+Short-circuits on the first failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;IReadOnlyList&lt;TOut&gt;&gt;&gt; TraverseAsync&lt;TIn, TOut&gt;(this IEnumerable&lt;TIn&gt; source, Func&lt;TIn, CancellationToken, ValueTask&lt;Result&lt;TOut&gt;&gt;&gt; selector, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;TIn&gt;</dt>
+    <dd><p>Source collection to transform.</p>
+</dd>
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>Async transformation function with cancellation support.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token to observe.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>ValueTask producing Success with all items if all succeed; otherwise the first failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of input items.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of output items.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">source</code> or <code class="paramref">selector</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_TraverseExtensions_TraverseAsync_" data-uid="Trellis.TraverseExtensions.TraverseAsync*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_TraverseAsync__2_System_Collections_Generic_IEnumerable___0__System_Func___0_System_Threading_Tasks_Task_Trellis_Result___1____" data-uid="Trellis.TraverseExtensions.TraverseAsync``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,System.Threading.Tasks.Task{Trellis.Result{``1}}})">
+  TraverseAsync&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, Task&lt;Result&lt;TOut&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L75"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously transforms a collection of items into a Result containing all transformed items.
+Short-circuits on the first failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;IReadOnlyList&lt;TOut&gt;&gt;&gt; TraverseAsync&lt;TIn, TOut&gt;(this IEnumerable&lt;TIn&gt; source, Func&lt;TIn, Task&lt;Result&lt;TOut&gt;&gt;&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;TIn&gt;</dt>
+    <dd><p>Source collection to transform.</p>
+</dd>
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>Async transformation function returning a Result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>Task producing Success with all items if all succeed; otherwise the first failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of input items.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of output items.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">source</code> or <code class="paramref">selector</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_TraverseExtensions_TraverseAsync_" data-uid="Trellis.TraverseExtensions.TraverseAsync*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_TraverseAsync__2_System_Collections_Generic_IEnumerable___0__System_Func___0_System_Threading_Tasks_ValueTask_Trellis_Result___1____" data-uid="Trellis.TraverseExtensions.TraverseAsync``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,System.Threading.Tasks.ValueTask{Trellis.Result{``1}}})">
+  TraverseAsync&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, ValueTask&lt;Result&lt;TOut&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L148"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously transforms a collection of items using ValueTask for zero-allocation scenarios.
+Short-circuits on the first failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;IReadOnlyList&lt;TOut&gt;&gt;&gt; TraverseAsync&lt;TIn, TOut&gt;(this IEnumerable&lt;TIn&gt; source, Func&lt;TIn, ValueTask&lt;Result&lt;TOut&gt;&gt;&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;TIn&gt;</dt>
+    <dd><p>Source collection to transform.</p>
+</dd>
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>Async transformation function returning a Result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TOut&gt;&gt;&gt;</dt>
+    <dd><p>ValueTask producing Success with all items if all succeed; otherwise the first failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of input items.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of output items.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">source</code> or <code class="paramref">selector</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_TraverseExtensions_Traverse_" data-uid="Trellis.TraverseExtensions.Traverse*"></a>
+
+  <h3 id="Trellis_TraverseExtensions_Traverse__2_System_Collections_Generic_IEnumerable___0__System_Func___0_Trellis_Result___1___" data-uid="Trellis.TraverseExtensions.Traverse``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,Trellis.Result{``1}})">
+  Traverse&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, Result&lt;TOut&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Transforms a collection of items into a Result containing all transformed items.
+Short-circuits on the first failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;IReadOnlyList&lt;TOut&gt;&gt; Traverse&lt;TIn, TOut&gt;(this IEnumerable&lt;TIn&gt; source, Func&lt;TIn, Result&lt;TOut&gt;&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;TIn&gt;</dt>
+    <dd><p>Source collection to transform.</p>
+</dd>
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>Transformation function returning a Result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>Success with all items if all succeed; otherwise the first failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of input items.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of output items.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">source</code> or <code class="paramref">selector</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Traverse.cs/#L27" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

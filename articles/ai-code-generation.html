@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis for AI Code Generation | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis for AI Code Generation | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/ai-code-generation.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis-for-ai-code-generation">Trellis for AI Code Generation</h1>
+
+<p>AI is good at producing code quickly.</p>
+<p>The hard part is getting code that is still understandable, reviewable, and correct <strong>after the first happy-path demo</strong>. That is where Trellis helps.</p>
+<p>Trellis gives an AI a constrained set of good moves:</p>
+<ul>
+<li>validate input with value objects</li>
+<li>represent failure with <code>Result&lt;T&gt;</code> instead of exceptions or <code>null</code></li>
+<li>keep domain rules explicit</li>
+<li>map results to HTTP consistently</li>
+<li>model state transitions explicitly when the workflow matters</li>
+</ul>
+<p>That structure makes AI-generated code easier for humans to review.</p>
+<h2 id="start-with-a-practical-example">Start with a practical example</h2>
+<p>Imagine the specification says:</p>
+<blockquote>
+<p>Register a user. First name, last name, and email are required. Return a structured validation error when any value is invalid.</p>
+</blockquote>
+<p>A Trellis-shaped implementation is straightforward:</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp;
+using Trellis.Primitives;
+
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
+public sealed record RegisterUserResponse(string FirstName, string LastName, string Email);
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddTrellisAsp();
+
+var app = builder.Build();
+
+app.MapPost(&quot;/users/register&quot;, (RegisterUserRequest request) =&gt;
+    FirstName.TryCreate(request.FirstName)
+        .Combine(LastName.TryCreate(request.LastName))
+        .Combine(EmailAddress.TryCreate(request.Email))
+        .Bind((firstName, lastName, emailAddress) =&gt;
+            Result.Ok(new RegisterUserResponse(
+                firstName.Value,
+                lastName.Value,
+                emailAddress.Value)))
+        .ToHttpResponse());
+
+app.Run();
+</code></pre>
+<p>Why this works well for AI-generated code:</p>
+<ul>
+<li>the validation pattern is obvious</li>
+<li>the failure path is explicit</li>
+<li>the HTTP mapping is a single, predictable step</li>
+<li>the reviewer can scan the whole flow in seconds</li>
+</ul>
+<h2 id="why-trellis-helps-ai-more-than-unstructured-c-does">Why Trellis helps AI more than unstructured C# does</h2>
+<h3 id="1-illegal-states-become-harder-to-express">1. Illegal states become harder to express</h3>
+<p>Without Trellis, an AI can easily generate this:</p>
+<pre><code class="lang-csharp">public sealed class User
+{
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+}
+</code></pre>
+<p>That compiles, but it tells you almost nothing about validity.</p>
+<p>With Trellis, the shape pushes the AI toward validated types instead:</p>
+<pre><code class="lang-csharp">using Trellis.Primitives;
+
+public sealed record RegisteredUser(FirstName FirstName, EmailAddress Email);
+</code></pre>
+<p>Now the compiler and the construction path help enforce the rules.</p>
+<h3 id="2-errors-are-values-not-side-effects">2. Errors are values, not side effects</h3>
+<p>When AI-generated code mixes exceptions, <code>null</code>, and ad-hoc status flags, review gets expensive.</p>
+<p>Trellis makes the contract visible in the type:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+public interface IPrimaryEmailLookup
+{
+    Result&lt;EmailAddress&gt; GetPrimaryEmail(string userName);
+}
+</code></pre>
+<p>The caller knows it must handle success or failure. The ambiguity disappears.</p>
+<h3 id="3-the-same-patterns-repeat-across-the-codebase">3. The same patterns repeat across the codebase</h3>
+<p>That repetition is a feature.</p>
+<p>A reviewer learns one Trellis service and can usually review the next one much faster because the shapes stay familiar:</p>
+<ul>
+<li>validate with <code>TryCreate</code></li>
+<li>compose with <code>Bind</code>, <code>Map</code>, <code>Ensure</code>, <code>Tap</code>, <code>Combine</code></li>
+<li>branch with <code>Match</code> (with a <code>switch</code> expression on the closed <code>Error</code> ADT)</li>
+<li>map to HTTP with <code>ToHttpResponse()</code> or <code>ToHttpResponse().AsActionResult&lt;T&gt;()</code></li>
+</ul>
+<h2 id="spec-to-code-mapping">Spec-to-code mapping</h2>
+<p>This is where Trellis becomes especially useful for AI-assisted development.</p>
+<table>
+<thead>
+<tr>
+<th>Specification idea</th>
+<th>Trellis construct</th>
+<th>Typical API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A validated input value</td>
+<td>Value object</td>
+<td><code>EmailAddress.TryCreate(...)</code></td>
+</tr>
+<tr>
+<td>An operation that can fail</td>
+<td>Result-returning method</td>
+<td><code>Result&lt;T&gt;</code></td>
+</tr>
+<tr>
+<td>Optional domain data</td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td><code>Maybe&lt;T&gt;</code></td>
+</tr>
+<tr>
+<td>A business rule on a success value</td>
+<td>Validation step</td>
+<td><code>.Ensure(...)</code></td>
+</tr>
+<tr>
+<td>Independent validations</td>
+<td>Aggregation</td>
+<td><code>.Combine(...)</code></td>
+</tr>
+<tr>
+<td>A side effect that should not change the value</td>
+<td>Side-effect step</td>
+<td><code>.Tap(...)</code></td>
+</tr>
+<tr>
+<td>HTTP response mapping</td>
+<td>ASP.NET integration</td>
+<td><code>.ToHttpResponse()</code> / <code>.AsActionResult&lt;T&gt;()</code></td>
+</tr>
+<tr>
+<td>Workflow transition</td>
+<td>Stateless integration</td>
+<td><code>machine.FireResult(trigger)</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="state-transitions-are-explicit-too">State transitions are explicit too</h2>
+<p>If your specification describes a workflow, Trellis gives the AI a better pattern than &quot;throw an exception when the state is wrong.&quot;</p>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+public enum OrderState { Draft, Submitted, Approved }
+public enum OrderTrigger { Submit, Approve }
+
+var state = OrderState.Draft;
+var machine = new StateMachine&lt;OrderState, OrderTrigger&gt;(() =&gt; state, s =&gt; state = s);
+
+machine.Configure(OrderState.Draft)
+    .Permit(OrderTrigger.Submit, OrderState.Submitted);
+
+machine.Configure(OrderState.Submitted)
+    .Permit(OrderTrigger.Approve, OrderState.Approved);
+
+Result&lt;OrderState&gt; result = machine.FireResult(OrderTrigger.Submit);
+</code></pre>
+<p>That gives an AI a clear, typed path for workflow behavior instead of hidden conventions.</p>
+<h2 id="what-humans-get-back-from-this-structure">What humans get back from this structure</h2>
+<h3 id="faster-review">Faster review</h3>
+<p>A reviewer can spot missing validation, skipped error handling, or suspicious state transitions quickly because the code follows familiar Trellis shapes.</p>
+<h3 id="better-prompts">Better prompts</h3>
+<p>When a team prompts an AI with Trellis vocabulary, prompts become more precise:</p>
+<ul>
+<li>&quot;Use value objects for validated inputs.&quot;</li>
+<li>&quot;Return <code>Result&lt;T&gt;</code> from application services.&quot;</li>
+<li>&quot;Use <code>Combine</code> for independent validation.&quot;</li>
+<li>&quot;Map endpoint results with <code>ToHttpResponse()</code>.&quot;</li>
+</ul>
+<p>That is easier to execute than vague instructions like &quot;follow good architecture.&quot;</p>
+<h3 id="compiler-and-analyzer-support">Compiler and analyzer support</h3>
+<p>Trellis is not just a style guide. It also gives AI-generated code more compiler-visible structure and analyzer-visible patterns, which makes problems easier to catch early.</p>
+<h2 id="a-good-mental-model">A good mental model</h2>
+<p>Trellis does not make AI &quot;smarter.&quot;</p>
+<p>It makes AI output <strong>more bounded</strong>.</p>
+<p>That matters because bounded output is easier to:</p>
+<ul>
+<li>review</li>
+<li>test</li>
+<li>refactor</li>
+<li>regenerate safely</li>
+<li>keep consistent across a team</li>
+</ul>
+<h2 id="prompting-advice-for-teams-using-ai-with-trellis">Prompting advice for teams using AI with Trellis</h2>
+<p>If you want better results, ask for these things explicitly:</p>
+<ul>
+<li>use <code>TryCreate</code> for validated inputs</li>
+<li>return <code>Result&lt;T&gt;</code> from operations that can fail</li>
+<li>use <code>Combine</code> before <code>Bind</code> for independent validation steps</li>
+<li>use <code>Ensure</code> for business-rule checks</li>
+<li>use <code>ToHttpResponse()</code> or <code>ToHttpResponse().AsActionResult&lt;T&gt;()</code> at the API boundary</li>
+<li>use <code>FireResult</code> for state-machine transitions instead of throwing for invalid transitions</li>
+</ul>
+<h2 id="bottom-line">Bottom line</h2>
+<p>AI works best when the target codebase has strong rails.</p>
+<p>That is exactly what Trellis provides: not magic, but <strong>predictable structure</strong>.</p>
+<p>And predictable structure is what makes AI-generated enterprise code reviewable by humans.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/ai-code-generation.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

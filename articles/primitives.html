@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Primitive Value Objects | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Primitive Value Objects | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/primitives.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="primitive-value-objects">Primitive Value Objects</h1>
+
+<p>Primitive obsession makes code look simple right up until <code>&quot;USD&quot;</code>, <code>&quot;Pending&quot;</code>, <code>&quot;john@example.com&quot;</code>, <code>42</code>, and <code>true</code> all start carrying business meaning the compiler cannot see.</p>
+<p>Trellis primitives solve that by turning raw values into <strong>small, validated domain types</strong>.</p>
+<h2 id="start-with-a-practical-example">Start with a practical example</h2>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+namespace PrimitiveExamples;
+
+public partial class CustomerId : RequiredGuid&lt;CustomerId&gt; { }
+
+[Trellis.StringLength(200)]
+public partial class DisplayName : RequiredString&lt;DisplayName&gt; { }
+
+[Trellis.Range(0, 150)]
+public partial class LoyaltyScore : RequiredInt&lt;LoyaltyScore&gt; { }
+
+public partial class IsVipCustomer : RequiredBool&lt;IsVipCustomer&gt; { }
+public partial class LastPurchaseAt : RequiredDateTime&lt;LastPurchaseAt&gt; { }
+
+public sealed class Customer : Entity&lt;CustomerId&gt;
+{
+    public Customer(
+        CustomerId id,
+        DisplayName displayName,
+        EmailAddress email,
+        LoyaltyScore loyaltyScore,
+        IsVipCustomer isVipCustomer,
+        LastPurchaseAt lastPurchaseAt)
+        : base(id)
+    {
+        DisplayName = displayName;
+        Email = email;
+        LoyaltyScore = loyaltyScore;
+        IsVipCustomer = isVipCustomer;
+        LastPurchaseAt = lastPurchaseAt;
+    }
+
+    public DisplayName DisplayName { get; }
+    public EmailAddress Email { get; }
+    public LoyaltyScore LoyaltyScore { get; }
+    public IsVipCustomer IsVipCustomer { get; }
+    public LastPurchaseAt LastPurchaseAt { get; }
+}
+</code></pre>
+<p>Now your model says what the values <strong>mean</strong>, not just what CLR type they happen to use.</p>
+<h2 id="why-primitives-help">Why primitives help</h2>
+<p>They give you:</p>
+<ul>
+<li><strong>type safety</strong> — <code>DisplayName</code> and <code>EmailAddress</code> cannot be mixed up</li>
+<li><strong>centralized validation</strong> — every creation path enforces the same rules</li>
+<li><strong>better APIs</strong> — invalid input fails early through <code>Result&lt;T&gt;</code></li>
+<li><strong>clearer domain language</strong> — code reads like the business language</li>
+</ul>
+<h2 id="the-core-base-classes">The core base classes</h2>
+<p>All custom primitives are declared with the generic self type:</p>
+<ul>
+<li><code>RequiredString&lt;EmailAddress&gt;</code></li>
+<li><code>RequiredGuid&lt;OrderId&gt;</code></li>
+<li><code>RequiredInt&lt;Quantity&gt;</code></li>
+</ul>
+<p>Not just <code>RequiredString</code> or <code>RequiredGuid</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Base class</th>
+<th>Use for</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RequiredString&lt;TSelf&gt;</code></td>
+<td>names, codes, titles</td>
+<td>exposes <code>Length</code>, <code>StartsWith</code>, <code>Contains</code>, <code>EndsWith</code></td>
+</tr>
+<tr>
+<td><code>RequiredGuid&lt;TSelf&gt;</code></td>
+<td>IDs</td>
+<td>source generator adds <code>NewUniqueV4()</code> and <code>NewUniqueV7()</code></td>
+</tr>
+<tr>
+<td><code>RequiredInt&lt;TSelf&gt;</code></td>
+<td>counts, quantities</td>
+<td>supports range validation</td>
+</tr>
+<tr>
+<td><code>RequiredDecimal&lt;TSelf&gt;</code></td>
+<td>scalar decimals</td>
+<td>supports range validation</td>
+</tr>
+<tr>
+<td><code>RequiredLong&lt;TSelf&gt;</code></td>
+<td>large integer values</td>
+<td>available for high-range counters/identifiers</td>
+</tr>
+<tr>
+<td><code>RequiredBool&lt;TSelf&gt;</code></td>
+<td>explicit domain flags</td>
+<td>useful when <code>bool</code> has real business meaning</td>
+</tr>
+<tr>
+<td><code>RequiredDateTime&lt;TSelf&gt;</code></td>
+<td>required timestamps</td>
+<td>invariant round-trip formatting</td>
+</tr>
+<tr>
+<td><code>RequiredEnum&lt;TSelf&gt;</code></td>
+<td>symbolic finite sets</td>
+<td>separate symbolic type family</td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>ScalarValueObject&lt;TSelf, T&gt;</code> implements both <code>IConvertible</code> and <code>IFormattable</code>. That is why Trellis scalar primitives behave naturally in formatting and conversion scenarios.</p>
+</div>
+<h2 id="creating-your-own-primitive">Creating your own primitive</h2>
+<p>Most custom primitives are tiny:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+namespace CustomPrimitives;
+
+public partial class OrderId : RequiredGuid&lt;OrderId&gt; { }
+
+[Trellis.StringLength(100)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+[Trellis.Range(1, 1000)]
+public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
+
+public partial class IsPublished : RequiredBool&lt;IsPublished&gt; { }
+public partial class PublishedAt : RequiredDateTime&lt;PublishedAt&gt; { }
+public partial class ExternalSequence : RequiredLong&lt;ExternalSequence&gt; { }
+</code></pre>
+<p>That <code>partial</code> keyword matters. It allows the generator to add factory methods, parsing, JSON support, and model-binding helpers.</p>
+<h2 id="factory-methods-use-the-right-one">Factory methods: use the right one</h2>
+<p>Every primitive follows the same creation story:</p>
+<ul>
+<li><code>TryCreate(...)</code> for user input, file input, API input, or anything that may fail</li>
+<li><code>Create(...)</code> for trusted test data or hard-coded values</li>
+</ul>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+public partial class OrderId : RequiredGuid&lt;OrderId&gt; { }
+
+var emailResult = EmailAddress.TryCreate(&quot;alice@example.com&quot;);
+var orderId = OrderId.NewUniqueV7();
+var amount = MonetaryAmount.Create(49.95m);
+</code></pre>
+<p>In a request workflow, stay on the railway:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+[Trellis.StringLength(100)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+[Trellis.Range(1, 1000)]
+public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
+
+var command = EmailAddress.TryCreate(&quot;alice@example.com&quot;, &quot;email&quot;)
+    .Combine(ProductName.TryCreate(&quot;Trellis Mug&quot;, &quot;name&quot;))
+    .Combine(Quantity.TryCreate(2, &quot;quantity&quot;));
+</code></pre>
+<h2 id="requiredstringtself-feels-like-a-string-on-purpose"><code>RequiredString&lt;TSelf&gt;</code> feels like a string on purpose</h2>
+<p><code>RequiredString&lt;TSelf&gt;</code> exposes the string members you need most:</p>
+<ul>
+<li><code>Length</code></li>
+<li><code>StartsWith(string)</code></li>
+<li><code>Contains(string)</code></li>
+<li><code>EndsWith(string)</code></li>
+</ul>
+<pre><code class="lang-csharp">using Trellis;
+
+[Trellis.StringLength(100)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+var name = ProductName.Create(&quot;Trellis Mug&quot;);
+
+_ = name.Length;
+_ = name.StartsWith(&quot;Trellis&quot;);
+_ = name.Contains(&quot;Mug&quot;);
+_ = name.EndsWith(&quot;Mug&quot;);
+</code></pre>
+<p>That makes your code more natural and helps EF Core queries read cleanly.</p>
+<h2 id="built-in-primitives-you-can-use-immediately">Built-in primitives you can use immediately</h2>
+<p>Trellis also ships ready-made types in <code>Trellis.Primitives</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Category</th>
+<th>Good for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EmailAddress</code></td>
+<td>scalar string</td>
+<td>validated email input</td>
+</tr>
+<tr>
+<td><code>PhoneNumber</code></td>
+<td>scalar string</td>
+<td>E.164 phone values</td>
+</tr>
+<tr>
+<td><code>Url</code></td>
+<td>scalar string</td>
+<td>absolute HTTP/HTTPS URLs</td>
+</tr>
+<tr>
+<td><code>Hostname</code></td>
+<td>scalar string</td>
+<td>host names</td>
+</tr>
+<tr>
+<td><code>IpAddress</code></td>
+<td>scalar string</td>
+<td>IPv4/IPv6 values</td>
+</tr>
+<tr>
+<td><code>Slug</code></td>
+<td>scalar string</td>
+<td>URL-friendly identifiers</td>
+</tr>
+<tr>
+<td><code>CountryCode</code></td>
+<td>scalar string</td>
+<td>ISO alpha-2 country codes</td>
+</tr>
+<tr>
+<td><code>CurrencyCode</code></td>
+<td>scalar string</td>
+<td>ISO 4217 codes</td>
+</tr>
+<tr>
+<td><code>LanguageCode</code></td>
+<td>scalar string</td>
+<td>ISO language codes</td>
+</tr>
+<tr>
+<td><code>Age</code></td>
+<td>scalar int</td>
+<td>bounded age values</td>
+</tr>
+<tr>
+<td><code>Percentage</code></td>
+<td>scalar decimal</td>
+<td>percentages and fraction helpers</td>
+</tr>
+<tr>
+<td><code>MonetaryAmount</code></td>
+<td>scalar decimal</td>
+<td><strong>single-currency</strong> amounts</td>
+</tr>
+<tr>
+<td><code>Money</code></td>
+<td>structured value object</td>
+<td>amount + currency together</td>
+</tr>
+</tbody>
+</table>
+<h3 id="monetaryamount-vs-money"><code>MonetaryAmount</code> vs <code>Money</code></h3>
+<p>This distinction matters:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Use it when</th>
+<th>Shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MonetaryAmount</code></td>
+<td>the whole bounded context uses one currency policy</td>
+<td>scalar</td>
+</tr>
+<tr>
+<td><code>Money</code></td>
+<td>currency is part of the value's identity</td>
+<td>structured</td>
+</tr>
+</tbody>
+</table>
+<p><code>MonetaryAmount</code> is a scalar primitive. <code>Money</code> is not.</p>
+<pre><code class="lang-csharp">using Trellis.Primitives;
+
+var subtotal = MonetaryAmount.Create(120.00m);
+var tax = subtotal.Multiply(0.08m).Value;
+var total = subtotal.Add(tax).Value;
+
+var usdPrice = Money.Create(120.00m, &quot;USD&quot;);
+var shipping = Money.Create(10.00m, &quot;USD&quot;);
+var grandTotal = usdPrice.Add(shipping).Value;
+</code></pre>
+<h2 id="built-in-examples">Built-in examples</h2>
+<pre><code class="lang-csharp">using System;
+using Trellis.Primitives;
+
+var email = EmailAddress.Create(&quot;alice@example.com&quot;);
+var url = Url.Create(&quot;https://example.com/orders/42&quot;);
+var percent = Percentage.Create(12.5m);
+
+Console.WriteLine(url.Host);
+Console.WriteLine(percent.AsFraction());
+Console.WriteLine(percent.Of(80m));
+</code></pre>
+<h2 id="culture-aware-parsing">Culture-aware parsing</h2>
+<p>Numeric and date primitives support culture-aware parsing through <code>IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</code>.</p>
+<p>Use the invariant overload by default:</p>
+<pre><code class="lang-csharp">var amount = MonetaryAmount.TryCreate(&quot;12.34&quot;);
+</code></pre>
+<p>Use the culture-aware overload when the locale is known:</p>
+<pre><code class="lang-csharp">using System.Globalization;
+using Trellis;
+using Trellis.Primitives;
+
+public partial class LastPurchaseAt : RequiredDateTime&lt;LastPurchaseAt&gt; { }
+
+var amount = MonetaryAmount.TryCreate(&quot;12,34&quot;, CultureInfo.GetCultureInfo(&quot;fr-FR&quot;));
+var timestamp = LastPurchaseAt.TryCreate(&quot;2024-12-31T18:30:00&quot;, CultureInfo.InvariantCulture);
+</code></pre>
+<h2 id="ef-core-queries-stay-readable">EF Core queries stay readable</h2>
+<p>Trellis primitives are designed to work cleanly in LINQ. In many cases you do <strong>not</strong> need to reach into <code>.Value</code>.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using Trellis;
+
+namespace EfCoreQueryExample;
+
+[Trellis.StringLength(200)]
+public partial class DisplayName : RequiredString&lt;DisplayName&gt; { }
+
+public partial class IsVipCustomer : RequiredBool&lt;IsVipCustomer&gt; { }
+
+public sealed class Customer
+{
+    public int Id { get; set; }
+    public DisplayName DisplayName { get; set; } = null!;
+    public IsVipCustomer IsVipCustomer { get; set; } = null!;
+}
+
+public sealed class AppDbContext : DbContext
+{
+    public DbSet&lt;Customer&gt; Customers =&gt; Set&lt;Customer&gt;();
+}
+
+public static IQueryable&lt;Customer&gt; BuildQuery(AppDbContext dbContext) =&gt;
+    dbContext.Customers
+        .Where(customer =&gt; customer.DisplayName.StartsWith(&quot;Tre&quot;))
+        .Where(customer =&gt; customer.DisplayName.Length &gt; 3)
+        .Where(customer =&gt; customer.IsVipCustomer == IsVipCustomer.Create(true));
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>String helper translation such as <code>StartsWith</code>, <code>Contains</code>, <code>EndsWith</code>, and <code>Length</code> requires <code>AddTrellisInterceptors()</code> in your EF Core configuration.</p>
+</div>
+<h2 id="when-to-use-built-in-types-vs-custom-types">When to use built-in types vs custom types</h2>
+<p>Choose a built-in primitive when the validation rules already match your domain.</p>
+<p>Create a custom primitive when:</p>
+<ul>
+<li>the name needs domain meaning</li>
+<li>the validation rules differ</li>
+<li>the type should carry behavior specific to your domain</li>
+</ul>
+<p>For example, you might still create your own email type:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+[Trellis.StringLength(100)]
+public partial class CompanyEmailAddress : RequiredString&lt;CompanyEmailAddress&gt; { }
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ol>
+<li>Wrap IDs immediately</li>
+<li>Prefer domain names over technical names</li>
+<li>Use <code>TryCreate(...)</code> at boundaries</li>
+<li>Reach for built-ins first, custom types second</li>
+<li>Use <code>MonetaryAmount</code> only when currency is truly external policy</li>
+</ol>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="required-enum.html">RequiredEnum</a></li>
+<li><a href="specifications.html">Specifications</a></li>
+<li><a href="../api_reference/trellis-value-object-taxonomy.html">Trellis primitive taxonomy</a></li>
+<li><a href="../api_reference/trellis-api-primitives.html">Trellis primitives API reference</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/primitives.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

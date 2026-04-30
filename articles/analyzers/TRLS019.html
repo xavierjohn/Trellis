@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>TRLS019 — Avoid default(Result), default(Result&lt;T&gt;), and default(Maybe&lt;T&gt;) | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="TRLS019 — Avoid default(Result), default(Result&lt;T&gt;), and default(Maybe&lt;T&gt;) | Trellis ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS019.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trls019--avoid-defaultresult-defaultresultt-and-defaultmaybet">TRLS019 — Avoid <code>default(Result)</code>, <code>default(Result&lt;T&gt;)</code>, and <code>default(Maybe&lt;T&gt;)</code></h1>
+
+<ul>
+<li><strong>Severity:</strong> Warning</li>
+<li><strong>Category:</strong> Trellis</li>
+</ul>
+<h2 id="what-it-detects">What it detects</h2>
+<p>Flags explicit <code>default</code> expressions whose type is <code>Trellis.Result</code>, <code>Trellis.Result&lt;T&gt;</code>, or <code>Trellis.Maybe&lt;T&gt;</code>. Detection is operation-based (<code>IDefaultValueOperation</code>), so all surface forms are covered:</p>
+<ul>
+<li><code>default(Result)</code>, <code>default(Result&lt;int&gt;)</code>, <code>default(Maybe&lt;string&gt;)</code> (typeof-style)</li>
+<li>Target-typed <code>default</code> (e.g. <code>return default;</code> in a method returning <code>Result&lt;T&gt;</code>)</li>
+<li>Null-suppressed <code>default!</code></li>
+</ul>
+<h2 id="why-it-matters">Why it matters</h2>
+<p><code>default(Result)</code> and <code>default(Result&lt;T&gt;)</code> are typed <strong>failures</strong> carrying the shared <code>new Error.Unexpected(&quot;default_initialized&quot;)</code> sentinel. They are observationally equivalent to <code>Result.Fail(sentinel)</code> / <code>Result.Fail&lt;T&gt;(sentinel)</code>. The explicit <code>default</code> literal at a call site obscures intent — readers see <code>default</code> and assume &quot;the zero value of this type&quot;, but the runtime semantics are <em>failure</em>.</p>
+<p><code>default(Maybe&lt;T&gt;)</code> happens to equal <code>Maybe&lt;T&gt;.None</code> (the type uses an <code>_isValueSet</code> discriminator that defaults to <code>false</code>). The runtime behavior is correct, but writing <code>default(Maybe&lt;T&gt;)</code> instead of <code>Maybe&lt;T&gt;.None</code> is poor style: the explicit <code>None</code> factory communicates intent.</p>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>Never use <code>default(Result&lt;T&gt;)</code> to &quot;convert&quot; a failure short-circuit. The result is a typed failure with a sentinel, not a placeholder. Use <code>Result.Fail&lt;T&gt;(error)</code> with a meaningful <code>Error</code> case so downstream consumers can pattern-match on the actual problem.</p>
+</div>
+<h2 id="bad-examples">Bad examples</h2>
+<pre><code class="lang-csharp">// Misleading: looks like a &quot;no-op&quot; but actually returns Result.Fail(sentinel)
+public Result&lt;User&gt; Lookup(Guid id)
+{
+    if (id == Guid.Empty)
+        return default;                       // TRLS019
+    return _repo.Get(id);
+}
+
+// Same problem in a typeof form
+public Result Save() =&gt; default(Result);      // TRLS019
+
+// Style violation on Maybe
+public Maybe&lt;int&gt; First() =&gt; default(Maybe&lt;int&gt;);   // TRLS019
+</code></pre>
+<h2 id="good-examples">Good examples</h2>
+<pre><code class="lang-csharp">public Result&lt;User&gt; Lookup(Guid id)
+{
+    if (id == Guid.Empty)
+        return Result.Fail&lt;User&gt;(new Error.BadRequest(&quot;id-empty&quot;) { Detail = &quot;id is required&quot; });
+    return _repo.Get(id);
+}
+
+public Result Save() =&gt; Result.Ok();
+
+public Maybe&lt;int&gt; First() =&gt; Maybe&lt;int&gt;.None;
+</code></pre>
+<h2 id="code-fix-available">Code fix available</h2>
+<p>No. The right replacement depends on intent — success vs. failure for <code>Result</code>, value vs. <code>None</code> for <code>Maybe</code>. The analyzer cannot guess which one is correct.</p>
+<h2 id="configuration">Configuration</h2>
+<p>Standard Roslyn configuration applies.</p>
+<pre><code class="lang-ini">dotnet_diagnostic.TRLS019.severity = none
+</code></pre>
+<p>For sanctioned sentinel/test-helper sites — for example, an analyzer test stub that intentionally returns <code>default</code> for shape-only methods — use a targeted suppression rather than disabling the rule globally:</p>
+<pre><code class="lang-csharp">[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    &quot;Trellis&quot;, &quot;TRLS019&quot;,
+    Justification = &quot;Shape-only test stub; returned value is never observed.&quot;)]
+public static Result&lt;T&gt; StubFail&lt;T&gt;() =&gt; default;
+</code></pre>
+<pre><code class="lang-csharp">#pragma warning disable TRLS019 // Sentinel for default-state regression test.
+Result&lt;int&gt; r = default;
+#pragma warning restore TRLS019
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>If you are migrating from v1 where <code>default(Result&lt;T&gt;)</code> was a silent success, search for <code>return default;</code> in <code>Result</code>-returning methods first. Most should become <code>Result.Ok(...)</code> (intentional success) or <code>Result.Fail&lt;T&gt;(...)</code> (intentional failure with a meaningful <code>Error</code> case).</p>
+</div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS019.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

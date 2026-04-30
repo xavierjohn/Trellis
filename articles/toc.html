@@ -1,0 +1,261 @@
+
+<div id="sidetoggle">
+  <div>
+    <div class="sidefilter">
+      <form class="toc-filter">
+        <span class="glyphicon glyphicon-filter filter-icon"></span>
+        <span class="glyphicon glyphicon-remove clear-icon" id="toc_filter_clear"></span>
+        <input type="text" id="toc_filter_input" placeholder="Filter by title" onkeypress="if(event.keyCode==13) {return false;}">
+      </form>
+    </div>
+    <div class="sidetoc">
+      <div class="toc" id="toc">
+
+          <ul class="nav level1">
+                <li>
+                    <span class="expand-stub"></span>
+                    <a>Getting Started</a>
+
+                    <ul class="nav level2">
+                          <li>
+                              <a href="intro.html" name="" title="Introduction">Introduction</a>
+                          </li>
+                          <li>
+                              <a href="basics.html" name="" title="Basics">Basics</a>
+                          </li>
+                          <li>
+                              <a href="examples.html" name="" title="Examples">Examples</a>
+                          </li>
+                    </ul>
+                </li>
+                <li>
+                    <span class="expand-stub"></span>
+                    <a>Building Blocks</a>
+
+                    <ul class="nav level2">
+                          <li>
+                              <span class="expand-stub"></span>
+                              <a>Value Objects</a>
+
+                              <ul class="nav level3">
+                                    <li>
+                                        <a href="primitives.html" name="" title="Primitive Value Objects">Primitive Value Objects</a>
+                                    </li>
+                                    <li>
+                                        <a href="required-enum.html" name="" title="RequiredEnum">RequiredEnum</a>
+                                    </li>
+                              </ul>
+                          </li>
+                          <li>
+                              <a href="maybe-type.html" name="" title="Maybe Type">Maybe Type</a>
+                          </li>
+                          <li>
+                              <span class="expand-stub"></span>
+                              <a>Aggregates & Entities</a>
+
+                              <ul class="nav level3">
+                                    <li>
+                                        <a href="aggregate-factory-pattern.html" name="" title="Aggregate Factory Pattern">Aggregate Factory Pattern</a>
+                                    </li>
+                              </ul>
+                          </li>
+                          <li>
+                              <a href="specifications.html" name="" title="Specifications">Specifications</a>
+                          </li>
+                          <li>
+                              <a href="state-machines.html" name="" title="State Machines">State Machines</a>
+                          </li>
+                    </ul>
+                </li>
+                <li>
+                    <span class="expand-stub"></span>
+                    <a>Pipelines</a>
+
+                    <ul class="nav level2">
+                          <li>
+                              <span class="expand-stub"></span>
+                              <a>Core Operations</a>
+
+                              <ul class="nav level3">
+                                    <li>
+                                        <a href="basics.html#combine-validate-independent-inputs-together" name="" title="Combine (Validate Multiple)">Combine (Validate Multiple)</a>
+                                    </li>
+                                    <li>
+                                        <a href="basics.html#bind-call-the-next-result-producing-step" name="" title="Bind (Chain Operations)">Bind (Chain Operations)</a>
+                                    </li>
+                                    <li>
+                                        <a href="basics.html#map-transform-a-successful-value" name="" title="Map (Transform Values)">Map (Transform Values)</a>
+                                    </li>
+                                    <li>
+                                        <a href="basics.html#tap-run-a-side-effect-without-changing-the-result" name="" title="Tap (Side Effects)">Tap (Side Effects)</a>
+                                    </li>
+                                    <li>
+                                        <a href="basics.html#ensure-add-a-business-rule" name="" title="Ensure (Add Validation)">Ensure (Add Validation)</a>
+                                    </li>
+                                    <li>
+                                        <a href="basics.html#recoveronfailure-provide-a-fallback-path" name="" title="RecoverOnFailure (Error Recovery)">RecoverOnFailure (Error Recovery)</a>
+                                    </li>
+                                    <li>
+                                        <a href="basics.html#match-finish-the-pipeline" name="" title="Match (Unwrap Result)">Match (Unwrap Result)</a>
+                                    </li>
+                              </ul>
+                          </li>
+                          <li>
+                              <a href="error-handling.html" name="" title="Error Handling">Error Handling</a>
+                          </li>
+                          <li>
+                              <a href="advanced-features.html" name="" title="Advanced Features">Advanced Features</a>
+                          </li>
+                    </ul>
+                </li>
+                <li>
+                    <span class="expand-stub"></span>
+                    <a>Integration Guides</a>
+
+                    <ul class="nav level2">
+                          <li>
+                              <a href="integration.html" name="" title="Overview">Overview</a>
+                          </li>
+                          <li>
+                              <a href="integration-aspnet.html" name="" title="ASP.NET Core">ASP.NET Core</a>
+                          </li>
+                          <li>
+                              <a href="integration-asp-authorization.html" name="" title="ASP.NET Core Authorization (Entra ID)">ASP.NET Core Authorization (Entra ID)</a>
+                          </li>
+                          <li>
+                              <a href="integration-sso.html" name="" title="Setting Up Single Sign-On (SSO)">Setting Up Single Sign-On (SSO)</a>
+                          </li>
+                          <li>
+                              <a href="integration-entra-testing.html" name="" title="Testing with Entra ID Tokens">Testing with Entra ID Tokens</a>
+                          </li>
+                          <li>
+                              <a href="integration-db-permissions.html" name="" title="Database-Backed Permissions">Database-Backed Permissions</a>
+                          </li>
+                          <li>
+                              <a href="integration-http.html" name="" title="HTTP Client">HTTP Client</a>
+                          </li>
+                          <li>
+                              <a href="integration-fluentvalidation.html" name="" title="FluentValidation">FluentValidation</a>
+                          </li>
+                          <li>
+                              <a href="integration-ef.html" name="" title="Entity Framework Core">Entity Framework Core</a>
+                          </li>
+                          <li>
+                              <a href="integration-mediator.html" name="" title="Mediator Pipeline">Mediator Pipeline</a>
+                          </li>
+                          <li>
+                              <a href="integration-testing.html" name="" title="Testing">Testing</a>
+                          </li>
+                          <li>
+                              <a href="integration-observability.html" name="" title="Observability &amp; Monitoring">Observability &amp; Monitoring</a>
+                          </li>
+                    </ul>
+                </li>
+                <li>
+                    <span class="expand-stub"></span>
+                    <a>Architecture</a>
+
+                    <ul class="nav level2">
+                          <li>
+                              <a href="clean-architecture.html" name="" title="Clean Architecture Example">Clean Architecture Example</a>
+                          </li>
+                    </ul>
+                </li>
+                <li>
+                    <span class="expand-stub"></span>
+                    <a>AI & Automation</a>
+
+                    <ul class="nav level2">
+                          <li>
+                              <a href="ai-code-generation.html" name="" title="Trellis for AI Code Generation">Trellis for AI Code Generation</a>
+                          </li>
+                          <li>
+                              <a href="with-vs-without-trellis.html" name="" title="Study: With vs Without Trellis">Study: With vs Without Trellis</a>
+                          </li>
+                    </ul>
+                </li>
+                <li>
+                    <span class="expand-stub"></span>
+                    <a>Reference</a>
+
+                    <ul class="nav level2">
+                          <li>
+                              <span class="expand-stub"></span>
+                              <a>Analyzer Rules</a>
+
+                              <ul class="nav level3">
+                                    <li>
+                                        <a href="analyzers/index.html" name="" title="Overview">Overview</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS001.html" name="" title="TRLS001 - Result not handled">TRLS001 - Result not handled</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS002.html" name="" title="TRLS002 - Use Bind instead of Map">TRLS002 - Use Bind instead of Map</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS003.html" name="" title="TRLS003 - Unsafe Maybe.Value access">TRLS003 - Unsafe Maybe.Value access</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS004.html" name="" title="TRLS004 - Result double-wrapped">TRLS004 - Result double-wrapped</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS005.html" name="" title="TRLS005 - Incorrect async Result usage">TRLS005 - Incorrect async Result usage</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS007.html" name="" title="TRLS007 - Maybe double-wrapped">TRLS007 - Maybe double-wrapped</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS008.html" name="" title="TRLS008 - Use Result.Combine">TRLS008 - Use Result.Combine</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS009.html" name="" title="TRLS009 - Use async method variant">TRLS009 - Use async method variant</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS010.html" name="" title="TRLS010 - Don&#39;t throw in Result chains">TRLS010 - Don&#39;t throw in Result chains</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS012.html" name="" title="TRLS012 - Don&#39;t compare to null">TRLS012 - Don&#39;t compare to null</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS013.html" name="" title="TRLS013 - Unsafe Maybe.Value in LINQ">TRLS013 - Unsafe Maybe.Value in LINQ</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS014.html" name="" title="TRLS014 - Combine chain too long">TRLS014 - Combine chain too long</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS015.html" name="" title="TRLS015 - Use SaveChangesResultAsync">TRLS015 - Use SaveChangesResultAsync</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS016.html" name="" title="TRLS016 - HasIndex with Maybe&lt;T&gt; property">TRLS016 - HasIndex with Maybe&lt;T&gt; property</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS017.html" name="" title="TRLS017 - Wrong attribute namespace">TRLS017 - Wrong attribute namespace</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS018.html" name="" title="TRLS018 - Unsafe Result deconstruction">TRLS018 - Unsafe Result deconstruction</a>
+                                    </li>
+                                    <li>
+                                        <a href="analyzers/TRLS019.html" name="" title="TRLS019 - Avoid default(Result/Maybe)">TRLS019 - Avoid default(Result/Maybe)</a>
+                                    </li>
+                              </ul>
+                          </li>
+                          <li>
+                              <a href="debugging.html" name="" title="Debugging">Debugging</a>
+                          </li>
+                          <li>
+                              <a href="performance.html" name="" title="Performance &amp; Benchmarks">Performance &amp; Benchmarks</a>
+                          </li>
+                          <li>
+                              <a href="BENCHMARKS.html" name="" title="Benchmarks Data">Benchmarks Data</a>
+                          </li>
+                          <li>
+                              <a href="migration.html" name="" title="Migration from FunctionalDDD">Migration from FunctionalDDD</a>
+                          </li>
+                    </ul>
+                </li>
+          </ul>
+      </div>
+    </div>
+  </div>
+</div>

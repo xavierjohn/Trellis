@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Benchmarks | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Benchmarks | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/BENCHMARKS.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="benchmarks">Benchmarks</h1>
+
+<p>This article is the &quot;show me the numbers&quot; companion to <a href="performance.html">Performance</a>.</p>
+<p>If you want the short version, read that article first. If you want benchmark shape, representative timings, and reproduction steps, read on.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Microbenchmarks are hardware-sensitive. The values below are useful for comparing <strong>patterns inside Trellis</strong>, not for predicting end-to-end request latency.</p>
+</div>
+<h2 id="benchmark-environment">Benchmark environment</h2>
+<p>Latest benchmark report in this repository:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU</td>
+<td>AMD Ryzen 9 9900X 4.40 GHz</td>
+</tr>
+<tr>
+<td>OS</td>
+<td>Windows 11 (25H2)</td>
+</tr>
+<tr>
+<td>.NET</td>
+<td>10.0.3 (SDK 10.0.103)</td>
+</tr>
+<tr>
+<td>BenchmarkDotNet</td>
+<td>0.15.8</td>
+</tr>
+<tr>
+<td>Job</td>
+<td><code>ShortRun</code></td>
+</tr>
+<tr>
+<td>Memory diagnostics</td>
+<td>Enabled</td>
+</tr>
+</tbody>
+</table>
+<p>The benchmark project is:</p>
+<pre><code class="lang-text">Trellis.Benchmark\Trellis.Benchmark.csproj
+</code></pre>
+<h2 id="how-to-read-the-results">How to read the results</h2>
+<p>A few rules make the numbers easier to interpret:</p>
+<ol>
+<li><strong>Look at relative difference first.</strong> A 4 ns gap is real in a microbenchmark and often irrelevant in a web request.</li>
+<li><strong>Look at allocations next.</strong> Allocation-free success paths matter more than tiny timing differences.</li>
+<li><strong>Treat benchmark families differently.</strong> <code>Map</code>, <code>Tap</code>, and <code>Bind</code> measure framework overhead. Async and object-creation benchmarks measure framework cost plus your workload shape.</li>
+</ol>
+<h2 id="headline-results">Headline results</h2>
+<h3 id="rop-vs-imperative-code">ROP vs imperative code</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RopStyleHappy</code></td>
+<td style="text-align: right;">98.32 ns</td>
+<td style="text-align: right;">296 B</td>
+</tr>
+<tr>
+<td><code>IfStyleHappy</code></td>
+<td style="text-align: right;">93.86 ns</td>
+<td style="text-align: right;">296 B</td>
+</tr>
+<tr>
+<td><code>RopStyleSad</code></td>
+<td style="text-align: right;">65.63 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+<tr>
+<td><code>IfStyleSad</code></td>
+<td style="text-align: right;">75.08 ns</td>
+<td style="text-align: right;">336 B</td>
+</tr>
+<tr>
+<td><code>RopSample1</code></td>
+<td style="text-align: right;">635.27 ns</td>
+<td style="text-align: right;">3848 B</td>
+</tr>
+<tr>
+<td><code>IfSample1</code></td>
+<td style="text-align: right;">630.80 ns</td>
+<td style="text-align: right;">3848 B</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-that-means">What that means</h3>
+<ul>
+<li>The basic happy path shows Trellis roughly <strong>4-5 ns</strong> slower in this run.</li>
+<li>The sad path is effectively a wash and was slightly faster for Trellis in this run.</li>
+<li>Larger pipelines keep the same overall story: <strong>very small framework cost, identical allocations</strong>.</li>
+</ul>
+<div class="TIP">
+<h5>Tip</h5>
+<p>If you ever see a different number in older benchmark comments or documents, that is expected. CPUs, runtime builds, and JIT behavior change. The consistent conclusion in this repo is that Trellis overhead stays very small.</p>
+</div>
+<h2 id="operation-by-operation-results">Operation-by-operation results</h2>
+<h3 id="bind"><code>Bind</code></h3>
+<p>Use <code>Bind</code> when the next step also returns a <code>Result&lt;T&gt;</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Bind_SingleChain_Success</code></td>
+<td style="text-align: right;">4.85 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Bind_SingleChain_Failure</code></td>
+<td style="text-align: right;">3.75 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Bind_ThreeChains_AllSuccess</code></td>
+<td style="text-align: right;">14.79 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Bind_FiveChains_Success</code></td>
+<td style="text-align: right;">33.84 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Bind_ThreeChains_FailAtSecond</code></td>
+<td style="text-align: right;">34.65 ns</td>
+<td style="text-align: right;">152 B</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Takeaway:</strong> <code>Bind</code> scales cleanly and short-circuits immediately on failure.</p>
+<h3 id="map"><code>Map</code></h3>
+<p>Use <code>Map</code> when you are transforming the value but keeping success/failure structure unchanged.</p>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Map_SingleTransformation_Success</code></td>
+<td style="text-align: right;">3.24 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Map_ThreeTransformations_Success</code></td>
+<td style="text-align: right;">12.13 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Map_FiveTransformations_Success</code></td>
+<td style="text-align: right;">28.74 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Map_ComplexTransformation</code></td>
+<td style="text-align: right;">21.48 ns</td>
+<td style="text-align: right;">80 B</td>
+</tr>
+<tr>
+<td><code>Map_ToComplexObject</code></td>
+<td style="text-align: right;">27.10 ns</td>
+<td style="text-align: right;">144 B</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Takeaway:</strong> plain mapping is extremely cheap. Allocations usually come from the object you create, not from Trellis itself.</p>
+<h3 id="tap"><code>Tap</code></h3>
+<p>Use <code>Tap</code> for side effects that should not change the value.</p>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Tap_SingleAction_Success</code></td>
+<td style="text-align: right;">2.88 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Tap_ThreeActions_Success</code></td>
+<td style="text-align: right;">14.84 ns</td>
+<td style="text-align: right;">64 B</td>
+</tr>
+<tr>
+<td><code>Tap_WithLogging_Success</code></td>
+<td style="text-align: right;">33.03 ns</td>
+<td style="text-align: right;">64 B</td>
+</tr>
+<tr>
+<td><code>Tap_FiveActions_Success</code></td>
+<td style="text-align: right;">23.90 ns</td>
+<td style="text-align: right;">128 B</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Takeaway:</strong> <code>Tap</code> is cheap enough for ordinary logging and bookkeeping.</p>
+<h3 id="ensure"><code>Ensure</code></h3>
+<p>Use <code>Ensure</code> to keep a success value only when a predicate passes.</p>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ensure_SinglePredicate_Pass</code></td>
+<td style="text-align: right;">12.06 ns</td>
+<td style="text-align: right;">152 B</td>
+</tr>
+<tr>
+<td><code>Ensure_SinglePredicate_Fail</code></td>
+<td style="text-align: right;">11.98 ns</td>
+<td style="text-align: right;">152 B</td>
+</tr>
+<tr>
+<td><code>Ensure_ThreePredicates_AllPass</code></td>
+<td style="text-align: right;">54.83 ns</td>
+<td style="text-align: right;">456 B</td>
+</tr>
+<tr>
+<td><code>Ensure_FivePredicates_AllPass</code></td>
+<td style="text-align: right;">106.16 ns</td>
+<td style="text-align: right;">760 B</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Takeaway:</strong> <code>Ensure</code> is still fast, but it is the place where error allocation becomes visible — which is exactly what you would expect from validation code.</p>
+<h3 id="combine"><code>Combine</code></h3>
+<p>Use <code>Combine</code> when several validations can run independently and you want all failures back together.</p>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th style="text-align: right;">Mean</th>
+<th style="text-align: right;">Allocated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Combine_TwoResults_BothSuccess</code></td>
+<td style="text-align: right;">7.27 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Combine_TwoResults_BothFailure</code></td>
+<td style="text-align: right;">15.41 ns</td>
+<td style="text-align: right;">32 B</td>
+</tr>
+<tr>
+<td><code>Combine_ThreeResults_AllSuccess</code></td>
+<td style="text-align: right;">14.68 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Combine_FiveResults_AllSuccess</code></td>
+<td style="text-align: right;">58.08 ns</td>
+<td style="text-align: right;">0 B</td>
+</tr>
+<tr>
+<td><code>Combine_FiveResults_MultipleFailures</code></td>
+<td style="text-align: right;">628.96 ns</td>
+<td style="text-align: right;">2536 B</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Takeaway:</strong> success is very cheap; the expensive cases are the ones doing real work to aggregate many failures.</p>
+<h3 id="maybet-and-zero-cost-helpers"><code>Maybe&lt;T&gt;</code> and zero-cost helpers</h3>
+<p>The benchmark suite also shows <code>Maybe&lt;T&gt;</code> helper operations and simple actor checks effectively disappearing into JIT noise.</p>
+<p>That is exactly what you want from infrastructure primitives: they should not dominate the profile.</p>
+<h2 id="a-benchmark-shaped-example">A benchmark-shaped example</h2>
+<p>This is the kind of code benchmarked by the ROP vs imperative comparison:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+string RopStyle() =&gt;
+    FirstName.TryCreate(&quot;Xavier&quot;)
+        .Combine(EmailAddress.TryCreate(&quot;xavier@somewhere.com&quot;))
+        .Match(
+            onSuccess: values =&gt; values.Item1 + &quot; &quot; + values.Item2,
+            onFailure: error =&gt; error.Detail);
+</code></pre>
+<h2 id="why-async-numbers-look-bigger">Why async numbers look bigger</h2>
+<p>Async benchmark numbers are always larger because they include <code>Task</code> / <code>ValueTask</code> machinery and often the shape of the delegate being executed.</p>
+<p>That does <strong>not</strong> mean Trellis suddenly became slow. It means async has a baseline cost even before your database or HTTP client does anything useful.</p>
+<h2 id="reproducing-the-results-locally">Reproducing the results locally</h2>
+<p>Run everything:</p>
+<pre><code class="lang-bash">dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release
+</code></pre>
+<p>Run a focused slice:</p>
+<pre><code class="lang-bash">dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter *Map*
+</code></pre>
+<p>A few good habits when you compare your own runs:</p>
+<ul>
+<li>use <strong>Release</strong> builds</li>
+<li>close other heavy workloads if possible</li>
+<li>compare results on the <strong>same machine</strong></li>
+<li>keep the benchmark shape constant while you experiment</li>
+</ul>
+<h2 id="what-to-optimize-first">What to optimize first</h2>
+<p>If your app is slow, start here before blaming Trellis:</p>
+<ol>
+<li>database round trips</li>
+<li>network calls</li>
+<li>serialization</li>
+<li>repeated allocations in your own code</li>
+<li>logging volume</li>
+</ol>
+<p>Only after that should you spend time shaving nanoseconds off pipeline composition.</p>
+<h2 id="bottom-line">Bottom line</h2>
+<p>The benchmark suite tells a consistent story:</p>
+<ul>
+<li>Trellis pipeline operations are <strong>small and predictable</strong>.</li>
+<li>Success paths are often <strong>allocation-free</strong>.</li>
+<li>Failure paths pay for the errors they create, which is expected.</li>
+<li>Compared to real application I/O, the framework cost is usually negligible.</li>
+</ul>
+<p>If you want decision guidance instead of raw numbers, go back to <a href="performance.html">Performance</a>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/BENCHMARKS.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

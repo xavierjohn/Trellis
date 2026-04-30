@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Why Maybe? | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Why Maybe? | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/maybe-type.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="why-maybe">Why Maybe<t>?</t></h1>
+
+<p>C# already gives you <code>T?</code>, <code>Nullable&lt;T&gt;</code>, and plain old <code>null</code>. So why does Trellis add <code>Maybe&lt;T&gt;</code>?</p>
+<p>Because sometimes you do not just need “a value that might be missing.” You need that optional value to be:</p>
+<ul>
+<li>explicit in your domain model</li>
+<li>composable in a pipeline</li>
+<li>easy to convert into <code>Result&lt;T&gt;</code> when absence becomes an error</li>
+</ul>
+<p>That is the job of <code>Maybe&lt;T&gt;</code>.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>Maybe&lt;T&gt;</code> is not a replacement for every nullable value in your application. It shines when optionality is part of the <strong>domain</strong> and needs to compose with Trellis result flows.</p>
+</div>
+<h2 id="start-here-the-smallest-useful-example">Start Here: the Smallest Useful Example</h2>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; middleName = Maybe.From(&quot;Byron&quot;);
+Maybe&lt;string&gt; noNickname = Maybe&lt;string&gt;.None;
+
+Console.WriteLine(middleName.HasValue); // True
+Console.WriteLine(noNickname.HasValue); // False
+
+var displayName = middleName.Match(
+    some =&gt; some,
+    () =&gt; &quot;(none)&quot;);
+</code></pre>
+<h2 id="the-problem-maybet-solves">The Problem <code>Maybe&lt;T&gt;</code> Solves</h2>
+<p>The issue with plain nullable values is not that they are bad. The issue is that they stop being expressive once the code becomes more domain-driven.</p>
+<p>Consider an entity with an optional phone number:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed record PhoneNumber(string Value);
+
+public sealed class Customer
+{
+    public Maybe&lt;PhoneNumber&gt; Phone { get; }
+
+    public Customer(Maybe&lt;PhoneNumber&gt; phone) =&gt; Phone = phone;
+}
+</code></pre>
+<p>That says something precise:</p>
+<ul>
+<li>the customer may or may not have a phone number</li>
+<li><strong>if</strong> there is a phone number, it is a real <code>PhoneNumber</code></li>
+<li>“empty phone number” is not a separate fake concept inside the value object</li>
+</ul>
+<p>That is usually clearer than pushing optionality down into the value object itself.</p>
+<h2 id="when-maybet-is-better-than-t">When <code>Maybe&lt;T&gt;</code> Is Better Than <code>T?</code></h2>
+<h3 id="use-maybet-when">Use <code>Maybe&lt;T&gt;</code> when...</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Why <code>Maybe&lt;T&gt;</code> helps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Optional value objects</td>
+<td>It keeps the value object valid and moves optionality to the containing model</td>
+</tr>
+<tr>
+<td>Optional data in a pipeline</td>
+<td>It composes with <code>Map</code>, <code>Bind</code>, <code>Where</code>, <code>Tap</code>, and <code>ToResult(...)</code></td>
+</tr>
+<tr>
+<td>Absence should become a domain error later</td>
+<td><code>ToResult(...)</code> makes that conversion explicit</td>
+</tr>
+<tr>
+<td>You want equality and operators for optional values</td>
+<td><code>Maybe&lt;T&gt;</code> supports <code>Equals</code>, <code>==</code>, and <code>!=</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="use-t-when">Use <code>T?</code> when...</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Better choice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Optional primitives on DTOs</td>
+<td><code>int?</code>, <code>DateTime?</code>, <code>decimal?</code></td>
+</tr>
+<tr>
+<td>Optional strings or references with no pipeline needs</td>
+<td><code>string?</code>, <code>User?</code></td>
+</tr>
+<tr>
+<td>Interop with APIs that already use nullable reference types</td>
+<td><code>T?</code></td>
+</tr>
+<tr>
+<td>Performance-sensitive code where nullable semantics are enough</td>
+<td><code>T?</code> / <code>Nullable&lt;T&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p>A practical rule: use <code>Maybe&lt;T&gt;</code> for <strong>optional domain values</strong> that need Trellis composition. Use <code>T?</code> for ordinary nullable data.</p>
+</div>
+<h2 id="creating-maybet-values">Creating <code>Maybe&lt;T&gt;</code> Values</h2>
+<h3 id="some-value">Some value</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; some = Maybe.From(&quot;Ada&quot;);
+Maybe&lt;string&gt; alsoSome = Maybe&lt;string&gt;.From(&quot;Ada&quot;);
+Maybe&lt;string&gt; implicitSome = &quot;Ada&quot;;
+</code></pre>
+<h3 id="no-value">No value</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; none = Maybe&lt;string&gt;.None;
+Maybe&lt;int&gt; missingCount = Maybe&lt;int&gt;.None;
+</code></pre>
+<h3 id="null-becomes-none">Null becomes <code>None</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+string? input = null;
+Maybe&lt;string&gt; maybeName = Maybe.From(input);
+
+Console.WriteLine(maybeName.HasValue); // False
+</code></pre>
+<h2 id="reading-values-safely">Reading Values Safely</h2>
+<p>The problem with optional values is not creating them. It is consuming them without littering your code with <code>if</code> statements.</p>
+<h3 id="match"><code>Match</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; nickname = Maybe.From(&quot;Countess&quot;);
+
+var display = nickname.Match(
+    some =&gt; $&quot;Nickname: {some}&quot;,
+    () =&gt; &quot;No nickname on file&quot;);
+</code></pre>
+<h3 id="trygetvalue"><code>TryGetValue</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;int&gt; count = Maybe.From(3);
+
+if (count.TryGetValue(out var value))
+    Console.WriteLine(value);
+</code></pre>
+<h3 id="getvalueordefault"><code>GetValueOrDefault</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; title = Maybe&lt;string&gt;.None;
+
+var value = title.GetValueOrDefault(&quot;Untitled&quot;);
+var lazyValue = title.GetValueOrDefault(() =&gt; &quot;Generated title&quot;);
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>Value</code> throws when the <code>Maybe&lt;T&gt;</code> is empty. Prefer <code>Match</code>, <code>TryGetValue</code>, or <code>GetValueOrDefault(...)</code>.</p>
+</div>
+<h2 id="transforming-optional-values">Transforming Optional Values</h2>
+<p>This is where <code>Maybe&lt;T&gt;</code> starts to earn its keep.</p>
+<h3 id="map"><code>Map</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; email = Maybe.From(&quot;ada@example.com&quot;);
+Maybe&lt;string&gt; upper = email.Map(value =&gt; value.ToUpperInvariant());
+</code></pre>
+<h3 id="bind"><code>Bind</code></h3>
+<p>Use <code>Bind</code> when the next step also returns a <code>Maybe&lt;T&gt;</code>.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+static Maybe&lt;string&gt; GetManagerEmail(string userId) =&gt;
+    userId == &quot;42&quot; ? Maybe.From(&quot;manager@example.com&quot;) : Maybe&lt;string&gt;.None;
+
+var email = Maybe.From(&quot;42&quot;)
+    .Bind(GetManagerEmail);
+</code></pre>
+<h3 id="where"><code>Where</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;int&gt; quantity = Maybe.From(3);
+Maybe&lt;int&gt; validQuantity = quantity.Where(value =&gt; value &gt; 0);
+</code></pre>
+<h3 id="tap"><code>Tap</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var maybeUser = Maybe.From(&quot;Ada&quot;)
+    .Tap(value =&gt; Console.WriteLine($&quot;Found {value}&quot;));
+</code></pre>
+<h3 id="or"><code>Or</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; preferred = Maybe&lt;string&gt;.None;
+Maybe&lt;string&gt; legal = Maybe.From(&quot;Ada Lovelace&quot;);
+
+var name = preferred.Or(legal).Or(&quot;Unknown&quot;);
+</code></pre>
+<h2 id="converting-maybet-to-resultt">Converting <code>Maybe&lt;T&gt;</code> to <code>Result&lt;T&gt;</code></h2>
+<p>This is the most important bridge in day-to-day Trellis usage.</p>
+<p>The problem it solves: sometimes “missing” is fine in the middle of the workflow, but becomes a real error at the boundary.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; maybeEmail = Maybe&lt;string&gt;.None;
+
+Result&lt;string&gt; emailResult = maybeEmail.ToResult(
+    new Error.NotFound(ResourceRef.For(&quot;Email&quot;, &quot;primary&quot;)) { Detail = &quot;Primary email address was not found&quot; });
+</code></pre>
+<p>There is also a lazy overload when creating the error is expensive or needs runtime context.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+var result = Maybe&lt;string&gt;.None.ToResult(
+    () =&gt; new Error.NotFound(ResourceRef.For(&quot;Email&quot;, &quot;primary&quot;)) { Detail = &quot;Primary email address was not found&quot; });
+</code></pre>
+<h2 id="converting-resultt-to-maybet">Converting <code>Result&lt;T&gt;</code> to <code>Maybe&lt;T&gt;</code></h2>
+<p>Sometimes you want the opposite tradeoff: “keep the value if successful, otherwise treat it as missing.”</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; existing = Result.Ok(&quot;Ada&quot;).ToMaybe();
+Maybe&lt;string&gt; missing = Result.Fail&lt;string&gt;(new Error.NotFound(ResourceRef.For(&quot;User&quot;)) { Detail = &quot;User not found&quot; }).ToMaybe();
+</code></pre>
+<p>Use this only when dropping the error is the right thing to do.</p>
+<h2 id="optional-input-with-maybeoptional">Optional Input with <code>Maybe.Optional(...)</code></h2>
+<p>A very common problem at system boundaries is “null is acceptable, but if a value is present, it must be valid.”</p>
+<p>That is exactly what <code>Maybe.Optional(...)</code> is for.</p>
+<h3 id="reference-input">Reference input</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static Result&lt;string&gt; NonEmpty(string value) =&gt;
+    string.IsNullOrWhiteSpace(value)
+        ? Result.Fail&lt;string&gt;(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;nickname&quot;), &quot;validation.error&quot;) { Detail = &quot;Value is required&quot; })))
+        : Result.Ok(value);
+
+string? input = &quot;Countess&quot;;
+
+Result&lt;Maybe&lt;string&gt;&gt; result = Maybe.Optional(input, NonEmpty);
+</code></pre>
+<h3 id="nullable-value-type-input">Nullable value-type input</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static Result&lt;int&gt; Positive(int value) =&gt;
+    value &gt; 0
+        ? Result.Ok(value)
+        : Result.Fail&lt;int&gt;(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;quantity&quot;), &quot;validation.error&quot;) { Detail = &quot;Value must be positive&quot; })));
+
+int? input = 3;
+
+Result&lt;Maybe&lt;int&gt;&gt; result = Maybe.Optional(input, Positive);
+</code></pre>
+<p>What <code>Maybe.Optional(...)</code> does:</p>
+<ul>
+<li><code>null</code> / no value -&gt; success with <code>Maybe&lt;T&gt;.None</code></li>
+<li>value present and valid -&gt; success with <code>Maybe.From(...)</code></li>
+<li>value present and invalid -&gt; failure with the validation error</li>
+</ul>
+<h2 id="equality-and-operators">Equality and Operators</h2>
+<p>This is another easy detail to miss.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>Maybe&lt;T&gt;</code> supports <code>Equals</code>, <code>==</code>, and <code>!=</code>.</p>
+</div>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;int&gt; some = Maybe.From(42);
+Maybe&lt;int&gt; none = Maybe&lt;int&gt;.None;
+
+Console.WriteLine(some == 42);                  // True
+Console.WriteLine(some == Maybe.From(42));      // True
+Console.WriteLine(some != 0);                   // True
+Console.WriteLine(none == Maybe&lt;int&gt;.None);     // True
+Console.WriteLine(some.Equals(Maybe.From(42))); // True
+</code></pre>
+<h2 id="linq-query-syntax">LINQ Query Syntax</h2>
+<p>Optional values often read nicely in query form.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; first = Maybe.From(&quot;Ada&quot;);
+Maybe&lt;string&gt; last = Maybe.From(&quot;Lovelace&quot;);
+
+Maybe&lt;string&gt; fullName =
+    from f in first
+    from l in last
+    select $&quot;{f} {l}&quot;;
+</code></pre>
+<p>If any step is <code>None</code>, the whole query becomes <code>None</code>.</p>
+<h2 id="collection-helpers">Collection Helpers</h2>
+<p>Trellis also adds a few helpers that make working with collections of optional values pleasant.</p>
+<h3 id="tryfirst-and-trylast"><code>TryFirst</code> and <code>TryLast</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var numbers = new[] { 1, 2, 3, 4 };
+
+Maybe&lt;int&gt; first = numbers.TryFirst();
+Maybe&lt;int&gt; even = numbers.TryFirst(n =&gt; n % 2 == 0);
+Maybe&lt;int&gt; last = numbers.TryLast();
+</code></pre>
+<h3 id="choose"><code>Choose</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+IEnumerable&lt;Maybe&lt;string&gt;&gt; names =
+[
+    Maybe.From(&quot;Ada&quot;),
+    Maybe&lt;string&gt;.None,
+    Maybe.From(&quot;Grace&quot;)
+];
+
+IEnumerable&lt;string&gt; values = names.Choose();
+IEnumerable&lt;int&gt; lengths = names.Choose(name =&gt; name.Length);
+</code></pre>
+<h2 id="maybet-and-no-payload-results"><code>Maybe&lt;T&gt;</code> and no-payload results</h2>
+<p>Sometimes the next question is: “what if my operation has no payload?”</p>
+<p>For no-payload Trellis results:</p>
+<ul>
+<li>prefer <code>Result.Ok()</code> for a successful <code>Result</code></li>
+<li>use non-generic <code>Result</code> when the operation only needs success/failure</li>
+</ul>
+<pre><code class="lang-csharp">using Trellis;
+
+Result ok = Result.Ok();
+</code></pre>
+<h2 id="practical-rules-of-thumb">Practical Rules of Thumb</h2>
+<ul>
+<li>Use <code>Maybe&lt;T&gt;</code> for optional <strong>domain values</strong>, especially value objects</li>
+<li>Keep optionality on the containing model, not inside a value object's invariants</li>
+<li>Use <code>ToResult(...)</code> when absence should become a real error</li>
+<li>Use <code>Maybe.Optional(...)</code> for boundary validation of optional inputs</li>
+<li>Use <code>ToMaybe()</code> only when you truly want to discard the error</li>
+<li>Prefer safe readers like <code>Match</code>, <code>TryGetValue</code>, and <code>GetValueOrDefault(...)</code></li>
+</ul>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Read <a href="error-handling.html">Error Handling</a> for the errors typically paired with <code>ToResult(...)</code></li>
+<li>Read <a href="advanced-features.html">Advanced Features</a> for LINQ, tuple destructuring, and parallel flows</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/maybe-type.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

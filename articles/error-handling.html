@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Error Handling | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Error Handling | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/error-handling.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="error-handling">Error Handling</h1>
+
+<p>Errors are where Trellis becomes practical. They let you keep business rules, validation, and HTTP concerns explicit <strong>without</strong> falling back to exceptions for normal control flow.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>In Trellis, an error is a <strong>closed discriminated union of typed records</strong>. You can log it, transform it, combine it, test it, and <code>switch</code> over it with compile-time exhaustiveness checking.</p>
+</div>
+<h2 id="start-here-the-everyday-flow">Start Here: the Everyday Flow</h2>
+<p>Most applications need the same shape:</p>
+<ol>
+<li>Do work in a <code>Result&lt;T&gt;</code> pipeline.</li>
+<li>Return a specific <code>Error</code> case when something goes wrong.</li>
+<li><code>switch</code> on the case at the boundary to convert it.</li>
+</ol>
+<pre><code class="lang-csharp">using Trellis;
+
+public record User(string Id, string Email);
+
+static Result&lt;User&gt; GetUser(string id) =&gt;
+    id == &quot;42&quot;
+        ? Result.Ok(new User(&quot;42&quot;, &quot;ada@example.com&quot;))
+        : Result.Fail&lt;User&gt;(new Error.NotFound(new ResourceRef(&quot;User&quot;, id)) { Detail = $&quot;User {id} not found&quot; });
+
+var response = GetUser(&quot;42&quot;).Match(
+    onSuccess: user =&gt; $&quot;200 OK: {user.Email}&quot;,
+    onFailure: error =&gt; error switch
+    {
+        Error.NotFound nf      =&gt; $&quot;404 Not Found: {nf.Detail}&quot;,
+        Error.Forbidden f      =&gt; $&quot;403 Forbidden: {f.PolicyId}&quot;,
+        _                      =&gt; $&quot;500 Internal: {error.Kind}&quot;
+    });
+</code></pre>
+<p>That is the core mental model.</p>
+<h2 id="why-trellis-uses-explicit-errors">Why Trellis Uses Explicit Errors</h2>
+<p>The problem with raw exceptions is that they mix two very different things:</p>
+<ul>
+<li><strong>expected failures</strong> — validation, not found, conflict, forbidden</li>
+<li><strong>unexpected failures</strong> — I/O faults, programmer bugs</li>
+</ul>
+<p>Trellis separates them:</p>
+<ul>
+<li>expected failures are <code>Error.X</code> cases inside <code>Result&lt;T&gt;</code> failures</li>
+<li>unexpected exceptions become <code>new Error.InternalServerError(faultId)</code> via <code>Result.Try</code> / <code>Result.TryAsync</code></li>
+</ul>
+<h2 id="the-error-adt">The Error ADT</h2>
+<p><code>Error</code> is an <code>abstract record</code> with <strong>18 nested <code>sealed record</code> cases</strong>. The catalog is closed (the base type has a <code>private</code> constructor) so every <code>switch</code> is exhaustive at compile time.</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Payload</th>
+<th>HTTP</th>
+<th>Use when...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Error.BadRequest</code></td>
+<td><code>(string ReasonCode, InputPointer? At = null)</code></td>
+<td>400</td>
+<td>Request shape itself is malformed</td>
+</tr>
+<tr>
+<td><code>Error.Unauthorized</code></td>
+<td><code>(EquatableArray&lt;AuthChallenge&gt; Challenges = default)</code></td>
+<td>401</td>
+<td>Authentication missing or invalid</td>
+</tr>
+<tr>
+<td><code>Error.Forbidden</code></td>
+<td><code>(string PolicyId, ResourceRef? Resource = null)</code></td>
+<td>403</td>
+<td>Authenticated but not allowed</td>
+</tr>
+<tr>
+<td><code>Error.NotFound</code></td>
+<td><code>(ResourceRef Resource)</code></td>
+<td>404</td>
+<td>A resource does not exist</td>
+</tr>
+<tr>
+<td><code>Error.MethodNotAllowed</code></td>
+<td><code>(EquatableArray&lt;string&gt; Allow)</code></td>
+<td>405</td>
+<td>HTTP method not supported here</td>
+</tr>
+<tr>
+<td><code>Error.NotAcceptable</code></td>
+<td><code>(EquatableArray&lt;string&gt; Available)</code></td>
+<td>406</td>
+<td>No acceptable representation</td>
+</tr>
+<tr>
+<td><code>Error.Conflict</code></td>
+<td><code>(ResourceRef? Resource, string ReasonCode)</code></td>
+<td>409</td>
+<td>State or business rule conflict</td>
+</tr>
+<tr>
+<td><code>Error.Gone</code></td>
+<td><code>(ResourceRef Resource)</code></td>
+<td>410</td>
+<td>Resource intentionally removed</td>
+</tr>
+<tr>
+<td><code>Error.PreconditionFailed</code></td>
+<td><code>(ResourceRef, PreconditionKind)</code></td>
+<td>412</td>
+<td><code>If-Match</code>/etc. failed</td>
+</tr>
+<tr>
+<td><code>Error.ContentTooLarge</code></td>
+<td><code>(long? MaxBytes = null)</code></td>
+<td>413</td>
+<td>Request body too large</td>
+</tr>
+<tr>
+<td><code>Error.UnsupportedMediaType</code></td>
+<td><code>(EquatableArray&lt;string&gt; Supported)</code></td>
+<td>415</td>
+<td>Content-Type not supported</td>
+</tr>
+<tr>
+<td><code>Error.RangeNotSatisfiable</code></td>
+<td><code>(long CompleteLength, string Unit = &quot;bytes&quot;)</code></td>
+<td>416</td>
+<td>Requested range invalid</td>
+</tr>
+<tr>
+<td><code>Error.UnprocessableContent</code></td>
+<td><code>(EquatableArray&lt;FieldViolation&gt; Fields, EquatableArray&lt;RuleViolation&gt; Rules = default)</code></td>
+<td>422</td>
+<td>Domain-validation failures</td>
+</tr>
+<tr>
+<td><code>Error.PreconditionRequired</code></td>
+<td><code>(PreconditionKind Condition)</code></td>
+<td>428</td>
+<td>Required precondition header missing</td>
+</tr>
+<tr>
+<td><code>Error.TooManyRequests</code></td>
+<td><code>(RetryAfter? RetryAfter = null)</code></td>
+<td>429</td>
+<td>Rate-limited</td>
+</tr>
+<tr>
+<td><code>Error.InternalServerError</code></td>
+<td><code>(string FaultId)</code></td>
+<td>500</td>
+<td>Unhandled failure; rich diagnostics live in your log indexed by <code>FaultId</code></td>
+</tr>
+<tr>
+<td><code>Error.NotImplemented</code></td>
+<td><code>(string Feature)</code></td>
+<td>501</td>
+<td>Feature not implemented</td>
+</tr>
+<tr>
+<td><code>Error.ServiceUnavailable</code></td>
+<td><code>(RetryAfter? RetryAfter = null)</code></td>
+<td>503</td>
+<td>Dependency unavailable</td>
+</tr>
+<tr>
+<td><code>Error.Aggregate</code></td>
+<td><code>(EquatableArray&lt;Error&gt; Errors)</code></td>
+<td>varies</td>
+<td>Multiple failures collected; auto-flattens nested aggregates</td>
+</tr>
+</tbody>
+</table>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>new Error.Conflict(resource, &quot;domain.violation&quot;)</code> is usually a better fit than <code>Error.UnprocessableContent</code> when the input is structurally valid but violates a business rule.</p>
+</div>
+<h2 id="construction-syntax">Construction syntax</h2>
+<p>There are <strong>no static factory methods</strong>. Every call site names the case it produces:</p>
+<pre><code class="lang-csharp">new Error.NotFound(new ResourceRef(&quot;Order&quot;, &quot;42&quot;)) { Detail = &quot;Order 42 not found&quot; }
+</code></pre>
+<p>The free-form <code>Detail</code> is an init-only property on the base type — set it via object initializer when you want to override the renderer's default human-readable text.</p>
+<h3 id="common-patterns">Common patterns</h3>
+<p><strong>Single-field validation</strong></p>
+<pre><code class="lang-csharp">var error = new Error.UnprocessableContent(EquatableArray.Create(
+    new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;required&quot;) { Detail = &quot;Email is required&quot; }));
+</code></pre>
+<p><strong>Multi-field validation</strong></p>
+<pre><code class="lang-csharp">var error = new Error.UnprocessableContent(EquatableArray.Create(
+    new FieldViolation(InputPointer.ForProperty(&quot;email&quot;),    &quot;required&quot;) { Detail = &quot;Email is required&quot; },
+    new FieldViolation(InputPointer.ForProperty(&quot;password&quot;), &quot;min_length&quot;, ImmutableDictionary&lt;string, string&gt;.Empty.Add(&quot;min&quot;, &quot;8&quot;)) { Detail = &quot;Password must be at least 8 characters&quot; },
+    new FieldViolation(InputPointer.ForProperty(&quot;age&quot;),      &quot;min&quot;, ImmutableDictionary&lt;string, string&gt;.Empty.Add(&quot;min&quot;, &quot;18&quot;)) { Detail = &quot;Must be 18 or older&quot; }));
+</code></pre>
+<p><strong>Cross-field business rule</strong></p>
+<pre><code class="lang-csharp">var error = new Error.UnprocessableContent(
+    Fields: EquatableArray&lt;FieldViolation&gt;.Empty,
+    Rules:  EquatableArray.Create(new RuleViolation(
+        &quot;passwords_must_match&quot;,
+        Fields: EquatableArray.Create(InputPointer.ForProperty(&quot;password&quot;), InputPointer.ForProperty(&quot;passwordConfirmation&quot;)))
+        { Detail = &quot;Passwords must match&quot; }));
+</code></pre>
+<p><strong>Not found</strong></p>
+<pre><code class="lang-csharp">var error = new Error.NotFound(new ResourceRef(&quot;Order&quot;, &quot;123&quot;)) { Detail = &quot;Order 123 was not found&quot; };
+</code></pre>
+<p><strong>Conflict (state vs domain)</strong></p>
+<pre><code class="lang-csharp">var stateConflict  = new Error.Conflict(new ResourceRef(&quot;User&quot;, &quot;ada&quot;), &quot;duplicate.key&quot;)     { Detail = &quot;Email address is already in use&quot; };
+var domainConflict = new Error.Conflict(null,                            &quot;cancel_after_ship&quot;)  { Detail = &quot;Cannot cancel an order after shipment has started&quot; };
+</code></pre>
+<p><strong>Authorization (authenticated vs not)</strong></p>
+<pre><code class="lang-csharp">var unauth     = new Error.Unauthorized()              { Detail = &quot;Authentication token is missing&quot; };
+var forbidden  = new Error.Forbidden(&quot;orders.write&quot;)   { Detail = &quot;Administrator role is required&quot; };
+</code></pre>
+<p><strong>Operational HTTP cases</strong></p>
+<pre><code class="lang-csharp">var gone        = new Error.Gone(new ResourceRef(&quot;Document&quot;, &quot;42&quot;))                          { Detail = &quot;Document 42 was permanently removed&quot; };
+var media       = new Error.UnsupportedMediaType(EquatableArray.Create(&quot;application/json&quot;))  { Detail = &quot;Only application/json is supported&quot; };
+var tooLarge    = new Error.ContentTooLarge(MaxBytes: 10 * 1024 * 1024)                      { Detail = &quot;Upload exceeds the 10 MB limit&quot; };
+var notAccept   = new Error.NotAcceptable(EquatableArray.Create(&quot;application/json&quot;))         { Detail = &quot;The requested response format is not available&quot; };
+var notAllowed  = new Error.MethodNotAllowed(EquatableArray.Create(&quot;GET&quot;, &quot;POST&quot;))           { Detail = &quot;PATCH is not supported for this endpoint&quot; };
+var rangeBad    = new Error.RangeNotSatisfiable(CompleteLength: 4096)                        { Detail = &quot;Requested range exceeds file length&quot; };
+</code></pre>
+<p><strong>Rate limit and availability</strong></p>
+<pre><code class="lang-csharp">var rate = new Error.TooManyRequests(new RetryAfter(Delta: TimeSpan.FromSeconds(30)));
+var down = new Error.ServiceUnavailable(new RetryAfter(Delta: TimeSpan.FromMinutes(2))) { Detail = &quot;Payment gateway is temporarily unavailable&quot; };
+</code></pre>
+<p><strong>Unexpected</strong></p>
+<pre><code class="lang-csharp">var error = new Error.InternalServerError(faultId: &quot;f-7c2&quot;) { Detail = &quot;Database connection failed&quot; };
+</code></pre>
+<h2 id="matching-at-the-boundary">Matching at the Boundary</h2>
+<p>Use <code>Match</code> to fold a <code>Result&lt;T&gt;</code> into a value, or check <code>result.Error</code> directly to perform side effects.</p>
+<h3 id="match-with-a-switch-expression"><code>Match</code> with a <code>switch</code> expression</h3>
+<pre><code class="lang-csharp">var message = LoadUser(&quot;42&quot;).Match(
+    onSuccess: user  =&gt; $&quot;Found {user.Email}&quot;,
+    onFailure: error =&gt; error switch
+    {
+        Error.UnprocessableContent uc =&gt; $&quot;Bad input: {uc.GetDisplayMessage()}&quot;,
+        Error.NotFound nf             =&gt; $&quot;Missing {nf.Resource.Type} {nf.Resource.Id}&quot;,
+        Error.Forbidden f             =&gt; $&quot;Not allowed by {f.PolicyId}&quot;,
+        _                              =&gt; $&quot;Fallback: {error.Kind}&quot;
+    });
+</code></pre>
+<p>The C# compiler verifies exhaustiveness against the closed catalog. Add a new case to <code>Error</code> and every <code>switch</code> that doesn't handle it lights up.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The previous <code>MatchError</code> / <code>SwitchError</code> extensions and <code>FlattenValidationErrors</code> were removed. Use <code>switch</code> patterns and <code>Combine</code> instead.</p>
+</div>
+<h2 id="side-effects-without-breaking-the-pipeline">Side Effects Without Breaking the Pipeline</h2>
+<pre><code class="lang-csharp">var result = Result.Fail&lt;string&gt;(new Error.ServiceUnavailable() { Detail = &quot;Search is temporarily offline&quot; })
+    .TapOnFailure(error =&gt; Console.WriteLine($&quot;Log: {error.Kind} - {error.Detail}&quot;));
+</code></pre>
+<p><code>TapOnFailureAsync</code> works the same way for <code>Task&lt;Result&lt;T&gt;&gt;</code> / <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>.</p>
+<h2 id="transforming-errors">Transforming Errors</h2>
+<pre><code class="lang-csharp">var result = Result.Fail&lt;string&gt;(new Error.InternalServerError(&quot;f-1&quot;) { Detail = &quot;Timeout while calling CRM&quot; })
+    .MapOnFailure(error =&gt; error switch
+    {
+        Error.InternalServerError =&gt; new Error.ServiceUnavailable() { Detail = &quot;Customer service is temporarily unavailable&quot; },
+        _                          =&gt; error
+    });
+</code></pre>
+<p><code>RecoverOnFailure</code> lets you fall back to an alternate path when failure is legitimate (not when you are hiding a bug):</p>
+<pre><code class="lang-csharp">static Result&lt;string&gt; GetFromCache()    =&gt; Result.Fail&lt;string&gt;(new Error.NotFound(new ResourceRef(&quot;CacheEntry&quot;, &quot;user:42&quot;)));
+static Result&lt;string&gt; GetFromDatabase() =&gt; Result.Ok(&quot;Ada Lovelace&quot;);
+
+var result = GetFromCache().RecoverOnFailure(_ =&gt; GetFromDatabase());
+</code></pre>
+<h2 id="combining-errors">Combining Errors</h2>
+<p><code>Combine</code> merges multiple <code>Result&lt;T&gt;</code> failures into one:</p>
+<ul>
+<li>All failures are <code>Error.UnprocessableContent</code> → merged into a single <code>UnprocessableContent</code> with concatenated <code>Fields</code> and <code>Rules</code>.</li>
+<li>Heterogeneous failures → wrapped in an <code>Error.Aggregate</code> (which auto-flattens nested aggregates at construction).</li>
+</ul>
+<pre><code class="lang-csharp">var emailErr    = Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;email&quot;),    &quot;required&quot;))));
+var passwordErr = Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;password&quot;), &quot;required&quot;))));
+var ageErr      = Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;age&quot;),      &quot;required&quot;))));
+
+var combined = Result.Combine(emailErr, passwordErr, ageErr);
+// combined.Error is one Error.UnprocessableContent with three Fields entries.
+</code></pre>
+<h2 id="async-error-handling">Async Error Handling</h2>
+<p><code>Match</code>, <code>TapOnFailure</code>, <code>MapOnFailure</code>, and <code>Combine</code> all have async overloads on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>. The patterns are identical; just <code>await</code> the chain.</p>
+<h2 id="exception-capture-with-try-and-tryasync">Exception Capture with <code>Try</code> and <code>TryAsync</code></h2>
+<p>Expected failures should be regular <code>Error</code> values. For code that genuinely throws, Trellis bridges the gap:</p>
+<pre><code class="lang-csharp">static Result&lt;string&gt; LoadText(string path) =&gt; Result.Try(() =&gt; File.ReadAllText(path));
+
+static Task&lt;Result&lt;string&gt;&gt; LoadTextAsync(string path) =&gt; Result.TryAsync(() =&gt; File.ReadAllTextAsync(path));
+</code></pre>
+<p>With custom mapping:</p>
+<pre><code class="lang-csharp">var result = Result.Try(
+    () =&gt; File.ReadAllText(&quot;settings.json&quot;),
+    exception =&gt; exception switch
+    {
+        FileNotFoundException        =&gt; new Error.NotFound(new ResourceRef(&quot;File&quot;, &quot;settings.json&quot;)) { Detail = &quot;settings.json was not found&quot; },
+        UnauthorizedAccessException  =&gt; new Error.Forbidden(&quot;file.read&quot;) { Detail = &quot;Access denied&quot; },
+        _                             =&gt; new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = exception.Message }
+    });
+</code></pre>
+<h2 id="equality">Equality</h2>
+<p>Errors are records — two errors compare equal when their <strong><code>Kind</code> and payload are equal</strong>. The <code>Cause</code> chain is excluded from equality (so two semantically identical errors raised from different code paths compare equal).</p>
+<pre><code class="lang-csharp">var a = new Error.NotFound(new ResourceRef(&quot;User&quot;, &quot;42&quot;)) { Detail = &quot;x&quot; };
+var b = new Error.NotFound(new ResourceRef(&quot;User&quot;, &quot;42&quot;)) { Detail = &quot;x&quot; };
+var c = new Error.NotFound(new ResourceRef(&quot;User&quot;, &quot;99&quot;)) { Detail = &quot;x&quot; };
+
+Console.WriteLine(a.Equals(b)); // True  — same case, same payload
+Console.WriteLine(a.Equals(c)); // False — payload differs
+</code></pre>
+<p><code>Detail</code> participates in equality because it's an init-only property on the base record. If you want to compare semantically regardless of human-readable text, compare the typed payload directly (e.g. <code>nf.Resource.Equals(other.Resource)</code>).</p>
+<h2 id="kind-vs-code"><code>Kind</code> vs <code>Code</code></h2>
+<ul>
+<li><code>Kind</code> is the <strong>stable, low-cardinality slug</strong> the OTel <code>error.type</code> attribute is set from (e.g. <code>&quot;not-found&quot;</code>, <code>&quot;unprocessable-content&quot;</code>, <code>&quot;conflict&quot;</code>).</li>
+<li><code>Code</code> defaults to <code>Kind</code> and is overridden when the payload carries a per-instance <code>ReasonCode</code> (<code>Conflict</code>, <code>Forbidden</code>, <code>BadRequest</code>) or a <code>FaultId</code> (<code>InternalServerError</code>).</li>
+</ul>
+<p>Boundary renderers (ProblemDetails / gRPC / GraphQL) read <code>Kind</code> for <code>type</code> and <code>Code</code> for the per-instance identifier.</p>
+<h2 id="practical-rules-of-thumb">Practical Rules of Thumb</h2>
+<ul>
+<li><code>Error.UnprocessableContent</code> when the caller can fix the request data</li>
+<li><code>Error.Conflict</code> with reason code <code>&quot;domain.violation&quot;</code> when the input is valid but a business rule blocks it</li>
+<li><code>Error.Conflict</code> with reason code <code>&quot;duplicate.key&quot;</code> (or similar) when current state blocks the operation</li>
+<li><code>Error.NotFound</code> when the resource does not exist</li>
+<li><code>Error.PreconditionFailed</code> for optimistic-concurrency mismatches</li>
+<li><code>Error.Gone</code> for soft-deleted resources</li>
+<li><code>new Error.InternalServerError(faultId)</code> only for true surprises — never for business logic</li>
+<li><code>Match</code> (or a property pattern on <code>result.Error</code>) at system boundaries</li>
+<li><code>TapOnFailure</code> for logging and metrics</li>
+<li><code>MapOnFailure</code> when crossing layers</li>
+<li><code>Combine</code> to preserve multiple failures instead of throwing the first one away</li>
+</ul>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Read <a href="advanced-features.html">Advanced Features</a> for <code>Try</code>, <code>ParallelAsync</code>, tuple destructuring, and LINQ flows</li>
+<li>Read <a href="maybe-type.html">Why Maybe?</a> for optional values that compose with <code>Result&lt;T&gt;</code></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/error-handling.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

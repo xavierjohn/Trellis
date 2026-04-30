@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Observability &amp; Monitoring | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Observability &amp; Monitoring | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-observability.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="observability--monitoring">Observability &amp; Monitoring</h1>
+
+<p><strong>Level:</strong> Intermediate 📘 | <strong>Time:</strong> 15-20 min | <strong>Prerequisites:</strong> <a href="basics.html">Basics</a></p>
+<p>Observability matters most when something fails between layers: an HTTP call returns a conflict, a mediator command fails authorization, or a value object rejects input. Trellis exposes tracing hooks for exactly those boundaries.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package OpenTelemetry
+dotnet add package OpenTelemetry.Extensions.Hosting
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
+</code></pre>
+<h2 id="the-short-version">The short version</h2>
+<p>Trellis can emit spans from three useful places:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Activity source name</th>
+<th>Best use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mediator pipeline</td>
+<td><code>Trellis.Mediator</code></td>
+<td>command/query tracing</td>
+</tr>
+<tr>
+<td>Primitive value objects</td>
+<td><code>Trellis.Primitives</code></td>
+<td>validation and parsing boundaries</td>
+</tr>
+<tr>
+<td>Result operations</td>
+<td><code>Trellis.Core</code></td>
+<td>deep ROP debugging</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-mermaid">flowchart LR
+    A[ASP.NET Core request] --&gt; B[Trellis.Mediator]
+    B --&gt; C[Your ActivitySource]
+    C --&gt; D[Trellis.Primitives]
+    C --&gt; E[Trellis.Http / other dependencies]
+    D --&gt; F[OpenTelemetry exporter]
+    E --&gt; F
+    B --&gt; F
+</code></pre>
+<h2 id="start-with-the-low-noise-option">Start with the low-noise option</h2>
+<p>For most apps, the best first step is:</p>
+<ul>
+<li>add the mediator source</li>
+<li>add primitive value object instrumentation</li>
+<li>keep full result instrumentation off until you need deep debugging</li>
+</ul>
+<pre><code class="lang-csharp">using Trellis;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =&gt; tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(&quot;Trellis.Mediator&quot;)
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddOtlpExporter());
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>AddPrimitiveValueObjectInstrumentation()</code> is often the best default because it shows where input validation succeeds or fails without tracing every <code>Bind</code>, <code>Map</code>, and <code>Tap</code>.</p>
+</div>
+<h2 id="when-to-enable-addresultsinstrumentation">When to enable <code>AddResultsInstrumentation()</code></h2>
+<p><code>AddResultsInstrumentation()</code> traces Railway-Oriented Programming operations from <code>Trellis.Core</code>.</p>
+<p>That is powerful, but noisy.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =&gt; tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(&quot;Trellis.Mediator&quot;)
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddResultsInstrumentation()
+        .AddConsoleExporter());
+</code></pre>
+<p>Use it when you need to answer questions like:</p>
+<ul>
+<li>which <code>Bind</code> step failed?</li>
+<li>where did a result switch from success to failure?</li>
+<li>which branch in a long workflow produced the error?</li>
+</ul>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>AddResultsInstrumentation()</code> is a debugging tool, not a default production recommendation. It can create a lot of spans.</p>
+</div>
+<h2 id="what-mediator-tracing-gives-you">What mediator tracing gives you</h2>
+<p>If you use <code>AddTrellisBehaviors()</code>, <code>TracingBehavior</code> creates an activity for every mediator message.</p>
+<p>On success:</p>
+<ul>
+<li>status → <code>Ok</code></li>
+</ul>
+<p>On failure:</p>
+<ul>
+<li>status → <code>Error</code></li>
+<li>tag <code>error.type</code></li>
+<li>tag <code>error.code</code></li>
+</ul>
+<p>That makes failed command/query execution easy to spot in any OpenTelemetry backend.</p>
+<h2 id="manual-business-instrumentation-still-matters">Manual business instrumentation still matters</h2>
+<p>Framework spans tell you <strong>where</strong> something failed. Your own spans explain <strong>what the business operation was doing</strong>.</p>
+<pre><code class="lang-csharp">using System.Diagnostics;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Http;
+
+[JsonSerializable(typeof(CreateOrderRequest))]
+[JsonSerializable(typeof(OrderReceiptDto))]
+internal partial class OrdersJsonContext : JsonSerializerContext
+{
+}
+
+public sealed record CreateOrderRequest(string CustomerId, decimal Amount);
+public sealed record OrderReceiptDto(string OrderId, decimal Amount);
+
+public sealed class CheckoutClient(HttpClient httpClient)
+{
+    private static readonly ActivitySource ActivitySource = new(&quot;Acme.Checkout&quot;);
+
+    public async Task&lt;Result&lt;OrderReceiptDto&gt;&gt; SubmitAsync(
+        CreateOrderRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var activity = ActivitySource.StartActivity(&quot;Checkout.Submit&quot;);
+        activity?.SetTag(&quot;order.customer_id&quot;, request.CustomerId);
+        activity?.SetTag(&quot;order.amount&quot;, request.Amount);
+
+        var result = await httpClient.PostAsJsonAsync(
+                &quot;orders&quot;,
+                request,
+                OrdersJsonContext.Default.CreateOrderRequest,
+                cancellationToken)
+            .HandleConflictAsync(new Error.Conflict(null, &quot;conflict&quot;) { Detail = &quot;An order with the same data already exists.&quot; })
+            .ReadJsonAsync(OrdersJsonContext.Default.OrderReceiptDto, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, result.Error.Detail);
+            activity?.SetTag(&quot;error.code&quot;, result.Error.Code);
+            activity?.SetTag(&quot;error.type&quot;, result.Error.GetType().Name);
+        }
+        else
+        {
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+
+        return result;
+    }
+}
+</code></pre>
+<h2 id="why-error-codes-matter-in-traces">Why error codes matter in traces</h2>
+<p>Trellis errors carry machine-readable codes such as:</p>
+<ul>
+<li><code>validation.error</code></li>
+<li><code>not.found.error</code></li>
+<li><code>forbidden.error</code></li>
+</ul>
+<p>Those codes are better than free-form log messages when you want dashboards, alerts, or grouped failure analysis.</p>
+<h2 id="suggested-production-setup">Suggested production setup</h2>
+<p>If you are sending data to a real collector, add sampling and keep the sources intentional.</p>
+<pre><code class="lang-csharp">using OpenTelemetry.Trace;
+using Trellis;
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =&gt; tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(&quot;Trellis.Mediator&quot;)
+        .AddPrimitiveValueObjectInstrumentation()
+        .SetSampler(new TraceIdRatioBasedSampler(0.1))
+        .AddOtlpExporter());
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<h3 id="prefer-signal-over-volume">Prefer signal over volume</h3>
+<p>If every <code>Result</code> operation is traced, the interesting span can get buried. Start small.</p>
+<h3 id="use-business-spans-for-expensive-workflows">Use business spans for expensive workflows</h3>
+<p>Examples:</p>
+<ul>
+<li>checkout</li>
+<li>invoice generation</li>
+<li>approval workflows</li>
+<li>cross-service orchestration</li>
+</ul>
+<h3 id="use-primitive-traces-to-understand-bad-inputs">Use primitive traces to understand bad inputs</h3>
+<p>If you want to know why requests are failing validation at the edge, <code>Trellis.Primitives</code> is usually the clearest signal.</p>
+<h3 id="use-result-tracing-only-when-needed">Use result tracing only when needed</h3>
+<p>Turn on <code>AddResultsInstrumentation()</code> when debugging a complicated pipeline, then turn it back down.</p>
+<h2 id="next-steps">Next steps</h2>
+<ul>
+<li><a href="integration-mediator.html">Mediator Pipeline</a></li>
+<li><a href="integration-http.html">HTTP Integration</a></li>
+<li><a href="integration-testing.html">Testing</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-observability.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

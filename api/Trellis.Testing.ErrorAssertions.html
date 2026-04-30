@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ErrorAssertions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ErrorAssertions | Trellis ">
+      
+      <meta name="description" content="Contains assertion methods for Error types.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Testing_ErrorAssertions.md&amp;value=---%0Auid%3A%20Trellis.Testing.ErrorAssertions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing.ErrorAssertions">
+
+
+
+  <h1 id="Trellis_Testing_ErrorAssertions" data-uid="Trellis.Testing.ErrorAssertions" class="text-break">
+Class ErrorAssertions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Testing.html">Testing</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Testing.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Contains assertion methods for Error types.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ErrorAssertions : ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions</a>&lt;<a class="xref" href="Trellis.Error.html">Error</a>, <a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a>&gt;</div>
+      <div><span class="xref">ErrorAssertions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.BeNull(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.NotBeNull(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.BeSameAs(Error, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.NotBeSameAs(Error, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.BeOfType&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.BeOfType(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.NotBeOfType&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.NotBeOfType(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.BeAssignableTo&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.BeAssignableTo(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.NotBeAssignableTo&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.NotBeAssignableTo(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.Match(Expression&lt;Func&lt;Error, bool&gt;&gt;, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.Match&lt;T&gt;(Expression&lt;Func&lt;T, bool&gt;&gt;, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.Subject</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Error, ErrorAssertions&gt;.Identifier</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Testing_ErrorAssertions__ctor_" data-uid="Trellis.Testing.ErrorAssertions.#ctor*"></a>
+
+  <h3 id="Trellis_Testing_ErrorAssertions__ctor_Trellis_Error_" data-uid="Trellis.Testing.ErrorAssertions.#ctor(Trellis.Error)">
+  ErrorAssertions(Error?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ErrorAssertions(Error? error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Testing_ErrorAssertions_Identifier_" data-uid="Trellis.Testing.ErrorAssertions.Identifier*"></a>
+
+  <h3 id="Trellis_Testing_ErrorAssertions_Identifier" data-uid="Trellis.Testing.ErrorAssertions.Identifier">
+  Identifier
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the type of the subject the assertion applies on.
+It should be a user-friendly name as it is included in the failure message.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override string Identifier { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Testing_ErrorAssertions_Be_" data-uid="Trellis.Testing.ErrorAssertions.Be*"></a>
+
+  <h3 id="Trellis_Testing_ErrorAssertions_Be_Trellis_Error_System_String_System_Object___" data-uid="Trellis.Testing.ErrorAssertions.Be(Trellis.Error,System.String,System.Object[])">
+  Be(Error, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the error equals the expected error (based on Error.Equals which compares by Code).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ErrorAssertions&gt; Be(Error expected, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expected</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd><p>The expected error.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ErrorAssertions_BeOfType_" data-uid="Trellis.Testing.ErrorAssertions.BeOfType*"></a>
+
+  <h3 id="Trellis_Testing_ErrorAssertions_BeOfType__1_System_String_System_Object___" data-uid="Trellis.Testing.ErrorAssertions.BeOfType``1(System.String,System.Object[])">
+  BeOfType&lt;TError&gt;(string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L137"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the error is of the specified type and returns a typed constraint for further assertions.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndWhichConstraint&lt;ErrorAssertions, TError&gt; BeOfType&lt;TError&gt;(string because = &quot;&quot;, params object[] becauseArgs) where TError : Error</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndWhichConstraint.cs">AndWhichConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a>, TError&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TError</code></dt>
+    <dd><p>The expected error type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ErrorAssertions_HaveCode_" data-uid="Trellis.Testing.ErrorAssertions.HaveCode*"></a>
+
+  <h3 id="Trellis_Testing_ErrorAssertions_HaveCode_System_String_System_String_System_Object___" data-uid="Trellis.Testing.ErrorAssertions.HaveCode(System.String,System.String,System.Object[])">
+  HaveCode(string, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the error has the specified code.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ErrorAssertions&gt; HaveCode(string expectedCode, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expectedCode</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The expected error code.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ErrorAssertions_HaveDetail_" data-uid="Trellis.Testing.ErrorAssertions.HaveDetail*"></a>
+
+  <h3 id="Trellis_Testing_ErrorAssertions_HaveDetail_System_String_System_String_System_Object___" data-uid="Trellis.Testing.ErrorAssertions.HaveDetail(System.String,System.String,System.Object[])">
+  HaveDetail(string, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L97"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the error has the specified detail message.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ErrorAssertions&gt; HaveDetail(string expectedDetail, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expectedDetail</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The expected error detail.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ErrorAssertions_HaveDetailContaining_" data-uid="Trellis.Testing.ErrorAssertions.HaveDetailContaining*"></a>
+
+  <h3 id="Trellis_Testing_ErrorAssertions_HaveDetailContaining_System_String_System_String_System_Object___" data-uid="Trellis.Testing.ErrorAssertions.HaveDetailContaining(System.String,System.String,System.Object[])">
+  HaveDetailContaining(string, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L117"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the error detail contains the specified substring.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ErrorAssertions&gt; HaveDetailContaining(string substring, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>substring</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The substring to search for.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ErrorAssertions.html">ErrorAssertions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ErrorAssertions.cs/#L21" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

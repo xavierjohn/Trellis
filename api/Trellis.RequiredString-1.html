@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class RequiredString&lt;TSelf&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class RequiredString&lt;TSelf&gt; | Trellis ">
+      
+      <meta name="description" content="Base class for creating strongly-typed string value objects that cannot be null or empty. Provides a foundation for domain primitives like names, descriptions, codes, and other textual concepts.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_RequiredString_1.md&amp;value=---%0Auid%3A%20Trellis.RequiredString%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.RequiredString`1">
+
+
+
+  <h1 id="Trellis_RequiredString_1" data-uid="Trellis.RequiredString`1" class="text-break">
+Class RequiredString&lt;TSelf&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredString.cs/#L252"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for creating strongly-typed string value objects that cannot be null or empty.
+Provides a foundation for domain primitives like names, descriptions, codes, and other textual concepts.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class RequiredString&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, string&gt;, IComparable&lt;ValueObject&gt;, IComparable, IEquatable&lt;ValueObject&gt;, IConvertible, IFormattable where TSelf : RequiredString&lt;TSelf&gt;, IScalarValue&lt;TSelf, string&gt;</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TSelf</code></dt>
+    <dd></dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="Trellis.ValueObject.html">ValueObject</a></div>
+      <div><a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject</a>&lt;TSelf, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</div>
+      <div><span class="xref">RequiredString&lt;TSelf&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable-1">IComparable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iconvertible">IConvertible</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformattable">IFormattable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_Value">ScalarValueObject&lt;TSelf, string&gt;.Value</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_GetEqualityComponents">ScalarValueObject&lt;TSelf, string&gt;.GetEqualityComponents()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToString">ScalarValueObject&lt;TSelf, string&gt;.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_Create__1_">ScalarValueObject&lt;TSelf, string&gt;.Create(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_GetTypeCode">ScalarValueObject&lt;TSelf, string&gt;.GetTypeCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToBoolean_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToBoolean(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToByte_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToByte(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToChar_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToChar(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToDateTime_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToDateTime(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToDecimal_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToDecimal(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToDouble_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToDouble(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToInt16_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToInt16(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToInt32_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToInt32(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToInt64_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToInt64(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToSByte_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToSByte(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToSingle_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToSingle(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToString_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToString(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToString_System_String_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToString(string, IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToType_System_Type_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToType(Type, IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToUInt16_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToUInt16(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToUInt32_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToUInt32(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToUInt64_System_IFormatProvider_">ScalarValueObject&lt;TSelf, string&gt;.ToUInt64(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetEqualityComponents">ValueObject.GetEqualityComponents()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_MaybeComponent__1_Trellis_Maybe___0__">ValueObject.MaybeComponent&lt;T&gt;(Maybe&lt;T&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_System_Object_">ValueObject.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_Trellis_ValueObject_">ValueObject.Equals(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetHashCode">ValueObject.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_CompareTo_Trellis_ValueObject_">ValueObject.CompareTo(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_RequiredString_1_examples">Examples</h2>
+  <p>Creating a strongly-typed name value object:</p>
+<pre><code class="lang-csharp">// Define the value object (partial keyword enables source generation)
+public partial class FirstName : RequiredString&lt;FirstName&gt;
+{
+}
+
+// The source generator automatically creates:
+// - IScalarValue&lt;FirstName, string&gt; interface implementation
+// - public static Result&lt;FirstName&gt; TryCreate(string value)
+// - public static Result&lt;FirstName&gt; TryCreate(string? value, string? fieldName = null)
+// - public static FirstName Parse(string s, IFormatProvider? provider)
+// - public static bool TryParse(string? s, IFormatProvider? provider, out FirstName result)
+// - public static explicit operator FirstName(string value)
+// - private FirstName(string value) : base(value) { }
+
+// Usage examples:
+
+// Create with validation
+var result1 = FirstName.TryCreate("John");
+// Returns: Success(FirstName("John"))
+
+var result2 = FirstName.TryCreate("");
+// Returns: Failure(Error.UnprocessableContent with detail "First Name cannot be empty.")
+
+var result3 = FirstName.TryCreate(null);
+// Returns: Failure(Error.UnprocessableContent with detail "First Name cannot be empty.")
+
+var result4 = FirstName.TryCreate("  John  ");
+// Returns: Success(FirstName("John")) - automatically trimmed
+
+// With custom field name for validation errors
+var result5 = FirstName.TryCreate(input, "user.firstName");
+// Error field will be "user.firstName" instead of default "firstName"
+
+// Using in entity creation
+public class Person : Entity&lt;PersonId&gt;
+{
+    public FirstName FirstName { get; }
+    public LastName LastName { get; }
+
+    public static Result&lt;Person&gt; Create(string firstName, string lastName) =&gt;
+        FirstName.TryCreate(firstName)
+            .Combine(LastName.TryCreate(lastName))
+            .Map((first, last) =&gt; new Person(PersonId.NewUnique(), first, last));
+
+    private Person(PersonId id, FirstName firstName, LastName lastName) 
+        : base(id)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+    }
+}</code></pre>
+
+  <p>ASP.NET Core automatic validation (no manual Result.Combine needed):</p>
+<pre><code class="lang-csharp">// 1. Register automatic validation in Program.cs
+builder.Services
+    .AddControllers()
+    .AddScalarValueObjectValidation(); // Enables automatic validation!
+
+// 2. Define your DTO with value objects
+public record RegisterUserDto
+{
+    public FirstName FirstName { get; init; } = null!;
+    public LastName LastName { get; init; } = null!;
+    public EmailAddress Email { get; init; } = null!;
+}
+
+// 3. Use in controllers - automatic validation!
+[ApiController]
+[Route("api/users")]
+public class UsersController : ControllerBase
+{
+    [HttpPost]
+    public IActionResult Register(RegisterUserDto dto)
+    {
+        // If we reach here, dto is FULLY validated!
+        // No Result.Combine() needed - validation happens automatically during model binding
+        var user = new User(dto.FirstName, dto.LastName, dto.Email);
+        return Ok(user);
+    }
+}
+
+// Invalid request automatically returns 422 Unprocessable Content:
+// POST /api/users with { "firstName": "", "lastName": "Doe", "email": "test@example.com" }
+// Response: 422 Unprocessable Content
+// {
+//   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+//   "title": "One or more validation errors occurred.",
+//   "status": 422,
+//   "errors": {
+//     "firstName": ["First Name cannot be empty."]
+//   }
+// }</code></pre>
+
+  <p>Using in API validation (manual approach):</p>
+<pre><code class="lang-csharp">// Request DTO
+public record CreateUserRequest(string FirstName, string LastName, string Email);
+
+// API endpoint with automatic validation
+app.MapPost("/users", (CreateUserRequest request) =&gt;
+    FirstName.TryCreate(request.FirstName, nameof(request.FirstName))
+        .Combine(LastName.TryCreate(request.LastName, nameof(request.LastName)))
+        .Combine(EmailAddress.TryCreate(request.Email, nameof(request.Email)))
+        .Bind((first, last, email) =&gt; User.Create(first, last, email))
+        .ToHttpResponse());
+
+// POST /users with empty FirstName:
+// Response: 422 Unprocessable Content
+// {
+//   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+//   "title": "One or more validation errors occurred.",
+//   "status": 422,
+//   "errors": {
+//     "firstName": ["First Name cannot be empty."]
+//   }
+// }</code></pre>
+
+  <p>Multiple string-based value objects:</p>
+<pre><code class="lang-csharp">public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+public partial class CompanyName : RequiredString&lt;CompanyName&gt; { }
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+public partial class Description : RequiredString&lt;Description&gt; { }
+
+public class Product : Entity&lt;ProductId&gt;
+{
+    public ProductName Name { get; private set; }
+    public Description Description { get; private set; }
+
+    public Result&lt;Product&gt; UpdateName(ProductName newName) =&gt;
+        newName.ToResult()
+            .Tap(name =&gt; Name = name)
+            .Map(_ =&gt; this);
+
+    // Compiler prevents mixing types:
+    // UpdateName(description); // Won't compile!
+    // UpdateName(firstName);   // Won't compile!
+}</code></pre>
+
+  <p>Advanced: Adding custom validation to derived types:</p>
+<pre><code class="lang-csharp">// Use [StringLength] for length, add custom validation for format rules
+[StringLength(20)]
+public partial class ProductSKU : RequiredString&lt;ProductSKU&gt;
+{
+    // Additional format validation via custom factory method
+    public static Result&lt;ProductSKU&gt; TryCreateWithValidation(string? value) =&gt;
+        TryCreate(value) // Generated: validates non-empty + length &lt;= 20
+            .Ensure(sku =&gt; sku.Value.All(c =&gt; char.IsLetterOrDigit(c) || c == '-'),
+                   new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("sku"), "validation.error") { Detail = "SKU can only contain letters, digits, and hyphens" })));
+}
+
+// Usage
+var result = ProductSKU.TryCreateWithValidation("PROD-12345");
+// Success
+
+var tooLong = ProductSKU.TryCreateWithValidation(new string('A', 21));
+// Failure: "Product SKU must be 20 characters or fewer."
+
+var invalid = ProductSKU.TryCreateWithValidation("PROD@12345");
+// Failure: "SKU can only contain letters, digits, and hyphens"</code></pre>
+
+  <p>String length constraints with <a class="xref" href="Trellis.StringLengthAttribute.html">StringLengthAttribute</a>:</p>
+<pre><code class="lang-csharp">// Maximum length only — rejects strings longer than 50 characters
+[StringLength(50)]
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+
+var ok = FirstName.TryCreate("John");      // Success
+var tooLong = FirstName.TryCreate(new string('x', 51)); // Failure: "First Name must be 50 characters or fewer."
+
+// Both minimum and maximum length
+[StringLength(500, MinimumLength = 10)]
+public partial class Description : RequiredString&lt;Description&gt; { }
+
+var tooShort = Description.TryCreate("Hi");        // Failure: "Description must be at least 10 characters."
+var tooLong2 = Description.TryCreate(new string('x', 501)); // Failure: "Description must be 500 characters or fewer."</code></pre>
+
+
+  <h2 id="Trellis_RequiredString_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This class extends <a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject&lt;TSelf, T&gt;</a> to provide a specialized base for string-based value objects
+with automatic validation that prevents null or empty strings. When used with the <code>partial</code> keyword,
+the PrimitiveValueObjectGenerator source generator automatically creates:
+<ul><li><code>IScalarValue&lt;TSelf, string&gt;</code> implementation for ASP.NET Core automatic validation</li><li><code>TryCreate(string)</code> - Factory method for non-nullable strings (required by IScalarValue)</li><li><code>TryCreate(string?, string?)</code> - Factory method with null/empty/whitespace validation and custom field name</li><li><code>IParsable&lt;T&gt;</code> implementation (<code>Parse</code>, <code>TryParse</code>)</li><li>JSON serialization support via <code>ParsableJsonConverter&lt;T&gt;</code></li><li>Explicit cast operator from string</li><li>OpenTelemetry activity tracing</li></ul>
+
+<p>
+Common use cases:
+<ul><li>Person names (FirstName, LastName, FullName)</li><li>Product attributes (ProductName, Description, SKU)</li><li>Location data (City, State, Country, PostalCode)</li><li>Business identifiers (CompanyName, TaxId, AccountNumber)</li><li>Any domain concept represented by required text</li></ul>
+
+<p>
+<strong>String length constraints:</strong> Apply the <a class="xref" href="Trellis.StringLengthAttribute.html">StringLengthAttribute</a> to enforce
+minimum and/or maximum lengths at creation time:
+<pre><code class="lang-csharp">[StringLength(50)]
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+
+[StringLength(500, MinimumLength = 10)]
+public partial class Description : RequiredString&lt;Description&gt; { }</code></pre>
+
+<p>
+Benefits over plain strings:
+<ul><li><strong>Type safety</strong>: Cannot mix FirstName with LastName</li><li><strong>Validation</strong>: Prevents null/empty strings at creation time</li><li><strong>Length constraints</strong>: Optional min/max length via <a class="xref" href="Trellis.StringLengthAttribute.html">StringLengthAttribute</a></li><li><strong>Domain clarity</strong>: Self-documenting code that expresses intent</li><li><strong>Consistency</strong>: Centralized trimming and normalization</li><li><strong>Testability</strong>: Easy to test validation rules in isolation</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_RequiredString_1__ctor_" data-uid="Trellis.RequiredString`1.#ctor*"></a>
+
+  <h3 id="Trellis_RequiredString_1__ctor_System_String_" data-uid="Trellis.RequiredString`1.#ctor(System.String)">
+  RequiredString(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredString.cs/#L281"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.RequiredString-1.html">RequiredString&lt;TSelf&gt;</a> class with the specified string value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected RequiredString(string value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The string value. Must not be null or empty.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_RequiredString_1__ctor_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This constructor is protected and should be called by derived classes.
+When using the source generator (with <code>partial</code> keyword), a private constructor
+is automatically generated that includes validation and trimming.
+</p>
+<p>
+Direct instantiation should be avoided. Instead, use the generated factory method:
+<ul><li><code>TryCreate(string?, string?)</code> - Create from string with validation and trimming</li></ul>
+
+<p>
+The generated TryCreate method automatically:
+<ul><li>Returns validation error for null values</li><li>Returns validation error for empty strings</li><li>Returns validation error for whitespace-only strings</li><li>Trims leading and trailing whitespace from valid strings</li></ul>
+
+</div>
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_RequiredString_1_Length_" data-uid="Trellis.RequiredString`1.Length*"></a>
+
+  <h3 id="Trellis_RequiredString_1_Length" data-uid="Trellis.RequiredString`1.Length">
+  Length
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredString.cs/#L289"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the length of the string value.
+Enables natural LINQ queries like <code>c.Name.Length &gt; 5</code> without accessing <code>.Value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Length { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_RequiredString_1_Contains_" data-uid="Trellis.RequiredString`1.Contains*"></a>
+
+  <h3 id="Trellis_RequiredString_1_Contains_System_String_" data-uid="Trellis.RequiredString`1.Contains(System.String)">
+  Contains(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredString.cs/#L305"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns whether the string value contains the specified substring.
+Enables natural LINQ queries like <code>c.Name.Contains(&quot;li&quot;)</code> without accessing <code>.Value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Contains(string value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredString_1_EndsWith_" data-uid="Trellis.RequiredString`1.EndsWith*"></a>
+
+  <h3 id="Trellis_RequiredString_1_EndsWith_System_String_" data-uid="Trellis.RequiredString`1.EndsWith(System.String)">
+  EndsWith(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredString.cs/#L311"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns whether the string value ends with the specified suffix.
+Enables natural LINQ queries like <code>c.Name.EndsWith(&quot;ce&quot;)</code> without accessing <code>.Value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool EndsWith(string value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredString_1_StartsWith_" data-uid="Trellis.RequiredString`1.StartsWith*"></a>
+
+  <h3 id="Trellis_RequiredString_1_StartsWith_System_String_" data-uid="Trellis.RequiredString`1.StartsWith(System.String)">
+  StartsWith(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredString.cs/#L299"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns whether the string value starts with the specified prefix.
+Enables natural LINQ queries like <code>c.Name.StartsWith(&quot;Al&quot;)</code> without accessing <code>.Value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool StartsWith(string value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 id="seealso">See Also</h2>
+  <div class="seealso">
+      <div><a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject</a>&lt;TSelf, T&gt;</div>
+      <div><a class="xref" href="Trellis.RequiredGuid-1.html">RequiredGuid</a>&lt;TSelf&gt;</div>
+      <div><span><a class="xref" href="Trellis.Primitives.EmailAddress.html">xref:Trellis.Primitives.EmailAddress</a></span></div>
+  </div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredString.cs/#L252" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

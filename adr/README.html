@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Architecture Decision Records | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Architecture Decision Records | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/README.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="architecture-decision-records">Architecture Decision Records</h1>
+
+<p>This folder records significant design decisions for the Trellis framework. An ADR captures
+the <em>why</em> behind a non-obvious choice — including alternatives that were explored and rejected,
+and the empirical evidence that drove the conclusion. ADRs are append-only: new decisions get
+new files; superseded decisions stay in place with a status update.</p>
+<h2 id="index">Index</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Title</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>001</td>
+<td><a href="ADR-001-result-api-surface.html">Result API Surface — <code>Value</code> / <code>Error</code> Accessors</a></td>
+<td>Accepted (PR7)</td>
+</tr>
+<tr>
+<td>002</td>
+<td><a href="ADR-002-v2-redesign-plan.html">Trellis v2 — Forward-Looking Architectural Redesign</a></td>
+<td>Accepted, in execution (PR #401 = Phase 1a shipped; PR #403 = Phase 2 in flight)</td>
+</tr>
+<tr>
+<td>003</td>
+<td><a href="ADR-003-fluent-api-improvements.html">Trellis v3 Fluent API Improvements</a></td>
+<td>Accepted for v3 implementation</td>
+</tr>
+</tbody>
+</table>
+<h2 id="when-to-write-an-adr">When to write an ADR</h2>
+<p>Write a new ADR whenever:</p>
+<ul>
+<li>A design decision was non-obvious enough that a reasonable contributor might want to &quot;fix&quot; it later (i.e., the obvious-looking alternative was tried and rejected for non-obvious reasons).</li>
+<li>The decision affects public API surface, on-the-wire contracts, or framework-wide invariants.</li>
+<li>Multiple plausible alternatives exist and the choice between them required tradeoff analysis.</li>
+</ul>
+<p>Document each variant tried, what made it look attractive, and the specific failure mode that ruled it out. Future readers should be able to short-circuit re-deriving the same conclusions.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/README.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

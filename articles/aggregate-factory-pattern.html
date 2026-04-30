@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Aggregate Factory Pattern | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Aggregate Factory Pattern | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/aggregate-factory-pattern.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="aggregate-factory-pattern">Aggregate Factory Pattern</h1>
+
+<p>When an aggregate can be both <strong>created from scratch</strong> and <strong>reconstituted from existing data</strong>, one factory method is not enough.</p>
+<p>That is the problem this pattern solves.</p>
+<ul>
+<li>new aggregates need a <strong>new ID</strong></li>
+<li>reconstituted aggregates must keep an <strong>existing ID</strong></li>
+<li>both paths should enforce the same domain invariants</li>
+</ul>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>Aggregate&lt;TId&gt;</code> does not impose factory methods for you. The pattern below is a Trellis-friendly convention for keeping creation explicit and safe.</p>
+</div>
+<h2 id="the-recommended-shape">The recommended shape</h2>
+<p>Use two factory paths:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Use it for</th>
+<th>ID behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TryCreate(...)</code></td>
+<td>New aggregate</td>
+<td>Generates a new ID</td>
+</tr>
+<tr>
+<td><code>TryCreateExisting(id, ...)</code></td>
+<td>Reconstitution, migrations, tests with known IDs</td>
+<td>Preserves the supplied ID</td>
+</tr>
+<tr>
+<td><code>Create(...)</code></td>
+<td>Same as <code>TryCreate</code>, but for known-good data</td>
+<td>Throws on failure</td>
+</tr>
+<tr>
+<td><code>CreateExisting(id, ...)</code></td>
+<td>Same as <code>TryCreateExisting</code>, but for known-good data</td>
+<td>Throws on failure</td>
+</tr>
+</tbody>
+</table>
+<h2 id="a-working-example">A working example</h2>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+namespace AggregateFactories;
+
+[Trellis.StringLength(200)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+[Trellis.StringLength(64)]
+public partial class Sku : RequiredString&lt;Sku&gt; { }
+
+public partial class ProductId : RequiredGuid&lt;ProductId&gt; { }
+
+public sealed record ProductCreated(ProductId ProductId, DateTime OccurredAt) : IDomainEvent;
+
+public sealed class Product : Aggregate&lt;ProductId&gt;
+{
+    private Product(ProductId id, ProductName name, Sku sku)
+        : base(id)
+    {
+        Name = name;
+        Sku = sku;
+        IsActive = true;
+    }
+
+    private Product() : base(null!)
+    {
+        Name = null!;
+        Sku = null!;
+    }
+
+    public ProductName Name { get; private set; }
+    public Sku Sku { get; private set; }
+    public bool IsActive { get; private set; }
+
+    public static Result&lt;Product&gt; TryCreate(ProductName name, Sku sku)
+    {
+        var product = new Product(ProductId.NewUniqueV7(), name, sku);
+        product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
+        return Result.Ok(product);
+    }
+
+    public static Result&lt;Product&gt; TryCreateExisting(ProductId id, ProductName name, Sku sku)
+    {
+        var product = new Product(id, name, sku);
+        return Result.Ok(product);
+    }
+
+    public static Product Create(ProductName name, Sku sku)
+    {
+        var result = TryCreate(name, sku);
+        if (!result.TryGetValue(out var product))
+            throw new InvalidOperationException(result.Error!.Detail);
+
+        return product;
+    }
+
+    public static Product CreateExisting(ProductId id, ProductName name, Sku sku)
+    {
+        var result = TryCreateExisting(id, name, sku);
+        if (!result.TryGetValue(out var product))
+            throw new InvalidOperationException(result.Error!.Detail);
+
+        return product;
+    }
+}
+</code></pre>
+<h2 id="why-two-methods-are-better-than-one">Why two methods are better than one</h2>
+<p>If <code>TryCreate(...)</code> always generates an ID, you cannot safely rebuild an existing aggregate:</p>
+<pre><code class="lang-csharp">var knownId = ProductId.Create(Guid.Parse(&quot;8e945d6d-e4f4-4dd6-bb50-3ab19f9d9fd1&quot;));
+var name = ProductName.Create(&quot;Trellis Mug&quot;);
+var sku = Sku.Create(&quot;MUG-001&quot;);
+
+var newProduct = Product.Create(name, sku);                     // new ID
+var existingProduct = Product.CreateExisting(knownId, name, sku); // preserved ID
+</code></pre>
+<p>That distinction matters for:</p>
+<ul>
+<li><strong>manual rehydration</strong></li>
+<li><strong>tests that need fixed IDs</strong></li>
+<li><strong>data import or migration code</strong></li>
+<li><strong>reconstitution outside EF Core</strong></li>
+</ul>
+<h2 id="where-ef-core-fits">Where EF Core fits</h2>
+<p>When EF Core materializes an aggregate, it typically uses the parameterless constructor and sets properties during rehydration.</p>
+<p>That is why many Trellis aggregates use this shape:</p>
+<ul>
+<li>parameterless constructor for EF Core</li>
+<li>private constructor with all required state</li>
+<li><code>TryCreate(...)</code> for new instances</li>
+<li><code>TryCreateExisting(...)</code> for explicit reconstitution outside EF Core</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The parameterless constructor is for infrastructure. Your domain code should still prefer explicit factory methods.</p>
+</div>
+<h2 id="keep-validation-in-one-place">Keep validation in one place</h2>
+<p>Both creation paths should enforce the same rules. A simple way to do that is to validate the arguments before either constructor call.</p>
+<pre><code class="lang-csharp">public static Result&lt;Product&gt; TryCreate(ProductName name, Sku sku)
+{
+    var validation = Validate(name, sku);
+    if (validation.IsFailure)
+        return validation.Error;
+
+    var product = new Product(ProductId.NewUniqueV7(), name, sku);
+    product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
+    return Result.Ok(product);
+}
+
+public static Result&lt;Product&gt; TryCreateExisting(ProductId id, ProductName name, Sku sku)
+{
+    var validation = Validate(name, sku);
+    if (validation.IsFailure)
+        return validation.Error;
+
+    return Result.Ok(new Product(id, name, sku));
+}
+
+private static Result Validate(ProductName name, Sku sku)
+{
+    if (sku.Value.StartsWith(&quot;LEGACY-&quot;, StringComparison.OrdinalIgnoreCase))
+        return new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(sku)), &quot;validation.error&quot;) { Detail = &quot;SKU cannot start with LEGACY.&quot; }));
+
+    return Result.Ok();
+}
+</code></pre>
+<h2 id="domain-events-and-reconstitution">Domain events and reconstitution</h2>
+<p>A common mistake is raising “created” events while reconstituting existing data.</p>
+<p>Use this rule:</p>
+<ul>
+<li><code>TryCreate(...)</code> may raise creation events</li>
+<li><code>TryCreateExisting(...)</code> usually should <strong>not</strong></li>
+</ul>
+<p>That keeps <code>UncommittedEvents()</code> meaningful.</p>
+<h2 id="what-this-pattern-does-not-do">What this pattern does <strong>not</strong> do</h2>
+<p>These concerns belong elsewhere:</p>
+<ul>
+<li><strong><code>ETag</code></strong> is infrastructure-managed</li>
+<li><strong><code>AcceptChanges()</code></strong> belongs after persistence/event publication</li>
+<li><strong>repository lookups</strong> belong in repositories or handlers, not in the aggregate constructor</li>
+</ul>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Do not assign <code>ETag</code> in your factory methods. <code>ETag</code> exists for optimistic concurrency and is owned by persistence infrastructure.</p>
+</div>
+<h2 id="a-practical-checklist">A practical checklist</h2>
+<p>Use this pattern when your aggregate:</p>
+<ul>
+<li>has a strong identity type like <code>ProductId</code></li>
+<li>needs a constructor for EF Core</li>
+<li>must support both new and existing instances</li>
+<li>raises domain events for true state changes</li>
+</ul>
+<h2 id="summary">Summary</h2>
+<p>The aggregate factory pattern gives you:</p>
+<ul>
+<li>clear intent</li>
+<li>correct identity handling</li>
+<li>safer tests</li>
+<li>cleaner reconstitution paths</li>
+<li>fewer accidental domain events</li>
+</ul>
+<p>If the aggregate is new, generate a new ID. If it already exists, preserve the ID you were given.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/aggregate-factory-pattern.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
