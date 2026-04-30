@@ -67,7 +67,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>(
 | --- | --- | --- |
 | `public ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)` | `ValueTask<IResult>` | Runs every injected `IValidator<TMessage>` against `message`. Returns `Result.Ok()` when all validators pass (or none are registered — the empty injected sequence allocates no violations). Otherwise aggregates every `ValidationFailure` into a single `new Error.UnprocessableContent(EquatableArray.Create(violations))`, where `violations` is the collected `FieldViolation` set. Each FluentValidation failure becomes a `FieldViolation(new InputPointer(pointerPath), reasonCode) { Detail = failure.ErrorMessage }`. `pointerPath` is derived by `JsonPointerNormalizer.ToJsonPointer` from the FV property name; `reasonCode` defaults to `"validation.error"` when `failure.ErrorCode` is null/whitespace. Root-level failures (whitespace `PropertyName`) use `typeof(TMessage).Name`. |
 
-**Pointer normalization (RFC 6901)**
+### Pointer normalization (RFC 6901)
 
 FluentValidation property names are converted to JSON Pointers so they round-trip through `InputPointer`:
 

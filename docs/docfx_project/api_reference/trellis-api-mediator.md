@@ -22,7 +22,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | Add resource authorization with assembly scanning | `services.AddResourceAuthorization(typeof(SomeType).Assembly)` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
 | Add resource authorization explicitly | `services.AddResourceAuthorization<TMessage,TResource,TResponse>()` plus loader registration | [`ResourceAuthorizationBehavior<TMessage,TResource,TResponse>`](#resourceauthorizationbehaviortmessage-tresource-tresponse) |
 | Bridge `IIdentifyResource<TResource,TId>` to a shared loader | `services.AddSharedResourceLoader<TMessage,TResource,TId>()` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
-| Register EF unit-of-work behavior | `services.AddTrellisUnitOfWork<TContext>()` | [`TransactionalCommandBehavior<TMessage,TResponse>`](#transactionalcommandbehaviortmessage-tresponse) |
+| Register EF unit-of-work behavior | `services.AddTrellisUnitOfWork<TContext>()` | [`Canonical pipeline order`](#canonical-pipeline-order) |
 | Keep commits inside the pipeline | Repositories stage changes; `TransactionalCommandBehavior` commits on success | [`Behavioral notes`](#behavioral-notes) |
 
 ## Common traps
