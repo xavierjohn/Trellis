@@ -219,6 +219,8 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     ///         resource.OwnerId == actor.UserId,
     ///         new Error.Forbidden("order_not_owned"));
     /// </code>
+    /// </example>
+    /// <example>
     /// Domain invariant guard inside an aggregate method (replaces a hand-written <c>if</c>/<c>return</c>):
     /// <code>
     /// public Result Cancel(DateTimeOffset now) =&gt;
