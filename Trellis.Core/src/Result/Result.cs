@@ -192,8 +192,44 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     public static Result Fail(Error error) => new(true, error);
 
     /// <summary>
-    /// Returns a successful <see cref="Result"/> if the flag is true; otherwise a failure with the specified error.
+    /// Returns a successful <see cref="Result"/> if <paramref name="flag"/> is <see langword="true"/>;
+    /// otherwise a failure with the specified <paramref name="error"/>.
     /// </summary>
+    /// <param name="flag">The condition to assert. <see langword="true"/> yields success; <see langword="false"/> yields failure.</param>
+    /// <param name="error">The error to wrap when <paramref name="flag"/> is <see langword="false"/>. Always evaluated by the caller.</param>
+    /// <returns><see cref="Ok()"/> when <paramref name="flag"/> is <see langword="true"/>; otherwise <see cref="Fail(Error)"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// <strong>Canonical guard primitive.</strong> Prefer <c>Result.Ensure(condition, error)</c> over
+    /// hand-written <c>if (!condition) return Result.Fail(error);</c> blocks or ad-hoc ternaries — Ensure
+    /// reads as a single declarative line, participates in <see cref="Activity"/> tracing, and is the
+    /// preferred form for guard clauses in current guidance.
+    /// </para>
+    /// <para>
+    /// There is no <c>Result.SuccessIf</c> in v3 — the v1 <c>SuccessIf</c> / <c>FailureIf</c> / async variants were removed; this overload (and its value-threaded counterparts on <see cref="EnsureExtensions"/>) replaces them. <!-- v1-stale-ok: documenting removed v1 factories so AI agents stop reaching for them -->
+    /// </para>
+    /// <para>
+    /// For an asynchronous predicate use <see cref="EnsureAsync(Func{Task{bool}}, Error)"/>. For a value-threaded
+    /// guard that preserves an existing <see cref="Result{TValue}"/> on success, use the
+    /// <c>Result&lt;TValue&gt;.Ensure(predicate, error)</c> extension overloads.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// Authorization guard inside <c>IAuthorizeResource&lt;TResource&gt;.Authorize</c>:
+    /// <code>
+    /// public IResult Authorize(Actor actor, Order resource) =&gt;
+    ///     Result.Ensure(
+    ///         resource.OwnerId == actor.UserId,
+    ///         new Error.Forbidden("order_not_owned"));
+    /// </code>
+    /// Domain invariant guard inside an aggregate method (replaces a hand-written <c>if</c>/<c>return</c>):
+    /// <code>
+    /// public Result Cancel(DateTimeOffset now) =&gt;
+    ///     Result.Ensure(Status == OrderStatus.Pending,
+    ///         new Error.Conflict(null, "order_not_cancellable") { Detail = "Only pending orders can be cancelled." })
+    ///     .Tap(() =&gt; { Status = OrderStatus.Cancelled; CancelledAt = now; });
+    /// </code>
+    /// </example>
     public static Result Ensure(bool flag, Error error)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
