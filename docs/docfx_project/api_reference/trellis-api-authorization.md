@@ -1,4 +1,4 @@
-# Trellis.Authorization — API Reference
+﻿# Trellis.Authorization — API Reference
 
 **Package:** `Trellis.Authorization`
 **Namespace:** `Trellis.Authorization`
@@ -188,7 +188,9 @@ A single loader shared across every command that authorizes against the same `TR
 using Trellis;
 using Trellis.Authorization;
 
-public sealed record DeleteOrderCommand(string OrderId) : ICommand<Result>, IAuthorize
+public sealed partial class OrderId : RequiredGuid<OrderId>;
+
+public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions { get; } = ["orders:delete"];
 }
@@ -196,29 +198,39 @@ public sealed record DeleteOrderCommand(string OrderId) : ICommand<Result>, IAut
 
 ### Resource-based authorization with a shared loader
 
+> **Preferred in generated services.** Use `IIdentifyResource<TResource, TId>` + `SharedResourceLoaderById<TResource, TId>` for resource authorization. A per-command `IResourceLoader<TMessage, TResource>` is an escape hatch for request-scoped state or command-specific load logic.
+
 ```csharp
 using Trellis;
 using Trellis.Authorization;
 
-public sealed record Order(string Id, string OwnerId);
+public sealed partial class OrderId : RequiredGuid<OrderId>;
+public sealed partial class ActorId : RequiredString<ActorId>;
 
-public sealed record CancelOrderCommand(string OrderId)
-    : ICommand<Result>, IAuthorizeResource<Order>, IIdentifyResource<Order, string>
+public sealed record Order(OrderId Id, ActorId OwnerId);
+
+public sealed record CancelOrderCommand(OrderId OrderId)
+    : ICommand<Result>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
 {
-    public string GetResourceId() => OrderId;
+    public OrderId GetResourceId() => OrderId;
 
     public IResult Authorize(Actor actor, Order order) =>
         Result.Ensure(
-            actor.IsOwner(order.OwnerId) || actor.HasPermission("orders:cancel-any"),
+            order.OwnerId.Value == actor.Id || actor.HasPermission("orders:cancel-any"),
             new Error.Forbidden("orders.cancel")
                 { Detail = "Only the owner can cancel this order." });
 }
 
-public sealed class OrderResourceLoader(IOrderRepository repo)
-    : SharedResourceLoaderById<Order, string>
+public interface IOrderRepository
 {
-    public override Task<Result<Order>> GetByIdAsync(string id, CancellationToken ct) =>
-        repo.GetByIdAsync(id, ct);
+    Task<Maybe<Order>> GetByIdAsync(OrderId id, CancellationToken ct);
+}
+
+public sealed class OrderResourceLoader(IOrderRepository repo)
+    : SharedResourceLoaderById<Order, OrderId>
+{
+    public override async Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
+        (await repo.GetByIdAsync(id, ct)).ToResult(new Error.NotFound(ResourceRef.For<Order>(id)));
 }
 ```
 
