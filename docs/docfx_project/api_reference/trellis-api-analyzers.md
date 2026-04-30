@@ -29,6 +29,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
 | `TRLS020` | Warning | Composite value object DTO property is missing JSON converter | Composite `[OwnedEntity]` value objects exposed through request/response DTO surfaces must carry `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` so JSON binding round-trips through `TryCreate`. |
 | `TRLS021` | Warning | EF configuration duplicates Trellis conventions | Flags `HasConversion`, `OwnsOne`, and `Ignore` calls on `Maybe<T>` or `[OwnedEntity]` properties when `ApplyTrellisConventions(...)` / `ApplyTrellisConventionsFor<TContext>()` is wired. Remove the manual mapping and let Trellis conventions own the property. |
+| `TRLS022` | Warning | `[OwnedEntity]` property uses init-only setter | Flags `{ get; init; }` properties on classes annotated with `[OwnedEntity]`. EF Core materializes owned entities through a generator-emitted private parameterless constructor; init-only setters are not covered by Trellis tests today and round-trip behavior is not guaranteed. Use `{ get; private set; }`. |
 | `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
 | `TRLS032` | Error | `MinimumLength` exceeds `MaximumLength` | Emitted by the Primitives source generator when a `[StringLength]` attribute has `MinimumLength > MaximumLength`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN002`)* |
 | `TRLS033` | Error | `Range` minimum exceeds maximum | Emitted by the Primitives source generator when a `[Range]` attribute on `int`/`long`/`decimal` has `Min > Max`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN003`)* |
@@ -76,6 +77,7 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `DefaultResultOrMaybe` | `TRLS019` | `DefaultResultOrMaybeAnalyzer` |
 | `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | `CompositeValueObjectDtoConverterAnalyzer` |
 | `RedundantEfConfiguration` | `TRLS021` | `RedundantEfConfigurationAnalyzer` |
+| `OwnedEntityInitOnlyProperty` | `TRLS022` | `OwnedEntityInitOnlyPropertyAnalyzer` |
 | `UnsupportedRequiredBaseType` | `TRLS031` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `InvalidStringLengthRange` | `TRLS032` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `InvalidRangeMinExceedsMax` | `TRLS033` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
@@ -111,6 +113,7 @@ The public static class `Trellis.Analyzers.DiagnosticDescriptors` exposes one `p
 | `DefaultResultOrMaybe` | `TRLS019` | Warning | Trellis.Result |
 | `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | Warning | Trellis.Asp |
 | `RedundantEfConfiguration` | `TRLS021` | Warning | Trellis.EntityFrameworkCore |
+| `OwnedEntityInitOnlyProperty` | `TRLS022` | Warning | Trellis.EntityFrameworkCore |
 
 > **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS039`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
 
@@ -324,6 +327,13 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
   - `builder.OwnsOne(e => e.OwnedEntityValueObject)`
   - `builder.Ignore(e => e.MaybeOrOwnedEntityProperty)`
 - Targets `Maybe<T>` and types annotated with `Trellis.EntityFrameworkCore.OwnedEntityAttribute`.
+- No code fix.
+
+#### `OwnedEntityInitOnlyPropertyAnalyzer` — `TRLS022`
+- Activates only when the compilation references `Trellis.EntityFrameworkCore.OwnedEntityAttribute`.
+- Flags property declarations with an `init` accessor whose containing class is annotated with `[OwnedEntity]`.
+- Diagnostic anchors at the `init` keyword and includes the property name and class name.
+- Recommends `{ get; private set; }`, the supported and tested shape for owned-entity properties materialized through the generator-emitted parameterless constructor.
 - No code fix.
 
 ## Code fix providers

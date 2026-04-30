@@ -14,7 +14,7 @@
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS021</c> range are emitted by the
+/// IDs in the <c>TRLS001</c>–<c>TRLS022</c> range are emitted by the
 /// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS039</c>
 /// range are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
@@ -97,6 +97,9 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS021 — EF configuration duplicates Trellis conventions for <c>Maybe&lt;T&gt;</c> or <c>[OwnedEntity]</c>.</summary>
     public const string RedundantEfConfiguration = "TRLS021";
+
+    /// <summary>TRLS022 — <c>[OwnedEntity]</c> property uses init-only setter; use <c>{ get; private set; }</c> instead.</summary>
+    public const string OwnedEntityInitOnlyProperty = "TRLS022";
 
     // ---- Generator IDs (Trellis.Core.Generator / Trellis.EntityFrameworkCore.Generator) ----
     // Renumbered from TRLSGEN### to TRLS###. Mapping:

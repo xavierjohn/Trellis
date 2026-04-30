@@ -299,4 +299,19 @@ public static class DiagnosticDescriptors
         description: "When ApplyTrellisConventions or ApplyTrellisConventionsFor<TContext>() is wired, manual HasConversion, OwnsOne, or Ignore configuration for Maybe<T> and [OwnedEntity] properties can override or conflict with Trellis EF conventions. " +
                      "Remove the redundant mapping so the convention-generated storage and ownership model stay authoritative.",
         helpLinkUri: HelpLinkBase + "TRLS021");
+
+    /// <summary>
+    /// TRLS022: [OwnedEntity] property uses init-only setter; use { get; private set; } instead.
+    /// </summary>
+    public static readonly DiagnosticDescriptor OwnedEntityInitOnlyProperty = new(
+        id: TrellisDiagnosticIds.OwnedEntityInitOnlyProperty,
+        title: "[OwnedEntity] property uses init-only setter",
+        messageFormat: "Property '{0}' on [OwnedEntity] type '{1}' uses an init-only setter. Use '{{ get; private set; }}' so EF Core can populate it during materialization through the generator-emitted parameterless constructor.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "[OwnedEntity] types are materialized by EF Core through a generator-emitted private parameterless constructor. " +
+                     "Init-only setters on [OwnedEntity] properties are not covered by Trellis tests today and round-trip behavior is not guaranteed. " +
+                     "Use '{ get; private set; }' as the supported, tested shape.",
+        helpLinkUri: HelpLinkBase + "TRLS022");
 }
