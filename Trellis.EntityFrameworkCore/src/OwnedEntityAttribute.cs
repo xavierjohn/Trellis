@@ -16,7 +16,7 @@
 /// <strong>Note — init-only properties.</strong> <c>{ get; init; }</c> on properties of
 /// <c>[OwnedEntity]</c> types is not covered by Trellis tests today and is therefore not
 /// guaranteed to round-trip. Use <c>{ get; private set; }</c>, which is the supported shape.
-/// A future analyzer is planned to enforce this at compile time.
+/// The <c>TRLS022</c> analyzer flags <c>{ get; init; }</c> properties on <c>[OwnedEntity]</c> types.
 /// </para>
 /// </remarks>
 /// <example>
