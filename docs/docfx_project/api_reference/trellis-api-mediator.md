@@ -307,6 +307,7 @@ services.AddScoped<IActorProvider, StaticActorProvider>();
 services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
 services.AddTrellisBehaviors();
 services.AddResourceAuthorization<GetOrderQuery, Order, Result<Order>>();
+services.AddSharedResourceLoader<GetOrderQuery, Order, OrderId>();
 
 var behaviorOrder = Trellis.Mediator.ServiceCollectionExtensions.PipelineBehaviors;
 Console.WriteLine(string.Join(", ", behaviorOrder.Select(type => type.Name)));

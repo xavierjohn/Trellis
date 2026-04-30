@@ -311,10 +311,10 @@ var app = builder.Build();
 
 app.MapGet("/orders/{id:guid}", async (Guid id, IMediator mediator, CancellationToken ct) =>
 {
-    Result<OrderId> orderId = OrderId.TryCreate(id, nameof(id));
-    if (!orderId.IsSuccess) return orderId.Error.ToHttpResponse();
+    if (!OrderId.TryCreate(id, nameof(id)).TryGetValue(out var orderId, out var idError))
+        return idError.ToHttpResponse();
 
-    Result<Order> result = await mediator.Send(new GetOrderQuery(orderId.Value), ct);
+    Result<Order> result = await mediator.Send(new GetOrderQuery(orderId), ct);
 
     return result.ToHttpResponse(opts => opts
         .WithETag(o => o.ETag)                         // strong ETag from aggregate
@@ -346,10 +346,10 @@ public sealed class OrdersController(IMediator mediator) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<OrderDto>> Get(Guid id, CancellationToken ct)
     {
-        Result<OrderId> orderId = OrderId.TryCreate(id, nameof(id));
-        if (!orderId.IsSuccess) return orderId.Error.ToHttpResponse().AsActionResult<OrderDto>();
+        if (!OrderId.TryCreate(id, nameof(id)).TryGetValue(out var orderId, out var idError))
+            return idError.ToHttpResponse().AsActionResult<OrderDto>();
 
-        Result<Order> result = await mediator.Send(new GetOrderQuery(orderId.Value), ct);
+        Result<Order> result = await mediator.Send(new GetOrderQuery(orderId), ct);
 
         return result
             .ToHttpResponse(
@@ -409,6 +409,7 @@ app.MapGet("/blobs/{id:guid}", async (Guid id, HttpRequest req, IBlobRepository 
 using Trellis;
 using Trellis.Asp.Authorization;
 using Trellis.Authorization;
+using Trellis.Primitives;
 
 public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result>, IAuthorize
 {
