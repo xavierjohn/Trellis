@@ -226,7 +226,7 @@ The `Examples/` folder was rewritten end-to-end so every kept sample passes the 
 
 #### Trellis.Analyzers - NEW Package! 🎉
 
-A comprehensive suite of 18 Roslyn analyzers to enforce Railway Oriented Programming best practices at compile time:
+A comprehensive suite of Roslyn analyzers to enforce Railway Oriented Programming best practices at compile time:
 
 **Safety Rules (Warnings):**
 - **TRLS001**: Detect unhandled Result return values
@@ -240,14 +240,12 @@ A comprehensive suite of 18 Roslyn analyzers to enforce Railway Oriented Program
 - **TRLS014**: Detect async lambda used with sync method (Map instead of MapAsync)
 - **TRLS015**: Don't throw exceptions in Result chains (defeats ROP purpose)
 - **TRLS016**: Empty error messages provide no debugging context
-- **TRLS017**: Don't compare Result/Maybe to null (they're structs)
 - **TRLS018**: Unsafe `.Value` access in LINQ without filtering first
 
 **Best Practice Rules (Info):**
 - **TRLS002**: Suggest `Bind` instead of `Map` when lambda returns Result
 - **TRLS005**: *(removed in V2)* — superseded by C# exhaustive `switch` on the closed `Error` ADT
 - **TRLS010**: Suggest specific error types instead of base `Error` class
-- **TRLS012**: Suggest `Result.Combine()` for multiple Result checks
 - **TRLS013**: Suggest `GetValueOrDefault`/`Match` instead of ternary operator
 
 **Benefits:**

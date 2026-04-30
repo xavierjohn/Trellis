@@ -6,6 +6,31 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
+## Use this file when
+
+- A build emits a `TRLS###` diagnostic and you need the exact meaning, likely fix, or suppression constant.
+- You are writing docs, templates, or examples and want analyzer-backed anti-pattern guidance.
+- You need to map source-generator diagnostics (`TRLS031`+) to the owning generator.
+
+## Patterns Index
+
+| Symptom | Canonical fix | Diagnostic |
+|---|---|---|
+| Result return value ignored | Return, await, match, bind, or assign the result | `TRLS001` |
+| Lambda returns `Result<T>` inside `Map` | Use `Bind` / `BindAsync` | `TRLS002` |
+| `Maybe<T>.Value` access can throw | Gate with `HasValue`, use `TryGetValue`, convert to `Result`, or use EF helpers in queries | `TRLS003`, `TRLS013` |
+| `Result<Result<T>>` or `Maybe<Maybe<T>>` appears | Use `Bind` / flatten the operation | `TRLS004`, `TRLS007` |
+| Sync ROP method receives async lambda | Use the `*Async` variant | `TRLS009` |
+| EF query over `Maybe<T>` uses unsafe value/sentinel access | Use `MaybeQueryableExtensions.WhereXxx` or register `AddTrellisInterceptors()` | `TRLS013` |
+| Direct `SaveChangesAsync` in non-UoW repository code | Use `SaveChangesResultAsync` / `SaveChangesResultUnitAsync`, or let `AddTrellisUnitOfWork<TContext>()` own commits | `TRLS015` |
+| EF index points at a `Maybe<T>` CLR property | Use `HasTrellisIndex(...)` | `TRLS016` |
+| Value object uses `System.ComponentModel.DataAnnotations.StringLength` / `Range` | Use Trellis attributes from `namespace Trellis` | `TRLS017` |
+| `[OwnedEntity]` has init-only properties | Use `{ get; private set; }` for EF-owned value objects | `TRLS022` |
+
+## Suppression guidance
+
+Prefer fixing the code over suppressing diagnostics. When a suppression is genuinely intentional, use `TrellisDiagnosticIds` constants instead of string literals and include a justification.
+
 ## Diagnostics
 
 | ID | Severity | Title | Description |
@@ -19,7 +44,6 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | `TRLS008` | Info | Consider using Result.Combine | When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result. |
 | `TRLS009` | Warning | Use async method variant for async lambda | When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited. |
 | `TRLS010` | Warning | Don't throw exceptions in Result chains | Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. Return Result.Fail<T>() to signal errors and keep the error on the failure track. |
-| `TRLS012` | Warning | Don't compare Result or Maybe to null | Result<T> and Maybe<T> are structs and cannot be null. Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe. |
 | `TRLS013` | Warning | Unsafe access to Maybe.Value in LINQ projection | `.Value` on `Maybe<T>` inside Select-family LINQ projections (`Select`/`SelectMany`/`OrderBy*`/`ThenBy*`/`GroupBy`/`ToDictionary`/`ToLookup`) throws for None elements unless an earlier `.Where(x => x.HasValue)` makes the access safe. For EF Core IQueryable predicates over a `Maybe<T>` property, either register `AddTrellisInterceptors()` (which rewrites `.HasValue`/`.Value`/`GetValueOrDefault(d)` into `EF.Property`/null-checks/`COALESCE`) or use `Trellis.EntityFrameworkCore.MaybeQueryableExtensions` (`WhereHasValue`/`WhereNone`/`WhereEquals`/`WhereLessThan`/`WhereLessThanOrEqual`/`WhereGreaterThan`/`WhereGreaterThanOrEqual`) explicitly. |
 | `TRLS014` | Error | Combine chain exceeds maximum supported tuple size | Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. Group related fields into intermediate value objects or sub-results, then combine those groups. |
 | `TRLS015` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | In non-UoW contexts, direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions; use `SaveChangesResultAsync` (returns `Result<int>`) or `SaveChangesResultUnitAsync` (returns the non-generic `Result`). Under `AddTrellisUnitOfWork<TContext>` the `TransactionalCommandBehavior` owns commit — repositories should stage changes via DbContext APIs (Add/Update/Remove) and not invoke SaveChanges at all. |
@@ -67,7 +91,6 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `UseResultCombine` | `TRLS008` | `UseResultCombineAnalyzer` |
 | `UseAsyncMethodVariant` | `TRLS009` | `AsyncLambdaWithSyncMethodAnalyzer` |
 | `ThrowInResultChain` | `TRLS010` | `ThrowInResultChainAnalyzer` |
-| `ComparingToNull` | `TRLS012` | `ComparingToNullAnalyzer` |
 | `UnsafeMaybeValueInLinq` | `TRLS013` | `UnsafeValueInLinqAnalyzer` |
 | `CombineChainTooLong` | `TRLS014` | `CombineLimitAnalyzer` |
 | `UseSaveChangesResult` | `TRLS015` | `UseSaveChangesResultAnalyzer` |
@@ -103,7 +126,6 @@ The public static class `Trellis.Analyzers.DiagnosticDescriptors` exposes one `p
 | `UseResultCombine` | `TRLS008` | Info | Trellis.Result |
 | `UseAsyncMethodVariant` | `TRLS009` | Warning | Trellis.Result |
 | `ThrowInResultChain` | `TRLS010` | Warning | Trellis.Result |
-| `ComparingToNull` | `TRLS012` | Warning | Trellis.Result |
 | `UnsafeValueInLinq` | `TRLS013` | Warning | Trellis.Maybe |
 | `CombineChainTooLong` | `TRLS014` | Error | Trellis.Result |
 | `UseSaveChangesResult` | `TRLS015` | Warning | Trellis.EntityFrameworkCore |
@@ -231,11 +253,6 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
   - `MapOnFailure`, `MapOnFailureAsync`
   - `RecoverOnFailure`, `RecoverOnFailureAsync`
   - `DebugOnFailure`, `DebugOnFailureAsync`
-- No code fix.
-
-#### `ComparingToNullAnalyzer` — `TRLS012`
-- Flags `== null`, `!= null`, `is null`, and `is not null` when the non-null side is a Trellis `Result<T>` or `Maybe<T>`.
-- Suggests `IsSuccess` / `IsFailure` for `Result<T>` and `HasValue` / `HasNoValue` for `Maybe<T>`.
 - No code fix.
 
 #### `UnsafeValueInLinqAnalyzer` — `TRLS013`

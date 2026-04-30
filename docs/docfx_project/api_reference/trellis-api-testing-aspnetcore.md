@@ -1,10 +1,35 @@
-# Trellis.Testing.AspNetCore &mdash; API Reference
+﻿# Trellis.Testing.AspNetCore &mdash; API Reference
 
 **Package:** `Trellis.Testing.AspNetCore`  
 **Namespaces:** `Trellis.Testing.AspNetCore`, `Trellis.Testing.AspNetCore.Http`  
 **Purpose:** ASP.NET Core integration-test utilities for `WebApplicationFactory<TEntryPoint>`, dependency replacement, fake time, MSAL-backed Entra E2E tokens, and replaying `.http` files.
 
 Use this package from test projects only. It depends on `Microsoft.AspNetCore.Mvc.Testing`, EF Core, MSAL, `Trellis.Authorization`, and `Trellis.Testing`.
+
+## Use this file when
+
+- You are writing ASP.NET Core integration tests with `WebApplicationFactory<TEntryPoint>`.
+- You need to replace services, resource loaders, DB providers, time providers, or actor headers in tests.
+- You want to replay `.http` files against a test host and assert expected status/header behavior.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Create a client with `X-Test-Actor` | `factory.CreateClientWithActor(...)` | [`WebApplicationFactoryExtensions`](#webapplicationfactoryextensions) |
+| Replace an app service before the host is built | `WithWebHostBuilder(...ConfigureTestServices(s => s.ReplaceSingleton<T>(fake)))` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
+| Replace a resource loader | `services.ReplaceResourceLoader<TMessage,TResource>(...)` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
+| Swap EF provider for integration tests | `services.ReplaceDbProvider<TContext>(...)` | [`ServiceCollectionDbProviderExtensions`](#servicecollectiondbproviderextensions) |
+| Use deterministic time | `factory.WithFakeTimeProvider(...)` | [`WebApplicationFactoryTimeExtensions`](#webapplicationfactorytimeextensions) |
+| Acquire a real Entra token in gated E2E tests | `MsalTestTokenProvider` + `CreateClientWithEntraTokenAsync(...)` | [`MsalTestTokenProvider`](#msaltesttokenprovider) |
+| Replay `.http` files | `HttpFileParser.ParseFile`, `HttpFileRunner.RunAsync`, `HttpFileAssertions.AssertExpectationsMet` | [`.http` file replay helpers](#http-file-replay-helpers) |
+
+## API failure-path test checklist
+
+- Include `.http` requests for the success path and representative failure paths (`422`, `409`, `403`, `404`, and framework-level `400` when applicable).
+- Keep expected statuses close to the request with `# @expect status: ...` so replay tests and human examples stay in sync.
+- Use `CreateClientWithActor(...)` for authorization paths instead of hand-rolling actor headers.
+- Replace services through `ConfigureTestServices` before the host is built; do not mutate the service collection after `CreateClient()`.
 
 ## WebApplicationFactory helpers
 

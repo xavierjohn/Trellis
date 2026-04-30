@@ -28,6 +28,13 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 | Wrap an aggregate-store repository with `Result<T>` returns | Inherit `RepositoryBase<TAggregate, TId>` | [`RepositoryBase<TAggregate, TId>`](#repositorybasetaggregate-tid) |
 | Stage commands in a unit of work and flush once per request | `IUnitOfWork` + `EfUnitOfWork<TContext>` + `TransactionalCommandBehavior<,>` (registered via `AddTrellisUnitOfWork<TContext>()`) | [`IUnitOfWork`](#iunitofwork), [`EfUnitOfWork<TContext>`](#efunitofworktcontext), [`TransactionalCommandBehavior<TMessage, TResponse>`](#transactionalcommandbehaviortmessage-tresponse) |
 
+## Common traps
+
+- Do not hide overdue/date predicates inside repositories when the domain needs a reusable concept. Put the predicate in a `Specification<T>` and let repositories consume it.
+- For EF `IQueryable` predicates over `Maybe<T>`, prefer `MaybeQueryableExtensions.WhereXxx` helpers over sentinel `GetValueOrDefault(...)` expressions when there is a matching helper.
+- Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes only; the mediator transaction behavior commits.
+- `[OwnedEntity]` classes should be `partial` and use `{ get; private set; }` for EF-owned properties.
+
 ## Types
 
 ### `DbContextOptionsBuilderExtensions`

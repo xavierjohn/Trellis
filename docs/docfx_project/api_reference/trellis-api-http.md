@@ -8,6 +8,30 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 
 > Bare `ToResultAsync()` is strict by default: non-2xx responses become typed Trellis failures instead of remaining on the success track.
 
+## Use this file when
+
+- You are adapting `HttpClient` calls into Trellis `Result` pipelines.
+- You need optional-resource behavior where `404` means `Maybe<T>.None`.
+- You need response disposal rules for `HttpResponseMessage` when chaining status mapping and JSON reads.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Strictly fail non-2xx responses | `client.GetAsync(...).ToResultAsync()` | [`HttpResponseExtensions`](#httpresponseextensions) |
+| Map one expected status to a domain error | `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync` | [`HttpResponseExtensions`](#httpresponseextensions) |
+| Map several statuses | `ToResultAsync(status => status switch { ... })` | [Multi-status mapping](#multi-status-mapping-with-toresultasyncstatusmap) |
+| Inspect an error body before deciding | Body-aware `ToResultAsync((response, ct) => ...)` | [Body-aware mapping](#body-aware-mapping-replaces-handlefailureasynctcontext) |
+| Deserialize a required JSON body | `.ReadJsonAsync(jsonTypeInfo, ct)` | [`HttpResponseExtensions`](#httpresponseextensions) |
+| Deserialize optional JSON body | `.ReadJsonMaybeAsync(jsonTypeInfo, ct)` | [`HttpResponseExtensions`](#httpresponseextensions) |
+| Treat `404` as expected absence | `.ReadJsonOrNoneOn404Async(jsonTypeInfo, ct)` | [`HttpResponseExtensions`](#httpresponseextensions) |
+
+## Common traps
+
+- Once you call any `ReadJson*` terminal helper, the response is disposed by the helper.
+- `ReadJsonMaybeAsync` treats `204`, `205`, empty body, and JSON `null` as `Maybe.None`; invalid JSON intentionally throws.
+- Use `ReadJsonOrNoneOn404Async` for optional reads. Do not hand-roll a separate 404 branch unless you need custom behavior.
+
 ## Type
 
 ### `HttpResponseExtensions`

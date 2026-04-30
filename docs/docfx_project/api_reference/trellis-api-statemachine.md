@@ -8,6 +8,27 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
+## Use this file when
+
+- You are wrapping Stateless transitions in Trellis `Result<TState>` values.
+- You need lazy state-machine construction for aggregates materialized by an ORM.
+- You need the exact invalid-transition behavior of `FireResult`.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Fire a Stateless trigger and get a Trellis result | `stateMachine.FireResult(trigger)` | [`StateMachineExtensions`](#statemachineextensions) |
+| Store a state machine inside an aggregate | `LazyStateMachine<TState,TTrigger>` with state accessor/mutator delegates | [`LazyStateMachine<TState, TTrigger>`](#lazystatemachinetstate-ttrigger) |
+| Treat invalid transitions as validation failures | Let `FireResult` map default unhandled-trigger `InvalidOperationException` to `Error.UnprocessableContent` | [Behavioral notes](#behavioral-notes) |
+| Apply business mutations after successful transition | Call `.FireResult(...)`, then mutate/domain-event in a `.Tap(...)` or explicit success branch | [Code examples](#code-examples), [Cookbook Recipe 9](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
+
+## Common traps
+
+- Do not model triggers as raw strings when the domain already has a typed enum/value object.
+- Do not put business side effects in Stateless configuration unless they are purely transition mechanics. Keep domain mutation and events after `FireResult` succeeds.
+- `FireResult` does not make Stateless thread-safe; external synchronization is still required for concurrent use.
+
 ## Types
 
 ### `StateMachineExtensions`

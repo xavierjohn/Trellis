@@ -1,4 +1,4 @@
-; Unshipped analyzer release.
+﻿; Unshipped analyzer release.
 ; https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md
 
 ### New Rules
@@ -14,7 +14,6 @@ TRLS007  | Trellis  | Warning  | Maybe is double-wrapped (Maybe<Maybe<T>>).
 TRLS008  | Trellis  | Info     | Consider using Result.Combine to aggregate multiple results.
 TRLS009  | Trellis  | Warning  | Use the async method variant when the lambda is async.
 TRLS010  | Trellis  | Warning  | Don't throw exceptions inside Result chains; convert to Error instead.
-TRLS012  | Trellis  | Warning  | Don't compare Result or Maybe to null; use IsSuccess / HasValue.
 TRLS013  | Trellis  | Warning  | Unsafe access to Maybe.Value inside a LINQ expression.
 TRLS014  | Trellis  | Error    | Combine chain exceeds the maximum supported tuple size.
 TRLS015  | Trellis  | Warning  | Use SaveChangesResultAsync instead of SaveChangesAsync inside a Result pipeline.

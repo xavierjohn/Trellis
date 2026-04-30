@@ -68,9 +68,6 @@ public static class TrellisDiagnosticIds
     // on the closed-ADT Error type (only UnprocessableContent.ForField/
     // ForRule survived), so the analyzer never matched a real call site.
 
-    /// <summary>TRLS012 — Don't compare <c>Result</c> or <c>Maybe</c> to null.</summary>
-    public const string ComparingToNull = "TRLS012";
-
     /// <summary>TRLS013 — Unsafe access to <c>Maybe.Value</c> in LINQ expression.</summary>
     public const string UnsafeMaybeValueInLinq = "TRLS013";
 

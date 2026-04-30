@@ -6,6 +6,31 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
+## Use this file when
+
+- You are wiring Trellis result-aware behaviors into the `Mediator` pipeline.
+- You need exact command/query interfaces, validation behavior, static authorization, resource authorization, tracing/logging, or EF unit-of-work behavior.
+- You need to know which DI helper registers a behavior versus which helper registers resource loaders.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Add the standard Trellis mediator behaviors | `services.AddTrellisBehaviors()` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
+| Add validation to a message | Implement `IValidate` and register `IMessageValidator<TMessage>` or FluentValidation adapter | [`ValidationBehavior<TMessage,TResponse>`](#validationbehaviortmessage-tresponse) |
+| Add static permission authorization | Message implements `IAuthorize`; register `AddTrellisBehaviors()` | [`AuthorizationBehavior<TMessage,TResponse>`](#authorizationbehaviortmessage-tresponse) |
+| Add resource authorization with assembly scanning | `services.AddResourceAuthorization(typeof(SomeType).Assembly)` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
+| Add resource authorization explicitly | `services.AddResourceAuthorization<TMessage,TResource,TResponse>()` plus loader registration | [`ResourceAuthorizationBehavior<TMessage,TResource,TResponse>`](#resourceauthorizationbehaviortmessage-tresource-tresponse) |
+| Bridge `IIdentifyResource<TResource,TId>` to a shared loader | `services.AddSharedResourceLoader<TMessage,TResource,TId>()` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
+| Register EF unit-of-work behavior | `services.AddTrellisUnitOfWork<TContext>()` | [`Canonical pipeline order`](#canonical-pipeline-order) |
+| Keep commits inside the pipeline | Repositories stage changes; `TransactionalCommandBehavior` commits on success | [`Behavioral notes`](#behavioral-notes) |
+
+## Common traps
+
+- Explicit `AddResourceAuthorization<TMessage,TResource,TResponse>()` inserts the behavior only; it does not automatically register the shared-loader bridge.
+- `AddTrellisUnitOfWork<TContext>()` should be registered after other behavior registrations so the transaction behavior is innermost.
+- Handlers should return Trellis `Result` / `Result<T>` failures, not throw for expected business outcomes.
+
 ## Types
 
 ### AuthorizationBehavior<TMessage, TResponse>

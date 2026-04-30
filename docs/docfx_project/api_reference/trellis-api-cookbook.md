@@ -44,7 +44,9 @@ Known non-APIs and corrected assumptions:
 | Mutate `IAuthorize.RequiredPermissions` | `RequiredPermissions` is an `IReadOnlyList<string>`. |
 | `IValidate.Validate()` returns `Result` | The declared return type is `IResult`. |
 
-## Task -> recipe lookup
+## Patterns Index
+
+### Task -> recipe lookup
 
 Use this table before writing code. If a task matches a row, read that recipe first.
 
@@ -66,6 +68,20 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
 | Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
+
+### Mistake-regression routing
+
+These rows route recurring LLM lab mistakes to the most relevant reference before code is written.
+
+| If the task involves... | Read first | Why |
+|---|---|---|
+| Loading independent aggregates before creating a command result | [trellis-api-core.md](trellis-api-core.md#public-readonly-partial-struct-result) for `ParallelAsync`, then [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence) | Avoid sequential load loops when the work is independent. |
+| Overdue/date-filter queries over `Maybe<DateTime>` | [Recipe 15](#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap), then [trellis-api-efcore.md](trellis-api-efcore.md#patterns-index) | Keep a typed specification and use `MaybeQueryableExtensions` in EF queries. |
+| State transitions on an aggregate | [Recipe 9](#recipe-9--state-machine-canfire--fire-pattern-with-fireresult), then [trellis-api-statemachine.md](trellis-api-statemachine.md#patterns-index) | Keep transition methods consistent and put domain mutation after `FireResult` succeeds. |
+| Cross-aggregate mutation such as cancel/return releasing stock | [Recipe 1](#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract), [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), and [trellis-api-core.md](trellis-api-core.md#domain-driven-design) | The application handler orchestrates multiple aggregates; an aggregate mutates only itself. |
+| Result-returning ASP endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult), then [trellis-api-asp.md](trellis-api-asp.md#patterns-index) | `AddTrellisAsp()` is required for Result-to-HTTP mapping; exception middleware is not the mapper. |
+| Failure-code OpenAPI metadata or `.http` examples | [trellis-api-asp.md](trellis-api-asp.md#endpoint-checklist-for-generated-apis), [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#api-failure-path-test-checklist) | Generated APIs need failure paths, not happy-path-only docs/tests. |
+| Resource authorization guards | [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth), then [trellis-api-authorization.md](trellis-api-authorization.md#patterns-index) | Use `Result.Ensure` for owner/admin boolean guards. |
 
 ---
 

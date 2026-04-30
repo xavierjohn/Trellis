@@ -1,4 +1,4 @@
-# Trellis.FluentValidation — API Reference
+﻿# Trellis.FluentValidation — API Reference
 
 ## Header
 
@@ -9,6 +9,29 @@
   2. **Standalone helpers** — `FluentValidationResultExtensions` converts a `ValidationResult` (or runs an `IValidator<T>` synchronously/asynchronously) into a `Result<T>` failure backed by `Error.UnprocessableContent`.
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+
+## Use this file when
+
+- You want FluentValidation validators to run inside the Trellis Mediator validation behavior.
+- You need to convert a FluentValidation `ValidationResult` into `Result<T>` / `Error.UnprocessableContent`.
+- You need exact JSON Pointer normalization behavior for FluentValidation property names.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Add the FluentValidation adapter without scanning | `services.AddTrellisFluentValidation()` plus explicit `IValidator<T>` registrations | [`FluentValidationServiceCollectionExtensions`](#fluentvalidationservicecollectionextensions) |
+| Add the adapter and scan assemblies | `services.AddTrellisFluentValidation(typeof(SomeType).Assembly)` | [`FluentValidationServiceCollectionExtensions`](#fluentvalidationservicecollectionextensions) |
+| Keep AOT/trim safety | Use the parameterless adapter overload and register validators explicitly | [`FluentValidationServiceCollectionExtensions`](#fluentvalidationservicecollectionextensions) |
+| Convert `ValidationResult` to `Result<T>` | `validationResult.ToResult(value)` | [`FluentValidationResultExtensions`](#fluentvalidationresultextensions) |
+| Validate a value outside Mediator | `validator.ValidateToResult(value)` / `ValidateToResultAsync(...)` | [`FluentValidationResultExtensions`](#fluentvalidationresultextensions) |
+| Understand nested/indexed field paths | FluentValidation names are normalized to RFC 6901 JSON Pointers | [Pointer normalization](#pointer-normalization-rfc-6901) |
+
+## Common traps
+
+- `AddTrellisFluentValidation()` does not add a second mediator pipeline behavior; it registers `IMessageValidator<TMessage>` so the existing `ValidationBehavior` can aggregate failures.
+- The assembly-scanning overload is intentionally not AOT/trim-safe. Use explicit registrations for AOT-sensitive apps.
+- Keep primitive-to-value-object parsing at the transport seam; validators should normally validate already-shaped command/value-object inputs.
 
 ## Types
 
@@ -44,7 +67,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>(
 | --- | --- | --- |
 | `public ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)` | `ValueTask<IResult>` | Runs every injected `IValidator<TMessage>` against `message`. Returns `Result.Ok()` when all validators pass (or none are registered — the empty injected sequence allocates no violations). Otherwise aggregates every `ValidationFailure` into a single `new Error.UnprocessableContent(EquatableArray.Create(violations))`, where `violations` is the collected `FieldViolation` set. Each FluentValidation failure becomes a `FieldViolation(new InputPointer(pointerPath), reasonCode) { Detail = failure.ErrorMessage }`. `pointerPath` is derived by `JsonPointerNormalizer.ToJsonPointer` from the FV property name; `reasonCode` defaults to `"validation.error"` when `failure.ErrorCode` is null/whitespace. Root-level failures (whitespace `PropertyName`) use `typeof(TMessage).Name`. |
 
-**Pointer normalization (RFC 6901)**
+### Pointer normalization (RFC 6901)
 
 FluentValidation property names are converted to JSON Pointers so they round-trip through `InputPointer`:
 

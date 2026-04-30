@@ -6,6 +6,30 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
+## Use this file when
+
+- You are modeling actors, permissions, forbidden permissions, or actor attributes without ASP.NET dependencies.
+- You are implementing static permission authorization through `IAuthorize`.
+- You are implementing resource-based authorization through `IAuthorizeResource<TResource>` and want the canonical guard shape.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Represent the current user/service | `Actor` | [`Actor`](#actor) |
+| Check granted permissions with explicit deny override | `actor.HasPermission(...)`, `HasAllPermissions(...)`, `HasAnyPermission(...)` | [`Actor`](#actor) |
+| Resolve actor for a request/message | `IActorProvider.GetCurrentActorAsync(...)` | [`IActorProvider`](#iactorprovider) |
+| Require static permissions on a message | Implement `IAuthorize.RequiredPermissions` | [`IAuthorize`](#iauthorize) |
+| Authorize against a loaded resource | Implement `IAuthorizeResource<TResource>.Authorize(actor, resource)` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource) |
+| Write owner/admin resource guards | `Result.Ensure(condition, new Error.Forbidden(...))` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource), [Core `Result.Ensure`](trellis-api-core.md#public-readonly-partial-struct-result) |
+| Identify a resource by id for shared loading | `IIdentifyResource<TResource, TId>` | [`IIdentifyResource<TResource, TId>`](#iidentifyresourcetresource-tid) |
+
+## Common traps
+
+- `Trellis.Authorization` is domain/application-layer only. ASP.NET actor providers are documented in [trellis-api-asp.md](trellis-api-asp.md#namespace-trellisaspauthorization).
+- Prefer `Result.Ensure` for boolean authorization guards so generated code uses the same ROP primitive as the rest of Trellis.
+- Do not mutate `RequiredPermissions`; expose the complete permission list as an immutable/read-only collection.
+
 ## Types
 
 ### Namespace `Trellis.Authorization`
