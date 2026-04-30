@@ -6,6 +6,28 @@
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
+## Patterns Index
+
+Use this table to find the canonical Trellis API for the most common EF Core tasks. Search this section first before writing custom expressions over `Maybe<T>` properties or hand-rolled `SaveChangesAsync` wrappers — the helpers below are interceptor-aware and analyzer-checked.
+
+| Goal | Use this | See |
+|---|---|---|
+| Filter an `IQueryable<T>` by a `Maybe<TInner>` property (`<`, `<=`, `>`, `>=`, `==`, `HasValue`, `None`) | `MaybeQueryableExtensions.WhereLessThan` / `WhereLessThanOrEqual` / `WhereGreaterThan` / `WhereGreaterThanOrEqual` / `WhereEquals` / `WhereHasValue` / `WhereNone` | [`MaybeQueryableExtensions`](#maybequeryableextensions) |
+| Order an `IQueryable<T>` by a `Maybe<TInner>` property | `OrderByMaybe` / `OrderByMaybeDescending` / `ThenByMaybe` / `ThenByMaybeDescending` | [`MaybeQueryableExtensions`](#maybequeryableextensions) |
+| Make `Maybe<T>.GetValueOrDefault(d)` and similar expressions translate in EF queries (alternative to the helpers above when you must write a raw expression) | Register `AddTrellisInterceptors()` on the `DbContextOptionsBuilder`. The `MaybeQueryInterceptor` rewrites supported `Maybe<T>` calls to SQL. Prefer the `WhereXxx` helpers above when available. | [`DbContextOptionsBuilderExtensions`](#dbcontextoptionsbuilderextensions), [`MaybeQueryInterceptor`](#maybequeryinterceptor) |
+| Index a `Maybe<T>` property (avoids TRLS016 by mapping to the storage member) | `entityTypeBuilder.HasTrellisIndex(x => x.M)` (or composite `x => new { x.M, x.Other }`) | [`MaybeEntityTypeBuilderExtensions`](#maybeentitytypebuilderextensions) |
+| Save changes and get a `Result<int>` / `Result` instead of throwing | `db.SaveChangesResultAsync()` / `db.SaveChangesResultUnitAsync()` (analyzer TRLS015 enforces in non-UoW contexts) | [`DbContextExtensions`](#dbcontextextensions) |
+| Update a `Maybe<T>` property via EF Core `ExecuteUpdate` | `MaybeUpdateExtensions.SetMaybeValue(...)` (set Some) / `SetMaybeNone(...)` (clear) | [`MaybeUpdateExtensions`](#maybeupdateextensions) |
+| Mark a composite value object as EF-owned (replaces `OwnsOne`/`OwnsMany` boilerplate) | `[OwnedEntity]` on the value-object class. Init-only setters are flagged by TRLS022 — use `{ get; private set; }`. | [`OwnedEntityAttribute`](#ownedentityattribute) |
+| Wire Trellis EF conventions in `ConfigureConventions` (preferred — compile-time, no reflection) | `configurationBuilder.ApplyTrellisConventionsFor<TContext>()` (source-generated) | [`GeneratedTrellisConventions`](#generatedtrellisconventions-source-generated) |
+| Wire Trellis EF conventions via runtime assembly scan (fallback) | `configurationBuilder.ApplyTrellisConventions(typeof(TContext).Assembly)` | [`ModelConfigurationBuilderExtensions`](#modelconfigurationbuilderextensions) |
+| Wire `MaybeQueryInterceptor`, `EntityTimestampInterceptor`, ETag, and scalar-value interceptors in one call | `optionsBuilder.AddTrellisInterceptors()` (overloads accept a `TimeProvider`) | [`DbContextOptionsBuilderExtensions`](#dbcontextoptionsbuilderextensions) |
+| Inspect / debug discovered `Maybe<T>` mappings | `dbContext.GetMaybePropertyMappings()` / `dbContext.ToMaybeMappingDebugString()` | [`MaybeModelExtensions`](#maybemodelextensions) |
+| Project an aggregate to a DTO and unwrap `Maybe<T>` safely (avoids TRLS013) | Filter with `.Where(x => x.M.HasValue)` *before* the projection (TRLS013 recognises this exact prior-Where shape). For EF query composition over `Maybe<T>`, prefer `MaybeQueryableExtensions.WhereHasValue` / `WhereXxx` so the SQL is correct, then project. | [`MaybeQueryableExtensions`](#maybequeryableextensions) |
+| Classify an EF/DB exception | `DbExceptionClassifier.IsDuplicateKey(ex)` / `IsForeignKeyViolation(ex)` / `ExtractConstraintDetail(ex)`. To map DB exceptions to a Trellis `Error` automatically, use `db.SaveChangesResultAsync()` / `SaveChangesResultUnitAsync()` instead of catching and classifying by hand. | [`DbExceptionClassifier`](#dbexceptionclassifier), [`DbContextExtensions`](#dbcontextextensions) |
+| Wrap an aggregate-store repository with `Result<T>` returns | Inherit `RepositoryBase<TAggregate, TId>` | [`RepositoryBase<TAggregate, TId>`](#repositorybasetaggregate-tid) |
+| Stage commands in a unit of work and flush once per request | `IUnitOfWork` + `EfUnitOfWork<TContext>` + `TransactionalCommandBehavior<,>` (registered via `AddTrellisUnitOfWork<TContext>()`) | [`IUnitOfWork`](#iunitofwork), [`EfUnitOfWork<TContext>`](#efunitofworktcontext), [`TransactionalCommandBehavior<TMessage, TResponse>`](#transactionalcommandbehaviortmessage-tresponse) |
+
 ## Types
 
 ### `DbContextOptionsBuilderExtensions`
