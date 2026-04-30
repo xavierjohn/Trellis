@@ -1,10 +1,33 @@
-# Trellis.ServiceDefaults API Reference
+﻿# Trellis.ServiceDefaults API Reference
 
 **Package:** `Trellis.ServiceDefaults`  
 **Namespace:** `Trellis.ServiceDefaults`  
 **Purpose:** Opinionated composition builder for API/composition-root projects that want Trellis integration modules applied in the canonical order.
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring-playbook-addtrellis-composition-builder) — composition-root recipe.
+
+## Use this file when
+
+- You are wiring a composition root and want Trellis modules applied in the canonical order.
+- You want one fluent builder for ASP, Mediator, FluentValidation, resource authorization, actor provider, and EF unit-of-work registration.
+- You need to know what `AddTrellis(...)` deliberately does not register.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Enable ASP Result-to-HTTP mapping | `services.AddTrellis(o => o.UseAsp())` | [`TrellisServiceBuilder`](#trellisservicebuilder), [ASP](trellis-api-asp.md) |
+| Add standard mediator behaviors | `.UseMediator()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator](trellis-api-mediator.md) |
+| Add FluentValidation adapter/scanning | `.UseFluentValidation(typeof(Program).Assembly)` or `.UseFluentValidation()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [FluentValidation](trellis-api-fluentvalidation.md) |
+| Add resource authorization | `.UseResourceAuthorization(...)` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator resource authorization](trellis-api-mediator.md) |
+| Register an actor provider | `.UseClaimsActorProvider()`, `.UseEntraActorProvider()`, or `.UseDevelopmentActorProvider()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [ASP actor providers](trellis-api-asp.md#namespace-trellisaspauthorization) |
+| Add EF unit-of-work behavior | `.UseEntityFrameworkUnitOfWork<TContext>()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator UoW](trellis-api-mediator.md) |
+
+## Common traps
+
+- `AddTrellis(...)` does not register `DbContext`, Mediator handlers, route constraints, or app-specific validators.
+- `UseEntityFrameworkUnitOfWork<TContext>()` is applied last so transaction commit remains innermost in the mediator pipeline.
+- If you only need one module, direct package-specific registration remains valid; the builder is for composition-root clarity.
 
 ## Types
 

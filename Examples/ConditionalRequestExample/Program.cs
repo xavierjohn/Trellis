@@ -30,6 +30,7 @@ using (var scope = app.Services.CreateScope())
 
 app.MapOptionalETagRoutes();
 app.MapRequiredETagRoutes();
+app.MapOrderRoutes();
 app.Run();
 
 // Exposed so WebApplicationFactory<Program> can host the app in integration tests.

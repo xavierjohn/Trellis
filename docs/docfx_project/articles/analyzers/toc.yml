@@ -18,8 +18,6 @@
   href: TRLS009.md
 - name: TRLS010 - Don't throw in Result chains
   href: TRLS010.md
-- name: TRLS012 - Don't compare to null
-  href: TRLS012.md
 - name: TRLS013 - Unsafe Maybe.Value in LINQ
   href: TRLS013.md
 - name: TRLS014 - Combine chain too long

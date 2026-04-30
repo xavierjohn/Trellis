@@ -8,6 +8,38 @@ The single supported response verb is `result.ToHttpResponse(...)`. It returns `
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
+## Use this file when
+
+- You are wiring ASP.NET Core endpoints/controllers that return Trellis `Result`, `Result<T>`, `WriteOutcome<T>`, or `Page<T>`.
+- You need the exact response-mapping verb, status-code behavior, Problem Details mapping, ETag/range/preference handling, actor-provider setup, scalar value-object binding, or route constraints.
+- You are implementing API surface polish: failure response metadata, versioned `Location` headers, or tests proving `Error.UnprocessableContent` maps to 422.
+
+## Patterns Index
+
+| Goal | Canonical API / action | See |
+|---|---|---|
+| Enable Trellis Result-to-HTTP mapping | Call `builder.Services.AddTrellisAsp()` or `services.AddTrellis(o => o.UseAsp())` in the composition root. Exception middleware is only a 500 fallback; it does not map `Result` failures. | [`ServiceCollectionExtensions`](#servicecollectionextensions), [ServiceDefaults](trellis-api-servicedefaults.md) |
+| Return a Minimal API result | `return result.ToHttpResponse(...)` | [`HttpResponseExtensions`](#httpresponseextensions) |
+| Return an MVC typed action result | Convert first, then adapt: `return result.ToHttpResponse(...).AsActionResult<T>()` or `return await result.ToHttpResponseAsync(...).AsActionResultAsync<T>()` | [`ActionResultAdapterExtensions`](#actionresultadapterextensions) |
+| Configure 201 Created | `.ToHttpResponse(o => o.Created(...))`, `.CreatedAtRoute(...)`, or `.CreatedAtAction(...)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
+| Generate versioned `Location` headers | Include the query API version in `CreatedAtRoute` route values, for example `["api-version"] = "2026-11-12"`. | [`CreatedAtRoute`](#httpresponseoptionsbuildertdomain) |
+| Map failure codes globally | Configure `TrellisAspOptions.ErrorStatusCodeMap` through `AddTrellisAsp(...)` | [`TrellisAspOptions`](#trellisaspoptions) |
+| Override failure mapping for one endpoint | `.WithErrorMapping(...)` / `.WithErrorMapping<TError>(statusCode)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
+| Document endpoint failure codes | Add ASP.NET response metadata for every spec-listed failure status (`422`, `409`, `403`, `404`, etc.) in addition to happy-path metadata. | [Code examples](#code-examples) |
+| Add ETag / conditional GET | `.WithETag(...)`, `.WithLastModified(...)`, `.EvaluatePreconditions()` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`ETagHelper`](#etaghelper) |
+| Honor `Prefer: return=minimal` | `.HonorPrefer()` on write responses | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
+| Return paginated list responses | `Result<Page<T>>.ToHttpResponse(nextUrlBuilder, bodySelector, ...)` | [`PagedResponse<TResponse>`](#pagedresponsetresponse) |
+| Resolve actors from requests | `AddClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
+| Bind scalar value objects from routes/query/body | `AddTrellisAsp()` plus route constraints / validation middleware as needed | [`Trellis.Asp.ModelBinding`](#namespace-trellisaspmodelbinding), [`Trellis.Asp.Validation`](#namespace-trellisaspvalidation) |
+
+## Endpoint checklist for generated APIs
+
+- Composition root calls `AddTrellisAsp()` or `UseAsp()`.
+- Every endpoint that returns a Trellis `Result` ultimately calls `ToHttpResponse` / `AsActionResult`.
+- OpenAPI metadata includes the success code and every failure code listed by the product spec.
+- `201 Created` endpoints include a usable `Location` header. Under query-string API versioning, include `api-version` in route values or the literal location.
+- Integration tests include at least one business-validation failure that asserts `422` Problem Details; do not rely on exception middleware to prove Result mapping.
+
 ## Types
 
 ### Namespace `Trellis.Asp`

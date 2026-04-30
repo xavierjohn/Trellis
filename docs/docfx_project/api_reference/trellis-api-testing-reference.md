@@ -8,6 +8,30 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 
 > **ASP.NET Core integration test helpers** (WebApplicationFactory, DI replacement, fake time, MSAL tokens, and `.http` replay) are in a separate package: [`Trellis.Testing.AspNetCore`](trellis-api-testing-aspnetcore.md).
 
+## Use this file when
+
+- You are writing unit/handler/domain tests for Trellis `Result`, `Maybe`, errors, or mediator handlers.
+- You need FluentAssertions extensions for success/failure/error-shape assertions.
+- You need test-only unwrap helpers, fake repositories, or test actor providers.
+
+## Patterns Index
+
+| Goal | Canonical API / pattern | See |
+|---|---|---|
+| Assert a generic result succeeded | `result.Should().BeSuccess()` / `.HaveValue(...)` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
+| Assert a result failed with a specific error case | `result.Should().BeFailureOfType<TError>()` | [`ResultAssertions<TValue>`](#resultassertionstvalue), [`NonGenericResultAssertions`](#nongenericresultassertions) |
+| Assert error code/detail | `.HaveErrorCode(...)`, `.HaveErrorDetail(...)`, `.HaveErrorDetailContaining(...)` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
+| Extract success value in tests only | `result.Unwrap()` | [Usage notes](#usage-notes) |
+| Extract error in tests only | `result.UnwrapError()` | [Usage notes](#usage-notes) |
+| Provide an actor in handler tests | `TestActorProvider` | [`TestActorProvider`](#testactorprovider) |
+| Stub repository behavior | `FakeRepository<TAggregate,TId>` | [`FakeRepository<TAggregate,TId>`](#fakerepositorytaggregate-tid) |
+
+## Common traps
+
+- `Unwrap()` and `UnwrapError()` are test helpers. Do not copy them into production code or documentation snippets for application logic.
+- Test both the success path and the expected error branch; a compiling handler that never asserts failure semantics can still miss Trellis behavior.
+- ASP.NET Core integration helpers are in [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md), not this package.
+
 ## Types
 
 ### Namespace `Trellis.Testing`

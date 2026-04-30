@@ -8,6 +8,39 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 
 ---
 
+## Use this file when
+
+- You need exact signatures for `Result`, `Result<T>`, `Maybe<T>`, `Error`, `WriteOutcome<T>`, `Page<T>`, DDD primitives, specifications, or custom primitive base classes.
+- You are composing domain/application flows and need the canonical ROP operation: `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `ParallelAsync`, `AsTask`, or `AsValueTask`.
+- You are defining aggregates, entities, domain events, specifications, or source-generated `Required*<TSelf>` value objects.
+
+## Patterns Index
+
+Use this table before searching the long type catalog.
+
+| Goal | Canonical API | See |
+|---|---|---|
+| Return success/failure without payload | Non-generic `Result.Ok()` / `Result.Fail(error)` | [`Result`](#public-readonly-partial-struct-result) |
+| Return success/failure with payload | `Result.Ok(value)` / `Result.Fail<T>(error)` | [`Result<TValue>`](#public-readonly-partial-struct-resulttvalue--iresulttvalue-iequatableresulttvalue-ifailurefactoryresulttvalue) |
+| Turn a boolean guard into a result | `Result.Ensure(condition, error)` or `.Ensure(...)` in a chain | [`Result`](#public-readonly-partial-struct-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync-resultensureextensions-resultensureextensionsasync) |
+| Start independent async result-producing operations concurrently | `Result.ParallelAsync(...)`, then combine the returned tasks | [`Result`](#public-readonly-partial-struct-result) |
+| Combine multiple validated fields | `Result.Combine(...)` or chained `.Combine(...)`, then `.Map(...)` / `.Bind(...)` | [`Result pipeline extension families`](#result-pipeline-extension-families) |
+| Adapt an already-computed result to async APIs | `.AsTask()` / `.AsValueTask()` | [`ResultTaskAdapterExtensions`](#task-adapter-family--resulttaskadapterextensions) |
+| Model expected absence | `Maybe<T>`, `Maybe.Some(value)`, `Maybe<T>.None` | [`Maybe<T>`](#public-readonly-struct-maybet-where-t--notnull) |
+| Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
+| Create HTTP-oriented domain errors | Closed `Error` cases plus `ResourceRef.For<TResource>(id)` | [`Error`](#public-abstract-record-error), [`Error Cases`](#error-cases-closed-adt) |
+| Page list responses | `Page.Create(...)`, `Cursor` | [`Pagination`](#pagination) |
+| Model aggregates/entities/events | `Aggregate<TId>`, `Entity<TId>`, `IDomainEvent` | [`Domain-Driven Design`](#domain-driven-design) |
+| Move reusable query predicates out of repositories | `Specification<T>` | [`Specification<T>`](#specificationt) |
+| Define custom required value objects | `partial class X : RequiredString<X>` / `RequiredGuid<X>` / other `Required*` bases | [`Primitive value object base classes`](#primitive-value-object-base-classes) |
+
+## Common traps
+
+- Do not use throwing value access in production code. Prefer `TryGetValue`, `Match`, `Bind`, `Map`, or deconstruction guarded by the success flag.
+- Do not use `default(Result)` or `default(Result<T>)` as success. The default state is a typed `Error.Unexpected("default_initialized")` failure.
+- Do not put `Unit` in consumer-facing docs or APIs. Use non-generic `Result` for no-payload flows.
+- Use `ParallelAsync` only for independent work. If operation B depends on operation A, compose with `Bind`/`BindAsync` instead.
+
 ## Breaking changes from v1
 
 Migration notes for users moving from the previous `Trellis.Core` API surface.

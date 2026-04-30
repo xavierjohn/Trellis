@@ -138,20 +138,6 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase + "TRLS010");
 
     /// <summary>
-    /// TRLS012: Comparing Result or Maybe to null.
-    /// </summary>
-    public static readonly DiagnosticDescriptor ComparingToNull = new(
-        id: TrellisDiagnosticIds.ComparingToNull,
-        title: "Don't compare Result or Maybe to null",
-        messageFormat: "Don't compare {0} to null. Use '{1}' instead.",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Result<T> and Maybe<T> are structs and cannot be null. " +
-                     "Use IsSuccess/IsFailure for Result, or HasValue/HasNoValue for Maybe.",
-        helpLinkUri: HelpLinkBase + "TRLS012");
-
-    /// <summary>
     /// TRLS013: Using <c>Maybe&lt;T&gt;.Value</c> in LINQ without checking HasValue.
     /// </summary>
     public static readonly DiagnosticDescriptor UnsafeValueInLinq = new(

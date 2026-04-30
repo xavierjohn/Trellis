@@ -15,7 +15,6 @@ Trellis analyzers help you keep `Result<T>`, `Maybe<T>`, EF Core integration, an
 | TRLS008 | Info | Consider using Result.Combine | [TRLS008](TRLS008.md) |
 | TRLS009 | Warning | Use async method variant for async lambda | [TRLS009](TRLS009.md) |
 | TRLS010 | Warning | Don't throw exceptions in Result chains | [TRLS010](TRLS010.md) |
-| TRLS012 | Warning | Don't compare Result or Maybe to null | [TRLS012](TRLS012.md) |
 | TRLS013 | Warning | Unsafe access to Maybe.Value in LINQ expression | [TRLS013](TRLS013.md) |
 | TRLS014 | Error | Combine chain exceeds maximum supported tuple size | [TRLS014](TRLS014.md) |
 | TRLS015 | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | [TRLS015](TRLS015.md) |
