@@ -24,3 +24,4 @@ TRLS018  | Trellis  | Warning  | Result<T> deconstruction reads value without a 
 TRLS019  | Trellis  | Warning  | Avoid default(Result), default(Result<T>), and default(Maybe<T>); prefer factories.
 TRLS020  | Trellis  | Warning  | Composite value object DTO property is missing CompositeValueObjectJsonConverter<T>.
 TRLS021  | Trellis  | Warning  | EF configuration duplicates Trellis conventions for Maybe<T> or [OwnedEntity].
+TRLS022  | Trellis  | Warning  | [OwnedEntity] property uses init-only setter; use { get; private set; } instead.
