@@ -246,7 +246,6 @@ A comprehensive suite of Roslyn analyzers to enforce Railway Oriented Programmin
 - **TRLS002**: Suggest `Bind` instead of `Map` when lambda returns Result
 - **TRLS005**: *(removed in V2)* — superseded by C# exhaustive `switch` on the closed `Error` ADT
 - **TRLS010**: Suggest specific error types instead of base `Error` class
-- Suggest `Result.Combine()` for multiple Result checks
 - **TRLS013**: Suggest `GetValueOrDefault`/`Match` instead of ternary operator
 
 **Benefits:**

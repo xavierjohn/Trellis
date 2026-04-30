@@ -37,7 +37,7 @@ Use this table before searching the long type catalog.
 ## Common traps
 
 - Do not use throwing value access in production code. Prefer `TryGetValue`, `Match`, `Bind`, `Map`, or deconstruction guarded by the success flag.
-- Do not use `default(Result)` or `default(Result<T>)` as success. The default state is a typed `Error.Unexpected("default_initialized")` failure.
+- Do not use `default(Result)` or `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default_initialized")` failure.
 - Do not put `Unit` in consumer-facing docs or APIs. Use non-generic `Result` for no-payload flows.
 - Use `ParallelAsync` only for independent work. If operation B depends on operation A, compose with `Bind`/`BindAsync` instead.
 
