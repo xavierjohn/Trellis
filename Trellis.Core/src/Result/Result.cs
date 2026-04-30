@@ -206,12 +206,9 @@ public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFac
     /// preferred form for guard clauses in current guidance.
     /// </para>
     /// <para>
-    /// There is no <c>Result.SuccessIf</c> in v3 — the v1 <c>SuccessIf</c> / <c>FailureIf</c> / async variants were removed; this overload (and its value-threaded counterparts on <see cref="EnsureExtensions"/>) replaces them. <!-- v1-stale-ok: documenting removed v1 factories so AI agents stop reaching for them -->
-    /// </para>
-    /// <para>
     /// For an asynchronous predicate use <see cref="EnsureAsync(Func{Task{bool}}, Error)"/>. For a value-threaded
     /// guard that preserves an existing <see cref="Result{TValue}"/> on success, use the
-    /// <c>Result&lt;TValue&gt;.Ensure(predicate, error)</c> extension overloads.
+    /// <c>Result&lt;TValue&gt;.Ensure(predicate, error)</c> extension overloads on <see cref="EnsureExtensions"/>.
     /// </para>
     /// </remarks>
     /// <example>

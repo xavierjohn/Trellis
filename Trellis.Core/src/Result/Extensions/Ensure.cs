@@ -23,9 +23,6 @@ using System.Diagnostics;
 /// <see cref="Result{T}"/>. The extension shape short-circuits on failure: if the receiver is
 /// already a failure, the predicate is not evaluated and the original error is preserved.
 /// </para>
-/// <para>
-/// <strong>Note:</strong> there is no <c>Result.SuccessIf</c> method — <see cref="Result.Ensure(bool, Error)"/> covers that scenario. <!-- stale-doc-ok -->
-/// </para>
 /// </remarks>
 /// <example>
 /// <code>
