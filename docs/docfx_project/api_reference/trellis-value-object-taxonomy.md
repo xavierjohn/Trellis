@@ -1,6 +1,29 @@
-﻿# Trellis Value Object Taxonomy
+﻿---
+package: Trellis.Core, Trellis.Primitives
+namespaces: [Trellis, Trellis.Primitives]
+types: [ValueObject, ScalarValueObject<TSelf,T>, RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredDecimal<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
+version: v3
+last_verified: 2026-05-01
+audience: [llm, developer]
+---
+# Trellis Value Object Taxonomy
 
 **Packages:** `Trellis.Core` (DDD primitives `Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, `IDomainEvent`, plus VO base classes `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredEnum<TSelf>`); `Trellis.Primitives` (concrete VOs only — `EmailAddress`, `Money`, etc.) | **Namespaces:** `Trellis`, `Trellis.Primitives` | **Purpose:** canonical category map for Trellis value-like types: scalar, symbolic, structured, and optionality wrappers.
+
+## Patterns Index
+
+Use this table to pick the right base class before reading the per-type signatures below.
+
+| Goal | Canonical base / type | See |
+|---|---|---|
+| Wrap a single primitive (string, Guid, int, decimal, enum) into a typed value object | `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredEnum<TSelf>` (one base per primitive) | [`RequiredString<TSelf>`](#requiredstringtself), [`RequiredGuid<TSelf>`](#requiredguidtself), [`RequiredInt<TSelf>`](#requiredinttself), [`RequiredDecimal<TSelf>`](#requireddecimaltself), [`RequiredEnum<TSelf>`](#requiredenumtself) |
+| Define a custom-validated scalar with no source-generated infrastructure | `ScalarValueObject<TSelf, T>` + `IScalarValue<TSelf, T>` | [`ScalarValueObject<TSelf, T>`](#scalarvalueobjecttself-t) |
+| Compose multiple value-typed fields into a structural value object | `ValueObject` (override `GetEqualityComponents`) | [`ValueObject`](#valueobject) |
+| Wrap an entity with identity (mutable through methods) | `Entity<TId>` | See [trellis-api-core.md → Domain-Driven Design](trellis-api-core.md#domain-driven-design) |
+| Wrap a consistency boundary with domain events | `Aggregate<TId>` | See [trellis-api-core.md → Domain-Driven Design](trellis-api-core.md#domain-driven-design) |
+| Express expected absence of a value | `Maybe<T>` | See [trellis-api-core.md → Maybe](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
+| Move a query predicate out of a repository | `Specification<T>` | See [trellis-api-core.md → Domain-Driven Design](trellis-api-core.md#domain-driven-design) |
+| Pick a built-in concrete value object instead of writing your own | `EmailAddress`, `Money`, `CountryCode`, `Url`, etc. | See [trellis-api-primitives.md](trellis-api-primitives.md) |
 
 ## Types
 

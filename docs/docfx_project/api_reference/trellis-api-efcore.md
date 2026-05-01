@@ -1,4 +1,12 @@
-﻿# Trellis.EntityFrameworkCore
+﻿---
+package: Trellis.EntityFrameworkCore
+namespaces: [Trellis.EntityFrameworkCore]
+types: [RepositoryBase<TAggregate,TId>, IUnitOfWork, DbContextExtensions, SaveChangesResultAsync, OwnedEntityHelpers]
+version: v3
+last_verified: 2026-05-01
+audience: [llm, developer]
+---
+# Trellis.EntityFrameworkCore
 
 **Package:** `Trellis.EntityFrameworkCore` (bundles the `Trellis.EntityFrameworkCore.Generator.dll` source generator at `analyzers/dotnet/cs/` — installing `Trellis.EntityFrameworkCore` attaches the `Maybe<T>` / `[OwnedEntity]` generator automatically; there is no separate `Trellis.EntityFrameworkCore.Generator` NuGet package).
 **Namespace:** `Trellis.EntityFrameworkCore`  

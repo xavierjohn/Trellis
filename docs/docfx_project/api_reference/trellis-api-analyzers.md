@@ -1,4 +1,12 @@
-﻿# Trellis.Analyzers — API Reference
+﻿---
+package: Trellis.Analyzers
+namespaces: [Trellis.Analyzers]
+types: [TRLS001..TRLS022 diagnostic rules, TrellisDiagnosticIds]
+version: v3
+last_verified: 2026-05-01
+audience: [llm, developer]
+---
+# Trellis.Analyzers — API Reference
 
 - **Package:** `Trellis.Analyzers`
 - **Namespace:** `Trellis.Analyzers`

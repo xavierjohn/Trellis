@@ -1,4 +1,12 @@
-﻿# Trellis.Mediator — API Reference
+﻿---
+package: Trellis.Mediator
+namespaces: [Trellis.Mediator]
+types: [ICommand<T>, IQuery<T>, IRequestHandler<,>, IPipelineBehavior<,>, ServiceCollectionExtensions]
+version: v3
+last_verified: 2026-05-01
+audience: [llm, developer]
+---
+# Trellis.Mediator — API Reference
 
 **Package:** `Trellis.Mediator`
 **Namespace:** `Trellis.Mediator`
