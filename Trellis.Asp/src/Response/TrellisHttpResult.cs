@@ -74,6 +74,11 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         if (_options.HonorPrefer)
             AppendVaryUnique(response, "Prefer");
 
+        // No-payload Result<Unit> success — emit 204 No Content.
+        // ETag/LastModified/Vary/ContentLanguage/Prefer headers (above) still apply.
+        if (typeof(TDomain) == typeof(Unit))
+            return Results.NoContent().ExecuteAsync(httpContext);
+
         if (_options.EvaluatePreconditions)
         {
             var method = httpContext.Request.Method;

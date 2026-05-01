@@ -23,12 +23,12 @@ public class DefaultStateInvariantTests
         Detail = "Result was default-initialized; use Result.Ok(...) or Result.Fail(...) instead.",
     };
 
-    // ── default(Result) — non-generic ────────────────────────────────────────
+    // ── default(Result<Unit>) — no-payload ────────────────────────────────────────
 
     [Fact]
     public void Default_Result_is_failure()
     {
-        Result r = default;
+        Result<Unit> r = default;
 
         r.IsFailure.Should().BeTrue();
         r.IsSuccess.Should().BeFalse();
@@ -37,7 +37,7 @@ public class DefaultStateInvariantTests
     [Fact]
     public void Default_Result_Error_is_Unexpected_default_initialized()
     {
-        Result r = default;
+        Result<Unit> r = default;
 
         r.Error!.Should().NotBeNull();
         r.Error!.Should().BeOfType<Error.Unexpected>();
@@ -47,7 +47,7 @@ public class DefaultStateInvariantTests
     [Fact]
     public void Default_Result_TryGetError_returns_true_with_sentinel()
     {
-        Result r = default;
+        Result<Unit> r = default;
 
         r.TryGetError(out var error).Should().BeTrue();
         error!.Should().BeOfType<Error.Unexpected>();
@@ -56,9 +56,9 @@ public class DefaultStateInvariantTests
     [Fact]
     public void Default_Result_Deconstruct_yields_failure_and_sentinel()
     {
-        Result r = default;
+        Result<Unit> r = default;
 
-        var (isSuccess, error) = r;
+        var (isSuccess, _, error) = r;
 
         isSuccess.Should().BeFalse();
         error!.Should().BeOfType<Error.Unexpected>();
@@ -67,8 +67,8 @@ public class DefaultStateInvariantTests
     [Fact]
     public void Default_Result_equals_explicit_Fail_with_sentinel()
     {
-        Result a = default;
-        Result b = Result.Fail(MakeSentinel());
+        Result<Unit> a = default;
+        Result<Unit> b = Result.Fail(MakeSentinel());
 
         a.Equals(b).Should().BeTrue();
         b.Equals(a).Should().BeTrue();
@@ -79,8 +79,8 @@ public class DefaultStateInvariantTests
     [Fact]
     public void Two_default_Results_are_equal()
     {
-        Result a = default;
-        Result b = default;
+        Result<Unit> a = default;
+        Result<Unit> b = default;
 
         a.Equals(b).Should().BeTrue();
         (a == b).Should().BeTrue();
@@ -90,8 +90,8 @@ public class DefaultStateInvariantTests
     [Fact]
     public void Default_Result_does_not_equal_Result_Ok()
     {
-        Result a = default;
-        Result b = Result.Ok();
+        Result<Unit> a = default;
+        Result<Unit> b = Result.Ok();
 
         a.Equals(b).Should().BeFalse();
         (a == b).Should().BeFalse();
@@ -100,7 +100,7 @@ public class DefaultStateInvariantTests
     [Fact]
     public void Default_Result_ToString_does_not_say_Success()
     {
-        Result r = default;
+        Result<Unit> r = default;
 
         r.ToString().Should().NotContain("Success");
         r.ToString().Should().Contain("Failure");
@@ -217,7 +217,7 @@ public class DefaultStateInvariantTests
     {
         Result<int> r = default;
 
-        Result asUnit = r.AsUnit();
+        Result<Unit> asUnit = r.AsUnit();
 
         // Must NOT be `default(Result)` — must be an explicit Fail with the sentinel.
         // We assert observational equivalence via Equals(explicit Fail).
@@ -244,7 +244,7 @@ public class DefaultStateInvariantTests
     {
         Result<int> ri = default;
         Result<string> rs = default;
-        Result rn = default;
+        Result<Unit> rn = default;
 
         // Same Error reference (single shared sentinel allocation per program).
         ReferenceEquals(ri.Error, rs.Error).Should().BeTrue();
@@ -257,7 +257,7 @@ public class DefaultStateInvariantTests
     public void Default_Result_does_not_throw_when_observed_under_no_activity()
     {
         // Just construct + observe — confirms no NRE / no required init path.
-        Result r = default;
+        Result<Unit> r = default;
         Result<int> rt = default;
 
         _ = r.Error;

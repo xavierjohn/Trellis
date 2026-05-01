@@ -5,33 +5,11 @@ using Xunit;
 
 /// <summary>
 /// Tests for <see cref="DefaultResultOrMaybeAnalyzer"/> (TRLS019) — flags explicit
-/// <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and <c>default(Maybe&lt;T&gt;)</c>
+/// <c>default(Result&lt;T&gt;)</c> and <c>default(Maybe&lt;T&gt;)</c>
 /// per ADR-002 §3.5.1.
 /// </summary>
 public class DefaultResultOrMaybeAnalyzerTests
 {
-    [Fact]
-    public async Task Default_of_NonGenericResult_ReportsDiagnostic()
-    {
-        const string source = """
-            public class TestClass
-            {
-                public Result Run()
-                {
-                    return default(Result);
-                }
-            }
-            """;
-
-        var test = AnalyzerTestHelper.CreateDiagnosticTest<DefaultResultOrMaybeAnalyzer>(
-            source,
-            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.DefaultResultOrMaybe)
-                .WithLocation(11, 16)
-                .WithArguments("Result", "Result.Ok() or Result.Fail(...)"));
-
-        await test.RunAsync();
-    }
-
     [Fact]
     public async Task Default_of_GenericResult_ReportsDiagnostic()
     {

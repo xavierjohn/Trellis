@@ -254,7 +254,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CreateCustomerCommand(ShippingAddress ShippingAddress) : ICommand<Result>;
+            public sealed record CreateCustomerCommand(ShippingAddress ShippingAddress) : ICommand<Result<int>>;
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(

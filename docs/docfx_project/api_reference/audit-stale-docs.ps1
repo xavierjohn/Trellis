@@ -45,21 +45,6 @@ try {
     )
 
     $stalePatterns = @(
-        @{ Pattern = '\bUnit\.Value\b'; Message = 'Unit.Value is not a public API; use Result.Ok() for no-payload success.' },
-        @{ Pattern = '\bUnit\.Default\b'; Message = 'Unit.Default is not a public API; use Result.Ok() for no-payload success.' },
-        @{ Pattern = '\bnew\s+Unit\s*\('; Message = 'Unit is not a public API; use non-generic Result for no-payload operations.' },
-        @{ Pattern = '\bdefault\s*\(\s*Unit\s*\)'; Message = 'Unit is not a public API; use non-generic Result for no-payload operations.' },
-        @{ Pattern = '\bResult\s*<\s*Unit\s*>'; Message = 'Result<Unit> is not a public API; use non-generic Result.' },
-        @{ Pattern = '\bResult\s*&lt;\s*Unit\s*&gt;'; Message = 'Result&lt;Unit&gt; is not a public API; use non-generic Result.' },
-        @{ Pattern = '\bResult\{Unit\}'; Message = 'Result{Unit} is not a public API; use non-generic Result.' },
-        @{ Pattern = '\bpublic\s+record\s+struct\s+Unit\b'; Message = 'Unit is not a public type; do not document it as public API.' },
-        @{ Pattern = '\brecord\s+struct\s+Unit\b'; Message = 'Unit is not a public type; do not document it as public API.' },
-        @{ Pattern = '\bUnit-shaped\b'; Message = 'Prefer no-payload or void-style Result wording.' },
-        @{ Pattern = '\bUnit result\b'; Message = 'Prefer non-generic Result wording.' },
-        @{ Pattern = '\bResult of Unit\b'; Message = 'Prefer non-generic Result wording.' },
-        @{ Pattern = '\bUnit Results\b'; Message = 'Prefer non-generic Result wording.' },
-        @{ Pattern = '\bUnit support\b'; Message = 'Prefer non-generic Result wording.' },
-        @{ Pattern = '\bvoid/Unit\b'; Message = 'Prefer no-payload or void-style Result wording.' },
         @{ Pattern = '\bnon-generic\s+non-generic\b'; Message = 'Remove duplicated non-generic wording.' },
         @{ Pattern = '\bAPI\s+\.'; Message = 'Remove stray space before punctuation.' },
         @{ Pattern = '^\s*///,'; Message = 'Fix XML doc punctuation after line wrapping.' },

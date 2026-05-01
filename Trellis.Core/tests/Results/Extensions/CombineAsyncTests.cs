@@ -208,7 +208,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Ok());
 
         // Assert
-        result.Should().BeSuccess().Which.Should().Be("Hello");
+        result.Should().BeSuccess().Which.Item1.Should().Be("Hello");
     }
 
     [Fact]
@@ -384,7 +384,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Ok());
 
         // Assert
-        result.Should().BeSuccess().Which.Should().Be("Hello");
+        result.Should().BeSuccess().Which.Item1.Should().Be("Hello");
     }
 
     [Fact]
@@ -474,7 +474,7 @@ public class CombineAsyncTests
             .CombineAsync(Result.Ok());
 
         // Assert
-        result.Should().BeSuccess().Which.Should().Be(("Hello", "World"));
+        result.Should().BeSuccess().Which.Should().Be(("Hello", "World", Unit.Default));
     }
 
     [Fact]

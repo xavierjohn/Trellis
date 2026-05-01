@@ -8,13 +8,6 @@ using Microsoft.CodeAnalysis;
 internal static class TypeSymbolExtensions
 {
     /// <summary>
-    /// Checks if the type is the non-generic <c>Result</c> struct from the Trellis namespace.
-    /// </summary>
-    internal static bool IsNonGenericResultType(this ITypeSymbol? typeSymbol) =>
-        typeSymbol is INamedTypeSymbol { Name: "Result", IsGenericType: false, TypeKind: TypeKind.Struct } namedType &&
-        namedType.ContainingNamespace?.ToDisplayString() == "Trellis";
-
-    /// <summary>
     /// Checks if the type is Result&lt;T&gt; from Trellis namespace.
     /// </summary>
     internal static bool IsResultType(this ITypeSymbol? typeSymbol) =>

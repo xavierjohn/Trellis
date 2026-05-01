@@ -18,7 +18,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
             .EnsureAsync(customer => customer.CanBePromoted, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
             .TapAsync(customer => customer.Promote())
             .BindAsync(customer => EmailGateway.SendPromotionNotification(customer.Email))
-            .MatchAsync(() => "Okay", error => "Failed");
+            .MatchAsync(_ => "Okay", error => "Failed");
 
         if (id == 1)
             result.Should().Be("Okay");
@@ -37,7 +37,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
             .EnsureAsync(static customer => customer.CanBePromoted, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
             .TapAsync(static customer => customer.PromoteAsync())
             .BindAsync(static customer => EmailGateway.SendPromotionNotificationAsync(customer.Email))
-            .MatchAsync(static () => "Okay", static error => error.Detail);
+            .MatchAsync(static (Unit _) => "Okay", static error => error.Detail);
 
         result.Should().Be("Okay");
     }
@@ -57,7 +57,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
             .TapAsync(static customer => Log("Manager approved promotion"))
             .TapAsync(static customer => customer.PromoteAsync())
             .BindAsync(static customer => EmailGateway.SendPromotionNotificationAsync(customer.Email))
-            .MatchAsync(static () => "Okay", static error => error.Detail);
+            .MatchAsync(static (Unit _) => "Okay", static error => error.Detail);
 
         result.Should().Be("Okay");
     }
@@ -105,8 +105,8 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
 
     public static class EmailGateway
     {
-        public static Result SendPromotionNotification(string email) => Result.Ok();
+        public static Result<Unit> SendPromotionNotification(string email) => Result.Ok();
 
-        public static Task<Result> SendPromotionNotificationAsync(string email) => Task.FromResult(SendPromotionNotification(email));
+        public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) => Task.FromResult(SendPromotionNotification(email));
     }
 }

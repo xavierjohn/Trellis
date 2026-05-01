@@ -160,16 +160,10 @@ public static class AnalyzerTestHelper
                 public NotFoundError(string message) : base(message) { }
             }
 
-            // Non-generic Result struct + static Result factory class (combined as a struct so 'default(Result)' compiles).
-            public readonly struct Result
+            // Static Result factory class (mirrors v3 shape — non-generic 'default(Result)' is now CS0723).
+            // Unit-less variants omitted; tests that need Unit load EfCoreTestStubs which defines it.
+            public static class Result
             {
-                public bool IsSuccess { get; }
-                [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(Error))]
-                public bool IsFailure => !IsSuccess;
-                public Error? Error => IsFailure ? new ValidationError("stub") : null;
-
-                public static Result Ok() => default;
-                public static Result Fail(Error error) => default;
                 public static Result<T> Ok<T>(T value) => value;
                 public static Result<T> Fail<T>(Error error) => error;
 

@@ -10,7 +10,7 @@ public class CombineTests
         // Arrange
         var rHello = Result.Ok("Hello")
             .Combine(Result.Ok())
-            .Bind(hello => Result.Ok($"{hello}"));
+            .Bind((hello, _) => Result.Ok($"{hello}"));
 
         // Act
 
@@ -24,7 +24,7 @@ public class CombineTests
         // Arrange
         var rHelloWorld = Result.Ok("Hello")
             .Combine(Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("key"), "validation.error") { Detail = "Bad World" }))))
-            .Bind(hello => Result.Ok($"{hello}"));
+            .Bind((hello, _) => Result.Ok($"{hello}"));
 
         // Act
 
@@ -87,7 +87,7 @@ public class CombineTests
         var rHelloWorld = Result.Ok("Hello")
             .Combine(Result.Ok("World"))
             .Combine(Result.Ok())
-            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
+            .Bind((hello, world, _) => Result.Ok($"{hello} {world}"));
 
         // Act
 
@@ -102,7 +102,7 @@ public class CombineTests
         var rHelloWorld = Result.Ok("Hello")
             .Combine(Result.Ok("World"))
             .Combine(Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("key"), "validation.error") { Detail = "Bad World" }))))
-            .Bind((hello, world) => Result.Ok($"{hello} {world}"));
+            .Bind((hello, world, _) => Result.Ok($"{hello} {world}"));
 
         // Act
 

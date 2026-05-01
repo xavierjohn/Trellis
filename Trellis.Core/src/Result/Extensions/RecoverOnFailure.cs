@@ -594,15 +594,15 @@ public static class RecoverOnFailureExtensionsAsync
         return result;
     }
 
-    /// <summary>Recovers from a failed non-generic result with predicate and async recovery function.</summary>
+    /// <summary>Recovers from a failed no-payload result with predicate and async recovery function.</summary>
     [RailwayTrack(TrackBehavior.Failure)]
-    public static async Task<Result> RecoverOnFailureAsync(this Task<Result> resultTask, Func<Error, bool> predicate, Func<Task<Result>> funcAsync)
+    public static async Task<Result<Unit>> RecoverOnFailureAsync(this Task<Result<Unit>> resultTask, Func<Error, bool> predicate, Func<Task<Result<Unit>>> funcAsync)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(funcAsync);
 
-        Result result = await resultTask.ConfigureAwait(false);
+        Result<Unit> result = await resultTask.ConfigureAwait(false);
         if (result.IsSuccess) return result;
 
         if (predicate(result.Error))

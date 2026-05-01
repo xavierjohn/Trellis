@@ -41,7 +41,7 @@ public static partial class CheckIfExtensionsAsync
     }
 
     /// <inheritdoc cref="CheckIfAsync{T,TK}(ValueTask{Result{T}}, bool, Func{T, ValueTask{Result{TK}}})"/>
-    public static async ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, bool condition, Func<T, ValueTask<Result>> func)
+    public static async ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, bool condition, Func<T, ValueTask<Result<Unit>>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
 
@@ -103,7 +103,7 @@ public static partial class CheckIfExtensionsAsync
     }
 
     /// <inheritdoc cref="CheckIfAsync{T,TK}(ValueTask{Result{T}}, Func{T, bool}, Func{T, ValueTask{Result{TK}}})"/>
-    public static async ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, bool> predicate, Func<T, ValueTask<Result>> func)
+    public static async ValueTask<Result<T>> CheckIfAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, bool> predicate, Func<T, ValueTask<Result<Unit>>> func)
     {
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(func);

@@ -6,9 +6,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>
-/// TRLS019 — flags explicit <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and
-/// <c>default(Maybe&lt;T&gt;)</c> at use sites. default-initialized
-/// <see cref="Trellis.Result"/> and <see cref="Trellis.Result{TValue}"/> represent a typed
+/// TRLS019 — flags explicit <c>default(Result&lt;T&gt;)</c> and <c>default(Maybe&lt;T&gt;)</c>
+/// at use sites. Default-initialized <see cref="Trellis.Result{TValue}"/> represents a typed
 /// failure (<see cref="Trellis.Error.Unexpected"/> sentinel), and <c>default(Maybe&lt;T&gt;)</c>
 /// is semantically <c>Maybe&lt;T&gt;.None</c>; in both cases the explicit literal obscures
 /// intent and is a known footgun.
@@ -17,7 +16,7 @@ using Microsoft.CodeAnalysis.Operations;
 /// <para>
 /// Detection uses <see cref="OperationKind.DefaultValue"/> to cover all surface forms:
 /// <list type="bullet">
-///   <item><c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, <c>default(Maybe&lt;T&gt;)</c> (typeof-style)</item>
+///   <item><c>default(Result&lt;T&gt;)</c>, <c>default(Maybe&lt;T&gt;)</c> (typeof-style)</item>
 ///   <item>Target-typed <c>default</c> in <c>return default;</c>, parameter defaults, etc.</item>
 ///   <item><c>default!</c> with the null-suppressing operator</item>
 /// </list>
@@ -51,12 +50,7 @@ public sealed class DefaultResultOrMaybeAnalyzer : DiagnosticAnalyzer
 
         string typeDisplay;
         string suggestion;
-        if (type.IsNonGenericResultType())
-        {
-            typeDisplay = "Result";
-            suggestion = "Result.Ok() or Result.Fail(...)";
-        }
-        else if (type.IsResultType())
+        if (type.IsResultType())
         {
             typeDisplay = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
             suggestion = "Result.Ok(...) or Result.Fail<T>(...)";

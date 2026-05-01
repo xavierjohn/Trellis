@@ -91,7 +91,7 @@ public static class DbContextExtensions
     /// <param name="context">The <see cref="DbContext"/> to save changes on.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Result"/> representing success or failure.</returns>
-    public static async Task<Result> SaveChangesResultUnitAsync(
+    public static async Task<Result<Unit>> SaveChangesResultUnitAsync(
         this DbContext context,
         CancellationToken cancellationToken = default)
     {
@@ -111,7 +111,7 @@ public static class DbContextExtensions
     /// </param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Result"/> representing success or failure.</returns>
-    public static async Task<Result> SaveChangesResultUnitAsync(
+    public static async Task<Result<Unit>> SaveChangesResultUnitAsync(
         this DbContext context,
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)

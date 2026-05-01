@@ -20,12 +20,12 @@ Use this table before searching the long type catalog.
 
 | Goal | Canonical API | See |
 |---|---|---|
-| Return success/failure without payload | Non-generic `Result.Ok()` / `Result.Fail(error)` | [`Result`](#public-readonly-partial-struct-result) |
+| Return success/failure without payload | `Result.Ok()` / `Result.Fail(error)` (returns `Result<Unit>`) | [`Result`](#public-static-partial-class-result) |
 | Return success/failure with payload | `Result.Ok(value)` / `Result.Fail<T>(error)` | [`Result<TValue>`](#public-readonly-partial-struct-resulttvalue--iresulttvalue-iequatableresulttvalue-ifailurefactoryresulttvalue) |
-| Turn a boolean guard into a result | `Result.Ensure(condition, error)` or `.Ensure(...)` in a chain | [`Result`](#public-readonly-partial-struct-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync-resultensureextensions-resultensureextensionsasync) |
-| Start independent async result-producing operations concurrently | `Result.ParallelAsync(...)`, then combine the returned tasks | [`Result`](#public-readonly-partial-struct-result) |
+| Turn a boolean guard into a result | `Result.Ensure(condition, error)` or `.Ensure(...)` in a chain | [`Result`](#public-static-partial-class-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync) |
+| Start independent async result-producing operations concurrently | `Result.ParallelAsync(...)`, then combine the returned tasks | [`Result`](#public-static-partial-class-result) |
 | Combine multiple validated *typed* fields into a tuple | static `Result.Combine<T1,T2>(Result<T1>, Result<T2>)` or instance `r1.Combine(r2)`, then `.Map(...)` | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
-| Combine multiple non-generic boolean guards | instance `r1.Combine(r2)` (extension), then `.Bind(...)` — **not** `Result.Combine(...)`, whose static overloads are generic-only and fail with `CS0411` on non-generic `Result` arguments | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
+| Combine multiple boolean guards | `Result.Ensure(...).Combine(Result.Ensure(...))` then `.Bind(...)` (extension `Combine` aggregates errors and adds each value as the next tuple element; pass a `Result<Unit>` from a no-payload guard and ignore it with `_` in the next lambda) | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
 | Adapt an already-computed result to async APIs | `.AsTask()` / `.AsValueTask()` | [`ResultTaskAdapterExtensions`](#task-adapter-family--resulttaskadapterextensions) |
 | Model expected absence | `Maybe<T>`, `Maybe.Some(value)`, `Maybe<T>.None` | [`Maybe<T>`](#public-readonly-struct-maybet-where-t--notnull) |
 | Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
@@ -37,16 +37,16 @@ Use this table before searching the long type catalog.
 
 ## Canonical async handler skeleton
 
-Every async command/query handler that composes Trellis primitives follows the same await-then-chain shape. **The sync verbs (`Bind`/`Map`/`Ensure`) extend `Result`/`Result<T>` receivers with sync delegates only. The async verbs (`BindAsync`/`MapAsync`/`EnsureAsync`) extend `Result`/`Result<T>`, `Task<Result>`/`Task<Result<T>>`, *and* `ValueTask<Result>`/`ValueTask<Result<T>>` receivers; on a sync receiver they take an async delegate (`Task<...>` or `ValueTask<...>`), while on a `Task`/`ValueTask` receiver they additionally provide sync-delegate convenience overloads.** A `Task<Result>` is *not* a `Result` and does not expose the sync extensions — calling `.Bind(...)` on a `Task<Result>` fails with `CS1929: 'Task<Result>' does not contain a definition for 'Bind'`.
+Every async command/query handler that composes Trellis primitives follows the same await-then-chain shape. **The sync verbs (`Bind`/`Map`/`Ensure`) extend `Result<T>` receivers with sync delegates only. The async verbs (`BindAsync`/`MapAsync`/`EnsureAsync`) extend `Result<T>`, `Task<Result<T>>`, *and* `ValueTask<Result<T>>` receivers; on a sync receiver they take an async delegate (`Task<...>` or `ValueTask<...>`), while on a `Task`/`ValueTask` receiver they additionally provide sync-delegate convenience overloads.** A `Task<Result<T>>` is *not* a `Result<T>` and does not expose the sync extensions — calling `.Bind(...)` on a `Task<Result<T>>` fails with `CS1929: 'Task<Result<T>>' does not contain a definition for 'Bind'`.
 
 ```csharp
 // Generic handler — Task<Result<TOut>>
 public async Task<Result<OrderResponse>> Handle(CreateDraftOrderCommand cmd, CancellationToken ct)
 {
-    // 1. Sync precondition — produces a Result, chains synchronously.
+    // 1. Sync precondition — produces a Result<Unit>, chains synchronously.
     var preconditions = Result.Ensure(cmd.LineItems.Count > 0,
                             Error.UnprocessableContent.ForField("lineItems", "required", "..."))
-                        .Bind(() => Result.Ensure(!cmd.HasDuplicates,
+                        .Bind(_ => Result.Ensure(!cmd.HasDuplicates,
                             Error.UnprocessableContent.ForField("lineItems", "duplicate_product", "...")));
 
     if (preconditions.IsFailure) return Result.Fail<OrderResponse>(preconditions.Error);
@@ -62,27 +62,27 @@ public async Task<Result<OrderResponse>> Handle(CreateDraftOrderCommand cmd, Can
         .MapAsync(order => OrderResponse.From(order));                  // Task<Result<OrderResponse>>
 }
 
-// Non-generic handler — Task<Result>
-public Task<Result> Handle(CancelOrderCommand cmd, CancellationToken ct) =>
+// No-payload handler — Task<Result<Unit>>
+public Task<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct) =>
     LoadOrderAsync(cmd.OrderId, ct)                                     // Task<Result<Order>>
-        .BindAsync(order => order.Cancel())                             // Task<Result>      (Cancel returns Result)
-        .BindAsync(() => _uow.SaveChangesResultAsync(ct));              // Task<Result>
+        .BindAsync(order => order.Cancel())                             // Task<Result<Unit>> (Cancel returns Result<Unit>)
+        .BindAsync(_ => _uow.SaveChangesResultAsync(ct));               // Task<Result<Unit>>
 ```
 
 **Common build failures and their fix:**
 
 | Diagnostic | What the model wrote | Fix |
 | --- | --- | --- |
-| `CS1929: 'Task<Result>' does not contain a definition for 'Bind'` | `LoadAsync(...).Bind(x => ...)` | Use `BindAsync` (which extends `Task<Result<T>>`), or `await` first then `.Bind(...)` |
-| `CS0411: type arguments for 'Map<TOut>' cannot be inferred` | `someTaskResult.Map(...)` after a non-generic `CheckAsync` | `await` the precondition into a concrete `Result` before projecting; or use `MapAsync<TOut>(...)` |
-| `CS0121: ambiguous between 'BindAsync<...>(Result<T>, Func<T, Task<Result<R>>>)' and 'BindAsync<...>(Result<T>, Func<T, ValueTask<Result<R>>>)'` | A sync `Result<T>` (not `Task<Result<T>>`) receiver with an inline `async` lambda whose return type can't be inferred between `Task` and `ValueTask` — both delegate-shape overloads exist on the sync receiver. | Either extract the lambda to a named method with an explicit `Task<Result<R>>` return type, or pin the delegate type at the call site: `Func<T, Task<Result<R>>> next = c => ...; result.BindAsync(next);`. See [`Bind family — Task vs ValueTask ambiguity`](#bind-family--bindextensions-bindextensionsasync-resultbindextensions-resultbindextensionsasync-bindzipextensions-bindzipextensionsasync) |
+| `CS1929: 'Task<Result<T>>' does not contain a definition for 'Bind'` | `LoadAsync(...).Bind(x => ...)` | Use `BindAsync` (which extends `Task<Result<T>>`), or `await` first then `.Bind(...)` |
+| `CS0411: type arguments for 'Map<TOut>' cannot be inferred` | `someTaskResult.Map(...)` after a `CheckAsync` whose result type can't be inferred | `await` the precondition into a concrete `Result<T>` before projecting; or use `MapAsync<TOut>(...)` |
+| `CS0121: ambiguous between 'BindAsync<...>(Result<T>, Func<T, Task<Result<R>>>)' and 'BindAsync<...>(Result<T>, Func<T, ValueTask<Result<R>>>)'` | A sync `Result<T>` (not `Task<Result<T>>`) receiver with an inline `async` lambda whose return type can't be inferred between `Task` and `ValueTask` — both delegate-shape overloads exist on the sync receiver. | Either extract the lambda to a named method with an explicit `Task<Result<R>>` return type, or pin the delegate type at the call site: `Func<T, Task<Result<R>>> next = c => ...; result.BindAsync(next);`. See [`Bind family — Task vs ValueTask ambiguity`](#bind-family--bindextensions-bindextensionsasync-bindzipextensions-bindzipextensionsasync) |
 
 
 ## Common traps
 
 - Do not use throwing value access in production code. Prefer `TryGetValue`, `Match`, `Bind`, `Map`, or deconstruction guarded by the success flag.
-- Do not use `default(Result)` or `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default_initialized")` failure.
-- Do not put `Unit` in consumer-facing docs or APIs. Use non-generic `Result` for no-payload flows.
+- Do not use `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default_initialized")` failure.
+- For no-payload success, use `Result.Ok()` (which returns `Result<Unit>`). The `Trellis.Unit` type is the canonical "no value" payload — it is a public `readonly record struct` with a single value (`Unit.Default`).
 - Use `ParallelAsync` only for independent work. If operation B depends on operation A, compose with `Bind`/`BindAsync` instead.
 
 ### First-30-minutes surprises
@@ -109,7 +109,7 @@ Migration notes for users moving from the previous `Trellis.Core` API surface.
 | Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `await predicate() ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed) | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
 | Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(new Error.InternalServerError(faultId) { Detail = ex.Message, Cause = ... })` or rely on `Result.Try` / `Result.TryAsync` for inline exception capture. |
 | Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
-| Non-generic `Result` for void flows | Generic result with a no-payload marker type | `Result` (non-generic struct) | Use `Result` for success/failure operations with no success payload. |
+| Non-generic `Result` for void flows | `Result` was a separate `readonly struct` for success/failure with no payload, distinct from `Result<T>`. | The non-generic `Result` instance type was removed. `Result` is now a `public static partial class` factory only; for no-payload success/failure use `Result<Unit>` (returned by parameterless `Result.Ok()` / `Result.Fail(error)` / `Result.Ensure(...)` / `Result.Try(...)` factories). The `Trellis.Unit` type is a public `readonly record struct` with a single value (`Unit.Default`). | Replace `Result` parameter/return types with `Result<Unit>`; replace `Task<Result>` with `Task<Result<Unit>>`; in lambdas after `.Bind(...)` / `BindAsync(...)` accept the `Unit` argument explicitly (`_ =>` or `(Unit _) =>`). |
 | `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **18 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, …). Closed via `private` constructor; no static factories. | Replace `Error.X("msg")` factories with `new Error.X(payload) { Detail = "msg" }`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.UnprocessableContent`, `Error.NotFound`. See "Error Cases (closed ADT)" below. | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
 | `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.UnprocessableContent uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
 | `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.UnprocessableContent.Fields` and `.Rules`. |
@@ -196,56 +196,34 @@ None.
 
 ---
 
-### `public readonly partial struct Result`
+### `public static partial class Result`
 
-Static factory and helper surface for `Result<TValue>` and the non-generic `Result` (success/failure for void flows).
+Static factory and helper surface for `Result<TValue>`. There is no non-generic instance `Result` type — for no-payload success/failure, use `Result<Unit>` (returned by the parameterless overloads listed below).
 
-> **Default-state invariant.** `default(Result)` represents a **failure** carrying the
+> **Default-state invariant.** `default(Result<T>)` represents a **failure** carrying the
 > shared `new Error.Unexpected("default_initialized")` sentinel — *not* success. This makes uninitialized
 > state a typed failure rather than a silent success that would hide a programming error. Always
-> construct via `Result.Ok()` or `Result.Fail(error)`. Analyzer **`TRLS019`** flags explicit
-> `default(Result)` at call sites.
+> construct via `Result.Ok(...)` or `Result.Fail(error)`. Analyzer **`TRLS019`** flags explicit
+> `default(Result<T>)` at call sites.
 
-`Result` is `public readonly partial struct Result : IResult, IEquatable<Result>, IFailureFactory<Result>`. It serves dual duty: as a void-style success/failure value **and** as the static factory host for `Result<TValue>`.
-
-#### Properties
-
-| Name | Type | Notes |
-| --- | --- | --- |
-| `IsSuccess` | `bool` | Success flag. `[MemberNotNullWhen(false, nameof(Error))]`. |
-| `IsFailure` | `bool` | Failure flag. `[MemberNotNullWhen(true, nameof(Error))]`. `default(Result).IsFailure` is `true`. |
-| `Error` | `Error?` | `null` on success; never throws. For `default(Result)`, returns the shared `new Error.Unexpected("default_initialized")` sentinel. |
-
-#### Instance methods
-
-| Signature | Notes |
-| --- | --- |
-| `public bool TryGetError([NotNullWhen(true)] out Error? error)` | Non-throwing failure extractor. On `default(Result)` returns `true` with the sentinel. |
-| `public void Deconstruct(out bool isSuccess, out Error? error)` | Pattern-matching support: `var (ok, err) = result;`. |
-| `public bool Equals(Result other)` | Value equality (`IEquatable<Result>`). |
-| `public override bool Equals(object? obj)` | Object equality. |
-| `public override int GetHashCode()` | Hash code matching `Equals`. |
-| `public static bool operator ==(Result left, Result right)` | Equality operator. |
-| `public static bool operator !=(Result left, Result right)` | Inequality operator. |
-| `public override string ToString()` | `"Success"` or `"Failure({Code}: {Detail})"`. |
+`Result` is `public static partial class Result`. It hosts the static factory and helper methods used to build every `Result<TValue>`.
 
 #### Static factory methods
 
 | Signature | Notes |
 | --- | --- |
 | `public static Result<TValue> Ok<TValue>(TValue value)` | Success factory |
-| `public static Result Ok()` | Success without payload (non-generic `Result`) |
+| `public static Result<Unit> Ok()` | Success without payload (returns `Result<Unit>`) |
 | `public static Result<TValue> Fail<TValue>(Error error)` | Failure factory |
-| `public static Result Fail(Error error)` | Failure without payload (non-generic `Result`) |
-| `public static Result CreateFailure(Error error)` | Implements `IFailureFactory<Result>` for generic pipeline code; equivalent to `Fail(error)`. |
-| `public static Result Ensure(bool flag, Error error)` | Converts a boolean to non-generic `Result` |
-| `public static Result Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
-| `public static Task<Result> EnsureAsync(Func<Task<bool>> predicate, Error error)` | Async predicate version |
+| `public static Result<Unit> Fail(Error error)` | Failure without payload (returns `Result<Unit>`) |
+| `public static Result<Unit> Ensure(bool flag, Error error)` | Converts a boolean to `Result<Unit>` |
+| `public static Result<Unit> Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
+| `public static Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Error error)` | Async predicate version |
 | `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures |
 | `public static Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)` | Async exception capture |
-| `public static Result Try(Action work, Func<Exception, Error>? map = null)` | Void-shape exception capture |
-| `public static Task<Result> TryAsync(Func<Task> work, Func<Exception, Error>? map = null)` | Async void-shape exception capture |
-| `public static Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2)` | Combines two results |
+| `public static Result<Unit> Try(Action work, Func<Exception, Error>? map = null)` | No-payload exception capture (returns `Result<Unit>`) |
+| `public static Task<Result<Unit>> TryAsync(Func<Task> work, Func<Exception, Error>? map = null)` | Async no-payload exception capture |
+| `public static Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2)` | Combines two results; passing a `Result<Unit>` adds `Unit` as the next tuple element |
 | `public static Result<(T1, ..., T9)> Combine<...>(...)` | Additional generated arities up to 9 |
 | `public static (Task<Result<T1>>, ..., Task<Result<T9>>) ParallelAsync<...>(...)` | Starts async result-producing operations in parallel, arities 2-9 |
 
@@ -253,7 +231,7 @@ The default exception mapper produces `new Error.InternalServerError(FaultId: Gu
 
 #### Factory Methods
 
-`Ok`, `Fail`, `CreateFailure`, `Ensure`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed from the current API (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`.
+`Ok`, `Fail`, `Ensure`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed from the current API (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`, and the non-generic `Result` instance type itself (`CreateFailure`, `IFailureFactory<Result>`, `IEquatable<Result>`, etc.).
 
 ---
 
@@ -287,7 +265,7 @@ Represents either a successful `TValue` or a failure `Error`.
 | `public bool TryGetValue([MaybeNullWhen(false)] out TValue value, [NotNullWhen(false)] out Error? error)` | Combined extractor — binds both `value` (on success) and `error` (on failure) in one call, eliminating the need for `result.Error!` after a failed single-out `TryGetValue`. |
 | `public bool TryGetError([NotNullWhen(true)] out Error? error)` | Non-throwing failure extractor; on `default(Result<T>)` returns `true` with the `Error.Unexpected` sentinel. |
 | `public void Deconstruct(out bool isSuccess, out TValue? value, out Error? error)` | Deconstruction support: `var (ok, value, error) = result;`. |
-| `public Result AsUnit()` | Discards the success value, returning a non-generic `Result`. On a default-initialized failure, returns an explicit `Result.Fail(sentinel)` (never another `default`). |
+| `public Result<Unit> AsUnit()` | Discards the success value, returning a `Result<Unit>`. On a default-initialized failure, returns an explicit `Result.Fail(sentinel)` (never another `default`). |
 | `public bool Equals(Result<TValue> other)` | Value equality. Equal if both are success with `EqualityComparer<TValue>.Default.Equals` over the values, or both are failure with equal `Error`. Default-initialized failures route through the shared sentinel. |
 | `public override bool Equals(object? obj)` | Object equality. |
 | `public override int GetHashCode()` | Hash code matching `Equals`. |
@@ -332,17 +310,17 @@ None.
 
 ### `public static class MaybeInvariant`
 
-Multi-field validation helpers for `Maybe<T>` values. Each method returns `Result` (non-generic) — success when the invariant holds, or an `Error.UnprocessableContent` whose `Fields` list carries one `FieldViolation` per offending field. Field paths are normalized via `InputPointer.ForProperty(name)` (RFC 6901 JSON Pointer).
+Multi-field validation helpers for `Maybe<T>` values. Each method returns `Result<Unit>` — success when the invariant holds, or an `Error.UnprocessableContent` whose `Fields` list carries one `FieldViolation` per offending field. Field paths are normalized via `InputPointer.ForProperty(name)` (RFC 6901 JSON Pointer).
 
 #### Methods
 
 | Signature | Notes |
 | --- | --- |
-| `public static Result AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | All fields present or all absent. Arities 2, 3, 4. |
-| `public static Result Requires<T1, T2>(Maybe<T1> source, Maybe<T2> required, string sourceFieldName, string requiredFieldName)` | If `source` is present, `required` must be too. Arity 2. |
-| `public static Result MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At most one field may be present. Arities 2, 3. |
-| `public static Result ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | Exactly one field must be present. Arities 2, 3. |
-| `public static Result AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At least one field must be present. Arities 2, 3. |
+| `public static Result<Unit> AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | All fields present or all absent. Arities 2, 3, 4. |
+| `public static Result<Unit> Requires<T1, T2>(Maybe<T1> source, Maybe<T2> required, string sourceFieldName, string requiredFieldName)` | If `source` is present, `required` must be too. Arity 2. |
+| `public static Result<Unit> MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At most one field may be present. Arities 2, 3. |
+| `public static Result<Unit> ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | Exactly one field must be present. Arities 2, 3. |
+| `public static Result<Unit> AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At least one field must be present. Arities 2, 3. |
 
 #### Usage
 
@@ -856,10 +834,10 @@ The result API contains a large generated extension surface. Exact public famili
 | --- | --- |
 | `BindExtensions`, `BindExtensionsAsync` | `Bind`/`BindAsync` for `Result<T>` plus generated tuple overloads for arities 2-9 |
 | `BindZipExtensions`, `BindZipExtensionsAsync` | Zips one result into another result-producing function, with sync/`Task`/`ValueTask` combinations and tuple arities |
-| `CheckExtensions`, `CheckExtensionsAsync` | Runs side-effect validations that return `IResult` / non-generic `Result` while preserving original success value |
+| `CheckExtensions`, `CheckExtensionsAsync` | Runs side-effect validations that return `Result<T>` (use `Result<Unit>` for no-payload validators) while preserving original success value |
 | `CheckIfExtensions`, `CheckIfExtensionsAsync` | Conditional `Check` variants |
 | `CombineExtensions`, `CombineExtensionsAsync`, `CombineErrorExtensions` | Combines results, including tuple and enumerable forms |
-| `DiscardExtensions`, `DiscardTaskExtensions`, `DiscardValueTaskExtensions` | Converts `Result<T>` to non-generic `Result` |
+| `DiscardExtensions`, `DiscardTaskExtensions`, `DiscardValueTaskExtensions` | Drops the `Result<T>` value entirely (returns `void`/`Task`/`ValueTask`) for intentional fire-and-forget pipelines |
 | `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync` | Predicate-based validation on successful values; includes collection-wide validation |
 | `GetValueOrDefaultExtensions` | Non-throwing value fallback helpers |
 | `ResultLinqExtensions` | LINQ query syntax support via `Select`/`SelectMany` |
@@ -896,14 +874,12 @@ The reference signatures below cover every `Result*Extensions(Async)` static cla
 
 #### Task adapter family — `ResultTaskAdapterExtensions`
 
-Adapters for returning a synchronous `Result` from an async-shaped API without target-typed `new(...)` wrappers.
+Adapters for returning a synchronous `Result<T>` from an async-shaped API without target-typed `new(...)` wrappers.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Task<Result> AsTask(this Result result)` | `Task<Result>` | Wraps the exact non-generic result state in a completed `Task`. |
-| `public static Task<Result<T>> AsTask<T>(this Result<T> result)` | `Task<Result<T>>` | Wraps the exact generic result state in a completed `Task`. |
-| `public static ValueTask<Result> AsValueTask(this Result result)` | `ValueTask<Result>` | Wraps the exact non-generic result state in a completed `ValueTask`. |
-| `public static ValueTask<Result<T>> AsValueTask<T>(this Result<T> result)` | `ValueTask<Result<T>>` | Wraps the exact generic result state in a completed `ValueTask`. |
+| `public static Task<Result<T>> AsTask<T>(this Result<T> result)` | `Task<Result<T>>` | Wraps the exact result state in a completed `Task`. |
+| `public static ValueTask<Result<T>> AsValueTask<T>(this Result<T> result)` | `ValueTask<Result<T>>` | Wraps the exact result state in a completed `ValueTask`. |
 
 ```csharp
 public ValueTask<Result<OrderId>> Handle(CreateOrderCommand cmd, CancellationToken ct) =>
@@ -914,18 +890,14 @@ public ValueTask<Result<OrderId>> Handle(CreateOrderCommand cmd, CancellationTok
         .AsValueTask();
 ```
 
-#### Bind family — `BindExtensions`, `BindExtensionsAsync`, `ResultBindExtensions`, `ResultBindExtensionsAsync`, `BindZipExtensions`, `BindZipExtensionsAsync`
+#### Bind family — `BindExtensions`, `BindExtensionsAsync`, `BindZipExtensions`, `BindZipExtensionsAsync`
 
-Sequential composition of result-producing functions. `Bind` is the monadic flatMap; `BindZip` keeps the upstream value in scope by zipping it into the next stage.
+Sequential composition of result-producing functions. `Bind` is the monadic flatMap; `BindZip` keeps the upstream value in scope by zipping it into the next stage. For no-payload steps, return `Result<Unit>` and use `_` to ignore the `Unit` argument in the next lambda.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Result<TResult> Bind<TValue, TResult>(this Result<TValue> result, Func<TValue, Result<TResult>> func)` | `Result<TResult>` | Generic-to-generic flatMap. Short-circuits on failure. |
-| `public static Task<Result<TResult>> BindAsync<TValue, TResult>(this Task<Result<TValue>> resultTask, Func<TValue, Task<Result<TResult>>> func)` | `Task<Result<TResult>>` | All combinations of `Result`/`Task<Result>`/`ValueTask<Result>` × sync-/async-lambda are exposed (12 overloads on `BindExtensionsAsync`). |
-| `public static Result Bind(this Result result, Func<Result> func)` | `Result` | Non-generic → non-generic on `ResultBindExtensions`. |
-| `public static Result<TOut> Bind<TOut>(this Result result, Func<Result<TOut>> func)` | `Result<TOut>` | Non-generic → generic widen on `ResultBindExtensions`. |
-| `public static Result Bind<TIn>(this Result<TIn> result, Func<TIn, Result> func)` | `Result` | Generic → non-generic narrow on `ResultBindExtensions`. |
-| `public static Task<Result> BindAsync(this Task<Result> resultTask, Func<Task<Result>> func)` | `Task<Result>` | `ResultBindExtensionsAsync` covers every cross-shape async combination for non-generic `Result` (sync/Task/ValueTask × generic/non-generic, ~18 overloads total). |
+| `public static Task<Result<TResult>> BindAsync<TValue, TResult>(this Task<Result<TValue>> resultTask, Func<TValue, Task<Result<TResult>>> func)` | `Task<Result<TResult>>` | All combinations of `Result<T>`/`Task<Result<T>>`/`ValueTask<Result<T>>` × sync-/async-lambda are exposed (12 overloads on `BindExtensionsAsync`). |
 | `public static Result<(T1, T2)> BindZip<T1, T2>(this Result<T1> result, Func<T1, Result<T2>> func)` | `Result<(T1, T2)>` | Zips upstream value with the bind result so downstream stages see both. Tuple arities 2–9 are generated. |
 | `public static Task<Result<(T1, T2)>> BindZipAsync<T1, T2>(this Task<Result<T1>> resultTask, Func<T1, Task<Result<T2>>> func)` | `Task<Result<(T1, T2)>>` | Async BindZip; generated for every Result/Task/ValueTask combination. |
 
@@ -943,7 +915,7 @@ Result<Order> Place(OrderId id) =>
 >
 > Avoid storing the lambda inline as `var next = ...;` because the inferred type may still be ambiguous.
 
-#### Map family — `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions`, `ResultMapExtensions`, `ResultMapExtensionsAsync`
+#### Map family — `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions`
 
 Pure transformation of the success value (or failure error). Use `Map` when the lambda returns a plain value; switch to `Bind` when it returns a `Result`.
 
@@ -951,8 +923,6 @@ Pure transformation of the success value (or failure error). Use `Map` when the 
 | --- | --- | --- |
 | `public static Result<TOut> Map<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> func)` | `Result<TOut>` | Synchronous map on `Result<T>`. |
 | `public static Task<Result<TOut>> MapAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> func)` | `Task<Result<TOut>>` | `MapExtensionsAsync` exposes all Task/ValueTask × sync-/async-lambda combinations (6 overloads). |
-| `public static Result<TOut> Map<TOut>(this Result result, Func<TOut> func)` | `Result<TOut>` | Widens a non-generic success into `Result<TOut>` (`ResultMapExtensions`). |
-| `public static Task<Result<TOut>> MapAsync<TOut>(this Task<Result> resultTask, Func<TOut> func)` | `Task<Result<TOut>>` | Async non-generic widening on `ResultMapExtensionsAsync` (6 overloads covering sync/Task/ValueTask × sync-/async-lambda). |
 | `public static Result<T> MapOnFailure<T>(this Result<T> result, Func<Error, Error> map)` | `Result<T>` | Replaces the failure `Error`. |
 | `public static Task<Result<T>> MapOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Error>> mapAsync)` | `Task<Result<T>>` | `MapOnFailureExtensions` exposes all sync/Task/ValueTask combinations of `MapOnFailure`/`MapOnFailureAsync`. |
 
@@ -963,9 +933,9 @@ Task<Result<OrderDto>> Pipeline(OrderId id) =>
         .MapOnFailureAsync(e => e is Error.NotFound ? new Error.Gone(ResourceRef.For<Order>(id)) : e);
 ```
 
-#### Tap and TapOnFailure families — `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync`, `ResultTapExtensions`, `ResultTapExtensionsAsync`, `ResultTapOnFailureExtensions`, `ResultTapOnFailureExtensionsAsync`
+#### Tap and TapOnFailure families — `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync`
 
-Side effects without altering the result. `Tap` runs on success; `TapOnFailure` runs on failure. The `Result*` variants are the non-generic `Result` companions.
+Side effects without altering the result. `Tap` runs on success; `TapOnFailure` runs on failure.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -973,10 +943,6 @@ Side effects without altering the result. `Tap` runs on success; `TapOnFailure` 
 | `public static Task<Result<TValue>> TapAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task> func)` | `Task<Result<TValue>>` | `TapExtensionsAsync` covers all sync/Task/ValueTask × value-/no-value-lambda combinations (12 overloads). |
 | `public static Result<TValue> TapOnFailure<TValue>(this Result<TValue> result, Action<Error> action)` | `Result<TValue>` | Sync side effect on failure. |
 | `public static Task<Result<TValue>> TapOnFailureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<Error, Task> func)` | `Task<Result<TValue>>` | `TapOnFailureExtensionsAsync` covers all sync/Task/ValueTask × error-/no-arg-lambda combinations (12 overloads). |
-| `public static Result Tap(this Result result, Action action)` | `Result` | Non-generic on `ResultTapExtensions`. |
-| `public static Task<Result> TapAsync(this Task<Result> resultTask, Func<Task> func)` | `Task<Result>` | Non-generic async tap on `ResultTapExtensionsAsync` (6 overloads). |
-| `public static Result TapOnFailure(this Result result, Action<Error> action)` | `Result` | Non-generic on `ResultTapOnFailureExtensions`. |
-| `public static Task<Result> TapOnFailureAsync(this Task<Result> resultTask, Func<Error, Task> func)` | `Task<Result>` | Non-generic async on `ResultTapOnFailureExtensionsAsync` (6 overloads). |
 
 ```csharp
 Task<Result<Order>> Save(Order o) =>
@@ -985,7 +951,7 @@ Task<Result<Order>> Save(Order o) =>
         .TapOnFailureAsync(err => logger.LogWarningAsync($"failed: {err.Code}"));
 ```
 
-#### Match family — `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync`, `ResultMatchExtensions`, `ResultMatchExtensionsAsync`
+#### Match family — `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync`
 
 Terminal branching: produce a value (`Match`) or run side effects (`Switch`).
 
@@ -995,9 +961,6 @@ Terminal branching: produce a value (`Match`) or run side effects (`Switch`).
 | `public static void Switch<TIn>(this Result<TIn> result, Action<TIn> onSuccess, Action<Error> onFailure)` | `void` | Sync side-effect terminal. |
 | `public static Task<TOut> MatchAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)` | `Task<TOut>` | `MatchExtensionsAsync` covers all sync/Task/ValueTask × sync-/async-/cancellation-lambda combinations (~10 overloads). |
 | `public static Task SwitchAsync<TIn>(this Task<Result<TIn>> resultTask, Func<TIn, Task> onSuccess, Func<Error, Task> onFailure)` | `Task` | `SwitchAsync` overloads cover Task and ValueTask, with optional `CancellationToken` variants. |
-| `public static TOut Match<TOut>(this Result result, Func<TOut> onSuccess, Func<Error, TOut> onFailure)` | `TOut` | Non-generic match on `ResultMatchExtensions`. |
-| `public static void Match(this Result result, Action onSuccess, Action<Error> onFailure)` | `void` | Non-generic side-effect terminal on `ResultMatchExtensions`. |
-| `public static Task<TOut> MatchAsync<TOut>(this Task<Result> resultTask, Func<TOut> onSuccess, Func<Error, TOut> onFailure)` | `Task<TOut>` | Non-generic async match on `ResultMatchExtensionsAsync` (6 overloads). |
 | `public static Task<TOut> MatchAsync<T1, T2, TOut>(this Result<(T1, T2)> result, Func<T1, T2, Task<TOut>> onSuccess, Func<Error, Task<TOut>> onFailure)` | `Task<TOut>` | `MatchTupleExtensions` (sync) and `MatchTupleExtensionsAsync` (async) generate `MatchAsync` / `SwitchAsync` for tuple arities 2–9. |
 
 ```csharp
@@ -1012,18 +975,16 @@ IActionResult Render(Result<Order> r) =>
         });
 ```
 
-#### Recover family — `RecoverExtensions`, `RecoverExtensionsAsync`, `RecoverOnFailureExtensions`, `RecoverOnFailureExtensionsAsync`, `ResultRecoverExtensions`, `ResultRecoverExtensionsAsync`
+#### Recover family — `RecoverExtensions`, `RecoverExtensionsAsync`, `RecoverOnFailureExtensions`, `RecoverOnFailureExtensionsAsync`
 
-Convert failures back into successes (`Recover`) or chain a fallback result-producing operation (`RecoverOnFailure`). The `Result*` variants act on non-generic `Result`.
+Convert failures back into successes (`Recover`) or chain a fallback result-producing operation (`RecoverOnFailure`).
 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Result<TValue> Recover<TValue>(this Result<TValue> result, Func<Error, TValue> fallbackFunc)` | `Result<TValue>` | Three sync overloads on `RecoverExtensions`: constant fallback, `Func<TValue>`, `Func<Error, TValue>`. |
 | `public static Task<Result<TValue>> RecoverAsync<TValue>(this Task<Result<TValue>> resultTask, Func<Error, Task<TValue>> fallbackFunc)` | `Task<Result<TValue>>` | `RecoverExtensionsAsync` covers all Task/ValueTask × sync-/async-lambda combinations. |
 | `public static Result<T> RecoverOnFailure<T>(this Result<T> result, Func<Error, Result<T>> func)` | `Result<T>` | Four sync overloads on `RecoverOnFailureExtensions`: with/without `Error` argument, with/without predicate gate. |
-| `public static Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Result<T>>> funcAsync)` | `Task<Result<T>>` | `RecoverOnFailureExtensionsAsync` exposes ~20 overloads for Task/ValueTask × predicate-gated/ungated × value-/error-lambda. Includes a non-generic `RecoverOnFailureAsync(Task<Result>, Func<Error, bool>, Func<Task<Result>>)` overload. |
-| `public static Result Recover(this Result result, Func<Error, Result> recovery)` | `Result` | Non-generic recovery on `ResultRecoverExtensions`. |
-| `public static Task<Result> RecoverAsync(this Task<Result> resultTask, Func<Error, Task<Result>> recovery)` | `Task<Result>` | Non-generic async recovery on `ResultRecoverExtensionsAsync` (6 overloads). |
+| `public static Task<Result<T>> RecoverOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Result<T>>> funcAsync)` | `Task<Result<T>>` | `RecoverOnFailureExtensionsAsync` exposes ~16 overloads for Task/ValueTask × predicate-gated/ungated × value-/error-lambda. |
 
 ```csharp
 Task<Result<Settings>> Load(UserId id) =>
@@ -1033,7 +994,7 @@ Task<Result<Settings>> Load(UserId id) =>
             err => Task.FromResult(Result.Ok(Settings.Defaults)));
 ```
 
-#### Ensure family — `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync`, `ResultEnsureExtensions`, `ResultEnsureExtensionsAsync`
+#### Ensure family — `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync`
 
 Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure into a single `Error.Aggregate` for applicative-style validation.
 
@@ -1048,8 +1009,6 @@ Predicate-based validation. `Ensure` short-circuits on the first failed predicat
 | `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Result<TValue>` | Applicative validation: runs every check and folds failures via `error.Combine(...)` into one `Error.Aggregate`. |
 | `public static Task<Result<TValue>> EnsureAllAsync<TValue>(this Task<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Task<Result<TValue>>` | Task overload of `EnsureAllAsync`. |
 | `public static ValueTask<Result<TValue>> EnsureAllAsync<TValue>(this ValueTask<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `ValueTask<Result<TValue>>` | ValueTask overload of `EnsureAllAsync`. |
-| `public static Result Ensure(this Result result, Func<bool> predicate, Error error)` | `Result` | Non-generic `Ensure` on `ResultEnsureExtensions`. |
-| `public static Task<Result> EnsureAsync(this Task<Result> resultTask, Func<Task<bool>> predicate, Error error)` | `Task<Result>` | Non-generic async ensure on `ResultEnsureExtensionsAsync` (6 overloads). |
 
 ```csharp
 Result<Quote> Validate(Quote q) =>
@@ -1067,12 +1026,11 @@ Run a side-effect validator that returns its own `Result`/`Result<TK>` while pre
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<T> Check<T, TK>(this Result<T> result, Func<T, Result<TK>> func)` | `Result<T>` | Validator returning `Result<TK>`; original value is preserved on success. |
-| `public static Result<T> Check<T>(this Result<T> result, Func<T, Result> func)` | `Result<T>` | Validator returning non-generic `Result`. |
-| `public static Task<Result<T>> CheckAsync<T>(this Task<Result<T>> resultTask, Func<T, Task<Result>> func)` | `Task<Result<T>>` | `CheckExtensionsAsync` covers all Task/ValueTask × generic-/non-generic-validator combinations. |
-| `public static Result<T> CheckIf<T>(this Result<T> result, bool condition, Func<T, Result> func)` | `Result<T>` | Boolean-gated check; runs only when `condition` is true. |
+| `public static Result<T> Check<T, TK>(this Result<T> result, Func<T, Result<TK>> func)` | `Result<T>` | Validator returning `Result<TK>`; original value is preserved on success. For no-payload validators, return `Result<Unit>`. |
+| `public static Task<Result<T>> CheckAsync<T, TK>(this Task<Result<T>> resultTask, Func<T, Task<Result<TK>>> func)` | `Task<Result<T>>` | `CheckExtensionsAsync` covers all Task/ValueTask combinations. |
+| `public static Result<T> CheckIf<T, TK>(this Result<T> result, bool condition, Func<T, Result<TK>> func)` | `Result<T>` | Boolean-gated check; runs only when `condition` is true. |
 | `public static Result<T> CheckIf<T, TK>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<TK>> func)` | `Result<T>` | Predicate-gated check. |
-| `public static Task<Result<T>> CheckIfAsync<T>(this Task<Result<T>> resultTask, bool condition, Func<T, Task<Result>> func)` | `Task<Result<T>>` | `CheckIfExtensionsAsync` covers all Task/ValueTask × bool-/predicate-gated × generic-/non-generic-validator combinations. |
+| `public static Task<Result<T>> CheckIfAsync<T, TK>(this Task<Result<T>> resultTask, bool condition, Func<T, Task<Result<TK>>> func)` | `Task<Result<T>>` | `CheckIfExtensionsAsync` covers all Task/ValueTask × bool-/predicate-gated combinations. |
 
 ```csharp
 Result<Quote> q = Result.Ok(quote)
@@ -1086,10 +1044,8 @@ Aggregates results into tuples (success-track) or merges errors via `Error.Aggre
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result Combine(this Result r1, Result r2)` | `Result` | Non-generic merge. |
-| `public static Result<(T1, T2)> Combine<T1, T2>(this Result<T1> t1, Result<T2> t2)` | `Result<(T1, T2)>` | Tuple combine; failures fold via `Error.Aggregate`. |
-| `public static Result<T1> Combine<T1>(this Result<T1> t1, Result t2)` | `Result<T1>` | Mixed shape: keeps generic value, aggregates errors. |
-| `public static Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Task<Result<T2>> tt2)` | `Task<Result<(T1, T2)>>` | `CombineExtensionsAsync` covers every Task/ValueTask × Task/ValueTask × Result/non-generic combination. |
+| `public static Result<(T1, T2)> Combine<T1, T2>(this Result<T1> t1, Result<T2> t2)` | `Result<(T1, T2)>` | Tuple combine; failures fold via `Error.Aggregate`. When either operand is `Result<Unit>`, `Unit` becomes the next tuple element (use `_` in the destructuring lambda to ignore it). |
+| `public static Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Task<Result<T2>> tt2)` | `Task<Result<(T1, T2)>>` | `CombineExtensionsAsync` covers every Task/ValueTask × Task/ValueTask combination. |
 | `public static Error Combine(this Error? left, Error right)` | `Error` | On `CombineErrorExtensions`: combines two errors into an `Error.Aggregate`, flattening nested aggregates and treating `null` left as right. |
 
 ```csharp
@@ -1099,7 +1055,7 @@ return Result.Combine(streetCity, contact)
 
 #### Discard family — `DiscardExtensions`, `DiscardTaskExtensions`, `DiscardValueTaskExtensions`
 
-Drop the success value to convert `Result<T>` to non-generic `Result` (for fire-and-forget pipelines).
+Drop the success value entirely (returns `void`/`Task`/`ValueTask`) for intentional fire-and-forget pipelines.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -1111,17 +1067,17 @@ Drop the success value to convert `Result<T>` to non-generic `Result` (for fire-
 await SendEmailAsync(msg).DiscardAsync(); // intentionally fire-and-forget the value
 ```
 
-#### AsUnit family — `ResultAsUnitExtensionsAsync`
+#### AsUnit family — `AsUnitExtensions`
 
 Async wrappers around `Result<T>.AsUnit()` that strip the value while preserving success/failure state.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Task<Result> AsUnitAsync<T>(this Task<Result<T>> resultTask)` | `Task<Result>` | Awaits and projects to non-generic `Result`. |
-| `public static ValueTask<Result> AsUnitAsync<T>(this ValueTask<Result<T>> resultTask)` | `ValueTask<Result>` | ValueTask variant. |
+| `public static Task<Result<Unit>> AsUnitAsync<T>(this Task<Result<T>> resultTask)` | `Task<Result<Unit>>` | Awaits and projects to `Result<Unit>`. |
+| `public static ValueTask<Result<Unit>> AsUnitAsync<T>(this ValueTask<Result<T>> resultTask)` | `ValueTask<Result<Unit>>` | ValueTask variant. |
 
 ```csharp
-Task<Result> done = pipeline.RunAsync(input).AsUnitAsync();
+Task<Result<Unit>> done = pipeline.RunAsync(input).AsUnitAsync();
 ```
 
 #### Debug family — `ResultDebugExtensions`, `ResultDebugExtensionsAsync`
@@ -1154,9 +1110,7 @@ Folds a sequence of inputs through a `Result`-producing selector into a single `
 | `public static Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Task<Result<TOut>>> selector)` | `Task<Result<IReadOnlyList<TOut>>>` | Async traversal; sequential evaluation. |
 | `public static Task<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<IReadOnlyList<TOut>>>` | Cancellation-token overload. |
 | `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, ValueTask<Result<TOut>>> selector)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | ValueTask variant. |
-| `public static Task<Result> TraverseAsync<TIn>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result>> selector, CancellationToken cancellationToken = default)` | `Task<Result>` | Non-generic async traversal for fire-each pipelines. |
 | `public static Result<IReadOnlyList<T>> Sequence<T>(this IEnumerable<Result<T>> source)` | `Result<IReadOnlyList<T>>` | Identity-selector form of `Traverse`. Lifts an `IEnumerable<Result<T>>` to `Result<IReadOnlyList<T>>`; short-circuits on the first failure. |
-| `public static Result Sequence(this IEnumerable<Result> source)` | `Result` | No-payload sequence; short-circuits on the first failure. |
 
 ```csharp
 Task<Result<IReadOnlyList<Order>>> orders =

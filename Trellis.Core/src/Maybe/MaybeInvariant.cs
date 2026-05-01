@@ -50,7 +50,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if all values are present or all are absent;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
-    public static Result AllOrNone<T1, T2>(
+    public static Result<Unit> AllOrNone<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
         string firstFieldName, string secondFieldName)
         where T1 : notnull
@@ -80,7 +80,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if all values are present or all are absent;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
-    public static Result AllOrNone<T1, T2, T3>(
+    public static Result<Unit> AllOrNone<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
         string firstFieldName, string secondFieldName, string thirdFieldName)
         where T1 : notnull
@@ -116,7 +116,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if all values are present or all are absent;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
-    public static Result AllOrNone<T1, T2, T3, T4>(
+    public static Result<Unit> AllOrNone<T1, T2, T3, T4>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third, Maybe<T4> fourth,
         string firstFieldName, string secondFieldName, string thirdFieldName, string fourthFieldName)
         where T1 : notnull
@@ -154,7 +154,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if source is absent or both are present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> for the missing required field.
     /// </returns>
-    public static Result Requires<T1, T2>(
+    public static Result<Unit> Requires<T1, T2>(
         Maybe<T1> source, Maybe<T2> required,
         string sourceFieldName, string requiredFieldName)
         where T1 : notnull
@@ -193,7 +193,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if zero or one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all present fields.
     /// </returns>
-    public static Result MutuallyExclusive<T1, T2>(
+    public static Result<Unit> MutuallyExclusive<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
         string firstFieldName, string secondFieldName)
         where T1 : notnull
@@ -223,7 +223,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if zero or one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all present fields.
     /// </returns>
-    public static Result MutuallyExclusive<T1, T2, T3>(
+    public static Result<Unit> MutuallyExclusive<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
         string firstFieldName, string secondFieldName, string thirdFieldName)
         where T1 : notnull
@@ -257,7 +257,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if exactly one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
-    public static Result ExactlyOne<T1, T2>(
+    public static Result<Unit> ExactlyOne<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
         string firstFieldName, string secondFieldName)
         where T1 : notnull
@@ -287,7 +287,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if exactly one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
-    public static Result ExactlyOne<T1, T2, T3>(
+    public static Result<Unit> ExactlyOne<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
         string firstFieldName, string secondFieldName, string thirdFieldName)
         where T1 : notnull
@@ -321,7 +321,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if at least one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
-    public static Result AtLeastOne<T1, T2>(
+    public static Result<Unit> AtLeastOne<T1, T2>(
         Maybe<T1> first, Maybe<T2> second,
         string firstFieldName, string secondFieldName)
         where T1 : notnull
@@ -351,7 +351,7 @@ public static class MaybeInvariant
     /// <see cref="Result"/> success if at least one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
-    public static Result AtLeastOne<T1, T2, T3>(
+    public static Result<Unit> AtLeastOne<T1, T2, T3>(
         Maybe<T1> first, Maybe<T2> second, Maybe<T3> third,
         string firstFieldName, string secondFieldName, string thirdFieldName)
         where T1 : notnull
@@ -372,7 +372,7 @@ public static class MaybeInvariant
 
     #region Core implementations
 
-    private static Result AllOrNoneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
+    private static Result<Unit> AllOrNoneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(AllOrNone));
 
@@ -400,7 +400,7 @@ public static class MaybeInvariant
         return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.From(violations)));
     }
 
-    private static Result MutuallyExclusiveCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
+    private static Result<Unit> MutuallyExclusiveCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MutuallyExclusive));
 
@@ -428,7 +428,7 @@ public static class MaybeInvariant
         return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.From(violations)));
     }
 
-    private static Result ExactlyOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
+    private static Result<Unit> ExactlyOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(ExactlyOne));
 
@@ -467,7 +467,7 @@ public static class MaybeInvariant
         return Result.Fail(new Error.UnprocessableContent(EquatableArray<FieldViolation>.From(violations)));
     }
 
-    private static Result AtLeastOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
+    private static Result<Unit> AtLeastOneCore(params ReadOnlySpan<(bool hasValue, string fieldName)> fields)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(AtLeastOne));
 

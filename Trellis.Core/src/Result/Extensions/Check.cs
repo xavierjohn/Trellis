@@ -57,7 +57,7 @@ public static class CheckExtensions
     /// <param name="result">The result to check.</param>
     /// <param name="func">The validation function that returns a non-generic Result.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
-    public static Result<T> Check<T>(this Result<T> result, Func<T, Result> func)
+    public static Result<T> Check<T>(this Result<T> result, Func<T, Result<Unit>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
 

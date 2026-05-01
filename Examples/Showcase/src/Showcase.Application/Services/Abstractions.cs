@@ -14,12 +14,12 @@ using Trellis.Showcase.Domain.ValueObjects;
 /// </summary>
 public interface IFraudGateway
 {
-    Task<Result> AnalyzeTransactionAsync(BankAccount account, Money amount, string transactionType, CancellationToken cancellationToken = default);
+    Task<Result<Unit>> AnalyzeTransactionAsync(BankAccount account, Money amount, string transactionType, CancellationToken cancellationToken = default);
 }
 
 public interface IIdentityVerifier
 {
-    Task<Result> VerifyAsync(CustomerId customerId, string verificationCode, CancellationToken cancellationToken = default);
+    Task<Result<Unit>> VerifyAsync(CustomerId customerId, string verificationCode, CancellationToken cancellationToken = default);
 }
 
 public interface IEventPublisher

@@ -59,7 +59,7 @@ public static class CheckIfExtensions
     /// <param name="condition">The condition that must be true for the check to run.</param>
     /// <param name="func">The validation function that returns a non-generic Result.</param>
     /// <returns>The original result if the condition is false or the check passes; otherwise the check's failure.</returns>
-    public static Result<T> CheckIf<T>(this Result<T> result, bool condition, Func<T, Result> func)
+    public static Result<T> CheckIf<T>(this Result<T> result, bool condition, Func<T, Result<Unit>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
 
@@ -127,7 +127,7 @@ public static class CheckIfExtensions
     /// <param name="predicate">The predicate to evaluate against the success value.</param>
     /// <param name="func">The validation function that returns a non-generic Result.</param>
     /// <returns>The original result if the predicate is false or the check passes; otherwise the check's failure.</returns>
-    public static Result<T> CheckIf<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result> func)
+    public static Result<T> CheckIf<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<Unit>> func)
     {
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(func);

@@ -201,7 +201,7 @@ public class CombineTracingTests : TestBase
 
         // Assert
         result.Should().BeSuccess();
-        result.Unwrap().Should().Be(("First", "Second"));
+        result.Unwrap().Should().Be(("First", "Second", Unit.Default));
 
         // Should have 2 Combine activities, both with Ok status
         var activities = activityTest.AssertActivityCaptured("Combine", 2);
@@ -372,7 +372,7 @@ public class CombineTracingTests : TestBase
             .CombineAsync(Result.Ok());
 
         // Assert
-        result.Should().BeSuccess().Which.Should().Be("First");
+        result.Should().BeSuccess().Which.Item1.Should().Be("First");
         activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
     }
 

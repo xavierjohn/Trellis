@@ -58,7 +58,7 @@ public class TaskAdapterTests
     [Fact]
     public async Task AsTask_NonGenericDefault_PreservesSentinelFailure()
     {
-        var result = await default(Result).AsTask();
+        var result = await default(Result<Unit>).AsTask();
 
         result.Should().BeFailureOfType<Error.Unexpected>()
             .Which.ReasonCode.Should().Be("default_initialized");
@@ -115,7 +115,7 @@ public class TaskAdapterTests
     [Fact]
     public async Task AsValueTask_NonGenericDefault_PreservesSentinelFailure()
     {
-        var result = await default(Result).AsValueTask();
+        var result = await default(Result<Unit>).AsValueTask();
 
         result.Should().BeFailureOfType<Error.Unexpected>()
             .Which.ReasonCode.Should().Be("default_initialized");

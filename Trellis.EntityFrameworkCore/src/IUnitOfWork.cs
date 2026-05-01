@@ -19,5 +19,5 @@ public interface IUnitOfWork
     /// </summary>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Result"/> representing success or failure.</returns>
-    Task<Result> CommitAsync(CancellationToken cancellationToken = default);
+    Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default);
 }

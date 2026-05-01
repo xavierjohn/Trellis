@@ -186,7 +186,7 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions. " +
-                     "In non-UoW contexts, use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result). " +
+                     "In non-UoW contexts, use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result<Unit>). " +
                      "Under AddTrellisUnitOfWork<TContext> the TransactionalCommandBehavior owns commit; repositories should stage changes via " +
                      "DbContext APIs (Add/Update/Remove) and not invoke SaveChanges/SaveChangesAsync at all.",
         helpLinkUri: HelpLinkBase + "TRLS015");

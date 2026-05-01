@@ -32,7 +32,7 @@ public static partial class CheckExtensionsAsync
     /// <param name="resultTask">The task containing the result to check.</param>
     /// <param name="func">The sync validation function that returns a non-generic Result.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
-    public static async Task<Result<T>> CheckAsync<T>(this Task<Result<T>> resultTask, Func<T, Result> func)
+    public static async Task<Result<T>> CheckAsync<T>(this Task<Result<T>> resultTask, Func<T, Result<Unit>> func)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);

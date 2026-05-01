@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 
 /// <summary>
-/// The single Trellis verb for converting <see cref="Result"/> / <see cref="Result{TValue}"/> /
+/// The single Trellis verb for converting <see cref="Result{TValue}"/> /
 /// <see cref="WriteOutcome{T}"/> / <see cref="Page{T}"/> values to ASP.NET Core HTTP responses. Works
 /// in both Minimal API endpoints and MVC controllers (.NET 7+ executes
 /// <see cref="Microsoft.AspNetCore.Http.IResult"/> natively in MVC). For typed
@@ -22,43 +22,13 @@ using Trellis;
 /// <c>EvaluatePreconditions</c>, <c>HonorPrefer</c>, etc. All selectors run against the domain value;
 /// the response body may be projected separately via the <c>body</c> overload.
 /// </para>
+/// <para>
+/// <b>No-payload success:</b> <c>Result&lt;Unit&gt;</c> is rendered as <c>204 No Content</c>
+/// (with <c>HonorPrefer</c>/<c>Vary</c>/ETag headers still applied).
+/// </para>
 /// </remarks>
 public static class HttpResponseExtensions
 {
-    #region Result (non-generic)
-
-    /// <summary>
-    /// Maps a non-generic <see cref="Result"/> to a 204 No Content (success) or a Problem Details
-    /// response (failure).
-    /// </summary>
-    public static Microsoft.AspNetCore.Http.IResult ToHttpResponse(
-        this Result result,
-        Action<HttpResponseOptionsBuilder>? configure = null)
-    {
-        var builder = new HttpResponseOptionsBuilder();
-        configure?.Invoke(builder);
-        var opts = builder.Build();
-
-        if (result.IsSuccess)
-            return new TrellisEmptyResult(opts);
-
-        return new TrellisErrorOnlyResult(result.Error!, opts);
-    }
-
-    /// <summary>Async <see cref="Task"/> overload.</summary>
-    public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync(
-        this Task<Result> resultTask,
-        Action<HttpResponseOptionsBuilder>? configure = null)
-        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(configure);
-
-    /// <summary>Async <see cref="ValueTask"/> overload.</summary>
-    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync(
-        this ValueTask<Result> resultTask,
-        Action<HttpResponseOptionsBuilder>? configure = null)
-        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(configure);
-
-    #endregion
-
     #region Error
 
     /// <summary>
@@ -293,27 +263,5 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
 
         var ambient = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
         return ambient.GetStatusCode(error);
-    }
-}
-
-/// <summary>Internal IResult that writes 204 No Content for a successful non-generic Result.</summary>
-internal sealed class TrellisEmptyResult : Microsoft.AspNetCore.Http.IResult
-{
-    private readonly HttpResponseOptions<object> _options;
-
-    public TrellisEmptyResult(HttpResponseOptions<object> options) => _options = options;
-
-    public Task ExecuteAsync(HttpContext httpContext)
-    {
-        if (_options.HonorPrefer)
-            TrellisHttpResult<object, object>.AppendVaryUnique(httpContext.Response, "Prefer");
-
-        if (_options.Vary is { Count: > 0 })
-        {
-            foreach (var v in _options.Vary)
-                TrellisHttpResult<object, object>.AppendVaryUnique(httpContext.Response, v);
-        }
-
-        return Microsoft.AspNetCore.Http.Results.NoContent().ExecuteAsync(httpContext);
     }
 }
