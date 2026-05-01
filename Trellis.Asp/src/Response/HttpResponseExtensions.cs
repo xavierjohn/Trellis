@@ -33,7 +33,7 @@ public static class HttpResponseExtensions
 
     /// <summary>
     /// Maps a standalone <see cref="Error"/> to a Problem Details HTTP response.
-    /// Useful for endpoints that produce a deterministic error without a <see cref="Result"/>
+    /// Useful for endpoints that produce a deterministic error without a <see cref="Result{TValue}"/>
     /// pipeline (e.g. diagnostic / fault demonstration endpoints).
     /// </summary>
     public static Microsoft.AspNetCore.Http.IResult ToHttpResponse(

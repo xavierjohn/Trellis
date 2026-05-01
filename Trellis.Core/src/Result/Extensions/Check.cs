@@ -50,12 +50,12 @@ public static class CheckExtensions
     }
 
     /// <summary>
-    /// Runs a validation function that returns a non-generic <see cref="Result"/> on the success value,
+    /// Runs a validation function that returns a <see cref="Result{TValue}"/> with <see cref="Unit"/> on the success value,
     /// preserving the original value on success. Common for void validations.
     /// </summary>
     /// <typeparam name="T">Type of the original result value.</typeparam>
     /// <param name="result">The result to check.</param>
-    /// <param name="func">The validation function that returns a non-generic Result.</param>
+    /// <param name="func">The validation function that returns a <see cref="Result{TValue}"/> with <see cref="Unit"/>.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
     public static Result<T> Check<T>(this Result<T> result, Func<T, Result<Unit>> func)
     {

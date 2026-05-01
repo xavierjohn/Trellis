@@ -23,6 +23,12 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
     IContentTypeHttpResult,
     IEndpointMetadataProvider
 {
+    // True when TDomain is Unit. The Unit success path emits 204 No Content
+    // unconditionally (see ExecuteSuccessAsync below); StatusCode / Value /
+    // ContentType / PopulateMetadata must agree so OpenAPI / ApiExplorer
+    // consumers see the right success contract.
+    private static readonly bool s_isUnit = typeof(TDomain) == typeof(Unit);
+
     private readonly Result<TDomain> _result;
     private readonly Func<TDomain, TBody>? _bodyProjector;
     private readonly HttpResponseOptions<TDomain> _options;
@@ -38,13 +44,16 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
     }
 
     /// <summary>Hint for OpenAPI: the success status code expected on the success path.</summary>
-    public int? StatusCode => _options.LocationKind != LocationKind.None
-        ? StatusCodes.Status201Created
-        : StatusCodes.Status200OK;
+    public int? StatusCode => s_isUnit
+        ? StatusCodes.Status204NoContent
+        : _options.LocationKind != LocationKind.None
+            ? StatusCodes.Status201Created
+            : StatusCodes.Status200OK;
 
-    /// <summary>Hint for OpenAPI: the body value (null on the failure path).</summary>
-    public object? Value =>
-        _result.TryGetValue(out var v)
+    /// <summary>Hint for OpenAPI: the body value (null on the failure path, or for Result&lt;Unit&gt; success which has no body).</summary>
+    public object? Value => s_isUnit
+        ? null
+        : _result.TryGetValue(out var v)
             ? (_bodyProjector is not null ? (object?)_bodyProjector(v) : v)
             : null;
 
@@ -53,7 +62,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             ? _bodyProjector(v)
             : default;
 
-    public string? ContentType => "application/json";
+    public string? ContentType => s_isUnit ? null : "application/json";
 
     public Task ExecuteAsync(HttpContext httpContext)
     {
@@ -323,10 +332,32 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
     ///   <item><description>304 Not Modified — when conditional-request evaluation matches an If-None-Match / If-Modified-Since precondition.</description></item>
     ///   <item><description>400, 404, 412, 500 — error envelopes (problem+json) for the most common failure mappings.</description></item>
     /// </list>
+    /// <para>
+    /// <b>Result&lt;Unit&gt; specialization.</b> When <typeparamref name="TDomain"/> is
+    /// <see cref="Unit"/>, the success path short-circuits to 204 No Content (see
+    /// <c>ExecuteSuccessAsync</c>) before any body / location / range / preconditions branch
+    /// runs. The metadata declared here matches that contract: 204 with no body and no JSON
+    /// content type, plus the same problem-envelope error responses (400 / 404 / 500). 412 is
+    /// omitted because preconditions are skipped for the Unit path.
+    /// </para>
     /// </remarks>
     public static void PopulateMetadata(System.Reflection.MethodInfo method, EndpointBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+
+        if (s_isUnit)
+        {
+            // 204 No Content — Result<Unit> success short-circuits before any body / location /
+            // range / preconditions branch can apply, so the metadata is much smaller than the
+            // general case below. Error envelopes still apply because failures flow through the
+            // same ProblemDetails writer regardless of TDomain.
+            builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status204NoContent, typeof(void)));
+            builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status400BadRequest, typeof(ProblemDetails), ["application/problem+json"]));
+            builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status404NotFound, typeof(ProblemDetails), ["application/problem+json"]));
+            builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status500InternalServerError, typeof(ProblemDetails), ["application/problem+json"]));
+            return;
+        }
+
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status200OK, typeof(TBody), ["application/json"]));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status201Created, typeof(TBody), ["application/json"]));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status206PartialContent, typeof(TBody), ["application/json"]));

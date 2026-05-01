@@ -1,4 +1,4 @@
-# Trellis.Authorization — API Reference
+﻿# Trellis.Authorization — API Reference
 
 **Package:** `Trellis.Authorization`
 **Namespace:** `Trellis.Authorization`

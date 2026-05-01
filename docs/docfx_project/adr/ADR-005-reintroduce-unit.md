@@ -1,4 +1,4 @@
-# ADR-005 — Re-introduce `Trellis.Unit` and Collapse Non-Generic `Result` to a Static Factory
+﻿# ADR-005 — Re-introduce `Trellis.Unit` and Collapse Non-Generic `Result` to a Static Factory
 
 > **Status:** Accepted (counter-ADR to ADR-002 §3 "Unit removal").
 >

@@ -52,12 +52,12 @@ public static class CheckIfExtensions
 
     /// <summary>
     /// Conditionally runs a validation function when the boolean condition is true.
-    /// Convenience overload for check functions returning non-generic <see cref="Result"/>.
+    /// Convenience overload for check functions returning <see cref="Result{TValue}"/> with <see cref="Unit"/>.
     /// </summary>
     /// <typeparam name="T">Type of the original result value.</typeparam>
     /// <param name="result">The result to check.</param>
     /// <param name="condition">The condition that must be true for the check to run.</param>
-    /// <param name="func">The validation function that returns a non-generic Result.</param>
+    /// <param name="func">The validation function that returns a <see cref="Result{TValue}"/> with <see cref="Unit"/>.</param>
     /// <returns>The original result if the condition is false or the check passes; otherwise the check's failure.</returns>
     public static Result<T> CheckIf<T>(this Result<T> result, bool condition, Func<T, Result<Unit>> func)
     {
@@ -120,12 +120,12 @@ public static class CheckIfExtensions
 
     /// <summary>
     /// Conditionally runs a validation function when the predicate returns true for the success value.
-    /// Convenience overload for check functions returning non-generic <see cref="Result"/>.
+    /// Convenience overload for check functions returning <see cref="Result{TValue}"/> with <see cref="Unit"/>.
     /// </summary>
     /// <typeparam name="T">Type of the original result value.</typeparam>
     /// <param name="result">The result to check.</param>
     /// <param name="predicate">The predicate to evaluate against the success value.</param>
-    /// <param name="func">The validation function that returns a non-generic Result.</param>
+    /// <param name="func">The validation function that returns a <see cref="Result{TValue}"/> with <see cref="Unit"/>.</param>
     /// <returns>The original result if the predicate is false or the check passes; otherwise the check's failure.</returns>
     public static Result<T> CheckIf<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<Unit>> func)
     {
