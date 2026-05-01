@@ -4,7 +4,7 @@ namespaces: [Trellis.Http]
 types: [HttpResponseMessageExtensions, HttpClientResultExtensions]
 version: v3
 last_verified: 2026-05-01
-audience: [llm, developer]
+audience: [llm]
 ---
 # Trellis.Http &mdash; API Reference
 

@@ -4,7 +4,7 @@ namespaces: [Trellis.Testing]
 types: [FakeRepository<,>, InMemoryUnitOfWork, ResultAssertions]
 version: v3
 last_verified: 2026-05-01
-audience: [llm, developer]
+audience: [llm]
 ---
 # Trellis.Testing — API Reference
 

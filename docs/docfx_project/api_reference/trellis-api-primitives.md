@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Primitives]
 types: [Age, CountryCode, CurrencyCode, EmailAddress, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, ParsableJsonConverter<T>, CompositeValueObjectJsonConverter<T>]
 version: v3
 last_verified: 2026-05-01
-audience: [llm, developer]
+audience: [llm]
 ---
 # Trellis API Primitives
 

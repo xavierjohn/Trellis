@@ -1,39 +1,66 @@
-﻿# Aggregate Factory Pattern
+﻿---
+title: Aggregate Factory Pattern
+package: Trellis.Core
+topics: [ddd, aggregate, factory, invariants, result, value-objects, reconstitution]
+related_api_reference: [trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# Aggregate Factory Pattern
 
-When an aggregate can be both **created from scratch** and **reconstituted from existing data**, one factory method is not enough.
+A convention for giving `Aggregate<TId>` two safe creation paths — `TryCreate` for new instances and `TryCreateExisting` for reconstitution — so identity, invariants, and creation events live in one place.
 
-That is the problem this pattern solves.
+## Patterns Index
 
-- new aggregates need a **new ID**
-- reconstituted aggregates must keep an **existing ID**
-- both paths should enforce the same domain invariants
+| Goal | Use | See |
+|---|---|---|
+| Create a brand-new aggregate (generate ID, raise creation event) | `static Result<TAgg> TryCreate(...)` | [Defining the factory](#defining-the-factory) |
+| Reconstitute an aggregate with a known ID (importer, fixture, manual hydration) | `static Result<TAgg> TryCreateExisting(TId id, ...)` | [Reconstitution path](#reconstitution-path) |
+| Throw on invalid input (seeders, known-good test data) | `static TAgg Create(...)` / `CreateExisting(id, ...)` | [Throwing helpers](#throwing-helpers) |
+| Run the same invariants on both paths | private `static Result<Unit> Validate(...)` | [Centralizing validation](#centralizing-validation) |
+| Type the constructor parameters | derive each input from `Required*<TSelf>` | [Composing primitives](#composing-primitives) |
+| Raise creation events exactly once | `DomainEvents.Add(...)` inside `TryCreate` only | [Domain events and reconstitution](#domain-events-and-reconstitution) |
 
-> [!TIP]
-> `Aggregate<TId>` does not impose factory methods for you. The pattern below is a Trellis-friendly convention for keeping creation explicit and safe.
+## Use this guide when
 
-## The recommended shape
+- Your aggregate must support both new construction *and* reconstitution from existing data (importers, manual rehydration, fixtures, migrations).
+- You want one place that enforces invariants, regardless of which path the caller took.
+- Tests need deterministic IDs while production generates them.
+- Creation events must fire exactly once per aggregate lifetime.
 
-Use two factory paths:
+## Surface at a glance
 
-| Method | Use it for | ID behavior |
-| --- | --- | --- |
-| `TryCreate(...)` | New aggregate | Generates a new ID |
-| `TryCreateExisting(id, ...)` | Reconstitution, migrations, tests with known IDs | Preserves the supplied ID |
-| `Create(...)` | Same as `TryCreate`, but for known-good data | Throws on failure |
-| `CreateExisting(id, ...)` | Same as `TryCreateExisting`, but for known-good data | Throws on failure |
+This is a **convention**, not API. `Aggregate<TId>` itself only requires `protected Aggregate(TId id)` and exposes `DomainEvents`, `UncommittedEvents()`, `AcceptChanges()`, and `ETag` — see [`Aggregate<TId>` reference](../api_reference/trellis-api-core.md#aggregatetid). The pattern adds the four static methods below.
 
-## A working example
+| Method | Signature shape | ID source | Validation | Raises creation event? |
+|---|---|---|---|---|
+| `TryCreate` | `static Result<T> TryCreate(...primitives)` | Generated (e.g. `TId.NewUniqueV7()`) | Yes | Yes |
+| `TryCreateExisting` | `static Result<T> TryCreateExisting(TId id, ...primitives)` | Caller-supplied | Yes | No |
+| `Create` | `static T Create(...primitives)` | Generated | Yes (throws on failure) | Yes |
+| `CreateExisting` | `static T CreateExisting(TId id, ...primitives)` | Caller-supplied | Yes (throws on failure) | No |
+
+Underlying types: [`Aggregate<TId>`, `IAggregate`, `IDomainEvent`](../api_reference/trellis-api-core.md#domain-driven-design); [`Required*<TSelf>` primitive bases](../api_reference/trellis-api-core.md#primitive-value-object-base-classes).
+
+## Installation
+
+```bash
+dotnet add package Trellis.Core
+```
+
+## Quick start
+
+A minimal `Product` aggregate exposing all four factory paths.
 
 ```csharp
+using System;
 using Trellis;
-using Trellis.Primitives;
 
-namespace AggregateFactories;
+namespace Catalog;
 
-[Trellis.StringLength(200)]
+[StringLength(200)]
 public partial class ProductName : RequiredString<ProductName> { }
 
-[Trellis.StringLength(64)]
+[StringLength(64)]
 public partial class Sku : RequiredString<Sku> { }
 
 public partial class ProductId : RequiredGuid<ProductId> { }
@@ -42,8 +69,11 @@ public sealed record ProductCreated(ProductId ProductId, DateTime OccurredAt) : 
 
 public sealed class Product : Aggregate<ProductId>
 {
-    private Product(ProductId id, ProductName name, Sku sku)
-        : base(id)
+    public ProductName Name { get; private set; }
+    public Sku Sku { get; private set; }
+    public bool IsActive { get; private set; }
+
+    private Product(ProductId id, ProductName name, Sku sku) : base(id)
     {
         Name = name;
         Sku = sku;
@@ -56,10 +86,6 @@ public sealed class Product : Aggregate<ProductId>
         Sku = null!;
     }
 
-    public ProductName Name { get; private set; }
-    public Sku Sku { get; private set; }
-    public bool IsActive { get; private set; }
-
     public static Result<Product> TryCreate(ProductName name, Sku sku)
     {
         var product = new Product(ProductId.NewUniqueV7(), name, sku);
@@ -67,18 +93,14 @@ public sealed class Product : Aggregate<ProductId>
         return Result.Ok(product);
     }
 
-    public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku)
-    {
-        var product = new Product(id, name, sku);
-        return Result.Ok(product);
-    }
+    public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku) =>
+        Result.Ok(new Product(id, name, sku));
 
     public static Product Create(ProductName name, Sku sku)
     {
         var result = TryCreate(name, sku);
         if (!result.TryGetValue(out var product))
             throw new InvalidOperationException(result.Error!.Detail);
-
         return product;
     }
 
@@ -87,56 +109,72 @@ public sealed class Product : Aggregate<ProductId>
         var result = TryCreateExisting(id, name, sku);
         if (!result.TryGetValue(out var product))
             throw new InvalidOperationException(result.Error!.Detail);
-
         return product;
     }
 }
 ```
 
-## Why two methods are better than one
+## Defining the factory
 
-If `TryCreate(...)` always generates an ID, you cannot safely rebuild an existing aggregate:
+Two pillars:
+
+1. **Identity is generated** inside `TryCreate` — the caller never supplies an ID.
+2. **Validation runs first**; the constructor stays trivial (assignment-only).
+
+Use `Result.Ok(aggregate)` on success and `Result.Fail<TAgg>(error)` on failure. There is no implicit `Error → Result<T>` conversion in the current API — always go through the static factory.
+
+| Element | Convention | Why |
+|---|---|---|
+| Constructor visibility | `private` | Forces all callers through the factory. |
+| ID parameter | First positional | Matches `Aggregate<TId>`'s base constructor. |
+| Field assignment | Inside the constructor only | Keeps factories side-effect-free until the `Result.Ok` line. |
+| Domain events | Added on the *new* path only | Reconstitution must not republish creation events. |
+| Strong-typed inputs | `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, ... | Each primitive validates itself at construction time — see [`Required*` bases](../api_reference/trellis-api-core.md#primitive-value-object-base-classes). |
+
+### Reconstitution path
+
+`TryCreateExisting(TId id, ...)` exists for any caller that already knows the ID:
+
+- importing data from an external system,
+- manual rehydration (no EF Core),
+- tests that need a deterministic ID,
+- migrations that must preserve the existing primary key.
+
+It runs the *same* validation as `TryCreate`, but it never raises a creation event — the aggregate already exists.
 
 ```csharp
 var knownId = ProductId.Create(Guid.Parse("8e945d6d-e4f4-4dd6-bb50-3ab19f9d9fd1"));
 var name = ProductName.Create("Trellis Mug");
 var sku = Sku.Create("MUG-001");
 
-var newProduct = Product.Create(name, sku);                     // new ID
-var existingProduct = Product.CreateExisting(knownId, name, sku); // preserved ID
+var fresh = Product.TryCreate(name, sku);                    // new ID, ProductCreated raised
+var rebuilt = Product.TryCreateExisting(knownId, name, sku); // ID preserved, no event
 ```
 
-That distinction matters for:
+### Throwing helpers
 
-- **manual rehydration**
-- **tests that need fixed IDs**
-- **data import or migration code**
-- **reconstitution outside EF Core**
+`Create` / `CreateExisting` are thin wrappers around the `Try*` variants. Use them only for known-good data — fixtures, seeders, inline test setup. Production code paths should consume `Result<TAgg>` directly so the failure stays observable.
 
-## Where EF Core fits
+```csharp
+public static Product Create(ProductName name, Sku sku)
+{
+    var result = TryCreate(name, sku);
+    if (!result.TryGetValue(out var product))
+        throw new InvalidOperationException(result.Error!.Detail);
+    return product;
+}
+```
 
-When EF Core materializes an aggregate, it typically uses the parameterless constructor and sets properties during rehydration.
+## Centralizing validation
 
-That is why many Trellis aggregates use this shape:
-
-- parameterless constructor for EF Core
-- private constructor with all required state
-- `TryCreate(...)` for new instances
-- `TryCreateExisting(...)` for explicit reconstitution outside EF Core
-
-> [!NOTE]
-> The parameterless constructor is for infrastructure. Your domain code should still prefer explicit factory methods.
-
-## Keep validation in one place
-
-Both creation paths should enforce the same rules. A simple way to do that is to validate the arguments before either constructor call.
+Both creation paths must enforce the same rules. Extract them into a private static method that returns `Result<Unit>` (returned by the parameterless `Result.Ok()` / `Result.Fail(error)` overloads), and call it before constructing the aggregate.
 
 ```csharp
 public static Result<Product> TryCreate(ProductName name, Sku sku)
 {
     var validation = Validate(name, sku);
     if (validation.IsFailure)
-        return validation.Error;
+        return Result.Fail<Product>(validation.Error!);
 
     var product = new Product(ProductId.NewUniqueV7(), name, sku);
     product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
@@ -147,59 +185,114 @@ public static Result<Product> TryCreateExisting(ProductId id, ProductName name, 
 {
     var validation = Validate(name, sku);
     if (validation.IsFailure)
-        return validation.Error;
+        return Result.Fail<Product>(validation.Error!);
 
     return Result.Ok(new Product(id, name, sku));
 }
 
-private static Result Validate(ProductName name, Sku sku)
+private static Result<Unit> Validate(ProductName name, Sku sku)
 {
     if (sku.Value.StartsWith("LEGACY-", StringComparison.OrdinalIgnoreCase))
-        return new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(sku)), "validation.error") { Detail = "SKU cannot start with LEGACY." }));
+        return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty(nameof(sku)), "validation.error")
+            {
+                Detail = "SKU cannot start with LEGACY.",
+            })));
 
     return Result.Ok();
 }
 ```
 
+> [!TIP]
+> Per-field invariants (length, range, non-empty) belong on the value-object primitive itself via `[StringLength]`, `[Range]`, etc. The aggregate `Validate` method is for *cross-field* rules that no single primitive can enforce.
+
+## Composing primitives
+
+Strong-typed inputs eliminate most aggregate-level validation. By the time `TryCreate` runs, every primitive has already passed its own invariants.
+
+```csharp
+[StringLength(200)]
+public partial class ProductName : RequiredString<ProductName> { }   // empty/whitespace + length
+
+[StringLength(64)]
+public partial class Sku : RequiredString<Sku> { }                   // empty/whitespace + length
+
+public partial class ProductId : RequiredGuid<ProductId> { }         // Guid.Empty rejection
+```
+
+The source generator emits `TryCreate` / `Create` / `Parse` / `JsonConverter` for each primitive — full surface in the [`Required*` source-generated members table](../api_reference/trellis-api-core.md#source-generated-members). Callers convert raw input once at the boundary:
+
+```csharp
+var nameResult = ProductName.TryCreate(input.Name, fieldName: nameof(input.Name));
+var skuResult  = Sku.TryCreate(input.Sku, fieldName: nameof(input.Sku));
+```
+
 ## Domain events and reconstitution
 
-A common mistake is raising “created” events while reconstituting existing data.
+A common mistake is raising "created" events while reconstituting existing data. The rule:
 
-Use this rule:
+| Path | `DomainEvents.Add(new XxxCreated(...))`? |
+|---|---|
+| `TryCreate` | Yes — the aggregate is new |
+| `TryCreateExisting` | No — the aggregate already exists |
+| `Create` / `CreateExisting` | Inherits from the underlying `Try*` it wraps |
 
-- `TryCreate(...)` may raise creation events
-- `TryCreateExisting(...)` usually should **not**
+That keeps `UncommittedEvents()` (see [`Aggregate<TId>`](../api_reference/trellis-api-core.md#aggregatetid)) meaningful: the only events present are the ones that actually happened in this unit of work.
 
-That keeps `UncommittedEvents()` meaningful.
+## Where EF Core fits
 
-## What this pattern does **not** do
+When EF Core materializes an aggregate, it uses the parameterless constructor and sets properties during rehydration — the same constructor that lets `private Product() : base(null!) { ... }` exist for infrastructure use only.
 
-These concerns belong elsewhere:
+| Constructor | Purpose | Visibility |
+|---|---|---|
+| `private Product(ProductId id, ProductName name, Sku sku)` | Real construction; called by `TryCreate` and `TryCreateExisting` | `private` |
+| `private Product()` | EF Core materialization stub | `private` |
 
-- **`ETag`** is infrastructure-managed
-- **`AcceptChanges()`** belongs after persistence/event publication
-- **repository lookups** belong in repositories or handlers, not in the aggregate constructor
+Domain code stays on the factory methods; only the EF Core proxy ever touches the parameterless overload. `TryCreateExisting` is for *non-EF-Core* reconstitution (importers, JSON hydration, migrations).
 
-> [!WARNING]
-> Do not assign `ETag` in your factory methods. `ETag` exists for optimistic concurrency and is owned by persistence infrastructure.
+## Composition
 
-## A practical checklist
+Aggregate factories return `Result<TAgg>`, which composes with the rest of Trellis (`Bind`, `Map`, `Ensure`, etc.). A typical write-side flow validates input primitives, calls `TryCreate`, then hands the aggregate to the persistence layer — application command handlers stay on `Result<Unit>`.
 
-Use this pattern when your aggregate:
+```csharp
+using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
 
-- has a strong identity type like `ProductId`
-- needs a constructor for EF Core
-- must support both new and existing instances
-- raises domain events for true state changes
+public sealed record CreateProductCommand(string Name, string Sku);
 
-## Summary
+public sealed class CreateProductHandler(IProductRepository repo)
+{
+    public Task<Result<Unit>> HandleAsync(CreateProductCommand cmd, CancellationToken ct) =>
+        Result.Combine(
+                ProductName.TryCreate(cmd.Name, fieldName: nameof(cmd.Name)),
+                Sku.TryCreate(cmd.Sku, fieldName: nameof(cmd.Sku)))
+            .Bind(parts => Product.TryCreate(parts.Item1, parts.Item2))
+            .BindAsync((product, token) => repo.AddAsync(product, token), ct)
+            .AsUnitAsync();
+}
 
-The aggregate factory pattern gives you:
+public interface IProductRepository
+{
+    Task<Result<Product>> AddAsync(Product product, CancellationToken ct);
+}
+```
 
-- clear intent
-- correct identity handling
-- safer tests
-- cleaner reconstitution paths
-- fewer accidental domain events
+`Result.Combine` aggregates per-field failures; `BindAsync` runs the persistence step only on success; `AsUnitAsync` projects the success payload to `Unit` for the command contract.
 
-If the aggregate is new, generate a new ID. If it already exists, preserve the ID you were given.
+## Practical guidance
+
+- **Don't touch `ETag` from a factory.** It is owned by persistence infrastructure (see [`Aggregate<TId>` reference](../api_reference/trellis-api-core.md#aggregatetid)).
+- **Don't call `AcceptChanges()` from a factory.** That belongs after persistence and event publication, in the repository or unit-of-work boundary.
+- **Don't fetch from repositories in a factory.** Lookups belong in handlers; the factory takes already-resolved primitives and returns a fresh aggregate.
+- **Pick `TryCreate` vs `Create` by audience.** Public API surfaces, command handlers, and parsers want `Result<TAgg>`. Test fixtures and inline seed data want `Create`.
+- **One `Validate` method, two callers.** If you need a third creation path, add another wrapper around the same `Validate` — never duplicate the rules.
+- **Use `RequireETagAsync` / `OptionalETagAsync` at the read-modify-write boundary**, not in the factory — see [`AggregateETagExtensions`](../api_reference/trellis-api-core.md#aggregateetagextensions).
+
+## Cross-references
+
+- API surface: [`trellis-api-core.md` → Domain-Driven Design](../api_reference/trellis-api-core.md#domain-driven-design)
+- Primitive value-object bases (`Required*<TSelf>`): [`trellis-api-core.md` → Primitive value object base classes](../api_reference/trellis-api-core.md#primitive-value-object-base-classes)
+- Built-in primitives (`EmailAddress`, `Money`, ...): [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
+- ETag-based optimistic concurrency on aggregates: [`trellis-api-core.md` → AggregateETagExtensions](../api_reference/trellis-api-core.md#aggregateetagextensions)
+- EF Core conventions for aggregates and entities: [`trellis-api-efcore.md`](../api_reference/trellis-api-efcore.md)

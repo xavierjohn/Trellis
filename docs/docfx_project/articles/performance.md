@@ -1,4 +1,12 @@
-﻿# Performance
+﻿---
+title: Performance
+package: Trellis (multiple)
+topics: [performance, benchmarks, allocations, rop, overhead, optimization]
+related_api_reference: [trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# Performance
 
 If you're deciding whether Trellis is "too expensive," the short answer is usually **no**.
 

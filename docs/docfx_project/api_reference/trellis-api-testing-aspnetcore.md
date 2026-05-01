@@ -4,7 +4,7 @@ namespaces: [Trellis.Testing.AspNetCore, Trellis.Testing.AspNetCore.Http]
 types: [WebApplicationFactory<TEntryPoint>, TestClient, FakeTimeProvider, EntraTokenAcquirer, HttpFileReplayer]
 version: v3
 last_verified: 2026-05-01
-audience: [llm, developer]
+audience: [llm]
 ---
 # Trellis.Testing.AspNetCore &mdash; API Reference
 

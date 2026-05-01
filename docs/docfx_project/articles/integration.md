@@ -1,6 +1,30 @@
+﻿---
+title: Integration Guides
+package: Trellis (multiple)
+topics: [integration, http, mediator, ef, asp, fluentvalidation, sso, testing, observability]
+related_api_reference: [trellis-api-core.md, trellis-api-mediator.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-fluentvalidation.md, trellis-api-http.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
 # Integration
 
 When you adopt Trellis, the hard part is rarely `Result<T>` itself. The real work is making it feel natural in HTTP APIs, validation, persistence, authorization, and observability. These guides show the pieces that fit around Trellis in real applications.
+
+## Patterns Index
+
+| Goal | Article | Topics |
+|---|---|---|
+| Map `Result<T>` to HTTP responses (MVC, Minimal APIs, Problem Details, ETags, `Prefer`) | [ASP.NET Core](integration-aspnet.md) | asp, http, problem-details |
+| Authorize HTTP requests with actor-based claims | [ASP.NET Authorization](integration-asp-authorization.md) | asp, authorization, actor |
+| Call HTTP APIs and bridge responses into `Result<T>` / `Maybe<T>` | [HTTP Client](integration-http.md) | http, httpclient, json |
+| Add validator-based input checks at the application boundary | [FluentValidation](integration-fluentvalidation.md) | validation, fluentvalidation |
+| Persist aggregates with EF Core and explicit failure mapping | [Entity Framework Core](integration-ef.md) | ef, persistence, repository |
+| Apply pipeline behaviors (validation, logging, transactions) around handlers | [Mediator](integration-mediator.md) | mediator, pipeline |
+| Configure least-privilege database permissions | [Database Permissions](integration-db-permissions.md) | ef, security, permissions |
+| Sign users in via external identity providers | [SSO](integration-sso.md) | sso, authentication |
+| Test against Microsoft Entra in integration tests | [Entra Testing](integration-entra-testing.md) | testing, entra, sso |
+| Write integration tests for Trellis-based services | [Testing](integration-testing.md) | testing, integration |
+| Trace, correlate, and diagnose production behavior | [Observability](integration-observability.md) | observability, opentelemetry, tracing |
 
 > [!TIP]
 > If you are building a web API, start with [ASP.NET Core Integration](integration-aspnet.md). It gives you the cleanest end-to-end path from domain results to HTTP responses.
@@ -96,3 +120,12 @@ From there:
 ## Next step
 
 Go to [ASP.NET Core Integration](integration-aspnet.md).
+
+## Cross-references
+
+- Core `Result<T>` / `Maybe<T>` / `Error` semantics: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- Mediator pipeline behaviors: [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md)
+- ASP.NET Core response mapping surface: [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md)
+- EF Core integration surface: [`trellis-api-efcore.md`](../api_reference/trellis-api-efcore.md)
+- FluentValidation integration surface: [`trellis-api-fluentvalidation.md`](../api_reference/trellis-api-fluentvalidation.md)
+- HttpClient extensions surface: [`trellis-api-http.md`](../api_reference/trellis-api-http.md)

@@ -4,7 +4,7 @@ namespaces: [Trellis.StateMachine]
 types: [IStateMachine<,>, StateBuilder<,>, Transition<,>]
 version: v3
 last_verified: 2026-05-01
-audience: [llm, developer]
+audience: [llm]
 ---
 # Trellis.StateMachine — API Reference
 

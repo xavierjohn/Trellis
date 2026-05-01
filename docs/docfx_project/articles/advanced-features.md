@@ -1,3 +1,11 @@
+﻿---
+title: Advanced Features
+package: Trellis.Core
+topics: [pattern-matching, combine, try, parallel, linq, maybe]
+related_api_reference: [trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
 # Advanced Features
 
 Once you know `Map`, `Bind`, and `Ensure`, the next question is usually: **how do I keep the same style when the workflow gets more complex?**
@@ -9,6 +17,17 @@ This article covers the Trellis features that help when you need to:
 - capture exceptions from throw-happy APIs
 - run independent async work in parallel
 - write more declarative pipelines with LINQ
+
+## Patterns Index
+
+| Goal | Use | See |
+|---|---|---|
+| Decide success vs failure at the end of a pipeline | `Match(onSuccess, onFailure)` / `MatchAsync(...)` | [Pattern matching](#pattern-matching-make-the-end-of-the-pipeline-obvious) |
+| Combine several `Result<T>` values without tuple plumbing | `Combine(...)` then `Bind` / `Map` / `Match` with destructured tuple | [Tuple destructuring](#tuple-destructuring-combine-values-without-manual-unpacking) |
+| Bridge a throwing API into a `Result<T>` | `Result.Try(...)` / `Result.TryAsync(...)` (optionally with exception mapper) | [Exception capture](#exception-capture-keep-throwing-apis-at-the-edge) |
+| Run independent async result-producing work concurrently | `Result.ParallelAsync(...).WhenAllAsync()` | [Parallel operations](#parallel-operations-run-independent-async-work-together) |
+| Express sequential composition with query syntax | `from x in result1 from y in result2 select ...` | [LINQ query syntax](#linq-query-syntax-write-sequential-intent-clearly) |
+| Drop the error and keep only “did it succeed?” | `result.ToMaybe()` / `ToMaybeAsync()` | [Result-to-Maybe conversion](#result-to-maybe-conversion) |
 
 ## Start Here: a Compact Example
 
@@ -293,3 +312,7 @@ Maybe<string> value = await Task.FromResult(Result.Ok("Ada")).ToMaybeAsync();
 
 - Read [Error Handling](error-handling.md) for type-specific matching and aggregation
 - Read [Why Maybe?](maybe-type.md) for domain optionality and `ToResult(...)`
+
+## Cross-references
+
+- `Match` / `MatchAsync`, `Combine`, tuple-aware verbs, `Result.Try` / `TryAsync`, `ParallelAsync`, `WhenAllAsync`, LINQ extensions, `ToMaybe` / `ToMaybeAsync`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)

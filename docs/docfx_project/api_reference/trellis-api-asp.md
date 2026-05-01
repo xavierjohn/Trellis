@@ -4,7 +4,7 @@ namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.ModelBinding, T
 types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, ClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider]
 version: v3
 last_verified: 2026-05-01
-audience: [llm, developer]
+audience: [llm]
 ---
 # Trellis.Asp — API Reference
 

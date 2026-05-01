@@ -1,3 +1,11 @@
+﻿---
+title: With Trellis vs Without Trellis
+package: Trellis (multiple)
+topics: [ai, comparison, study, scaffolding, security, review]
+related_api_reference: []
+last_verified: 2026-05-01
+audience: [developer]
+---
 # With Trellis vs Without Trellis
 
 If you are using AI to build production software, the real question is not "Can it generate code?"

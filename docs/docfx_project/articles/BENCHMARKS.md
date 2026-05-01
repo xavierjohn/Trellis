@@ -1,3 +1,11 @@
+﻿---
+title: Benchmarks
+package: Trellis (multiple)
+topics: [benchmarks, performance, allocations, rop, microbenchmarks]
+related_api_reference: [trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
 # Benchmarks
 
 This article is the "show me the numbers" companion to [Performance](performance.md).

@@ -1,3 +1,11 @@
+﻿---
+title: Introduction
+package: Trellis (multiple)
+topics: [overview, railway-oriented-programming, ddd, value-objects, error-handling, getting-started]
+related_api_reference: [trellis-api-core.md, trellis-api-primitives.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
 # Introduction
 
 Trellis is for the moment when your codebase has outgrown "just use strings and throw exceptions." It gives you a structure for writing application code that stays readable as validation, business rules, persistence, and HTTP concerns pile up.

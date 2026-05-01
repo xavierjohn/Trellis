@@ -1,3 +1,11 @@
+﻿---
+title: Trellis for AI Code Generation
+package: Trellis (multiple)
+topics: [ai, llm, code-generation, value-objects, result, prompting]
+related_api_reference: [trellis-api-core.md, trellis-api-primitives.md, trellis-api-asp.md, trellis-api-statemachine.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
 # Trellis for AI Code Generation
 
 AI is good at producing code quickly.

@@ -4,7 +4,7 @@ namespaces: [Trellis.FluentValidation]
 types: [TrellisValidator<T>, ValidationResultExtensions]
 version: v3
 last_verified: 2026-05-01
-audience: [llm, developer]
+audience: [llm]
 ---
 # Trellis.FluentValidation — API Reference
 
