@@ -54,7 +54,9 @@ public async Task<Result<OrderResponse>> Handle(CreateDraftOrderCommand cmd, Can
     // 2. Async precondition — returns Task<Result<T>>; await BEFORE chaining sync extensions,
     //    or use the *Async siblings (BindAsync/EnsureAsync/MapAsync) which extend Task<Result<T>>.
     return await LoadCustomerAsync(cmd.CustomerId, ct)                  // Task<Result<Customer>>
-        .EnsureAsync(c => c.IsActive, _ => Error.Forbidden(...))        // Task<Result<Customer>>
+        .EnsureAsync(c => c.IsActive,
+            c => new Error.Forbidden("customer.inactive",
+                ResourceRef.For<Customer>(c.Id)))                        // Task<Result<Customer>>
         .BindAsync(c => LoadProductsAsync(cmd.LineItems, ct))           // Task<Result<IReadOnlyList<Product>>>
         .MapAsync(products => Order.CreateDraft(cmd, products))         // Task<Result<Order>>
         .MapAsync(order => OrderResponse.From(order));                  // Task<Result<OrderResponse>>
@@ -73,7 +75,7 @@ public Task<Result> Handle(CancelOrderCommand cmd, CancellationToken ct) =>
 | --- | --- | --- |
 | `CS1929: 'Task<Result>' does not contain a definition for 'Bind'` | `LoadAsync(...).Bind(x => ...)` | Use `BindAsync` (which extends `Task<Result<T>>`), or `await` first then `.Bind(...)` |
 | `CS0411: type arguments for 'Map<TOut>' cannot be inferred` | `someTaskResult.Map(...)` after a non-generic `CheckAsync` | `await` the precondition into a concrete `Result` before projecting; or use `MapAsync<TOut>(...)` |
-| `CS0121: ambiguous between 'BindAsync<...>(Task<Result<T>>, Func<T, Task<Result<R>>>)' and '... Func<T, ValueTask<Result<R>>>' ` | Inline async lambda whose return type can't be inferred between `Task` and `ValueTask` | Either return the lambda from a named method with explicit `Task<Result<R>>` return type, or use a typed local `Func<T, Task<Result<R>>> next = c => ...; .BindAsync(next)`. See [`Bind family — Task vs ValueTask ambiguity`](#bind-family--bindextensions-bindextensionsasync-resultbindextensions-resultbindextensionsasync-bindzipextensions-bindzipextensionsasync) |
+| `CS0121: ambiguous between 'BindAsync<...>(Result<T>, Func<T, Task<Result<R>>>)' and 'BindAsync<...>(Result<T>, Func<T, ValueTask<Result<R>>>)'` | A sync `Result<T>` (not `Task<Result<T>>`) receiver with an inline `async` lambda whose return type can't be inferred between `Task` and `ValueTask` — both delegate-shape overloads exist on the sync receiver. | Either extract the lambda to a named method with an explicit `Task<Result<R>>` return type, or pin the delegate type at the call site: `Func<T, Task<Result<R>>> next = c => ...; result.BindAsync(next);`. See [`Bind family — Task vs ValueTask ambiguity`](#bind-family--bindextensions-bindextensionsasync-resultbindextensions-resultbindextensionsasync-bindzipextensions-bindzipextensionsasync) |
 
 
 ## Common traps
@@ -82,6 +84,15 @@ public Task<Result> Handle(CancelOrderCommand cmd, CancellationToken ct) =>
 - Do not use `default(Result)` or `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default_initialized")` failure.
 - Do not put `Unit` in consumer-facing docs or APIs. Use non-generic `Result` for no-payload flows.
 - Use `ParallelAsync` only for independent work. If operation B depends on operation A, compose with `Bind`/`BindAsync` instead.
+
+### First-30-minutes surprises
+
+| Surprise | What it actually is |
+|---|---|
+| `Result<T>.Value` getter does not exist (`CS1061`) | Removed in v2 because it was the primary cause of unsafe value access. Extract via `TryGetValue(out var v)`, `Match(...)`, deconstruction `var (ok, v, err) = result;`, or chain with `Bind`/`Map`. `Maybe<T>.Value` *does* exist but is hidden from IntelliSense and gated by analyzer `TRLS003` — guard with `HasValue`/`TryGetValue`/`Match`/`GetValueOrDefault`. The two types do not have symmetric value-access ergonomics. |
+| Implicit `T → Result<T>` and `Error → Result<T>` were removed (`CS0029`) | Use the explicit factory: `return Result.Ok(value);` and `return Result.Fail<T>(error);`. The C# compiler flags every site with `CS0029: cannot implicitly convert type 'T' to 'Result<T>'`. |
+| `Aggregate<TId>` / `Entity<TId>` already provide `CreatedAt` and `LastModified` (`CS0108`) | Both are `DateTimeOffset` (not `DateTime`) and infrastructure-managed by Trellis EF Core. Defining your own `public DateTime CreatedAt { ... }` on the aggregate triggers `CS0108: 'X.CreatedAt' hides inherited member 'Entity<TId>.CreatedAt'`. If your spec calls for an audit timestamp, use the inherited base property instead of declaring a new one. |
+| `Result<T>` has `.Error` (nullable, never throws) but **not** `.Value` | `result.Error` returns `Error?` (null on success). `result.TryGetError(out var err)` is the safe Boolean form. Reading the success value still requires `TryGetValue`/`Match`/destructuring. |
 
 ## Breaking changes from v1
 

@@ -22,7 +22,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | Return a Minimal API result | `return result.ToHttpResponse(...)` | [`HttpResponseExtensions`](#httpresponseextensions) |
 | Return an MVC typed action result | Convert first, then adapt: `return result.ToHttpResponse(...).AsActionResult<T>()` or `return await result.ToHttpResponseAsync(...).AsActionResultAsync<T>()` | [`ActionResultAdapterExtensions`](#actionresultadapterextensions) |
 | Configure 201 Created | `.ToHttpResponse(o => o.Created(...))`, `.CreatedAtRoute(...)`, or `.CreatedAtAction(...)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
-| Generate versioned `Location` headers | Include the query API version in `CreatedAtRoute` route values, for example `["api-version"] = "2026-11-12"`. | [`CreatedAtRoute`](#httpresponseoptionsbuildertdomain) |
+| Generate versioned `Location` headers | **Required when query-string API versioning is enabled.** Include the API version in `CreatedAtRoute` route values: `["api-version"] = ApiVersion`. Omitting it produces `Location` headers that 404 on dereference. | [`CreatedAtRoute`](#httpresponseoptionsbuildertdomain) |
 | Map failure codes globally | Configure `TrellisAspOptions.ErrorStatusCodeMap` through `AddTrellisAsp(...)` | [`TrellisAspOptions`](#trellisaspoptions) |
 | Override failure mapping for one endpoint | `.WithErrorMapping(...)` / `.WithErrorMapping<TError>(statusCode)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
 | Document endpoint failure codes | Add ASP.NET response metadata for every spec-listed failure status (`422`, `409`, `403`, `404`, etc.) in addition to happy-path metadata. | [Code examples](#code-examples) |
@@ -37,7 +37,8 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 - Composition root calls `AddTrellisAsp()` or `UseAsp()`.
 - Every endpoint that returns a Trellis `Result` ultimately calls `ToHttpResponse` / `AsActionResult`.
 - OpenAPI metadata includes the success code and every failure code listed by the product spec.
-- `201 Created` endpoints include a usable `Location` header. Under query-string API versioning, include `api-version` in route values or the literal location.
+- `201 Created` endpoints include a usable `Location` header. **Under query-string API versioning, include `["api-version"] = ApiVersion` in `CreatedAtRoute` route values** (or use a literal `Location` that already contains `?api-version=...`). Forgetting this is a silent `Location`-404 bug — tests pass and OpenAPI looks fine, but clients following the `Location` header get 404.
+- `[Consumes("application/json")]` is **not** safe at the controller level when the controller has trigger-style POSTs without bodies (e.g., `POST /orders/{id}/submission`). ASP.NET Core returns `415 Unsupported Media Type` for any request without a `Content-Type` header. Apply `[Consumes]` per-action on body-bearing endpoints only, or scope it to a route convention.
 - Integration tests include at least one business-validation failure that asserts `422` Problem Details; do not rely on exception middleware to prove Result mapping.
 
 ## Types
@@ -87,7 +88,7 @@ Fluent options builder used by every generic `ToHttpResponse` overload. Selector
 | `WithAcceptRanges(string acceptRanges)` | `HttpResponseOptionsBuilder<TDomain>` | Sets `Accept-Ranges` (e.g. `"bytes"` or `"none"`). |
 | `Created(string locationLiteral)` | `HttpResponseOptionsBuilder<TDomain>` | Returns `201 Created` with a literal `Location` header. |
 | `Created(Func<TDomain, string> selector)` | `HttpResponseOptionsBuilder<TDomain>` | Returns `201 Created` with a `Location` derived from the value. |
-| `CreatedAtRoute(string routeName, Func<TDomain, RouteValueDictionary> routeValues)` | `HttpResponseOptionsBuilder<TDomain>` | Returns `201 Created` with a `Location` generated via `LinkGenerator.GetUriByName` (resolved from `HttpContext.RequestServices` at execute time). AOT-safe. |
+| `CreatedAtRoute(string routeName, Func<TDomain, RouteValueDictionary> routeValues)` | `HttpResponseOptionsBuilder<TDomain>` | Returns `201 Created` with a `Location` generated via `LinkGenerator.GetUriByName` (resolved from `HttpContext.RequestServices` at execute time). AOT-safe. **Under query-string API versioning, the route values dictionary MUST include `["api-version"] = ApiVersion`** — otherwise `Location` headers omit the version and 404 on dereference. Example: `o.CreatedAtRoute("Orders_GetById", o => new RouteValueDictionary { ["id"] = o.Id.Value, ["api-version"] = ApiVersion })`. |
 | `[RequiresUnreferencedCode] [RequiresDynamicCode] CreatedAtAction(string actionName, Func<TDomain, RouteValueDictionary> routeValues, string? controllerName = null)` | `HttpResponseOptionsBuilder<TDomain>` | MVC equivalent of `CreatedAtAction` — uses `LinkGenerator.GetUriByAction`. **Not trim/AOT-safe**; use `CreatedAtRoute` for AOT scenarios. |
 | `EvaluatePreconditions()` | `HttpResponseOptionsBuilder<TDomain>` | On `GET`/`HEAD`, evaluates RFC 9110 conditional headers (`If-Match`, `If-Unmodified-Since`, `If-None-Match`, `If-Modified-Since`) using the configured ETag/LastModified selectors and writes `304 Not Modified` or `412 Precondition Failed` accordingly. On unsafe methods the precondition must be evaluated *before* the mutation. |
 | `HonorPrefer()` | `HttpResponseOptionsBuilder<TDomain>` | Honors RFC 7240 `Prefer: return=minimal` / `return=representation`. Always emits `Vary: Prefer`; emits `Preference-Applied` only when honored. |

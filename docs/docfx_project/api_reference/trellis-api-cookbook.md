@@ -1184,14 +1184,17 @@ public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.Value < _threshold;   // TRLS003 + fake throws on None
 
-// ❌ Wrong — `&&`-guarded `.Value` inside an expression tree. Logically safe at runtime,
-//   but TRLS003 (UnsafeMaybeValueAccess) does NOT recognize `&&` short-circuit guards
-//   in lambdas. The analyzer only recognizes `if` / ternary HasValue gates (see
-//   `trellis-api-analyzers.md:169-178`), so this still fails the build.
+// ❌ Wrong — chained `&&` with `.Value` inside an expression tree. TRLS003
+//   (UnsafeMaybeValueAccess) recognizes the *direct* shape `x.HasValue && x.Value`
+//   when `x.HasValue` is the immediate left operand of the `&&` containing `x.Value`.
+//   When you chain `(predicate) && x.HasValue && x.Value`, C# parses this as
+//   `((predicate) && x.HasValue) && x.Value`, so the outer `&&`'s left operand is
+//   another binary expression — not the `HasValue` access itself — and the analyzer
+//   cannot see the guard. See `trellis-api-analyzers.md` for the recognized shapes.
 public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.HasValue
-         && o.SubmittedAt.Value < _threshold;   // TRLS003 — analyzer does not see the guard
+         && o.SubmittedAt.Value < _threshold;   // TRLS003 — outer `&&` hides the guard
 
 // ✅ Correct — GetValueOrDefault with a sentinel that always fails the comparison.
 //   Reads "if no SubmittedAt, treat as never overdue (DateTime.MaxValue)".
