@@ -134,6 +134,52 @@ public sealed class TrellisHttpResultMetadataTests
     }
 
     [Fact]
+    public void PopulateMetadata_for_Result_of_Unit_advertises_204_no_content_only_for_success()
+    {
+        // For Result<Unit> endpoints, the runtime emits 204 No Content unconditionally on
+        // success (TrellisHttpResult ExecuteSuccessAsync short-circuits before any body /
+        // location / range / preconditions branches). The OpenAPI metadata must therefore
+        // advertise 204 (with no body) for success and skip 200 / 201 / 206 / 304 / 412
+        // (which are only reachable on the non-Unit success and preconditions paths). Error
+        // envelopes (400 / 404 / 500) still apply because failures are written via the
+        // ProblemDetails writer regardless of TDomain.
+        var builder = NewEndpointBuilder();
+
+        TrellisHttpResult<Unit, Unit>.PopulateMetadata(DummyMethod(), builder);
+
+        var entries = builder.Metadata.OfType<IProducesResponseTypeMetadata>().ToList();
+        var statuses = entries.Select(m => m.StatusCode).ToHashSet();
+        statuses.Should().BeEquivalentTo([204, 400, 404, 500]);
+
+        var success = entries.Single(m => m.StatusCode == 204);
+        success.Type.Should().Be(typeof(void));
+        success.ContentTypes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void StatusCode_hint_is_204_for_Result_of_Unit_success()
+    {
+        // Hint the framework metadata pipeline (IStatusCodeHttpResult) reads to pre-fill
+        // ApiExplorer / Swagger response shape: must agree with the runtime 204 behavior.
+        var http = Result.Ok().ToHttpResponse();
+
+        ((IStatusCodeHttpResult)http).StatusCode.Should().Be(204);
+    }
+
+    [Fact]
+    public void Value_hint_is_null_and_ContentType_is_null_for_Result_of_Unit_success()
+    {
+        // 204 No Content carries no body; surfacing Unit.Default or "application/json" via
+        // the IValueHttpResult / IContentTypeHttpResult metadata hints would mislead
+        // OpenAPI generators that key off these contracts.
+        var http = Result.Ok().ToHttpResponse();
+
+        ((IValueHttpResult)http).Value.Should().BeNull();
+        ((IValueHttpResult<Unit>)http).Value.Should().Be(default(Unit));
+        ((IContentTypeHttpResult)http).ContentType.Should().BeNull();
+    }
+
+    [Fact]
     public void PopulateMetadata_throws_on_null_builder_for_Result_type()
         => FluentActions.Invoking(() =>
                 TrellisHttpResult<Thing, ThingBody>.PopulateMetadata(DummyMethod(), null!))

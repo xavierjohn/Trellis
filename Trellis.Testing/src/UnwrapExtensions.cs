@@ -49,12 +49,12 @@ public static class UnwrapExtensions
                 $"Called UnwrapError() on a successful Result<{typeof(T).Name}>.");
 
     /// <summary>
-    /// Extracts the error from a failed non-generic result, or throws if success.
+    /// Extracts the error from a failed no-payload <c>Result&lt;Unit&gt;</c>, or throws if success.
     /// </summary>
-    public static Error UnwrapError(this Result result) =>
+    public static Error UnwrapError(this Result<Unit> result) =>
         result.TryGetError(out var error)
             ? error
-            : throw new UnwrapFailedException("Called UnwrapError() on a successful Result.");
+            : throw new UnwrapFailedException("Called UnwrapError() on a successful Result<Unit>.");
 
     private static string BuildUnwrapErrorMessage<T>(Result<T> result)
     {

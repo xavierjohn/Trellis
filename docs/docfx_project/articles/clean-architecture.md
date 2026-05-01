@@ -122,7 +122,7 @@ public sealed class User : Aggregate<UserId>
 public interface IUserRepository
 {
     Task<bool> EmailExistsAsync(EmailAddress email, CancellationToken ct);
-    Task<Result> AddAsync(User user, CancellationToken ct);
+    Task<Result<Unit>> AddAsync(User user, CancellationToken ct);
 }
 
 public sealed class RegisterUserService
@@ -289,12 +289,12 @@ public sealed class User : Aggregate<UserId>
 public interface IUserRepository
 {
     Task<bool> EmailExistsAsync(EmailAddress email, CancellationToken ct);
-    Task<Result> AddAsync(User user, CancellationToken ct);
+    Task<Result<Unit>> AddAsync(User user, CancellationToken ct);
 }
 
 public interface IWelcomeEmailSender
 {
-    Task<Result> SendAsync(EmailAddress email, CancellationToken ct);
+    Task<Result<Unit>> SendAsync(EmailAddress email, CancellationToken ct);
 }
 
 public sealed class RegisterUserHandler

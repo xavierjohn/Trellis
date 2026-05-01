@@ -147,7 +147,7 @@ namespace MyApp.Data;
 
 public sealed class CustomerRepository(AppDbContext db)
 {
-    public async Task<Result> AddAsync(Customer customer, CancellationToken ct)
+    public async Task<Result<Unit>> AddAsync(Customer customer, CancellationToken ct)
     {
         db.Customers.Add(customer);
         return await db.SaveChangesResultUnitAsync(ct);
@@ -313,7 +313,7 @@ public sealed class Order : Aggregate<OrderId>
 ```csharp
 public sealed class OrderRepository(AppDbContext db)
 {
-    public async Task<Result> UpdateAsync(Order order, CancellationToken ct)
+    public async Task<Result<Unit>> UpdateAsync(Order order, CancellationToken ct)
     {
         db.Orders.Update(order);
         return await db.SaveChangesResultUnitAsync(ct);
@@ -331,7 +331,7 @@ This is the repository design rule that keeps your application layer clear.
 | --- | --- | --- |
 | `Maybe<T>` | absence is data, not failure | “Find customer by email” |
 | `Result<T>` | the repository should decide the failure | “Load required customer” |
-| `Result` | command succeeded or failed | save, delete, update |
+| `Result<Unit>` | command succeeded or failed | save, delete, update |
 | `bool` | you only need existence | uniqueness checks |
 
 ### Practical rule of thumb

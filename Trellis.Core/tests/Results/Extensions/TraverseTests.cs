@@ -523,7 +523,7 @@ public class TraverseTests : TestBase
     [Fact]
     public void Sequence_Unit_EmptyCollection_ReturnsSuccess()
     {
-        var results = Array.Empty<Result>();
+        var results = Array.Empty<Result<Unit>>();
 
         var result = results.Sequence();
 
@@ -553,7 +553,7 @@ public class TraverseTests : TestBase
     [Fact]
     public void Sequence_Unit_NullSource_ThrowsArgumentNullException()
     {
-        IEnumerable<Result>? source = null;
+        IEnumerable<Result<Unit>>? source = null;
 
         var act = () => source!.Sequence();
 

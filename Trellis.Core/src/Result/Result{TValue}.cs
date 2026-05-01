@@ -290,18 +290,18 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     public static bool operator !=(Result<TValue> left, Result<TValue> right) => !left.Equals(right);
 
     /// <summary>
-    /// Converts this <see cref="Result{TValue}"/> to a non-generic <see cref="Result"/>, discarding the success value.
+    /// Converts this <see cref="Result{TValue}"/> to a no-payload <see cref="Result{Unit}"/>, discarding the success value.
     /// Failures preserve their <see cref="Error"/>.
     /// </summary>
     /// <remarks>
     /// Use <see cref="AsUnit"/> when a pipeline returns a value but the next step only cares about success/failure
     /// (e.g., bridging a value-producing operation into a no-payload consumer). This returns the canonical
-    /// non-generic <see cref="Result"/> shape. For default-initialized failures
-    /// the returned non-generic <see cref="Result"/> is constructed via <see cref="Result.Fail(Error)"/> with
-    /// the shared sentinel — never returns <c>default(Result)</c>.
+    /// no-payload result shape <c>Result&lt;Unit&gt;</c>. For default-initialized failures
+    /// the returned result is constructed via <see cref="Result.Fail(Error)"/> with
+    /// the shared sentinel — never returns a default-initialized <c>Result&lt;Unit&gt;</c>.
     /// </remarks>
-    /// <returns>A non-generic <see cref="Result"/> mirroring this result's success/failure state.</returns>
-    public Result AsUnit() => _isOk ? Result.Ok() : Result.Fail(EffectiveError());
+    /// <returns>A <see cref="Result{Unit}"/> mirroring this result's success/failure state.</returns>
+    public Result<Unit> AsUnit() => _isOk ? Result.Ok() : Result.Fail(EffectiveError());
 
     /// <summary>
     /// Returns a string representation of the result.

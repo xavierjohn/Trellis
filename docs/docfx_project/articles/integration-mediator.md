@@ -76,7 +76,7 @@ using Trellis;
 using Trellis.Authorization;
 
 public sealed record PublishDocumentCommand(Guid DocumentId)
-    : ICommand<Result>, IAuthorize
+    : ICommand<Result<Unit>>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions => ["Documents.Publish"];
 }
@@ -222,7 +222,7 @@ using Trellis;
 using Trellis.Mediator;
 
 public sealed record ArchiveDocumentCommand(Guid DocumentId, bool IsArchived)
-    : ICommand<Result>, IValidate
+    : ICommand<Result<Unit>>, IValidate
 {
     public IResult Validate() =>
         IsArchived

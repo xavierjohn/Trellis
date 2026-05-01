@@ -20,7 +20,7 @@ public class ValidationExample
             .Combine(FirstName.TryCreate("Xavier"))
             .Combine(LastName.TryCreate("John"))
             .Combine(Ensure(createdAt <= updatedAt, new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "updateAt cannot be less than createdAt" }))
-            .Bind((email, firstName, lastName) => Result.Ok(string.Join(" ", firstName, lastName, email)));
+            .Bind((email, firstName, lastName, _) => Result.Ok(string.Join(" ", firstName, lastName, email)));
 
         actual.Unwrap().Should().Be("Xavier John xavier@somewhere.com");
     }
@@ -43,7 +43,7 @@ public class ValidationExample
             .Combine(LastName.TryCreate(string.Empty))
             .Combine(EmailAddress.TryCreate("xavier @ somewhereelse.com"))
             .Combine(Ensure(createdAt <= updatedAt, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), "validation.error") { Detail = "updateAt cannot be less than createdAt" }))))
-            .Bind((firstName, lastName, email) =>
+            .Bind((firstName, lastName, email, _) =>
             {
                 true.Should().BeFalse("this code should not get executed");
                 return Result.Ok(string.Join(" ", firstName, lastName, email));

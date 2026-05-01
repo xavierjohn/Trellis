@@ -17,7 +17,7 @@ It gives you:
 - `AsActionResult<T>()` for typed MVC `ActionResult<T>` signatures
 - default error-type-to-status-code mappings
 - Problem Details responses for failures
-- automatic `204 No Content` for successful `Result`
+- automatic `204 No Content` for successful `Result<Unit>` (returned from `Result.Ok()`)
 - scalar value validation for MVC and Minimal APIs
 - representation metadata support for headers like `ETag` and `Last-Modified`
 - `Prefer`-aware update helpers
@@ -467,7 +467,7 @@ Use this approach when you need:
 
 1. **Convert at the API boundary only.** Keep `Result<T>` in your application layer.
 2. **Use MVC-specific or Minimal-API-specific validation setup.** Do not rely on the shared convenience overload alone for MVC.
-3. **Use `Result` for side-effect operations.** Trellis maps successful no-payload results to `204 No Content`.
+3. **Use `Result<Unit>` for side-effect operations.** Trellis maps successful `Result<Unit>` to `204 No Content`.
 4. **Prefer typed ETag helpers.** `ParseIfMatch(...)` and `ParseIfNoneMatch(...)` return `EntityTagValue[]?`, which matches the concurrency APIs.
 5. **Use representation metadata instead of hand-writing headers** when you want `ETag`, `Last-Modified`, `Vary`, or related response metadata.
 

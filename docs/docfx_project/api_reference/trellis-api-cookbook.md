@@ -75,7 +75,7 @@ These rows route recurring LLM lab mistakes to the most relevant reference befor
 
 | If the task involves... | Read first | Why |
 |---|---|---|
-| Loading independent aggregates before creating a command result | [trellis-api-core.md](trellis-api-core.md#public-readonly-partial-struct-result) for `ParallelAsync`, then [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence) | Avoid sequential load loops when the work is independent. |
+| Loading independent aggregates before creating a command result | [trellis-api-core.md](trellis-api-core.md#public-static-partial-class-result) for `ParallelAsync`, then [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence) | Avoid sequential load loops when the work is independent. |
 | Overdue/date-filter queries over `Maybe<DateTime>` | [Recipe 15](#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap), then [trellis-api-efcore.md](trellis-api-efcore.md#patterns-index) | Keep a typed specification and use `MaybeQueryableExtensions` in EF queries. |
 | State transitions on an aggregate | [Recipe 9](#recipe-9--state-machine-canfire--fire-pattern-with-fireresult), then [trellis-api-statemachine.md](trellis-api-statemachine.md#patterns-index) | Keep transition methods consistent and put domain mutation after `FireResult` succeeds. |
 | Cross-aggregate mutation such as cancel/return releasing stock | [Recipe 1](#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract), [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), and [trellis-api-core.md](trellis-api-core.md#domain-driven-design) | The application handler orchestrates multiple aggregates; an aggregate mutates only itself. |
@@ -427,13 +427,13 @@ using Trellis.Asp.Authorization;
 using Trellis.Authorization;
 using Trellis.Primitives;
 
-public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result>, IAuthorize
+public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result<Unit>>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions => ["orders:delete"];
 }
 
 public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
-    : ICommand<Result>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
+    : ICommand<Result<Unit>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
 {
     // Typed VO carried straight through — no parse, no throw.
     // ASP.NET model binding (via IScalarValue<OrderId, string>) handles the
@@ -1256,9 +1256,9 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
 
 | Method | Signature | Saves immediately? | When to use |
 |---|---|---|---|
-| `IRepository.Add(T)` (and `Remove(T)`, `RemoveByIdAsync(TId)`) | `void` / `Task<Result>` for not-found | **No** — staged for the UoW | Handlers and any production-shaped repository contract |
+| `IRepository.Add(T)` (and `Remove(T)`, `RemoveByIdAsync(TId)`) | `void` / `Task<Result<Unit>>` for not-found | **No** — staged for the UoW | Handlers and any production-shaped repository contract |
 | `FakeRepository.Add(T)` | `void` | n/a (in-memory; visible immediately) | **Test setup** — "put this in the store so the handler can find it" |
-| `FakeRepository.SaveAsync(T)` | `Task<Result>` | n/a (in-memory; visible immediately) | Tests that explicitly assert on the `Result` shape, e.g., conflict-result handling |
+| `FakeRepository.SaveAsync(T)` | `Task<Result<Unit>>` | n/a (in-memory; visible immediately) | Tests that explicitly assert on the `Result` shape, e.g., conflict-result handling |
 
 **Anti-pattern → fix.**
 

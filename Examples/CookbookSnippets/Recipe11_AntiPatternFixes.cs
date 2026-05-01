@@ -60,7 +60,7 @@ public static class AntiPatternFixes
     }
 
     // ─── TRLS019 — default(Result) / default(Maybe<T>) ─────────────────────
-    public static Result TRLS019_FixResult() => Result.Ok();
+    public static Result<Unit> TRLS019_FixResult() => Result.Ok();
     public static Maybe<EmailAddress> TRLS019_FixMaybe() => Maybe<EmailAddress>.None;
 #pragma warning restore CA1707
 

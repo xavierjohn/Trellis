@@ -66,43 +66,6 @@ public static partial class CombineExtensions
   for(var i = 3; i <=9; i++) { 
 #>
     /// <summary>
-    /// Combines a <#= i - 1 #>-element tuple result with a non-generic Result, preserving the original tuple on success.
-    /// </summary>
-<# for(var j = 1; j <= i - 1; j++) { #>
-    /// <typeparam name="T<#= j #>">The type of element <#= j #> in the tuple.</typeparam>
-<# } #>
-    /// <param name="t1">The result containing a <#= i - 1 #>-element tuple.</param>
-    /// <param name="tc">The non-generic Result to combine (typically a validation with no return value).</param>
-    /// <returns>
-    /// If both results succeed, returns a success result with the original <#= i - 1 #>-element tuple.
-    /// If either fails, returns a failure with the combined errors.
-    /// </returns>
-    /// <remarks>
-    /// This overload is useful when you need to validate a condition without adding to the tuple.
-    /// The non-generic Result acts as a validation gate that must pass, but contributes no value.
-    /// </remarks>
-    /// <example>
-    /// <code>
-    /// var result = FirstName.TryCreate("John")
-    ///     .Combine(LastName.TryCreate("Doe"))
-    ///     .Combine(Result.Ensure(age >= 18, Error.UnprocessableContent.ForField("age", "invalid", "Must be 18+")))
-    ///     .Bind((first, last) => CreateUser(first, last, age));
-    /// // Age validation must pass, but age is not added to the tuple
-    /// </code>
-    /// </example>
-    public static Result<(<# WriteTs(i - 1); #>)> Combine<<# WriteTs(i - 1); #>>(
-      this Result<(<# WriteTs(i - 1); #>)> t1, Result tc)
-    {
-        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
-        Error? error = null;
-        if (t1.IsFailure) error = error.Combine(t1.Error);
-        if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Fail<(<# WriteTs(i - 1); #>)>(error);
-        t1.TryGetValue(out var tuple);
-        return Result.Ok((<# for(var j = 1; j <= i - 1; j++) { #><#= j > 1 ? ", " : "" #>tuple!.Item<#= j #><# } #>));
-    }
-
-    /// <summary>
     /// Combines a <#= i - 1 #>-element tuple result with another result to create a <#= i #>-element tuple.
     /// </summary>
 <# for(var j = 1; j <= i; j++) { #>
@@ -116,7 +79,9 @@ public static partial class CombineExtensions
     /// </returns>
     /// <remarks>
     /// This is the primary Combine overload for building up tuples incrementally.
-    /// Each Combine call adds one more validated value to the tuple.
+    /// Each Combine call adds one more validated value to the tuple. To gate a tuple pipeline on
+    /// a no-payload validation, pass a <c>Result&lt;Unit&gt;</c>; the <see cref="Trellis.Unit"/>
+    /// becomes the next tuple element (use <c>_</c> in the destructuring lambda to ignore it).
     /// </remarks>
     /// <example>
     /// <code>
@@ -163,22 +128,6 @@ public static partial class CombineExtensionsAsync
     #region <#= i - 1 #>-Tuple Task Left-Async
 
     /// <summary>
-    /// Combine a Task-wrapped <#= i - 1 #>-tuple result with a non-generic <see cref="Result"/>. Left is async (Task).
-    /// </summary>
-    public static async Task<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
-      this Task<Result<(<# WriteTs(i - 1); #>)>> tt1, Result tc)
-    {
-        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
-        Error? error = null;
-        var t1 = await tt1.ConfigureAwait(false);
-        if (t1.IsFailure) error = error.Combine(t1.Error);
-        if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Fail<(<# WriteTs(i - 1); #>)>(error);
-        t1.TryGetValue(out var tuple);
-        return Result.Ok((<# for(var j = 1; j <= i - 1; j++) { #><#= j > 1 ? ", " : "" #>tuple!.Item<#= j #><# } #>));
-    }
-
-    /// <summary>
     /// Combine a Task-wrapped <#= i - 1 #>-tuple result with another result to create a <#= i #>-tuple. Left is async (Task).
     /// </summary>
     public static async Task<Result<(<# WriteTs(i); #>)>> CombineAsync<<# WriteTs(i); #>>(
@@ -198,22 +147,6 @@ public static partial class CombineExtensionsAsync
     #endregion
 
     #region <#= i - 1 #>-Tuple ValueTask Left-Async
-
-    /// <summary>
-    /// Combine a ValueTask-wrapped <#= i - 1 #>-tuple result with a non-generic <see cref="Result"/>. Left is async (ValueTask).
-    /// </summary>
-    public static async ValueTask<Result<(<# WriteTs(i - 1); #>)>> CombineAsync<<# WriteTs(i - 1); #>>(
-      this ValueTask<Result<(<# WriteTs(i - 1); #>)>> vt1, Result tc)
-    {
-        using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
-        Error? error = null;
-        var t1 = await vt1.ConfigureAwait(false);
-        if (t1.IsFailure) error = error.Combine(t1.Error);
-        if (tc.IsFailure) error = error.Combine(tc.Error);
-        if (error is not null) return Result.Fail<(<# WriteTs(i - 1); #>)>(error);
-        t1.TryGetValue(out var tuple);
-        return Result.Ok((<# for(var j = 1; j <= i - 1; j++) { #><#= j > 1 ? ", " : "" #>tuple!.Item<#= j #><# } #>));
-    }
 
     /// <summary>
     /// Combine a ValueTask-wrapped <#= i - 1 #>-tuple result with another result to create a <#= i #>-tuple. Left is async (ValueTask).
@@ -247,7 +180,7 @@ public static partial class CombineExtensionsAsync
 /// Use <c>Result.Combine(r1, r2, r3, ...)</c> when you already have individual Result variables
 /// and want to combine them before error checking. Delegates to the chaining extension methods.
 /// </remarks>
-public readonly partial struct Result
+public static partial class Result
 {
 <#
   for(var i = 3; i <= 9; i++) {

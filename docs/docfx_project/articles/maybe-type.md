@@ -363,13 +363,13 @@ Sometimes the next question is: “what if my operation has no payload?”
 
 For no-payload Trellis results:
 
-- prefer `Result.Ok()` for a successful `Result`
-- use non-generic `Result` when the operation only needs success/failure
+- prefer `Result.Ok()` for a successful outcome (returns `Result<Unit>`)
+- use `Result<Unit>` when the operation only needs success/failure
 
 ```csharp
 using Trellis;
 
-Result ok = Result.Ok();
+Result<Unit> ok = Result.Ok();
 ```
 
 ## Practical Rules of Thumb

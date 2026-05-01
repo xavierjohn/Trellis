@@ -208,7 +208,7 @@ using Trellis;
 using Trellis.Authorization;
 
 public sealed record DeleteDocumentCommand(string DocumentId)
-    : ICommand<Result>, IAuthorize
+    : ICommand<Result<Unit>>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions => ["Documents.Delete"];
 }

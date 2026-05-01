@@ -163,8 +163,8 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="id">The aggregate ID to remove.</param>
     /// <param name="cancellationToken">Cancellation token (ignored — operation is synchronous).</param>
-    /// <returns>A <see cref="Result"/> indicating success or not-found failure.</returns>
-    public Task<Result> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default) =>
+    /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> indicating success or not-found failure.</returns>
+    public Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default) =>
         DeleteAsync(id, cancellationToken);
 
     /// <summary>
@@ -172,8 +172,8 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="aggregate">The aggregate to save.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A Result indicating success or failure.</returns>
-    public Task<Result> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)
+    /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> indicating success or failure.</returns>
+    public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)
     {
         var id = aggregate.Id;
 
@@ -200,8 +200,8 @@ public class FakeRepository<TAggregate, TId>
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A Result indicating success or <see cref="Error.NotFound"/>.</returns>
-    public Task<Result> DeleteAsync(TId id, CancellationToken cancellationToken = default)
+    /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> indicating success or <see cref="Error.NotFound"/>.</returns>
+    public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default)
     {
         if (_store.Remove(id))
             return Task.FromResult(Result.Ok());

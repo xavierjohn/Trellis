@@ -254,13 +254,14 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CreateCustomerCommand(ShippingAddress ShippingAddress) : ICommand<Result>;
+            // Result<int> is a placeholder because the analyzer test stubs do not include Unit.
+            public sealed record CreateCustomerCommand(ShippingAddress ShippingAddress) : ICommand<Result<int>>;
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(29, 60)
+                .WithLocation(30, 60)
                 .WithArguments("ShippingAddress", "CreateCustomerCommand.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 

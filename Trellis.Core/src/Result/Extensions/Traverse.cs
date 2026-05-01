@@ -209,12 +209,12 @@ public static class TraverseExtensions
     }
 
     /// <summary>
-    /// Asynchronously transforms a collection of items using a non-generic Result selector.
-    /// Short-circuits on the first failure. Returns a non-generic Result (no collected values).
+    /// Asynchronously transforms a collection of items using a no-payload <c>Result&lt;Unit&gt;</c> selector.
+    /// Short-circuits on the first failure. Returns <c>Result&lt;Unit&gt;</c> (no collected values).
     /// </summary>
-    public static async Task<Result> TraverseAsync<TIn>(
+    public static async Task<Result<Unit>> TraverseAsync<TIn>(
         this IEnumerable<TIn> source,
-        Func<TIn, CancellationToken, Task<Result>> selector,
+        Func<TIn, CancellationToken, Task<Result<Unit>>> selector,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -289,8 +289,8 @@ public static class TraverseExtensions
     }
 
     /// <summary>
-    /// Sequences a collection of no-payload <see cref="Result"/> values into a single
-    /// <see cref="Result"/>. Short-circuits on the first failure.
+    /// Sequences a collection of no-payload <c>Result&lt;Unit&gt;</c> values into a single
+    /// <c>Result&lt;Unit&gt;</c>. Short-circuits on the first failure.
     /// </summary>
     /// <remarks>
     /// First-failure-wins semantics, matching <see cref="Traverse{TIn,TOut}"/>.
@@ -299,7 +299,7 @@ public static class TraverseExtensions
     /// <param name="source">Source collection of results.</param>
     /// <returns>Success if every item succeeds; otherwise the first failure.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
-    public static Result Sequence(this IEnumerable<Result> source)
+    public static Result<Unit> Sequence(this IEnumerable<Result<Unit>> source)
     {
         ArgumentNullException.ThrowIfNull(source);
 

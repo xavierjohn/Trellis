@@ -110,8 +110,8 @@ repo.Count.Should().Be(1);
 
 Important details from the current API:
 
-- `SaveAsync` returns `Task<Result>`
-- `DeleteAsync` returns `Task<Result>`
+- `SaveAsync` returns `Task<Result<Unit>>`
+- `DeleteAsync` returns `Task<Result<Unit>>`
 - unique constraint conflicts return `Error.Conflict`
 - missing aggregates use details like `"{AggregateTypeName} with ID {id} not found"`
 

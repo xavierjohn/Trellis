@@ -116,8 +116,8 @@ public static class DbContextExtensions
 | --- | --- | --- |
 | `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)` | `Task<Result<int>>` | Convenience overload for `SaveChangesResultAsync(context, true, cancellationToken)`. |
 | `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | `Task<Result<int>>` | Wraps `SaveChangesAsync`; maps `DbUpdateConcurrencyException` to `new Error.Conflict(null, "concurrency.modified")`, duplicate-key `DbUpdateException` to `new Error.Conflict(null, "duplicate.key")`, and foreign-key `DbUpdateException` to `new Error.Conflict(null, "referential.integrity")`. |
-| `public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)` | `Task<Result>` | Saves changes and discards the row count. |
-| `public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | `Task<Result>` | Saves changes with explicit `acceptAllChangesOnSuccess`. |
+| `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Saves changes and discards the row count. |
+| `public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Saves changes with explicit `acceptAllChangesOnSuccess`. |
 
 ### `QueryableExtensions`
 
@@ -172,7 +172,7 @@ Abstract generic repository base class for EF Core aggregate persistence. Provid
 | --- | --- | --- |
 | `public virtual void Add(TAggregate aggregate)` | `void` | Stages a new aggregate for insertion. No-op if already tracked. |
 | `public virtual void Remove(TAggregate aggregate)` | `void` | Stages an aggregate for deletion. |
-| `public virtual Task<Result> RemoveByIdAsync(TId id, CancellationToken ct = default)` | `Task<Result>` | Looks up by ID via `DbSet.FindAsync` (avoids Include graphs) and stages for deletion. Returns not-found if absent. |
+| `public virtual Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken ct = default)` | `Task<Result<Unit>>` | Looks up by ID via `DbSet.FindAsync` (avoids Include graphs) and stages for deletion. Returns not-found if absent. |
 
 #### Virtual Hooks
 
@@ -209,7 +209,7 @@ Abstraction over the commit boundary for staged changes. Repositories stage chan
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `Task<Result> CommitAsync(CancellationToken ct = default)` | `Task<Result>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. |
+| `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. |
 
 ### `EfUnitOfWork<TContext>`
 
@@ -223,7 +223,7 @@ EF Core implementation of `IUnitOfWork`. Delegates to `DbContextExtensions.SaveC
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public EfUnitOfWork(TContext context)` | — | Captures the resolved `TContext` instance. Registered as scoped by `AddTrellisUnitOfWork<TContext>()`. |
-| `public Task<Result> CommitAsync(CancellationToken cancellationToken = default)` | `Task<Result>` | Calls `context.SaveChangesResultUnitAsync(cancellationToken)`. |
+| `public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Calls `context.SaveChangesResultUnitAsync(cancellationToken)`. |
 
 ### `TransactionalCommandBehavior<TMessage, TResponse>`
 
@@ -492,8 +492,8 @@ public static ModelConfigurationBuilder ApplyTrellisConventions(this ModelConfig
 ```csharp
 public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)
 public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
-public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)
-public static Task<Result> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, CancellationToken cancellationToken = default)
+public static Task<Result<Unit>> SaveChangesResultUnitAsync(this DbContext context, bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
 ```
 
 ### `QueryableExtensions`

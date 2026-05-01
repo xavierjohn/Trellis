@@ -85,13 +85,13 @@ public static class DbContextExtensions
     }
 
     /// <summary>
-    /// Convenience overload: calls <see cref="SaveChangesResultAsync(DbContext, CancellationToken)"/> and maps success to <see cref="Result"/>.
+    /// Convenience overload: calls <see cref="SaveChangesResultAsync(DbContext, CancellationToken)"/> and maps success to <see cref="Result{TValue}"/> with <see cref="Unit"/>.
     /// Use when callers don't need the affected row count.
     /// </summary>
     /// <param name="context">The <see cref="DbContext"/> to save changes on.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Result"/> representing success or failure.</returns>
-    public static async Task<Result> SaveChangesResultUnitAsync(
+    /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> representing success or failure.</returns>
+    public static async Task<Result<Unit>> SaveChangesResultUnitAsync(
         this DbContext context,
         CancellationToken cancellationToken = default)
     {
@@ -101,7 +101,7 @@ public static class DbContextExtensions
 
     /// <summary>
     /// Convenience overload: calls <see cref="SaveChangesResultAsync(DbContext, bool, CancellationToken)"/>
-    /// and maps success to <see cref="Result"/>.
+    /// and maps success to <see cref="Result{TValue}"/> with <see cref="Unit"/>.
     /// Use when callers don't need the affected row count.
     /// </summary>
     /// <param name="context">The <see cref="DbContext"/> to save changes on.</param>
@@ -110,8 +110,8 @@ public static class DbContextExtensions
     /// <see langword="false"/> to leave the change tracker state unchanged.
     /// </param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Result"/> representing success or failure.</returns>
-    public static async Task<Result> SaveChangesResultUnitAsync(
+    /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> representing success or failure.</returns>
+    public static async Task<Result<Unit>> SaveChangesResultUnitAsync(
         this DbContext context,
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)

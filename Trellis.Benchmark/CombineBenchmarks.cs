@@ -210,7 +210,7 @@ public class CombineBenchmarks
     }
 
     [Benchmark]
-    public Result Combine_WithUnit_Success()
+    public Result<Unit> Combine_WithUnit_Success()
     {
         return _successInt1
             .Combine(Result.Ok())

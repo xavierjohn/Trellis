@@ -351,7 +351,7 @@ public sealed class Customer
 public static Task<Customer?> GetCustomerByIdAsync(long id) =>
     Task.FromResult(id == 1 ? new Customer("customer@example.com", true) : null);
 
-public static Task<Result> SendPromotionNotificationAsync(string email) =>
+public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) =>
     Task.FromResult(Result.Ok());
 
 string message = await GetCustomerByIdAsync(1)

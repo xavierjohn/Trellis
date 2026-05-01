@@ -19,7 +19,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | Goal | Canonical API / pattern | See |
 |---|---|---|
 | Assert a generic result succeeded | `result.Should().BeSuccess()` / `.HaveValue(...)` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
-| Assert a result failed with a specific error case | `result.Should().BeFailureOfType<TError>()` | [`ResultAssertions<TValue>`](#resultassertionstvalue), [`NonGenericResultAssertions`](#nongenericresultassertions) |
+| Assert a result failed with a specific error case | `result.Should().BeFailureOfType<TError>()` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
 | Assert error code/detail | `.HaveErrorCode(...)`, `.HaveErrorDetail(...)`, `.HaveErrorDetailContaining(...)` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
 | Extract success value in tests only | `result.Unwrap()` | [Usage notes](#usage-notes) |
 | Extract error in tests only | `result.UnwrapError()` | [Usage notes](#usage-notes) |
@@ -105,49 +105,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
 }
 ```
 
-#### `NonGenericResultAssertionsExtensions`
-```csharp
-public static class NonGenericResultAssertionsExtensions
-{
-    public static NonGenericResultAssertions Should(this Result result);
-}
-```
-
-#### `NonGenericResultAssertions`
-```csharp
-public class NonGenericResultAssertions : ReferenceTypeAssertions<Result, NonGenericResultAssertions>
-{
-    public NonGenericResultAssertions(Result result);
-
-    public AndConstraint<NonGenericResultAssertions> BeSuccess(
-        string because = "",
-        params object[] becauseArgs);
-
-    public AndWhichConstraint<NonGenericResultAssertions, Error> BeFailure(
-        string because = "",
-        params object[] becauseArgs);
-
-    public AndWhichConstraint<NonGenericResultAssertions, TError> BeFailureOfType<TError>(
-        string because = "",
-        params object[] becauseArgs)
-        where TError : Error;
-
-    public AndConstraint<NonGenericResultAssertions> HaveErrorCode(
-        string expectedCode,
-        string because = "",
-        params object[] becauseArgs);
-
-    public AndConstraint<NonGenericResultAssertions> HaveErrorDetail(
-        string expectedDetail,
-        string because = "",
-        params object[] becauseArgs);
-
-    public AndConstraint<NonGenericResultAssertions> HaveErrorDetailContaining(
-        string substring,
-        string because = "",
-        params object[] becauseArgs);
-}
-```
+#### `UnwrapError(this Result<Unit>)`
+The `UnwrapError` extension also has a `Result<Unit>`-specific overload at `Trellis.Testing.UnwrapExtensions.UnwrapError(this Result<Unit>)` for tests asserting on no-payload results.
 
 #### `ResultAssertionsAsyncExtensions`
 ```csharp
@@ -313,7 +272,7 @@ public static class UnwrapExtensions
 
     public static Error UnwrapError<T>(this Result<T> result);
 
-    public static Error UnwrapError(this Result result);
+    public static Error UnwrapError(this Result<Unit> result);
 
     public static T Unwrap<T>(this Maybe<T> maybe)
         where T : notnull;
@@ -371,12 +330,12 @@ public class FakeRepository<TAggregate, TId>
     // in test setup so the same IRepository contract works in both the EF and fake paths.
     public void Add(TAggregate aggregate);
     public void Remove(TAggregate aggregate);
-    public Task<Result> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default);
+    public Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default);
 
     // Result-shape surface — only on the fake. Reserve for tests that explicitly assert
     // on Result-of-save shape (e.g., conflict-result handling). NOT part of RepositoryBase.
-    public Task<Result> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
-    public Task<Result> DeleteAsync(TId id, CancellationToken cancellationToken = default);
+    public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default);
+    public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default);
 
     public void Clear();
     public bool Exists(TId id);
@@ -442,10 +401,10 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
 - **Setup surface** (mirrors `RepositoryBase<TAggregate, TId>` in `Trellis.EntityFrameworkCore`) — use these from handlers and test setup so the same `IRepository` contract works in both worlds:
   - `void Add(TAggregate)` — stages an insert; in the fake, immediately visible. Throws `InvalidOperationException` on unique-constraint violation (setup mistakes should fail loud at the call site).
   - `void Remove(TAggregate)` — stages a delete; no-op if the aggregate is not in the store.
-  - `Task<Result> RemoveByIdAsync(TId)` — looks up by ID and removes; returns `Error.NotFound` if missing.
+  - `Task<Result<Unit>> RemoveByIdAsync(TId)` — looks up by ID and removes; returns `Error.NotFound` if missing.
 - **Result-shape surface** (only on the fake — `RepositoryBase` does not expose these) — use only when the test specifically asserts on the `Result` of the persistence call:
-  - `Task<Result> SaveAsync(TAggregate)` — returns `Error.Conflict` on unique-constraint violation. Use to test conflict-handling code paths.
-  - `Task<Result> DeleteAsync(TId)` — returns `Error.NotFound` on missing. Use to test not-found handling. (`RemoveByIdAsync` is the staging-API-named alias.)
+  - `Task<Result<Unit>> SaveAsync(TAggregate)` — returns `Error.Conflict` on unique-constraint violation. Use to test conflict-handling code paths.
+  - `Task<Result<Unit>> DeleteAsync(TId)` — returns `Error.NotFound` on missing. Use to test not-found handling. (`RemoveByIdAsync` is the staging-API-named alias.)
 - `WithUniqueConstraint(Func<TAggregate, object?> propertySelector)` — fluent constraint registration; checked eagerly by `Add` (throws) and at-call by `SaveAsync` (returns `Result`).
 - `Clear()`, `Exists(TId id)`, `Get(TId id)`, `GetAll()`, `Count` — direct inspection helpers
 - `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` return `Error.NotFound` details in the format:

@@ -14,11 +14,11 @@ using Trellis.Showcase.Domain.ValueObjects;
 /// </summary>
 public sealed class InMemoryIdentityVerifier : IIdentityVerifier
 {
-    public Task<Result> VerifyAsync(CustomerId customerId, string verificationCode, CancellationToken cancellationToken = default)
+    public Task<Result<Unit>> VerifyAsync(CustomerId customerId, string verificationCode, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(verificationCode))
         {
-            return Task.FromResult<Result>(Result.Fail(new Error.Unauthorized()
+            return Task.FromResult(Result.Fail(new Error.Unauthorized()
             {
                 Detail = "Verification code is required.",
             }));
@@ -26,7 +26,7 @@ public sealed class InMemoryIdentityVerifier : IIdentityVerifier
 
         if (verificationCode.Length != 6 || !verificationCode.All(char.IsDigit))
         {
-            return Task.FromResult<Result>(Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(
+            return Task.FromResult(Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(
                 new FieldViolation(InputPointer.ForProperty("verificationCode"), "validation.format")
                 {
                     Detail = "Verification code must be exactly six digits.",
@@ -35,7 +35,7 @@ public sealed class InMemoryIdentityVerifier : IIdentityVerifier
 
         if (verificationCode == "000000")
         {
-            return Task.FromResult<Result>(Result.Fail(new Error.Unauthorized()
+            return Task.FromResult(Result.Fail(new Error.Unauthorized()
             {
                 Detail = "Verification code rejected.",
             }));

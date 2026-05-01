@@ -111,7 +111,7 @@ public class BenchmarkROP
             .Combine(LastName.TryCreate(string.Empty))
             .Combine(EmailAddress.TryCreate("xavier @ somewhereelse.com"))
             .Combine(Ensure(createdAt <= updatedAt, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), "validation.error") { Detail = "updateAt cannot be less than createdAt" }))))
-            .Bind((email, firstName, lastName, anotherEmail) => Result.Ok(string.Join(" ", firstName, lastName, email, anotherEmail)));
+            .Bind((email, firstName, lastName, anotherEmail, _) => Result.Ok(string.Join(" ", firstName, lastName, email, anotherEmail)));
     }
 
     [Benchmark]

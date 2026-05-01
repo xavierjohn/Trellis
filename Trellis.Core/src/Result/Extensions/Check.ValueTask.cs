@@ -47,14 +47,14 @@ public static partial class CheckExtensionsAsync
     }
 
     /// <summary>
-    /// Asynchronously runs a validation function that returns a non-generic <see cref="Result"/> on the success value,
+    /// Asynchronously runs a validation function that returns a <see cref="Result{TValue}"/> with <see cref="Unit"/> on the success value,
     /// preserving the original value on success. Both the input and the check function are async (ValueTask).
     /// </summary>
     /// <typeparam name="T">Type of the original result value.</typeparam>
     /// <param name="resultTask">The async result to check.</param>
-    /// <param name="func">The async validation function that returns a non-generic Result.</param>
+    /// <param name="func">The async validation function that returns a <see cref="Result{TValue}"/> with <see cref="Unit"/>.</param>
     /// <returns>The original result if the check passes; otherwise the check's failure.</returns>
-    public static async ValueTask<Result<T>> CheckAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, ValueTask<Result>> func)
+    public static async ValueTask<Result<T>> CheckAsync<T>(this ValueTask<Result<T>> resultTask, Func<T, ValueTask<Result<Unit>>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
 

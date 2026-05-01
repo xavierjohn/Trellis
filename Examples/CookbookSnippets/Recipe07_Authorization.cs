@@ -10,13 +10,13 @@ using Trellis.Asp.Authorization;
 using Trellis.Authorization;
 using Trellis.Mediator;
 
-public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result>, IAuthorize
+public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result<Trellis.Unit>>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions => ["orders:delete"];
 }
 
 public sealed record UpdateOrderCommand(OrderId OrderId, decimal NewAmount)
-    : ICommand<Result>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
+    : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
 {
     // Typed VO carried straight through — no parse, no throw.
     public OrderId GetResourceId() => OrderId;

@@ -22,7 +22,7 @@ public sealed class InMemoryFraudGateway : IFraudGateway
 
     public InMemoryFraudGateway(TimeProvider timeProvider) => _timeProvider = timeProvider;
 
-    public Task<Result> AnalyzeTransactionAsync(
+    public Task<Result<Unit>> AnalyzeTransactionAsync(
         BankAccount account,
         Money amount,
         string transactionType,
@@ -30,7 +30,7 @@ public sealed class InMemoryFraudGateway : IFraudGateway
     {
         if (amount.Amount > SuspiciousAmountThreshold)
         {
-            return Task.FromResult<Result>(Result.Fail(new Error.Conflict(null, "fraud.detected")
+            return Task.FromResult(Result.Fail(new Error.Conflict(null, "fraud.detected")
             {
                 Detail = $"Transaction amount {amount} exceeds threshold of ${SuspiciousAmountThreshold}.",
             }));
@@ -40,7 +40,7 @@ public sealed class InMemoryFraudGateway : IFraudGateway
         var recentCount = account.Transactions.Count(t => t.Timestamp >= oneHourAgo);
         if (recentCount >= MaxTransactionsPerHour)
         {
-            return Task.FromResult<Result>(Result.Fail(new Error.Conflict(null, "fraud.detected")
+            return Task.FromResult(Result.Fail(new Error.Conflict(null, "fraud.detected")
             {
                 Detail = "Too many transactions in the last hour.",
             }));
