@@ -85,7 +85,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
         // No-payload Result<Unit> success — emit 204 No Content.
         // ETag/LastModified/Vary/ContentLanguage/Prefer headers (above) still apply.
-        if (typeof(TDomain) == typeof(Unit))
+        if (s_isUnit)
             return Results.NoContent().ExecuteAsync(httpContext);
 
         if (_options.EvaluatePreconditions)

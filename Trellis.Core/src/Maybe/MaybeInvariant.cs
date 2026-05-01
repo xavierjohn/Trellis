@@ -14,7 +14,7 @@ using System.Diagnostics;
 /// multiple optional values must satisfy a relationship constraint.
 /// </para>
 /// <para>
-/// All methods return <see cref="Result"/>. Chain with <c>.Combine()</c> to compose
+/// All methods return <see cref="Result{TValue}"/> with <see cref="Unit"/>. Chain with <c>.Combine()</c> to compose
 /// multiple invariant checks, or use as a step in a result pipeline.
 /// </para>
 /// </remarks>
@@ -47,7 +47,7 @@ public static class MaybeInvariant
     /// <param name="firstFieldName">Field name for the first value (used in validation errors).</param>
     /// <param name="secondFieldName">Field name for the second value (used in validation errors).</param>
     /// <returns>
-    /// <see cref="Result"/> success if all values are present or all are absent;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if all values are present or all are absent;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
     public static Result<Unit> AllOrNone<T1, T2>(
@@ -77,7 +77,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if all values are present or all are absent;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if all values are present or all are absent;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
     public static Result<Unit> AllOrNone<T1, T2, T3>(
@@ -113,7 +113,7 @@ public static class MaybeInvariant
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <param name="fourthFieldName">Field name for the fourth value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if all values are present or all are absent;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if all values are present or all are absent;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing the fields that violate the invariant.
     /// </returns>
     public static Result<Unit> AllOrNone<T1, T2, T3, T4>(
@@ -151,7 +151,7 @@ public static class MaybeInvariant
     /// <param name="sourceFieldName">Field name for the source value.</param>
     /// <param name="requiredFieldName">Field name for the required value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if source is absent or both are present;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if source is absent or both are present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> for the missing required field.
     /// </returns>
     public static Result<Unit> Requires<T1, T2>(
@@ -190,7 +190,7 @@ public static class MaybeInvariant
     /// <param name="firstFieldName">Field name for the first value.</param>
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if zero or one value is present;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if zero or one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all present fields.
     /// </returns>
     public static Result<Unit> MutuallyExclusive<T1, T2>(
@@ -220,7 +220,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if zero or one value is present;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if zero or one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all present fields.
     /// </returns>
     public static Result<Unit> MutuallyExclusive<T1, T2, T3>(
@@ -254,7 +254,7 @@ public static class MaybeInvariant
     /// <param name="firstFieldName">Field name for the first value.</param>
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if exactly one value is present;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if exactly one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result<Unit> ExactlyOne<T1, T2>(
@@ -284,7 +284,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if exactly one value is present;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if exactly one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result<Unit> ExactlyOne<T1, T2, T3>(
@@ -318,7 +318,7 @@ public static class MaybeInvariant
     /// <param name="firstFieldName">Field name for the first value.</param>
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if at least one value is present;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if at least one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result<Unit> AtLeastOne<T1, T2>(
@@ -348,7 +348,7 @@ public static class MaybeInvariant
     /// <param name="secondFieldName">Field name for the second value.</param>
     /// <param name="thirdFieldName">Field name for the third value.</param>
     /// <returns>
-    /// <see cref="Result"/> success if at least one value is present;
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if at least one value is present;
     /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
     /// </returns>
     public static Result<Unit> AtLeastOne<T1, T2, T3>(
