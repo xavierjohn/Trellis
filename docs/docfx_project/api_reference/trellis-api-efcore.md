@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
-types: [RepositoryBase<TAggregate,TId>, IUnitOfWork, DbContextExtensions, SaveChangesResultAsync, OwnedEntityHelpers]
+types: ["RepositoryBase<TAggregate,TId>", IUnitOfWork, DbContextExtensions, SaveChangesResultAsync, OwnedEntityHelpers]
 version: v3
 last_verified: 2026-05-01
 audience: [llm]

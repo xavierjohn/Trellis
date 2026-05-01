@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, Result<T>, Maybe<T>, Error, Unit, Page<T>, Cursor, EquatableArray<T>, ResourceRef, EntityTagValue, RetryAfterValue, PreconditionKind, InputPointer, FieldViolation, RuleViolation, AuthChallenge, Aggregate<TId>, Entity<TId>, IDomainEvent, ScalarValueObject<TSelf,T>, Specification<T>, RepresentationMetadata]
+types: [Result, Result<T>, Maybe<T>, Error, Unit, Page<T>, Cursor, EquatableArray<T>, ResourceRef, EntityTagValue, RetryAfterValue, PreconditionKind, InputPointer, FieldViolation, RuleViolation, AuthChallenge, Aggregate<TId>, Entity<TId>, IDomainEvent, "ScalarValueObject<TSelf,T>", Specification<T>, RepresentationMetadata]
 version: v3
 last_verified: 2026-05-01
 audience: [llm]

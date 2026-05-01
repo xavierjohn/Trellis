@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.StateMachine
 namespaces: [Trellis.StateMachine]
-types: [IStateMachine<,>, StateBuilder<,>, Transition<,>]
+types: ["IStateMachine<,>", "StateBuilder<,>", "Transition<,>"]
 version: v3
 last_verified: 2026-05-01
 audience: [llm]

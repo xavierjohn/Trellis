@@ -137,13 +137,13 @@ result.TryGetError(out var err);
 
 ### Error becomes a closed ADT
 
-v1 `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`).
+v1 `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`). <!-- v1-stale-ok -->
 
 v2 `Error` is an `abstract record` with **20 nested `sealed record` cases** (`Error.NotFound`, `Error.UnprocessableContent`, …). The base constructor is `private` so the catalog is closed; there are no static factories.
 
 ```csharp
 // v1
-return Result.Failure<Order>(Error.NotFound("Order missing"));
+return Result.Failure<Order>(Error.NotFound("Order missing")); // v1-stale-ok
 
 // v2
 return Result.Fail<Order>(new Error.NotFound(ResourceRef.For<Order>(id)) { Detail = "Order missing" });

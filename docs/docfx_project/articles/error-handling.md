@@ -107,7 +107,7 @@ new Error.NotFound(ResourceRef.For<Order>("42")) { Detail = "Order 42 not found"
 | Internal invariant violated | `new Error.Unexpected("default_initialized")` |
 
 > [!TIP]
-> Reach for `Error.Conflict(resource, "domain.violation")` when the input is structurally valid but a business rule blocks it. `Error.UnprocessableContent` is for input the caller can fix.
+> Reach for `new Error.Conflict(resource) { ReasonCode = "domain.violation" }` when the input is structurally valid but a business rule blocks it. `Error.UnprocessableContent` is for input the caller can fix.
 
 ### Validation failures
 

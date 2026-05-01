@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Core, Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
-types: [ValueObject, ScalarValueObject<TSelf,T>, RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredDecimal<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
+types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredDecimal<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
 version: v3
 last_verified: 2026-05-01
 audience: [llm]

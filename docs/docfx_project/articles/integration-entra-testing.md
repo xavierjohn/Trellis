@@ -258,10 +258,25 @@ public sealed class OrdersAuthenticationTests : IClassFixture<WebApplicationFact
     private readonly WebApplicationFactory<Program> _factory;
     private readonly MsalTestTokenProvider _tokens;
 
-    public OrdersAuthenticationTests(WebApplicationFactory<Program> factory, MsalTestTokenProvider tokens)
+    public OrdersAuthenticationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
-        _tokens = tokens;
+        // For brevity, construct one provider per test class. Real suites share a single
+        // provider across tests via IClassFixture — see "Fixture pattern" below.
+        _tokens = new MsalTestTokenProvider(new MsalTestOptions
+        {
+            TenantId = Environment.GetEnvironmentVariable("EntraTest__TenantId")!,
+            ClientId = Environment.GetEnvironmentVariable("EntraTest__ClientId")!,
+            Scopes = [$"api://{Environment.GetEnvironmentVariable("EntraTest__ClientId")}/.default"],
+            TestUsers =
+            {
+                ["salesRep"] = new TestUserCredentials
+                {
+                    Username = Environment.GetEnvironmentVariable("EntraTest__TestUsers__salesRep__Username")!,
+                    Password = Environment.GetEnvironmentVariable("EntraTest__TestUsers__salesRep__Password")!,
+                }
+            }
+        });
     }
 
     [Fact]

@@ -359,7 +359,14 @@ using Trellis.Mediator;
 
 builder.Services.AddEntraActorProvider();
 
-builder.Services.AddResourceAuthorization<Document, string, DocumentResourceLoader>();
+// 1. Register the resource loader for this command.
+//    DocumentResourceLoader implements IResourceLoader<EditDocumentCommand, Document>.
+builder.Services.AddScoped<IResourceLoader<EditDocumentCommand, Document>, DocumentResourceLoader>();
+
+// 2. Register the resource-authorization pipeline behavior.
+//    Type arguments are <TMessage, TResource, TResponse> — the *command* type comes first,
+//    then the resource type loaded for it, then the command's response type.
+builder.Services.AddResourceAuthorization<EditDocumentCommand, Document, Result<Unit>>();
 
 builder.Services.AddMediator(options =>
 {

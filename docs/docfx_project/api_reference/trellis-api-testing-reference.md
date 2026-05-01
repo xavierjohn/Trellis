@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Testing
 namespaces: [Trellis.Testing]
-types: [FakeRepository<,>, InMemoryUnitOfWork, ResultAssertions]
+types: ["FakeRepository<,>", InMemoryUnitOfWork, ResultAssertions]
 version: v3
 last_verified: 2026-05-01
 audience: [llm]

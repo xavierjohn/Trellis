@@ -34,7 +34,7 @@ audience: [developer]
 
 | Method | Receiver | Returns | Purpose |
 |---|---|---|---|
-| `ToResultAsync(statusMap?, ct)` | `Task<HttpResponseMessage>` | `Task<Result<HttpResponseMessage>>` | Bridge into a result pipeline. With no map, 2xx → `Ok`, non-2xx → typed Trellis failure. With a map, return `null` to pass through. |
+| `ToResultAsync(statusMap?)` | `Task<HttpResponseMessage>` | `Task<Result<HttpResponseMessage>>` | Bridge into a result pipeline. With no map, 2xx → `Ok`, non-2xx → typed Trellis failure. With a map, return `null` to pass through. (No `CancellationToken` parameter — let the upstream `*Async` call carry it.) |
 | `ToResultAsync(mapper, ct)` | `Task<HttpResponseMessage>` | `Task<Result<HttpResponseMessage>>` | Body-aware bridge. Async mapper invoked **only** on non-success status codes. |
 | `HandleNotFoundAsync(error)` | `Task<HttpResponseMessage>` | `Task<Result<HttpResponseMessage>>` | Map `404` to a typed `Fail`. |
 | `HandleUnauthorizedAsync(error)` | `Task<HttpResponseMessage>` | `Task<Result<HttpResponseMessage>>` | Map `401` to a typed `Fail`. |
@@ -148,7 +148,7 @@ public sealed class ProductsClient(HttpClient httpClient)
                 _ when (int)status >= 500 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
                 _ when (int)status >= 400 => new Error.InternalServerError(Guid.NewGuid().ToString("N")) { Detail = $"client error {status}" },
                 _ => null,
-            }, ct)
+            })
             .ReadJsonAsync(ProductsJsonContext.Default.ProductDto, ct);
 }
 ```
