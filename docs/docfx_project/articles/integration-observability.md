@@ -1,5 +1,5 @@
 ﻿---
-title: Observability And Monitoring
+title: Observability and Monitoring
 package: Trellis.ServiceDefaults
 topics: [observability, opentelemetry, tracing, logging, redaction, mediator, primitives]
 related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-core.md]

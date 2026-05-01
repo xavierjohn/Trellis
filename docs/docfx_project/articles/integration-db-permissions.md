@@ -65,6 +65,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
 using Trellis.Asp.Authorization;
@@ -95,12 +96,20 @@ public sealed class DatabaseActorProvider(
     }
 }
 
-// Composition root
-services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options => configuration.Bind("AzureAd", options));
+// Composition root — wire from Program.cs (or any DI extension method).
+public static class CompositionRoot
+{
+    public static void AddDatabasePermissions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddHttpContextAccessor();
 
-services.AddScoped<IPermissionRepository, PermissionRepository>();
-services.AddCachingActorProvider<DatabaseActorProvider>();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options => configuration.Bind("AzureAd", options));
+
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddCachingActorProvider<DatabaseActorProvider>();
+    }
+}
 ```
 
 ## Permission domain model
