@@ -29,6 +29,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 - `Trellis.Authorization` is domain/application-layer only. ASP.NET actor providers are documented in [trellis-api-asp.md](trellis-api-asp.md#namespace-trellisaspauthorization).
 - Prefer `Result.Ensure` for boolean authorization guards so generated code uses the same ROP primitive as the rest of Trellis.
 - Do not mutate `RequiredPermissions`; expose the complete permission list as an immutable/read-only collection.
+- The DI registration extension `AddResourceAuthorization(...)` lives in `Trellis.Mediator` (`namespace Trellis.Mediator`), not in `Trellis.Authorization`. Wiring an `IAuthorizeResource<TResource>` therefore typically requires both `using Trellis.Authorization;` (for the interfaces) and `using Trellis.Mediator;` (for the DI extension). The compile error if the second is missing is `CS1061: 'IServiceCollection' does not contain a definition for 'AddResourceAuthorization' and no accessible extension method 'AddResourceAuthorization' accepting a first argument of type 'IServiceCollection' could be found` — see [trellis-api-mediator.md](trellis-api-mediator.md#servicecollectionextensions).
 
 ## Types
 

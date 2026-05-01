@@ -24,7 +24,8 @@ Use this table before searching the long type catalog.
 | Return success/failure with payload | `Result.Ok(value)` / `Result.Fail<T>(error)` | [`Result<TValue>`](#public-readonly-partial-struct-resulttvalue--iresulttvalue-iequatableresulttvalue-ifailurefactoryresulttvalue) |
 | Turn a boolean guard into a result | `Result.Ensure(condition, error)` or `.Ensure(...)` in a chain | [`Result`](#public-readonly-partial-struct-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync-resultensureextensions-resultensureextensionsasync) |
 | Start independent async result-producing operations concurrently | `Result.ParallelAsync(...)`, then combine the returned tasks | [`Result`](#public-readonly-partial-struct-result) |
-| Combine multiple validated fields | `Result.Combine(...)` or chained `.Combine(...)`, then `.Map(...)` / `.Bind(...)` | [`Result pipeline extension families`](#result-pipeline-extension-families) |
+| Combine multiple validated *typed* fields into a tuple | static `Result.Combine<T1,T2>(Result<T1>, Result<T2>)` or instance `r1.Combine(r2)`, then `.Map(...)` | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
+| Combine multiple non-generic boolean guards | instance `r1.Combine(r2)` (extension), then `.Bind(...)` — **not** `Result.Combine(...)`, whose static overloads are generic-only and fail with `CS0411` on non-generic `Result` arguments | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
 | Adapt an already-computed result to async APIs | `.AsTask()` / `.AsValueTask()` | [`ResultTaskAdapterExtensions`](#task-adapter-family--resulttaskadapterextensions) |
 | Model expected absence | `Maybe<T>`, `Maybe.Some(value)`, `Maybe<T>.None` | [`Maybe<T>`](#public-readonly-struct-maybet-where-t--notnull) |
 | Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
@@ -34,12 +35,64 @@ Use this table before searching the long type catalog.
 | Move reusable query predicates out of repositories | `Specification<T>` | [`Specification<T>`](#specificationt) |
 | Define custom required value objects | `partial class X : RequiredString<X>` / `RequiredGuid<X>` / other `Required*` bases | [`Primitive value object base classes`](#primitive-value-object-base-classes) |
 
+## Canonical async handler skeleton
+
+Every async command/query handler that composes Trellis primitives follows the same await-then-chain shape. **The sync verbs (`Bind`/`Map`/`Ensure`) extend `Result`/`Result<T>` receivers with sync delegates only. The async verbs (`BindAsync`/`MapAsync`/`EnsureAsync`) extend `Result`/`Result<T>`, `Task<Result>`/`Task<Result<T>>`, *and* `ValueTask<Result>`/`ValueTask<Result<T>>` receivers; on a sync receiver they take an async delegate (`Task<...>` or `ValueTask<...>`), while on a `Task`/`ValueTask` receiver they additionally provide sync-delegate convenience overloads.** A `Task<Result>` is *not* a `Result` and does not expose the sync extensions — calling `.Bind(...)` on a `Task<Result>` fails with `CS1929: 'Task<Result>' does not contain a definition for 'Bind'`.
+
+```csharp
+// Generic handler — Task<Result<TOut>>
+public async Task<Result<OrderResponse>> Handle(CreateDraftOrderCommand cmd, CancellationToken ct)
+{
+    // 1. Sync precondition — produces a Result, chains synchronously.
+    var preconditions = Result.Ensure(cmd.LineItems.Count > 0,
+                            Error.UnprocessableContent.ForField("lineItems", "required", "..."))
+                        .Bind(() => Result.Ensure(!cmd.HasDuplicates,
+                            Error.UnprocessableContent.ForField("lineItems", "duplicate_product", "...")));
+
+    if (preconditions.IsFailure) return Result.Fail<OrderResponse>(preconditions.Error);
+
+    // 2. Async precondition — returns Task<Result<T>>; await BEFORE chaining sync extensions,
+    //    or use the *Async siblings (BindAsync/EnsureAsync/MapAsync) which extend Task<Result<T>>.
+    return await LoadCustomerAsync(cmd.CustomerId, ct)                  // Task<Result<Customer>>
+        .EnsureAsync(c => c.IsActive,
+            c => new Error.Forbidden("customer.inactive",
+                ResourceRef.For<Customer>(c.Id)))                        // Task<Result<Customer>>
+        .BindAsync(c => LoadProductsAsync(cmd.LineItems, ct))           // Task<Result<IReadOnlyList<Product>>>
+        .MapAsync(products => Order.CreateDraft(cmd, products))         // Task<Result<Order>>
+        .MapAsync(order => OrderResponse.From(order));                  // Task<Result<OrderResponse>>
+}
+
+// Non-generic handler — Task<Result>
+public Task<Result> Handle(CancelOrderCommand cmd, CancellationToken ct) =>
+    LoadOrderAsync(cmd.OrderId, ct)                                     // Task<Result<Order>>
+        .BindAsync(order => order.Cancel())                             // Task<Result>      (Cancel returns Result)
+        .BindAsync(() => _uow.SaveChangesResultAsync(ct));              // Task<Result>
+```
+
+**Common build failures and their fix:**
+
+| Diagnostic | What the model wrote | Fix |
+| --- | --- | --- |
+| `CS1929: 'Task<Result>' does not contain a definition for 'Bind'` | `LoadAsync(...).Bind(x => ...)` | Use `BindAsync` (which extends `Task<Result<T>>`), or `await` first then `.Bind(...)` |
+| `CS0411: type arguments for 'Map<TOut>' cannot be inferred` | `someTaskResult.Map(...)` after a non-generic `CheckAsync` | `await` the precondition into a concrete `Result` before projecting; or use `MapAsync<TOut>(...)` |
+| `CS0121: ambiguous between 'BindAsync<...>(Result<T>, Func<T, Task<Result<R>>>)' and 'BindAsync<...>(Result<T>, Func<T, ValueTask<Result<R>>>)'` | A sync `Result<T>` (not `Task<Result<T>>`) receiver with an inline `async` lambda whose return type can't be inferred between `Task` and `ValueTask` — both delegate-shape overloads exist on the sync receiver. | Either extract the lambda to a named method with an explicit `Task<Result<R>>` return type, or pin the delegate type at the call site: `Func<T, Task<Result<R>>> next = c => ...; result.BindAsync(next);`. See [`Bind family — Task vs ValueTask ambiguity`](#bind-family--bindextensions-bindextensionsasync-resultbindextensions-resultbindextensionsasync-bindzipextensions-bindzipextensionsasync) |
+
+
 ## Common traps
 
 - Do not use throwing value access in production code. Prefer `TryGetValue`, `Match`, `Bind`, `Map`, or deconstruction guarded by the success flag.
 - Do not use `default(Result)` or `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default_initialized")` failure.
 - Do not put `Unit` in consumer-facing docs or APIs. Use non-generic `Result` for no-payload flows.
 - Use `ParallelAsync` only for independent work. If operation B depends on operation A, compose with `Bind`/`BindAsync` instead.
+
+### First-30-minutes surprises
+
+| Surprise | What it actually is |
+|---|---|
+| `Result<T>.Value` getter does not exist (`CS1061`) | Removed from the current API because it was the primary cause of unsafe value access. Extract via `TryGetValue(out var v)`, `Match(...)`, deconstruction `var (ok, v, err) = result;`, or chain with `Bind`/`Map`. `Maybe<T>.Value` *does* exist but is hidden from IntelliSense and gated by analyzer `TRLS003` — guard with `HasValue`/`TryGetValue`/`Match`/`GetValueOrDefault`. The two types do not have symmetric value-access ergonomics. |
+| Implicit `T → Result<T>` and `Error → Result<T>` were removed (`CS0029`) | Use the explicit factory: `return Result.Ok(value);` and `return Result.Fail<T>(error);`. The C# compiler flags every site with `CS0029: cannot implicitly convert type 'T' to 'Result<T>'`. |
+| `Aggregate<TId>` / `Entity<TId>` already provide `CreatedAt` and `LastModified` (`CS0108`) | Both are `DateTimeOffset` (not `DateTime`) and infrastructure-managed by Trellis EF Core. Defining your own `public DateTime CreatedAt { ... }` on the aggregate triggers `CS0108: 'X.CreatedAt' hides inherited member 'Entity<TId>.CreatedAt'`. If your spec calls for an audit timestamp, use the inherited base property instead of declaring a new one. |
+| `Result<T>` has `.Error` (nullable, never throws) but **not** `.Value` | `result.Error` returns `Error?` (null on success). `result.TryGetError(out var err)` is the safe Boolean form. Reading the success value still requires `TryGetValue`/`Match`/destructuring. |
 
 ## Breaking changes from v1
 
@@ -882,6 +935,13 @@ Result<Order> Place(OrderId id) =>
         .BindZip(c => LoadCart(c.Id))    // Result<(Customer, Cart)>
         .Bind((customer, cart) => Charge(customer, cart));
 ```
+
+> **Trap — `BindAsync` Task vs ValueTask overload ambiguity (`CS0121`).** When the lambda passed to `BindAsync` is an inline expression whose return type can't be inferred between `Task<Result<R>>` and `ValueTask<Result<R>>`, the compiler reports both overloads as candidates. Two reliable fixes:
+>
+> 1. **Named method with explicit return type** — extract the lambda body to a method declared as `private Task<Result<R>> NextStage(T value, CancellationToken ct) { ... }` and pass `NextStage` (the method group resolves unambiguously).
+> 2. **Typed local delegate** — `Func<T, Task<Result<R>>> next = c => ...; .BindAsync(next);` forces the `Task` overload.
+>
+> Avoid storing the lambda inline as `var next = ...;` because the inferred type may still be ambiguous.
 
 #### Map family — `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions`, `ResultMapExtensions`, `ResultMapExtensionsAsync`
 

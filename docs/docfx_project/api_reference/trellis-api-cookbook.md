@@ -1184,17 +1184,29 @@ public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.Value < _threshold;   // TRLS003 + fake throws on None
 
-// ✅ Correct — HasValue guards Value; one Specification, identical semantics in both paths.
+// ❌ Wrong — chained `&&` with `.Value` inside an expression tree. TRLS003
+//   (UnsafeMaybeValueAccess) recognizes the *direct* shape `x.HasValue && x.Value`
+//   when `x.HasValue` is the immediate left operand of the `&&` containing `x.Value`.
+//   When you chain `(predicate) && x.HasValue && x.Value`, C# parses this as
+//   `((predicate) && x.HasValue) && x.Value`, so the outer `&&`'s left operand is
+//   another binary expression — not the `HasValue` access itself — and the analyzer
+//   cannot see the guard. See `trellis-api-analyzers.md` for the recognized shapes.
 public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.HasValue
-         && o.SubmittedAt.Value < _threshold;
+         && o.SubmittedAt.Value < _threshold;   // TRLS003 — outer `&&` hides the guard
 
-// ✅ Correct alternative — GetValueOrDefault with a sentinel that always fails the comparison.
+// ✅ Correct — GetValueOrDefault with a sentinel that always fails the comparison.
 //   Reads "if no SubmittedAt, treat as never overdue (DateTime.MaxValue)".
+//   This is the analyzer-clean form for `Specification<T>.ToExpression()`.
 public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < _threshold;
+
+// ✅ Correct alternative — for repository queries that don't go through Specification<T>,
+//   use `MaybeQueryableExtensions.WhereLessThan` / `WhereHasValue` directly on the
+//   IQueryable<T>. See `trellis-api-efcore.md` for the full set of Maybe query helpers.
+//   Example: `query.WhereLessThan(o => o.SubmittedAt, threshold)` — no .Value access at all.
 ```
 
 **Prerequisites checklist** (the most common cause of "works in tests, fails in prod"):

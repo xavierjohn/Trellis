@@ -180,6 +180,7 @@ Abstract generic repository base class for EF Core aggregate persistence. Provid
 | --- | --- |
 | `protected virtual IQueryable<TAggregate> BuildFindByIdQuery()` | Override to add `.Include()` or filters to the find-by-ID query. Defaults to `DbSet`. |
 | `protected virtual IQueryable<TAggregate> BuildQueryBase()` | Override to add `.Include()` or filters to specification queries. Defaults to `DbSet.AsNoTracking()`. |
+| `public virtual Task<IReadOnlyList<TAggregate>> QueryAsync(Specification<TAggregate> spec, CancellationToken ct)` | Override the public method itself when you need to add `.OrderBy(...)` / paging / `.AsSplitQuery()` etc. on top of the spec. **Use the `override` keyword** — declaring a same-named method without `override` triggers `CS0108: hides inherited member`. Inherited from the public method table above. |
 
 #### Usage
 

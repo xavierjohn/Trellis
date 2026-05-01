@@ -34,6 +34,24 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 - Use Trellis attributes when defining generated primitives; similarly named DataAnnotations attributes compile but are ignored by the Trellis generator.
 - Keep primitive parsing out of handlers. Convert transport primitives to value objects at the DTO/controller/application seam, then pass shaped commands inward.
 
+### Trellis validation attributes vs `System.ComponentModel.DataAnnotations`
+
+The Trellis validation attributes are **class-targeted** with **different shapes** than the same-named DataAnnotations types. Decorate the `partial class` definition of a `Required*<TSelf>`-derived value object, not a property. `[StringLength]` supports both `MaximumLength` (positional ctor argument) and `MinimumLength` (property initializer); the missing piece relative to DataAnnotations is `[RegularExpression]` — pattern checks go in `static partial void ValidateAdditional(string value, string fieldName, ref string? error)`.
+
+**Class-targeted (apply to the `partial class` of a `Required*<TSelf>`-derived value object):**
+
+| Attribute | Target | Constructor(s) | Use it for | DataAnnotations equivalent that does **not** work |
+|---|---|---|---|---|
+| `Trellis.StringLengthAttribute` | `class` (on the `partial class X : RequiredString<X>`) | `StringLengthAttribute(int maximumLength)` (use `MinimumLength = N` initializer for the lower bound; `maximumLength` must be `>= 1`) | Length constraint on a `RequiredString<TSelf>` value object. Generated `TryCreate` enforces `MinimumLength <= length <= MaximumLength` after the null/empty/whitespace check. | `[System.ComponentModel.DataAnnotations.StringLength(...)]` on the class fails with `CS0592` (DataAnnotations targets `Property | Field | Parameter`, not `Class`); on a member it compiles but is ignored by the Trellis generator. `TRLS017` is the analyzer guardrail for the class-placement case if `AttributeUsage` ever expands. |
+| `Trellis.RangeAttribute` | `class` (on the `partial class X : RequiredInt<X>` / `RequiredLong<X>` / `RequiredDecimal<X>`) | `(int min, int max)`, `(long min, long max)`, `(double min, double max)` | Numeric range constraint. The constructor selected determines which generator template fires. | `[Range(typeof(decimal), "0.01", "999999.99")]` — use `(double, double)` instead. |
+| **Pattern / regex** | n/a | n/a | Override `static partial void ValidateAdditional(string value, string fieldName, ref string? error)` and run a `Regex.IsMatch(...)`. There is no `[RegularExpression]` attribute analog. | `[RegularExpression(@"^[A-Z]{3}\d{4}$")]` — silently does nothing on a `Required*<TSelf>` class. |
+
+**Field-targeted (apply to `public static readonly` members of a `RequiredEnum<TSelf>`-derived value object):**
+
+`Trellis.EnumValueAttribute(string value)` overrides the external symbolic name for a single enum member. Apply it to a `public static readonly TSelf` field whose canonical name should differ from the C# field identifier (e.g., when serializing `Status.InProgress` as `"in-progress"`). Without the attribute, `RequiredEnum<TSelf>` falls back to the field name. **This is the only Trellis primitive attribute that targets `AttributeTargets.Field` and takes a `string` argument** — do not include it in the class-targeted table above.
+
+A property-targeted form like `[StringLength(20, MinimumLength = 3)] public string Value { get; }` produces `CS0592: Attribute is not valid on this declaration type` only if `[StringLength]` resolves to `Trellis.StringLengthAttribute`, which targets `AttributeTargets.Class` only. The DataAnnotations attribute of the same name targets properties/fields/parameters and compiles in those positions, but the Trellis source generator only inspects attributes on the partial class declaration, so a DataAnnotations attribute on a member of a `Required*<TSelf>`-derived class is silently ignored. `TRLS017` covers the converse case — a DataAnnotations `[StringLength]`/`[Range]` applied to the class itself.
+
 ## Types
 
 > Base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`), base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`), validation attributes (`RangeAttribute`, `StringLengthAttribute`, `EnumValueAttribute`), `StringExtensions`, the `Required*<TSelf>` base classes, and `RequiredEnumJsonConverter<TRequiredEnum>` are all documented in [trellis-api-core.md](trellis-api-core.md). They live in `Trellis.Core` and are used by every concrete VO listed below. The inherited `static TSelf Create(TPrimitive value)` factory documented on `ScalarValueObject<TSelf, T>` is **not** repeated on each concrete VO below.
