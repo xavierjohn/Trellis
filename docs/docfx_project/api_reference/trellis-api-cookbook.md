@@ -1184,17 +1184,26 @@ public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.Value < _threshold;   // TRLS003 + fake throws on None
 
-// ✅ Correct — HasValue guards Value; one Specification, identical semantics in both paths.
+// ❌ Wrong — `&&`-guarded `.Value` inside an expression tree. Logically safe at runtime,
+//   but TRLS003 (UnsafeMaybeValueAccess) does NOT recognize `&&` short-circuit guards
+//   in lambdas. The analyzer only recognizes `if` / ternary HasValue gates (see
+//   `trellis-api-analyzers.md:169-178`), so this still fails the build.
 public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.HasValue
-         && o.SubmittedAt.Value < _threshold;
+         && o.SubmittedAt.Value < _threshold;   // TRLS003 — analyzer does not see the guard
 
-// ✅ Correct alternative — GetValueOrDefault with a sentinel that always fails the comparison.
+// ✅ Correct — GetValueOrDefault with a sentinel that always fails the comparison.
 //   Reads "if no SubmittedAt, treat as never overdue (DateTime.MaxValue)".
+//   This is the analyzer-clean form for `Specification<T>.ToExpression()`.
 public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
          && o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < _threshold;
+
+// ✅ Correct alternative — for repository queries that don't go through Specification<T>,
+//   use `MaybeQueryableExtensions.WhereLessThan` / `WhereHasValue` directly on the
+//   IQueryable<T>. See `trellis-api-efcore.md` for the full set of Maybe query helpers.
+//   Example: `query.WhereLessThan(o => o.SubmittedAt, threshold)` — no .Value access at all.
 ```
 
 **Prerequisites checklist** (the most common cause of "works in tests, fails in prod"):
