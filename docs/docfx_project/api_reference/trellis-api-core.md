@@ -37,7 +37,7 @@ Use this table before searching the long type catalog.
 
 ## Canonical async handler skeleton
 
-Every async command/query handler that composes Trellis primitives follows the same await-then-chain shape. **`Bind`/`Map`/`Ensure` are sync and live on `Result`/`Result<T>`; their `*Async` siblings live on `Task<Result>`/`Task<Result<T>>`.** A `Task<Result>` is *not* a `Result` and does not expose the sync extensions — calling `.Bind(...)` on a `Task<Result>` fails with `CS1929: 'Task<Result>' does not contain a definition for 'Bind'`.
+Every async command/query handler that composes Trellis primitives follows the same await-then-chain shape. **The sync verbs (`Bind`/`Map`/`Ensure`) extend `Result`/`Result<T>` receivers with sync delegates only. The async verbs (`BindAsync`/`MapAsync`/`EnsureAsync`) extend `Result`/`Result<T>`, `Task<Result>`/`Task<Result<T>>`, *and* `ValueTask<Result>`/`ValueTask<Result<T>>` receivers; on a sync receiver they take an async delegate (`Task<...>` or `ValueTask<...>`), while on a `Task`/`ValueTask` receiver they additionally provide sync-delegate convenience overloads.** A `Task<Result>` is *not* a `Result` and does not expose the sync extensions — calling `.Bind(...)` on a `Task<Result>` fails with `CS1929: 'Task<Result>' does not contain a definition for 'Bind'`.
 
 ```csharp
 // Generic handler — Task<Result<TOut>>
